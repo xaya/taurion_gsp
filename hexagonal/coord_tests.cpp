@@ -2,6 +2,10 @@
 
 #include <gtest/gtest.h>
 
+#include <functional>
+#include <set>
+#include <unordered_set>
+
 namespace pxd
 {
 namespace
@@ -51,6 +55,51 @@ TEST_F (CoordTests, GetRing)
   EXPECT_EQ (HexCoord (0, 0).GetRing (), 0);
   EXPECT_EQ (HexCoord (-3, 1).GetRing (), 3);
   EXPECT_EQ (HexCoord (0, 2).GetRing (), 2);
+}
+
+TEST_F (CoordTests, Hashing)
+{
+  const HexCoord a(-5, 2);
+  const HexCoord aa(-5, 2);
+  const HexCoord b(5, -2);
+  const HexCoord c(5, 2);
+
+  std::hash<HexCoord> hasher;
+
+  EXPECT_NE (hasher (a), hasher (b));
+  EXPECT_NE (hasher (a), hasher (c));
+  EXPECT_NE (hasher (b), hasher (c));
+
+  EXPECT_EQ (hasher (a), hasher (aa));
+}
+
+TEST_F (CoordTests, UnorderedSet)
+{
+  const HexCoord a(-5, 2);
+  const HexCoord aa(-5, 2);
+  const HexCoord b(5, -2);
+  const HexCoord c(5, 2);
+
+  std::unordered_set<HexCoord> coords;
+
+  coords.insert (a);
+  coords.insert (b);
+  EXPECT_EQ (coords.size (), 2);
+  EXPECT_EQ (coords.count (aa), 1);
+  EXPECT_EQ (coords.count (b), 1);
+  EXPECT_EQ (coords.count (c), 0);
+
+  coords.insert (aa);
+  EXPECT_EQ (coords.size (), 2);
+  EXPECT_EQ (coords.count (a), 1);
+  EXPECT_EQ (coords.count (b), 1);
+  EXPECT_EQ (coords.count (c), 0);
+
+  coords.insert (c);
+  EXPECT_EQ (coords.size (), 3);
+  EXPECT_EQ (coords.count (a), 1);
+  EXPECT_EQ (coords.count (b), 1);
+  EXPECT_EQ (coords.count (c), 1);
 }
 
 TEST_F (CoordTests, Neighbours)

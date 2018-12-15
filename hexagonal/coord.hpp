@@ -1,7 +1,10 @@
 #ifndef HEXAGONAL_COORD_HPP
 #define HEXAGONAL_COORD_HPP
 
+#include <cstddef>
 #include <cstdint>
+#include <functional>
+#include <limits>
 
 namespace pxd
 {
@@ -29,6 +32,8 @@ private:
   IntT y;
 
   class NeighbourList;
+
+  friend class std::hash<HexCoord>;
 
 public:
 
@@ -186,5 +191,38 @@ public:
 };
 
 } // namespace pxd
+
+namespace std
+{
+
+/**
+ * Defines a specialisation of std::hash for HexCoord, so that it can be used
+ * as a key in std::unordered_map and the likes.
+ */
+template <>
+  struct hash<pxd::HexCoord>
+{
+
+  inline size_t
+  operator() (const pxd::HexCoord& c) const
+  {
+    /* Just combine the two coordinates with the x coordinate shifted half-way
+       through the size_t.  Since HexCoord::IntT is typically smaller than
+       size_t, this yields a hash function that should not have collisions
+       at all.  Since IntT is signed, we have to "shift" the value up to
+       an unsigned range first.  */
+
+    constexpr size_t offs = -std::numeric_limits<pxd::HexCoord::IntT>::min ();
+    static_assert (offs > 0, "Unexpected minimum for IntT");
+
+    size_t res = c.x + offs;
+    res <<= sizeof (res) * 4;
+    res ^= c.y + offs;
+    return res;
+  }
+
+};
+
+} // namespace std
 
 #endif // HEXAGONAL_COORD_HPP
