@@ -1,10 +1,10 @@
 #include "config.h"
 
 #include "logic.hpp"
+#include "pxrpcserver.hpp"
 
 #include <xayagame/game.hpp>
 #include <xayagame/gamelogic.hpp>
-#include <xayagame/gamerpcserver.hpp>
 
 #include <jsonrpccpp/client/connectors/httpclient.h>
 #include <jsonrpccpp/server/connectors/httpserver.h>
@@ -85,7 +85,7 @@ main (int argc, char** argv)
         game->EnablePruning (FLAGS_enable_pruning);
 
       std::unique_ptr<jsonrpc::AbstractServerConnector> serverConnector;
-      std::unique_ptr<xaya::GameRpcServer> rpcServer;
+      std::unique_ptr<pxd::PXRpcServer> rpcServer;
       if (FLAGS_game_rpc_port != 0)
         {
           LOG (INFO)
@@ -98,7 +98,7 @@ main (int argc, char** argv)
         LOG (WARNING) << "No JSON-RPC server is configured for SMC";
       else
         rpcServer
-            = std::make_unique<xaya::GameRpcServer> (*game, *serverConnector);
+            = std::make_unique<pxd::PXRpcServer> (*game, *serverConnector);
 
       if (rpcServer != nullptr)
         rpcServer->StartListening ();

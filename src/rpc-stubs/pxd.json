@@ -1,0 +1,28 @@
+[
+  {
+    "name": "stop",
+    "params": {}
+  },
+  {
+    "name": "getcurrentstate",
+    "params": {},
+    "returns": {}
+  },
+  {
+    "name": "waitforchange",
+    "params": {},
+    "returns": {}
+  },
+
+  {
+    "name": "findpath",
+    "params":
+      {
+        "source": {},
+        "target": {},
+        "l1range": 100,
+        "wpdist": 10
+      },
+    "returns": {}
+  }
+]
