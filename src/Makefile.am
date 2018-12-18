@@ -22,6 +22,7 @@ libpxheaders = \
   jsonutils.hpp
 
 pxd_CXXFLAGS = \
+  -I$(top_srcdir) \
   $(XAYAGAME_CFLAGS) $(JSON_CFLAGS) $(GLOG_CFLAGS) $(GFLAGS_CFLAGS)
 pxd_LDADD = \
   $(builddir)/libpx.la \
@@ -41,7 +42,9 @@ noinst_HEADERS = $(libpxheaders) $(pxdheaders)
 check_PROGRAMS = tests
 TESTS = tests
 
-tests_CXXFLAGS = $(JSON_CFLAGS) $(GTEST_CFLAGS) $(GLOG_CFLAGS)
+tests_CXXFLAGS = \
+  -I$(top_srcdir) \
+  $(JSON_CFLAGS) $(GTEST_CFLAGS) $(GLOG_CFLAGS)
 tests_LDADD = \
   $(builddir)/libpx.la \
   $(JSON_LIBS) $(GTEST_LIBS) $(GLOG_LIBS)
