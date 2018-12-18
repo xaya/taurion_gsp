@@ -18,6 +18,7 @@ AX_CHECK_COMPILE_FLAG([-Wno-deprecated], [CXXFLAGS+=" -Wno-deprecated"])
 
 PKG_CHECK_MODULES([XAYAGAME], [libxayagame])
 PKG_CHECK_MODULES([SQLITE3], [sqlite3])
+PKG_CHECK_MODULES([JSON], [jsoncpp])
 PKG_CHECK_MODULES([GLOG], [libglog])
 PKG_CHECK_MODULES([GFLAGS], [gflags])
 PKG_CHECK_MODULES([GTEST], [gmock gtest_main])
