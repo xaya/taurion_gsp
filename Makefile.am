@@ -1,3 +1,3 @@
 ACLOCAL_AMFLAGS = ${ACLOCAL_FLAGS} -Im4
 
-SUBDIRS = hexagonal src
+SUBDIRS = hexagonal gametest src

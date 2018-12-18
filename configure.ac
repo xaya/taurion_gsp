@@ -26,6 +26,7 @@ PKG_CHECK_MODULES([GTEST], [gmock gtest_main])
 AC_CONFIG_FILES([
   Makefile \
   hexagonal/Makefile \
+  gametest/Makefile \
   src/Makefile
 ])
 AC_OUTPUT
