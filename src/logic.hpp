@@ -1,6 +1,8 @@
 #ifndef PXD_LOGIC_HPP
 #define PXD_LOGIC_HPP
 
+#include "basemap.hpp"
+
 #include <xayagame/sqlitegame.hpp>
 
 #include <sqlite3.h>
@@ -20,6 +22,11 @@ namespace pxd
  */
 class PXLogic : public xaya::SQLiteGame
 {
+
+private:
+
+  /** The underlying base map data.  */
+  const BaseMap map;
 
 protected:
 

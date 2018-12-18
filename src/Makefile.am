@@ -13,9 +13,11 @@ pxd_LDADD = \
   $(XAYAGAME_LIBS) $(GLOG_LIBS) $(GFLAGS_LIBS) \
   -lstdc++fs
 pxd_SOURCES = main.cpp \
+  basemap.cpp \
   logic.cpp \
   pxrpcserver.cpp
 noinst_HEADERS = \
+  basemap.hpp \
   logic.hpp \
   pxrpcserver.hpp \
   \
