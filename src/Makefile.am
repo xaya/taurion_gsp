@@ -15,9 +15,11 @@ libpx_la_LIBADD = \
   $(top_builddir)/hexagonal/libhexagonal.la \
   $(JSON_LIBS) $(GLOG_LIBS)
 libpx_la_SOURCES = \
-  basemap.cpp
+  basemap.cpp \
+  jsonutils.cpp
 libpxheaders = \
-  basemap.hpp
+  basemap.hpp \
+  jsonutils.hpp
 
 pxd_CXXFLAGS = \
   $(XAYAGAME_CFLAGS) $(JSON_CFLAGS) $(GLOG_CFLAGS) $(GFLAGS_CFLAGS)
@@ -35,6 +37,16 @@ pxdheaders = \
   rpc-stubs/pxrpcserverstub.h
 
 noinst_HEADERS = $(libpxheaders) $(pxdheaders)
+
+check_PROGRAMS = tests
+TESTS = tests
+
+tests_CXXFLAGS = $(JSON_CFLAGS) $(GTEST_CFLAGS) $(GLOG_CFLAGS)
+tests_LDADD = \
+  $(builddir)/libpx.la \
+  $(JSON_LIBS) $(GTEST_LIBS) $(GLOG_LIBS)
+tests_SOURCES = \
+  jsonutils_tests.cpp
 
 rpc-stubs/pxrpcserverstub.h: $(srcdir)/rpc-stubs/pxd.json
 	jsonrpcstub "$<" --cpp-server=PXRpcServerStub --cpp-server-file="$@"
