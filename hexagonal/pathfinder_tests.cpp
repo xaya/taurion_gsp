@@ -119,6 +119,13 @@ TEST_F (PathFinderTests, BasicPath)
               });
 }
 
+TEST_F (PathFinderTests, SourceIsTarget)
+{
+  PathFinder finder(&EdgeWeight, HexCoord (-1, 2));
+  ASSERT_EQ (finder.Compute (HexCoord (-1, 2), 0), 0);
+  AssertPath (finder.StepPath (HexCoord (-1, 2)), HexCoord (-1, 2), {});
+}
+
 TEST_F (PathFinderTests, ThroughX)
 {
   PathFinder finder(&EdgeWeight, HexCoord (-1, 2));
