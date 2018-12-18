@@ -98,7 +98,8 @@ main (int argc, char** argv)
         LOG (WARNING) << "No JSON-RPC server is configured for SMC";
       else
         rpcServer
-            = std::make_unique<pxd::PXRpcServer> (*game, *serverConnector);
+            = std::make_unique<pxd::PXRpcServer> (*game, logic,
+                                                  *serverConnector);
 
       if (rpcServer != nullptr)
         rpcServer->StartListening ();

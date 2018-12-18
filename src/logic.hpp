@@ -28,6 +28,8 @@ private:
   /** The underlying base map data.  */
   const BaseMap map;
 
+  friend class PXRpcServer;
+
 protected:
 
   void SetupSchema (sqlite3* db) override;

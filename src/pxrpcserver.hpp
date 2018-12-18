@@ -3,6 +3,8 @@
 
 #include "rpc-stubs/pxrpcserverstub.h"
 
+#include "logic.hpp"
+
 #include <xayagame/game.hpp>
 
 #include <json/json.h>
@@ -24,10 +26,14 @@ private:
   /** The underlying Game instance that manages everything.  */
   xaya::Game& game;
 
+  /** The PX game logic implementation.  */
+  PXLogic& logic;
+
 public:
 
-  explicit PXRpcServer (xaya::Game& g, jsonrpc::AbstractServerConnector& conn)
-    : PXRpcServerStub(conn), game(g)
+  explicit PXRpcServer (xaya::Game& g, PXLogic& l,
+                        jsonrpc::AbstractServerConnector& conn)
+    : PXRpcServerStub(conn), game(g), logic(l)
   {}
 
   virtual void stop () override;
