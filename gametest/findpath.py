@@ -16,27 +16,32 @@ class FindPathTest (PXTest):
   def run (self):
     findpath = self.rpc.game.findpath
 
-    origin = {"x": 0, "y": 0}
+    # Pair of coordinates that are next to each other, but where one
+    # is an obstacle.
+    obstacle = {"x": 0, "y": 505}
+    passable = {"x": 0, "y": 504}
+
+    # Two coordinates between which a direct path is passable.
     a = {"x": 0, "y": 1}
     b = {"x": 3, "y": 1}
 
     # Verify exceptions for invalid arguments.
     self.expectError (-1, "source is not a valid coordinate",
-                      findpath, source={}, target=origin, l1range=10, wpdist=1)
+                      findpath, source={}, target=a, l1range=10, wpdist=1)
     self.expectError (-1, "target is not a valid coordinate",
-                      findpath, source=origin, target={}, l1range=10, wpdist=1)
+                      findpath, source=a, target={}, l1range=10, wpdist=1)
     self.expectError (-1, "l1range is out of bounds",
-                      findpath, source=origin, target=origin,
-                      l1range=-1, wpdist=1)
+                      findpath, source=a, target=a, l1range=-1, wpdist=1)
     self.expectError (-1, "wpdist is out of bounds",
-                      findpath, source=origin, target=origin,
-                      l1range=1, wpdist=0)
+                      findpath, source=a, target=a, l1range=1, wpdist=0)
 
     # Paths that yield no connection.
     self.expectError (1, "no connection",
-                      findpath, source=origin, target=a, l1range=10, wpdist=1)
+                      findpath, source=obstacle, target=passable,
+                      l1range=10, wpdist=1)
     self.expectError (1, "no connection",
-                      findpath, source=a, target=origin, l1range=10, wpdist=1)
+                      findpath, source=passable, target=obstacle,
+                      l1range=10, wpdist=1)
     self.expectError (1, "no connection",
                       findpath, source=a, target=b, l1range=1, wpdist=1)
 

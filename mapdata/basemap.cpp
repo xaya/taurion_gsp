@@ -1,21 +1,62 @@
 #include "basemap.hpp"
 
-#include "hexagonal/coord.hpp"
+#include "obstacles.hpp"
+
+#include <glog/logging.h>
 
 namespace pxd
 {
 
+namespace
+{
+
+/**
+ * Returns the 0-based index into one of the arrays of obstacle data indexed
+ * by the y coordinate within a non-0-based range.
+ */
+int
+ObstacleYArrayIndex (const int y)
+{
+  CHECK (y >= obstacles::minY && y <= obstacles::maxY);
+  return y - obstacles::minY;
+}
+
+} // anonymous namespace
+
+bool
+BaseMap::IsOnMap (const HexCoord& c) const
+{
+  if (c.GetY () < obstacles::minY || c.GetY () > obstacles::maxY)
+    return false;
+
+  const int yInd = ObstacleYArrayIndex (c.GetY ());
+  return c.GetX () >= obstacles::minX[yInd]
+          && c.GetX () <= obstacles::maxX[yInd];
+}
+
+bool
+BaseMap::IsPassable (const HexCoord& c) const
+{
+  if (!IsOnMap (c))
+    return false;
+
+  const int yInd = ObstacleYArrayIndex (c.GetY ());
+  const unsigned char* bits
+      = obstacles::bitData + obstacles::bitDataOffsetForY[yInd];
+
+  const int xInd = c.GetX () - obstacles::minX[yInd];
+  return (bits[xInd / 8] & (1 << xInd % 8));
+}
+
 PathFinder::EdgeWeightFcn
 BaseMap::GetEdgeWeights () const
 {
-  /* FIXME: For now, this is just a dummy function until we get the actual
-     obstacle and map data.  */
-  return [] (const HexCoord& from, const HexCoord& to) -> PathFinder::DistanceT
+  return [this] (const HexCoord& from, const HexCoord& to)
+            -> PathFinder::DistanceT
     {
-      const HexCoord origin(0, 0);
-      if (from == origin || to == origin)
-        return PathFinder::NO_CONNECTION;
-      return 1;
+      if (IsPassable (from) && IsPassable (to))
+        return 1;
+      return PathFinder::NO_CONNECTION;
     };
 }
 

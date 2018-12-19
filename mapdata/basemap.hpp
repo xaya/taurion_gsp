@@ -1,6 +1,7 @@
 #ifndef MAPDATA_BASEMAP_HPP
 #define MAPDATA_BASEMAP_HPP
 
+#include "hexagonal/coord.hpp"
 #include "hexagonal/pathfinder.hpp"
 
 namespace pxd
@@ -13,6 +14,21 @@ namespace pxd
  */
 class BaseMap
 {
+
+private:
+
+  /**
+   * Returns true if the given coordinate is "on the map".
+   */
+  bool IsOnMap (const HexCoord& c) const;
+
+  /**
+   * Returns true if the given coordinate is passable according to the
+   * obstacle layer data.
+   */
+  bool IsPassable (const HexCoord& c) const;
+
+  friend class BaseMapTests;
 
 public:
 

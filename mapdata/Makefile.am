@@ -13,11 +13,28 @@ libmapdata_la_LIBADD = \
   $(top_builddir)/hexagonal/libhexagonal.la \
   $(GLOG_LIBS)
 libmapdata_la_SOURCES = \
-  basemap.cpp
+  basemap.cpp \
+  obstacles.cpp
 noinst_HEADERS = \
   basemap.hpp \
+  obstacles.hpp \
   \
   dataio.hpp
+
+check_PROGRAMS = tests
+TESTS = tests
+
+tests_CXXFLAGS = \
+  -I$(top_srcdir) \
+  $(GTEST_CFLAGS) $(GLOG_CFLAGS)
+tests_LDADD = \
+  $(builddir)/libmapdata.la \
+  $(top_builddir)/hexagonal/libhexagonal.la \
+  $(GTEST_LIBS) $(GLOG_LIBS)
+tests_SOURCES = \
+  basemap_tests.cpp \
+  \
+  dataio.cpp
 
 procmap_CXXFLAGS = \
   -I$(top_srcdir) \
