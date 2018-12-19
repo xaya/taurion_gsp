@@ -1,0 +1,240 @@
+/* Utility program to read the raw map data files and convert them into a
+   format that is compact and easy to read at runtime.  The processed data
+   is then used by the BaseMap class.  */
+
+#include "config.h"
+
+#include "hexagonal/coord.hpp"
+
+#include <gflags/gflags.h>
+#include <glog/logging.h>
+
+#include <cstdlib>
+#include <fstream>
+#include <iostream>
+#include <unordered_map>
+
+DEFINE_string (obstacle_input, "",
+               "The file with input obstacle data");
+DEFINE_string (binary_output, "",
+               "If not empty, write processed binary data to this file");
+
+namespace pxd
+{
+namespace
+{
+
+/** Number of bools to pack into each character for the bit vector.  */
+constexpr int BITS = 8;
+
+/**
+ * Reads a signed 16-bit integer in little endian format.
+ */
+int16_t
+ReadInt16 (std::istream& in)
+{
+  int res = 0;
+  res |= in.get ();
+  res |= (in.get () << 8);
+
+  CHECK (!in.eof ()) << "Unexpected EOF while reading input file";
+  return static_cast<int16_t> (res);
+}
+
+/**
+ * Writes a signed 16-bit integer in little endian format.
+ */
+void
+WriteInt16 (std::ostream& out, const int16_t val)
+{
+  const uint16_t withoutSign = static_cast<uint16_t> (val);
+  out.put (withoutSign & 0xFF);
+  out.put (withoutSign >> 8);
+}
+
+/**
+ * Simple helper struct that keeps track of minimum and maximum seen values.
+ */
+struct MinMax
+{
+
+  /** True if we already have seen any value.  */
+  bool initialised = false;
+
+  /** Minimum value seen.  */
+  int minVal;
+  /** Maximum value seen.  */
+  int maxVal;
+
+  MinMax () = default;
+  MinMax (const MinMax&) = default;
+  MinMax& operator= (const MinMax&) = default;
+
+  void
+  Update (const int cur)
+  {
+    if (!initialised)
+      {
+        initialised = true;
+        minVal = cur;
+        maxVal = cur;
+        return;
+      }
+
+    minVal = std::min (minVal, cur);
+    maxVal = std::max (maxVal, cur);
+  }
+
+};
+
+/**
+ * Holds the obstacle data for the base map.  Since the map is "square",
+ * this corresponds to a number of "rows" (axial y coordinate), where
+ * each row has a variable length between some bounds for the "column"
+ * (axial x coordinate).
+ */
+class ObstacleData
+{
+
+private:
+
+  /** Map of already read obstacle "tiles" from the raw input.  */
+  std::unordered_map<HexCoord, bool> passableMap;
+
+  /** The minimum and maximum seen row values.  */
+  MinMax rowRange;
+
+  /** For each row, the range of seen column values.  */
+  std::unordered_map<int, MinMax> columnRange;
+
+public:
+
+  ObstacleData () = default;
+
+  ObstacleData (const ObstacleData&) = delete;
+  void operator= (const ObstacleData&) = delete;
+
+  /**
+   * Reads in the data from the input obstacle binary stream.  The format
+   * of that data file is as follows (all little-endian 16-bit signed integers):
+   *
+   * 2 ints giving the rows/columns of the square map (N * M),
+   * (N * M) triplets of ints follow, giving axial x, axial y and passable
+   * as 0 or 1.
+   */
+  void
+  ReadInput (std::istream& in)
+  {
+    LOG (INFO) << "Reading obstacle input binary data...";
+    passableMap.clear ();
+    columnRange.clear ();
+    rowRange = MinMax ();
+
+    const size_t n = ReadInt16 (in);
+    const size_t m = ReadInt16 (in);
+    LOG (INFO)
+        << "Reading " << n << " * " << m << " = " << (n * m) << " tiles";
+    for (size_t i = 0; i < n * m; ++i)
+      {
+        const int16_t x = ReadInt16 (in);
+        const int16_t y = ReadInt16 (in);
+        const bool passable = ReadInt16 (in);
+        passableMap.emplace (HexCoord (x, y), passable);
+        rowRange.Update (y);
+        columnRange[y].Update (x);
+      }
+
+    CHECK (passableMap.size () == n * m)
+        << "Duplicate map tiles in obstacle data";
+
+    LOG (INFO) << "Finished reading obstacle input data";
+    LOG (INFO) << "Row range: " << rowRange.minVal << " ... " << rowRange.maxVal;
+  }
+
+  /**
+   * Writes the data as compact rows of bit vectors.  The format of this
+   * data is as follows (signed little-endian 16-bit integers and raw bytes
+   * for the bit vector):
+   *
+   * MIN-ROW MAX-ROW
+   * For each row between those (inclusive);
+   *   MIN-COL MAX-COL
+   *   Passable for the columns between those (inclusive) encoded as a bit
+   *   vector with 8 passable-bits per byte and in "little endian", i.e.
+   *   the least-significant bit in each byte corresponds to the lowest-valued
+   *   column tile.
+   *
+   * As before, here "row" is the axial y coordinate and "column" the axial
+   * x coordinate.
+   */
+  void
+  WriteCompact (std::ostream& out) const
+  {
+    LOG (INFO) << "Writing obstacle data compactly...";
+    WriteInt16 (out, rowRange.minVal);
+    WriteInt16 (out, rowRange.maxVal);
+    for (int y = rowRange.minVal; y <= rowRange.maxVal; ++y)
+      {
+        const auto mit = columnRange.find (y);
+        CHECK (mit != columnRange.end ()) << "No column data for row " << y;
+        WriteInt16 (out, mit->second.minVal);
+        WriteInt16 (out, mit->second.maxVal);
+
+        int bits = 0;
+        int numBits = 0;
+        for (int x = mit->second.minVal; x <= mit->second.maxVal; ++x)
+          {
+            const HexCoord c(x, y);
+            const auto mitPassable = passableMap.find (c);
+            CHECK (mitPassable != passableMap.end ())
+                << "No passable data for tile " << c;
+
+            CHECK (numBits < BITS);
+            if (mitPassable->second)
+              bits |= (1 << numBits);
+
+            ++numBits;
+            if (numBits == BITS)
+              {
+                out.put (bits);
+                bits = 0;
+                numBits = 0;
+              }
+          }
+
+        if (numBits > 0)
+          out.put (bits);
+      }
+  }
+
+};
+
+} // anonymous namespace
+} // namespace pxd
+
+int
+main (int argc, char** argv)
+{
+  google::InitGoogleLogging (argv[0]);
+
+  gflags::SetUsageMessage ("Process raw map data");
+  gflags::SetVersionString (PACKAGE_VERSION);
+  gflags::ParseCommandLineFlags (&argc, &argv, true);
+
+  CHECK (!FLAGS_obstacle_input.empty ()) << "--obstacle_input must be set";
+
+  pxd::ObstacleData obstacles;
+  {
+    std::ifstream in(FLAGS_obstacle_input);
+    CHECK (in) << "Failed to open obstacle input file";
+    obstacles.ReadInput (in);
+  }
+
+  if (!FLAGS_binary_output.empty ())
+    {
+      std::ofstream out(FLAGS_binary_output, std::ios_base::binary);
+      obstacles.WriteCompact (out);
+    }
+
+  return EXIT_SUCCESS;
+}
