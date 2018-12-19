@@ -4,6 +4,7 @@
 
 #include <functional>
 #include <set>
+#include <sstream>
 #include <unordered_set>
 
 namespace pxd
@@ -120,6 +121,13 @@ TEST_F (CoordTests, Neighbours)
 
   for (const auto& n : neighbours)
     EXPECT_EQ (HexCoord::DistanceL1 (centre, n), 1);
+}
+
+TEST_F (CoordTests, StreamOutput)
+{
+  std::ostringstream out;
+  out << HexCoord (-5, 42);
+  EXPECT_EQ (out.str (), "(-5, 42)");
 }
 
 } // anonymous namespace

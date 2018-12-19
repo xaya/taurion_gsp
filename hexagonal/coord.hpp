@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <iostream>
 #include <limits>
 
 namespace pxd
@@ -66,6 +67,13 @@ public:
     if (a.x != b.x)
       return a.x < b.x;
     return a.y < b.y;
+  }
+
+  friend inline std::ostream&
+  operator<< (std::ostream& out, const HexCoord& c)
+  {
+    out << "(" << c.x << ", " << c.y << ")";
+    return out;
   }
 
   inline IntT
