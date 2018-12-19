@@ -13,11 +13,14 @@
 #include <fstream>
 #include <iostream>
 #include <unordered_map>
+#include <vector>
 
 DEFINE_string (obstacle_input, "",
                "The file with input obstacle data");
 DEFINE_string (binary_output, "",
                "If not empty, write processed binary data to this file");
+DEFINE_string (code_output, "",
+               "If not empty, write processed data as C++ code to this file");
 
 namespace pxd
 {
@@ -83,6 +86,83 @@ struct MinMax
 
     minVal = std::min (minVal, cur);
     maxVal = std::max (maxVal, cur);
+  }
+
+};
+
+/**
+ * Helper class to generate a bit vector.  Individual bits can be passed to
+ * it as booleans, and it builds up a vector of compact bytes that represent
+ * those bits.  That vector can then be written in binary or otherwise
+ * processed.
+ */
+class BitVectorBuilder
+{
+
+private:
+
+  /** Vector of bytes being built.  */
+  std::vector<unsigned char> data;
+
+  /** Byte currently being built up.  */
+  int currentByte = 0;
+  /** Number of bits already included in currentByte.  */
+  int numBits = 0;
+
+  /** Set to true when the builder is "finalised".  */
+  bool finalised = false;
+
+public:
+
+  BitVectorBuilder () = default;
+  BitVectorBuilder (const BitVectorBuilder&) = delete;
+  void operator= (const BitVectorBuilder&) = delete;
+
+  /**
+   * Appends a new bit to the vector.  This is only valid if the builder
+   * has not yet been finalised.
+   */
+  void
+  Append (const bool bit)
+  {
+    CHECK (!finalised);
+
+    CHECK (numBits < BITS);
+    if (bit)
+      currentByte |= (1 << numBits);
+    ++numBits;
+
+    if (numBits == BITS)
+      {
+        data.push_back (currentByte);
+        currentByte = 0;
+        numBits = 0;
+      }
+  }
+
+  /**
+   * Finalises the builder.  After that, Append() can no longer be called,
+   * but the data can be accessed.  This just makes sure that the current
+   * "half filled" byte is written.
+   */
+  void
+  Finalise ()
+  {
+    CHECK (!finalised);
+    finalised = true;
+
+    if (numBits > 0)
+      data.push_back (currentByte);
+  }
+
+  /**
+   * Returns a read-only view of the compacted byte data.
+   */
+  const std::vector<unsigned char>&
+  GetData () const
+  {
+    CHECK (finalised);
+    return data;
   }
 
 };
@@ -180,31 +260,90 @@ public:
         WriteInt16 (out, mit->second.minVal);
         WriteInt16 (out, mit->second.maxVal);
 
-        int bits = 0;
-        int numBits = 0;
+        BitVectorBuilder bits;
         for (int x = mit->second.minVal; x <= mit->second.maxVal; ++x)
           {
             const HexCoord c(x, y);
             const auto mitPassable = passableMap.find (c);
             CHECK (mitPassable != passableMap.end ())
                 << "No passable data for tile " << c;
-
-            CHECK (numBits < BITS);
-            if (mitPassable->second)
-              bits |= (1 << numBits);
-
-            ++numBits;
-            if (numBits == BITS)
-              {
-                out.put (bits);
-                bits = 0;
-                numBits = 0;
-              }
+            bits.Append (mitPassable->second);
           }
 
-        if (numBits > 0)
-          out.put (bits);
+        bits.Finalise ();
+        const auto& data = bits.GetData ();
+        out.write (reinterpret_cast<const char*> (data.data ()), data.size ());
       }
+  }
+
+  /**
+   * Writes out C++ code that encodes the data into some constants, so that
+   * it can be compiled directly into the binary.  The raw rows are still
+   * encoded as bit vectors to save memory.
+   */
+  void
+  WriteCode (std::ostream& out) const
+  {
+    LOG (INFO) << "Writing obstacle data as C++ code constants...";
+
+    out << "const int minY = " << rowRange.minVal << ";" << std::endl;
+    out << "const int maxY = " << rowRange.maxVal << ";" << std::endl;
+
+    out << "const int minX[] = {" << std::endl;
+    for (int y = rowRange.minVal; y <= rowRange.maxVal; ++y)
+      {
+        const auto mit = columnRange.find (y);
+        CHECK (mit != columnRange.end ()) << "No column data for row " << y;
+        out << "  " << mit->second.minVal << "," << std::endl;
+      }
+    out << "}; // minX" << std::endl;
+
+    out << "const int maxX[] = {" << std::endl;
+    for (int y = rowRange.minVal; y <= rowRange.maxVal; ++y)
+      out << "  " << columnRange.at (y).maxVal << "," << std::endl;
+    out << "}; // maxX" << std::endl;
+
+    /* We store all the bit-vector data into one big array of bytes that is
+       encoded in a single array in code.  We also store the index at which
+       each row's data starts in that array into another constant array.  */
+    std::vector<unsigned char> bitData;
+    out << "const int bitDataOffsetForY[] = {" << std::endl;
+    for (int y = rowRange.minVal; y <= rowRange.maxVal; ++y)
+      {
+        out << "  " << bitData.size () << "," << std::endl;
+        const auto& colRange = columnRange.at (y);
+
+        BitVectorBuilder bits;
+        for (int x = colRange.minVal; x <= colRange.maxVal; ++x)
+          {
+            const HexCoord c(x, y);
+            const auto mitPassable = passableMap.find (c);
+            CHECK (mitPassable != passableMap.end ())
+                << "No passable data for tile " << c;
+            bits.Append (mitPassable->second);
+          }
+
+        bits.Finalise ();
+        const auto& data = bits.GetData ();
+        bitData.insert (bitData.end (), data.begin (), data.end ());
+      }
+    out << "}; // bitDataOffsetForY" << std::endl;
+
+    out << R"(
+      static_assert (sizeof (minX) == (maxY - minY + 1) * sizeof (minX[0]),
+                     "minX has unexpected size");
+      static_assert (sizeof (maxX) == sizeof (minX),
+                     "maxX has unexpected size");
+      static_assert (sizeof (bitDataOffsetForY) == sizeof (minX),
+                     "bitDataOffsetForY has unexpected size");
+    )";
+
+    out << "const unsigned char bitData[] = {" << std::endl;
+    for (const int byte : bitData)
+      out << "  " << byte << "," << std::endl;
+    out << "}; // bitData" << std::endl;
+    out << "static_assert (sizeof (bitData) == " << bitData.size ()
+        << ", \"bitData has unexpected size\");" << std::endl;
   }
 
 };
@@ -234,6 +373,17 @@ main (int argc, char** argv)
     {
       std::ofstream out(FLAGS_binary_output, std::ios_base::binary);
       obstacles.WriteCompact (out);
+    }
+
+  if (!FLAGS_code_output.empty ())
+    {
+      std::ofstream out(FLAGS_code_output);
+      out << "#include \"obstacles.hpp\"" << std::endl;
+      out << "namespace pxd {" << std::endl;
+      out << "namespace obstacles {" << std::endl;
+      obstacles.WriteCode (out);
+      out << "} // namespace obstacles" << std::endl;
+      out << "} // namespace pxd" << std::endl;
     }
 
   return EXIT_SUCCESS;
