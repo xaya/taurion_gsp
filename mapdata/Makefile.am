@@ -6,4 +6,5 @@ procmap_CXXFLAGS = \
 procmap_LDADD = \
   $(top_builddir)/hexagonal/libhexagonal.la \
   $(GLOG_LIBS) $(GFLAGS_LIBS)
-procmap_SOURCES = procmap.cpp
+procmap_SOURCES = procmap.cpp \
+  dataio.cpp

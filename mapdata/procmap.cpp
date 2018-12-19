@@ -4,6 +4,8 @@
 
 #include "config.h"
 
+#include "dataio.hpp"
+
 #include "hexagonal/coord.hpp"
 
 #include <gflags/gflags.h>
@@ -29,31 +31,6 @@ namespace
 
 /** Number of bools to pack into each character for the bit vector.  */
 constexpr int BITS = 8;
-
-/**
- * Reads a signed 16-bit integer in little endian format.
- */
-int16_t
-ReadInt16 (std::istream& in)
-{
-  int res = 0;
-  res |= in.get ();
-  res |= (in.get () << 8);
-
-  CHECK (!in.eof ()) << "Unexpected EOF while reading input file";
-  return static_cast<int16_t> (res);
-}
-
-/**
- * Writes a signed 16-bit integer in little endian format.
- */
-void
-WriteInt16 (std::ostream& out, const int16_t val)
-{
-  const uint16_t withoutSign = static_cast<uint16_t> (val);
-  out.put (withoutSign & 0xFF);
-  out.put (withoutSign >> 8);
-}
 
 /**
  * Simple helper struct that keeps track of minimum and maximum seen values.
@@ -364,7 +341,7 @@ main (int argc, char** argv)
 
   pxd::ObstacleData obstacles;
   {
-    std::ifstream in(FLAGS_obstacle_input);
+    std::ifstream in(FLAGS_obstacle_input, std::ios_base::binary);
     CHECK (in) << "Failed to open obstacle input file";
     obstacles.ReadInput (in);
   }
