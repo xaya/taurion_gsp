@@ -1,7 +1,7 @@
 #ifndef PXD_LOGIC_HPP
 #define PXD_LOGIC_HPP
 
-#include "basemap.hpp"
+#include "mapdata/basemap.hpp"
 
 #include <xayagame/sqlitegame.hpp>
 

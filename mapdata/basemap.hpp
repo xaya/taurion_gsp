@@ -1,5 +1,5 @@
-#ifndef PXD_BASEMAP_HPP
-#define PXD_BASEMAP_HPP
+#ifndef MAPDATA_BASEMAP_HPP
+#define MAPDATA_BASEMAP_HPP
 
 #include "hexagonal/pathfinder.hpp"
 
@@ -31,4 +31,4 @@ public:
 
 } // namespace pxd
 
-#endif // PXD_BASEMAP_HPP
+#endif // MAPDATA_BASEMAP_HPP

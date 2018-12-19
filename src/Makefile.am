@@ -15,10 +15,8 @@ libpx_la_LIBADD = \
   $(top_builddir)/hexagonal/libhexagonal.la \
   $(JSON_LIBS) $(GLOG_LIBS)
 libpx_la_SOURCES = \
-  basemap.cpp \
   jsonutils.cpp
 libpxheaders = \
-  basemap.hpp \
   jsonutils.hpp
 
 pxd_CXXFLAGS = \
@@ -26,6 +24,7 @@ pxd_CXXFLAGS = \
   $(XAYAGAME_CFLAGS) $(JSON_CFLAGS) $(GLOG_CFLAGS) $(GFLAGS_CFLAGS)
 pxd_LDADD = \
   $(builddir)/libpx.la \
+  $(top_builddir)/mapdata/libmapdata.la \
   $(XAYAGAME_LIBS) $(JSON_LIBS) $(GLOG_LIBS) $(GFLAGS_LIBS) \
   -lstdc++fs
 pxd_SOURCES = main.cpp \
