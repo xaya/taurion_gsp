@@ -201,7 +201,7 @@ public:
         columnRange[y].Update (x);
       }
 
-    CHECK (passableMap.size () == n * m)
+    CHECK_EQ (passableMap.size (), n * m)
         << "Duplicate map tiles in obstacle data";
 
     LOG (INFO) << "Finished reading obstacle input data";
