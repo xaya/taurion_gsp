@@ -32,6 +32,7 @@ PKG_CHECK_MODULES([GFLAGS], [gflags])
 
 AC_CONFIG_FILES([
   Makefile \
+  data/Makefile \
   gametest/Makefile \
   hexagonal/Makefile \
   mapdata/Makefile \
