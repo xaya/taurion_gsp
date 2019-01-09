@@ -207,5 +207,53 @@ TEST_F (PathFinderTests, MultipleSteppers)
               });
 }
 
+TEST_F (PathFinderTests, RepathingWithEachStep)
+{
+  /* This test verifies that we get the same "tail" part of a path if we
+     do a fresh path-finding from an intermediate position.  That ensures
+     that we will get consistent results while a character moves towards
+     the next waypoint, independently of when exactly we do recalculations
+     of the remaining path (from current position to that waypoint).  */
+
+  const HexCoord source(-20, 0);
+  const HexCoord target(-20, 2);
+
+  std::vector<std::pair<HexCoord, PathFinder::DistanceT>> fullPath;
+  {
+    PathFinder finder(&EdgeWeight, target);
+    PathFinder::DistanceT dist = finder.Compute (source, 100);
+    ASSERT_NE (dist, PathFinder::NO_CONNECTION);
+
+    auto s = finder.StepPath (source);
+    fullPath.emplace_back (s.GetPosition (), dist);
+    while (s.HasMore ())
+      {
+        dist -= s.Next ();
+        fullPath.emplace_back (s.GetPosition (), dist);
+      }
+    ASSERT_EQ (dist, 0);
+    ASSERT_EQ (s.GetPosition (), target);
+  }
+
+  for (auto i = fullPath.cbegin (); i != fullPath.cend (); ++i)
+    {
+      PathFinder finder(&EdgeWeight, target);
+      ASSERT_EQ (finder.Compute (i->first, 100), i->second);
+
+      auto s = finder.StepPath (i->first);
+      for (auto j = i; ; )
+        {
+          EXPECT_EQ (s.GetPosition (), j->first);
+
+          ++j;
+          if (j == fullPath.cend ())
+            break;
+
+          ASSERT_TRUE (s.HasMore ());
+          s.Next ();
+        }
+    }
+}
+
 } // anonymous namespace
 } // namespace pxd
