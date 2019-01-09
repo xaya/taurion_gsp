@@ -27,6 +27,7 @@ pxd_CXXFLAGS = \
 pxd_LDADD = \
   $(builddir)/libpx.la \
   $(top_builddir)/mapdata/libmapdata.la \
+  $(top_builddir)/database/libdatabase.la \
   $(XAYAGAME_LIBS) \
   $(JSON_LIBS) \
   $(GLOG_LIBS) $(GFLAGS_LIBS) $(PROTOBUF_LIBS) \

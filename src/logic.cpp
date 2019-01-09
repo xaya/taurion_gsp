@@ -1,5 +1,7 @@
 #include "logic.hpp"
 
+#include "database/schema.hpp"
+
 #include <glog/logging.h>
 
 namespace pxd
@@ -8,7 +10,7 @@ namespace pxd
 void
 PXLogic::SetupSchema (sqlite3* db)
 {
-  LOG (WARNING) << "No database schema set up";
+  SetupDatabaseSchema (db);
 }
 
 void
