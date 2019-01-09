@@ -21,11 +21,15 @@ libpxheaders = \
 
 pxd_CXXFLAGS = \
   -I$(top_srcdir) \
-  $(XAYAGAME_CFLAGS) $(JSON_CFLAGS) $(GLOG_CFLAGS) $(GFLAGS_CFLAGS)
+  $(XAYAGAME_CFLAGS) \
+  $(JSON_CFLAGS) \
+  $(GLOG_CFLAGS) $(GFLAGS_CFLAGS) $(PROTOBUF_CFLAGS)
 pxd_LDADD = \
   $(builddir)/libpx.la \
   $(top_builddir)/mapdata/libmapdata.la \
-  $(XAYAGAME_LIBS) $(JSON_LIBS) $(GLOG_LIBS) $(GFLAGS_LIBS) \
+  $(XAYAGAME_LIBS) \
+  $(JSON_LIBS) \
+  $(GLOG_LIBS) $(GFLAGS_LIBS) $(PROTOBUF_LIBS) \
   -lstdc++fs
 pxd_SOURCES = main.cpp \
   logic.cpp \

@@ -1,0 +1,13 @@
+syntax = "proto2";
+
+package pxd.proto;
+
+/**
+ * A coordinate on the hexagonal map.  The coordinates are encoded in the
+ * "axial" format, as used everywhere in the backend as well.
+ */
+message HexCoord
+{
+  optional sint32 x = 1;
+  optional sint32 y = 2;
+}

@@ -12,6 +12,8 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
+#include <google/protobuf/stubs/common.h>
+
 #include <experimental/filesystem>
 
 #include <cstdlib>
@@ -41,6 +43,7 @@ int
 main (int argc, char** argv)
 {
   google::InitGoogleLogging (argv[0]);
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
 
   gflags::SetUsageMessage ("Run Project X game daemon");
   gflags::SetVersionString (PACKAGE_VERSION);
@@ -121,5 +124,6 @@ main (int argc, char** argv)
       LOG (FATAL) << "Unknown exception caught";
     }
 
+  google::protobuf::ShutdownProtobufLibrary ();
   return EXIT_SUCCESS;
 }

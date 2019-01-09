@@ -23,6 +23,7 @@ PKG_CHECK_MODULES([SQLITE3], [sqlite3])
 PKG_CHECK_MODULES([JSON], [jsoncpp])
 PKG_CHECK_MODULES([GLOG], [libglog])
 PKG_CHECK_MODULES([GTEST], [gmock gtest_main])
+PKG_CHECK_MODULES([PROTOBUF], [protobuf])
 
 # Make sure that pkg-config provides the right libraries for some dependencies
 # that may only be available statically (e.g. gflags).  For context, see:
@@ -36,6 +37,7 @@ AC_CONFIG_FILES([
   gametest/Makefile \
   hexagonal/Makefile \
   mapdata/Makefile \
+  proto/Makefile \
   src/Makefile
 ])
 AC_OUTPUT

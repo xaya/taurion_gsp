@@ -1,0 +1,39 @@
+syntax = "proto2";
+
+import "geometry.proto";
+
+package pxd.proto;
+
+/**
+ * An "active" movement of a character, characterised by a list of waypoints
+ * that will be visisted in order.
+ */
+message Path
+{
+
+  /** The waypoints that will still be visited.  */
+  repeated HexCoord waypoints = 1;
+
+}
+
+/**
+ * The state of one character in the game.  Note that this does not include
+ * data fields that are stored directly in database columns, namely those on
+ * which the database keeps indices.
+ */
+message Character
+{
+
+  /** Active movement of the character, if any.  */
+  optional Path movement = 1;
+
+  /* Fields that are stored directly in the database and thus not part of the
+     encoded protocol buffer:
+
+     - int ID
+     - string owner
+     - string name
+     - position on the map
+  */
+
+}
