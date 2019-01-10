@@ -17,6 +17,7 @@ libpx_la_LIBADD = \
 libpx_la_SOURCES = \
   jsonutils.cpp
 libpxheaders = \
+  amount.hpp \
   jsonutils.hpp
 
 pxd_CXXFLAGS = \

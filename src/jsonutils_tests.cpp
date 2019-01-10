@@ -2,6 +2,8 @@
 
 #include <gtest/gtest.h>
 
+#include <glog/logging.h>
+
 #include <sstream>
 
 namespace pxd
@@ -54,6 +56,41 @@ TEST_F (JsonCoordTests, InvalidCoordFromJson)
     {
       HexCoord c;
       EXPECT_FALSE (CoordFromJson (ParseJson (str), c));
+    }
+}
+
+using JsonAmountTests = testing::Test;
+
+TEST_F (JsonAmountTests, AmountToJson)
+{
+  const Json::Value val = AmountToJson (COIN);
+  ASSERT_TRUE (val.isDouble ());
+  ASSERT_EQ (val.asDouble (), 1.0);
+}
+
+TEST_F (JsonAmountTests, ValidAmountRoundtrip)
+{
+  const Amount testValues[] = {
+      0, 1,
+      COIN - 1, COIN, COIN + 1,
+      MAX_AMOUNT - 1, MAX_AMOUNT
+  };
+  for (const Amount a : testValues)
+    {
+      LOG (INFO) << "Testing with amount " << a;
+      const Json::Value val = AmountToJson (a);
+      Amount a2;
+      ASSERT_TRUE (AmountFromJson (val, a2));
+      EXPECT_EQ (a2, a);
+    }
+}
+
+TEST_F (JsonAmountTests, InvalidAmountFromJson)
+{
+  for (const auto& str : {"{}", "\"foo\"", "true", "-0.1", "80000000.1"})
+    {
+      Amount a;
+      EXPECT_FALSE (AmountFromJson (ParseJson (str), a));
     }
 }
 

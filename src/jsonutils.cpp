@@ -2,6 +2,7 @@
 
 #include <glog/logging.h>
 
+#include <cmath>
 #include <limits>
 
 namespace pxd
@@ -85,6 +86,32 @@ CoordFromJson (const Json::Value& val, HexCoord& c)
     }
 
   c = HexCoord (x, y);
+  return true;
+}
+
+Json::Value
+AmountToJson (const Amount amount)
+{
+  return Json::Value (static_cast<double> (amount) / COIN);
+}
+
+bool
+AmountFromJson (const Json::Value& val, Amount& amount)
+{
+  if (!val.isDouble ())
+    {
+      LOG (ERROR) << "JSON value for amount is not double: " << val;
+      return false;
+    }
+  const double dval = val.asDouble () * COIN;
+
+  if (dval < 0.0 || dval > MAX_AMOUNT)
+    {
+      LOG (ERROR) << "Amount " << (dval / COIN) << " is out of range";
+      return false;
+    }
+
+  amount = std::lround (dval);
   return true;
 }
 
