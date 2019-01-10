@@ -11,9 +11,11 @@ libdatabase_la_LIBADD = \
   $(top_builddir)/proto/libpxproto.la \
   $(GLOG_LIBS) $(SQLITE3_LIBS) $(PROTOBUF_LIBS)
 libdatabase_la_SOURCES = \
+  character.cpp \
   database.cpp \
   schema.cpp
 noinst_HEADERS = \
+  character.hpp \
   database.hpp \
   schema.hpp
 
@@ -39,6 +41,7 @@ tests_LDADD = \
   $(top_builddir)/proto/libpxproto.la \
   $(GTEST_LIBS) $(GLOG_LIBS)
 tests_SOURCES = \
+  character_tests.cpp \
   database_tests.cpp \
   schema_tests.cpp
 

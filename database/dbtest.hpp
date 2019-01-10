@@ -32,6 +32,19 @@ protected:
 
 };
 
+/**
+ * Test fixture that opens an in-memory database and also installs the
+ * game-state schema in it.
+ */
+class DBTestWithSchema : public DBTestFixture
+{
+
+protected:
+
+  DBTestWithSchema ();
+
+};
+
 } // namespace pxd
 
 #endif // DATABASE_DBTEST_HPP

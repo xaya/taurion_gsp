@@ -1,5 +1,7 @@
 #include "dbtest.hpp"
 
+#include "schema.hpp"
+
 #include <glog/logging.h>
 
 #include <map>
@@ -111,6 +113,12 @@ DBTestFixture::~DBTestFixture ()
 
   LOG (INFO) << "Closing underlying SQLite database...";
   sqlite3_close (handle);
+}
+
+DBTestWithSchema::DBTestWithSchema ()
+{
+  LOG (INFO) << "Setting up game-state schema in test database...";
+  SetupDatabaseSchema (handle);
 }
 
 } // namespace pxd
