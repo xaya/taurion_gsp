@@ -1,11 +1,54 @@
 #include "logic.hpp"
 
+#include "moveprocessor.hpp"
+#include "params.hpp"
+
+#include "database/database.hpp"
 #include "database/schema.hpp"
 
 #include <glog/logging.h>
 
+#include <sqlite3.h>
+
 namespace pxd
 {
+
+/**
+ * Database instance that uses an SQLiteGame instance for everything.
+ */
+class SQLiteGameDatabase : public Database
+{
+
+private:
+
+  /** The underlying SQLiteGame instance.  */
+  PXLogic& game;
+
+protected:
+
+  sqlite3_stmt*
+  PrepareStatement (const std::string& sql) override
+  {
+    return game.PrepareStatement (sql);
+  }
+
+public:
+
+  explicit SQLiteGameDatabase (PXLogic& g)
+    : game(g)
+  {}
+
+  SQLiteGameDatabase () = delete;
+  SQLiteGameDatabase (const SQLiteGameDatabase&) = delete;
+  void operator= (const SQLiteGameDatabase&) = delete;
+
+  unsigned
+  GetNextId () override
+  {
+    return game.Ids ("pxd").GetNext ();
+  }
+
+};
 
 void
 PXLogic::SetupSchema (sqlite3* db)
@@ -45,13 +88,17 @@ PXLogic::GetInitialStateBlock (unsigned& height,
 void
 PXLogic::InitialiseState (sqlite3* db)
 {
-  LOG (WARNING) << "Empty initial state for now";
+  /* Nothing needs to be done, we just start with an empty database.  */
 }
 
 void
 PXLogic::UpdateState (sqlite3* db, const Json::Value& blockData)
 {
-  LOG (WARNING) << "Block data should not be ignored!";
+  SQLiteGameDatabase dbObj(*this);
+  const Params params(GetChain ());
+
+  MoveProcessor mvProc(dbObj, params);
+  mvProc.ProcessAll (blockData["moves"]);
 }
 
 Json::Value

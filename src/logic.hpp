@@ -14,6 +14,8 @@
 namespace pxd
 {
 
+class SQLiteGameDatabase;
+
 /**
  * The game logic implementation for Project X.  This is the main class that
  * acts as the game-specific code, interacting with libxayagame and the Xaya
@@ -29,6 +31,7 @@ private:
   const BaseMap map;
 
   friend class PXRpcServer;
+  friend class SQLiteGameDatabase;
 
 protected:
 

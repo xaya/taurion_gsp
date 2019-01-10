@@ -10,15 +10,19 @@ CLEANFILES = $(RPC_STUBS)
 
 libpx_la_CXXFLAGS = \
   -I$(top_srcdir) \
-  $(JSON_CFLAGS) $(GLOG_CFLAGS)
+  $(XAYAGAME_CFLAGS) $(JSON_CFLAGS) $(GLOG_CFLAGS)
 libpx_la_LIBADD = \
   $(top_builddir)/hexagonal/libhexagonal.la \
-  $(JSON_LIBS) $(GLOG_LIBS)
+  $(XAYAGAME_LIBS) $(JSON_LIBS) $(GLOG_LIBS)
 libpx_la_SOURCES = \
-  jsonutils.cpp
+  jsonutils.cpp \
+  moveprocessor.cpp \
+  params.cpp
 libpxheaders = \
   amount.hpp \
-  jsonutils.hpp
+  jsonutils.hpp \
+  moveprocessor.hpp \
+  params.hpp
 
 pxd_CXXFLAGS = \
   -I$(top_srcdir) \
@@ -52,9 +56,12 @@ tests_CXXFLAGS = \
   $(JSON_CFLAGS) $(GTEST_CFLAGS) $(GLOG_CFLAGS)
 tests_LDADD = \
   $(builddir)/libpx.la \
+  $(top_builddir)/database/libdbtest.la \
+  $(top_builddir)/database/libdatabase.la \
   $(JSON_LIBS) $(GTEST_LIBS) $(GLOG_LIBS)
 tests_SOURCES = \
-  jsonutils_tests.cpp
+  jsonutils_tests.cpp \
+  moveprocessor_tests.cpp
 
 rpc-stubs/pxrpcserverstub.h: $(srcdir)/rpc-stubs/pxd.json
 	jsonrpcstub "$<" --cpp-server=PXRpcServerStub --cpp-server-file="$@"
