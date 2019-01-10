@@ -49,7 +49,8 @@ TEST_F (JsonCoordTests, InvalidCoordFromJson)
 {
   for (const auto& str : {"42", "true", R"("foo")", "[1,2,3]",
                           "{}", R"({"x": 5})", R"({"x": 1.5, "y": 42})",
-                          R"({"x": -1, "y": 1000000000})"})
+                          R"({"x": -1, "y": 1000000000})",
+                          R"({"x": 0, "y": 0, "foo": 0})"})
     {
       HexCoord c;
       EXPECT_FALSE (CoordFromJson (ParseJson (str), c));

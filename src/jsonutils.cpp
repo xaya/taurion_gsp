@@ -51,6 +51,14 @@ CoordFromJson (const Json::Value& val, HexCoord& c)
       return false;
     }
 
+  if (val.size () != 2)
+    {
+      LOG (ERROR)
+          << "Invalid HexCoord: JSON value " << val
+          << " has extra members";
+      return false;
+    }
+
   if (!xMember->isInt () || !yMember->isInt ())
     {
       LOG (ERROR)
