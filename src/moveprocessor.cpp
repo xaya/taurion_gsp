@@ -76,8 +76,8 @@ MoveProcessor::HandleCharacterCreation (const std::string& name,
       return;
     }
 
-  Character newChar(db, name, charName);
-  newChar.SetPosition (HexCoord (0, 0));
+  auto newChar = characters.CreateNew (name, charName);
+  newChar->SetPosition (HexCoord (0, 0));
 }
 
 } // namespace pxd

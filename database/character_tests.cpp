@@ -11,46 +11,50 @@ namespace pxd
 namespace
 {
 
-using CharacterTests = DBTestWithSchema;
+class CharacterTests : public DBTestWithSchema
+{
+
+protected:
+
+  /** CharacterTable instance for tests.  */
+  CharacterTable tbl;
+
+  CharacterTests ()
+    : tbl(*db)
+  {}
+
+};
 
 TEST_F (CharacterTests, Creation)
 {
   const HexCoord pos(5, -2);
 
-  unsigned id1, id2;
-  {
-    Character c1(*db, "domob", "abc");
-    c1.SetPosition (pos);
-    id1 = c1.GetId ();
-  }
+  auto c = tbl.CreateNew  ("domob", "abc");
+  c->SetPosition (pos);
+  const unsigned id1 = c->GetId ();
+  c.reset ();
 
-  {
-    Character c2(*db, "domob", u8"äöü");
-    id2 = c2.GetId ();
-    c2.MutableProto ().mutable_movement ();
-  }
+  c = tbl.CreateNew ("domob", u8"äöü");
+  const unsigned id2 = c->GetId ();
+  c->MutableProto ().mutable_movement ();
+  c.reset ();
 
-  CharacterTable tbl(*db);
-  auto res = tbl.GetAll ();
+  auto res = tbl.QueryAll ();
 
   ASSERT_TRUE (res.Step ());
-  {
-    Character c(res);
-    ASSERT_EQ (c.GetId (), id1);
-    EXPECT_EQ (c.GetOwner (), "domob");
-    EXPECT_EQ (c.GetName (), "abc");
-    EXPECT_EQ (c.GetPosition (), pos);
-    EXPECT_FALSE (c.GetProto ().has_movement ());
-  }
+  c = tbl.GetFromResult (res);
+  ASSERT_EQ (c->GetId (), id1);
+  EXPECT_EQ (c->GetOwner (), "domob");
+  EXPECT_EQ (c->GetName (), "abc");
+  EXPECT_EQ (c->GetPosition (), pos);
+  EXPECT_FALSE (c->GetProto ().has_movement ());
 
   ASSERT_TRUE (res.Step ());
-  {
-    Character c(res);
-    ASSERT_EQ (c.GetId (), id2);
-    EXPECT_EQ (c.GetOwner (), "domob");
-    EXPECT_EQ (c.GetName (), u8"äöü");
-    EXPECT_TRUE (c.GetProto ().has_movement ());
-  }
+  c = tbl.GetFromResult (res);
+  ASSERT_EQ (c->GetId (), id2);
+  EXPECT_EQ (c->GetOwner (), "domob");
+  EXPECT_EQ (c->GetName (), u8"äöü");
+  EXPECT_TRUE (c->GetProto ().has_movement ());
 
   ASSERT_FALSE (res.Step ());
 }
@@ -60,71 +64,62 @@ TEST_F (CharacterTests, Modification)
   const HexCoord pos1(5, -2);
   const HexCoord pos2(-2, 5);
 
-  CharacterTable tbl(*db);
+  auto c = tbl.CreateNew ("domob", "foo");
+  c->SetPosition (pos1);
+  c.reset ();
 
-  {
-    Character c(*db, "domob", "foo");
-    c.SetPosition (pos1);
-  }
-
-  auto res = tbl.GetAll ();
+  auto res = tbl.QueryAll ();
   ASSERT_TRUE (res.Step ());
-  {
-    Character c(res);
-    EXPECT_EQ (c.GetOwner (), "domob");
-    EXPECT_EQ (c.GetPosition (), pos1);
-    EXPECT_FALSE (c.GetProto ().has_movement ());
-
-    c.SetOwner ("andy");
-    c.SetPosition (pos2);
-    c.MutableProto ().mutable_movement ();
-  }
+  c = tbl.GetFromResult (res);
+  EXPECT_EQ (c->GetOwner (), "domob");
+  EXPECT_EQ (c->GetPosition (), pos1);
+  EXPECT_FALSE (c->GetProto ().has_movement ());
   ASSERT_FALSE (res.Step ());
 
-  res = tbl.GetAll ();
+  c->SetOwner ("andy");
+  c->SetPosition (pos2);
+  c->MutableProto ().mutable_movement ();
+  c.reset ();
+
+  res = tbl.QueryAll ();
   ASSERT_TRUE (res.Step ());
-  {
-    Character c(res);
-    EXPECT_EQ (c.GetOwner (), "andy");
-    EXPECT_EQ (c.GetPosition (), pos2);
-    EXPECT_TRUE (c.GetProto ().has_movement ());
-  }
+  c = tbl.GetFromResult (res);
+  EXPECT_EQ (c->GetOwner (), "andy");
+  EXPECT_EQ (c->GetPosition (), pos2);
+  EXPECT_TRUE (c->GetProto ().has_movement ());
   ASSERT_FALSE (res.Step ());
 }
 
 TEST_F (CharacterTests, EmptyNameNotAllowed)
 {
   EXPECT_DEATH ({
-    Character (*db, "domob", "");
+    tbl.CreateNew ("domob", "");
   }, "name");
 }
 
-using CharacterTableTests = DBTestWithSchema;
+using CharacterTableTests = CharacterTests;
 
-TEST_F (CharacterTableTests, GetForOwner)
+TEST_F (CharacterTableTests, QueryForOwner)
 {
-  Character (*db, "domob", "abc");
-  Character (*db, "domob", "foo");
-  Character (*db, "andy", "test");
+  tbl.CreateNew ("domob", "abc");
+  tbl.CreateNew ("domob", "foo");
+  tbl.CreateNew ("andy", "test");
 
-  CharacterTable tbl(*db);
-
-  auto res = tbl.GetForOwner ("domob");
+  auto res = tbl.QueryForOwner ("domob");
   ASSERT_TRUE (res.Step ());
-  EXPECT_EQ (Character (res).GetName (), "abc");
+  EXPECT_EQ (tbl.GetFromResult (res)->GetName (), "abc");
   ASSERT_TRUE (res.Step ());
-  EXPECT_EQ (Character (res).GetName (), "foo");
+  EXPECT_EQ (tbl.GetFromResult (res)->GetName (), "foo");
   ASSERT_FALSE (res.Step ());
 
-  res = tbl.GetForOwner ("not there");
+  res = tbl.QueryForOwner ("not there");
   ASSERT_FALSE (res.Step ());
 }
 
 TEST_F (CharacterTableTests, IsValidName)
 {
-  Character (*db, "domob", "abc");
+  tbl.CreateNew ("domob", "abc");
 
-  CharacterTable tbl(*db);
   EXPECT_FALSE (tbl.IsValidName (""));
   EXPECT_FALSE (tbl.IsValidName ("abc"));
   EXPECT_TRUE (tbl.IsValidName ("foo"));

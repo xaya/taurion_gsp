@@ -6,6 +6,7 @@
 #include "hexagonal/coord.hpp"
 #include "proto/character.pb.h"
 
+#include <memory>
 #include <string>
 
 namespace pxd
@@ -16,6 +17,10 @@ namespace pxd
  * logic (reading the state and doing modifications to it) from the database.
  * All interpretation of database results and upates to the database are done
  * through this class.
+ *
+ * This class should not be instantiated directly by users.  Instead, the
+ * methods from CharacterTable should be used.  Furthermore, variables should
+ * be of type CharacterTable::Handle (or using auto) to get move semantics.
  */
 class Character
 {
@@ -46,8 +51,6 @@ private:
    */
   bool dirty;
 
-public:
-
   /**
    * Constructs a new character with an auto-generated ID meant to be inserted
    * into the database.
@@ -59,7 +62,11 @@ public:
    * represents the data from the result row but can then be modified.  The
    * result should come from a query made through CharacterTable.
    */
-  explicit Character (Database::Result& res);
+  explicit Character (Database& d, const Database::Result& res);
+
+  friend class CharacterTable;
+
+public:
 
   /**
    * In the destructor, the underlying database is updated if there are any
@@ -141,6 +148,9 @@ private:
 
 public:
 
+  /** Movable handle to a character instance.  */
+  using Handle = std::unique_ptr<Character>;
+
   explicit CharacterTable (Database& d)
     : db(d)
   {}
@@ -150,15 +160,26 @@ public:
   void operator= (const CharacterTable&) = delete;
 
   /**
+   * Returns a Character handle for a fresh instance corresponding to a new
+   * character that will be created.
+   */
+  Handle CreateNew (const std::string& owner, const std::string& name);
+
+  /**
+   * Returns a handle for the instance based on a Database::Result.
+   */
+  Handle GetFromResult (const Database::Result& res);
+
+  /**
    * Queries for all characters in the database table.  The characters are
    * ordered by ID to make the result deterministic.
    */
-  Database::Result GetAll ();
+  Database::Result QueryAll ();
 
   /**
    * Queries for all characters with a given owner, ordered by ID.
    */
-  Database::Result GetForOwner (const std::string& owner);
+  Database::Result QueryForOwner (const std::string& owner);
 
   /**
    * Verifies whether the given string is valid as name for a new character.

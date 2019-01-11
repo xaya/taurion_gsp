@@ -107,7 +107,7 @@ TEST_F (CharacterCreationTests, InvalidCommands)
   ])", params.CharacterCost ());
 
   CharacterTable tbl(*db);
-  auto res = tbl.GetAll ();
+  auto res = tbl.QueryAll ();
   EXPECT_FALSE (res.Step ());
 }
 
@@ -120,25 +120,19 @@ TEST_F (CharacterCreationTests, ValidCreation)
   ])", params.CharacterCost ());
 
   CharacterTable tbl(*db);
-  auto res = tbl.GetAll ();
+  auto res = tbl.QueryAll ();
   ASSERT_TRUE (res.Step ());
-  {
-    Character c(res);
-    EXPECT_EQ (c.GetOwner (), "domob");
-    EXPECT_EQ (c.GetName (), "foo");
-  }
+  auto c = tbl.GetFromResult (res);
+  EXPECT_EQ (c->GetOwner (), "domob");
+  EXPECT_EQ (c->GetName (), "foo");
   ASSERT_TRUE (res.Step ());
-  {
-    Character c(res);
-    EXPECT_EQ (c.GetOwner (), "domob");
-    EXPECT_EQ (c.GetName (), "bar");
-  }
+  c = tbl.GetFromResult (res);
+  EXPECT_EQ (c->GetOwner (), "domob");
+  EXPECT_EQ (c->GetName (), "bar");
   ASSERT_TRUE (res.Step ());
-  {
-    Character c(res);
-    EXPECT_EQ (c.GetOwner (), "andy");
-    EXPECT_EQ (c.GetName (), "baz");
-  }
+  c = tbl.GetFromResult (res);
+  EXPECT_EQ (c->GetOwner (), "andy");
+  EXPECT_EQ (c->GetName (), "baz");
   EXPECT_FALSE (res.Step ());
 }
 
@@ -153,13 +147,11 @@ TEST_F (CharacterCreationTests, DevPayment)
   ])", params.CharacterCost () + 1);
 
   CharacterTable tbl(*db);
-  auto res = tbl.GetAll ();
+  auto res = tbl.QueryAll ();
   ASSERT_TRUE (res.Step ());
-  {
-    Character c(res);
-    EXPECT_EQ (c.GetOwner (), "domob");
-    EXPECT_EQ (c.GetName (), "baz");
-  }
+  auto c = tbl.GetFromResult (res);
+  EXPECT_EQ (c->GetOwner (), "domob");
+  EXPECT_EQ (c->GetName (), "baz");
   EXPECT_FALSE (res.Step ());
 }
 
@@ -173,19 +165,15 @@ TEST_F (CharacterCreationTests, NameValidation)
   ])", params.CharacterCost ());
 
   CharacterTable tbl(*db);
-  auto res = tbl.GetAll ();
+  auto res = tbl.QueryAll ();
   ASSERT_TRUE (res.Step ());
-  {
-    Character c(res);
-    EXPECT_EQ (c.GetOwner (), "domob");
-    EXPECT_EQ (c.GetName (), "foo");
-  }
+  auto c = tbl.GetFromResult (res);
+  EXPECT_EQ (c->GetOwner (), "domob");
+  EXPECT_EQ (c->GetName (), "foo");
   ASSERT_TRUE (res.Step ());
-  {
-    Character c(res);
-    EXPECT_EQ (c.GetOwner (), "domob");
-    EXPECT_EQ (c.GetName (), "bar");
-  }
+  c = tbl.GetFromResult (res);
+  EXPECT_EQ (c->GetOwner (), "domob");
+  EXPECT_EQ (c->GetName (), "bar");
   EXPECT_FALSE (res.Step ());
 }
 

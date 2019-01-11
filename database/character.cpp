@@ -13,8 +13,8 @@ Character::Character (Database& d, const std::string& o, const std::string& n)
       << "owner=" << owner << ", name=" << name;
 }
 
-Character::Character (Database::Result& res)
-  : db(res.GetDatabase ()), dirty(false)
+Character::Character (Database& d, const Database::Result& res)
+  : db(d), dirty(false)
 {
   CHECK_EQ (res.GetName (), "characters");
   id = res.Get<int> ("id");
@@ -55,15 +55,27 @@ Character::~Character ()
   stmt.Execute ();
 }
 
+CharacterTable::Handle
+CharacterTable::CreateNew (const std::string& owner, const std::string&  name)
+{
+  return Handle (new Character (db, owner, name));
+}
+
+CharacterTable::Handle
+CharacterTable::GetFromResult (const Database::Result& res)
+{
+  return Handle (new Character (db, res));
+}
+
 Database::Result
-CharacterTable::GetAll ()
+CharacterTable::QueryAll ()
 {
   auto stmt = db.Prepare ("SELECT * FROM `characters` ORDER BY `id`");
   return stmt.Query ("characters");
 }
 
 Database::Result
-CharacterTable::GetForOwner (const std::string& owner)
+CharacterTable::QueryForOwner (const std::string& owner)
 {
   auto stmt = db.Prepare (R"(
     SELECT * FROM `characters` WHERE `owner` = ?1 ORDER BY `id`

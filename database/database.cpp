@@ -119,21 +119,21 @@ Database::Result::Step ()
 
 template <>
   int
-  Database::Result::Get<int> (const std::string& name)
+  Database::Result::Get<int> (const std::string& name) const
 {
   return sqlite3_column_int (stmt, ColumnIndex (name));
 }
 
 template <>
   bool
-  Database::Result::Get<bool> (const std::string& name)
+  Database::Result::Get<bool> (const std::string& name) const
 {
   return sqlite3_column_int (stmt, ColumnIndex (name));
 }
 
 template <>
   std::string
-  Database::Result::Get<std::string> (const std::string& name)
+  Database::Result::Get<std::string> (const std::string& name) const
 {
   const unsigned char* str = sqlite3_column_text (stmt, ColumnIndex (name));
   return reinterpret_cast<const char*> (str);
@@ -141,7 +141,7 @@ template <>
 
 void
 Database::Result::GetProto (const std::string& name,
-                            google::protobuf::Message& res)
+                            google::protobuf::Message& res) const
 {
   const int ind = ColumnIndex (name);
   const int len = sqlite3_column_bytes (stmt, ind);

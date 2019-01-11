@@ -211,12 +211,12 @@ public:
    * Extracts the column with the given name as type T.
    */
   template <typename T>
-    T Get (const std::string& name);
+    T Get (const std::string& name) const;
 
   /**
    * Extracts a protocol buffer from the column with the given name.
    */
-  void GetProto (const std::string& name, google::protobuf::Message& res);
+  void GetProto (const std::string& name, google::protobuf::Message& res) const;
 
   /**
    * Returns the underlying database handle.
