@@ -67,6 +67,20 @@ CharacterTable::GetFromResult (const Database::Result& res)
   return Handle (new Character (db, res));
 }
 
+CharacterTable::Handle
+CharacterTable::GetById (const unsigned id)
+{
+  auto stmt = db.Prepare ("SELECT * FROM `characters` WHERE `id` = ?1");
+  stmt.Bind<int> (1, id);
+  auto res = stmt.Query ("characters");
+  if (!res.Step ())
+    return nullptr;
+
+  auto c = GetFromResult (res);
+  CHECK (!res.Step ());
+  return c;
+}
+
 Database::Result
 CharacterTable::QueryAll ()
 {

@@ -171,6 +171,12 @@ public:
   Handle GetFromResult (const Database::Result& res);
 
   /**
+   * Returns the character with the given ID or a null handle if there is
+   * none with that ID.
+   */
+  Handle GetById (unsigned id);
+
+  /**
    * Queries for all characters in the database table.  The characters are
    * ordered by ID to make the result deterministic.
    */

@@ -99,6 +99,16 @@ TEST_F (CharacterTests, EmptyNameNotAllowed)
 
 using CharacterTableTests = CharacterTests;
 
+TEST_F (CharacterTableTests, GetById)
+{
+  const unsigned id1 = tbl.CreateNew ("domob", "abc")->GetId ();
+  const unsigned id2 = tbl.CreateNew ("domob", "foo")->GetId ();
+
+  CHECK (tbl.GetById (500) == nullptr);
+  CHECK_EQ (tbl.GetById (id1)->GetName (), "abc");
+  CHECK_EQ (tbl.GetById (id2)->GetName (), "foo");
+}
+
 TEST_F (CharacterTableTests, QueryForOwner)
 {
   tbl.CreateNew ("domob", "abc");
