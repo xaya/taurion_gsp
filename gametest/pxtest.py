@@ -6,6 +6,10 @@ import re
 from jsonrpclib import ProtocolError
 
 
+DEVADDR = "dHNvNaqcD7XPDnoRjAoyfcMpHRi5upJD7p"
+CHARACTER_COST = 5
+
+
 class PXTest (XayaGameTest):
   """
   Integration test for the Project X game daemon.
@@ -17,6 +21,14 @@ class PXTest (XayaGameTest):
       top_builddir = ".."
     pxd = os.path.join (top_builddir, "src", "pxd")
     super (PXTest, self).__init__ ("px", pxd)
+
+  def moveWithPayment (self, name, move, devAmount):
+    """
+    Sends a move (name_update for the given name) and also includes the
+    given payment to the developer address.
+    """
+
+    return self.sendMove (name, move, {"sendCoins": {DEVADDR: devAmount}})
 
   def assertEqual (self, a, b):
     """
