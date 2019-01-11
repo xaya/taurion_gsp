@@ -15,11 +15,13 @@ libpx_la_LIBADD = \
   $(top_builddir)/hexagonal/libhexagonal.la \
   $(XAYAGAME_LIBS) $(JSON_LIBS) $(GLOG_LIBS)
 libpx_la_SOURCES = \
+  gamestatejson.cpp \
   jsonutils.cpp \
   moveprocessor.cpp \
   params.cpp
 libpxheaders = \
   amount.hpp \
+  gamestatejson.hpp \
   jsonutils.hpp \
   moveprocessor.hpp \
   params.hpp
@@ -60,6 +62,7 @@ tests_LDADD = \
   $(top_builddir)/database/libdatabase.la \
   $(JSON_LIBS) $(GTEST_LIBS) $(GLOG_LIBS)
 tests_SOURCES = \
+  gamestatejson_tests.cpp \
   jsonutils_tests.cpp \
   moveprocessor_tests.cpp
 

@@ -1,5 +1,6 @@
 #include "logic.hpp"
 
+#include "gamestatejson.hpp"
 #include "moveprocessor.hpp"
 #include "params.hpp"
 
@@ -104,8 +105,8 @@ PXLogic::UpdateState (sqlite3* db, const Json::Value& blockData)
 Json::Value
 PXLogic::GetStateAsJson (sqlite3* db)
 {
-  LOG (WARNING) << "Returning empty JSON as game state for now";
-  return Json::Value (Json::objectValue);
+  SQLiteGameDatabase dbObj(*this);
+  return pxd::GameStateToJson (dbObj);
 }
 
 } // namespace pxd
