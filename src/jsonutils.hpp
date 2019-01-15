@@ -7,6 +7,8 @@
 
 #include <json/json.h>
 
+#include <string>
+
 namespace pxd
 {
 
@@ -35,6 +37,13 @@ Json::Value AmountToJson (Amount amount);
  * not valid.
  */
 bool AmountFromJson (const Json::Value& val, Amount& amount);
+
+/**
+ * Parses an ID value encoded as a string (e.g. for a dictionary key in JSON).
+ * Returns true if the string represents exactly a valid unsigned integer and
+ * false if something is wrong.
+ */
+bool IdFromString (const std::string& str, unsigned& id);
 
 } // namespace pxd
 

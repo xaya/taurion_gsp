@@ -4,6 +4,7 @@
 
 #include <cmath>
 #include <limits>
+#include <sstream>
 
 namespace pxd
 {
@@ -113,6 +114,21 @@ AmountFromJson (const Json::Value& val, Amount& amount)
 
   amount = std::lround (dval);
   return true;
+}
+
+bool
+IdFromString (const std::string& str, unsigned& id)
+{
+  std::istringstream in(str);
+  in >> id;
+
+  if (id <= 0)
+    return false;
+
+  std::ostringstream out;
+  out << id;
+
+  return out.str () == str;
 }
 
 } // namespace pxd

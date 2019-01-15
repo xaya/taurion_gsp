@@ -94,5 +94,30 @@ TEST_F (JsonAmountTests, InvalidAmountFromJson)
     }
 }
 
+using IdFromStringTests = testing::Test;
+
+TEST_F (IdFromStringTests, Valid)
+{
+  unsigned id;
+
+  ASSERT_TRUE (IdFromString ("1", id));
+  EXPECT_EQ (id, 1);
+
+  ASSERT_TRUE (IdFromString ("999", id));
+  EXPECT_EQ (id, 999);
+
+  ASSERT_TRUE (IdFromString ("4000000000", id));
+  EXPECT_EQ (id, 4000000000);
+}
+
+TEST_F (IdFromStringTests, Invalid)
+{
+  for (const std::string str : {"0", "-5", "2.3", " 5", "42 ", "02"})
+    {
+      unsigned id;
+      EXPECT_FALSE (IdFromString (str, id));
+    }
+}
+
 } // anonymous namespace
 } // namespace pxd
