@@ -40,6 +40,8 @@ private:
   /** The next ID to give out.  */
   unsigned nextId = 1;
 
+  friend class pxd::DBTestFixture;
+
 protected:
 
   sqlite3_stmt*
@@ -113,6 +115,14 @@ DBTestFixture::~DBTestFixture ()
 
   LOG (INFO) << "Closing underlying SQLite database...";
   sqlite3_close (handle);
+}
+
+void
+DBTestFixture::SetNextId (const unsigned id)
+{
+  auto* testDb = dynamic_cast<TestDatabase*> (db.get ());
+  CHECK (testDb != nullptr);
+  testDb->nextId = id;
 }
 
 DBTestWithSchema::DBTestWithSchema ()
