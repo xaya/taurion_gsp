@@ -35,11 +35,6 @@ class CharactersTest (PXTest):
   def run (self):
     self.generate (101);
 
-    self.log.info ("Registering test names...")
-    self.registerNames (["domob", "", u"ß"])
-    self.generate (1)
-    self.expectPartial ({})
-
     self.log.info ("Creating first character...")
     self.moveWithPayment ("domob", {"nc": {"name": "adam"}}, CHARACTER_COST)
     self.sendMove ("", {"nc": {"name": "eve"}})
@@ -77,6 +72,35 @@ class CharactersTest (PXTest):
     self.generate (1)
     self.expectPartial ({
       "adam": {"owner": "domob"},
+      "eve": {"owner": ""},
+      "foo": {"owner": "domob"},
+      u"äöü": {"owner": u"ß"},
+    })
+
+    self.log.info ("Transfering a character...")
+    charId = self.characterId ("adam")
+    self.sendMove ("domob", {"c": {charId: {"send": "andy"}}})
+    self.generate (1)
+    self.expectPartial ({
+      "adam": {"owner": "andy"},
+      "eve": {"owner": ""},
+      "foo": {"owner": "domob"},
+      u"äöü": {"owner": u"ß"},
+    })
+    self.sendMove ("andy", {"c": {charId: {"send": ""}}})
+    self.generate (1)
+    self.expectPartial ({
+      "adam": {"owner": ""},
+      "eve": {"owner": ""},
+      "foo": {"owner": "domob"},
+      u"äöü": {"owner": u"ß"},
+    })
+
+    self.log.info ("Non-owner cannot update the character...")
+    self.sendMove ("domob", {"c": {charId: {"send": "domob"}}})
+    self.generate (1)
+    self.expectPartial ({
+      "adam": {"owner": ""},
       "eve": {"owner": ""},
       "foo": {"owner": "domob"},
       u"äöü": {"owner": u"ß"},

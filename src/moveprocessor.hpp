@@ -43,6 +43,11 @@ private:
   void HandleCharacterCreation (const std::string& name, const Json::Value& mv,
                                 Amount paidToDev);
 
+  /**
+   * Processes commands to make changes to existing characters.
+   */
+  void HandleCharacterUpdate (const std::string& name, const Json::Value& mv);
+
 public:
 
   explicit MoveProcessor (Database& d, const Params& p)

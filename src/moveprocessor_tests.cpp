@@ -74,6 +74,8 @@ protected:
 
 };
 
+/* ************************************************************************** */
+
 TEST_F (MoveProcessorTests, InvalidDataFromXaya)
 {
   EXPECT_DEATH (Process ("{}"), "isArray");
@@ -94,6 +96,8 @@ TEST_F (MoveProcessorTests, InvalidDataFromXaya)
     "out": {")" DEVADDR R"(": false}
   }])"), "JSON value for amount is not double");
 }
+
+/* ************************************************************************** */
 
 using CharacterCreationTests = MoveProcessorTests;
 
@@ -176,6 +180,142 @@ TEST_F (CharacterCreationTests, NameValidation)
   EXPECT_EQ (c->GetName (), "bar");
   EXPECT_FALSE (res.Step ());
 }
+
+/* ************************************************************************** */
+
+class CharacterUpdateTests : public MoveProcessorTests
+{
+
+protected:
+
+  /** Character table to be used in tests.  */
+  CharacterTable tbl;
+
+  /**
+   * Retrieves a handle to the test character.
+   */
+  CharacterTable::Handle
+  GetTest ()
+  {
+    auto h = tbl.GetById (1);
+    CHECK (h != nullptr);
+    CHECK_EQ (h->GetName (), "test");
+    return h;
+  }
+
+  /**
+   * Inserts a new character with the given ID, name and owner.
+   */
+  void
+  SetupCharacter (const unsigned id, const std::string& owner,
+                  const std::string& name)
+  {
+    SetNextId (id);
+    tbl.CreateNew (owner, name);
+
+    auto h = tbl.GetById (id);
+    CHECK (h != nullptr);
+    CHECK_EQ (h->GetName (), name);
+    CHECK_EQ (h->GetOwner (), owner);
+  }
+
+  /**
+   * All CharacterUpdateTests will start with a test character already created.
+   * We also ensure that it has the ID 1.
+   */
+  CharacterUpdateTests ()
+    : tbl(*db)
+  {
+    SetupCharacter (1, "domob", "test");
+  }
+
+};
+
+TEST_F (CharacterUpdateTests, CreationAndUpdate)
+{
+  ProcessWithDevPayment (R"([{
+    "name": "domob",
+    "move":
+      {
+        "nc": {"name": "foo"},
+        "c": {"1": {"send": "daniel"}, "2": {"send": "andy"}}
+      }
+  }])", params.CharacterCost ());
+
+  /* Transfer and creation should work fine together for two different
+     characters (but in the same move).  */
+  EXPECT_EQ (GetTest ()->GetOwner (), "daniel");
+
+  /* The character created in the same move should not be transferred.  */
+  auto h = tbl.GetById (2);
+  ASSERT_TRUE (h != nullptr);
+  EXPECT_EQ (h->GetName (), "foo");
+  EXPECT_EQ (h->GetOwner (), "domob");
+}
+
+TEST_F (CharacterUpdateTests, ValidTransfer)
+{
+  EXPECT_EQ (GetTest ()->GetOwner (), "domob");
+  Process (R"([{
+    "name": "domob",
+    "move": {"c": {"1": {"send": "andy"}}}
+  }])");
+  EXPECT_EQ (GetTest ()->GetOwner (), "andy");
+}
+
+TEST_F (CharacterUpdateTests, InvalidTransfer)
+{
+  Process (R"([{
+    "name": "domob",
+    "move": {"c": {"1": {"send": false}}}
+  }])");
+  EXPECT_EQ (GetTest ()->GetOwner (), "domob");
+}
+
+TEST_F (CharacterUpdateTests, OwnerCheck)
+{
+  /* Verify that a later update works fine even if a previous character update
+     (from the same move) failed due to the owner check.  */
+  SetupCharacter (9, "andy", "later");
+
+  EXPECT_EQ (GetTest ()->GetOwner (), "domob");
+  EXPECT_EQ (tbl.GetById (9)->GetOwner (), "andy");
+  Process (R"([{
+    "name": "andy",
+    "move": {"c": {"1": {"send": "andy"}, "9": {"send": "domob"}}}
+  }])");
+  EXPECT_EQ (GetTest ()->GetOwner (), "domob");
+  EXPECT_EQ (tbl.GetById (9)->GetOwner (), "domob");
+}
+
+TEST_F (CharacterUpdateTests, InvalidUpdate)
+{
+  /* We want to test that one invalid update still allows for other
+     updates (i.e. other characters) to be done successfully in the same
+     move transaction.  Thus create another character with a later ID that
+     we will use for successful updates.  */
+  SetupCharacter (9, "domob", "later");
+
+  for (const std::string upd : {"\"1\": []", "\"1\": false",
+                                R"(" ": {"send": "andy"})",
+                                R"("5": {"send": "andy"})"})
+    {
+      ASSERT_EQ (tbl.GetById (9)->GetOwner (), "domob");
+      Process (R"([{
+        "name": "domob",
+        "move": {"c":{
+          )" + upd + R"(,
+          "9": {"send": "andy"}
+        }}
+      }])");
+
+      auto h = tbl.GetById (9);
+      EXPECT_EQ (h->GetOwner (), "andy");
+      h->SetOwner ("domob");
+    }
+}
+
+/* ************************************************************************** */
 
 } // anonymous namespace
 } // namespace pxd

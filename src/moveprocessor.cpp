@@ -36,6 +36,13 @@ MoveProcessor::ProcessOne (const Json::Value& moveObj)
   if (outVal.isObject () && outVal.isMember (params.DeveloperAddress ()))
     CHECK (AmountFromJson (outVal[params.DeveloperAddress ()], paidToDev));
 
+  /* Note that the order between character update and character creation
+     matters:  By having the update *before* the creation, we explicitly
+     forbid a situation in which a newly created character is updated right
+     away.  That would be tricky (since the ID would have to be predicated),
+     but it would have been possible sometimes if the order were reversed.
+     We want to exclude such trickery and thus do the update first.  */
+  HandleCharacterUpdate (name, mv);
   HandleCharacterCreation (name, mv, paidToDev);
 }
 
@@ -78,6 +85,77 @@ MoveProcessor::HandleCharacterCreation (const std::string& name,
 
   auto newChar = characters.CreateNew (name, charName);
   newChar->SetPosition (HexCoord (0, 0));
+}
+
+namespace
+{
+
+/**
+ * Transfers the given character if the update JSON contains a request
+ * to do so.
+ */
+void
+MaybeTransferCharacter (Character& c, const Json::Value& upd)
+{
+  CHECK (upd.isObject ());
+  const auto& sendTo = upd["send"];
+  if (!sendTo.isString ())
+    return;
+
+  VLOG (1)
+      << "Sending character " << c.GetId ()
+      << " (name: " << c.GetName () << ") from " << c.GetOwner ()
+      << " to " << sendTo.asString ();
+  c.SetOwner (sendTo.asString ());
+}
+
+} // anonymous namespace
+
+void
+MoveProcessor::HandleCharacterUpdate (const std::string& name,
+                                      const Json::Value& mv)
+{
+  const auto& cmd = mv["c"];
+  if (!cmd.isObject ())
+    return;
+
+  for (auto i = cmd.begin (); i != cmd.end (); ++i)
+    {
+      unsigned id;
+      if (!IdFromString (i.name (), id))
+        {
+          LOG (WARNING)
+              << "Ignoring invalid character ID for update: " << i.name ();
+          continue;
+        }
+
+      const auto& upd = *i;
+      if (!upd.isObject ())
+        {
+          LOG (WARNING)
+              << "Character update is not an object: " << upd;
+          continue;
+        }
+
+      auto c = characters.GetById (id);
+      if (c == nullptr)
+        {
+          LOG (WARNING)
+              << "Character ID does not exist: " << id;
+          continue;
+        }
+
+      if (c->GetOwner () != name)
+        {
+          LOG (WARNING)
+              << "User " << name
+              << " is not allowed to update character owned by "
+              << c->GetOwner ();
+          continue;
+        }
+
+      MaybeTransferCharacter (*c, upd);
+    }
 }
 
 } // namespace pxd

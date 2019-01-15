@@ -30,6 +30,20 @@ class PXTest (XayaGameTest):
 
     return self.sendMove (name, move, {"sendCoins": {DEVADDR: devAmount}})
 
+  def characterId (self, charName):
+    """
+    Finds the ID of the character with the given name.  The ID is returned
+    as string, so that it can be used in JSON dictionaries for sending updates
+    for that character.
+    """
+
+    state = self.getGameState ()
+    for c in state['characters']:
+      if c['name'] == charName:
+        return "%d" % c['id']
+
+    raise AssertionError ("No character with name '%s' found" % charName)
+
   def assertEqual (self, a, b):
     """
     Utility method that tests for equality between a and b, yielding a
