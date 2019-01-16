@@ -48,21 +48,21 @@ class FindPathTest (PXTest):
     # Basic path that is fine with wpdist=1 (every coordinate).
     self.assertEqual (self.call (a, b, l1range=10, wpdist=1),
       {
-        "dist": 3,
+        "dist": 3000,
         "wp": [a, {"x": 1, "y": 1}, {"x": 2, "y": 1}, b],
       })
 
     # Path with wpdist=2 (one intermediate point expected).
     self.assertEqual (self.call (a, b, l1range=10, wpdist=2),
       {
-        "dist": 3,
+        "dist": 3000,
         "wp": [a, {"x": 2, "y": 1}, b],
       })
 
     # With large wpdist, we expect to get at least start and end.
     self.assertEqual (self.call (a, b, l1range=10, wpdist=10),
       {
-        "dist": 3,
+        "dist": 3000,
         "wp": [a, b],
       })
 

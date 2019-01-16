@@ -55,7 +55,7 @@ BaseMap::GetEdgeWeights () const
             -> PathFinder::DistanceT
     {
       if (IsPassable (from) && IsPassable (to))
-        return 1;
+        return 1000;
       return PathFinder::NO_CONNECTION;
     };
 }

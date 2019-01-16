@@ -79,7 +79,7 @@ TEST_F (BaseMapTests, EdgeWeights)
 
   const HexCoord a(0, 0);
   const HexCoord b(1, 0);
-  EXPECT_EQ (ew (a, b), 1);
+  EXPECT_EQ (ew (a, b), 1000);
 
   const HexCoord outside(-4065, 0);
   const HexCoord inside(-4064, 0);
