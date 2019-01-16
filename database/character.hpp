@@ -46,10 +46,16 @@ private:
   proto::Character data;
 
   /**
-   * Set to true if any modification was made so that we will have to sync
-   * the values back to the database in the destructor.
+   * Set to true if any modification to the non-proto columns was made that
+   * needs to be synced back to the database in the destructor.
    */
-  bool dirty;
+  bool dirtyFields;
+
+  /**
+   * Set to true if a modification to the proto-data was made that needs to
+   * be written back to the database.
+   */
+  bool dirtyProto;
 
   /**
    * Constructs a new character with an auto-generated ID meant to be inserted
@@ -95,7 +101,7 @@ public:
   void
   SetOwner (const std::string& o)
   {
-    dirty = true;
+    dirtyFields = true;
     owner = o;
   }
 
@@ -114,7 +120,7 @@ public:
   void
   SetPosition (const HexCoord& c)
   {
-    dirty = true;
+    dirtyFields = true;
     pos = c;
   }
 
@@ -127,7 +133,7 @@ public:
   proto::Character&
   MutableProto ()
   {
-    dirty = true;
+    dirtyProto = true;
     return data;
   }
 

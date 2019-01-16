@@ -6,7 +6,8 @@ namespace pxd
 {
 
 Character::Character (Database& d, const std::string& o, const std::string& n)
-  : db(d), id(db.GetNextId ()), owner(o), name(n), dirty(true)
+  : db(d), id(db.GetNextId ()), owner(o), name(n),
+    dirtyFields(true), dirtyProto(true)
 {
   VLOG (1)
       << "Created new character with ID " << id << ": "
@@ -14,7 +15,7 @@ Character::Character (Database& d, const std::string& o, const std::string& n)
 }
 
 Character::Character (Database& d, const Database::Result& res)
-  : db(d), dirty(false)
+  : db(d), dirtyFields(false), dirtyProto(false)
 {
   CHECK_EQ (res.GetName (), "characters");
   id = res.Get<int> ("id");
@@ -31,28 +32,53 @@ Character::~Character ()
   CHECK_GT (id, 0);
   CHECK_NE (name, "");
 
-  if (!dirty)
+  if (dirtyProto)
     {
-      VLOG (1) << "Character " << id << " is not dirty, no update";
+      VLOG (1)
+          << "Character " << id
+          << " has been modified including proto data, updating DB";
+      auto stmt = db.Prepare (R"(
+        INSERT OR REPLACE INTO `characters`
+          (`id`, `owner`, `name`, `x`, `y`, `ismoving`, `proto`) VALUES
+          (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+      )");
+
+      stmt.Bind<int> (1, id);
+      stmt.Bind (2, owner);
+      stmt.Bind (3, name);
+      stmt.Bind<int> (4, pos.GetX ());
+      stmt.Bind<int> (5, pos.GetY ());
+      stmt.Bind (6, data.has_movement ());
+      stmt.BindProto (7, data);
+
+      stmt.Execute ();
       return;
     }
 
-  VLOG (1) << "Character " << id << " has been modified, updating DB";
-  auto stmt = db.Prepare (R"(
-    INSERT OR REPLACE INTO `characters`
-      (`id`, `owner`, `name`, `x`, `y`, `ismoving`, `proto`) VALUES
-      (?1, ?2, ?3, ?4, ?5, ?6, ?7)
-  )");
+  if (dirtyFields)
+    {
+      VLOG (1)
+          << "Character " << id << " has been modified in the DB fields only,"
+          << " updating those";
 
-  stmt.Bind<int> (1, id);
-  stmt.Bind (2, owner);
-  stmt.Bind (3, name);
-  stmt.Bind<int> (4, pos.GetX ());
-  stmt.Bind<int> (5, pos.GetY ());
-  stmt.Bind (6, data.has_movement ());
-  stmt.BindProto (7, data);
+      auto stmt = db.Prepare (R"(
+        UPDATE `characters`
+          SET `owner` = ?2, `name` = ?3,
+              `x` = ?4, `y` = ?5
+          WHERE `id` = ?1
+      )");
 
-  stmt.Execute ();
+      stmt.Bind<int> (1, id);
+      stmt.Bind (2, owner);
+      stmt.Bind (3, name);
+      stmt.Bind<int> (4, pos.GetX ());
+      stmt.Bind<int> (5, pos.GetY ());
+
+      stmt.Execute ();
+      return;
+    }
+
+  VLOG (1) << "Character " << id << " is not dirty, no update";
 }
 
 CharacterTable::Handle

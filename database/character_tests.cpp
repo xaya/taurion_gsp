@@ -59,7 +59,7 @@ TEST_F (CharacterTests, Creation)
   ASSERT_FALSE (res.Step ());
 }
 
-TEST_F (CharacterTests, Modification)
+TEST_F (CharacterTests, ModificationWithProto)
 {
   const HexCoord pos1(5, -2);
   const HexCoord pos2(-2, 5);
@@ -88,6 +88,25 @@ TEST_F (CharacterTests, Modification)
   EXPECT_EQ (c->GetPosition (), pos2);
   EXPECT_TRUE (c->GetProto ().has_movement ());
   ASSERT_FALSE (res.Step ());
+}
+
+TEST_F (CharacterTests, ModificationFieldsOnly)
+{
+  const HexCoord pos(-2, 5);
+
+  tbl.CreateNew ("domob", "foo");
+
+  auto c = tbl.GetById (1);
+  ASSERT_TRUE (c != nullptr);
+  c->SetOwner ("andy");
+  c->SetPosition (pos);
+  c.reset ();
+
+  c = tbl.GetById (1);
+  ASSERT_TRUE (c != nullptr);
+  EXPECT_EQ (c->GetName (), "foo");
+  EXPECT_EQ (c->GetOwner (), "andy");
+  EXPECT_EQ (c->GetPosition (), pos);
 }
 
 TEST_F (CharacterTests, EmptyNameNotAllowed)
