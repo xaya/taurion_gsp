@@ -61,23 +61,22 @@ TEST_F (CharacterTests, Creation)
 
 TEST_F (CharacterTests, ModificationWithProto)
 {
-  const HexCoord pos1(5, -2);
-  const HexCoord pos2(-2, 5);
+  const HexCoord pos(-2, 5);
 
-  auto c = tbl.CreateNew ("domob", "foo");
-  c->SetPosition (pos1);
-  c.reset ();
+  tbl.CreateNew ("domob", "foo");
 
   auto res = tbl.QueryAll ();
   ASSERT_TRUE (res.Step ());
-  c = tbl.GetFromResult (res);
+  auto c = tbl.GetFromResult (res);
   EXPECT_EQ (c->GetOwner (), "domob");
-  EXPECT_EQ (c->GetPosition (), pos1);
+  EXPECT_EQ (c->GetPosition (), HexCoord (0, 0));
+  EXPECT_EQ (c->GetPartialStep (), 0);
   EXPECT_FALSE (c->GetProto ().has_movement ());
   ASSERT_FALSE (res.Step ());
 
   c->SetOwner ("andy");
-  c->SetPosition (pos2);
+  c->SetPosition (pos);
+  c->SetPartialStep (10);
   c->MutableProto ().mutable_movement ();
   c.reset ();
 
@@ -85,7 +84,8 @@ TEST_F (CharacterTests, ModificationWithProto)
   ASSERT_TRUE (res.Step ());
   c = tbl.GetFromResult (res);
   EXPECT_EQ (c->GetOwner (), "andy");
-  EXPECT_EQ (c->GetPosition (), pos2);
+  EXPECT_EQ (c->GetPosition (), pos);
+  EXPECT_EQ (c->GetPartialStep (), 10);
   EXPECT_TRUE (c->GetProto ().has_movement ());
   ASSERT_FALSE (res.Step ());
 }
@@ -100,6 +100,7 @@ TEST_F (CharacterTests, ModificationFieldsOnly)
   ASSERT_TRUE (c != nullptr);
   c->SetOwner ("andy");
   c->SetPosition (pos);
+  c->SetPartialStep (42);
   c.reset ();
 
   c = tbl.GetById (1);
@@ -107,6 +108,7 @@ TEST_F (CharacterTests, ModificationFieldsOnly)
   EXPECT_EQ (c->GetName (), "foo");
   EXPECT_EQ (c->GetOwner (), "andy");
   EXPECT_EQ (c->GetPosition (), pos);
+  EXPECT_EQ (c->GetPartialStep (), 42);
 }
 
 TEST_F (CharacterTests, EmptyNameNotAllowed)

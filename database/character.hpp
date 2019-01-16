@@ -4,6 +4,7 @@
 #include "database.hpp"
 
 #include "hexagonal/coord.hpp"
+#include "hexagonal/pathfinder.hpp"
 #include "proto/character.pb.h"
 
 #include <memory>
@@ -42,6 +43,12 @@ private:
   /** The current position.  */
   HexCoord pos;
 
+  /**
+   * The current accumulated movement towards the next step.  If there is none
+   * yet or there is no movement, it will be zero.
+   */
+  PathFinder::DistanceT partialStep;
+
   /** All other data in the protocol buffer.  */
   proto::Character data;
 
@@ -69,6 +76,13 @@ private:
    * result should come from a query made through CharacterTable.
    */
   explicit Character (Database& d, const Database::Result& res);
+
+  /**
+   * Binds parameters in a statement to the non-proto fields.  This is to
+   * share code between the proto and non-proto updates.  The ID is always
+   * bound to parameter ?1.
+   */
+  void BindFieldValues (Database::Statement& stmt) const;
 
   friend class CharacterTable;
 
@@ -122,6 +136,19 @@ public:
   {
     dirtyFields = true;
     pos = c;
+  }
+
+  PathFinder::DistanceT
+  GetPartialStep () const
+  {
+    return partialStep;
+  }
+
+  void
+  SetPartialStep (const PathFinder::DistanceT val)
+  {
+    dirtyFields = true;
+    partialStep = val;
   }
 
   const proto::Character&

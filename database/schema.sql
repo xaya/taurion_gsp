@@ -18,6 +18,14 @@ CREATE TABLE IF NOT EXISTS `characters` (
   `x` INTEGER NOT NULL,
   `y` INTEGER NOT NULL,
 
+  -- Partial movement already done towards next tile.  This is used to
+  -- "accumulate" movement when the speed is slower than one tile per block.
+  -- This is a field in the database rather than the proto data so that it
+  -- can be updated without replacing the entire proto BLOB.  This leads
+  -- to more efficient undo data for the very common case of movement
+  -- along the stepped path.
+  `partialstep` INTEGER,
+
   -- Flag indicating if the character is currently moving.  This is set
   -- based on the encoded protocol buffer when updating the table, and is
   -- used so that we can efficiently retrieve only those characters that are

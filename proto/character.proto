@@ -5,14 +5,41 @@ import "geometry.proto";
 package pxd.proto;
 
 /**
- * An "active" movement of a character, characterised by a list of waypoints
- * that will be visisted in order.
+ * An "active" movement of a character.  The way in which movement works
+ * is two-fold:  First, we have a list of waypoints that will be visited
+ * in order.  Second, we have a fully-computed path (tile-by-tile) between
+ * the current position and the first waypoint.  That is used to avoid
+ * recomputation on every block.  It has to be part of the consensus state,
+ * though, and cannot be computed / cached on the fly, so that dynamic
+ * obstacles (buildings) are supported.
  */
-message Path
+message Movement
 {
 
-  /** The waypoints that will still be visited.  */
+  /**
+   * The waypoints that will still be visited.  While they are traversed,
+   * already visited points are removed from this list.  In other words,
+   * the first element will always be the current target of the
+   * character.  When this list becomes empty, then it stops moving.
+   */
   repeated HexCoord waypoints = 1;
+
+  /**
+   * The precomputed steps to the first waypoint.  The character's current
+   * position (as per the DB fields) will be one of the coordinates
+   * of the path.  In other words, this list is not updated on every step;
+   * instead, it will be set once and then kept around until finished, namely
+   * when the character reaches the next waypoint or gets stuck at an obstacle.
+   *
+   * The *destination* of a step is just the following entry.  There is
+   * also an implied last step to the first waypoint.
+   *
+   * It is enough to store just the coordinates of the precomputed path (not
+   * the distances as well), since we check the edge weights anyway for each
+   * step before executing it.  That is needed to detect newly created
+   * obstacles on the map.
+   */
+  repeated HexCoord steps = 2;
 
 }
 
@@ -25,7 +52,7 @@ message Character
 {
 
   /** Active movement of the character, if any.  */
-  optional Path movement = 1;
+  optional Movement movement = 1;
 
   /* Fields that are stored directly in the database and thus not part of the
      encoded protocol buffer:
@@ -34,6 +61,7 @@ message Character
      - string owner
      - string name
      - position on the map
+     - partial movement towards next tile
   */
 
 }

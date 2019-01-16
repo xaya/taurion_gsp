@@ -7,6 +7,7 @@ namespace pxd
 
 Character::Character (Database& d, const std::string& o, const std::string& n)
   : db(d), id(db.GetNextId ()), owner(o), name(n),
+    pos(0, 0), partialStep(0),
     dirtyFields(true), dirtyProto(true)
 {
   VLOG (1)
@@ -22,6 +23,7 @@ Character::Character (Database& d, const Database::Result& res)
   owner = res.Get<std::string> ("owner");
   name = res.Get<std::string> ("name");
   pos = HexCoord (res.Get<int> ("x"), res.Get<int> ("y"));
+  partialStep = res.Get<int> ("partialstep");
   res.GetProto ("proto", data);
 
   VLOG (1) << "Fetched character with ID " << id << " from database result";
@@ -39,19 +41,16 @@ Character::~Character ()
           << " has been modified including proto data, updating DB";
       auto stmt = db.Prepare (R"(
         INSERT OR REPLACE INTO `characters`
-          (`id`, `owner`, `name`, `x`, `y`, `ismoving`, `proto`) VALUES
-          (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+          (`id`, `owner`, `name`, `x`, `y`, `partialstep`, `ismoving`, `proto`)
+          VALUES
+          (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
       )");
 
-      stmt.Bind<int> (1, id);
-      stmt.Bind (2, owner);
-      stmt.Bind (3, name);
-      stmt.Bind<int> (4, pos.GetX ());
-      stmt.Bind<int> (5, pos.GetY ());
-      stmt.Bind (6, data.has_movement ());
-      stmt.BindProto (7, data);
-
+      BindFieldValues (stmt);
+      stmt.Bind (7, data.has_movement ());
+      stmt.BindProto (8, data);
       stmt.Execute ();
+
       return;
     }
 
@@ -64,21 +63,32 @@ Character::~Character ()
       auto stmt = db.Prepare (R"(
         UPDATE `characters`
           SET `owner` = ?2, `name` = ?3,
-              `x` = ?4, `y` = ?5
+              `x` = ?4, `y` = ?5,
+              `partialstep` = ?6
           WHERE `id` = ?1
       )");
 
-      stmt.Bind<int> (1, id);
-      stmt.Bind (2, owner);
-      stmt.Bind (3, name);
-      stmt.Bind<int> (4, pos.GetX ());
-      stmt.Bind<int> (5, pos.GetY ());
-
+      BindFieldValues (stmt);
       stmt.Execute ();
+
       return;
     }
 
   VLOG (1) << "Character " << id << " is not dirty, no update";
+}
+
+void
+Character::BindFieldValues (Database::Statement& stmt) const
+{
+  stmt.Bind<int> (1, id);
+  stmt.Bind (2, owner);
+  stmt.Bind (3, name);
+  stmt.Bind<int> (4, pos.GetX ());
+  stmt.Bind<int> (5, pos.GetY ());
+  if (partialStep == 0)
+    stmt.BindNull (6);
+  else
+    stmt.Bind<int> (6, partialStep);
 }
 
 CharacterTable::Handle
