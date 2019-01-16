@@ -115,9 +115,14 @@ public:
     void Bind (unsigned ind, const T& val);
 
   /**
+   * Binds a null value to a parameter.
+   */
+  void BindNull (unsigned ind);
+
+  /**
    * Binds a protocol buffer to a BLOB parameter.
    */
-  void BindProto (const unsigned ind, const google::protobuf::Message& msg);
+  void BindProto (unsigned ind, const google::protobuf::Message& msg);
 
   /**
    * Executes the statement without expecting any results.  This is used for

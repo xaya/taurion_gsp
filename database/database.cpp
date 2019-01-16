@@ -61,6 +61,13 @@ template <>
 }
 
 void
+Database::Statement::BindNull (const unsigned ind)
+{
+  CHECK (!run);
+  CHECK_EQ (sqlite3_bind_null (stmt, ind), SQLITE_OK);
+}
+
+void
 Database::Statement::BindProto (const unsigned ind,
                                 const google::protobuf::Message& msg)
 {

@@ -90,7 +90,7 @@ TEST_F (DatabaseTests, BindingAndQuery)
   )");
 
   stmt.Bind (1, 42);
-  stmt.Bind (2, false);
+  stmt.BindNull (2);
   stmt.Bind<std::string> (3, "foo");
   stmt.BindProto (4, coord1);
 
