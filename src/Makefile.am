@@ -18,13 +18,15 @@ libpx_la_SOURCES = \
   gamestatejson.cpp \
   jsonutils.cpp \
   moveprocessor.cpp \
-  params.cpp
+  params.cpp \
+  protoutils.cpp
 libpxheaders = \
   amount.hpp \
   gamestatejson.hpp \
   jsonutils.hpp \
   moveprocessor.hpp \
-  params.hpp
+  params.hpp \
+  protoutils.hpp
 
 pxd_CXXFLAGS = \
   -I$(top_srcdir) \
@@ -64,7 +66,8 @@ tests_LDADD = \
 tests_SOURCES = \
   gamestatejson_tests.cpp \
   jsonutils_tests.cpp \
-  moveprocessor_tests.cpp
+  moveprocessor_tests.cpp \
+  protoutils_tests.cpp
 
 rpc-stubs/pxrpcserverstub.h: $(srcdir)/rpc-stubs/pxd.json
 	jsonrpcstub "$<" --cpp-server=PXRpcServerStub --cpp-server-file="$@"
