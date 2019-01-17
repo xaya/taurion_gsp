@@ -1,6 +1,9 @@
 #include "moveprocessor.hpp"
 
 #include "jsonutils.hpp"
+#include "protoutils.hpp"
+
+#include "proto/character.pb.h"
 
 namespace pxd
 {
@@ -109,6 +112,44 @@ MaybeTransferCharacter (Character& c, const Json::Value& upd)
   c.SetOwner (sendTo.asString ());
 }
 
+/**
+ * Sets the character's waypoints if a valid command for starting a move
+ * is there.
+ */
+void
+MaybeSetCharacterWaypoints (Character& c, const Json::Value& upd)
+{
+  CHECK (upd.isObject ());
+  const auto& wpArr = upd["wp"];
+  if (!wpArr.isArray ())
+    return;
+
+  std::vector<HexCoord> wp;
+  for (const auto& entry : wpArr)
+    {
+      HexCoord coord;
+      if (!CoordFromJson (entry, coord))
+        {
+          LOG (WARNING)
+              << "Invalid waypoints given for " << c.GetName ()
+              << ", not updating movement";
+          return;
+        }
+      wp.push_back (coord);
+    }
+
+  VLOG (1)
+      << "Updating movement for character " << c.GetName ()
+      << " from waypoints: " << wpArr;
+
+  c.SetPartialStep (0);
+  auto* mv = c.MutableProto ().mutable_movement ();
+  mv->Clear ();
+  auto* wpProto = mv->mutable_waypoints ();
+  for (const auto& coord : wp)
+    *wpProto->Add () = CoordToProto (coord);
+}
+
 } // anonymous namespace
 
 void
@@ -155,6 +196,7 @@ MoveProcessor::HandleCharacterUpdate (const std::string& name,
         }
 
       MaybeTransferCharacter (*c, upd);
+      MaybeSetCharacterWaypoints (*c, upd);
     }
 }
 

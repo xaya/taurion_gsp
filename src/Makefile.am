@@ -10,10 +10,12 @@ CLEANFILES = $(RPC_STUBS)
 
 libpx_la_CXXFLAGS = \
   -I$(top_srcdir) \
-  $(XAYAGAME_CFLAGS) $(JSON_CFLAGS) $(GLOG_CFLAGS)
+  $(XAYAGAME_CFLAGS) $(JSON_CFLAGS) $(GLOG_CFLAGS) $(PROTOBUF_CFLAGS)
 libpx_la_LIBADD = \
+  $(top_builddir)/database/libdatabase.la \
   $(top_builddir)/hexagonal/libhexagonal.la \
-  $(XAYAGAME_LIBS) $(JSON_LIBS) $(GLOG_LIBS)
+  $(top_builddir)/proto/libpxproto.la \
+  $(XAYAGAME_LIBS) $(JSON_LIBS) $(GLOG_LIBS) $(PROTOBUF_LIBS)
 libpx_la_SOURCES = \
   gamestatejson.cpp \
   jsonutils.cpp \
@@ -57,12 +59,13 @@ TESTS = tests
 
 tests_CXXFLAGS = \
   -I$(top_srcdir) \
-  $(JSON_CFLAGS) $(GTEST_CFLAGS) $(GLOG_CFLAGS)
+  $(JSON_CFLAGS) $(GTEST_CFLAGS) $(GLOG_CFLAGS) $(PROTOBUF_CFLAGS)
 tests_LDADD = \
   $(builddir)/libpx.la \
   $(top_builddir)/database/libdbtest.la \
   $(top_builddir)/database/libdatabase.la \
-  $(JSON_LIBS) $(GTEST_LIBS) $(GLOG_LIBS)
+  $(top_builddir)/proto/libpxproto.la \
+  $(JSON_LIBS) $(GTEST_LIBS) $(GLOG_LIBS) $(PROTOBUF_LIBS)
 tests_SOURCES = \
   gamestatejson_tests.cpp \
   jsonutils_tests.cpp \

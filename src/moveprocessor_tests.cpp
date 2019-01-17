@@ -2,6 +2,7 @@
 
 #include "jsonutils.hpp"
 #include "params.hpp"
+#include "protoutils.hpp"
 
 #include "database/character.hpp"
 
@@ -313,6 +314,60 @@ TEST_F (CharacterUpdateTests, InvalidUpdate)
       EXPECT_EQ (h->GetOwner (), "andy");
       h->SetOwner ("domob");
     }
+}
+
+TEST_F (CharacterUpdateTests, Waypoints)
+{
+  /* Set up some stuff that will be cleared.  */
+  auto h = GetTest ();
+  h->SetPartialStep (42);
+  auto* mv = h->MutableProto ().mutable_movement ();
+  mv->mutable_waypoints ()->Add ();
+  mv->mutable_steps ()->Add ();
+  h.reset ();
+
+  /* Run some moves that are invalid one way or another.  */
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"wp": "foo"}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"wp": {"x": 4, "y": 3}}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"wp": [{"x": 4.5, "y": 3}]}}}
+    },
+    {
+      "name": "andy",
+      "move": {"c": {"1": {"wp": [{"x": 4, "y": 3}]}}}
+    }
+  ])");
+
+  /* Verify that we still have the original stuff (i.e. the invalid moves
+     had no effect at all).  */
+  h = GetTest ();
+  EXPECT_EQ (h->GetPartialStep (), 42);
+  EXPECT_EQ (h->GetProto ().movement ().waypoints_size (), 1);
+  EXPECT_EQ (h->GetProto ().movement ().steps_size (), 1);
+  h.reset ();
+
+  /* Process a valid waypoints update move.  */
+  Process (R"([{
+    "name": "domob",
+    "move": {"c": {"1": {"wp": [{"x": -3, "y": 4}, {"x": 5, "y": 0}]}}}
+  }])");
+
+  /* Verify that the valid move had the expected effect.  */
+  h = GetTest ();
+  EXPECT_EQ (h->GetPartialStep (), 0);
+  EXPECT_EQ (h->GetProto ().movement ().steps_size (), 0);
+  const auto& wp = h->GetProto ().movement ().waypoints ();
+  ASSERT_EQ (wp.size (), 2);
+  EXPECT_EQ (CoordFromProto (wp.Get (0)), HexCoord (-3, 4));
+  EXPECT_EQ (CoordFromProto (wp.Get (1)), HexCoord (5, 0));
 }
 
 /* ************************************************************************** */
