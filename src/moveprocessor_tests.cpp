@@ -5,7 +5,6 @@
 #include "protoutils.hpp"
 
 #include "database/character.hpp"
-
 #include "database/dbtest.hpp"
 
 #include <gtest/gtest.h>

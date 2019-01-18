@@ -19,6 +19,7 @@ libpx_la_LIBADD = \
 libpx_la_SOURCES = \
   gamestatejson.cpp \
   jsonutils.cpp \
+  movement.cpp \
   moveprocessor.cpp \
   params.cpp \
   protoutils.cpp
@@ -26,6 +27,7 @@ libpxheaders = \
   amount.hpp \
   gamestatejson.hpp \
   jsonutils.hpp \
+  movement.hpp \
   moveprocessor.hpp \
   params.hpp \
   protoutils.hpp
@@ -69,6 +71,7 @@ tests_LDADD = \
 tests_SOURCES = \
   gamestatejson_tests.cpp \
   jsonutils_tests.cpp \
+  movement_tests.cpp \
   moveprocessor_tests.cpp \
   protoutils_tests.cpp
 

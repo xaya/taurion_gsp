@@ -3,9 +3,8 @@
 #include "protoutils.hpp"
 
 #include "database/character.hpp"
-#include "proto/character.pb.h"
-
 #include "database/dbtest.hpp"
+#include "proto/character.pb.h"
 
 #include <gtest/gtest.h>
 
