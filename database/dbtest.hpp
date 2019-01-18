@@ -34,7 +34,7 @@ protected:
    * Sets the next auto-ID returned by db->GetNextId.  This is useful for tests
    * when we want to force certain ID ranges.
    */
-  void SetNextId (unsigned id);
+  void SetNextId (Database::IdT id);
 
 };
 

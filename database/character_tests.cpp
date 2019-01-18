@@ -31,11 +31,11 @@ TEST_F (CharacterTests, Creation)
 
   auto c = tbl.CreateNew  ("domob", "abc");
   c->SetPosition (pos);
-  const unsigned id1 = c->GetId ();
+  const auto id1 = c->GetId ();
   c.reset ();
 
   c = tbl.CreateNew ("domob", u8"äöü");
-  const unsigned id2 = c->GetId ();
+  const auto id2 = c->GetId ();
   c->MutableProto ().mutable_movement ();
   c.reset ();
 
@@ -120,8 +120,8 @@ using CharacterTableTests = CharacterTests;
 
 TEST_F (CharacterTableTests, GetById)
 {
-  const unsigned id1 = tbl.CreateNew ("domob", "abc")->GetId ();
-  const unsigned id2 = tbl.CreateNew ("domob", "foo")->GetId ();
+  const auto id1 = tbl.CreateNew ("domob", "abc")->GetId ();
+  const auto id2 = tbl.CreateNew ("domob", "foo")->GetId ();
 
   CHECK (tbl.GetById (500) == nullptr);
   CHECK_EQ (tbl.GetById (id1)->GetName (), "abc");

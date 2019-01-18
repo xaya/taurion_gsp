@@ -117,12 +117,12 @@ AmountFromJson (const Json::Value& val, Amount& amount)
 }
 
 bool
-IdFromString (const std::string& str, unsigned& id)
+IdFromString (const std::string& str, Database::IdT& id)
 {
   std::istringstream in(str);
   in >> id;
 
-  if (id <= 0)
+  if (id == Database::EMPTY_ID)
     return false;
 
   std::ostringstream out;

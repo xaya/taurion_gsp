@@ -3,6 +3,7 @@
 
 #include "amount.hpp"
 
+#include "database/database.hpp"
 #include "hexagonal/coord.hpp"
 
 #include <json/json.h>
@@ -43,7 +44,7 @@ bool AmountFromJson (const Json::Value& val, Amount& amount);
  * Returns true if the string represents exactly a valid unsigned integer and
  * false if something is wrong.
  */
-bool IdFromString (const std::string& str, unsigned& id);
+bool IdFromString (const std::string& str, Database::IdT& id);
 
 } // namespace pxd
 

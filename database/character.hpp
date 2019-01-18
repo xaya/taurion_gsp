@@ -31,7 +31,7 @@ private:
   Database& db;
 
   /** The underlying integer ID in the database.  */
-  unsigned id;
+  Database::IdT id;
 
   /** The owner string.  */
   std::string owner;
@@ -86,7 +86,7 @@ public:
 
   /* Accessor methods.  */
 
-  unsigned
+  Database::IdT
   GetId () const
   {
     return id;
@@ -180,7 +180,7 @@ public:
    * Returns the character with the given ID or a null handle if there is
    * none with that ID.
    */
-  Handle GetById (unsigned id);
+  Handle GetById (Database::IdT id);
 
   /**
    * Queries for all characters in the database table.  The characters are

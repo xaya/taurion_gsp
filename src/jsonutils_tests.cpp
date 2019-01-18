@@ -98,7 +98,7 @@ using IdFromStringTests = testing::Test;
 
 TEST_F (IdFromStringTests, Valid)
 {
-  unsigned id;
+  Database::IdT id;
 
   ASSERT_TRUE (IdFromString ("1", id));
   EXPECT_EQ (id, 1);
@@ -114,7 +114,7 @@ TEST_F (IdFromStringTests, Invalid)
 {
   for (const std::string str : {"0", "-5", "2.3", " 5", "42 ", "02"})
     {
-      unsigned id;
+      Database::IdT id;
       EXPECT_FALSE (IdFromString (str, id));
     }
 }

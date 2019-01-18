@@ -121,7 +121,7 @@ MoveProcessor::HandleCharacterUpdate (const std::string& name,
 
   for (auto i = cmd.begin (); i != cmd.end (); ++i)
     {
-      unsigned id;
+      Database::IdT id;
       if (!IdFromString (i.name (), id))
         {
           LOG (WARNING)

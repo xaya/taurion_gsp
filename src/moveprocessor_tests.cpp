@@ -207,7 +207,7 @@ protected:
    * Inserts a new character with the given ID, name and owner.
    */
   void
-  SetupCharacter (const unsigned id, const std::string& owner,
+  SetupCharacter (const Database::IdT id, const std::string& owner,
                   const std::string& name)
   {
     SetNextId (id);

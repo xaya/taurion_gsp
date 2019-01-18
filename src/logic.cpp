@@ -43,7 +43,7 @@ public:
   SQLiteGameDatabase (const SQLiteGameDatabase&) = delete;
   void operator= (const SQLiteGameDatabase&) = delete;
 
-  unsigned
+  Database::IdT
   GetNextId () override
   {
     return game.Ids ("pxd").GetNext ();

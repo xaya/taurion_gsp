@@ -5,10 +5,12 @@ CLEANFILES = schema.cpp
 
 libdatabase_la_CXXFLAGS = \
   -I$(top_srcdir) \
+  $(XAYAGAME_CFLAGS) \
   $(GLOG_CFLAGS) $(SQLITE3_CFLAGS) $(PROTOBUF_CFLAGS)
 libdatabase_la_LIBADD = \
   $(top_builddir)/hexagonal/libhexagonal.la \
   $(top_builddir)/proto/libpxproto.la \
+  $(XAYAGAME_LIBS) \
   $(GLOG_LIBS) $(SQLITE3_LIBS) $(PROTOBUF_LIBS)
 libdatabase_la_SOURCES = \
   character.cpp \
@@ -23,9 +25,12 @@ check_LTLIBRARIES = libdbtest.la
 check_PROGRAMS = tests
 TESTS = tests
 
-libdbtest_la_CXXFLAGS = $(GTEST_CFLAGS) $(GLOG_CFLAGS) $(SQLITE3_CFLAGS)
+libdbtest_la_CXXFLAGS = \
+  $(XAYAGAME_CFLAGS) \
+  $(GTEST_CFLAGS) $(GLOG_CFLAGS) $(SQLITE3_CFLAGS)
 libdbtest_la_LIBADD = \
   $(builddir)/libdatabase.la \
+  $(XAYAGAME_LIBS) \
   $(GTEST_LIBS) $(GLOG_LIBS) $(SQLITE3_LIBS)
 libdbtest_la_SOURCES = \
   dbtest.cpp
@@ -34,11 +39,13 @@ check_HEADERS = \
 
 tests_CXXFLAGS = \
   -I$(top_srcdir) \
+  $(XAYAGAME_CFLAGS) \
   $(GTEST_CFLAGS) $(GLOG_CFLAGS)
 tests_LDADD = \
   $(builddir)/libdbtest.la \
   $(builddir)/libdatabase.la \
   $(top_builddir)/proto/libpxproto.la \
+  $(XAYAGAME_LIBS) \
   $(GTEST_LIBS) $(GLOG_LIBS)
 tests_SOURCES = \
   character_tests.cpp \

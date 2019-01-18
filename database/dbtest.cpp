@@ -38,7 +38,7 @@ private:
   std::map<std::string, sqlite3_stmt*> stmtCache;
 
   /** The next ID to give out.  */
-  unsigned nextId = 1;
+  IdT nextId = 1;
 
   friend class pxd::DBTestFixture;
 
@@ -82,7 +82,7 @@ public:
   TestDatabase (const TestDatabase&) = delete;
   void operator= (const TestDatabase&) = delete;
 
-  unsigned
+  IdT
   GetNextId () override
   {
     return nextId++;
@@ -118,7 +118,7 @@ DBTestFixture::~DBTestFixture ()
 }
 
 void
-DBTestFixture::SetNextId (const unsigned id)
+DBTestFixture::SetNextId (const Database::IdT id)
 {
   auto* testDb = dynamic_cast<TestDatabase*> (db.get ());
   CHECK (testDb != nullptr);

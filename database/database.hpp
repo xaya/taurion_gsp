@@ -1,6 +1,8 @@
 #ifndef DATABASE_DATABASE_HPP
 #define DATABASE_DATABASE_HPP
 
+#include <xayagame/sqlitegame.hpp>
+
 #include <glog/logging.h>
 
 #include <google/protobuf/message.h>
@@ -38,6 +40,9 @@ protected:
 
 public:
 
+  using IdT = xaya::SQLiteGame::IdT;
+  static constexpr IdT EMPTY_ID = xaya::SQLiteGame::EMPTY_ID;
+
   class Result;
   class Statement;
 
@@ -52,7 +57,7 @@ public:
    * avoids the risk of mixing up IDs if the same one can be, e.g. both
    * a character and an item.
    */
-  virtual unsigned GetNextId () = 0;
+  virtual IdT GetNextId () = 0;
 
   /**
    * Prepares an SQL statement and returns the wrapper object.

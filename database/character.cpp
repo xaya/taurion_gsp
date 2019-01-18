@@ -29,7 +29,7 @@ Character::Character (Database& d, const Database::Result& res)
 
 Character::~Character ()
 {
-  CHECK_GT (id, 0);
+  CHECK_NE (id, Database::EMPTY_ID);
   CHECK_NE (name, "");
 
   if (dirtyProto)
@@ -94,7 +94,7 @@ CharacterTable::GetFromResult (const Database::Result& res)
 }
 
 CharacterTable::Handle
-CharacterTable::GetById (const unsigned id)
+CharacterTable::GetById (const Database::IdT id)
 {
   auto stmt = db.Prepare ("SELECT * FROM `characters` WHERE `id` = ?1");
   stmt.Bind<int> (1, id);
