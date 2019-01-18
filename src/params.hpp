@@ -3,6 +3,8 @@
 
 #include "amount.hpp"
 
+#include "hexagonal/coord.hpp"
+
 #include <xayagame/gamelogic.hpp>
 
 #include <string>
@@ -45,6 +47,11 @@ public:
    * Returns the amount of CHI to be paid for creation of a character.
    */
   Amount CharacterCost () const;
+
+  /**
+   * Returns the maximum L1 distance between waypoints for movement.
+   */
+  HexCoord::IntT MaximumWaypointL1Distance () const;
 
 };
 

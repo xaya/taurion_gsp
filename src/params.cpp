@@ -30,4 +30,10 @@ Params::CharacterCost () const
   return 5 * COIN;
 }
 
+HexCoord::IntT
+Params::MaximumWaypointL1Distance () const
+{
+  return 100;
+}
+
 } // namespace pxd
