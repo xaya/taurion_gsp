@@ -3,7 +3,8 @@ TEST_LIBRARY = \
 
 REGTESTS = \
   characters.py \
-  findpath.py
+  findpath.py \
+  movement.py
 
 EXTRA_DIST = $(REGTESTS) $(TEST_LIBRARY)
 TESTS = $(REGTESTS)

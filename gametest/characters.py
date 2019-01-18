@@ -2,7 +2,6 @@
 # coding=utf8
 
 from pxtest import PXTest, CHARACTER_COST
-from xmlrpclib import ProtocolError
 
 """
 Runs tests about the basic handling of characters (creating them, transferring
@@ -35,7 +34,7 @@ class CharactersTest (PXTest):
   def run (self):
     self.generate (101);
 
-    self.log.info ("Creating first character...")
+    self.mainLogger.info ("Creating first character...")
     self.moveWithPayment ("domob", {"nc": {"name": "adam"}}, CHARACTER_COST)
     self.sendMove ("", {"nc": {"name": "eve"}})
     self.generate (1)
@@ -43,14 +42,14 @@ class CharactersTest (PXTest):
       "adam": {"owner": "domob"},
     })
 
-    self.log.info ("Already existing name cannot be recreated...")
+    self.mainLogger.info ("Already existing name cannot be recreated...")
     self.moveWithPayment ("", {"nc": {"name": "adam"}}, CHARACTER_COST)
     self.generate (1)
     self.expectPartial ({
       "adam": {"owner": "domob"},
     })
 
-    self.log.info ("Testing \"\" as owner name...")
+    self.mainLogger.info ("Testing \"\" as owner name...")
     self.moveWithPayment ("", {"nc": {"name": "eve"}}, CHARACTER_COST)
     self.generate (1)
     self.expectPartial ({
@@ -58,7 +57,7 @@ class CharactersTest (PXTest):
       "eve": {"owner": ""},
     })
 
-    self.log.info ("Creating second character for domob...")
+    self.mainLogger.info ("Creating second character for domob...")
     self.moveWithPayment ("domob", {"nc": {"name": "foo"}}, CHARACTER_COST)
     self.generate (1)
     self.expectPartial ({
@@ -67,7 +66,7 @@ class CharactersTest (PXTest):
       "foo": {"owner": "domob"},
     })
 
-    self.log.info ("Testing Unicode names...")
+    self.mainLogger.info ("Testing Unicode names...")
     self.moveWithPayment (u"ß", {"nc": {"name": u"äöü"}}, CHARACTER_COST)
     self.generate (1)
     self.expectPartial ({
@@ -77,7 +76,7 @@ class CharactersTest (PXTest):
       u"äöü": {"owner": u"ß"},
     })
 
-    self.log.info ("Transfering a character...")
+    self.mainLogger.info ("Transfering a character...")
     charId = self.characterId ("adam")
     self.sendMove ("domob", {"c": {charId: {"send": "andy"}}})
     self.generate (1)
@@ -96,7 +95,7 @@ class CharactersTest (PXTest):
       u"äöü": {"owner": u"ß"},
     })
 
-    self.log.info ("Non-owner cannot update the character...")
+    self.mainLogger.info ("Non-owner cannot update the character...")
     self.sendMove ("domob", {"c": {charId: {"send": "domob"}}})
     self.generate (1)
     self.expectPartial ({
@@ -115,7 +114,7 @@ class CharactersTest (PXTest):
     stays the same.
     """
 
-    self.log.info ("Testing a reorg...")
+    self.mainLogger.info ("Testing a reorg...")
     originalState = self.getGameState ()
 
     blk = self.rpc.xaya.getblockhash (1)
