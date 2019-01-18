@@ -134,6 +134,15 @@ CharacterTable::QueryForOwner (const std::string& owner)
   return stmt.Query ("characters");
 }
 
+Database::Result
+CharacterTable::QueryMoving ()
+{
+  auto stmt = db.Prepare (R"(
+    SELECT * FROM `characters` WHERE `ismoving` ORDER BY `id`
+  )");
+  return stmt.Query ("characters");
+}
+
 bool
 CharacterTable::IsValidName (const std::string& name)
 {

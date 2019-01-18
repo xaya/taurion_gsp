@@ -221,6 +221,12 @@ public:
   Database::Result QueryForOwner (const std::string& owner);
 
   /**
+   * Queries for all characters that are currently moving (and thus may need
+   * to be updated for move stepping).
+   */
+  Database::Result QueryMoving ();
+
+  /**
    * Verifies whether the given string is valid as name for a new character.
    * This means that it is non-empty and not yet used in the database.
    */

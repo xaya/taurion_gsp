@@ -147,6 +147,17 @@ TEST_F (CharacterTableTests, QueryForOwner)
   ASSERT_FALSE (res.Step ());
 }
 
+TEST_F (CharacterTableTests, QueryMoving)
+{
+  tbl.CreateNew ("domob", "foo");
+  tbl.CreateNew ("domob", "bar")->MutableProto ().mutable_movement ();
+
+  auto res = tbl.QueryMoving ();
+  ASSERT_TRUE (res.Step ());
+  EXPECT_EQ (tbl.GetFromResult (res)->GetName (), "bar");
+  ASSERT_FALSE (res.Step ());
+}
+
 TEST_F (CharacterTableTests, IsValidName)
 {
   tbl.CreateNew ("domob", "abc");
