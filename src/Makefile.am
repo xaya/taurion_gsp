@@ -61,12 +61,14 @@ TESTS = tests
 
 tests_CXXFLAGS = \
   -I$(top_srcdir) \
+  $(GTEST_MAIN_CFLAGS) \
   $(JSON_CFLAGS) $(GTEST_CFLAGS) $(GLOG_CFLAGS) $(PROTOBUF_CFLAGS)
 tests_LDADD = \
   $(builddir)/libpx.la \
   $(top_builddir)/database/libdbtest.la \
   $(top_builddir)/database/libdatabase.la \
   $(top_builddir)/proto/libpxproto.la \
+  $(GTEST_MAIN_LIBS) \
   $(JSON_LIBS) $(GTEST_LIBS) $(GLOG_LIBS) $(PROTOBUF_LIBS)
 tests_SOURCES = \
   gamestatejson_tests.cpp \

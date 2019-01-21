@@ -40,12 +40,14 @@ check_HEADERS = \
 tests_CXXFLAGS = \
   -I$(top_srcdir) \
   $(XAYAGAME_CFLAGS) \
+  $(GTEST_MAIN_CFLAGS) \
   $(GTEST_CFLAGS) $(GLOG_CFLAGS)
 tests_LDADD = \
   $(builddir)/libdbtest.la \
   $(builddir)/libdatabase.la \
   $(top_builddir)/proto/libpxproto.la \
   $(XAYAGAME_LIBS) \
+  $(GTEST_MAIN_LIBS) \
   $(GTEST_LIBS) $(GLOG_LIBS)
 tests_SOURCES = \
   character_tests.cpp \

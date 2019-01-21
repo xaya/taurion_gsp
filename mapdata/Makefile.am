@@ -26,10 +26,12 @@ TESTS = tests
 
 tests_CXXFLAGS = \
   -I$(top_srcdir) \
+  $(GTEST_MAIN_CFLAGS) \
   $(GTEST_CFLAGS) $(GLOG_CFLAGS)
 tests_LDADD = \
   $(builddir)/libmapdata.la \
   $(top_builddir)/hexagonal/libhexagonal.la \
+  $(GTEST_MAIN_LIBS) \
   $(GTEST_LIBS) $(GLOG_LIBS)
 tests_SOURCES = \
   basemap_tests.cpp \

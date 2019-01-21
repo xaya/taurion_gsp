@@ -12,9 +12,12 @@ noinst_HEADERS = \
 check_PROGRAMS = tests
 TESTS = tests
 
-tests_CXXFLAGS = $(GTEST_CFLAGS) $(GLOG_CFLAGS)
+tests_CXXFLAGS = \
+  $(GTEST_MAIN_CFLAGS) \
+  $(GTEST_CFLAGS) $(GLOG_CFLAGS)
 tests_LDADD = \
   $(builddir)/libhexagonal.la \
+  $(GTEST_MAIN_LIBS) \
   $(GTEST_LIBS) $(GLOG_LIBS)
 tests_SOURCES = \
   coord_tests.cpp \
