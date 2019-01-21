@@ -18,4 +18,13 @@ CoordFromProto (const proto::HexCoord& pb)
   return HexCoord (pb.x (), pb.y ());
 }
 
+void
+SetRepeatedCoords (const std::vector<HexCoord>& coords,
+                   google::protobuf::RepeatedPtrField<proto::HexCoord>& field)
+{
+  field.Clear ();
+  for (const auto& c : coords)
+    *field.Add () = CoordToProto (c);
+}
+
 } // namespace pxd

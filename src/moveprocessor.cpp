@@ -145,9 +145,7 @@ MaybeSetCharacterWaypoints (Character& c, const Json::Value& upd)
   c.SetPartialStep (0);
   auto* mv = c.MutableProto ().mutable_movement ();
   mv->Clear ();
-  auto* wpProto = mv->mutable_waypoints ();
-  for (const auto& coord : wp)
-    *wpProto->Add () = CoordToProto (coord);
+  SetRepeatedCoords (wp, *mv->mutable_waypoints ());
 }
 
 } // anonymous namespace

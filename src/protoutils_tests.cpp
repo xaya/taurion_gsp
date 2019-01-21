@@ -1,6 +1,7 @@
 #include "protoutils.hpp"
 
 #include "hexagonal/coord.hpp"
+#include "proto/character.pb.h"
 #include "proto/geometry.pb.h"
 
 #include <gtest/gtest.h>
@@ -28,6 +29,26 @@ TEST_F (ProtoCoordTests, CoordFromProto)
   pb.set_y (-2);
 
   EXPECT_EQ (CoordFromProto (pb), HexCoord (42, -2));
+}
+
+TEST_F (ProtoCoordTests, SetRepeatedCoords)
+{
+  proto::Movement mv;
+  SetRepeatedCoords ({HexCoord (2, 3), HexCoord (-5, 5)},
+                     *mv.mutable_waypoints ());
+
+  ASSERT_EQ (mv.waypoints_size (), 2);
+  EXPECT_EQ (CoordFromProto (mv.waypoints (0)), HexCoord (2, 3));
+  EXPECT_EQ (CoordFromProto (mv.waypoints (1)), HexCoord (-5, 5));
+}
+
+TEST_F (ProtoCoordTests, SetRepeatedCoordsClears)
+{
+  proto::Movement mv;
+  mv.mutable_waypoints ()->Add ()->set_x (5);
+
+  SetRepeatedCoords ({}, *mv.mutable_waypoints ());
+  EXPECT_EQ (mv.waypoints_size (), 0);
 }
 
 } // anonymous namespace
