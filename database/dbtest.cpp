@@ -10,6 +10,13 @@ namespace
 {
 
 /**
+ * Whether or not the error handler has already been set up.  This is used
+ * to ensure that we do it only once, even with many unit tests or other
+ * things running in one binary.
+ */
+bool errorLoggerSet = false;
+
+/**
  * Error callback for SQLite, which prints logs using glog.
  */
 void
@@ -22,12 +29,16 @@ SQLiteErrorLogger (void* arg, const int errCode, const char* msg)
 
 TestDatabase::TestDatabase ()
 {
-  const int rc
-      = sqlite3_config (SQLITE_CONFIG_LOG, &SQLiteErrorLogger, nullptr);
-  if (rc != SQLITE_OK)
-    LOG (WARNING) << "Failed to set up SQLite error handler: " << rc;
-  else
-    LOG (INFO) << "Configured SQLite error handler";
+  if (!errorLoggerSet)
+    {
+      errorLoggerSet = true;
+      const int rc
+          = sqlite3_config (SQLITE_CONFIG_LOG, &SQLiteErrorLogger, nullptr);
+      if (rc != SQLITE_OK)
+        LOG (WARNING) << "Failed to set up SQLite error handler: " << rc;
+      else
+        LOG (INFO) << "Configured SQLite error handler";
+    }
 
   LOG (INFO) << "Opening in-memory SQLite database...";
   CHECK_EQ (sqlite3_open (":memory:", &handle), SQLITE_OK);
