@@ -1,3 +1,4 @@
 pxd
+benchmarks
 tests
-tests.trs
+*.trs

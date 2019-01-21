@@ -56,8 +56,8 @@ pxdheaders = \
 
 noinst_HEADERS = $(libpxheaders) $(pxdheaders)
 
-check_PROGRAMS = tests
-TESTS = tests
+check_PROGRAMS = tests benchmarks
+TESTS = tests benchmarks
 
 tests_CXXFLAGS = \
   -I$(top_srcdir) \
@@ -67,6 +67,7 @@ tests_LDADD = \
   $(builddir)/libpx.la \
   $(top_builddir)/database/libdbtest.la \
   $(top_builddir)/database/libdatabase.la \
+  $(top_builddir)/hexagonal/libhexagonal.la \
   $(top_builddir)/proto/libpxproto.la \
   $(GTEST_MAIN_LIBS) \
   $(JSON_LIBS) $(GTEST_LIBS) $(GLOG_LIBS) $(PROTOBUF_LIBS)
@@ -76,6 +77,20 @@ tests_SOURCES = \
   movement_tests.cpp \
   moveprocessor_tests.cpp \
   protoutils_tests.cpp
+
+benchmarks_CXXFLAGS = \
+  -I$(top_srcdir) \
+  $(JSON_CFLAGS) $(GLOG_CFLAGS) $(PROTOBUF_CFLAGS) $(BENCHMARK_CFLAGS)
+benchmarks_LDADD = \
+  $(builddir)/libpx.la \
+  $(top_builddir)/database/libdbtest.la \
+  $(top_builddir)/database/libdatabase.la \
+  $(top_builddir)/hexagonal/libhexagonal.la \
+  $(top_builddir)/proto/libpxproto.la \
+  $(JSON_LIBS) $(GLOG_LIBS) $(PROTOBUF_LIBS) $(BENCHMARK_LIBS)
+benchmarks_SOURCES = \
+  movement_bench.cpp \
+  benchmarks_main.cpp
 
 rpc-stubs/pxrpcserverstub.h: $(srcdir)/rpc-stubs/pxd.json
 	jsonrpcstub "$<" --cpp-server=PXRpcServerStub --cpp-server-file="$@"
