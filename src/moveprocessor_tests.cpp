@@ -37,7 +37,7 @@ private:
 protected:
 
   MoveProcessorTests ()
-    : params(xaya::Chain::MAIN), mvProc(*db, params)
+    : params(xaya::Chain::MAIN), mvProc(db, params)
   {}
 
   /**
@@ -110,7 +110,7 @@ TEST_F (CharacterCreationTests, InvalidCommands)
     {"name": "domob", "move": {"nc": {"name": "foo", "other": false}}}
   ])", params.CharacterCost ());
 
-  CharacterTable tbl(*db);
+  CharacterTable tbl(db);
   auto res = tbl.QueryAll ();
   EXPECT_FALSE (res.Step ());
 }
@@ -123,7 +123,7 @@ TEST_F (CharacterCreationTests, ValidCreation)
     {"name": "andy", "move": {"nc": {"name": "baz"}}}
   ])", params.CharacterCost ());
 
-  CharacterTable tbl(*db);
+  CharacterTable tbl(db);
   auto res = tbl.QueryAll ();
   ASSERT_TRUE (res.Step ());
   auto c = tbl.GetFromResult (res);
@@ -150,7 +150,7 @@ TEST_F (CharacterCreationTests, DevPayment)
     {"name": "domob", "move": {"nc": {"name": "baz"}}}
   ])", params.CharacterCost () + 1);
 
-  CharacterTable tbl(*db);
+  CharacterTable tbl(db);
   auto res = tbl.QueryAll ();
   ASSERT_TRUE (res.Step ());
   auto c = tbl.GetFromResult (res);
@@ -168,7 +168,7 @@ TEST_F (CharacterCreationTests, NameValidation)
     {"name": "andy", "move": {"nc": {"name": "foo"}}}
   ])", params.CharacterCost ());
 
-  CharacterTable tbl(*db);
+  CharacterTable tbl(db);
   auto res = tbl.QueryAll ();
   ASSERT_TRUE (res.Step ());
   auto c = tbl.GetFromResult (res);
@@ -210,7 +210,7 @@ protected:
   SetupCharacter (const Database::IdT id, const std::string& owner,
                   const std::string& name)
   {
-    SetNextId (id);
+    db.SetNextId (id);
     tbl.CreateNew (owner, name);
 
     auto h = tbl.GetById (id);
@@ -224,7 +224,7 @@ protected:
    * We also ensure that it has the ID 1.
    */
   CharacterUpdateTests ()
-    : tbl(*db)
+    : tbl(db)
   {
     SetupCharacter (1, "domob", "test");
   }

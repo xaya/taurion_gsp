@@ -69,7 +69,7 @@ private:
 protected:
 
   MovementTests ()
-    : params(xaya::Chain::MAIN), tbl(*db)
+    : params(xaya::Chain::MAIN), tbl(db)
   {
     const auto h = tbl.CreateNew ("domob", "foo");
     CHECK_EQ (h->GetId (), 1);

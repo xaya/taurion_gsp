@@ -7,34 +7,79 @@
 
 #include <sqlite3.h>
 
+#include <map>
 #include <memory>
+#include <string>
 
 namespace pxd
 {
 
 /**
- * Test fixture that opens an in-memory SQLite3 database and provides the
- * underlying handle to the test.
+ * Database instance that uses an in-memory SQLite and does its own
+ * statement caching and ID handling.  That way, we can run tests and
+ * benchmarks independently from SQLiteGame.
+ */
+class TestDatabase : public Database
+{
+
+private:
+
+  /** The SQLite database handle.  */
+  sqlite3* handle = nullptr;
+
+  /** List of cached prepared statements.  */
+  std::map<std::string, sqlite3_stmt*> stmtCache;
+
+  /** The next ID to give out.  */
+  IdT nextId = 1;
+
+protected:
+
+  sqlite3_stmt* PrepareStatement (const std::string& sql);
+
+public:
+
+  TestDatabase ();
+  ~TestDatabase ();
+
+  TestDatabase (const TestDatabase&) = delete;
+  void operator= (const TestDatabase&) = delete;
+
+  IdT GetNextId () override;
+
+  /**
+   * Sets the next ID to be given out.  This is useful for tests to force
+   * certain ID ranges.
+   */
+  void
+  SetNextId (const IdT id)
+  {
+    nextId = id;
+  }
+
+  /**
+   * Returns the underlying database handle for SQLite.
+   */
+  sqlite3*
+  GetHandle ()
+  {
+    return handle;
+  }
+
+};
+
+/**
+ * Test fixture that has a TestDatabase inside.
  */
 class DBTestFixture : public testing::Test
 {
 
 protected:
 
-  /** The SQLite3 database handle, managed by the test.  */
-  sqlite3* handle = nullptr;
+  /** The database instance to use.  */
+  TestDatabase db;
 
-  /** Database instance that can be used for tests (based also on handle).  */
-  std::unique_ptr<Database> db;
-
-  DBTestFixture ();
-  ~DBTestFixture ();
-
-  /**
-   * Sets the next auto-ID returned by db->GetNextId.  This is useful for tests
-   * when we want to force certain ID ranges.
-   */
-  void SetNextId (Database::IdT id);
+  DBTestFixture () = default;
 
 };
 

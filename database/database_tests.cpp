@@ -33,7 +33,7 @@ protected:
 
   DatabaseTests ()
   {
-    auto stmt = db->Prepare (R"(
+    auto stmt = db.Prepare (R"(
       CREATE TABLE `test` (
         `id` INTEGER PRIMARY KEY,
         `flag` INTEGER,
@@ -50,7 +50,7 @@ protected:
   void
   ExpectData (const std::vector<RowData>& golden)
   {
-    auto stmt = db->Prepare (R"(
+    auto stmt = db.Prepare (R"(
       SELECT * FROM `test` ORDER BY `id` ASC
     )");
     auto res = stmt.Query ();
@@ -83,7 +83,7 @@ TEST_F (DatabaseTests, BindingAndQuery)
   coord2.set_x (-4);
   coord2.set_y (0);
 
-  auto stmt = db->Prepare (R"(
+  auto stmt = db.Prepare (R"(
     INSERT INTO `test`
       (`id`, `flag`, `name`, `proto`) VALUES
       (?1, ?2, ?3, ?4), (?5, ?6, ?7, ?8);
@@ -113,13 +113,13 @@ TEST_F (DatabaseTests, ProtoIsOverwritten)
   coord.set_x (5);
   /* Explicitly leave y unset.  */
 
-  auto stmt = db->Prepare (R"(
+  auto stmt = db.Prepare (R"(
     INSERT INTO `test` (`proto`) VALUES (?1);
   )");
   stmt.BindProto (1, coord);
   stmt.Execute ();
 
-  stmt = db->Prepare ("SELECT `proto` FROM `test`");
+  stmt = db.Prepare ("SELECT `proto` FROM `test`");
   auto res = stmt.Query ();
 
   ASSERT_TRUE (res.Step ());
@@ -137,9 +137,9 @@ TEST_F (DatabaseTests, ProtoIsOverwritten)
 
 TEST_F (DatabaseTests, ResultProperties)
 {
-  auto stmt = db->Prepare ("SELECT * FROM `test`");
+  auto stmt = db.Prepare ("SELECT * FROM `test`");
   auto res = stmt.Query ("foo");
-  EXPECT_EQ (&res.GetDatabase (), db.get ());
+  EXPECT_EQ (&res.GetDatabase (), &db);
   EXPECT_EQ (res.GetName (), "foo");
 }
 

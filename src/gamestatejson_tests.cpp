@@ -35,7 +35,7 @@ protected:
     std::istringstream in(expectedStr);
     in >> expected;
 
-    const Json::Value actual = GameStateToJson (*db);
+    const Json::Value actual = GameStateToJson (db);
     VLOG (1) << "Actual JSON for the game state:\n" << actual;
     ASSERT_EQ (actual, expected);
   }
@@ -52,7 +52,7 @@ protected:
   CharacterTable tbl;
 
   CharacterJsonTests ()
-    : tbl(*db)
+    : tbl(db)
   {}
 
 };

@@ -20,7 +20,7 @@ protected:
   CharacterTable tbl;
 
   CharacterTests ()
-    : tbl(*db)
+    : tbl(db)
   {}
 
 };

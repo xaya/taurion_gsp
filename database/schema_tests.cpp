@@ -13,13 +13,13 @@ using SchemaTests = DBTestFixture;
 
 TEST_F (SchemaTests, Works)
 {
-  SetupDatabaseSchema (handle);
+  SetupDatabaseSchema (db.GetHandle ());
 }
 
 TEST_F (SchemaTests, TwiceIsOk)
 {
-  SetupDatabaseSchema (handle);
-  SetupDatabaseSchema (handle);
+  SetupDatabaseSchema (db.GetHandle ());
+  SetupDatabaseSchema (db.GetHandle ());
 }
 
 } // anonymous namespace
