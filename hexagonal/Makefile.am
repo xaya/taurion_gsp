@@ -9,8 +9,13 @@ noinst_HEADERS = \
   coord.hpp \
   pathfinder.hpp
 
-check_PROGRAMS = tests
-TESTS = tests
+check_LTLIBRARIES = libbenchmain.la
+check_PROGRAMS = tests benchmarks
+TESTS = tests benchmarks
+
+libbenchmain_la_CXXFLAGS = $(BENCHMARK_CFLAGS) $(GLOG_CFLAGS)
+libbenchmain_la_LIBADD = $(BENCHMARK_LIBS) $(GLOG_LIBS)
+libbenchmain_la_SOURCES = benchmain.cpp
 
 tests_CXXFLAGS = \
   $(GTEST_MAIN_CFLAGS) \
@@ -22,3 +27,11 @@ tests_LDADD = \
 tests_SOURCES = \
   coord_tests.cpp \
   pathfinder_tests.cpp
+
+benchmarks_CXXFLAGS = $(BENCHMARK_CFLAGS) $(GLOG_CFLAGS)
+benchmarks_LDADD = \
+  $(builddir)/libbenchmain.la \
+  $(builddir)/libhexagonal.la \
+  $(BENCHMARK_LIBS) $(GLOG_LIBS)
+benchmarks_SOURCES = \
+  pathfinder_bench.cpp

@@ -85,12 +85,12 @@ benchmarks_LDADD = \
   $(builddir)/libpx.la \
   $(top_builddir)/database/libdbtest.la \
   $(top_builddir)/database/libdatabase.la \
+  $(top_builddir)/hexagonal/libbenchmain.la \
   $(top_builddir)/hexagonal/libhexagonal.la \
   $(top_builddir)/proto/libpxproto.la \
   $(JSON_LIBS) $(GLOG_LIBS) $(PROTOBUF_LIBS) $(BENCHMARK_LIBS)
 benchmarks_SOURCES = \
-  movement_bench.cpp \
-  benchmarks_main.cpp
+  movement_bench.cpp
 
 rpc-stubs/pxrpcserverstub.h: $(srcdir)/rpc-stubs/pxd.json
 	jsonrpcstub "$<" --cpp-server=PXRpcServerStub --cpp-server-file="$@"
