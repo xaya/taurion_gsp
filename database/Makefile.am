@@ -22,8 +22,8 @@ noinst_HEADERS = \
   schema.hpp
 
 check_LTLIBRARIES = libdbtest.la
-check_PROGRAMS = tests
-TESTS = tests
+check_PROGRAMS = tests benchmarks
+TESTS = tests benchmarks
 
 libdbtest_la_CXXFLAGS = \
   $(XAYAGAME_CFLAGS) \
@@ -53,6 +53,18 @@ tests_SOURCES = \
   character_tests.cpp \
   database_tests.cpp \
   schema_tests.cpp
+
+benchmarks_CXXFLAGS = \
+  -I$(top_srcdir) \
+  $(JSON_CFLAGS) $(GLOG_CFLAGS) $(PROTOBUF_CFLAGS) $(BENCHMARK_CFLAGS)
+benchmarks_LDADD = \
+  $(builddir)/libdbtest.la \
+  $(builddir)/libdatabase.la \
+  $(top_builddir)/hexagonal/libbenchmain.la \
+  $(top_builddir)/proto/libpxproto.la \
+  $(JSON_LIBS) $(GLOG_LIBS) $(PROTOBUF_LIBS) $(BENCHMARK_LIBS)
+benchmarks_SOURCES = \
+  character_bench.cpp
 
 schema.cpp: schema_head.cpp schema.sql schema_tail.cpp
 	cat $^ >$@

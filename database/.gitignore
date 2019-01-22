@@ -1,4 +1,5 @@
 schema.cpp
 
+benchmarks
 tests
-tests.trs
+*.trs
