@@ -7,7 +7,8 @@ libhexagonal_la_SOURCES = \
   pathfinder.cpp
 noinst_HEADERS = \
   coord.hpp \
-  pathfinder.hpp
+  pathfinder.hpp \
+  rangemap.hpp rangemap.tpp
 
 check_LTLIBRARIES = libbenchmain.la
 check_PROGRAMS = tests benchmarks
@@ -26,7 +27,8 @@ tests_LDADD = \
   $(GTEST_LIBS) $(GLOG_LIBS)
 tests_SOURCES = \
   coord_tests.cpp \
-  pathfinder_tests.cpp
+  pathfinder_tests.cpp \
+  rangemap_tests.cpp
 
 benchmarks_CXXFLAGS = $(BENCHMARK_CFLAGS) $(GLOG_CFLAGS)
 benchmarks_LDADD = \

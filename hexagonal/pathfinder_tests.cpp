@@ -19,15 +19,15 @@ class PathFinderTests : public testing::Test
 protected:
 
   /**
-   * Returns the size of the distances map for the given PathFinder instance.
+   * Returns the number of computed tiles from the last path finding.
    * This is exposed through being friends with the class, and can be used
    * in tests to verify that some "quick return" (e.g. for a source that is
    * an obstacle) worked as expected.
    */
   static size_t
-  GetDistancesSize (const PathFinder& f)
+  GetComputedTiles (const PathFinder& f)
   {
-    return f.distances.size ();
+    return f.computedTiles;
   }
 
   /**
@@ -161,7 +161,7 @@ TEST_F (PathFinderTests, NoPathWithinRange)
   ASSERT_EQ (finder.Compute (HexCoord (-10, 2), 5), PathFinder::NO_CONNECTION);
 
   /* There should have been some non-trivial trials before giving up.  */
-  EXPECT_GT (GetDistancesSize (finder), 20);
+  EXPECT_GT (GetComputedTiles (finder), 20);
 }
 
 TEST_F (PathFinderTests, OutOfL1Range)
@@ -171,7 +171,7 @@ TEST_F (PathFinderTests, OutOfL1Range)
              PathFinder::NO_CONNECTION);
 
   /* We should have returned quickly, without computing any distances.  */
-  EXPECT_EQ (GetDistancesSize (finder), 0);
+  EXPECT_EQ (GetComputedTiles (finder), 0);
 
 }
 
@@ -182,7 +182,7 @@ TEST_F (PathFinderTests, ToObstacle)
 
   /* The search should have died out quickly, namely after visiting just the
      target (even with a large L1 range as above).  */
-  EXPECT_EQ (GetDistancesSize (finder), 1);
+  EXPECT_EQ (GetComputedTiles (finder), 1);
 }
 
 TEST_F (PathFinderTests, FromObstacle)
@@ -193,7 +193,7 @@ TEST_F (PathFinderTests, FromObstacle)
 
   /* The path from an obstacle should have been determined to be unavailable
      right from the start, without computing a lot of stuff.  */
-  EXPECT_EQ (GetDistancesSize (finder), 0);
+  EXPECT_EQ (GetComputedTiles (finder), 0);
 }
 
 TEST_F (PathFinderTests, MultipleSteppers)

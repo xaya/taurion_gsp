@@ -57,8 +57,9 @@ PathFinder::Compute (const HexCoord& source, const HexCoord::IntT l1Range)
      but if we did, then we would have to consider either keeping also the
      priority queue (so the algorithm can just be continued) persistent
      or it would redo all the previous work anyway.  */
-  CHECK (distances.empty ())
+  CHECK (distances == nullptr)
       << "PathFinder allows only one Compute call for now";
+  CHECK_EQ (computedTiles, 0);
 
   /* Check that the source is actually accessible from any of its neighbours.
      If it is not, then we would just spend the computations for the full
@@ -89,6 +90,10 @@ PathFinder::Compute (const HexCoord& source, const HexCoord::IntT l1Range)
       return NO_CONNECTION;
     }
 
+  /* Initialise the distance map after some quick returns above.  */
+  distances = std::make_unique<RangeMap<DistanceT>> (target, l1Range,
+                                                     NO_CONNECTION);
+
   /* Run Dijkstra's algorithm with a std::priority_queue.  Since we cannot
      lower tentative distances of elements, we simply insert another copy
      instead (with a lower distance).  That works, but of course creates a
@@ -107,7 +112,7 @@ PathFinder::Compute (const HexCoord& source, const HexCoord::IntT l1Range)
      But that seems unnecessarily complex for little gain.  */
 
   std::priority_queue<CoordWithDistance> todo;
-  std::unordered_map<HexCoord, DistanceT> tentativeDists;
+  RangeMap<DistanceT> tentativeDists(target, l1Range, NO_CONNECTION);
 
   todo.emplace (target, 0);
   /* Since we will just pop that element as best one in the first iteration
@@ -119,23 +124,19 @@ PathFinder::Compute (const HexCoord& source, const HexCoord::IntT l1Range)
       const CoordWithDistance cur = todo.top ();
       todo.pop ();
 
-      /* The element popped is either already finalised anyway, or it will
-         be finalised now.  In both cases, we can remove it from the map
-         of tentative distances to save memory.  */
-      tentativeDists.erase (cur.coord);
-
       /* Check if we already have a distance entry for that coordinate.  This
          can happen if we popped out an "outdated copy" of an element that
          had its distance lowered.  */
-      const auto mitCurDist = distances.find (cur.coord);
-      if (mitCurDist != distances.end ())
+      auto& curDist = distances->Access (cur.coord);
+      if (curDist != NO_CONNECTION)
         {
-          CHECK (mitCurDist->second <= cur.dist);
+          CHECK (curDist <= cur.dist);
           continue;
         }
 
       /* Insert the current element as a finalised distance.  */
-      distances.emplace (cur.coord, cur.dist);
+      curDist = cur.dist;
+      ++computedTiles;
 
       /* If this was the source, we are done.  */
       if (cur.coord == source)
@@ -169,22 +170,17 @@ PathFinder::Compute (const HexCoord& source, const HexCoord::IntT l1Range)
 
           const DistanceT distViaCur = cur.dist + stepDist;
 
-          const auto mitNewDist = distances.find (n);
-          if (mitNewDist != distances.end ())
+          const auto newDist = distances->Get (n);
+          if (newDist != NO_CONNECTION)
             {
-              CHECK (mitNewDist->second <= distViaCur);
+              CHECK (newDist <= distViaCur);
               continue;
             }
 
-          const auto mitNewTentative = tentativeDists.find (n);
-          if (mitNewTentative == tentativeDists.end ())
+          auto& newTentative = tentativeDists.Access (n);
+          if (newTentative == NO_CONNECTION || distViaCur < newTentative)
             {
-              tentativeDists.emplace (n, distViaCur);
-              todo.emplace (n, distViaCur);
-            }
-          else if (distViaCur < mitNewTentative->second)
-            {
-              mitNewTentative->second = distViaCur;
+              newTentative = distViaCur;
               todo.emplace (n, distViaCur);
             }
           /* Else the new path is not interesting, since we already have
@@ -196,16 +192,13 @@ PathFinder::Compute (const HexCoord& source, const HexCoord::IntT l1Range)
       << "Dijkstra's algorithm finished, queue still has "
       << todo.size () << " elements left";
 
-  const auto mitSourceDist = distances.find (source);
-  if (mitSourceDist == distances.end ())
-    return NO_CONNECTION;
-  return mitSourceDist->second;
+  return distances->Get (source);
 }
 
 PathFinder::Stepper
 PathFinder::StepPath (const HexCoord& source) const
 {
-  CHECK (distances.count (source) > 0)
+  CHECK (distances != nullptr && distances->Get (source) != NO_CONNECTION)
       << "No path from the given source has been computed yet";
   return Stepper (*this, source);
 }
@@ -215,20 +208,19 @@ PathFinder::Stepper::Next ()
 {
   CHECK (HasMore ());
 
-  const auto curDistIt = finder.distances.find (position);
-  CHECK (curDistIt != finder.distances.end ());
-  const DistanceT curDist = curDistIt->second;
+  const auto curDist = finder.distances->Access (position);
+  CHECK (curDist != NO_CONNECTION);
 
   DistanceT bestDist = NO_CONNECTION;
   HexCoord bestNeighbour;
   for (const auto& n : position.Neighbours ())
     {
-      const auto distIt = finder.distances.find (n);
-      if (distIt == finder.distances.end ())
+      const auto dist = finder.distances->Get (n);
+      if (dist == NO_CONNECTION)
         continue;
-      if (bestDist == NO_CONNECTION || distIt->second < bestDist)
+      if (bestDist == NO_CONNECTION || dist < bestDist)
         {
-          bestDist = distIt->second;
+          bestDist = dist;
           bestNeighbour = n;
         }
     }

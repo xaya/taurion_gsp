@@ -2,11 +2,12 @@
 #define HEXAGONAL_PATHFINDER_HPP
 
 #include "coord.hpp"
+#include "rangemap.hpp"
 
 #include <cstdint>
 #include <functional>
 #include <limits>
-#include <unordered_map>
+#include <memory>
 
 namespace pxd
 {
@@ -59,8 +60,18 @@ private:
    * known definitely.  Once Compute has been called, at least the source
    * coordinate and all tiles along the shortest path between source and target
    * will be in that map.
+   *
+   * This is only set when we actually compute the distance map.  If unset,
+   * it means that no distances are known at all.
    */
-  std::unordered_map<HexCoord, DistanceT> distances;
+  std::unique_ptr<RangeMap<DistanceT>> distances;
+
+  /**
+   * The number of tiles processed (in the sense that we finalised a distance
+   * for them) during path finding.  This is tracked and used for testing
+   * (but it does not have any noticable impact outside of tests either).
+   */
+  size_t computedTiles = 0;
 
   friend class PathFinderTests;
 
