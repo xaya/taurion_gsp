@@ -4,7 +4,7 @@
 #include "coord.hpp"
 
 #include <cstddef>
-#include <unordered_map>
+#include <vector>
 
 namespace pxd
 {
@@ -25,14 +25,21 @@ private:
   /** The range around the centre that this is for.  */
   const HexCoord::IntT range;
 
-  /** Default value (so we can add it to the map if necessary).  */
+  /** The default value, so that we can return it for out-of-range Get().  */
   const T defaultValue;
 
   /**
-   * The underlying data store.  For now, this is an unordered_map just to
-   * transition code here.  This will be made more efficient in the future.
+   * The underlying data as a flat vector.  It stores the hexagonal L1 range
+   * in a rectangular pattern.  This is quick to access, although it wastes
+   * "some" space (but that should not matter much).
    */
-  std::unordered_map<HexCoord, T> data;
+  std::vector<T> data;
+
+  /**
+   * Returns the index into the flat vector at which a certain coordinate
+   * will be found.  Returns -1 if the coordinate is out of range.
+   */
+  int GetIndex (const HexCoord& c) const;
 
 public:
 
