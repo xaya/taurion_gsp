@@ -6,10 +6,52 @@
 
 namespace pxd
 {
+
+class RangeMapTests : public testing::Test
+{
+
+protected:
+
+  /**
+   * Exposes RangeMap::GetIndex for tests.
+   */
+  template <typename T>
+    static int
+    GetIndex (const RangeMap<T>& m, const HexCoord& c)
+  {
+    return m.GetIndex (c);
+  }
+
+  /**
+   * Exposes the RangeMap's data size for tests.
+   */
+  template <typename T>
+    static size_t
+    GetDataSize (const RangeMap<T>& m)
+  {
+    return m.data.size ();
+  }
+
+};
+
 namespace
 {
 
-using RangeMapTests = testing::Test;
+TEST_F (RangeMapTests, IndexComputation)
+{
+  const RangeMap<int> map(HexCoord (0, 0), 3, -42);
+  EXPECT_EQ (GetDataSize (map), 37);
+  EXPECT_EQ (GetIndex (map, HexCoord (0, -3)), 0);
+  EXPECT_EQ (GetIndex (map, HexCoord (3, -3)), 3);
+  EXPECT_EQ (GetIndex (map, HexCoord (-1, -2)), 4);
+  EXPECT_EQ (GetIndex (map, HexCoord (3, -2)), 8);
+  EXPECT_EQ (GetIndex (map, HexCoord (-3, 0)), 15);
+  EXPECT_EQ (GetIndex (map, HexCoord (3, 0)), 21);
+  EXPECT_EQ (GetIndex (map, HexCoord (-3, 1)), 22);
+  EXPECT_EQ (GetIndex (map, HexCoord (2, 1)), 27);
+  EXPECT_EQ (GetIndex (map, HexCoord (-3, 3)), 33);
+  EXPECT_EQ (GetIndex (map, HexCoord (0, 3)), 36);
+}
 
 TEST_F (RangeMapTests, FullRangeAccess)
 {
