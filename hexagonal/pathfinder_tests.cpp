@@ -126,6 +126,18 @@ TEST_F (PathFinderTests, SourceIsTarget)
   AssertPath (finder.StepPath (HexCoord (-1, 2)), HexCoord (-1, 2), {});
 }
 
+TEST_F (PathFinderTests, FullRange)
+{
+  PathFinder finder(&EdgeWeight, HexCoord (-3, 0));
+  ASSERT_EQ (finder.Compute (HexCoord (0, 0), 3), 3);
+  AssertPath (finder.StepPath (HexCoord (0, 0)),
+              HexCoord (0, 0), {
+                {HexCoord (-1, 0), 1},
+                {HexCoord (-2, 0), 1},
+                {HexCoord (-3, 0), 1},
+              });
+}
+
 TEST_F (PathFinderTests, ThroughX)
 {
   PathFinder finder(&EdgeWeight, HexCoord (-1, 2));
@@ -152,15 +164,15 @@ TEST_F (PathFinderTests, NoPathWithinRange)
   EXPECT_GT (GetDistancesSize (finder), 20);
 }
 
-TEST_F (PathFinderTests, TriesFullRange)
+TEST_F (PathFinderTests, OutOfL1Range)
 {
   PathFinder finder(&EdgeWeight, HexCoord (100, 100));
   ASSERT_EQ (finder.Compute (HexCoord (200, 200), 2),
              PathFinder::NO_CONNECTION);
 
-  /* The distances map should contain exactly all those coordinates within
-     the L1 range of two.  */
-  EXPECT_EQ (GetDistancesSize (finder), 19);
+  /* We should have returned quickly, without computing any distances.  */
+  EXPECT_EQ (GetDistancesSize (finder), 0);
+
 }
 
 TEST_F (PathFinderTests, ToObstacle)

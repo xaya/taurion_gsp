@@ -66,6 +66,9 @@ PathFinder::Compute (const HexCoord& source, const HexCoord::IntT l1Range)
      quickly return if the user clicked on an obstacle as target, for
      instance.
 
+     Similarly, we can return quickly of source and target are out of the L1
+     range of each other (immediately).
+
      For the target, we don't need this check specifically -- in case it is
      not accessible, Dijkstra's algorithm will just die out immediately.  */
   bool sourceAccessible = false;
@@ -78,6 +81,11 @@ PathFinder::Compute (const HexCoord& source, const HexCoord::IntT l1Range)
   if (!sourceAccessible)
     {
       LOG (INFO) << "Source tile is not accessible from anywhere";
+      return NO_CONNECTION;
+    }
+  if (HexCoord::DistanceL1 (source, target) > l1Range)
+    {
+      LOG (INFO) << "Source and target are further away than the L1 range";
       return NO_CONNECTION;
     }
 

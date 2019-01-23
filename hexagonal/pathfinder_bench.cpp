@@ -43,31 +43,6 @@ BENCHMARK (PathToTarget)
   ->Range (1, 100);
 
 /**
- * Benchmarks path finding when it hits the l1range limit.  This is the worst
- * case that we will do in the game state computation (for certain waypoint
- * spacing parameter).
- */
-void
-PathHitsLimit (benchmark::State& state)
-{
-  const HexCoord::IntT l1range = state.range (0);
-
-  const HexCoord source(0, 0);
-  const HexCoord target(30000, 0);
-
-  for (auto _ : state)
-    {
-      PathFinder finder(&EdgeWeights, target);
-      const auto dist = finder.Compute (source, l1range);
-      CHECK_EQ (dist, PathFinder::NO_CONNECTION);
-    }
-}
-BENCHMARK (PathHitsLimit)
-  ->Unit (benchmark::kMillisecond)
-  ->RangeMultiplier (10)
-  ->Range (1, 100);
-
-/**
  * Benchmarks stepping of an already computed path.
  */
 void
