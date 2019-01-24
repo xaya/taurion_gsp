@@ -3,6 +3,7 @@
 #include "jsonutils.hpp"
 #include "protoutils.hpp"
 
+#include "database/faction.hpp"
 #include "proto/character.pb.h"
 
 namespace pxd
@@ -68,7 +69,20 @@ MoveProcessor::HandleCharacterCreation (const std::string& name,
     }
   const std::string charName = charNameVal.asString ();
 
-  if (cmd.size () != 1)
+  const auto& factionVal = cmd["faction"];
+  if (!factionVal.isString ())
+    {
+      LOG (WARNING) << "Character creation does not specify faction: " << cmd;
+      return;
+    }
+  const Faction faction = FactionFromString (factionVal.asString ());
+  if (faction == Faction::INVALID)
+    {
+      LOG (WARNING) << "Invalid faction specified for character: " << cmd;
+      return;
+    }
+
+  if (cmd.size () != 2)
     {
       LOG (WARNING) << "Character creation has extra fields: " << cmd;
       return;
@@ -86,8 +100,7 @@ MoveProcessor::HandleCharacterCreation (const std::string& name,
       return;
     }
 
-  /* FIXME: Allow setting the faction through the move.  */
-  auto newChar = characters.CreateNew (name, charName, Faction::RED);
+  auto newChar = characters.CreateNew (name, charName, faction);
   newChar->SetPosition (HexCoord (0, 0));
 }
 

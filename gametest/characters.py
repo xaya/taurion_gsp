@@ -35,22 +35,25 @@ class CharactersTest (PXTest):
     self.generate (101);
 
     self.mainLogger.info ("Creating first character...")
-    self.moveWithPayment ("domob", {"nc": {"name": "adam"}}, CHARACTER_COST)
-    self.sendMove ("", {"nc": {"name": "eve"}})
+    self.moveWithPayment ("domob", {"nc": {"name": "adam", "faction": "r"}},
+                          CHARACTER_COST)
+    self.sendMove ("", {"nc": {"name": "eve", "faction": "r"}})
     self.generate (1)
     self.expectPartial ({
       "adam": {"owner": "domob"},
     })
 
     self.mainLogger.info ("Already existing name cannot be recreated...")
-    self.moveWithPayment ("", {"nc": {"name": "adam"}}, CHARACTER_COST)
+    self.moveWithPayment ("", {"nc": {"name": "adam", "faction": "g"}},
+                          CHARACTER_COST)
     self.generate (1)
     self.expectPartial ({
       "adam": {"owner": "domob"},
     })
 
     self.mainLogger.info ("Testing \"\" as owner name...")
-    self.moveWithPayment ("", {"nc": {"name": "eve"}}, CHARACTER_COST)
+    self.moveWithPayment ("", {"nc": {"name": "eve", "faction": "g"}},
+                          CHARACTER_COST)
     self.generate (1)
     self.expectPartial ({
       "adam": {"owner": "domob"},
@@ -58,7 +61,8 @@ class CharactersTest (PXTest):
     })
 
     self.mainLogger.info ("Creating second character for domob...")
-    self.moveWithPayment ("domob", {"nc": {"name": "foo"}}, CHARACTER_COST)
+    self.moveWithPayment ("domob", {"nc": {"name": "foo", "faction": "b"}},
+                          CHARACTER_COST)
     self.generate (1)
     self.expectPartial ({
       "adam": {"owner": "domob"},
@@ -67,7 +71,8 @@ class CharactersTest (PXTest):
     })
 
     self.mainLogger.info ("Testing Unicode names...")
-    self.moveWithPayment (u"ß", {"nc": {"name": u"äöü"}}, CHARACTER_COST)
+    self.moveWithPayment (u"ß", {"nc": {"name": u"äöü", "faction": "b"}},
+                          CHARACTER_COST)
     self.generate (1)
     self.expectPartial ({
       "adam": {"owner": "domob"},
@@ -121,7 +126,8 @@ class CharactersTest (PXTest):
     self.rpc.xaya.invalidateblock (blk)
 
     self.generate (101)
-    self.moveWithPayment ("domob", {"nc": {"name": "alt"}}, CHARACTER_COST)
+    self.moveWithPayment ("domob", {"nc": {"name": "alt", "faction": "b"}},
+                          CHARACTER_COST)
     self.generate (1)
     self.expectPartial ({
       "alt": {"owner": "domob"},

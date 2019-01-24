@@ -83,7 +83,8 @@ class MovementTest (PXTest):
     self.generate (101);
 
     self.mainLogger.info ("Creating test character...")
-    self.moveWithPayment ("domob", {"nc": {"name": "foo"}}, CHARACTER_COST)
+    self.moveWithPayment ("domob", {"nc": {"name": "foo", "faction": "r"}},
+                          CHARACTER_COST)
     self.generate (1)
 
     self.mainLogger.info ("Setting basic path for character...")

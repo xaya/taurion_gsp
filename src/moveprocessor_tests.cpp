@@ -107,7 +107,13 @@ TEST_F (CharacterCreationTests, InvalidCommands)
     {"name": "domob", "move": {}},
     {"name": "domob", "move": {"nc": 42}},
     {"name": "domob", "move": {"nc": {}}},
-    {"name": "domob", "move": {"nc": {"name": "foo", "other": false}}}
+    {"name": "domob", "move": {"nc": {"name": "foo"}}},
+    {"name": "domob", "move":
+      {
+        "nc": {"name": "foo", "faction": "r", "other": false}
+      }},
+    {"name": "domob", "move": {"nc": {"name": "foo", "faction": "x"}}},
+    {"name": "domob", "move": {"nc": {"name": "foo", "faction": 0}}}
   ])", params.CharacterCost ());
 
   CharacterTable tbl(db);
@@ -118,9 +124,9 @@ TEST_F (CharacterCreationTests, InvalidCommands)
 TEST_F (CharacterCreationTests, ValidCreation)
 {
   ProcessWithDevPayment (R"([
-    {"name": "domob", "move": {"nc": {"name": "foo"}}},
-    {"name": "domob", "move": {"nc": {"name": "bar"}}},
-    {"name": "andy", "move": {"nc": {"name": "baz"}}}
+    {"name": "domob", "move": {"nc": {"name": "foo", "faction": "r"}}},
+    {"name": "domob", "move": {"nc": {"name": "bar", "faction": "g"}}},
+    {"name": "andy", "move": {"nc": {"name": "baz", "faction": "b"}}}
   ])", params.CharacterCost ());
 
   CharacterTable tbl(db);
@@ -129,25 +135,30 @@ TEST_F (CharacterCreationTests, ValidCreation)
   auto c = tbl.GetFromResult (res);
   EXPECT_EQ (c->GetOwner (), "domob");
   EXPECT_EQ (c->GetName (), "foo");
+  EXPECT_EQ (c->GetFaction (), Faction::RED);
   ASSERT_TRUE (res.Step ());
   c = tbl.GetFromResult (res);
   EXPECT_EQ (c->GetOwner (), "domob");
   EXPECT_EQ (c->GetName (), "bar");
+  EXPECT_EQ (c->GetFaction (), Faction::GREEN);
   ASSERT_TRUE (res.Step ());
   c = tbl.GetFromResult (res);
   EXPECT_EQ (c->GetOwner (), "andy");
   EXPECT_EQ (c->GetName (), "baz");
+  EXPECT_EQ (c->GetFaction (), Faction::BLUE);
   EXPECT_FALSE (res.Step ());
 }
 
 TEST_F (CharacterCreationTests, DevPayment)
 {
-  Process (R"([{"name": "domob", "move": {"nc": {"name": "foo"}}}])");
+  Process (R"([
+    {"name": "domob", "move": {"nc": {"name": "foo", "faction": "r"}}}
+  ])");
   ProcessWithDevPayment (R"([
-    {"name": "domob", "move": {"nc": {"name": "bar"}}}
+    {"name": "domob", "move": {"nc": {"name": "bar", "faction": "r"}}}
   ])", params.CharacterCost () - 1);
   ProcessWithDevPayment (R"([
-    {"name": "domob", "move": {"nc": {"name": "baz"}}}
+    {"name": "domob", "move": {"nc": {"name": "baz", "faction": "r"}}}
   ])", params.CharacterCost () + 1);
 
   CharacterTable tbl(db);
@@ -162,10 +173,10 @@ TEST_F (CharacterCreationTests, DevPayment)
 TEST_F (CharacterCreationTests, NameValidation)
 {
   ProcessWithDevPayment (R"([
-    {"name": "domob", "move": {"nc": {"name": ""}}},
-    {"name": "domob", "move": {"nc": {"name": "foo"}}},
-    {"name": "domob", "move": {"nc": {"name": "bar"}}},
-    {"name": "andy", "move": {"nc": {"name": "foo"}}}
+    {"name": "domob", "move": {"nc": {"name": "", "faction": "r"}}},
+    {"name": "domob", "move": {"nc": {"name": "foo", "faction": "r"}}},
+    {"name": "domob", "move": {"nc": {"name": "bar", "faction": "r"}}},
+    {"name": "andy", "move": {"nc": {"name": "foo", "faction": "r"}}}
   ])", params.CharacterCost ());
 
   CharacterTable tbl(db);
@@ -237,7 +248,7 @@ TEST_F (CharacterUpdateTests, CreationAndUpdate)
     "name": "domob",
     "move":
       {
-        "nc": {"name": "foo"},
+        "nc": {"name": "foo", "faction": "r"},
         "c": {"1": {"send": "daniel"}, "2": {"send": "andy"}}
       }
   }])", params.CharacterCost ());
