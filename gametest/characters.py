@@ -40,7 +40,7 @@ class CharactersTest (PXTest):
     self.sendMove ("", {"nc": {"name": "eve", "faction": "r"}})
     self.generate (1)
     self.expectPartial ({
-      "adam": {"owner": "domob"},
+      "adam": {"owner": "domob", "faction": "r"},
     })
 
     self.mainLogger.info ("Already existing name cannot be recreated...")
@@ -56,8 +56,8 @@ class CharactersTest (PXTest):
                           CHARACTER_COST)
     self.generate (1)
     self.expectPartial ({
-      "adam": {"owner": "domob"},
-      "eve": {"owner": ""},
+      "adam": {"owner": "domob", "faction": "r"},
+      "eve": {"owner": "", "faction": "g"},
     })
 
     self.mainLogger.info ("Creating second character for domob...")
@@ -65,9 +65,9 @@ class CharactersTest (PXTest):
                           CHARACTER_COST)
     self.generate (1)
     self.expectPartial ({
-      "adam": {"owner": "domob"},
-      "eve": {"owner": ""},
-      "foo": {"owner": "domob"},
+      "adam": {"owner": "domob", "faction": "r"},
+      "eve": {"owner": "", "faction": "g"},
+      "foo": {"owner": "domob", "faction": "b"},
     })
 
     self.mainLogger.info ("Testing Unicode names...")

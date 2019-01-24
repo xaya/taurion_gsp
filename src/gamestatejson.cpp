@@ -3,6 +3,7 @@
 #include "jsonutils.hpp"
 #include "protoutils.hpp"
 
+#include "database/faction.hpp"
 #include "hexagonal/pathfinder.hpp"
 #include "proto/character.pb.h"
 
@@ -18,6 +19,7 @@ CharacterToJson (const Character& c)
   res["id"] = static_cast<int> (c.GetId ());
   res["owner"] = c.GetOwner ();
   res["name"] = c.GetName ();
+  res["faction"] = FactionToString (c.GetFaction ());
   res["position"] = CoordToJson (c.GetPosition ());
 
   Json::Value mv(Json::objectValue);

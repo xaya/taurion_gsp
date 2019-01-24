@@ -69,11 +69,11 @@ TEST_F (CharacterJsonTests, Basic)
     "characters":
       [
         {
-          "id": 1, "name": "foo", "owner": "domob",
+          "id": 1, "name": "foo", "owner": "domob", "faction": "r",
           "position": {"x": -5, "y": 2}
         },
         {
-          "id": 2, "name": "äöü", "owner": "andy",
+          "id": 2, "name": "äöü", "owner": "andy", "faction": "g",
           "position": {"x": -0, "y": 0}
         }
       ]
@@ -93,7 +93,7 @@ TEST_F (CharacterJsonTests, Waypoints)
     "characters":
       [
         {
-          "id": 1, "name": "foo", "owner": "domob",
+          "id": 1, "name": "foo", "owner": "domob", "faction": "r",
           "position": {"x": 0, "y": 0},
           "movement":
             {
@@ -118,7 +118,7 @@ TEST_F (CharacterJsonTests, OnlyOneStep)
     "characters":
       [
         {
-          "id": 1, "name": "foo", "owner": "domob",
+          "id": 1, "name": "foo", "owner": "domob", "faction": "r",
           "position": {"x": 2, "y": 3},
           "movement":
             {
@@ -144,7 +144,7 @@ TEST_F (CharacterJsonTests, PositionIsLastStep)
     "characters":
       [
         {
-          "id": 1, "name": "foo", "owner": "domob",
+          "id": 1, "name": "foo", "owner": "domob", "faction": "r",
           "position": {"x": 2, "y": 3},
           "movement":
             {
@@ -171,7 +171,7 @@ TEST_F (CharacterJsonTests, MultipleStep)
     "characters":
       [
         {
-          "id": 1, "name": "foo", "owner": "domob",
+          "id": 1, "name": "foo", "owner": "domob", "faction": "r",
           "position": {"x": 2, "y": 3},
           "movement":
             {
