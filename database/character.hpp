@@ -38,10 +38,10 @@ private:
   /** The owner string.  */
   std::string owner;
 
-  /** The name of the character as string.  */
+  /** The name of the character as string.  This is immutable.  */
   std::string name;
 
-  /** The character's faction.  */
+  /** The character's faction.  This is immutable.  */
   Faction faction;
 
   /** The current position.  */
@@ -83,9 +83,13 @@ private:
   explicit Character (Database& d, const Database::Result& res);
 
   /**
-   * Binds parameters in a statement to the non-proto fields.  This is to
-   * share code between the proto and non-proto updates.  The ID is always
+   * Binds parameters in a statement to the mutable non-proto fields.  This is
+   * to share code between the proto and non-proto updates.  The ID is always
    * bound to parameter ?1.
+   *
+   * The immutable non-proto fields name and faction are also not bound
+   * here, since they are only present in the INSERT OR REPLACE statement
+   * (with proto update) and not the UPDATE one.
    */
   void BindFieldValues (Database::Statement& stmt) const;
 

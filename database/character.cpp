@@ -43,13 +43,20 @@ Character::~Character ()
           << " has been modified including proto data, updating DB";
       auto stmt = db.Prepare (R"(
         INSERT OR REPLACE INTO `characters`
-          (`id`, `owner`, `name`, `faction`, `x`, `y`,
-           `partialstep`, `ismoving`, `proto`)
+          (`id`,
+           `owner`, `x`, `y`, `partialstep`,
+           `name`, `faction`,
+           `ismoving`, `proto`)
           VALUES
-          (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+          (?1,
+           ?2, ?3, ?4, ?5,
+           ?6, ?7,
+           ?8, ?9)
       )");
 
       BindFieldValues (stmt);
+      stmt.Bind (6, name);
+      BindFactionParameter (stmt, 7, faction);
       stmt.Bind (8, data.has_movement ());
       stmt.BindProto (9, data);
       stmt.Execute ();
@@ -65,9 +72,7 @@ Character::~Character ()
 
       auto stmt = db.Prepare (R"(
         UPDATE `characters`
-          SET `owner` = ?2, `name` = ?3, faction = ?4,
-              `x` = ?5, `y` = ?6,
-              `partialstep` = ?7
+          SET `owner` = ?2, `x` = ?3, `y` = ?4, `partialstep` = ?5
           WHERE `id` = ?1
       )");
 
@@ -85,14 +90,12 @@ Character::BindFieldValues (Database::Statement& stmt) const
 {
   stmt.Bind<int> (1, id);
   stmt.Bind (2, owner);
-  stmt.Bind (3, name);
-  BindFactionParameter (stmt, 4, faction);
-  stmt.Bind<int> (5, pos.GetX ());
-  stmt.Bind<int> (6, pos.GetY ());
+  stmt.Bind<int> (3, pos.GetX ());
+  stmt.Bind<int> (4, pos.GetY ());
   if (partialStep == 0)
-    stmt.BindNull (7);
+    stmt.BindNull (5);
   else
-    stmt.Bind<int> (7, partialStep);
+    stmt.Bind<int> (5, partialStep);
 }
 
 CharacterTable::Handle
