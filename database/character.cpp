@@ -5,8 +5,9 @@
 namespace pxd
 {
 
-Character::Character (Database& d, const std::string& o, const std::string& n)
-  : db(d), id(db.GetNextId ()), owner(o), name(n),
+Character::Character (Database& d, const std::string& o, const std::string& n,
+                      const Faction f)
+  : db(d), id(db.GetNextId ()), owner(o), name(n), faction(f),
     pos(0, 0), partialStep(0),
     dirtyFields(true), dirtyProto(true)
 {
@@ -22,6 +23,7 @@ Character::Character (Database& d, const Database::Result& res)
   id = res.Get<int> ("id");
   owner = res.Get<std::string> ("owner");
   name = res.Get<std::string> ("name");
+  faction = GetFactionFromColumn (res, "faction");
   pos = HexCoord (res.Get<int> ("x"), res.Get<int> ("y"));
   partialStep = res.Get<int> ("partialstep");
   res.GetProto ("proto", data);
@@ -41,14 +43,15 @@ Character::~Character ()
           << " has been modified including proto data, updating DB";
       auto stmt = db.Prepare (R"(
         INSERT OR REPLACE INTO `characters`
-          (`id`, `owner`, `name`, `x`, `y`, `partialstep`, `ismoving`, `proto`)
+          (`id`, `owner`, `name`, `faction`, `x`, `y`,
+           `partialstep`, `ismoving`, `proto`)
           VALUES
-          (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+          (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
       )");
 
       BindFieldValues (stmt);
-      stmt.Bind (7, data.has_movement ());
-      stmt.BindProto (8, data);
+      stmt.Bind (8, data.has_movement ());
+      stmt.BindProto (9, data);
       stmt.Execute ();
 
       return;
@@ -62,9 +65,9 @@ Character::~Character ()
 
       auto stmt = db.Prepare (R"(
         UPDATE `characters`
-          SET `owner` = ?2, `name` = ?3,
-              `x` = ?4, `y` = ?5,
-              `partialstep` = ?6
+          SET `owner` = ?2, `name` = ?3, faction = ?4,
+              `x` = ?5, `y` = ?6,
+              `partialstep` = ?7
           WHERE `id` = ?1
       )");
 
@@ -83,18 +86,20 @@ Character::BindFieldValues (Database::Statement& stmt) const
   stmt.Bind<int> (1, id);
   stmt.Bind (2, owner);
   stmt.Bind (3, name);
-  stmt.Bind<int> (4, pos.GetX ());
-  stmt.Bind<int> (5, pos.GetY ());
+  BindFactionParameter (stmt, 4, faction);
+  stmt.Bind<int> (5, pos.GetX ());
+  stmt.Bind<int> (6, pos.GetY ());
   if (partialStep == 0)
-    stmt.BindNull (6);
+    stmt.BindNull (7);
   else
-    stmt.Bind<int> (6, partialStep);
+    stmt.Bind<int> (7, partialStep);
 }
 
 CharacterTable::Handle
-CharacterTable::CreateNew (const std::string& owner, const std::string&  name)
+CharacterTable::CreateNew (const std::string& owner, const std::string&  name,
+                           const Faction faction)
 {
-  return Handle (new Character (db, owner, name));
+  return Handle (new Character (db, owner, name, faction));
 }
 
 CharacterTable::Handle

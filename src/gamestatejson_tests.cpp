@@ -59,11 +59,11 @@ protected:
 
 TEST_F (CharacterJsonTests, Basic)
 {
-  auto c = tbl.CreateNew ("domob", "foo");
+  auto c = tbl.CreateNew ("domob", "foo", Faction::RED);
   c->SetPosition (HexCoord (-5, 2));
   c.reset ();
 
-  tbl.CreateNew ("andy", u8"äöü");
+  tbl.CreateNew ("andy", u8"äöü", Faction::GREEN);
 
   ExpectStateJson (u8R"({
     "characters":
@@ -82,7 +82,7 @@ TEST_F (CharacterJsonTests, Basic)
 
 TEST_F (CharacterJsonTests, Waypoints)
 {
-  auto c = tbl.CreateNew ("domob", "foo");
+  auto c = tbl.CreateNew ("domob", "foo", Faction::RED);
   c->SetPartialStep (5);
   auto* wp = c->MutableProto ().mutable_movement ()->mutable_waypoints ();
   *wp->Add () = CoordToProto (HexCoord (-3, 0));
@@ -107,7 +107,7 @@ TEST_F (CharacterJsonTests, Waypoints)
 
 TEST_F (CharacterJsonTests, OnlyOneStep)
 {
-  auto c = tbl.CreateNew ("domob", "foo");
+  auto c = tbl.CreateNew ("domob", "foo", Faction::RED);
   c->SetPosition (HexCoord (2, 3));
   auto* mvProto = c->MutableProto ().mutable_movement ();
   *mvProto->mutable_waypoints ()->Add () = CoordToProto (HexCoord (42, -42));
@@ -132,7 +132,7 @@ TEST_F (CharacterJsonTests, OnlyOneStep)
 
 TEST_F (CharacterJsonTests, PositionIsLastStep)
 {
-  auto c = tbl.CreateNew ("domob", "foo");
+  auto c = tbl.CreateNew ("domob", "foo", Faction::RED);
   c->SetPosition (HexCoord (2, 3));
   auto* mvProto = c->MutableProto ().mutable_movement ();
   *mvProto->mutable_waypoints ()->Add () = CoordToProto (HexCoord (42, -42));
@@ -158,7 +158,7 @@ TEST_F (CharacterJsonTests, PositionIsLastStep)
 
 TEST_F (CharacterJsonTests, MultipleStep)
 {
-  auto c = tbl.CreateNew ("domob", "foo");
+  auto c = tbl.CreateNew ("domob", "foo", Faction::RED);
   c->SetPosition (HexCoord (2, 3));
   auto* mvProto = c->MutableProto ().mutable_movement ();
   *mvProto->mutable_waypoints ()->Add () = CoordToProto (HexCoord (42, -42));

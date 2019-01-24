@@ -30,7 +30,7 @@ InsertTestCharacters (Database& db, const unsigned n, const unsigned numWP)
       std::ostringstream name;
       name << "char " << i;
 
-      const auto h = tbl.CreateNew ("domob", name.str ());
+      const auto h = tbl.CreateNew ("domob", name.str (), Faction::RED);
       ids.push_back (h->GetId ());
 
       auto* wp = h->MutableProto ().mutable_movement ()->mutable_waypoints ();

@@ -86,7 +86,8 @@ MoveProcessor::HandleCharacterCreation (const std::string& name,
       return;
     }
 
-  auto newChar = characters.CreateNew (name, charName);
+  /* FIXME: Allow setting the faction through the move.  */
+  auto newChar = characters.CreateNew (name, charName, Faction::RED);
   newChar->SetPosition (HexCoord (0, 0));
 }
 

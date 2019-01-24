@@ -71,7 +71,7 @@ protected:
   MovementTests ()
     : params(xaya::Chain::MAIN), tbl(db)
   {
-    const auto h = tbl.CreateNew ("domob", "foo");
+    const auto h = tbl.CreateNew ("domob", "foo", Faction::RED);
     CHECK_EQ (h->GetId (), 1);
   }
 

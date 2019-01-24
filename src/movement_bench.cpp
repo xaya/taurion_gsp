@@ -57,7 +57,7 @@ MovementOneSegment (benchmark::State& state)
       std::ostringstream name;
       name << "char " << i;
 
-      const auto h = tbl.CreateNew ("domob", name.str ());
+      const auto h = tbl.CreateNew ("domob", name.str (), Faction::RED);
       charIds.push_back (h->GetId ());
     }
 
@@ -123,7 +123,7 @@ MovementLongHaul (benchmark::State& state)
   const HexCoord::IntT total = state.range (1);
 
   CharacterTable tbl(db);
-  const auto id = tbl.CreateNew ("domob", "test")->GetId ();
+  const auto id = tbl.CreateNew ("domob", "test", Faction::RED)->GetId ();
 
   for (auto _ : state)
     {

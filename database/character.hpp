@@ -2,6 +2,7 @@
 #define DATABASE_CHARACTER_HPP
 
 #include "database.hpp"
+#include "faction.hpp"
 
 #include "hexagonal/coord.hpp"
 #include "hexagonal/pathfinder.hpp"
@@ -40,6 +41,9 @@ private:
   /** The name of the character as string.  */
   std::string name;
 
+  /** The character's faction.  */
+  Faction faction;
+
   /** The current position.  */
   HexCoord pos;
 
@@ -68,7 +72,8 @@ private:
    * Constructs a new character with an auto-generated ID meant to be inserted
    * into the database.
    */
-  explicit Character (Database& d, const std::string& o, const std::string& n);
+  explicit Character (Database& d, const std::string& o, const std::string& n,
+                      Faction f);
 
   /**
    * Constructs a character instance based on the given query result.  This
@@ -123,6 +128,12 @@ public:
   GetName () const
   {
     return name;
+  }
+
+  Faction
+  GetFaction () const
+  {
+    return faction;
   }
 
   const HexCoord&
@@ -196,7 +207,8 @@ public:
    * Returns a Character handle for a fresh instance corresponding to a new
    * character that will be created.
    */
-  Handle CreateNew (const std::string& owner, const std::string& name);
+  Handle CreateNew (const std::string& owner, const std::string& name,
+                    Faction faction);
 
   /**
    * Returns a handle for the instance based on a Database::Result.

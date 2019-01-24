@@ -11,6 +11,11 @@ CREATE TABLE IF NOT EXISTS `characters` (
   -- that we can verify uniqueness when creating a new character.
   `name` TEXT NOT NULL UNIQUE,
 
+  -- The faction (as integer corresponding to the Faction enum in C++).
+  -- We need this for querying combat targets, which should be possible to
+  -- do without decoding the proto.
+  `faction` INTEGER NOT NULL,
+
   -- Current position of the character on the map.  We need this in the table
   -- so that we can look characters up based on "being near" a given other
   -- coordinate.  Coordinates are in the axial system (as everywhere else

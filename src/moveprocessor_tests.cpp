@@ -211,7 +211,7 @@ protected:
                   const std::string& name)
   {
     db.SetNextId (id);
-    tbl.CreateNew (owner, name);
+    tbl.CreateNew (owner, name, Faction::RED);
 
     auto h = tbl.GetById (id);
     CHECK (h != nullptr);
