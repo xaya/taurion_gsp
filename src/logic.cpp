@@ -62,7 +62,8 @@ void
 PXLogic::GetInitialStateBlock (unsigned& height,
                                std::string& hashHex) const
 {
-  switch (GetChain ())
+  const xaya::Chain chain = GetChain ();
+  switch (chain)
     {
     case xaya::Chain::MAIN:
       height = 430000;
@@ -83,7 +84,7 @@ PXLogic::GetInitialStateBlock (unsigned& height,
       break;
 
     default:
-      LOG (FATAL) << "Unexpected chain: " << xaya::ChainToString (GetChain ());
+      LOG (FATAL) << "Unexpected chain: " << xaya::ChainToString (chain);
     }
 }
 
@@ -97,7 +98,7 @@ void
 PXLogic::UpdateState (sqlite3* db, const Json::Value& blockData)
 {
   SQLiteGameDatabase dbObj(*this);
-  const Params params(GetChain ());
+  const Params params(GetContext ().GetChain ());
 
   MoveProcessor mvProc(dbObj, params);
   mvProc.ProcessAll (blockData["moves"]);
