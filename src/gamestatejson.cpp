@@ -10,6 +10,35 @@
 namespace pxd
 {
 
+namespace
+{
+
+/**
+ * Converts a TargetId proto to its JSON gamestate form.
+ */
+Json::Value
+TargetIdToJson (const proto::TargetId& target)
+{
+  Json::Value res(Json::objectValue);
+  res["id"] = static_cast<int> (target.id ());
+
+  switch (target.type ())
+    {
+    case proto::TargetId::TYPE_CHARACTER:
+      res["type"] = "character";
+      break;
+    case proto::TargetId::TYPE_BUILDING:
+      res["type"] = "building";
+      break;
+    default:
+      LOG (FATAL) << "Invalid target type: " << target.type ();
+    }
+
+  return res;
+}
+
+} // anonymous namespace
+
 Json::Value
 CharacterToJson (const Character& c)
 {
@@ -62,6 +91,12 @@ CharacterToJson (const Character& c)
     }
   if (mv.size () > 0)
     res["movement"] = mv;
+
+  Json::Value combat(Json::objectValue);
+  if (pb.has_target ())
+    combat["target"] = TargetIdToJson (pb.target ());
+  if (combat.size () > 0)
+    res["combat"] = combat;
 
   return res;
 }
