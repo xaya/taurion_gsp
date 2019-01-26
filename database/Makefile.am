@@ -70,7 +70,8 @@ benchmarks_LDADD = \
   $(top_builddir)/proto/libpxproto.la \
   $(JSON_LIBS) $(GLOG_LIBS) $(PROTOBUF_LIBS) $(BENCHMARK_LIBS)
 benchmarks_SOURCES = \
-  character_bench.cpp
+  character_bench.cpp \
+  target_bench.cpp
 
 schema.cpp: schema_head.cpp schema.sql schema_tail.cpp
 	cat $^ >$@
