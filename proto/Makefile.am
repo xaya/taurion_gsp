@@ -1,6 +1,6 @@
 noinst_LTLIBRARIES = libpxproto.la
 
-PROTOS = character.proto geometry.proto
+PROTOS = character.proto combat.proto geometry.proto
 EXTRA_DIST = $(PROTOS)
 
 BUILT_SOURCES = $(PROTOS:.proto=.pb.h)
