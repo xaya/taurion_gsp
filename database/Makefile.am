@@ -16,12 +16,14 @@ libdatabase_la_SOURCES = \
   character.cpp \
   database.cpp \
   faction.cpp \
-  schema.cpp
+  schema.cpp \
+  target.cpp
 noinst_HEADERS = \
   character.hpp \
   database.hpp \
   faction.hpp \
-  schema.hpp
+  schema.hpp \
+  target.hpp
 
 check_LTLIBRARIES = libdbtest.la
 check_PROGRAMS = tests benchmarks
@@ -55,7 +57,8 @@ tests_SOURCES = \
   character_tests.cpp \
   database_tests.cpp \
   faction_tests.cpp \
-  schema_tests.cpp
+  schema_tests.cpp \
+  target_tests.cpp
 
 benchmarks_CXXFLAGS = \
   -I$(top_srcdir) \

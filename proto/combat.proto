@@ -1,0 +1,29 @@
+syntax = "proto2";
+
+package pxd.proto;
+
+/**
+ * Identifier for a target of attacks.  This can be either a character (in a
+ * vehicle on the map) or a building.
+ */
+message TargetId
+{
+
+  /**
+   * Different types of target.  The type determines where the data is stored
+   * in the database and how it is accessed.
+   */
+  enum Type
+  {
+    INVALID_TYPE = 0;
+    TYPE_CHARACTER = 1;
+    TYPE_BUILDING = 2;
+  }
+
+  /** The type of this target.  */
+  optional Type type = 1;
+
+  /** The database ID of this target entity (based on its type).  */
+  optional uint64 id = 2;
+
+}
