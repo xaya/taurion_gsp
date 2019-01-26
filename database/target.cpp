@@ -1,5 +1,7 @@
 #include "target.hpp"
 
+#include "rangequery.hpp"
+
 namespace pxd
 {
 
@@ -9,22 +11,15 @@ TargetFinder::ProcessL1Targets (const HexCoord& centre,
                                 const Faction faction,
                                 const ProcessingFcn& cb)
 {
+  const L1RangeQuery rq(db, centre, l1range);
 
   auto stmt = db.Prepare (R"(
     SELECT `x`, `y`, `id` FROM `characters`
-      WHERE (`x` BETWEEN ?1 AND ?2) AND (`y` BETWEEN ?3 AND ?4)
-              AND `faction` != ?5
+  )" + rq.GetJoinClause () + R"(
+      WHERE `faction` != ?1
       ORDER BY `id`
   )");
-
-  /* The query is actually about an L-infinity range, since that is easy
-     to formulate in the database.  This certainly includes the L1 range.  */
-  stmt.Bind<int> (1, centre.GetX () - l1range);
-  stmt.Bind<int> (2, centre.GetX () + l1range);
-  stmt.Bind<int> (3, centre.GetY () - l1range);
-  stmt.Bind<int> (4, centre.GetY () + l1range);
-
-  BindFactionParameter (stmt, 5, faction);
+  BindFactionParameter (stmt, 1, faction);
 
   auto res = stmt.Query ("targets");
   while (res.Step ())

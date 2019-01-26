@@ -16,12 +16,14 @@ libdatabase_la_SOURCES = \
   character.cpp \
   database.cpp \
   faction.cpp \
+  rangequery.cpp \
   schema.cpp \
   target.cpp
 noinst_HEADERS = \
   character.hpp \
   database.hpp \
   faction.hpp \
+  rangequery.hpp \
   schema.hpp \
   target.hpp
 
