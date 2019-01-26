@@ -1,5 +1,6 @@
 syntax = "proto2";
 
+import "combat.proto";
 import "geometry.proto";
 
 package pxd.proto;
@@ -53,6 +54,9 @@ message Character
 
   /** Active movement of the character, if any.  */
   optional Movement movement = 1;
+
+  /** The attacked target (if any).  */
+  optional TargetId target = 2;
 
   /* Fields that are stored directly in the database and thus not part of the
      encoded protocol buffer:

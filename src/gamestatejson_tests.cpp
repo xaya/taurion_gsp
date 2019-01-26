@@ -187,6 +187,37 @@ TEST_F (CharacterJsonTests, MultipleStep)
   })");
 }
 
+TEST_F (CharacterJsonTests, Target)
+{
+  auto c = tbl.CreateNew ("domob", "foo", Faction::RED);
+  auto* targetProto = c->MutableProto ().mutable_target ();
+  targetProto->set_id (5);
+  targetProto->set_type (proto::TargetId::TYPE_CHARACTER);
+  c.reset ();
+
+  c = tbl.CreateNew ("domob", "bar", Faction::GREEN);
+  targetProto = c->MutableProto ().mutable_target ();
+  targetProto->set_id (42);
+  targetProto->set_type (proto::TargetId::TYPE_BUILDING);
+  c.reset ();
+
+  tbl.CreateNew ("domob", "baz", Faction::BLUE);
+
+  ExpectStateJson (R"({
+    "characters":
+      [
+        {"id": 1, "name": "foo", "owner": "domob", "faction": "r",
+         "position": {"x": 0, "y": 0},
+         "target": {"id": 5, "type": "character"}},
+        {"id": 2, "name": "bar", "owner": "domob", "faction": "g",
+         "position": {"x": 0, "y": 0},
+         "target": {"id": 42, "type": "building"}},
+        {"id": 3, "name": "baz", "owner": "domob", "faction": "b",
+         "position": {"x": 0, "y": 0}}
+      ]
+  })");
+}
+
 /* ************************************************************************** */
 
 } // anonymous namespace
