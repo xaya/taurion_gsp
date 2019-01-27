@@ -18,6 +18,14 @@ Database::Prepare (const std::string& sql)
 /* ************************************************************************** */
 
 void
+Database::Statement::Reset ()
+{
+  sqlite3_reset (stmt);
+  CHECK_EQ (sqlite3_clear_bindings (stmt), SQLITE_OK);
+  run = false;
+}
+
+void
 Database::Statement::Execute ()
 {
   CHECK (!run) << "Database statement has already been run";

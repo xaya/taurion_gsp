@@ -107,6 +107,34 @@ TEST_F (DatabaseTests, BindingAndQuery)
   });
 }
 
+TEST_F (DatabaseTests, StatementReset)
+{
+  auto stmt = db.Prepare ("INSERT INTO `test` (`id`, `flag`) VALUES (?1, ?2)");
+
+  stmt.Bind (1, 42);
+  stmt.Bind (2, true);
+  stmt.Execute ();
+
+  stmt.Reset ();
+  stmt.Bind (1, 50);
+  /* Do not bind parameter 2, so it is NULL.  This verifies that the parameter
+     bindings are reset completely.  */
+  stmt.Execute ();
+
+  stmt = db.Prepare ("SELECT `id`, `flag` FROM `test` ORDER BY `id`");
+  auto res = stmt.Query ();
+
+  ASSERT_TRUE (res.Step ());
+  EXPECT_EQ (res.Get<int> ("id"), 42);
+  EXPECT_EQ (res.Get<bool> ("flag"), true);
+
+  ASSERT_TRUE (res.Step ());
+  EXPECT_EQ (res.Get<int> ("id"), 50);
+  EXPECT_EQ (res.Get<bool> ("flag"), false);
+
+  ASSERT_FALSE (res.Step ());
+}
+
 TEST_F (DatabaseTests, ProtoIsOverwritten)
 {
   proto::HexCoord coord;

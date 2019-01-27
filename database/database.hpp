@@ -130,6 +130,12 @@ public:
   void BindProto (unsigned ind, const google::protobuf::Message& msg);
 
   /**
+   * Resets the statement so it can be used again with fresh bindings
+   * and fresh execution from start.
+   */
+  void Reset ();
+
+  /**
    * Executes the statement without expecting any results.  This is used for
    * statements other than SELECT.
    */
