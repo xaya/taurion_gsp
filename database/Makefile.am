@@ -16,12 +16,14 @@ libdatabase_la_SOURCES = \
   character.cpp \
   database.cpp \
   faction.cpp \
+  fighter.cpp \
   schema.cpp \
   target.cpp
 noinst_HEADERS = \
   character.hpp \
   database.hpp \
   faction.hpp \
+  fighter.hpp \
   schema.hpp \
   target.hpp
 
@@ -57,6 +59,7 @@ tests_SOURCES = \
   character_tests.cpp \
   database_tests.cpp \
   faction_tests.cpp \
+  fighter_tests.cpp \
   schema_tests.cpp \
   target_tests.cpp
 
