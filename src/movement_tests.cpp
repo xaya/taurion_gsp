@@ -236,7 +236,5 @@ TEST_F (MovementTests, CharacterInObstacle)
     });
 }
 
-// Also: Start obstacles when the character is right inside.
-
 } // anonymous namespace
 } // namespace pxd

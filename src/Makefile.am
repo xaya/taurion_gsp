@@ -17,6 +17,7 @@ libpx_la_LIBADD = \
   $(top_builddir)/proto/libpxproto.la \
   $(XAYAGAME_LIBS) $(JSON_LIBS) $(GLOG_LIBS) $(PROTOBUF_LIBS)
 libpx_la_SOURCES = \
+  combat.cpp \
   gamestatejson.cpp \
   jsonutils.cpp \
   movement.cpp \
@@ -25,6 +26,7 @@ libpx_la_SOURCES = \
   protoutils.cpp
 libpxheaders = \
   amount.hpp \
+  combat.hpp \
   gamestatejson.hpp \
   jsonutils.hpp \
   movement.hpp \
@@ -72,6 +74,7 @@ tests_LDADD = \
   $(GTEST_MAIN_LIBS) \
   $(JSON_LIBS) $(GTEST_LIBS) $(GLOG_LIBS) $(PROTOBUF_LIBS)
 tests_SOURCES = \
+  combat_tests.cpp \
   gamestatejson_tests.cpp \
   jsonutils_tests.cpp \
   movement_tests.cpp \

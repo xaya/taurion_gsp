@@ -1,5 +1,6 @@
 #include "logic.hpp"
 
+#include "combat.hpp"
 #include "gamestatejson.hpp"
 #include "movement.hpp"
 #include "moveprocessor.hpp"
@@ -104,6 +105,7 @@ PXLogic::UpdateState (sqlite3* db, const Json::Value& blockData)
   mvProc.ProcessAll (blockData["moves"]);
 
   ProcessAllMovement (dbObj, params, map.GetEdgeWeights ());
+  FindCombatTargets (dbObj, GetContext ().GetRandom ());
 }
 
 Json::Value
