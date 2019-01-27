@@ -93,6 +93,7 @@ benchmarks_LDADD = \
   $(top_builddir)/proto/libpxproto.la \
   $(JSON_LIBS) $(GLOG_LIBS) $(PROTOBUF_LIBS) $(BENCHMARK_LIBS)
 benchmarks_SOURCES = \
+  combat_bench.cpp \
   movement_bench.cpp
 
 rpc-stubs/pxrpcserverstub.h: $(srcdir)/rpc-stubs/pxd.json

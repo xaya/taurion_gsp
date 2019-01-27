@@ -3,8 +3,9 @@
 #include "params.hpp"
 #include "protoutils.hpp"
 
-#include "database/dbtest.hpp"
 #include "database/character.hpp"
+#include "database/dbtest.hpp"
+#include "database/faction.hpp"
 #include "database/schema.hpp"
 #include "hexagonal/coord.hpp"
 #include "hexagonal/pathfinder.hpp"
