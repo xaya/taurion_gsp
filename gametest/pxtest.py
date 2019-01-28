@@ -10,6 +10,50 @@ DEVADDR = "dHNvNaqcD7XPDnoRjAoyfcMpHRi5upJD7p"
 CHARACTER_COST = 5
 
 
+class Character (object):
+  """
+  Wrapper class around a character in the game state (already existing).
+  This gives utility access for test cases.
+  """
+
+  def __init__ (self, test, data):
+    """
+    Constructs the wrapper.  It records a reference to the PXTest case
+    (so that it can send moves) and the JSON data from the game state.
+    """
+
+    self.test = test
+    self.data = data
+
+  def getId (self):
+    return self.data["id"]
+
+  def getPosition (self):
+    return self.data["position"]
+
+  def isMoving (self):
+    return "movement" in self.data
+
+  def sendMove (self, mv):
+    """
+    Sends a move to update the given character with the given data.
+    """
+
+    idStr = "%d" % self.data["id"]
+    return self.test.sendMove (self.data["owner"], {"c": {idStr: mv}})
+
+  def expectPartial (self, expected):
+    """
+    Expects that the data matches the values in the expected dictionary.
+    Keys that are not present in expected are ignored (and may be present
+    in the actual data).
+    """
+
+    for key, val in expected.iteritems ():
+      assert key in self.data
+      self.test.assertEqual (self.data[key], val)
+
+
 class PXTest (XayaGameTest):
   """
   Integration test for the Project X game daemon.
@@ -30,19 +74,32 @@ class PXTest (XayaGameTest):
 
     return self.sendMove (name, move, {"sendCoins": {DEVADDR: devAmount}})
 
-  def characterId (self, charName):
+  def createCharacter (self, owner, name, faction):
     """
-    Finds the ID of the character with the given name.  The ID is returned
-    as string, so that it can be used in JSON dictionaries for sending updates
-    for that character.
+    Utility method to send a move creating a character.
+    """
+
+    data = {
+      "name": name,
+      "faction": faction,
+    }
+
+    return self.moveWithPayment (owner, {"nc": data}, CHARACTER_COST)
+
+  def getCharacters (self):
+    """
+    Retrieves the existing characters from the current game state.
     """
 
     state = self.getGameState ()
-    for c in state['characters']:
-      if c['name'] == charName:
-        return "%d" % c['id']
+    assert "characters" in state
 
-    raise AssertionError ("No character with name '%s' found" % charName)
+    res = {}
+    for c in state["characters"]:
+      assert "name" in c
+      res[c["name"]] = Character (self, c)
+
+    return res
 
   def assertEqual (self, a, b):
     """

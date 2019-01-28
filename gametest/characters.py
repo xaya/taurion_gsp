@@ -11,7 +11,7 @@ them and retrieving them through RPC).
 
 class CharactersTest (PXTest):
 
-  def expectPartial (self, chars):
+  def expectPartial (self, expected):
     """
     Expects that the list of characters in the current game state matches
     the given partial values.  chars must be a dictionary indexed by the
@@ -20,23 +20,18 @@ class CharactersTest (PXTest):
     are compared.  Extra keys in the actual state are ignored.
     """
 
-    state = self.getGameState ()
-    assert "characters" in state
-    self.assertEqual (len (chars), len (state["characters"]))
+    chars = self.getCharacters ()
+    self.assertEqual (len (chars), len (expected))
 
-    for c in state["characters"]:
-      assert "name" in c
-      assert c["name"] in chars
-      for key, val in chars[c["name"]].iteritems ():
-        assert key in c
-        self.assertEqual (val, c[key])
+    for nm, c in chars.iteritems ():
+      assert nm in expected
+      c.expectPartial (expected[nm])
 
   def run (self):
     self.generate (101);
 
     self.mainLogger.info ("Creating first character...")
-    self.moveWithPayment ("domob", {"nc": {"name": "adam", "faction": "r"}},
-                          CHARACTER_COST)
+    self.createCharacter ("domob", "adam", "r")
     self.sendMove ("", {"nc": {"name": "eve", "faction": "r"}})
     self.generate (1)
     self.expectPartial ({
@@ -44,16 +39,14 @@ class CharactersTest (PXTest):
     })
 
     self.mainLogger.info ("Already existing name cannot be recreated...")
-    self.moveWithPayment ("", {"nc": {"name": "adam", "faction": "g"}},
-                          CHARACTER_COST)
+    self.createCharacter ("", "adam", "g")
     self.generate (1)
     self.expectPartial ({
       "adam": {"owner": "domob"},
     })
 
     self.mainLogger.info ("Testing \"\" as owner name...")
-    self.moveWithPayment ("", {"nc": {"name": "eve", "faction": "g"}},
-                          CHARACTER_COST)
+    self.createCharacter ("", "eve", "g")
     self.generate (1)
     self.expectPartial ({
       "adam": {"owner": "domob", "faction": "r"},
@@ -61,8 +54,7 @@ class CharactersTest (PXTest):
     })
 
     self.mainLogger.info ("Creating second character for domob...")
-    self.moveWithPayment ("domob", {"nc": {"name": "foo", "faction": "b"}},
-                          CHARACTER_COST)
+    self.createCharacter ("domob", "foo", "b")
     self.generate (1)
     self.expectPartial ({
       "adam": {"owner": "domob", "faction": "r"},
@@ -71,8 +63,7 @@ class CharactersTest (PXTest):
     })
 
     self.mainLogger.info ("Testing Unicode names...")
-    self.moveWithPayment (u"ß", {"nc": {"name": u"äöü", "faction": "b"}},
-                          CHARACTER_COST)
+    self.createCharacter (u"ß", u"äöü", "b")
     self.generate (1)
     self.expectPartial ({
       "adam": {"owner": "domob"},
@@ -82,8 +73,8 @@ class CharactersTest (PXTest):
     })
 
     self.mainLogger.info ("Transfering a character...")
-    charId = self.characterId ("adam")
-    self.sendMove ("domob", {"c": {charId: {"send": "andy"}}})
+    c = self.getCharacters ()["adam"]
+    c.sendMove ({"send": "andy"})
     self.generate (1)
     self.expectPartial ({
       "adam": {"owner": "andy"},
@@ -91,7 +82,8 @@ class CharactersTest (PXTest):
       "foo": {"owner": "domob"},
       u"äöü": {"owner": u"ß"},
     })
-    self.sendMove ("andy", {"c": {charId: {"send": ""}}})
+    c = self.getCharacters ()["adam"]
+    c.sendMove ({"send": ""})
     self.generate (1)
     self.expectPartial ({
       "adam": {"owner": ""},
@@ -101,7 +93,9 @@ class CharactersTest (PXTest):
     })
 
     self.mainLogger.info ("Non-owner cannot update the character...")
-    self.sendMove ("domob", {"c": {charId: {"send": "domob"}}})
+    c = self.getCharacters ()["adam"]
+    idStr = "%d" % c.getId ()
+    self.sendMove ("domob", {"c": {idStr: {"send": "domob"}}})
     self.generate (1)
     self.expectPartial ({
       "adam": {"owner": ""},
@@ -126,8 +120,7 @@ class CharactersTest (PXTest):
     self.rpc.xaya.invalidateblock (blk)
 
     self.generate (101)
-    self.moveWithPayment ("domob", {"nc": {"name": "alt", "faction": "b"}},
-                          CHARACTER_COST)
+    self.createCharacter ("domob", "alt", "b")
     self.generate (1)
     self.expectPartial ({
       "alt": {"owner": "domob"},

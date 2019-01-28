@@ -9,23 +9,13 @@ Tests movement of characters on the map.
 
 class MovementTest (PXTest):
 
-  def setWaypoints (self, name, character, wp):
+  def setWaypoints (self, character, wp):
     """
-    Sends a move with the given Xaya name to update the waypoints
-    of the character with the given name.  The character ID (as needed
-    for sending the move) is looked up from the game state.
+    Sends a move to update the waypoints of the character with the given name.
     """
 
-    state = self.getGameState ()
-    charId = None
-    for c in state["characters"]:
-      if c["name"] == character:
-        charId = c["id"]
-        break
-    assert charId is not None
-
-    idStr = "%d" % charId
-    self.sendMove (name, {"c": {idStr: {"wp": wp}}})
+    c = self.getCharacters ()[character]
+    return c.sendMove ({"wp": wp})
 
   def getMovement (self, character):
     """
@@ -34,14 +24,12 @@ class MovementTest (PXTest):
     of (position, movement).
     """
 
-    state = self.getGameState ()
-    for c in state["characters"]:
-      if c["name"] == character:
-        if "movement" in c:
-          return c["position"], c["movement"]
-        return c["position"], None
+    c = self.getCharacters ()[character]
 
-    raise AssertionError ("Character %s not found in the state" % character)
+    if c.isMoving ():
+      return c.getPosition (), c.data["movement"]
+
+    return c.getPosition (), None
 
   def expectMovement (self, character, wp):
     """
@@ -83,8 +71,7 @@ class MovementTest (PXTest):
     self.generate (101);
 
     self.mainLogger.info ("Creating test character...")
-    self.moveWithPayment ("domob", {"nc": {"name": "foo", "faction": "r"}},
-                          CHARACTER_COST)
+    self.createCharacter ("domob", "foo", "r")
     self.generate (1)
 
     self.mainLogger.info ("Setting basic path for character...")
@@ -96,7 +83,7 @@ class MovementTest (PXTest):
       {"x": -2, "y": -2},
       {"x": -2, "y": -2},
     ]
-    self.setWaypoints ("domob", "foo", wp)
+    self.setWaypoints ("foo", wp)
     self.generate (1)
     pos, mv = self.getMovement ("foo")
     self.assertEqual (mv["partialstep"], 750)
@@ -111,7 +98,7 @@ class MovementTest (PXTest):
       {"x": 99, "y": 1},
       {"x": 0, "y": -1},
     ]
-    self.setWaypoints ("domob", "foo", wp)
+    self.setWaypoints ("foo", wp)
     self.generate (200)
     pos, mv = self.getMovement ("foo")
     self.assertEqual (pos, {"x": 99, "y": 1})
@@ -138,7 +125,7 @@ class MovementTest (PXTest):
     wp = [
       {"x": -1, "y": 5},
     ]
-    self.setWaypoints ("domob", "foo", wp)
+    self.setWaypoints ("foo", wp)
     self.expectMovement ("foo", wp)
 
     self.rpc.xaya.reconsiderblock (blk)
