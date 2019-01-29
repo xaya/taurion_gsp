@@ -19,12 +19,19 @@ Fighter::GetPosition () const
   return character->GetPosition ();
 }
 
-HexCoord::IntT
-Fighter::GetRange () const
+const proto::CombatData&
+Fighter::GetCombatData () const
 {
-  /* FIXME: Some hardcoded dummy value for now.  Has to be adapted to a real
-     value once we have proper attacks / weapons somewhere in the proto.  */
-  return 10;
+  CHECK (character != nullptr);
+  const auto& pb = character->GetProto ();
+
+  /* Every character must have combat data to be valid.  This is set when
+     first created and then only updated.  Enforce this requirement here,
+     so that we do not accidentally work with an empty proto just because it
+     has not been initialised due to a bug.  */
+  CHECK (pb.has_combat_data ());
+
+  return pb.combat_data ();
 }
 
 void

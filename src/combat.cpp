@@ -5,6 +5,7 @@
 #include "database/target.hpp"
 #include "hexagonal/coord.hpp"
 
+#include <algorithm>
 #include <vector>
 
 namespace pxd
@@ -19,11 +20,26 @@ namespace
 void
 SelectTarget (TargetFinder& targets, xaya::Random& rnd, Fighter f)
 {
+  const HexCoord pos = f.GetPosition ();
+
+  const auto& data = f.GetCombatData ();
+  HexCoord::IntT range = 0;
+  for (const auto& attack : data.attacks ())
+    {
+      CHECK_GT (attack.range (), 0);
+      range = std::max<HexCoord::IntT> (range, attack.range ());
+    }
+  if (range == 0)
+    {
+      CHECK_EQ (data.attacks_size (), 0);
+      VLOG (1) << "Fighter at " << pos << " has no attacks";
+      return;
+    }
+
   HexCoord::IntT closestRange;
   std::vector<proto::TargetId> closestTargets;
 
-  const HexCoord pos = f.GetPosition ();
-  targets.ProcessL1Targets (pos, f.GetRange (), f.GetFaction (),
+  targets.ProcessL1Targets (pos, range, f.GetFaction (),
     [&] (const HexCoord& c, const proto::TargetId& id)
     {
       const HexCoord::IntT curDist = HexCoord::DistanceL1 (pos, c);
@@ -45,7 +61,7 @@ SelectTarget (TargetFinder& targets, xaya::Random& rnd, Fighter f)
 
   VLOG (1)
       << "Found " << closestTargets.size () << " targets in closest range "
-      << closestRange << " around " << f.GetPosition ();
+      << closestRange << " around " << pos;
 
   if (closestTargets.empty ())
     {

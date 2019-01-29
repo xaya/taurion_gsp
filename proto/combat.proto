@@ -27,3 +27,37 @@ message TargetId
   optional uint64 id = 2;
 
 }
+
+/**
+ * An attack that a character or building has.  This data is either hardcoded
+ * (for buildings) or derived from other stuff (like equipped weapons).  But
+ * it is stored in the current form in the game state as a sort of "cache"
+ * while processing combat in each round.  (It only needs to be updated
+ * when an explicit action is done by the owner of a character.)
+ */
+message Attack
+{
+
+  /** The range of the attack (as L1 distance on our hex grid).  */
+  optional uint32 range = 1;
+
+  /**
+   * The maximum damage done.  The actual damage will be chosen randomly from
+   * the range [1, maxdmg].
+   */
+  optional uint32 max_damage = 2;
+
+}
+
+/**
+ * All data related to combat that a fighter entity (character or building) has.
+ * This only includes basic properties of the fighter and not more dynamic
+ * data like the current target or the current HP.
+ */
+message CombatData
+{
+
+  /** The offensive attacks the figher has.  */
+  repeated Attack attacks = 1;
+
+}

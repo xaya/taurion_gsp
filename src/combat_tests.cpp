@@ -4,6 +4,7 @@
 #include "database/dbtest.hpp"
 #include "database/faction.hpp"
 #include "hexagonal/coord.hpp"
+#include "proto/combat.pb.h"
 
 #include <xayagame/hash.hpp>
 #include <xayagame/random.hpp>
@@ -40,6 +41,26 @@ protected:
     rnd.Seed (seed.Finalise ());
   }
 
+  /**
+   * Adds an attack with the given range to the character proto.
+   */
+  static void
+  AddAttackWithRange (proto::Character& pb, const HexCoord::IntT range)
+  {
+    auto* attack = pb.mutable_combat_data ()->add_attacks ();
+    attack->set_range (range);
+  }
+
+  /**
+   * Initialises the combat data proto so that it is "valid" but has
+   * no attacks.
+   */
+  static void
+  NoAttacks (proto::Character& pb)
+  {
+    pb.mutable_combat_data ();
+  }
+
 };
 
 TEST_F (TargetSelectionTests, NoTargets)
@@ -48,18 +69,21 @@ TEST_F (TargetSelectionTests, NoTargets)
   const auto id1 = c->GetId ();
   c->SetPosition (HexCoord (-10, 0));
   c->MutableProto ().mutable_target ();
+  AddAttackWithRange (c->MutableProto (), 10);
   c.reset ();
 
   c = characters.CreateNew ("domob", "bar", Faction::RED);
   const auto id2 = c->GetId ();
   c->SetPosition (HexCoord (-10, 1));
   c->MutableProto ().mutable_target ();
+  AddAttackWithRange (c->MutableProto (), 10);
   c.reset ();
 
   c = characters.CreateNew ("domob", "baz", Faction::GREEN);
   const auto id3 = c->GetId ();
   c->SetPosition (HexCoord (10, 0));
   c->MutableProto ().mutable_target ();
+  AddAttackWithRange (c->MutableProto (), 10);
   c.reset ();
 
   FindCombatTargets (db, rnd);
@@ -74,15 +98,18 @@ TEST_F (TargetSelectionTests, ClosestTarget)
   auto c = characters.CreateNew ("domob", "foo", Faction::RED);
   const auto idFighter = c->GetId ();
   c->SetPosition (HexCoord (0, 0));
+  AddAttackWithRange (c->MutableProto (), 10);
   c.reset ();
 
   c = characters.CreateNew ("domob", "bar", Faction::GREEN);
   c->SetPosition (HexCoord (2, 2));
+  AddAttackWithRange (c->MutableProto (), 10);
   c.reset ();
 
   c = characters.CreateNew ("domob", "baz", Faction::GREEN);
   const auto idTarget = c->GetId ();
   c->SetPosition (HexCoord (1, 1));
+  AddAttackWithRange (c->MutableProto (), 10);
   c.reset ();
 
   /* Since target selection is randomised, run this multiple times to ensure
@@ -99,6 +126,32 @@ TEST_F (TargetSelectionTests, ClosestTarget)
     }
 }
 
+TEST_F (TargetSelectionTests, MultipleAttacks)
+{
+  auto c = characters.CreateNew ("domob", "foo", Faction::RED);
+  const auto id1 = c->GetId ();
+  c->SetPosition (HexCoord (0, 0));
+  AddAttackWithRange (c->MutableProto (), 1);
+  AddAttackWithRange (c->MutableProto (), 10);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", "bar", Faction::GREEN);
+  const auto id2 = c->GetId ();
+  c->SetPosition (HexCoord (7, 0));
+  NoAttacks (c->MutableProto ());
+  c.reset ();
+
+  FindCombatTargets (db, rnd);
+
+  c = characters.GetById (id1);
+  const auto& pb = c->GetProto ();
+  ASSERT_TRUE (pb.has_target ());
+  EXPECT_EQ (pb.target ().type (), proto::TargetId::TYPE_CHARACTER);
+  EXPECT_EQ (pb.target ().id (), id2);
+
+  EXPECT_FALSE (characters.GetById (id2)->GetProto ().has_target ());
+}
+
 TEST_F (TargetSelectionTests, Randomisation)
 {
   constexpr unsigned nTargets = 5;
@@ -108,6 +161,7 @@ TEST_F (TargetSelectionTests, Randomisation)
   auto c = characters.CreateNew ("domob", "foo", Faction::RED);
   const auto idFighter = c->GetId ();
   c->SetPosition (HexCoord (0, 0));
+  AddAttackWithRange (c->MutableProto (), 10);
   c.reset ();
 
   std::map<Database::IdT, unsigned> targetMap;
@@ -119,6 +173,7 @@ TEST_F (TargetSelectionTests, Randomisation)
       c = characters.CreateNew ("domob", name.str (), Faction::GREEN);
       targetMap.emplace (c->GetId (), i);
       c->SetPosition (HexCoord (1, 1));
+      NoAttacks (c->MutableProto ());
       c.reset ();
     }
   ASSERT_EQ (targetMap.size (), nTargets);

@@ -218,6 +218,32 @@ TEST_F (CharacterJsonTests, Target)
   })");
 }
 
+TEST_F (CharacterJsonTests, Attacks)
+{
+  auto c = tbl.CreateNew ("domob", "foo", Faction::RED);
+  auto* cd = c->MutableProto ().mutable_combat_data ();
+  auto* attack = cd->add_attacks ();
+  attack->set_range (5);
+  attack->set_max_damage (10);
+  attack = cd->add_attacks ();
+  attack->set_range (1);
+  attack->set_max_damage (1);
+  c.reset ();
+
+  ExpectStateJson (R"({
+    "characters":
+      [
+        {"id": 1, "name": "foo", "owner": "domob", "faction": "r",
+         "position": {"x": 0, "y": 0},
+         "combat": {"attacks": [
+          {"range": 5, "maxdamage": 10},
+          {"range": 1, "maxdamage": 1}
+         ]}
+        }
+      ]
+  })");
+}
+
 /* ************************************************************************** */
 
 } // anonymous namespace

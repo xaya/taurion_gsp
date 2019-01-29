@@ -37,6 +37,32 @@ TargetIdToJson (const proto::TargetId& target)
   return res;
 }
 
+/**
+ * Computes the "combat" sub-object for a Character's JSON state.
+ */
+Json::Value
+GetCombatJsonObject (const Character& c)
+{
+  Json::Value res(Json::objectValue);
+
+  const auto& pb = c.GetProto ();
+  if (pb.has_target ())
+    res["target"] = TargetIdToJson (pb.target ());
+
+  Json::Value attacks(Json::arrayValue);
+  for (const auto& attack : pb.combat_data ().attacks ())
+    {
+      Json::Value obj(Json::objectValue);
+      obj["range"] = static_cast<int> (attack.range ());
+      obj["maxdamage"] = static_cast<int> (attack.max_damage ());
+      attacks.append (obj);
+    }
+  if (!attacks.empty ())
+    res["attacks"] = attacks;
+
+  return res;
+}
+
 } // anonymous namespace
 
 Json::Value
@@ -89,13 +115,11 @@ CharacterToJson (const Character& c)
           mv["steps"] = path;
         }
     }
-  if (mv.size () > 0)
+  if (!mv.empty ())
     res["movement"] = mv;
 
-  Json::Value combat(Json::objectValue);
-  if (pb.has_target ())
-    combat["target"] = TargetIdToJson (pb.target ());
-  if (combat.size () > 0)
+  const Json::Value combat = GetCombatJsonObject (c);
+  if (!combat.empty ())
     res["combat"] = combat;
 
   return res;

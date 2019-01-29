@@ -4,6 +4,7 @@
 #include "character.hpp"
 
 #include "hexagonal/coord.hpp"
+#include "proto/combat.pb.h"
 
 #include <functional>
 
@@ -54,9 +55,9 @@ public:
   const HexCoord& GetPosition () const;
 
   /**
-   * Returns the maximum attack range in which we have to look for targets.
+   * Returns the combat data proto for this fighter.
    */
-  HexCoord::IntT GetRange () const;
+  const proto::CombatData& GetCombatData () const;
 
   /**
    * Sets the target of this fighter to the given proto.

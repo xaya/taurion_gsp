@@ -102,6 +102,18 @@ MoveProcessor::HandleCharacterCreation (const std::string& name,
 
   auto newChar = characters.CreateNew (name, charName, faction);
   newChar->SetPosition (HexCoord (0, 0));
+
+  /* For now, we just define some stats that every character has.  This will
+     be changed later when the stats can be modified and are dynamic
+     themselves.  */
+  auto& pb = newChar->MutableProto ();
+  auto* cd = pb.mutable_combat_data ();
+  auto* attack = cd->add_attacks ();
+  attack->set_range (10);
+  attack->set_max_damage (1);
+  attack = cd->add_attacks ();
+  attack->set_range (1);
+  attack->set_max_damage (5);
 }
 
 namespace

@@ -149,6 +149,21 @@ TEST_F (CharacterCreationTests, ValidCreation)
   EXPECT_FALSE (res.Step ());
 }
 
+TEST_F (CharacterCreationTests, InitialData)
+{
+  ProcessWithDevPayment (R"([
+    {"name": "domob", "move": {"nc": {"name": "foo", "faction": "r"}}}
+  ])", params.CharacterCost ());
+
+  CharacterTable tbl(db);
+  auto c = tbl.GetById (1);
+  ASSERT_TRUE (c != nullptr);
+  ASSERT_EQ (c->GetName (), "foo");
+
+  EXPECT_TRUE (c->GetProto ().has_combat_data ());
+  EXPECT_EQ (c->GetProto ().combat_data ().attacks_size (), 2);
+}
+
 TEST_F (CharacterCreationTests, DevPayment)
 {
   Process (R"([

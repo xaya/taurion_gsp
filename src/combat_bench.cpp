@@ -44,6 +44,9 @@ InsertCharacters (Database& db, const Faction f,
 
             auto c = tbl.CreateNew ("domob", name.str (), f);
             c->SetPosition (pos);
+            auto& pb = c->MutableProto ();
+            auto* attack = pb.mutable_combat_data ()->add_attacks ();
+            attack->set_range (10);
             c.reset ();
           }
       }

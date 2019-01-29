@@ -36,6 +36,7 @@ TEST_F (FighterTests, Characters)
   auto c = characters.CreateNew ("domob", "foo", Faction::RED);
   const auto id1 = c->GetId ();
   c->SetPosition (HexCoord (2, 5));
+  c->MutableProto ().mutable_combat_data ()->add_attacks ();
   c.reset ();
 
   c = characters.CreateNew ("domob", "bar", Faction::GREEN);
@@ -53,6 +54,7 @@ TEST_F (FighterTests, Characters)
         case Faction::RED:
           {
             EXPECT_EQ (f.GetPosition (), HexCoord (2, 5));
+            EXPECT_EQ (f.GetCombatData ().attacks_size (), 1);
 
             proto::TargetId t;
             t.set_id (5);

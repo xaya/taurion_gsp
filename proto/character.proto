@@ -58,6 +58,14 @@ message Character
   /** The attacked target (if any).  */
   optional TargetId target = 2;
 
+  /**
+   * Static combat data for thie character.  That data is derived from other
+   * information (e.g. equipped weapons, current vehicle), but it is cached
+   * here for easy computation of combat.  The data here changes only
+   * through explicit actions done by the owner.
+   */
+  optional CombatData combat_data = 3;
+
   /* Fields that are stored directly in the database and thus not part of the
      encoded protocol buffer:
 
