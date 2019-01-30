@@ -7,6 +7,7 @@
 #include "hexagonal/coord.hpp"
 #include "hexagonal/pathfinder.hpp"
 #include "proto/character.pb.h"
+#include "proto/combat.pb.h"
 
 #include <memory>
 #include <string>
@@ -52,6 +53,9 @@ private:
    * yet or there is no movement, it will be zero.
    */
   PathFinder::DistanceT partialStep;
+
+  /** Current HP proto.  */
+  proto::HP hp;
 
   /** All other data in the protocol buffer.  */
   proto::Character data;
@@ -164,6 +168,19 @@ public:
   {
     dirtyFields = true;
     partialStep = val;
+  }
+
+  const proto::HP&
+  GetHP () const
+  {
+    return hp;
+  }
+
+  proto::HP&
+  MutableHP ()
+  {
+    dirtyFields = true;
+    return hp;
   }
 
   const proto::Character&

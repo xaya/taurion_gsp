@@ -32,6 +32,7 @@ TEST_F (CharacterTests, Creation)
   auto c = tbl.CreateNew  ("domob", "abc", Faction::RED);
   c->SetPosition (pos);
   const auto id1 = c->GetId ();
+  c->MutableHP ().set_armour (10);
   c.reset ();
 
   c = tbl.CreateNew ("domob", u8"äöü", Faction::GREEN);
@@ -48,6 +49,7 @@ TEST_F (CharacterTests, Creation)
   EXPECT_EQ (c->GetName (), "abc");
   EXPECT_EQ (c->GetFaction (), Faction::RED);
   EXPECT_EQ (c->GetPosition (), pos);
+  EXPECT_EQ (c->GetHP ().armour (), 10);
   EXPECT_FALSE (c->GetProto ().has_movement ());
 
   ASSERT_TRUE (res.Step ());
@@ -73,12 +75,14 @@ TEST_F (CharacterTests, ModificationWithProto)
   EXPECT_EQ (c->GetOwner (), "domob");
   EXPECT_EQ (c->GetPosition (), HexCoord (0, 0));
   EXPECT_EQ (c->GetPartialStep (), 0);
+  EXPECT_FALSE (c->GetHP ().has_shield ());
   EXPECT_FALSE (c->GetProto ().has_movement ());
   ASSERT_FALSE (res.Step ());
 
   c->SetOwner ("andy");
   c->SetPosition (pos);
   c->SetPartialStep (10);
+  c->MutableHP ().set_shield (5);
   c->MutableProto ().mutable_movement ();
   c.reset ();
 
@@ -90,6 +94,7 @@ TEST_F (CharacterTests, ModificationWithProto)
   EXPECT_EQ (c->GetFaction (), Faction::RED);
   EXPECT_EQ (c->GetPosition (), pos);
   EXPECT_EQ (c->GetPartialStep (), 10);
+  EXPECT_EQ (c->GetHP ().shield (), 5);
   EXPECT_TRUE (c->GetProto ().has_movement ());
   ASSERT_FALSE (res.Step ());
 }
@@ -105,6 +110,7 @@ TEST_F (CharacterTests, ModificationFieldsOnly)
   c->SetOwner ("andy");
   c->SetPosition (pos);
   c->SetPartialStep (42);
+  c->MutableHP ().set_shield (5);
   c.reset ();
 
   c = tbl.GetById (1);
@@ -114,6 +120,7 @@ TEST_F (CharacterTests, ModificationFieldsOnly)
   EXPECT_EQ (c->GetFaction (), Faction::RED);
   EXPECT_EQ (c->GetPosition (), pos);
   EXPECT_EQ (c->GetPartialStep (), 42);
+  EXPECT_EQ (c->GetHP ().shield (), 5);
 }
 
 TEST_F (CharacterTests, EmptyNameNotAllowed)

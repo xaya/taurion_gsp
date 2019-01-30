@@ -69,6 +69,17 @@ public:
    */
   void ClearTarget ();
 
+  /**
+   * Returns a read-only reference to the current HP.
+   */
+  const proto::HP& GetHP () const;
+
+  /**
+   * Returns a mutable reference to the current HP so that they can be modified
+   * (for dealing damage and for regenerating the shield).
+   */
+  proto::HP& MutableHP ();
+
 };
 
 /**

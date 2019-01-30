@@ -37,6 +37,7 @@ TEST_F (FighterTests, Characters)
   const auto id1 = c->GetId ();
   c->SetPosition (HexCoord (2, 5));
   c->MutableProto ().mutable_combat_data ()->add_attacks ();
+  c->MutableHP ().set_armour (10);
   c.reset ();
 
   c = characters.CreateNew ("domob", "bar", Faction::GREEN);
@@ -56,6 +57,10 @@ TEST_F (FighterTests, Characters)
             EXPECT_EQ (f.GetPosition (), HexCoord (2, 5));
             EXPECT_EQ (f.GetCombatData ().attacks_size (), 1);
 
+            auto& hp = f.MutableHP ();
+            EXPECT_EQ (hp.armour (), 10);
+            hp.set_armour (5);
+
             proto::TargetId t;
             t.set_id (5);
             f.SetTarget (t);
@@ -74,7 +79,11 @@ TEST_F (FighterTests, Characters)
     });
   EXPECT_EQ (cnt, 2);
 
-  EXPECT_EQ (characters.GetById (id1)->GetProto ().target ().id (), 5);
+  c = characters.GetById (id1);
+  EXPECT_EQ (c->GetProto ().target ().id (), 5);
+  EXPECT_EQ (c->GetHP ().armour (), 5);
+  c.reset ();
+
   EXPECT_FALSE (characters.GetById (id2)->GetProto ().has_target ());
 }
 

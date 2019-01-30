@@ -50,6 +50,30 @@ message Attack
 }
 
 /**
+ * Small utility message to hold stats about HP (both the permanent
+ * armour-based ones and the regenerating shield).
+ */
+message HP
+{
+
+  /** The "permanent" armour based HP.  */
+  optional uint32 armour = 1;
+
+  /** The regenerating, shield-based HP.  */
+  optional uint32 shield = 2;
+
+  /**
+   * Partially regnerated shield HP.  This is in units of 1/1000 HP point,
+   * so that the shield is incremented by one when this reaches 1000.
+   *
+   * This field is only present for the current HP of a fighter, not the
+   * maximum HP in its CombatData.
+   */
+  optional uint32 shield_mhp = 3;
+
+}
+
+/**
  * All data related to combat that a fighter entity (character or building) has.
  * This only includes basic properties of the fighter and not more dynamic
  * data like the current target or the current HP.
@@ -59,5 +83,11 @@ message CombatData
 
   /** The offensive attacks the figher has.  */
   repeated Attack attacks = 1;
+
+  /** Maximum HP of the fighter.  */
+  optional HP max_hp = 2;
+
+  /** Regeneration rate of shield HP in "milli HP per block".  */
+  optional uint32 shield_regeneration_mhp = 3;
 
 }

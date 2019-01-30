@@ -54,6 +54,20 @@ Fighter::ClearTarget ()
     character->MutableProto ().clear_target ();
 }
 
+const proto::HP&
+Fighter::GetHP () const
+{
+  CHECK (character != nullptr);
+  return character->GetHP ();
+}
+
+proto::HP&
+Fighter::MutableHP ()
+{
+  CHECK (character != nullptr);
+  return character->MutableHP ();
+}
+
 void
 FighterTable::ProcessAll (const Callback& cb)
 {

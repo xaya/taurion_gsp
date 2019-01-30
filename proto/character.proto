@@ -75,6 +75,7 @@ message Character
      - int faction
      - position on the map
      - partial movement towards next tile
+     - current HP proto
   */
 
 }

@@ -31,6 +31,13 @@ CREATE TABLE IF NOT EXISTS `characters` (
   -- along the stepped path.
   `partialstep` INTEGER,
 
+  -- Current HP data as an encoded HP proto.  This is stored directly in
+  -- the database rather than the "proto" BLOB since it is a field that
+  -- is changed frequently (e.g. during HP regeneration) and without
+  -- any explicit action.  Thus having it separate reduces performance
+  -- costs and undo data size.
+  `hp` BLOB NOT NULL,
+
   -- Flag indicating if the character is currently moving.  This is set
   -- based on the encoded protocol buffer when updating the table, and is
   -- used so that we can efficiently retrieve only those characters that are

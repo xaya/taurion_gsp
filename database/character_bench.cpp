@@ -107,6 +107,7 @@ CharacterFieldsUpdate (benchmark::State& state)
       {
         const auto h = tbl.GetById (charIds[i]);
         h->SetPartialStep (cnt++);
+        h->MutableHP ().set_armour (42);
       }
 }
 BENCHMARK (CharacterFieldsUpdate)

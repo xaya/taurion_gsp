@@ -106,14 +106,23 @@ MoveProcessor::HandleCharacterCreation (const std::string& name,
   /* For now, we just define some stats that every character has.  This will
      be changed later when the stats can be modified and are dynamic
      themselves.  */
+
   auto& pb = newChar->MutableProto ();
   auto* cd = pb.mutable_combat_data ();
+
   auto* attack = cd->add_attacks ();
   attack->set_range (10);
   attack->set_max_damage (1);
   attack = cd->add_attacks ();
   attack->set_range (1);
   attack->set_max_damage (5);
+
+  auto* maxHP = cd->mutable_max_hp ();
+  maxHP->set_armour (100);
+  maxHP->set_shield (30);
+  cd->set_shield_regeneration_mhp (500);
+
+  newChar->MutableHP () = *maxHP;
 }
 
 namespace

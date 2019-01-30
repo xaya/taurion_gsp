@@ -26,6 +26,7 @@ Character::Character (Database& d, const Database::Result& res)
   faction = GetFactionFromColumn (res, "faction");
   pos = HexCoord (res.Get<int> ("x"), res.Get<int> ("y"));
   partialStep = res.Get<int> ("partialstep");
+  res.GetProto ("hp", hp);
   res.GetProto ("proto", data);
 
   VLOG (1) << "Fetched character with ID " << id << " from database result";
@@ -45,20 +46,22 @@ Character::~Character ()
         INSERT OR REPLACE INTO `characters`
           (`id`,
            `owner`, `x`, `y`, `partialstep`,
+           `hp`,
            `name`, `faction`,
            `ismoving`, `proto`)
           VALUES
           (?1,
            ?2, ?3, ?4, ?5,
-           ?6, ?7,
-           ?8, ?9)
+           ?6,
+           ?7, ?8,
+           ?9, ?10)
       )");
 
       BindFieldValues (stmt);
-      stmt.Bind (6, name);
-      BindFactionParameter (stmt, 7, faction);
-      stmt.Bind (8, data.has_movement ());
-      stmt.BindProto (9, data);
+      stmt.Bind (7, name);
+      BindFactionParameter (stmt, 8, faction);
+      stmt.Bind (9, data.has_movement ());
+      stmt.BindProto (10, data);
       stmt.Execute ();
 
       return;
@@ -72,7 +75,7 @@ Character::~Character ()
 
       auto stmt = db.Prepare (R"(
         UPDATE `characters`
-          SET `owner` = ?2, `x` = ?3, `y` = ?4, `partialstep` = ?5
+          SET `owner` = ?2, `x` = ?3, `y` = ?4, `partialstep` = ?5, `hp` = ?6
           WHERE `id` = ?1
       )");
 
@@ -96,6 +99,7 @@ Character::BindFieldValues (Database::Statement& stmt) const
     stmt.BindNull (5);
   else
     stmt.Bind<int> (5, partialStep);
+  stmt.BindProto (6, hp);
 }
 
 CharacterTable::Handle
