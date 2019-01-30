@@ -1,8 +1,12 @@
 #ifndef PXD_LOGIC_HPP
 #define PXD_LOGIC_HPP
 
+#include "params.hpp"
+
+#include "database/database.hpp"
 #include "mapdata/basemap.hpp"
 
+#include <xayagame/random.hpp>
 #include <xayagame/sqlitegame.hpp>
 
 #include <sqlite3.h>
@@ -30,6 +34,16 @@ private:
   /** The underlying base map data.  */
   const BaseMap map;
 
+  /**
+   * Handles the actual logic for the game-state update.  This is extracted
+   * here out of UpdateState, so that it can be accessed from unit tests
+   * independently of SQLiteGame.
+   */
+  static void UpdateState (Database& db, xaya::Random& rnd,
+                           const Params& params, const BaseMap& map,
+                           const Json::Value& blockData);
+
+  friend class PXLogicTests;
   friend class PXRpcServer;
   friend class SQLiteGameDatabase;
 

@@ -4,9 +4,7 @@
 #include "gamestatejson.hpp"
 #include "movement.hpp"
 #include "moveprocessor.hpp"
-#include "params.hpp"
 
-#include "database/database.hpp"
 #include "database/schema.hpp"
 
 #include <glog/logging.h>
@@ -52,6 +50,18 @@ public:
   }
 
 };
+
+void
+PXLogic::UpdateState (Database& db, xaya::Random& rnd,
+                      const Params& params, const BaseMap& map,
+                      const Json::Value& blockData)
+{
+  MoveProcessor mvProc(db, params);
+  mvProc.ProcessAll (blockData["moves"]);
+
+  ProcessAllMovement (db, params, map.GetEdgeWeights ());
+  FindCombatTargets (db, rnd);
+}
 
 void
 PXLogic::SetupSchema (sqlite3* db)
@@ -101,11 +111,7 @@ PXLogic::UpdateState (sqlite3* db, const Json::Value& blockData)
   SQLiteGameDatabase dbObj(*this);
   const Params params(GetContext ().GetChain ());
 
-  MoveProcessor mvProc(dbObj, params);
-  mvProc.ProcessAll (blockData["moves"]);
-
-  ProcessAllMovement (dbObj, params, map.GetEdgeWeights ());
-  FindCombatTargets (dbObj, GetContext ().GetRandom ());
+  UpdateState (dbObj, GetContext ().GetRandom (), params, map, blockData);
 }
 
 Json::Value

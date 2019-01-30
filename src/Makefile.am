@@ -20,6 +20,7 @@ libpx_la_SOURCES = \
   combat.cpp \
   gamestatejson.cpp \
   jsonutils.cpp \
+  logic.cpp \
   movement.cpp \
   moveprocessor.cpp \
   params.cpp \
@@ -29,6 +30,7 @@ libpxheaders = \
   combat.hpp \
   gamestatejson.hpp \
   jsonutils.hpp \
+  logic.hpp \
   movement.hpp \
   moveprocessor.hpp \
   params.hpp \
@@ -48,10 +50,8 @@ pxd_LDADD = \
   $(GLOG_LIBS) $(GFLAGS_LIBS) $(PROTOBUF_LIBS) \
   -lstdc++fs
 pxd_SOURCES = main.cpp \
-  logic.cpp \
   pxrpcserver.cpp
 pxdheaders = \
-  logic.hpp \
   pxrpcserver.hpp \
   \
   rpc-stubs/pxrpcserverstub.h
@@ -70,6 +70,7 @@ tests_LDADD = \
   $(top_builddir)/database/libdbtest.la \
   $(top_builddir)/database/libdatabase.la \
   $(top_builddir)/hexagonal/libhexagonal.la \
+  $(top_builddir)/mapdata/libmapdata.la \
   $(top_builddir)/proto/libpxproto.la \
   $(GTEST_MAIN_LIBS) \
   $(JSON_LIBS) $(GTEST_LIBS) $(GLOG_LIBS) $(PROTOBUF_LIBS)
@@ -77,6 +78,7 @@ tests_SOURCES = \
   combat_tests.cpp \
   gamestatejson_tests.cpp \
   jsonutils_tests.cpp \
+  logic_tests.cpp \
   movement_tests.cpp \
   moveprocessor_tests.cpp \
   protoutils_tests.cpp
