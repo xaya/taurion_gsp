@@ -397,7 +397,7 @@ TEST_F (CharacterJsonTests, Target)
       [
         {"name": "foo", "combat": {"target": {"id": 5, "type": "character"}}},
         {"name": "bar", "combat": {"target": {"id": 42, "type": "building"}}},
-        {"name": "baz", "combat": null}
+        {"name": "baz", "combat": {"target": null}}
       ]
   })");
 }
@@ -425,6 +425,36 @@ TEST_F (CharacterJsonTests, Attacks)
                   {"range": 5, "maxdamage": 10},
                   {"range": 1, "maxdamage": 1}
                 ]
+            }
+        }
+      ]
+  })");
+}
+
+TEST_F (CharacterJsonTests, HP)
+{
+  auto c = tbl.CreateNew ("domob", "foo", Faction::RED);
+  c->MutableHP ().set_armour (42);
+  c->MutableHP ().set_shield (5);
+  c->MutableHP ().set_shield_mhp (1);
+  auto* cd = c->MutableProto ().mutable_combat_data ();
+  cd->mutable_max_hp ()->set_armour (100);
+  cd->mutable_max_hp ()->set_shield (10);
+  cd->set_shield_regeneration_mhp (1001);
+  c.reset ();
+
+  ExpectStateJson (R"({
+    "characters":
+      [
+        {
+          "combat":
+            {
+              "hp":
+                {
+                  "max": {"armour": 100, "shield": 10},
+                  "current": {"armour": 42, "shield": 5.001},
+                  "regeneration": 1.001
+                }
             }
         }
       ]

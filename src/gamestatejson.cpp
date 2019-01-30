@@ -38,6 +38,24 @@ TargetIdToJson (const proto::TargetId& target)
 }
 
 /**
+ * Converts an HP proto to a JSON form.
+ */
+Json::Value
+HpProtoToJson (const proto::HP& hp)
+{
+  Json::Value res(Json::objectValue);
+  res["armour"] = static_cast<int> (hp.armour ());
+
+  const int baseShield = hp.shield ();
+  if (hp.shield_mhp () == 0)
+    res["shield"] = baseShield;
+  else
+    res["shield"] = baseShield + hp.shield_mhp () / 1000.0;
+
+  return res;
+}
+
+/**
  * Computes the "combat" sub-object for a Character's JSON state.
  */
 Json::Value
@@ -60,6 +78,12 @@ GetCombatJsonObject (const Character& c)
   if (!attacks.empty ())
     res["attacks"] = attacks;
 
+  Json::Value hp(Json::objectValue);
+  hp["max"] = HpProtoToJson (pb.combat_data ().max_hp ());
+  hp["current"] = HpProtoToJson (c.GetHP ());
+  hp["regeneration"] = pb.combat_data ().shield_regeneration_mhp () / 1000.0;
+  res["hp"] = hp;
+
   return res;
 }
 
@@ -76,6 +100,7 @@ CharacterToJson (const Character& c)
   res["name"] = c.GetName ();
   res["faction"] = FactionToString (c.GetFaction ());
   res["position"] = CoordToJson (c.GetPosition ());
+  res["combat"] = GetCombatJsonObject (c);
 
   Json::Value mv(Json::objectValue);
   if (c.GetPartialStep () != 0)
@@ -117,10 +142,6 @@ CharacterToJson (const Character& c)
     }
   if (!mv.empty ())
     res["movement"] = mv;
-
-  const Json::Value combat = GetCombatJsonObject (c);
-  if (!combat.empty ())
-    res["combat"] = combat;
 
   return res;
 }
