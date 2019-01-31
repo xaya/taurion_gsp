@@ -34,6 +34,15 @@ Fighter::GetCombatData () const
   return pb.combat_data ();
 }
 
+const proto::TargetId&
+Fighter::GetTarget () const
+{
+  CHECK (character != nullptr);
+  const auto& pb = character->GetProto ();
+  CHECK (pb.has_target ());
+  return pb.target ();
+}
+
 void
 Fighter::SetTarget (const proto::TargetId& target)
 {
@@ -69,9 +78,42 @@ Fighter::MutableHP ()
 }
 
 void
+Fighter::reset ()
+{
+  character.reset ();
+}
+
+bool
+Fighter::empty () const
+{
+  return character == nullptr;
+}
+
+Fighter
+FighterTable::GetForTarget (const proto::TargetId& id)
+{
+  switch (id.type ())
+    {
+    case proto::TargetId::TYPE_CHARACTER:
+      return Fighter (characters.GetById (id.id ()));
+
+    default:
+      LOG (FATAL) << "Invalid target type: " << static_cast<int> (id.type ());
+    }
+}
+
+void
 FighterTable::ProcessAll (const Callback& cb)
 {
   auto res = characters.QueryAll ();
+  while (res.Step ())
+    cb (Fighter (characters.GetFromResult (res)));
+}
+
+void
+FighterTable::ProcessWithTarget (const Callback& cb)
+{
+  auto res = characters.QueryWithTarget ();
   while (res.Step ())
     cb (Fighter (characters.GetFromResult (res)));
 }

@@ -69,6 +69,7 @@ TEST_F (FighterTests, Characters)
           }
 
         case Faction::GREEN:
+          EXPECT_EQ (f.GetTarget ().id (), 42);
           f.ClearTarget ();
           break;
 
@@ -85,6 +86,47 @@ TEST_F (FighterTests, Characters)
   c.reset ();
 
   EXPECT_FALSE (characters.GetById (id2)->GetProto ().has_target ());
+}
+
+TEST_F (FighterTests, GetForTarget)
+{
+  auto c = characters.CreateNew ("domob", "foo", Faction::RED);
+  const auto id = c->GetId ();
+  c->SetPosition (HexCoord (42, -35));
+  c.reset ();
+
+  proto::TargetId targetId;
+  targetId.set_type (proto::TargetId::TYPE_CHARACTER);
+  targetId.set_id (id);
+
+  auto f = tbl.GetForTarget (targetId);
+  EXPECT_EQ (f.GetPosition (), HexCoord (42, -35));
+  f.MutableHP ().set_shield (42);
+  f.reset ();
+
+  targetId.set_id (100);
+  EXPECT_TRUE (tbl.GetForTarget (targetId).empty ());
+
+  c = characters.GetById (id);
+  EXPECT_EQ (c->GetHP ().shield (), 42);
+  c.reset ();
+}
+
+TEST_F (FighterTests, ProcessWithTarget)
+{
+  auto c = characters.CreateNew ("domob", "foo", Faction::RED);
+  c->MutableProto ().mutable_target ()->set_id (5);
+  c.reset ();
+
+  characters.CreateNew ("domob", "bar", Faction::GREEN);
+
+  unsigned cnt = 0;
+  tbl.ProcessWithTarget ([this, &cnt] (Fighter f)
+    {
+      ++cnt;
+      EXPECT_EQ (f.GetFaction (), Faction::RED);
+    });
+  EXPECT_EQ (cnt, 1);
 }
 
 } // anonymous namespace

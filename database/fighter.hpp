@@ -27,7 +27,7 @@ private:
   /**
    * Construct a fighter based on a character handle.
    */
-  explicit Fighter (CharacterTable::Handle&& c)
+  explicit Fighter (CharacterTable::Handle c)
     : character(std::move (c))
   {}
 
@@ -60,6 +60,11 @@ public:
   const proto::CombatData& GetCombatData () const;
 
   /**
+   * Returns the target.  This must only be called if there is one.
+   */
+  const proto::TargetId& GetTarget () const;
+
+  /**
    * Sets the target of this fighter to the given proto.
    */
   void SetTarget (const proto::TargetId& target);
@@ -79,6 +84,16 @@ public:
    * (for dealing damage and for regenerating the shield).
    */
   proto::HP& MutableHP ();
+
+  /**
+   * Resets the handle to be empty.
+   */
+  void reset ();
+
+  /**
+   * Checks whether or not this is an "empty" pointer.
+   */
+  bool empty () const;
 
 };
 
@@ -110,10 +125,21 @@ public:
   void operator= (const FighterTable&) = delete;
 
   /**
+   * Retrieves the fighter handle for the given target ID.
+   */
+  Fighter GetForTarget (const proto::TargetId& id);
+
+  /**
    * Retrieves all fighters from the database and runs the callback
    * on each one.
    */
   void ProcessAll (const Callback& cb);
+
+  /**
+   * Retrieves and processes all fighers that have a target, i.e. for whom
+   * we need to deal damage.
+   */
+  void ProcessWithTarget (const Callback& cb);
 
 };
 
