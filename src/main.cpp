@@ -45,7 +45,7 @@ main (int argc, char** argv)
   google::InitGoogleLogging (argv[0]);
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
-  gflags::SetUsageMessage ("Run Project X game daemon");
+  gflags::SetUsageMessage ("Run Tauron game daemon");
   gflags::SetVersionString (PACKAGE_VERSION);
   gflags::ParseCommandLineFlags (&argc, &argv, true);
 

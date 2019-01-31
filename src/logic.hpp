@@ -21,7 +21,7 @@ namespace pxd
 class SQLiteGameDatabase;
 
 /**
- * The game logic implementation for Project X.  This is the main class that
+ * The game logic implementation for Tauron.  This is the main class that
  * acts as the game-specific code, interacting with libxayagame and the Xaya
  * daemon.  By itself, it is combining the various other classes and functions
  * that implement the real game logic.

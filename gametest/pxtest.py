@@ -57,7 +57,7 @@ class Character (object):
 
 class PXTest (XayaGameTest):
   """
-  Integration test for the Project X game daemon.
+  Integration test for the Tauron game daemon.
   """
 
   def __init__ (self):
