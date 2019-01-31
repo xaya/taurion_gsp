@@ -6,6 +6,7 @@ import re
 from jsonrpclib import ProtocolError
 
 
+GAMEID = "tn"
 DEVADDR = "dHNvNaqcD7XPDnoRjAoyfcMpHRi5upJD7p"
 CHARACTER_COST = 5
 
@@ -64,7 +65,7 @@ class PXTest (XayaGameTest):
     if top_builddir is None:
       top_builddir = ".."
     pxd = os.path.join (top_builddir, "src", "pxd")
-    super (PXTest, self).__init__ ("px", pxd)
+    super (PXTest, self).__init__ (GAMEID, pxd)
 
   def moveWithPayment (self, name, move, devAmount):
     """

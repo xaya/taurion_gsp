@@ -37,7 +37,7 @@ DEFINE_string (datadir, "",
 
 namespace fs = std::experimental::filesystem;
 
-constexpr const char GAME_ID[] = "px";
+constexpr const char GAME_ID[] = "tn";
 
 int
 main (int argc, char** argv)
