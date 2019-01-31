@@ -64,8 +64,8 @@ class PXTest (XayaGameTest):
     top_builddir = os.getenv ("top_builddir")
     if top_builddir is None:
       top_builddir = ".."
-    pxd = os.path.join (top_builddir, "src", "pxd")
-    super (PXTest, self).__init__ (GAMEID, pxd)
+    binary = os.path.join (top_builddir, "src", "taurond")
+    super (PXTest, self).__init__ (GAMEID, binary)
 
   def moveWithPayment (self, name, move, devAmount):
     """

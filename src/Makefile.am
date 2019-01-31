@@ -1,5 +1,5 @@
-noinst_LTLIBRARIES = libpx.la
-bin_PROGRAMS = pxd
+noinst_LTLIBRARIES = libtauron.la
+bin_PROGRAMS = taurond
 
 EXTRA_DIST = rpc-stubs/pxd.json
 
@@ -8,15 +8,15 @@ RPC_STUBS = \
 BUILT_SOURCES = $(RPC_STUBS)
 CLEANFILES = $(RPC_STUBS)
 
-libpx_la_CXXFLAGS = \
+libtauron_la_CXXFLAGS = \
   -I$(top_srcdir) \
   $(XAYAGAME_CFLAGS) $(JSON_CFLAGS) $(GLOG_CFLAGS) $(PROTOBUF_CFLAGS)
-libpx_la_LIBADD = \
+libtauron_la_LIBADD = \
   $(top_builddir)/database/libdatabase.la \
   $(top_builddir)/hexagonal/libhexagonal.la \
   $(top_builddir)/proto/libpxproto.la \
   $(XAYAGAME_LIBS) $(JSON_LIBS) $(GLOG_LIBS) $(PROTOBUF_LIBS)
-libpx_la_SOURCES = \
+libtauron_la_SOURCES = \
   combat.cpp \
   gamestatejson.cpp \
   jsonutils.cpp \
@@ -25,7 +25,7 @@ libpx_la_SOURCES = \
   moveprocessor.cpp \
   params.cpp \
   protoutils.cpp
-libpxheaders = \
+libtauronheaders = \
   amount.hpp \
   combat.hpp \
   gamestatejson.hpp \
@@ -36,27 +36,27 @@ libpxheaders = \
   params.hpp \
   protoutils.hpp
 
-pxd_CXXFLAGS = \
+taurond_CXXFLAGS = \
   -I$(top_srcdir) \
   $(XAYAGAME_CFLAGS) \
   $(JSON_CFLAGS) \
   $(GLOG_CFLAGS) $(GFLAGS_CFLAGS) $(PROTOBUF_CFLAGS)
-pxd_LDADD = \
-  $(builddir)/libpx.la \
+taurond_LDADD = \
+  $(builddir)/libtauron.la \
   $(top_builddir)/mapdata/libmapdata.la \
   $(top_builddir)/database/libdatabase.la \
   $(XAYAGAME_LIBS) \
   $(JSON_LIBS) \
   $(GLOG_LIBS) $(GFLAGS_LIBS) $(PROTOBUF_LIBS) \
   -lstdc++fs
-pxd_SOURCES = main.cpp \
+taurond_SOURCES = main.cpp \
   pxrpcserver.cpp
-pxdheaders = \
+taurondheaders = \
   pxrpcserver.hpp \
   \
   rpc-stubs/pxrpcserverstub.h
 
-noinst_HEADERS = $(libpxheaders) $(pxdheaders)
+noinst_HEADERS = $(libtauronheaders) $(taurondheaders)
 
 check_PROGRAMS = tests benchmarks
 TESTS = tests benchmarks
@@ -66,7 +66,7 @@ tests_CXXFLAGS = \
   $(GTEST_MAIN_CFLAGS) \
   $(JSON_CFLAGS) $(GTEST_CFLAGS) $(GLOG_CFLAGS) $(PROTOBUF_CFLAGS)
 tests_LDADD = \
-  $(builddir)/libpx.la \
+  $(builddir)/libtauron.la \
   $(top_builddir)/database/libdbtest.la \
   $(top_builddir)/database/libdatabase.la \
   $(top_builddir)/hexagonal/libhexagonal.la \
@@ -87,7 +87,7 @@ benchmarks_CXXFLAGS = \
   -I$(top_srcdir) \
   $(JSON_CFLAGS) $(GLOG_CFLAGS) $(PROTOBUF_CFLAGS) $(BENCHMARK_CFLAGS)
 benchmarks_LDADD = \
-  $(builddir)/libpx.la \
+  $(builddir)/libtauron.la \
   $(top_builddir)/database/libdbtest.la \
   $(top_builddir)/database/libdatabase.la \
   $(top_builddir)/hexagonal/libbenchmain.la \
