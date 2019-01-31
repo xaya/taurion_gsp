@@ -171,6 +171,29 @@ TEST_F (CharacterTableTests, QueryMoving)
   ASSERT_FALSE (res.Step ());
 }
 
+TEST_F (CharacterTableTests, QueryWithTarget)
+{
+  auto c = tbl.CreateNew ("domob", "foo", Faction::RED);
+  const auto id1 = c->GetId ();
+  c->MutableProto ().mutable_target ()->set_id (5);
+  c.reset ();
+
+  const auto id2 = tbl.CreateNew ("domob", "bar", Faction::GREEN)->GetId ();
+
+  auto res = tbl.QueryWithTarget ();
+  ASSERT_TRUE (res.Step ());
+  EXPECT_EQ (tbl.GetFromResult (res)->GetName (), "foo");
+  ASSERT_FALSE (res.Step ());
+
+  tbl.GetById (id1)->MutableProto ().clear_target ();
+  tbl.GetById (id2)->MutableProto ().mutable_target ()->set_id (42);
+
+  res = tbl.QueryWithTarget ();
+  ASSERT_TRUE (res.Step ());
+  EXPECT_EQ (tbl.GetFromResult (res)->GetName (), "bar");
+  ASSERT_FALSE (res.Step ());
+}
+
 TEST_F (CharacterTableTests, IsValidName)
 {
   tbl.CreateNew ("domob", "abc", Faction::RED);

@@ -48,20 +48,21 @@ Character::~Character ()
            `owner`, `x`, `y`, `partialstep`,
            `hp`,
            `name`, `faction`,
-           `ismoving`, `proto`)
+           `ismoving`, `hastarget`, `proto`)
           VALUES
           (?1,
            ?2, ?3, ?4, ?5,
            ?6,
            ?7, ?8,
-           ?9, ?10)
+           ?9, ?10, ?11)
       )");
 
       BindFieldValues (stmt);
       stmt.Bind (7, name);
       BindFactionParameter (stmt, 8, faction);
       stmt.Bind (9, data.has_movement ());
-      stmt.BindProto (10, data);
+      stmt.Bind (10, data.has_target ());
+      stmt.BindProto (11, data);
       stmt.Execute ();
 
       return;
@@ -151,6 +152,15 @@ CharacterTable::QueryMoving ()
 {
   auto stmt = db.Prepare (R"(
     SELECT * FROM `characters` WHERE `ismoving` ORDER BY `id`
+  )");
+  return stmt.Query ("characters");
+}
+
+Database::Result
+CharacterTable::QueryWithTarget ()
+{
+  auto stmt = db.Prepare (R"(
+    SELECT * FROM `characters` WHERE `hastarget` ORDER BY `id`
   )");
   return stmt.Query ("characters");
 }

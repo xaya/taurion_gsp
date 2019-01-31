@@ -44,6 +44,11 @@ CREATE TABLE IF NOT EXISTS `characters` (
   -- moving when we do move updates.
   `ismoving` INTEGER NOT NULL,
 
+  -- Flag indicating whether or not the character has a combat target.
+  -- This is used so we can later efficiently retrieve only those characters
+  -- that need to be processed for combat damage.
+  `hastarget` INTEGER NOT NULL,
+
   -- Additional data encoded as a Character protocol buffer.
   `proto` BLOB NOT NULL
 );
@@ -52,3 +57,4 @@ CREATE TABLE IF NOT EXISTS `characters` (
 CREATE INDEX IF NOT EXISTS `characters_owner` ON `characters` (`owner`);
 CREATE INDEX IF NOT EXISTS `characters_pos` ON `characters` (`x`, `y`);
 CREATE INDEX IF NOT EXISTS `characters_ismoving` ON `characters` (`ismoving`);
+CREATE INDEX IF NOT EXISTS `characters_hastarget` ON `characters` (`hastarget`);

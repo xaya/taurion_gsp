@@ -260,6 +260,12 @@ public:
   Database::Result QueryMoving ();
 
   /**
+   * Queries for all characters that have a combat target and thus need
+   * to be processed for damage.
+   */
+  Database::Result QueryWithTarget ();
+
+  /**
    * Verifies whether the given string is valid as name for a new character.
    * This means that it is non-empty and not yet used in the database.
    */
