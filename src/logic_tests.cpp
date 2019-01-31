@@ -100,6 +100,7 @@ TEST_F (PXLogicTests, MovementBeforeTargeting)
   const auto id1 = c->GetId ();
   auto* attack = c->MutableProto ().mutable_combat_data ()->add_attacks ();
   attack->set_range (10);
+  attack->set_max_damage (1);
   c.reset ();
 
   c = characters.CreateNew ("domob", "bar", Faction::GREEN);
@@ -127,6 +128,26 @@ TEST_F (PXLogicTests, MovementBeforeTargeting)
   const auto& t = c->GetProto ().target ();
   EXPECT_EQ (t.type (), proto::TargetId::TYPE_CHARACTER);
   EXPECT_EQ (t.id (), id2);
+}
+
+TEST_F (PXLogicTests, DamageInNextRound)
+{
+  auto c = characters.CreateNew ("domob", "attacker", Faction::RED);
+  auto* attack = c->MutableProto ().mutable_combat_data ()->add_attacks ();
+  attack->set_range (1);
+  attack->set_max_damage (1);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", "target", Faction::GREEN);
+  const auto idTarget = c->GetId ();
+  c->MutableHP ().set_armour (100);
+  c->MutableProto ().mutable_combat_data ();
+  c.reset ();
+
+  UpdateState ("[]");
+  EXPECT_EQ (characters.GetById (idTarget)->GetHP ().armour (), 100);
+  UpdateState ("[]");
+  EXPECT_EQ (characters.GetById (idTarget)->GetHP ().armour (), 99);
 }
 
 } // namespace pxd

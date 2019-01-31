@@ -13,6 +13,11 @@ namespace pxd
  */
 void FindCombatTargets (Database& db, xaya::Random& rnd);
 
+/**
+ * Deals damage from combat as well as handles dead characters.
+ */
+void DealCombatDamage (Database& db, xaya::Random& rnd);
+
 } // namespace pxd
 
 #endif // PXD_COMBAT_HPP

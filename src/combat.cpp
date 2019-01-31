@@ -82,10 +82,67 @@ FindCombatTargets (Database& db, xaya::Random& rnd)
   FighterTable fighters(characters);
   TargetFinder targets(db);
 
-  fighters.ProcessAll ([&targets, &rnd] (Fighter f)
+  fighters.ProcessAll ([&] (Fighter f)
     {
       SelectTarget (targets, rnd, std::move (f));
     });
+}
+
+namespace
+{
+
+/**
+ * Deals damage for one fighter with a target to the respective target.
+ */
+void
+DealDamage (FighterTable& fighters, xaya::Random& rnd, Fighter f)
+{
+  const auto& target = f.GetTarget ();
+  Fighter tf = fighters.GetForTarget (target);
+  const auto dist = HexCoord::DistanceL1 (f.GetPosition (), tf.GetPosition ());
+  const auto& cd = f.GetCombatData ();
+
+  unsigned dmg = 0;
+  for (const auto& attack : cd.attacks ())
+    {
+      if (dist > static_cast<int> (attack.range ()))
+        continue;
+      dmg += 1 + rnd.NextInt (attack.max_damage ());
+    }
+
+  if (dmg == 0)
+    {
+      VLOG (1) << "No damage done to target:\n" << target.DebugString ();
+      return;
+    }
+  VLOG (1)
+      << "Dealing " << dmg << " damage to target:\n" << target.DebugString ();
+
+  auto& hp = tf.MutableHP ();
+
+  const unsigned shieldDmg = std::min (dmg, hp.shield ());
+  hp.set_shield (hp.shield () - shieldDmg);
+  dmg -= shieldDmg;
+
+  const unsigned armourDmg = std::min (dmg, hp.armour ());
+  hp.set_armour (hp.armour () - armourDmg);
+  dmg -= armourDmg;
+}
+
+} // anonymous namespace
+
+void
+DealCombatDamage (Database& db, xaya::Random& rnd)
+{
+  CharacterTable characters(db);
+  FighterTable fighters(characters);
+
+  fighters.ProcessWithTarget ([&] (Fighter f)
+    {
+      DealDamage (fighters, rnd, std::move (f));
+    });
+
+  /* FIXME: Process also dead characters.  */
 }
 
 } // namespace pxd
