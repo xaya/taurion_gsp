@@ -150,7 +150,7 @@ TEST_F (PXLogicTests, DamageInNextRound)
   EXPECT_EQ (characters.GetById (idTarget)->GetHP ().armour (), 99);
 }
 
-TEST_F (PXLogicTests, DamageAndKills)
+TEST_F (PXLogicTests, DamageKillsRegeneration)
 {
   auto c = characters.CreateNew ("domob", "attacker", Faction::RED);
   auto* attack = c->MutableProto ().mutable_combat_data ()->add_attacks ();
@@ -160,15 +160,24 @@ TEST_F (PXLogicTests, DamageAndKills)
 
   c = characters.CreateNew ("domob", "target", Faction::GREEN);
   const auto idTarget = c->GetId ();
-  c->MutableHP ().set_shield (0);
-  c->MutableHP ().set_armour (1);
   c->MutableProto ().mutable_combat_data ();
   c.reset ();
 
-  /* One round to target, one to actually apply damage.  The damage will
-     kill the target.  */
+  /* Progress one round forward to target.  */
   UpdateState ("[]");
-  EXPECT_TRUE (characters.GetById (idTarget) != nullptr);
+
+  /* Update the target character so that it will be killed wil the attack,
+     but would regenerate HP if that were done before applying damage.  */
+  c = characters.GetById (idTarget);
+  ASSERT_TRUE (c != nullptr);
+  auto* cd = c->MutableProto ().mutable_combat_data ();
+  cd->set_shield_regeneration_mhp (2000);
+  cd->mutable_max_hp ()->set_shield (100);
+  c->MutableHP ().set_shield (1);
+  c->MutableHP ().set_armour (0);
+  c.reset ();
+
+  /* Now the attack should kill the target before it can regenerate.  */
   UpdateState ("[]");
   EXPECT_TRUE (characters.GetById (idTarget) == nullptr);
 }

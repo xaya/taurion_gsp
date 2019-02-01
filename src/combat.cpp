@@ -133,7 +133,13 @@ DealDamage (FighterTable& fighters, xaya::Random& rnd, Fighter f,
   VLOG (1) << "Total damage done: " << (shieldDmg + armourDmg);
   VLOG (1) << "Remaining total HP: " << (hp.armour () + hp.shield ());
   if (shieldDmg + armourDmg > 0 && hp.armour () + hp.shield () == 0)
-    dead.push_back (target);
+    {
+      /* Regenerated partial HP are ignored (i.e. you die even with 999/1000
+         partial HP).  Just make sure that the partial HP are not full yet
+         due to some bug.  */
+      CHECK_LT (hp.shield_mhp (), 1000);
+      dead.push_back (target);
+    }
 }
 
 } // anonymous namespace
@@ -169,6 +175,57 @@ ProcessKills (Database& db, const std::vector<proto::TargetId>& dead)
         LOG (FATAL)
             << "Invalid target type killed: " << static_cast<int> (id.type ());
       }
+}
+
+namespace
+{
+
+/**
+ * Applies HP regeneration (if any) to a given fighter.
+ */
+void
+RegenerateFighterHP (Fighter f)
+{
+  const auto& cd = f.GetCombatData ();
+  const auto& hp = f.GetHP ();
+
+  /* Make sure to return early if there is no regeneration at all.  This
+     ensures that we are not doing unnecessary database updates triggered
+     through MutableHP().  */
+  if (cd.shield_regeneration_mhp () == 0
+        || hp.shield () == cd.max_hp ().shield ())
+    return;
+
+  unsigned shield = hp.shield ();
+  unsigned mhp = hp.shield_mhp ();
+
+  mhp += cd.shield_regeneration_mhp ();
+  shield += mhp / 1000;
+  mhp %= 1000;
+
+  if (shield >= cd.max_hp ().shield ())
+    {
+      shield = cd.max_hp ().shield ();
+      mhp = 0;
+    }
+
+  auto& mutableHP = f.MutableHP ();
+  mutableHP.set_shield (shield);
+  mutableHP.set_shield_mhp (mhp);
+}
+
+} // anonymous namespace
+
+void
+RegenerateHP (Database& db)
+{
+  CharacterTable characters(db);
+  FighterTable fighters(characters);
+
+  fighters.ProcessAll ([] (Fighter f)
+    {
+      RegenerateFighterHP (std::move (f));
+    });
 }
 
 } // namespace pxd

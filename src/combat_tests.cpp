@@ -352,6 +352,7 @@ TEST_F (DealDamageTests, HpReduction)
       for (unsigned i = 0; i < trials; ++i)
         {
           c = characters.GetById (idTarget);
+          c->MutableHP ().set_shield_mhp (999);
           c->MutableHP ().set_shield (t.hpBeforeShield);
           c->MutableHP ().set_armour (t.hpBeforeArmour);
           c.reset ();
@@ -359,6 +360,7 @@ TEST_F (DealDamageTests, HpReduction)
           FindTargetsAndDamage ();
 
           c = characters.GetById (idTarget);
+          EXPECT_GE (c->GetHP ().shield_mhp (), 999);
           EXPECT_GE (c->GetHP ().shield (), t.hpAfterShield);
           EXPECT_GE (c->GetHP ().armour (), t.hpAfterArmour);
 
@@ -392,6 +394,7 @@ TEST_F (DealDamageTests, Kills)
   const auto id1 = c->GetId ();
   NoAttacks (c->MutableProto ());
   c->MutableHP ().set_shield (0);
+  c->MutableHP ().set_shield_mhp (999);
   c->MutableHP ().set_armour (1);
   c.reset ();
 
@@ -434,6 +437,54 @@ TEST_F (ProcessKillsTests, Works)
 
   EXPECT_TRUE (characters.GetById (id1) != nullptr);
   EXPECT_TRUE (characters.GetById (id2) == nullptr);
+}
+
+/* ************************************************************************** */
+
+using RegenerateHpTests = CombatTests;
+
+TEST_F (RegenerateHpTests, Works)
+{
+  auto c = characters.CreateNew ("domob", "foo", Faction::RED);
+  const auto id = c->GetId ();
+  auto* cd = c->MutableProto ().mutable_combat_data ();
+  cd->mutable_max_hp ()->set_shield (100);
+  c.reset ();
+
+  struct TestCase
+  {
+    unsigned mhpRegen;
+    unsigned mhpShieldBefore;
+    unsigned shieldBefore;
+    unsigned mhpShieldAfter;
+    unsigned shieldAfter;
+  };
+  const TestCase tests[] = {
+    {0, 100, 50, 100, 50},
+    {500, 0, 50, 500, 50},
+    {500, 500, 50, 0, 51},
+    {750, 750, 50, 500, 51},
+    {2000, 0, 50, 0, 52},
+    {500, 900, 99, 0, 100},
+    {100, 0, 100, 0, 100},
+    {2000, 999, 99, 0, 100},
+  };
+
+  for (const auto& t : tests)
+    {
+      c = characters.GetById (id);
+      c->MutableHP ().set_shield (t.shieldBefore);
+      c->MutableHP ().set_shield_mhp (t.mhpShieldBefore);
+      cd = c->MutableProto ().mutable_combat_data ();
+      cd->set_shield_regeneration_mhp (t.mhpRegen);
+      c.reset ();
+
+      RegenerateHP (db);
+
+      c = characters.GetById (id);
+      EXPECT_EQ (c->GetHP ().shield (), t.shieldAfter);
+      EXPECT_EQ (c->GetHP ().shield_mhp (), t.mhpShieldAfter);
+    }
 }
 
 /* ************************************************************************** */

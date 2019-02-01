@@ -28,6 +28,11 @@ std::vector<proto::TargetId> DealCombatDamage (Database& db, xaya::Random& rnd);
  */
 void ProcessKills (Database& db, const std::vector<proto::TargetId>& dead);
 
+/**
+ * Handles HP regeneration.
+ */
+void RegenerateHP (Database& db);
+
 } // namespace pxd
 
 #endif // PXD_COMBAT_HPP
