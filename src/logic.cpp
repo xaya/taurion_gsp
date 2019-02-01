@@ -56,7 +56,8 @@ PXLogic::UpdateState (Database& db, xaya::Random& rnd,
                       const Params& params, const BaseMap& map,
                       const Json::Value& blockData)
 {
-  DealCombatDamage (db, rnd);
+  const auto dead = DealCombatDamage (db, rnd);
+  ProcessKills (db, dead);
 
   MoveProcessor mvProc(db, params);
   mvProc.ProcessAll (blockData["moves"]);

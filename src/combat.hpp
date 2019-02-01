@@ -22,6 +22,12 @@ void FindCombatTargets (Database& db, xaya::Random& rnd);
  */
 std::vector<proto::TargetId> DealCombatDamage (Database& db, xaya::Random& rnd);
 
+/**
+ * Processes killed fighers from the given list, actually performing the
+ * necessary database changes for having them dead.
+ */
+void ProcessKills (Database& db, const std::vector<proto::TargetId>& dead);
+
 } // namespace pxd
 
 #endif // PXD_COMBAT_HPP

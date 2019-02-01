@@ -153,4 +153,22 @@ DealCombatDamage (Database& db, xaya::Random& rnd)
   return dead;
 }
 
+void
+ProcessKills (Database& db, const std::vector<proto::TargetId>& dead)
+{
+  CharacterTable characters(db);
+
+  for (const auto& id : dead)
+    switch (id.type ())
+      {
+      case proto::TargetId::TYPE_CHARACTER:
+        characters.DeleteById (id.id ());
+        break;
+
+      default:
+        LOG (FATAL)
+            << "Invalid target type killed: " << static_cast<int> (id.type ());
+      }
+}
+
 } // namespace pxd

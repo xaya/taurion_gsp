@@ -416,5 +416,27 @@ TEST_F (DealDamageTests, Kills)
 
 /* ************************************************************************** */
 
+using ProcessKillsTests = CombatTests;
+
+TEST_F (ProcessKillsTests, Works)
+{
+  const auto id1 = characters.CreateNew ("domob", "a", Faction::RED)->GetId ();
+  const auto id2 = characters.CreateNew ("domob", "b", Faction::RED)->GetId ();
+
+  ProcessKills (db, {});
+  EXPECT_TRUE (characters.GetById (id1) != nullptr);
+  EXPECT_TRUE (characters.GetById (id2) != nullptr);
+
+  proto::TargetId targetId;
+  targetId.set_type (proto::TargetId::TYPE_CHARACTER);
+  targetId.set_id (id2);
+  ProcessKills (db, {targetId});
+
+  EXPECT_TRUE (characters.GetById (id1) != nullptr);
+  EXPECT_TRUE (characters.GetById (id2) == nullptr);
+}
+
+/* ************************************************************************** */
+
 } // anonymous namespace
 } // namespace pxd

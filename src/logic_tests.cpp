@@ -150,4 +150,27 @@ TEST_F (PXLogicTests, DamageInNextRound)
   EXPECT_EQ (characters.GetById (idTarget)->GetHP ().armour (), 99);
 }
 
+TEST_F (PXLogicTests, DamageAndKills)
+{
+  auto c = characters.CreateNew ("domob", "attacker", Faction::RED);
+  auto* attack = c->MutableProto ().mutable_combat_data ()->add_attacks ();
+  attack->set_range (1);
+  attack->set_max_damage (1);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", "target", Faction::GREEN);
+  const auto idTarget = c->GetId ();
+  c->MutableHP ().set_shield (0);
+  c->MutableHP ().set_armour (1);
+  c->MutableProto ().mutable_combat_data ();
+  c.reset ();
+
+  /* One round to target, one to actually apply damage.  The damage will
+     kill the target.  */
+  UpdateState ("[]");
+  EXPECT_TRUE (characters.GetById (idTarget) != nullptr);
+  UpdateState ("[]");
+  EXPECT_TRUE (characters.GetById (idTarget) == nullptr);
+}
+
 } // namespace pxd
