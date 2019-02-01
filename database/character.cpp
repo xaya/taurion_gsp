@@ -165,6 +165,18 @@ CharacterTable::QueryWithTarget ()
   return stmt.Query ("characters");
 }
 
+void
+CharacterTable::DeleteById (const Database::IdT id)
+{
+  VLOG (1) << "Deleting character with ID " << id;
+
+  auto stmt = db.Prepare (R"(
+    DELETE FROM `characters` WHERE `id` = ?1
+  )");
+  stmt.Bind<int> (1, id);
+  stmt.Execute ();
+}
+
 bool
 CharacterTable::IsValidName (const std::string& name)
 {

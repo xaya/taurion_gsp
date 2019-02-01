@@ -194,6 +194,21 @@ TEST_F (CharacterTableTests, QueryWithTarget)
   ASSERT_FALSE (res.Step ());
 }
 
+TEST_F (CharacterTableTests, DeleteById)
+{
+  const auto id1 = tbl.CreateNew ("domob", "foo", Faction::RED)->GetId ();
+  const auto id2 = tbl.CreateNew ("domob", "bar", Faction::RED)->GetId ();
+
+  EXPECT_TRUE (tbl.GetById (id1) != nullptr);
+  EXPECT_TRUE (tbl.GetById (id2) != nullptr);
+  tbl.DeleteById (id1);
+  EXPECT_TRUE (tbl.GetById (id1) == nullptr);
+  EXPECT_TRUE (tbl.GetById (id2) != nullptr);
+  tbl.DeleteById (id2);
+  EXPECT_TRUE (tbl.GetById (id1) == nullptr);
+  EXPECT_TRUE (tbl.GetById (id2) == nullptr);
+}
+
 TEST_F (CharacterTableTests, IsValidName)
 {
   tbl.CreateNew ("domob", "abc", Faction::RED);

@@ -266,6 +266,11 @@ public:
   Database::Result QueryWithTarget ();
 
   /**
+   * Deletes the character with the given ID.
+   */
+  void DeleteById (Database::IdT id);
+
+  /**
    * Verifies whether the given string is valid as name for a new character.
    * This means that it is non-empty and not yet used in the database.
    */
