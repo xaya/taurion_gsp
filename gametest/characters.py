@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding=utf8
 
-from pxtest import PXTest, CHARACTER_COST
+from pxtest import PXTest
 
 """
 Runs tests about the basic handling of characters (creating them, transferring

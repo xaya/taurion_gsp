@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from pxtest import PXTest, CHARACTER_COST
+from pxtest import PXTest
 
 """
 Tests movement of characters on the map.

@@ -3,6 +3,7 @@ TEST_LIBRARY = \
 
 REGTESTS = \
   characters.py \
+  combat_damage.py \
   combat_targets.py \
   findpath.py \
   movement.py
