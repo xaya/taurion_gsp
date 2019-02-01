@@ -227,11 +227,11 @@ protected:
   /**
    * Finds combat targets and deals damage.
    */
-  void
+  std::vector<proto::TargetId>
   FindTargetsAndDamage ()
   {
     FindCombatTargets (db, rnd);
-    DealCombatDamage (db, rnd);
+    return DealCombatDamage (db, rnd);
   }
 
 };
@@ -371,6 +371,47 @@ TEST_F (DealDamageTests, HpReduction)
         }
       EXPECT_TRUE (found);
     }
+}
+
+TEST_F (DealDamageTests, Kills)
+{
+  auto c = characters.CreateNew ("domob", "attacker 1", Faction::RED);
+  AddAttack (c->MutableProto (), 1, 1);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", "attacker 2", Faction::RED);
+  AddAttack (c->MutableProto (), 1, 1);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", "attacker 3", Faction::RED);
+  c->SetPosition (HexCoord (10, 10));
+  AddAttack (c->MutableProto (), 1, 1);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", "target 1", Faction::GREEN);
+  const auto id1 = c->GetId ();
+  NoAttacks (c->MutableProto ());
+  c->MutableHP ().set_shield (0);
+  c->MutableHP ().set_armour (1);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", "target 2", Faction::GREEN);
+  const auto id2 = c->GetId ();
+  c->SetPosition (HexCoord (10, 10));
+  NoAttacks (c->MutableProto ());
+  c->MutableHP ().set_shield (1);
+  c->MutableHP ().set_armour (1);
+  c.reset ();
+
+  auto dead = FindTargetsAndDamage ();
+  ASSERT_EQ (dead.size (), 1);
+  EXPECT_EQ (dead[0].type (), proto::TargetId::TYPE_CHARACTER);
+  EXPECT_EQ (dead[0].id (), id1);
+
+  dead = FindTargetsAndDamage ();
+  ASSERT_EQ (dead.size (), 1);
+  EXPECT_EQ (dead[0].type (), proto::TargetId::TYPE_CHARACTER);
+  EXPECT_EQ (dead[0].id (), id2);
 }
 
 /* ************************************************************************** */

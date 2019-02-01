@@ -2,8 +2,11 @@
 #define PXD_COMBAT_HPP
 
 #include "database/database.hpp"
+#include "proto/combat.pb.h"
 
 #include <xayagame/random.hpp>
+
+#include <vector>
 
 namespace pxd
 {
@@ -14,9 +17,10 @@ namespace pxd
 void FindCombatTargets (Database& db, xaya::Random& rnd);
 
 /**
- * Deals damage from combat as well as handles dead characters.
+ * Deals damage from combat and returns the target IDs of all fighters
+ * that are now dead (and need to be handled accordingly).
  */
-void DealCombatDamage (Database& db, xaya::Random& rnd);
+std::vector<proto::TargetId> DealCombatDamage (Database& db, xaya::Random& rnd);
 
 } // namespace pxd
 

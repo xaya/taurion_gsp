@@ -6,7 +6,6 @@
 #include "hexagonal/coord.hpp"
 
 #include <algorithm>
-#include <vector>
 
 namespace pxd
 {
@@ -93,9 +92,12 @@ namespace
 
 /**
  * Deals damage for one fighter with a target to the respective target.
+ * Adds the target to the vector of dead fighters if it had its HP reduced
+ * to zero and is now dead.
  */
 void
-DealDamage (FighterTable& fighters, xaya::Random& rnd, Fighter f)
+DealDamage (FighterTable& fighters, xaya::Random& rnd, Fighter f,
+            std::vector<proto::TargetId>& dead)
 {
   const auto& target = f.GetTarget ();
   Fighter tf = fighters.GetForTarget (target);
@@ -127,22 +129,28 @@ DealDamage (FighterTable& fighters, xaya::Random& rnd, Fighter f)
   const unsigned armourDmg = std::min (dmg, hp.armour ());
   hp.set_armour (hp.armour () - armourDmg);
   dmg -= armourDmg;
+
+  VLOG (1) << "Total damage done: " << (shieldDmg + armourDmg);
+  VLOG (1) << "Remaining total HP: " << (hp.armour () + hp.shield ());
+  if (shieldDmg + armourDmg > 0 && hp.armour () + hp.shield () == 0)
+    dead.push_back (target);
 }
 
 } // anonymous namespace
 
-void
+std::vector<proto::TargetId>
 DealCombatDamage (Database& db, xaya::Random& rnd)
 {
   CharacterTable characters(db);
   FighterTable fighters(characters);
 
+  std::vector<proto::TargetId> dead;
   fighters.ProcessWithTarget ([&] (Fighter f)
     {
-      DealDamage (fighters, rnd, std::move (f));
+      DealDamage (fighters, rnd, std::move (f), dead);
     });
 
-  /* FIXME: Process also dead characters.  */
+  return dead;
 }
 
 } // namespace pxd
