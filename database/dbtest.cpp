@@ -88,4 +88,22 @@ DBTestWithSchema::DBTestWithSchema ()
   SetupDatabaseSchema (db.GetHandle ());
 }
 
+TemporaryDatabaseChanges::TemporaryDatabaseChanges (Database& d,
+                                                    benchmark::State& s)
+  : db(d), benchmarkState(s)
+{
+  benchmarkState.PauseTiming ();
+  auto stmt = db.Prepare ("SAVEPOINT `TemporaryDatabaseChanges`");
+  stmt.Execute ();
+  benchmarkState.ResumeTiming ();
+}
+
+TemporaryDatabaseChanges::~TemporaryDatabaseChanges ()
+{
+  benchmarkState.PauseTiming ();
+  auto stmt = db.Prepare ("ROLLBACK TO `TemporaryDatabaseChanges`");
+  stmt.Execute ();
+  benchmarkState.ResumeTiming ();
+}
+
 } // namespace pxd

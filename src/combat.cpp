@@ -228,4 +228,12 @@ RegenerateHP (Database& db)
     });
 }
 
+void
+AllHpUpdates (Database& db, xaya::Random& rnd)
+{
+  const auto dead = DealCombatDamage (db, rnd);
+  ProcessKills (db, dead);
+  RegenerateHP (db);
+}
+
 } // namespace pxd

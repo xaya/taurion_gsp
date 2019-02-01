@@ -33,11 +33,11 @@ TESTS = tests benchmarks
 
 libdbtest_la_CXXFLAGS = \
   $(XAYAGAME_CFLAGS) \
-  $(GTEST_CFLAGS) $(GLOG_CFLAGS) $(SQLITE3_CFLAGS)
+  $(GTEST_CFLAGS) $(GLOG_CFLAGS) $(SQLITE3_CFLAGS) $(BENCHMARK_CFLAGS)
 libdbtest_la_LIBADD = \
   $(builddir)/libdatabase.la \
   $(XAYAGAME_LIBS) \
-  $(GTEST_LIBS) $(GLOG_LIBS) $(SQLITE3_LIBS)
+  $(GTEST_LIBS) $(GLOG_LIBS) $(SQLITE3_LIBS) $(BENCHMARK_LIBS)
 libdbtest_la_SOURCES = \
   dbtest.cpp
 check_HEADERS = \

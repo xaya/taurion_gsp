@@ -33,6 +33,12 @@ void ProcessKills (Database& db, const std::vector<proto::TargetId>& dead);
  */
 void RegenerateHP (Database& db);
 
+/**
+ * Runs the three coupled steps to update HP at the beginning of computing
+ * a block:  Dealing damage, handling kills and regenerating.
+ */
+void AllHpUpdates (Database& db, xaya::Random& rnd);
+
 } // namespace pxd
 
 #endif // PXD_COMBAT_HPP

@@ -5,6 +5,8 @@
 
 #include <gtest/gtest.h>
 
+#include <benchmark/benchmark.h>
+
 #include <sqlite3.h>
 
 #include <map>
@@ -93,6 +95,41 @@ class DBTestWithSchema : public DBTestFixture
 protected:
 
   DBTestWithSchema ();
+
+};
+
+/**
+ * RAII object to checkpoint the current database state and restore it
+ * when destructed.  It also pauses the benchmark timers.  This can be
+ * used in benchmarks to run the loop with the same database state each
+ * iteration.
+ */
+class TemporaryDatabaseChanges
+{
+
+private:
+
+  /** Underlying database handle.  */
+  Database& db;
+
+  /** Benchmark state for pausing the timers.  */
+  benchmark::State& benchmarkState;
+
+public:
+
+  /**
+   * Constructs the object.  This checkpoints the database state.
+   */
+  explicit TemporaryDatabaseChanges (Database& d, benchmark::State& s);
+
+  /**
+   * Destructs the object, restoring the checkpointed state.
+   */
+  ~TemporaryDatabaseChanges ();
+
+  TemporaryDatabaseChanges () = delete;
+  TemporaryDatabaseChanges (const TemporaryDatabaseChanges&) = delete;
+  void operator= (const TemporaryDatabaseChanges&) = delete;
 
 };
 

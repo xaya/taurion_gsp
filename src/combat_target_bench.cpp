@@ -85,7 +85,7 @@ TargetSelectionFriendly (benchmark::State& state)
   InsertCharacters (db, Faction::RED, perStack, rows, cols);
 
   for (auto _ : state)
-     FindCombatTargets (db, rnd);
+    FindCombatTargets (db, rnd);
 }
 BENCHMARK (TargetSelectionFriendly)
   ->Unit (benchmark::kMillisecond)
@@ -133,7 +133,7 @@ TargetSelectionEnemies (benchmark::State& state)
   InsertCharacters (db, Faction::GREEN, perStack / 2, rows, cols);
 
   for (auto _ : state)
-     FindCombatTargets (db, rnd);
+    FindCombatTargets (db, rnd);
 }
 BENCHMARK (TargetSelectionEnemies)
   ->Unit (benchmark::kMillisecond)
