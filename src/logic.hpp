@@ -61,15 +61,8 @@ protected:
 
 public:
 
-  /**
-   * Construct the game logic instance, given the filename of the SQLite
-   * database to open (or create).
-   */
-  explicit PXLogic (const std::string& f)
-    : SQLiteGame(f)
-  {}
+  PXLogic () = default;
 
-  PXLogic () = delete;
   PXLogic (const PXLogic&) = delete;
   void operator= (const PXLogic&) = delete;
 
