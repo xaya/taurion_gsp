@@ -47,8 +47,7 @@ taurond_LDADD = \
   $(top_builddir)/database/libdatabase.la \
   $(XAYAGAME_LIBS) \
   $(JSON_LIBS) \
-  $(GLOG_LIBS) $(GFLAGS_LIBS) $(PROTOBUF_LIBS) \
-  -lstdc++fs
+  $(GLOG_LIBS) $(GFLAGS_LIBS) $(PROTOBUF_LIBS)
 taurond_SOURCES = main.cpp \
   pxrpcserver.cpp
 taurondheaders = \
