@@ -29,10 +29,10 @@ TEST_F (JsonCoordTests, CoordToJson)
   EXPECT_EQ (val.size (), 2);
   ASSERT_TRUE (val.isMember ("x"));
   ASSERT_TRUE (val.isMember ("y"));
-  ASSERT_TRUE (val["x"].isInt ());
-  ASSERT_TRUE (val["y"].isInt ());
-  EXPECT_EQ (val["x"].asInt (), -5);
-  EXPECT_EQ (val["y"].asInt (), 42);
+  ASSERT_TRUE (val["x"].isInt64 ());
+  ASSERT_TRUE (val["y"].isInt64 ());
+  EXPECT_EQ (val["x"].asInt64 (), -5);
+  EXPECT_EQ (val["y"].asInt64 (), 42);
 }
 
 TEST_F (JsonCoordTests, ValidCoordFromJson)
@@ -112,7 +112,8 @@ TEST_F (IdFromStringTests, Valid)
 
 TEST_F (IdFromStringTests, Invalid)
 {
-  for (const std::string str : {"0", "-5", "2.3", " 5", "42 ", "02"})
+  for (const std::string str : {"0", "-5", "2.3", " 5", "42 ", "02",
+                                "99999999999999999999"})
     {
       Database::IdT id;
       EXPECT_FALSE (IdFromString (str, id));

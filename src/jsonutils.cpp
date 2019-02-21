@@ -61,16 +61,16 @@ CoordFromJson (const Json::Value& val, HexCoord& c)
       return false;
     }
 
-  if (!xMember->isInt () || !yMember->isInt ())
+  if (!xMember->isInt64 () || !yMember->isInt64 ())
     {
       LOG (ERROR)
           << "Invalid HexCoord: JSON value " << val
-          << " has non-integer coordinates";
+          << " has non-int64 coordinates";
       return false;
     }
 
-  const int x = xMember->asInt ();
-  const int y = yMember->asInt ();
+  const int64_t x = xMember->asInt64 ();
+  const int64_t y = yMember->asInt64 ();
 
   using intLimits = std::numeric_limits<HexCoord::IntT>;
   if (x < intLimits::min () || x > intLimits::max ())
