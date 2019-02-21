@@ -20,12 +20,12 @@ Character::Character (Database& d, const Database::Result& res)
   : db(d), dirtyFields(false), dirtyProto(false)
 {
   CHECK_EQ (res.GetName (), "characters");
-  id = res.Get<int> ("id");
+  id = res.Get<int64_t> ("id");
   owner = res.Get<std::string> ("owner");
   name = res.Get<std::string> ("name");
   faction = GetFactionFromColumn (res, "faction");
-  pos = HexCoord (res.Get<int> ("x"), res.Get<int> ("y"));
-  partialStep = res.Get<int> ("partialstep");
+  pos = HexCoord (res.Get<int64_t> ("x"), res.Get<int64_t> ("y"));
+  partialStep = res.Get<int64_t> ("partialstep");
   res.GetProto ("hp", hp);
   res.GetProto ("proto", data);
 
@@ -92,14 +92,14 @@ Character::~Character ()
 void
 Character::BindFieldValues (Database::Statement& stmt) const
 {
-  stmt.Bind<int> (1, id);
+  stmt.Bind<int64_t> (1, id);
   stmt.Bind (2, owner);
-  stmt.Bind<int> (3, pos.GetX ());
-  stmt.Bind<int> (4, pos.GetY ());
+  stmt.Bind<int64_t> (3, pos.GetX ());
+  stmt.Bind<int64_t> (4, pos.GetY ());
   if (partialStep == 0)
     stmt.BindNull (5);
   else
-    stmt.Bind<int> (5, partialStep);
+    stmt.Bind<int64_t> (5, partialStep);
   stmt.BindProto (6, hp);
 }
 
@@ -120,7 +120,7 @@ CharacterTable::Handle
 CharacterTable::GetById (const Database::IdT id)
 {
   auto stmt = db.Prepare ("SELECT * FROM `characters` WHERE `id` = ?1");
-  stmt.Bind<int> (1, id);
+  stmt.Bind<int64_t> (1, id);
   auto res = stmt.Query ("characters");
   if (!res.Step ())
     return nullptr;
@@ -173,7 +173,7 @@ CharacterTable::DeleteById (const Database::IdT id)
   auto stmt = db.Prepare (R"(
     DELETE FROM `characters` WHERE `id` = ?1
   )");
-  stmt.Bind<int> (1, id);
+  stmt.Bind<int64_t> (1, id);
   stmt.Execute ();
 }
 
@@ -190,7 +190,7 @@ CharacterTable::IsValidName (const std::string& name)
 
   auto res = stmt.Query ();
   CHECK (res.Step ());
-  const int cnt = res.Get<int> ("cnt");
+  const auto cnt = res.Get<int64_t> ("cnt");
   CHECK (!res.Step ());
 
   VLOG (1) << "Name " << name << " is used " << cnt << " times";

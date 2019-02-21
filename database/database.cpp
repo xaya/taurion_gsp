@@ -43,10 +43,10 @@ Database::Statement::Query (const std::string& name)
 
 template <>
   void
-  Database::Statement::Bind<int> (const unsigned ind, const int& val)
+  Database::Statement::Bind<int64_t> (const unsigned ind, const int64_t& val)
 {
   CHECK (!run);
-  CHECK_EQ (sqlite3_bind_int (stmt, ind, val), SQLITE_OK);
+  CHECK_EQ (sqlite3_bind_int64 (stmt, ind, val), SQLITE_OK);
 }
 
 template <>
@@ -133,10 +133,10 @@ Database::Result::Step ()
 }
 
 template <>
-  int
-  Database::Result::Get<int> (const std::string& name) const
+  int64_t
+  Database::Result::Get<int64_t> (const std::string& name) const
 {
-  return sqlite3_column_int (stmt, ColumnIndex (name));
+  return sqlite3_column_int64 (stmt, ColumnIndex (name));
 }
 
 template <>

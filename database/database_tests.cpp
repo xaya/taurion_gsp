@@ -59,7 +59,7 @@ protected:
         LOG (INFO) << "Verifying golden data with ID " << val.id << "...";
 
         ASSERT_TRUE (res.Step ());
-        EXPECT_EQ (res.Get<int> ("id"), val.id);
+        EXPECT_EQ (res.Get<int64_t> ("id"), val.id);
         EXPECT_EQ (res.Get<bool> ("flag"), val.flag);
         EXPECT_EQ (res.Get<std::string> ("name"), val.name);
 
@@ -89,12 +89,12 @@ TEST_F (DatabaseTests, BindingAndQuery)
       (?1, ?2, ?3, ?4), (?5, ?6, ?7, ?8);
   )");
 
-  stmt.Bind (1, 42);
+  stmt.Bind<int64_t> (1, 42);
   stmt.BindNull (2);
   stmt.Bind<std::string> (3, "foo");
   stmt.BindProto (4, coord1);
 
-  stmt.Bind (5, 10);
+  stmt.Bind<int64_t> (5, 10);
   stmt.Bind (6, true);
   stmt.Bind<std::string> (7, "bar");
   stmt.BindProto (8, coord2);
@@ -111,12 +111,12 @@ TEST_F (DatabaseTests, StatementReset)
 {
   auto stmt = db.Prepare ("INSERT INTO `test` (`id`, `flag`) VALUES (?1, ?2)");
 
-  stmt.Bind (1, 42);
+  stmt.Bind<int64_t> (1, 42);
   stmt.Bind (2, true);
   stmt.Execute ();
 
   stmt.Reset ();
-  stmt.Bind (1, 50);
+  stmt.Bind<int64_t> (1, 50);
   /* Do not bind parameter 2, so it is NULL.  This verifies that the parameter
      bindings are reset completely.  */
   stmt.Execute ();
@@ -125,11 +125,11 @@ TEST_F (DatabaseTests, StatementReset)
   auto res = stmt.Query ();
 
   ASSERT_TRUE (res.Step ());
-  EXPECT_EQ (res.Get<int> ("id"), 42);
+  EXPECT_EQ (res.Get<int64_t> ("id"), 42);
   EXPECT_EQ (res.Get<bool> ("flag"), true);
 
   ASSERT_TRUE (res.Step ());
-  EXPECT_EQ (res.Get<int> ("id"), 50);
+  EXPECT_EQ (res.Get<int64_t> ("id"), 50);
   EXPECT_EQ (res.Get<bool> ("flag"), false);
 
   ASSERT_FALSE (res.Step ());

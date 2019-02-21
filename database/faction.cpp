@@ -41,7 +41,7 @@ FactionFromString (const std::string& str)
 Faction
 GetFactionFromColumn (const Database::Result& res, const std::string& col)
 {
-  const int val = res.Get<int> (col);
+  const auto val = res.Get<int64_t> (col);
   CHECK (val >= 1 && val <= 3)
       << "Invalid faction value from database: " << val;
   return static_cast<Faction> (val);
@@ -56,7 +56,7 @@ BindFactionParameter (Database::Statement& stmt, const unsigned ind,
     case Faction::RED:
     case Faction::GREEN:
     case Faction::BLUE:
-      stmt.Bind (ind, static_cast<int> (f));
+      stmt.Bind (ind, static_cast<int64_t> (f));
       return;
     default:
       LOG (FATAL)
