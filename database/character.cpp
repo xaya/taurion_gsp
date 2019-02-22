@@ -92,14 +92,14 @@ Character::~Character ()
 void
 Character::BindFieldValues (Database::Statement& stmt) const
 {
-  stmt.Bind<int64_t> (1, id);
+  stmt.Bind (1, id);
   stmt.Bind (2, owner);
-  stmt.Bind<int64_t> (3, pos.GetX ());
-  stmt.Bind<int64_t> (4, pos.GetY ());
+  stmt.Bind (3, pos.GetX ());
+  stmt.Bind (4, pos.GetY ());
   if (partialStep == 0)
     stmt.BindNull (5);
   else
-    stmt.Bind<int64_t> (5, partialStep);
+    stmt.Bind (5, partialStep);
   stmt.BindProto (6, hp);
 }
 
@@ -120,7 +120,7 @@ CharacterTable::Handle
 CharacterTable::GetById (const Database::IdT id)
 {
   auto stmt = db.Prepare ("SELECT * FROM `characters` WHERE `id` = ?1");
-  stmt.Bind<int64_t> (1, id);
+  stmt.Bind (1, id);
   auto res = stmt.Query ("characters");
   if (!res.Step ())
     return nullptr;
@@ -173,7 +173,7 @@ CharacterTable::DeleteById (const Database::IdT id)
   auto stmt = db.Prepare (R"(
     DELETE FROM `characters` WHERE `id` = ?1
   )");
-  stmt.Bind<int64_t> (1, id);
+  stmt.Bind (1, id);
   stmt.Execute ();
 }
 

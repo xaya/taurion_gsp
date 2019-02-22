@@ -19,10 +19,10 @@ TargetFinder::ProcessL1Targets (const HexCoord& centre,
 
   /* The query is actually about an L-infinity range, since that is easy
      to formulate in the database.  This certainly includes the L1 range.  */
-  stmt.Bind<int64_t> (1, centre.GetX () - l1range);
-  stmt.Bind<int64_t> (2, centre.GetX () + l1range);
-  stmt.Bind<int64_t> (3, centre.GetY () - l1range);
-  stmt.Bind<int64_t> (4, centre.GetY () + l1range);
+  stmt.Bind (1, centre.GetX () - l1range);
+  stmt.Bind (2, centre.GetX () + l1range);
+  stmt.Bind (3, centre.GetY () - l1range);
+  stmt.Bind (4, centre.GetY () + l1range);
 
   BindFactionParameter (stmt, 5, faction);
 

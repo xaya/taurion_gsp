@@ -43,10 +43,40 @@ Database::Statement::Query (const std::string& name)
 
 template <>
   void
+  Database::Statement::Bind<int32_t> (const unsigned ind, const int32_t& val)
+{
+  CHECK (!run);
+  CHECK_EQ (sqlite3_bind_int (stmt, ind, val), SQLITE_OK);
+}
+
+template <>
+  void
   Database::Statement::Bind<int64_t> (const unsigned ind, const int64_t& val)
 {
   CHECK (!run);
   CHECK_EQ (sqlite3_bind_int64 (stmt, ind, val), SQLITE_OK);
+}
+
+template <>
+  void
+  Database::Statement::Bind<int16_t> (const unsigned ind, const int16_t& val)
+{
+  Bind<int32_t> (ind, val);
+}
+
+template <>
+  void
+  Database::Statement::Bind<uint64_t> (const unsigned ind, const uint64_t& val)
+{
+  CHECK_LE (val, std::numeric_limits<int64_t>::max ());
+  Bind<int64_t> (ind, val);
+}
+
+template <>
+  void
+  Database::Statement::Bind<uint32_t> (const unsigned ind, const uint32_t& val)
+{
+  Bind<uint64_t> (ind, val);
 }
 
 template <>

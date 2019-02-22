@@ -19,7 +19,7 @@ namespace
  */
 struct RowData
 {
-  int id;
+  int64_t id;
   bool flag;
   std::string name;
   int coordX;
@@ -89,12 +89,13 @@ TEST_F (DatabaseTests, BindingAndQuery)
       (?1, ?2, ?3, ?4), (?5, ?6, ?7, ?8);
   )");
 
-  stmt.Bind<int64_t> (1, 42);
+  const auto largeInt = std::numeric_limits<int64_t>::max ();
+  stmt.Bind (1, largeInt);
   stmt.BindNull (2);
   stmt.Bind<std::string> (3, "foo");
   stmt.BindProto (4, coord1);
 
-  stmt.Bind<int64_t> (5, 10);
+  stmt.Bind (5, 10);
   stmt.Bind (6, true);
   stmt.Bind<std::string> (7, "bar");
   stmt.BindProto (8, coord2);
@@ -103,7 +104,7 @@ TEST_F (DatabaseTests, BindingAndQuery)
 
   ExpectData ({
     {10, true, "bar", coord2.x (), coord2.y ()},
-    {42, false, "foo", coord1.x (), coord1.y ()},
+    {largeInt, false, "foo", coord1.x (), coord1.y ()},
   });
 }
 
@@ -111,12 +112,12 @@ TEST_F (DatabaseTests, StatementReset)
 {
   auto stmt = db.Prepare ("INSERT INTO `test` (`id`, `flag`) VALUES (?1, ?2)");
 
-  stmt.Bind<int64_t> (1, 42);
+  stmt.Bind (1, 42);
   stmt.Bind (2, true);
   stmt.Execute ();
 
   stmt.Reset ();
-  stmt.Bind<int64_t> (1, 50);
+  stmt.Bind (1, 50);
   /* Do not bind parameter 2, so it is NULL.  This verifies that the parameter
      bindings are reset completely.  */
   stmt.Execute ();
