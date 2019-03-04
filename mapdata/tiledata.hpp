@@ -32,6 +32,33 @@ extern const size_t bitDataSize;
 
 } // namespace obstacles
 
+namespace regions
+{
+
+/** Number of bytes per encoded region ID.  */
+constexpr int BYTES_PER_ID = 3;
+
+/**
+ * For given y, the offset into the map data blob for where the region IDs
+ * (encoded in three bytes each) for that row start.
+ */
+extern const size_t regionIdOffsetForY[];
+
+/** Number of bytes in the raw region map data.  */
+extern const size_t regionMapSize;
+
+/**
+ * For given y, the offset into the "compact region data" where data for the
+ * given row starts.  This is not measured in bytes but in "objects", i.e.
+ * how many x coordinates or 24-bit IDs to skip from the beginning.
+ */
+extern const size_t compactOffsetForY[];
+
+/** Number of entries for the compact region data arrays.  */
+extern const size_t compactEntries;
+
+} // namespace regions
+
 } // namespace tiledata
 } // namespace pxd
 

@@ -42,4 +42,15 @@ template <>
   return static_cast<int32_t> (Read<uint32_t> (in));
 }
 
+void
+WriteInt24 (std::ostream& out, uint32_t val)
+{
+  for (int i = 0; i < 3; ++i)
+    {
+      out.put (val & 0xFF);
+      val >>= 8;
+    }
+  CHECK_EQ (val, 0) << "Writing integer too large for 24 bits";
+}
+
 } // namespace pxd
