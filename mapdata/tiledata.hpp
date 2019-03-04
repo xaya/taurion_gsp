@@ -1,9 +1,9 @@
-#ifndef MAPDATA_OBSTACLES_HPP
-#define MAPDATA_OBSTACLES_HPP
+#ifndef MAPDATA_TILEDATA_HPP
+#define MAPDATA_TILEDATA_HPP
 
 namespace pxd
 {
-namespace obstacles
+namespace tiledata
 {
 
 /** Minimum value of the axial y coordinate that is still on the map.  */
@@ -12,12 +12,15 @@ extern const int minY;
 extern const int maxY;
 
 /**
- * For given y in [0, (maxY - minY + 1)], the minimum x coordinate for tiles
+ * For given y in [0, maxY - minY], the minimum x coordinate for tiles
  * to be still on the map.
  */
 extern const int minX[];
 /** For given y, the maximum x coordinate for tiles to be still on the map.  */
 extern const int maxX[];
+
+namespace obstacles
+{
 
 /** For given y, the offset into bitData where the data for that row starts.  */
 extern const int bitDataOffsetForY[];
@@ -33,6 +36,8 @@ extern const int bitDataOffsetForY[];
 extern const unsigned char bitData[];
 
 } // namespace obstacles
+
+} // namespace tiledata
 } // namespace pxd
 
-#endif // MAPDATA_OBSTACLES_HPP
+#endif // MAPDATA_TILEDATA_HPP

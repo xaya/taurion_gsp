@@ -234,6 +234,15 @@ public:
       out << "  " << columnRange.at (y).maxVal << "," << std::endl;
     out << "}; // maxX" << std::endl;
 
+    out << R"(
+      static_assert (sizeof (minX) == (maxY - minY + 1) * sizeof (minX[0]),
+                     "minX has unexpected size");
+      static_assert (sizeof (maxX) == sizeof (minX),
+                     "maxX has unexpected size");
+    )";
+
+    out << "namespace obstacles {" << std::endl;
+
     /* We store all the bit-vector data into one big array of bytes that is
        encoded in a single array in code.  We also store the index at which
        each row's data starts in that array into another constant array.  */
@@ -261,10 +270,6 @@ public:
     out << "}; // bitDataOffsetForY" << std::endl;
 
     out << R"(
-      static_assert (sizeof (minX) == (maxY - minY + 1) * sizeof (minX[0]),
-                     "minX has unexpected size");
-      static_assert (sizeof (maxX) == sizeof (minX),
-                     "maxX has unexpected size");
       static_assert (sizeof (bitDataOffsetForY) == sizeof (minX),
                      "bitDataOffsetForY has unexpected size");
     )";
@@ -275,6 +280,8 @@ public:
     out << "}; // bitData" << std::endl;
     out << "static_assert (sizeof (bitData) == " << bitData.size ()
         << ", \"bitData has unexpected size\");" << std::endl;
+
+    out << "} // namespace obstacles" << std::endl;
   }
 
 };
@@ -303,11 +310,11 @@ main (int argc, char** argv)
   if (!FLAGS_code_output.empty ())
     {
       std::ofstream out(FLAGS_code_output);
-      out << "#include \"obstacles.hpp\"" << std::endl;
+      out << "#include \"tiledata.hpp\"" << std::endl;
       out << "namespace pxd {" << std::endl;
-      out << "namespace obstacles {" << std::endl;
+      out << "namespace tiledata {" << std::endl;
       obstacles.WriteCode (out);
-      out << "} // namespace obstacles" << std::endl;
+      out << "} // namespace tiledata" << std::endl;
       out << "} // namespace pxd" << std::endl;
     }
 

@@ -4,4 +4,4 @@ tests.trs
 procmap
 
 obstacledata.dat
-obstacles.cpp
+tiledata.cpp
