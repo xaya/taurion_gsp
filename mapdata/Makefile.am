@@ -3,7 +3,7 @@ noinst_PROGRAMS = procmap
 
 COMPRESSED = obstacledata.dat.xz regiondata.dat.xz
 UNCOMPRESSED = $(COMPRESSED:%.xz=%)
-BLOBS = obstacles.bin
+BLOBS = obstacles.bin regionmap.bin regionxcoord.bin regionids.bin
 
 EXTRA_DIST = $(COMPRESSED)
 
@@ -56,9 +56,13 @@ procmap_SOURCES = procmap.cpp \
 $(UNCOMPRESSED): %: %.xz
 	xz -dc $< >$@
 
-tiledata.cpp $(BLOBS): obstacledata.dat procmap$(EXEEXT)
+tiledata.cpp $(BLOBS): $(UNCOMPRESSED) procmap$(EXEEXT)
 	$(builddir)/procmap$(EXEEKT) \
 	  --obstacle_input=obstacledata.dat \
+	  --region_input=regiondata.dat \
 	  --code_output=tiledata.cpp \
-	  --obstacle_output=obstacles.bin
+	  --obstacle_output=obstacles.bin \
+	  --region_map_output=regionmap.bin \
+	  --region_xcoord_output=regionxcoord.bin \
+	  --region_ids_output=regionids.bin
 	touch $(srcdir)/blobs.s
