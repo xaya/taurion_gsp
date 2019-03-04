@@ -20,8 +20,6 @@
 
 DEFINE_string (obstacle_input, "",
                "The file with input obstacle data");
-DEFINE_string (binary_output, "",
-               "If not empty, write processed binary data to this file");
 DEFINE_string (code_output, "",
                "If not empty, write processed data as C++ code to this file");
 
@@ -210,51 +208,6 @@ public:
   }
 
   /**
-   * Writes the data as compact rows of bit vectors.  The format of this
-   * data is as follows (signed little-endian 16-bit integers and raw bytes
-   * for the bit vector):
-   *
-   * MIN-ROW MAX-ROW
-   * For each row between those (inclusive);
-   *   MIN-COL MAX-COL
-   *   Passable for the columns between those (inclusive) encoded as a bit
-   *   vector with 8 passable-bits per byte and in "little endian", i.e.
-   *   the least-significant bit in each byte corresponds to the lowest-valued
-   *   column tile.
-   *
-   * As before, here "row" is the axial y coordinate and "column" the axial
-   * x coordinate.
-   */
-  void
-  WriteCompact (std::ostream& out) const
-  {
-    LOG (INFO) << "Writing obstacle data compactly...";
-    Write<int16_t> (out, rowRange.minVal);
-    Write<int16_t> (out, rowRange.maxVal);
-    for (int y = rowRange.minVal; y <= rowRange.maxVal; ++y)
-      {
-        const auto mit = columnRange.find (y);
-        CHECK (mit != columnRange.end ()) << "No column data for row " << y;
-        Write<int16_t> (out, mit->second.minVal);
-        Write<int16_t> (out, mit->second.maxVal);
-
-        BitVectorBuilder bits;
-        for (int x = mit->second.minVal; x <= mit->second.maxVal; ++x)
-          {
-            const HexCoord c(x, y);
-            const auto mitPassable = passableMap.find (c);
-            CHECK (mitPassable != passableMap.end ())
-                << "No passable data for tile " << c;
-            bits.Append (mitPassable->second);
-          }
-
-        bits.Finalise ();
-        const auto& data = bits.GetData ();
-        out.write (reinterpret_cast<const char*> (data.data ()), data.size ());
-      }
-  }
-
-  /**
    * Writes out C++ code that encodes the data into some constants, so that
    * it can be compiled directly into the binary.  The raw rows are still
    * encoded as bit vectors to save memory.
@@ -346,12 +299,6 @@ main (int argc, char** argv)
     CHECK (in) << "Failed to open obstacle input file";
     obstacles.ReadInput (in);
   }
-
-  if (!FLAGS_binary_output.empty ())
-    {
-      std::ofstream out(FLAGS_binary_output, std::ios_base::binary);
-      obstacles.WriteCompact (out);
-    }
 
   if (!FLAGS_code_output.empty ())
     {

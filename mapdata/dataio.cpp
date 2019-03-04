@@ -42,13 +42,4 @@ template <>
   return static_cast<int32_t> (Read<uint32_t> (in));
 }
 
-template <>
-  void
-  Write<int16_t> (std::ostream& out, const int16_t val)
-{
-  const uint16_t withoutSign = static_cast<uint16_t> (val);
-  out.put (withoutSign & 0xFF);
-  out.put (withoutSign >> 8);
-}
-
 } // namespace pxd
