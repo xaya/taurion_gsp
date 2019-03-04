@@ -9,6 +9,7 @@
 
 #include <glog/logging.h>
 
+#include <cstdint>
 #include <fstream>
 
 namespace pxd
@@ -55,17 +56,17 @@ TEST_F (BaseMapTests, MatchesOriginalObstacleData)
 {
   std::ifstream in("obstacledata.dat", std::ios_base::binary); 
 
-  const int n = ReadInt16 (in);
-  const int m = ReadInt16 (in);
+  const int n = Read<int16_t> (in);
+  const int m = Read<int16_t> (in);
   LOG (INFO)
       << "Checking IsPassable for " << n << " * " << m
       << " = " << (n * m) << " tiles";
 
   for (int i = 0; i < n * m; ++i)
     {
-      const int x = ReadInt16 (in);
-      const int y = ReadInt16 (in);
-      const bool passable = ReadInt16 (in);
+      const int x = Read<int16_t> (in);
+      const int y = Read<int16_t> (in);
+      const bool passable = Read<int16_t> (in);
 
       const HexCoord c(x, y);
       EXPECT_TRUE (IsOnMap (c));

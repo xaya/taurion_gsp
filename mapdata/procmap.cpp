@@ -11,6 +11,7 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
+#include <cstdint>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
@@ -187,15 +188,15 @@ public:
     columnRange.clear ();
     rowRange = MinMax ();
 
-    const size_t n = ReadInt16 (in);
-    const size_t m = ReadInt16 (in);
+    const size_t n = Read<int16_t> (in);
+    const size_t m = Read<int16_t> (in);
     LOG (INFO)
         << "Reading " << n << " * " << m << " = " << (n * m) << " tiles";
     for (size_t i = 0; i < n * m; ++i)
       {
-        const int16_t x = ReadInt16 (in);
-        const int16_t y = ReadInt16 (in);
-        const bool passable = ReadInt16 (in);
+        const auto x = Read<int16_t> (in);
+        const auto y = Read<int16_t> (in);
+        const bool passable = Read<int16_t> (in);
         passableMap.emplace (HexCoord (x, y), passable);
         rowRange.Update (y);
         columnRange[y].Update (x);
@@ -228,14 +229,14 @@ public:
   WriteCompact (std::ostream& out) const
   {
     LOG (INFO) << "Writing obstacle data compactly...";
-    WriteInt16 (out, rowRange.minVal);
-    WriteInt16 (out, rowRange.maxVal);
+    Write<int16_t> (out, rowRange.minVal);
+    Write<int16_t> (out, rowRange.maxVal);
     for (int y = rowRange.minVal; y <= rowRange.maxVal; ++y)
       {
         const auto mit = columnRange.find (y);
         CHECK (mit != columnRange.end ()) << "No column data for row " << y;
-        WriteInt16 (out, mit->second.minVal);
-        WriteInt16 (out, mit->second.maxVal);
+        Write<int16_t> (out, mit->second.minVal);
+        Write<int16_t> (out, mit->second.maxVal);
 
         BitVectorBuilder bits;
         for (int x = mit->second.minVal; x <= mit->second.maxVal; ++x)

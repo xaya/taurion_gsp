@@ -8,14 +8,16 @@ namespace pxd
 {
 
 /**
- * Reads a signed 16-bit integer in little endian format.
+ * Reads an integer type in little endian format.
  */
-int16_t ReadInt16 (std::istream& in);
+template <typename T>
+  T Read (std::istream& in);
 
 /**
- * Writes a signed 16-bit integer in little endian format.
+ * Writes an integer type in little endian format.
  */
-void WriteInt16 (std::ostream& out, const int16_t val);
+template <typename T>
+  void Write (std::ostream& out, const T val);
 
 } // namespace pxd
 
