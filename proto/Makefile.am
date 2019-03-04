@@ -12,4 +12,4 @@ libpxproto_la_SOURCES = $(PROTOS:.proto=.pb.cc)
 noinst_HEADERS = $(PROTOS:.proto=.pb.h)
 
 %.pb.h %.pb.cc: $(srcdir)/%.proto
-	protoc --cpp_out=. "$<"
+	protoc -I$(srcdir) --cpp_out=. "$<"
