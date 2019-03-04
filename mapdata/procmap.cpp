@@ -66,6 +66,179 @@ struct MinMax
 
 };
 
+std::ostream&
+operator<< (std::ostream& out, const MinMax& range)
+{
+  out << range.minVal << " ... " << range.maxVal;
+  return out;
+}
+
+/**
+ * The ranges of seen coordinates for per-tile data.
+ */
+class CoordRanges
+{
+
+private:
+
+  /** The minimum and maximum seen row values.  */
+  MinMax rowRange;
+
+  /** For each row, the range of seen column values.  */
+  std::unordered_map<int, MinMax> columnRange;
+
+public:
+
+  CoordRanges () = default;
+  CoordRanges (CoordRanges&&) = default;
+
+  CoordRanges (const CoordRanges&) = delete;
+  void operator= (const CoordRanges&) = delete;
+
+  const MinMax&
+  GetRowRange () const
+  {
+    return rowRange;
+  }
+
+  const MinMax&
+  GetColumnRange (const int y) const
+  {
+    return columnRange.at (y);
+  }
+
+  /**
+   * Resets this to the "default" / empty state.
+   */
+  void
+  Clear ()
+  {
+    rowRange = MinMax ();
+    columnRange.clear ();
+  }
+
+  /**
+   * Updates the ranges for a newly seen coordinate.
+   */
+  void
+  Update (const HexCoord& c)
+  {
+    rowRange.Update (c.GetY ());
+    columnRange[c.GetY ()].Update (c.GetX ());
+  }
+
+  /**
+   * Writes out C++ code that defines the coordinate ranges in static
+   * constants.
+   */
+  void
+  WriteCode (std::ostream& out) const
+  {
+    LOG (INFO) << "Writing coordinate ranges as C++ code...";
+
+    out << "const int minY = " << rowRange.minVal << ";" << std::endl;
+    out << "const int maxY = " << rowRange.maxVal << ";" << std::endl;
+
+    out << "const int minX[] = {" << std::endl;
+    for (int y = rowRange.minVal; y <= rowRange.maxVal; ++y)
+      {
+        const auto mit = columnRange.find (y);
+        CHECK (mit != columnRange.end ()) << "No column data for row " << y;
+        out << "  " << mit->second.minVal << "," << std::endl;
+      }
+    out << "}; // minX" << std::endl;
+
+    out << "const int maxX[] = {" << std::endl;
+    for (int y = rowRange.minVal; y <= rowRange.maxVal; ++y)
+      out << "  " << columnRange.at (y).maxVal << "," << std::endl;
+    out << "}; // maxX" << std::endl;
+
+    out << R"(
+      static_assert (sizeof (minX) == (maxY - minY + 1) * sizeof (minX[0]),
+                     "minX has unexpected size");
+      static_assert (sizeof (maxX) == sizeof (minX),
+                     "maxX has unexpected size");
+    )";
+  }
+
+};
+
+/**
+ * Base class for processing per-tile data.  The data is assumed to be
+ * "square", i.e. with y coordinates in some range and then x in another
+ * range (dependent on y).
+ *
+ * The actual data stored for a tile and the logic to output that data again
+ * is not included here but has to be done in subclasses.
+ */
+class PerTileData
+{
+
+private:
+
+  /** Coordinate ranges seen.  */
+  CoordRanges ranges;
+
+protected:
+
+  PerTileData () = default;
+
+  PerTileData (const PerTileData&) = delete;
+  void operator= (const PerTileData&) = delete;
+
+  /**
+   * Resets all stored per-tile data.
+   */
+  virtual void Clear () = 0;
+
+  /**
+   * Reads data for a tile with the given coordinates from the input stream
+   * and stores it internally.
+   */
+  virtual void ReadTile (const HexCoord& coord, std::istream& in) = 0;
+
+public:
+
+  const CoordRanges&
+  GetRanges () const
+  {
+    return ranges;
+  }
+
+  /**
+   * Reads in the data from the input binary stream.  The format of that data
+   * file is as follows (all little-endian 16-bit signed integers):
+   *
+   * 2 ints giving the rows/columns of the square map (N * M),
+   * (N * M) entries follow, giving axial x, axial y and the specific
+   * data per tile encoded in some other form.
+   */
+  void
+  ReadInput (std::istream& in)
+  {
+    ranges.Clear ();
+    Clear ();
+
+    const size_t n = Read<int16_t> (in);
+    const size_t m = Read<int16_t> (in);
+    LOG (INFO)
+        << "Reading " << n << " * " << m << " = " << (n * m) << " tiles";
+    for (size_t i = 0; i < n * m; ++i)
+      {
+        const auto x = Read<int16_t> (in);
+        const auto y = Read<int16_t> (in);
+        const HexCoord c(x, y);
+        ranges.Update (c);
+
+        ReadTile (c, in);
+      }
+
+    LOG (INFO) << "Finished reading input data";
+    LOG (INFO) << "Row range: " << ranges.GetRowRange ();
+  }
+
+};
+
 /**
  * Helper class to generate a bit vector.  Individual bits can be passed to
  * it as booleans, and it builds up a vector of compact bytes that represent
@@ -144,12 +317,9 @@ public:
 };
 
 /**
- * Holds the obstacle data for the base map.  Since the map is "square",
- * this corresponds to a number of "rows" (axial y coordinate), where
- * each row has a variable length between some bounds for the "column"
- * (axial x coordinate).
+ * Holds the obstacle data for the base map.
  */
-class ObstacleData
+class ObstacleData : public PerTileData
 {
 
 private:
@@ -157,11 +327,21 @@ private:
   /** Map of already read obstacle "tiles" from the raw input.  */
   std::unordered_map<HexCoord, bool> passableMap;
 
-  /** The minimum and maximum seen row values.  */
-  MinMax rowRange;
+protected:
 
-  /** For each row, the range of seen column values.  */
-  std::unordered_map<int, MinMax> columnRange;
+  void
+  Clear () override
+  {
+    passableMap.clear ();
+  }
+
+  void
+  ReadTile (const HexCoord& coord, std::istream& in) override
+  {
+    const bool passable = Read<int16_t> (in);
+    const auto res = passableMap.emplace (coord, passable);
+    CHECK (res.second) << "Duplicate tiles in obstacle data input";
+  }
 
 public:
 
@@ -171,76 +351,14 @@ public:
   void operator= (const ObstacleData&) = delete;
 
   /**
-   * Reads in the data from the input obstacle binary stream.  The format
-   * of that data file is as follows (all little-endian 16-bit signed integers):
-   *
-   * 2 ints giving the rows/columns of the square map (N * M),
-   * (N * M) triplets of ints follow, giving axial x, axial y and passable
-   * as 0 or 1.
-   */
-  void
-  ReadInput (std::istream& in)
-  {
-    LOG (INFO) << "Reading obstacle input binary data...";
-    passableMap.clear ();
-    columnRange.clear ();
-    rowRange = MinMax ();
-
-    const size_t n = Read<int16_t> (in);
-    const size_t m = Read<int16_t> (in);
-    LOG (INFO)
-        << "Reading " << n << " * " << m << " = " << (n * m) << " tiles";
-    for (size_t i = 0; i < n * m; ++i)
-      {
-        const auto x = Read<int16_t> (in);
-        const auto y = Read<int16_t> (in);
-        const bool passable = Read<int16_t> (in);
-        passableMap.emplace (HexCoord (x, y), passable);
-        rowRange.Update (y);
-        columnRange[y].Update (x);
-      }
-
-    CHECK_EQ (passableMap.size (), n * m)
-        << "Duplicate map tiles in obstacle data";
-
-    LOG (INFO) << "Finished reading obstacle input data";
-    LOG (INFO) << "Row range: " << rowRange.minVal << " ... " << rowRange.maxVal;
-  }
-
-  /**
    * Writes out C++ code that encodes the data into some constants, so that
-   * it can be compiled directly into the binary.  The raw rows are still
+   * it can be compiled directly into the binary.  The raw rows of data are
    * encoded as bit vectors to save memory.
    */
   void
   WriteCode (std::ostream& out) const
   {
     LOG (INFO) << "Writing obstacle data as C++ code constants...";
-
-    out << "const int minY = " << rowRange.minVal << ";" << std::endl;
-    out << "const int maxY = " << rowRange.maxVal << ";" << std::endl;
-
-    out << "const int minX[] = {" << std::endl;
-    for (int y = rowRange.minVal; y <= rowRange.maxVal; ++y)
-      {
-        const auto mit = columnRange.find (y);
-        CHECK (mit != columnRange.end ()) << "No column data for row " << y;
-        out << "  " << mit->second.minVal << "," << std::endl;
-      }
-    out << "}; // minX" << std::endl;
-
-    out << "const int maxX[] = {" << std::endl;
-    for (int y = rowRange.minVal; y <= rowRange.maxVal; ++y)
-      out << "  " << columnRange.at (y).maxVal << "," << std::endl;
-    out << "}; // maxX" << std::endl;
-
-    out << R"(
-      static_assert (sizeof (minX) == (maxY - minY + 1) * sizeof (minX[0]),
-                     "minX has unexpected size");
-      static_assert (sizeof (maxX) == sizeof (minX),
-                     "maxX has unexpected size");
-    )";
-
     out << "namespace obstacles {" << std::endl;
 
     /* We store all the bit-vector data into one big array of bytes that is
@@ -248,10 +366,11 @@ public:
        each row's data starts in that array into another constant array.  */
     std::vector<unsigned char> bitData;
     out << "const int bitDataOffsetForY[] = {" << std::endl;
-    for (int y = rowRange.minVal; y <= rowRange.maxVal; ++y)
+    for (int y = GetRanges ().GetRowRange ().minVal;
+         y <= GetRanges ().GetRowRange ().maxVal; ++y)
       {
         out << "  " << bitData.size () << "," << std::endl;
-        const auto& colRange = columnRange.at (y);
+        const auto& colRange = GetRanges ().GetColumnRange (y);
 
         BitVectorBuilder bits;
         for (int x = colRange.minVal; x <= colRange.maxVal; ++x)
@@ -304,6 +423,8 @@ main (int argc, char** argv)
   {
     std::ifstream in(FLAGS_obstacle_input, std::ios_base::binary);
     CHECK (in) << "Failed to open obstacle input file";
+
+    LOG (INFO) << "Reading obstacle input data...";
     obstacles.ReadInput (in);
   }
 
@@ -313,6 +434,7 @@ main (int argc, char** argv)
       out << "#include \"tiledata.hpp\"" << std::endl;
       out << "namespace pxd {" << std::endl;
       out << "namespace tiledata {" << std::endl;
+      obstacles.GetRanges ().WriteCode (out);
       obstacles.WriteCode (out);
       out << "} // namespace tiledata" << std::endl;
       out << "} // namespace pxd" << std::endl;
