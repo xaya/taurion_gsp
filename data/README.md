@@ -5,3 +5,4 @@ to be fetched manually and placed here before building.
 These files are needed:
 
 - `obstacledata.dat.xz`
+- `regiondata.dat.xz`

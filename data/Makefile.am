@@ -1,1 +1,1 @@
-EXTRA_DIST = obstacledata.dat.xz
+EXTRA_DIST = obstacledata.dat.xz regiondata.dat.xz

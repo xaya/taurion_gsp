@@ -1,7 +1,7 @@
 noinst_LTLIBRARIES = libmapdata.la
 noinst_PROGRAMS = procmap
 
-COMPRESSED = obstacledata.dat.xz
+COMPRESSED = obstacledata.dat.xz regiondata.dat.xz
 UNCOMPRESSED = $(COMPRESSED:%.xz=%)
 BLOBS = obstacles.bin
 
