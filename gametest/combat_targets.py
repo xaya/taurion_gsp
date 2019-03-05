@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from pxtest import PXTest
+from pxtest import PXTest, offsetCoord
 
 """
 Tests the target selection aspect of combat.
@@ -43,6 +43,8 @@ class CombatTargetTest (PXTest):
     Returns the number of generated blocks.
     """
 
+    pos = offsetCoord (pos, self.offset, False)
+
     cnt = 0
     while True:
       c = self.getCharacters ()[character]
@@ -60,6 +62,19 @@ class CombatTargetTest (PXTest):
     self.createCharacter ("b", "bar", "g")
     self.createCharacter ("c", "baz", "g")
     self.generate (1)
+
+    # We use the starting coordinate of bar as offset for coordinates,
+    # so that the test is independent of the actual starting positions
+    # of the characters.
+    c = self.getCharacters ()["bar"]
+    self.offset = c.getPosition ()
+
+    # Move all other characters to the same origin position before
+    # continuing with the rest of the test.
+    self.moveCharactersTo ({
+      "foo": self.offset,
+      "baz": self.offset,
+    })
 
     self.mainLogger.info ("Testing randomised target selection...")
     cnts = {"bar": 0, "baz": 0}
@@ -81,7 +96,9 @@ class CombatTargetTest (PXTest):
 
     self.mainLogger.info ("Testing target selection when moving into range...")
     c = self.getCharacters ()["foo"]
-    c.sendMove ({"wp": [{"x": 20, "y": 0}, {"x": 0, "y": 0}]})
+    wp = [{"x": 20, "y": 0}, {"x": 0, "y": 0}]
+    wp = [offsetCoord (p, self.offset, False) for p in wp]
+    c.sendMove ({"wp": wp})
     self.generate (35)
     self.stepCharacterUntil ("foo", {"x": 11, "y": 0})
     assert self.getTargetCharacter ("bar") is None

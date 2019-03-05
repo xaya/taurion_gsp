@@ -101,7 +101,27 @@ MoveProcessor::HandleCharacterCreation (const std::string& name,
     }
 
   auto newChar = characters.CreateNew (name, charName, faction);
-  newChar->SetPosition (HexCoord (0, 0));
+
+  /* The starting position depends on the faction.  For initial testing,
+     we start each faction a bit off the other (so there is no immediate combat)
+     but not yet in the final way.  */
+  switch (faction)
+    {
+    case Faction::RED:
+      newChar->SetPosition (HexCoord (-1100, 942));
+      break;
+
+    case Faction::GREEN:
+      newChar->SetPosition (HexCoord (-1042, 1165));
+      break;
+
+    case Faction::BLUE:
+      newChar->SetPosition (HexCoord (-1377, 1163));
+      break;
+
+    default:
+      LOG (FATAL) << "Invalid faction: " << static_cast<int> (faction);
+    }
 
   /* For now, we just define some stats that every character has.  This will
      be changed later when the stats can be modified and are dynamic

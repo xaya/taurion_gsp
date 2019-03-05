@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from pxtest import PXTest
+from pxtest import PXTest, offsetCoord
 
 """
 Tests movement of characters on the map.
@@ -14,8 +14,10 @@ class MovementTest (PXTest):
     Sends a move to update the waypoints of the character with the given name.
     """
 
+    wpOffs = [offsetCoord (p, self.offset, False) for p in wp]
+
     c = self.getCharacters ()[character]
-    return c.sendMove ({"wp": wp})
+    return c.sendMove ({"wp": wpOffs})
 
   def getMovement (self, character):
     """
@@ -25,11 +27,12 @@ class MovementTest (PXTest):
     """
 
     c = self.getCharacters ()[character]
+    pos = offsetCoord (c.getPosition (), self.offset, True)
 
     if c.isMoving ():
-      return c.getPosition (), c.data["movement"]
+      return pos, c.data["movement"]
 
-    return c.getPosition (), None
+    return pos, None
 
   def expectMovement (self, character, wp):
     """
@@ -73,6 +76,12 @@ class MovementTest (PXTest):
     self.mainLogger.info ("Creating test character...")
     self.createCharacter ("domob", "foo", "r")
     self.generate (1)
+
+    # Get the initial position and store it as offset for further coordinates.
+    # By doing this, we get our test data "simple" and independent of the
+    # concrete starting location.
+    c = self.getCharacters ()["foo"]
+    self.offset = c.getPosition ()
 
     self.mainLogger.info ("Setting basic path for character...")
     wp = [

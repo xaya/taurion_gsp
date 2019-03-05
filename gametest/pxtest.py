@@ -11,6 +11,21 @@ DEVADDR = "dHNvNaqcD7XPDnoRjAoyfcMpHRi5upJD7p"
 CHARACTER_COST = 5
 
 
+def offsetCoord (c, offs, inverse):
+  """
+  Returns c + offs or c - offs if inverse is True.
+  """
+
+  factor = 1
+  if inverse:
+    factor = -1
+
+  return {
+    "x": c["x"] + factor * offs["x"],
+    "y": c["y"] + factor * offs["y"],
+  }
+
+
 class Character (object):
   """
   Wrapper class around a character in the game state (already existing).
@@ -34,6 +49,23 @@ class Character (object):
 
   def isMoving (self):
     return "movement" in self.data
+
+  def getSpeed (self):
+    return 750
+
+  def schedulePath (self, target):
+    """
+    Sends a move to path to the given target.  This uses findpath as necessary
+    to construct waypoints in-between.  Returned is an upper bound for the
+    number of blocks to reach the target.
+    """
+
+    source = self.getPosition ()
+    path = self.test.rpc.game.findpath (source=source, target=target,
+                                        l1range=1000, wpdist=100)
+
+    self.sendMove ({"wp": path["wp"]})
+    return path["dist"] // self.getSpeed () + 1
 
   def sendMove (self, mv):
     """
@@ -101,6 +133,27 @@ class PXTest (XayaGameTest):
       res[c["name"]] = Character (self, c)
 
     return res
+
+  def moveCharactersTo (self, charTargets):
+    """
+    Moves all characters from the dictionary to the given coordinates.
+    This generates as many blocks as is necessary for that (and perhaps more).
+    """
+
+    chars = self.getCharacters ()
+    maxBlks = 0
+
+    for nm, c in charTargets.iteritems ():
+      blks = chars[nm].schedulePath (c)
+      maxBlks = max (blks, maxBlks)
+
+    self.log.info ("Generating %d blocks to finalise character movement..."
+                    % maxBlks)
+    self.generate (maxBlks)
+
+    chars = self.getCharacters ()
+    for nm, c in charTargets.iteritems ():
+      self.assertEqual (chars[nm].getPosition (), c)
 
   def assertEqual (self, a, b):
     """
