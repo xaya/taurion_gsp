@@ -18,11 +18,13 @@ libmapdata_la_LIBADD = \
   $(GLOG_LIBS)
 libmapdata_la_SOURCES = \
   basemap.cpp \
+  regionmap.cpp \
   tiledata.cpp \
   \
   blobs.s
 noinst_HEADERS = \
   basemap.hpp \
+  regionmap.hpp \
   tiledata.hpp \
   \
   dataio.hpp
@@ -41,6 +43,7 @@ tests_LDADD = \
   $(GTEST_LIBS) $(GLOG_LIBS)
 tests_SOURCES = \
   basemap_tests.cpp \
+  regionmap_tests.cpp \
   \
   dataio.cpp
 
