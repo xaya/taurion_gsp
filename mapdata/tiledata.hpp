@@ -2,6 +2,7 @@
 #define MAPDATA_TILEDATA_HPP
 
 #include <cstddef>
+#include <cstdint>
 
 namespace pxd
 {
@@ -73,6 +74,16 @@ extern "C"
    tile with lowest x coordinate.  */
 extern const unsigned char blob_obstacles_start;
 extern const unsigned char blob_obstacles_end;
+
+/* The array of int16_t's that encode the x coordinates for the compact
+   storage of the region map.  */
+extern const int16_t blob_region_xcoord_start;
+extern const int16_t blob_region_xcoord_end;
+
+/* The blob of raw data encoding the compact region IDs.  Each triplet of bytes
+   encodes one 24-bit region ID.  */
+extern const unsigned char blob_region_ids_start;
+extern const unsigned char blob_region_ids_end;
 
 }
 
