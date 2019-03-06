@@ -1,11 +1,14 @@
 noinst_LTLIBRARIES = libmapdata.la
 noinst_PROGRAMS = procmap
 
-EXTRA_DIST = obstacledata.dat.xz
+COMPRESSED = obstacledata.dat.xz
+UNCOMPRESSED = $(COMPRESSED:%.xz=%)
+BLOBS = obstacles.bin
+
+EXTRA_DIST = $(COMPRESSED)
 
 BUILT_SOURCES = tiledata.cpp
-BLOBS = obstacles.bin
-CLEANFILES = obstacledata.dat tiledata.cpp $(BLOBS)
+CLEANFILES = $(UNCOMPRESSED) tiledata.cpp $(BLOBS)
 
 libmapdata_la_CXXFLAGS = \
   -I$(top_srcdir) \
@@ -50,7 +53,7 @@ procmap_LDADD = \
 procmap_SOURCES = procmap.cpp \
   dataio.cpp
 
-obstacledata.dat: obstacledata.dat.xz
+$(UNCOMPRESSED): %: %.xz
 	xz -dc $< >$@
 
 tiledata.cpp $(BLOBS): obstacledata.dat procmap$(EXEEXT)
