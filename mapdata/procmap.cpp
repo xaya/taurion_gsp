@@ -7,6 +7,7 @@
 #include "dataio.hpp"
 
 #include "hexagonal/coord.hpp"
+#include "hexagonal/rangemap.hpp"
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
@@ -29,6 +30,9 @@ namespace pxd
 {
 namespace
 {
+
+/** L1 range around the origin that is enough to hold all tiles.  */
+constexpr HexCoord::IntT FULL_L1RANGE = 7000;
 
 /** Number of bools to pack into each character for the bit vector.  */
 constexpr int BITS = 8;
@@ -180,6 +184,9 @@ class PerTileData
 
 private:
 
+  /** Whether or not data has already been read.  */
+  bool initialised = false;
+
   /** Coordinate ranges seen.  */
   CoordRanges ranges;
 
@@ -189,11 +196,6 @@ protected:
 
   PerTileData (const PerTileData&) = delete;
   void operator= (const PerTileData&) = delete;
-
-  /**
-   * Resets all stored per-tile data.
-   */
-  virtual void Clear () = 0;
 
   /**
    * Reads data for a tile with the given coordinates from the input stream
@@ -220,8 +222,7 @@ public:
   void
   ReadInput (std::istream& in)
   {
-    ranges.Clear ();
-    Clear ();
+    CHECK (!initialised);
 
     const size_t n = Read<int16_t> (in);
     const size_t m = Read<int16_t> (in);
@@ -328,28 +329,40 @@ class ObstacleData : public PerTileData
 
 private:
 
+  /**
+   * Possible values for the per-tile data stored.
+   */
+  enum class Passable : int8_t
+  {
+    UNINITIALISED = 0,
+    PASSABLE,
+    OBSTACLE,
+  };
+
   /** Map of already read obstacle "tiles" from the raw input.  */
-  std::unordered_map<HexCoord, bool> passableMap;
+  RangeMap<Passable> tiles;
 
 protected:
 
   void
-  Clear () override
-  {
-    passableMap.clear ();
-  }
-
-  void
   ReadTile (const HexCoord& coord, std::istream& in) override
   {
+    auto& val = tiles.Access (coord);
+    CHECK (val == Passable::UNINITIALISED)
+        << "Duplicate tiles in obstacle data input for coordinate " << coord;
+
     const bool passable = Read<int16_t> (in);
-    const auto res = passableMap.emplace (coord, passable);
-    CHECK (res.second) << "Duplicate tiles in obstacle data input";
+    if (passable)
+      val = Passable::PASSABLE;
+    else
+      val = Passable::OBSTACLE;
   }
 
 public:
 
-  ObstacleData () = default;
+  ObstacleData ()
+    : tiles(HexCoord (), FULL_L1RANGE, Passable::UNINITIALISED)
+  {}
 
   ObstacleData (const ObstacleData&) = delete;
   void operator= (const ObstacleData&) = delete;
@@ -379,10 +392,25 @@ public:
         for (int x = colRange.minVal; x <= colRange.maxVal; ++x)
           {
             const HexCoord c(x, y);
-            const auto mitPassable = passableMap.find (c);
-            CHECK (mitPassable != passableMap.end ())
-                << "No passable data for tile " << c;
-            bits.Append (mitPassable->second);
+            const auto val = tiles.Get (c);
+
+            switch (val)
+              {
+              case Passable::PASSABLE:
+              case Passable::OBSTACLE:
+                bits.Append (val == Passable::PASSABLE);
+                break;
+
+              case Passable::UNINITIALISED:
+                LOG (FATAL) << "No passable data for tile " << c;
+                break;
+
+              default:
+                LOG (FATAL)
+                    << "Invalid passable value " << static_cast<int> (val)
+                    << " for tile " << c;
+                break;
+              }
           }
 
         bits.Finalise ();
