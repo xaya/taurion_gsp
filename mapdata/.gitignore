@@ -9,6 +9,5 @@ regiondata.dat
 
 tiledata.cpp
 obstacles.bin
-regionmap.bin
 regionxcoord.bin
 regionids.bin
