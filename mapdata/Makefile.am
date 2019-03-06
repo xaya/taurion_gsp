@@ -29,8 +29,8 @@ noinst_HEADERS = \
   \
   dataio.hpp
 
-check_PROGRAMS = tests
-TESTS = tests
+check_PROGRAMS = tests benchmarks
+TESTS = tests benchmarks
 
 tests_CXXFLAGS = \
   -I$(top_srcdir) \
@@ -46,6 +46,17 @@ tests_SOURCES = \
   regionmap_tests.cpp \
   \
   dataio.cpp
+
+benchmarks_CXXFLAGS = \
+  -I$(top_srcdir) \
+  $(GLOG_CFLAGS) $(BENCHMARK_CFLAGS)
+benchmarks_LDADD = \
+  $(builddir)/libmapdata.la \
+  $(top_builddir)/hexagonal/libbenchmain.la \
+  $(top_builddir)/hexagonal/libhexagonal.la \
+  $(GLOG_LIBS) $(BENCHMARK_LIBS)
+benchmarks_SOURCES = \
+  regionmap_bench.cpp
 
 procmap_CXXFLAGS = \
   -I$(top_srcdir) \
