@@ -29,8 +29,6 @@ DEFINE_string (code_output, "",
                "The output file for processed data as C++ code");
 DEFINE_string (obstacle_output, "",
                "The output file for raw obstacle layer data");
-DEFINE_string (region_map_output, "",
-               "The output file for raw region map data");
 DEFINE_string (region_xcoord_output, "",
                "The output file for x coordinates in compact region data");
 DEFINE_string (region_ids_output, "",
@@ -480,11 +478,9 @@ public:
 };
 
 /**
- * Holds and processes the tiles-to-region map.  The output is raw binary that
- * contains the region IDs (each in 24 bit) for all the tiles, with all
- * rows concatenated.
+ * Holds and processes the tiles-to-region map.
  *
- * The region map is also output in compact form:  There, for each row,
+ * The region map is output in compact form:  There, for each row,
  * we "compress" contiguous blocks of the same region ID.  In other words,
  * we output two arrays:  One of x coordinates and one of corresponding
  * region IDs.  An entry (x, id) means that all tiles with a given y coordinate
@@ -573,36 +569,11 @@ public:
    * blobs to the given streams.
    */
   void
-  Write (std::ostream& codeOut, std::ostream& mapOut,
+  Write (std::ostream& codeOut,
          std::ostream& xcoordOut, std::ostream& idsOut) const
   {
     LOG (INFO) << "Writing region map data...";
     codeOut << "namespace regions {" << std::endl;
-
-    int offset = 0;
-    codeOut << "const size_t regionIdOffsetForY[] = {" << std::endl;
-    for (int y = GetRanges ().GetRowRange ().minVal;
-         y <= GetRanges ().GetRowRange ().maxVal; ++y)
-      {
-        codeOut << "  " << offset << "," << std::endl;
-
-        const auto& colRange = GetRanges ().GetColumnRange (y);
-        for (int x = colRange.minVal; x <= colRange.maxVal; ++x)
-          {
-            const HexCoord c(x, y);
-            const auto val = tiles.Get (c);
-            CHECK_NE (val, -1) << "No region ID for tile " << c;
-            WriteInt24 (mapOut, val);
-          }
-
-        offset += (colRange.maxVal - colRange.minVal + 1)
-                    * tiledata::regions::BYTES_PER_ID;
-      }
-    codeOut << "}; // regionIdOffsetForY" << std::endl;
-    codeOut << "CHECK_YARRAY_LEN (regionIdOffsetForY);" << std::endl;
-
-    CHECK_EQ (offset, tiledata::regions::BYTES_PER_ID * numTiles);
-    codeOut << "const size_t regionMapSize = " << offset << ";" << std::endl;
 
     int entries = 0;
     codeOut << "const size_t compactOffsetForY[] = {" << std::endl;
@@ -660,8 +631,6 @@ main (int argc, char** argv)
   CHECK (!FLAGS_region_input.empty ()) << "--region_input must be set";
   CHECK (!FLAGS_code_output.empty ()) << "--code_output must be set";
   CHECK (!FLAGS_obstacle_output.empty ()) << "--obstacle_output must be set";
-  CHECK (!FLAGS_region_map_output.empty ())
-      << "--region_map_output must be set";
   CHECK (!FLAGS_region_xcoord_output.empty ())
       << "--region_xcoord_output must be set";
   CHECK (!FLAGS_region_ids_output.empty ())
@@ -705,10 +674,9 @@ main (int argc, char** argv)
     CHECK (regions.GetRanges () == ranges) << "Coordinate ranges mismatch";
     regions.CheckData ();
 
-    std::ofstream mapOut(FLAGS_region_map_output, std::ios_base::binary);
     std::ofstream xcoordOut(FLAGS_region_xcoord_output, std::ios_base::binary);
     std::ofstream idsOut(FLAGS_region_ids_output, std::ios_base::binary);
-    regions.Write (codeOut, mapOut, xcoordOut, idsOut);
+    regions.Write (codeOut, xcoordOut, idsOut);
   }
 
   codeOut << "} // namespace tiledata" << std::endl;

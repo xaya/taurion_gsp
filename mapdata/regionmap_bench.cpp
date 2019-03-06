@@ -6,8 +6,6 @@
 
 #include <benchmark/benchmark.h>
 
-#include <glog/logging.h>
-
 #include <cstdlib>
 #include <vector>
 
@@ -19,8 +17,7 @@ namespace
 /**
  * Constructs a vector of n "random" coordinates.  It seeds the RNG
  * deterministically, so that each time the same sequence is returned for
- * a given n (and thus it can be used to compare different RangeMap
- * implementations in a fair way).
+ * a given n (so that it gives consistent results for comparisons).
  */
 std::vector<HexCoord>
 RandomCoords (const unsigned n)
@@ -44,65 +41,23 @@ RandomCoords (const unsigned n)
 }
 
 /**
- * Runs a benchmark of finding the region IDs of n random coordinates
- * using the given RegionMap.
+ * Benchmarks the lookup of the region ID from a coordinate.  Accepts one
+ * argument, the number of (random) tiles to look up.
  */
 void
-BenchmarkRegionMap (benchmark::State& state,
-                   const RegionMap& rm, const unsigned n)
+GetRegionForTile (benchmark::State& state)
 {
-  const std::vector<HexCoord> coords = RandomCoords (n);
+  RegionMap rm;
+  const std::vector<HexCoord> coords = RandomCoords (state.range (0));
 
   for (auto _ : state)
     for (const auto& c : coords)
       rm.GetRegionForTile (c);
 }
-
-void
-InMemoryRegionMap (benchmark::State& state)
-{
-  auto rm = NewInMemoryRegionMap ("regionmap.bin");
-  BenchmarkRegionMap (state, *rm, state.range (0));
-}
-BENCHMARK (InMemoryRegionMap)
+BENCHMARK (GetRegionForTile)
   ->Unit (benchmark::kMillisecond)
   ->Arg (1000)
-  ->Arg (100000)
-  ->Arg (1000000);
-
-void
-StreamRegionMap (benchmark::State& state)
-{
-  auto rm = NewStreamRegionMap ("regionmap.bin");
-  BenchmarkRegionMap (state, *rm, state.range (0));
-}
-BENCHMARK (StreamRegionMap)
-  ->Unit (benchmark::kMillisecond)
-  ->Arg (1000)
-  ->Arg (100000)
-  ->Arg (1000000);
-
-void
-MemMappedRegionMap (benchmark::State& state)
-{
-  auto rm = NewMemMappedRegionMap ("regionmap.bin");
-  BenchmarkRegionMap (state, *rm, state.range (0));
-}
-BENCHMARK (MemMappedRegionMap)
-  ->Unit (benchmark::kMillisecond)
-  ->Arg (1000)
-  ->Arg (100000)
-  ->Arg (1000000);
-
-void
-CompactRegionMap (benchmark::State& state)
-{
-  auto rm = NewCompactRegionMap ();
-  BenchmarkRegionMap (state, *rm, state.range (0));
-}
-BENCHMARK (CompactRegionMap)
-  ->Unit (benchmark::kMillisecond)
-  ->Arg (1000)
+  ->Arg (10000)
   ->Arg (100000)
   ->Arg (1000000);
 
