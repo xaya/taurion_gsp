@@ -21,7 +21,9 @@
 DEFINE_string (obstacle_input, "",
                "The file with input obstacle data");
 DEFINE_string (code_output, "",
-               "If not empty, write processed data as C++ code to this file");
+               "Write processed metadata as C++ code to this file");
+DEFINE_string (obstacle_output, "",
+               "Write raw binary data for the obstacle layer to this file");
 
 namespace pxd
 {
@@ -154,10 +156,12 @@ public:
     out << "}; // maxX" << std::endl;
 
     out << R"(
-      static_assert (sizeof (minX) == (maxY - minY + 1) * sizeof (minX[0]),
-                     "minX has unexpected size");
-      static_assert (sizeof (maxX) == sizeof (minX),
-                     "maxX has unexpected size");
+      #define CHECK_YARRAY_LEN(var) \
+          static_assert (sizeof (var) / sizeof (var[0]) == (maxY - minY + 1), \
+                         #var " has unexpected size")
+
+      CHECK_YARRAY_LEN (minX);
+      CHECK_YARRAY_LEN (maxX);
     )";
   }
 
@@ -351,25 +355,24 @@ public:
   void operator= (const ObstacleData&) = delete;
 
   /**
-   * Writes out C++ code that encodes the data into some constants, so that
-   * it can be compiled directly into the binary.  The raw rows of data are
-   * encoded as bit vectors to save memory.
+   * Writes the data out.  Metadata is written as generated C++ code and
+   * the bit vectors themselves are written as binary data in a separate file.
    */
   void
-  WriteCode (std::ostream& out) const
+  Write (std::ostream& codeOut, std::ostream& rawOut) const
   {
-    LOG (INFO) << "Writing obstacle data as C++ code constants...";
-    out << "namespace obstacles {" << std::endl;
+    LOG (INFO) << "Writing obstacle data...";
+    codeOut << "namespace obstacles {" << std::endl;
 
-    /* We store all the bit-vector data into one big array of bytes that is
-       encoded in a single array in code.  We also store the index at which
-       each row's data starts in that array into another constant array.  */
-    std::vector<unsigned char> bitData;
-    out << "const int bitDataOffsetForY[] = {" << std::endl;
+    /* We write the raw bit vectors concatenated to the binary output and
+       also store the offsets where each row starts in the data in the
+       generated code.  */
+    size_t offset = 0;
+    codeOut << "const size_t bitDataOffsetForY[] = {" << std::endl;
     for (int y = GetRanges ().GetRowRange ().minVal;
          y <= GetRanges ().GetRowRange ().maxVal; ++y)
       {
-        out << "  " << bitData.size () << "," << std::endl;
+        codeOut << "  " << offset << "," << std::endl;
         const auto& colRange = GetRanges ().GetColumnRange (y);
 
         BitVectorBuilder bits;
@@ -384,23 +387,17 @@ public:
 
         bits.Finalise ();
         const auto& data = bits.GetData ();
-        bitData.insert (bitData.end (), data.begin (), data.end ());
+
+        rawOut.write (reinterpret_cast<const char*> (data.data ()),
+                      data.size ());
+        offset += data.size ();
       }
-    out << "}; // bitDataOffsetForY" << std::endl;
+    codeOut << "}; // bitDataOffsetForY" << std::endl;
+    codeOut << "CHECK_YARRAY_LEN (bitDataOffsetForY);" << std::endl;
 
-    out << R"(
-      static_assert (sizeof (bitDataOffsetForY) == sizeof (minX),
-                     "bitDataOffsetForY has unexpected size");
-    )";
+    codeOut << "const size_t bitDataSize = " << offset << ";" << std::endl;
 
-    out << "const unsigned char bitData[] = {" << std::endl;
-    for (const int byte : bitData)
-      out << "  " << byte << "," << std::endl;
-    out << "}; // bitData" << std::endl;
-    out << "static_assert (sizeof (bitData) == " << bitData.size ()
-        << ", \"bitData has unexpected size\");" << std::endl;
-
-    out << "} // namespace obstacles" << std::endl;
+    codeOut << "} // namespace obstacles" << std::endl;
   }
 
 };
@@ -418,6 +415,8 @@ main (int argc, char** argv)
   gflags::ParseCommandLineFlags (&argc, &argv, true);
 
   CHECK (!FLAGS_obstacle_input.empty ()) << "--obstacle_input must be set";
+  CHECK (!FLAGS_code_output.empty ()) << "--code_output must be set";
+  CHECK (!FLAGS_obstacle_output.empty ()) << "--obstacle_output must be set";
 
   pxd::ObstacleData obstacles;
   {
@@ -428,17 +427,15 @@ main (int argc, char** argv)
     obstacles.ReadInput (in);
   }
 
-  if (!FLAGS_code_output.empty ())
-    {
-      std::ofstream out(FLAGS_code_output);
-      out << "#include \"tiledata.hpp\"" << std::endl;
-      out << "namespace pxd {" << std::endl;
-      out << "namespace tiledata {" << std::endl;
-      obstacles.GetRanges ().WriteCode (out);
-      obstacles.WriteCode (out);
-      out << "} // namespace tiledata" << std::endl;
-      out << "} // namespace pxd" << std::endl;
-    }
+  std::ofstream out(FLAGS_code_output);
+  std::ofstream obstacleOut(FLAGS_obstacle_output, std::ios_base::binary);
+  out << "#include \"tiledata.hpp\"" << std::endl;
+  out << "namespace pxd {" << std::endl;
+  out << "namespace tiledata {" << std::endl;
+  obstacles.GetRanges ().WriteCode (out);
+  obstacles.Write (out, obstacleOut);
+  out << "} // namespace tiledata" << std::endl;
+  out << "} // namespace pxd" << std::endl;
 
   return EXIT_SUCCESS;
 }

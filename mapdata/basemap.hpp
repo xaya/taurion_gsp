@@ -32,7 +32,7 @@ private:
 
 public:
 
-  BaseMap () = default;
+  BaseMap ();
 
   BaseMap (const BaseMap&) = delete;
   void operator= (const BaseMap&) = delete;

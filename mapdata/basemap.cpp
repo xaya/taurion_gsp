@@ -26,6 +26,12 @@ YArrayIndex (const int y)
 
 } // anonymous namespace
 
+BaseMap::BaseMap ()
+{
+  CHECK_EQ (&blob_obstacles_end - &blob_obstacles_start,
+            tiledata::obstacles::bitDataSize);
+}
+
 bool
 BaseMap::IsOnMap (const HexCoord& c) const
 {
@@ -45,8 +51,7 @@ BaseMap::IsPassable (const HexCoord& c) const
 
   const int yInd = YArrayIndex (c.GetY ());
   const unsigned char* bits
-      = tiledata::obstacles::bitData
-          + tiledata::obstacles::bitDataOffsetForY[yInd];
+      = &blob_obstacles_start + tiledata::obstacles::bitDataOffsetForY[yInd];
 
   const int xInd = c.GetX () - tiledata::minX[yInd];
   return (bits[xInd / BITS] & (1 << xInd % BITS));

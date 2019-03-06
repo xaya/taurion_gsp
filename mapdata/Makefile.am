@@ -4,7 +4,8 @@ noinst_PROGRAMS = procmap
 EXTRA_DIST = obstacledata.dat.xz
 
 BUILT_SOURCES = tiledata.cpp
-CLEANFILES = obstacledata.dat tiledata.cpp
+BLOBS = obstacles.bin
+CLEANFILES = obstacledata.dat tiledata.cpp $(BLOBS)
 
 libmapdata_la_CXXFLAGS = \
   -I$(top_srcdir) \
@@ -14,7 +15,9 @@ libmapdata_la_LIBADD = \
   $(GLOG_LIBS)
 libmapdata_la_SOURCES = \
   basemap.cpp \
-  tiledata.cpp
+  tiledata.cpp \
+  \
+  blobs.s
 noinst_HEADERS = \
   basemap.hpp \
   tiledata.hpp \
@@ -50,7 +53,9 @@ procmap_SOURCES = procmap.cpp \
 obstacledata.dat: obstacledata.dat.xz
 	xz -dc $< >$@
 
-tiledata.cpp: obstacledata.dat procmap$(EXEEXT)
+tiledata.cpp $(BLOBS): obstacledata.dat procmap$(EXEEXT)
 	$(builddir)/procmap$(EXEEKT) \
-	  --obstacle_input=$< \
-	  --code_output=$@
+	  --obstacle_input=obstacledata.dat \
+	  --code_output=tiledata.cpp \
+	  --obstacle_output=obstacles.bin
+	touch $(srcdir)/blobs.s
