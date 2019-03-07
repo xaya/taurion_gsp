@@ -384,7 +384,7 @@ private:
    */
   enum class Passable : int8_t
   {
-    UNINITIALISED = 0,
+    UNINITIALISED,
     PASSABLE,
     OBSTACLE,
   };
