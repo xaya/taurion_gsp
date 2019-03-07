@@ -41,9 +41,6 @@ namespace pxd
 namespace
 {
 
-/** L1 range around the origin that is enough to hold all tiles.  */
-constexpr HexCoord::IntT FULL_L1RANGE = 7000;
-
 /** Number of bools to pack into each character for the bit vector.  */
 constexpr int BITS = 8;
 
@@ -392,7 +389,7 @@ private:
   };
 
   /** Map of already read obstacle "tiles" from the raw input.  */
-  RangeMap<Passable> tiles;
+  FullRangeMap<Passable> tiles;
 
 protected:
 
@@ -413,7 +410,7 @@ protected:
 public:
 
   ObstacleData ()
-    : tiles(HexCoord (), FULL_L1RANGE, Passable::UNINITIALISED)
+    : tiles(Passable::UNINITIALISED)
   {}
 
   ObstacleData (const ObstacleData&) = delete;
@@ -501,7 +498,7 @@ class RegionData : public PerTileData
 private:
 
   /** The region ID for each tile.  */
-  RangeMap<int32_t> tiles;
+  FullRangeMap<int32_t> tiles;
 
   /** Number of non-empty tiles.  */
   size_t numTiles = 0;
@@ -527,7 +524,7 @@ protected:
 public:
 
   RegionData ()
-    : tiles(HexCoord (), FULL_L1RANGE, -1)
+    : tiles(-1)
   {}
 
   RegionData (const RegionData&) = delete;

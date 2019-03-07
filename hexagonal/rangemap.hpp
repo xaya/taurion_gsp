@@ -66,6 +66,28 @@ public:
 
 };
 
+/**
+ * Specialised implementation of RangeMap that is able to hold all of the
+ * map tiles at once.  This uses a lot of memory, but can be useful in
+ * specific situations (e.g. tests).
+ */
+template <typename T>
+  class FullRangeMap : public RangeMap<T>
+{
+
+private:
+
+  /** L1 range enough to cover the whole map around the origin.  */
+  static constexpr HexCoord::IntT FULL_L1RANGE = 7000;
+
+public:
+
+  explicit FullRangeMap (const T& val)
+    : RangeMap<T> (HexCoord (), FULL_L1RANGE, val)
+  {}
+
+};
+
 } // namespace pxd
 
 #include "rangemap.tpp"
