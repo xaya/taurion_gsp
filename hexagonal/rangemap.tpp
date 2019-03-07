@@ -33,7 +33,7 @@ template <typename T>
 }
 
 template <typename T>
-  T&
+  typename std::vector<T>::reference
   RangeMap<T>::Access (const HexCoord& c)
 {
   const int ind = GetIndex (c);
@@ -45,7 +45,7 @@ template <typename T>
 }
 
 template <typename T>
-  const T&
+  typename std::vector<T>::const_reference
   RangeMap<T>::Get (const HexCoord& c) const
 {
   const int ind = GetIndex (c);
