@@ -1,6 +1,8 @@
 #ifndef MAPDATA_BASEMAP_HPP
 #define MAPDATA_BASEMAP_HPP
 
+#include "regionmap.hpp"
+
 #include "hexagonal/coord.hpp"
 #include "hexagonal/pathfinder.hpp"
 
@@ -16,6 +18,9 @@ class BaseMap
 {
 
 private:
+
+  /** RegionMap instance that is exposed as part of the BaseMap.  */
+  RegionMap rm;
 
   /**
    * Returns true if the given coordinate is "on the map".
@@ -36,6 +41,12 @@ public:
 
   BaseMap (const BaseMap&) = delete;
   void operator= (const BaseMap&) = delete;
+
+  const RegionMap&
+  Regions () const
+  {
+    return rm;
+  }
 
   /**
    * Returns the edge-weight function for the basemap, to be used with path
