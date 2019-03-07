@@ -49,6 +49,19 @@ TEST_F (RangeMapTests, ZeroRange)
   EXPECT_EQ (map.Get (centre), 5);
 }
 
+TEST_F (RangeMapTests, BoolValues)
+{
+  RangeMap<bool> map(HexCoord (0, 0), 10, false);
+
+  EXPECT_FALSE (map.Get (HexCoord (2, 2)));
+
+  auto val = map.Access (HexCoord (2, 2));
+  EXPECT_FALSE (val);
+  val = true;
+
+  EXPECT_TRUE (map.Get (HexCoord (2, 2)));
+}
+
 TEST_F (RangeMapTests, OutOfRangeGet)
 {
   RangeMap<int> map(HexCoord (0, 0), 10, -42);

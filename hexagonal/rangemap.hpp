@@ -56,13 +56,13 @@ public:
    * Accesses and potentially modifies the element.  c must be within range
    * of the centre.
    */
-  T& Access (const HexCoord& c);
+  typename std::vector<T>::reference Access (const HexCoord& c);
 
   /**
    * Gives read-only access to the element (or the default value if the
    * element is out of range).
    */
-  const T& Get (const HexCoord& c) const;
+  typename std::vector<T>::const_reference Get (const HexCoord& c) const;
 
 };
 
