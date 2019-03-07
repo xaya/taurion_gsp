@@ -25,6 +25,12 @@ protected:
 
 };
 
+TEST_F (RegionMapTests, OutOfMap)
+{
+  EXPECT_NE (rm.GetRegionId (HexCoord (0, 4064)), RegionMap::OUT_OF_MAP);
+  EXPECT_EQ (rm.GetRegionId (HexCoord (0, 4065)), RegionMap::OUT_OF_MAP);
+}
+
 TEST_F (RegionMapTests, MatchesOriginalData)
 {
   std::ifstream in("regiondata.dat", std::ios_base::binary); 
@@ -44,7 +50,38 @@ TEST_F (RegionMapTests, MatchesOriginalData)
       const HexCoord c(x, y);
 
       const auto id = Read<int32_t> (in);
-      ASSERT_EQ (rm.GetRegionForTile (c), id) << "Mismatch for tile " << c;
+      ASSERT_EQ (rm.GetRegionId (c), id) << "Mismatch for tile " << c;
+    }
+}
+
+TEST_F (RegionMapTests, GetRegionShape)
+{
+  const HexCoord coords[] =
+    {
+      HexCoord (0, -4064),
+      HexCoord (0, 4064),
+      HexCoord (-4064, 0),
+      HexCoord (4064, 0),
+      HexCoord (0, 0),
+    };
+
+  for (const auto& c : coords)
+    {
+      RegionMap::IdT id;
+      const std::set<HexCoord> tiles = rm.GetRegionShape (c, id);
+
+      EXPECT_EQ (id, rm.GetRegionId (c));
+
+      for (const auto& t : tiles)
+        {
+          EXPECT_EQ (id, rm.GetRegionId (t));
+          for (const auto& n : t.Neighbours ())
+            {
+              if (tiles.count (n) > 0)
+                continue;
+              EXPECT_NE (id, rm.GetRegionId (n));
+            }
+        }
     }
 }
 

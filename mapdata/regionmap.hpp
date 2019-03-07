@@ -4,6 +4,7 @@
 #include "hexagonal/coord.hpp"
 
 #include <cstdint>
+#include <set>
 
 namespace pxd
 {
@@ -22,16 +23,40 @@ public:
   /** Type for the ID of regions.  */
   using IdT = uint32_t;
 
+private:
+
+  /**
+   * Computes the region of the given coordinate and returns that together
+   * with extra data as needed for other methods.  Returns OUT_OF_MAP for
+   * coordinates that are not on the basemap at all.
+   */
+  IdT GetRegionInternal (const HexCoord& c) const;
+
+public:
+
+  /** Region ID value returned for out-of-map coordinates.  */
+  static constexpr IdT OUT_OF_MAP = static_cast<IdT> (-1);
+
   RegionMap ();
 
   RegionMap (const RegionMap&) = delete;
   void operator= (const RegionMap&) = delete;
 
   /**
-   * Returns the region of the given coordinate.  Must not be called for
-   * coordinates outside of the base map.
+   * Returns the region ID of the given coordinate.  Returns OUT_OF_MAP if the
+   * given coordinate is not on the base map itself.
    */
-  IdT GetRegionForTile (const HexCoord& c) const;
+  IdT
+  GetRegionId (const HexCoord& c) const
+  {
+    return GetRegionInternal (c);
+  }
+
+  /**
+   * Returns the region ID and the set of all coordinates of that region
+   * for the given coordinate.  Must not be called for out-of-map coordinates.
+   */
+  std::set<HexCoord> GetRegionShape (const HexCoord& c, IdT& id) const;
 
 };
 
