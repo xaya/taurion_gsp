@@ -24,5 +24,13 @@
         "wpdist": 10
       },
     "returns": {}
+  },
+  {
+    "name": "getregionat",
+    "params":
+      {
+        "coord": {}
+      },
+    "returns": {}
   }
 ]

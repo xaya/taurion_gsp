@@ -32,6 +32,9 @@ enum class ErrorCode
   /* Specific errors with findpath.  */
   FINDPATH_NO_CONNECTION = 1,
 
+  /* Specific errors with getregionat.  */
+  REGIONAT_OUT_OF_MAP = 2,
+
 };
 
 /**
@@ -143,6 +146,36 @@ PXRpcServer::findpath (const int l1range, const Json::Value& source,
   Json::Value res(Json::objectValue);
   res["dist"] = dist;
   res["wp"] = wp;
+
+  return res;
+}
+
+Json::Value
+PXRpcServer::getregionat (const Json::Value& coord)
+{
+  LOG (INFO)
+      << "RPC method called: getregionat\n"
+      << "  coord=" << coord;
+
+  HexCoord c;
+  if (!CoordFromJson (coord, c))
+    ReturnError (ErrorCode::INVALID_ARGUMENT,
+                 "coord is not a valid coordinate");
+
+  if (!logic.map.IsOnMap (c))
+    ReturnError (ErrorCode::REGIONAT_OUT_OF_MAP,
+                 "coord is outside the game map");
+
+  RegionMap::IdT id;
+  const auto tiles = logic.map.Regions ().GetRegionShape (c, id);
+
+  Json::Value tilesArr(Json::arrayValue);
+  for (const auto& c : tiles)
+    tilesArr.append (CoordToJson (c));
+
+  Json::Value res(Json::objectValue);
+  res["id"] = id;
+  res["tiles"] = tilesArr;
 
   return res;
 }

@@ -23,11 +23,6 @@ private:
   RegionMap rm;
 
   /**
-   * Returns true if the given coordinate is "on the map".
-   */
-  bool IsOnMap (const HexCoord& c) const;
-
-  /**
    * Returns true if the given coordinate is passable according to the
    * obstacle layer data.
    */
@@ -41,6 +36,11 @@ public:
 
   BaseMap (const BaseMap&) = delete;
   void operator= (const BaseMap&) = delete;
+
+  /**
+   * Returns true if the given coordinate is "on the map".
+   */
+  bool IsOnMap (const HexCoord& c) const;
 
   const RegionMap&
   Regions () const

@@ -44,6 +44,10 @@ class FindPathTest (PXTest):
                       l1range=10, wpdist=1)
     self.expectError (1, "no connection",
                       findpath, source=a, target=b, l1range=1, wpdist=1)
+    outOfMap = {"x": 10000, "y": 0}
+    self.expectError (1, "no connection",
+                      findpath, source=outOfMap, target=outOfMap,
+                      l1range=10, wpdist=1)
 
     # Basic path that is fine with wpdist=1 (every coordinate).
     self.assertEqual (self.call (a, b, l1range=10, wpdist=1),

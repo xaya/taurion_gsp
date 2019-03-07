@@ -42,6 +42,7 @@ public:
 
   virtual Json::Value findpath (int l1range, const Json::Value& source,
                                 const Json::Value& target, int wpdist) override;
+  virtual Json::Value getregionat (const Json::Value& coord) override;
 
 };
 

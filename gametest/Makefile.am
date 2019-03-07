@@ -6,6 +6,7 @@ REGTESTS = \
   combat_damage.py \
   combat_targets.py \
   findpath.py \
+  getregionat.py \
   movement.py
 
 EXTRA_DIST = $(REGTESTS) $(TEST_LIBRARY)
