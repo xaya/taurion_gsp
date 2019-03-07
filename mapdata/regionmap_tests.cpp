@@ -1,8 +1,10 @@
 #include "regionmap.hpp"
 
 #include "dataio.hpp"
+#include "tiledata.hpp"
 
 #include "hexagonal/coord.hpp"
+#include "hexagonal/rangemap.hpp"
 
 #include <gtest/gtest.h>
 
@@ -25,6 +27,12 @@ protected:
 
 };
 
+TEST_F (RegionMapTests, OutOfMap)
+{
+  EXPECT_NE (rm.GetRegionId (HexCoord (0, 4064)), RegionMap::OUT_OF_MAP);
+  EXPECT_EQ (rm.GetRegionId (HexCoord (0, 4065)), RegionMap::OUT_OF_MAP);
+}
+
 TEST_F (RegionMapTests, MatchesOriginalData)
 {
   std::ifstream in("regiondata.dat", std::ios_base::binary); 
@@ -44,8 +52,82 @@ TEST_F (RegionMapTests, MatchesOriginalData)
       const HexCoord c(x, y);
 
       const auto id = Read<int32_t> (in);
-      ASSERT_EQ (rm.GetRegionForTile (c), id) << "Mismatch for tile " << c;
+      ASSERT_EQ (rm.GetRegionId (c), id) << "Mismatch for tile " << c;
     }
+}
+
+TEST_F (RegionMapTests, GetRegionShape)
+{
+  const HexCoord coords[] =
+    {
+      HexCoord (0, -4064),
+      HexCoord (0, 4064),
+      HexCoord (-4064, 0),
+      HexCoord (4064, 0),
+      HexCoord (0, 0),
+    };
+
+  for (const auto& c : coords)
+    {
+      RegionMap::IdT id;
+      const std::set<HexCoord> tiles = rm.GetRegionShape (c, id);
+
+      EXPECT_EQ (id, rm.GetRegionId (c));
+
+      for (const auto& t : tiles)
+        {
+          EXPECT_EQ (id, rm.GetRegionId (t));
+          for (const auto& n : t.Neighbours ())
+            {
+              if (tiles.count (n) > 0)
+                continue;
+              EXPECT_NE (id, rm.GetRegionId (n));
+            }
+        }
+    }
+}
+
+/**
+ * Tests GetRegionShape exhaustively, which means that the method is invoked
+ * for each region on the full map and we verify that it works as well as
+ * that this yields a full (and disjoint) covering of all map tiles.
+ *
+ * This test is expensive, so that it is marked as disabled by default.  It
+ * should still run fine, though.
+ */
+TEST_F (RegionMapTests, DISABLED_ExhaustiveRegionShapes)
+{
+  FullRangeMap<bool> tilesFound(false);
+  unsigned numFound = 0;
+  unsigned numTiles = 0;
+
+  for (int y = tiledata::minY; y <= tiledata::maxY; ++y)
+    {
+      const int yInd = y - tiledata::minY;
+      for (int x = tiledata::minX[yInd]; x <= tiledata::maxX[yInd]; ++x)
+        {
+          ++numTiles;
+
+          const HexCoord c(x, y);
+          if (tilesFound.Get (c))
+            continue;
+
+          RegionMap::IdT id;
+          const std::set<HexCoord> tiles = rm.GetRegionShape (c, id);
+
+          for (const auto& c : tiles)
+            {
+              ASSERT_EQ (rm.GetRegionId (c), id);
+
+              auto found = tilesFound.Access  (c);
+              ASSERT_FALSE (found);
+              found = true;
+              ++numFound;
+            }
+        }
+    }
+
+  EXPECT_EQ (numFound, numTiles);
 }
 
 } // anonymous namespace
