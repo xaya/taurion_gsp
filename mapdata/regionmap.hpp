@@ -29,8 +29,14 @@ private:
    * Computes the region of the given coordinate and returns that together
    * with extra data as needed for other methods.  Returns OUT_OF_MAP for
    * coordinates that are not on the basemap at all.
+   *
+   * In addition to the ID, this also returns the lowest and largest
+   * x coordinate in the row around c that still is in the same region.
+   * This is free with the compacted data format we use, and can be used
+   * for GetRegionShape.
    */
-  IdT GetRegionInternal (const HexCoord& c) const;
+  IdT GetRegionInternal (const HexCoord& c, HexCoord::IntT& lowerX,
+                         HexCoord::IntT& upperX) const;
 
 public:
 
@@ -49,7 +55,8 @@ public:
   IdT
   GetRegionId (const HexCoord& c) const
   {
-    return GetRegionInternal (c);
+    HexCoord::IntT lowerX, upperX;
+    return GetRegionInternal (c, lowerX, upperX);
   }
 
   /**

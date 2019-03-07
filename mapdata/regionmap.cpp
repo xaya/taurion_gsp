@@ -24,7 +24,8 @@ RegionMap::RegionMap ()
 }
 
 RegionMap::IdT
-RegionMap::GetRegionInternal (const HexCoord& c) const
+RegionMap::GetRegionInternal (const HexCoord& c, HexCoord::IntT& lowerX,
+                              HexCoord::IntT& upperX) const
 {
   const auto x = c.GetX ();
   const auto y = c.GetY ();
@@ -62,6 +63,14 @@ RegionMap::GetRegionInternal (const HexCoord& c) const
   IdT res = 0;
   for (int i = 0; i < BYTES_PER_ID; ++i)
     res |= (static_cast<IdT> (data[i]) << (8 * i));
+
+  lowerX = *xFound;
+  if (xFound + 1 == xEnd)
+    upperX = tiledata::maxX[yInd];
+  else
+    upperX = *(xFound + 1) - 1;
+  CHECK_GE (x, lowerX);
+  CHECK_LE (x, upperX);
 
   CHECK_NE (res, OUT_OF_MAP);
   return res;
@@ -135,6 +144,18 @@ public:
   }
 
   /**
+   * Adds a full range of tiles known to be in the region, where the
+   * x coordinate is in the inclusive range and the y coordinate as given.
+   */
+  void
+  AddTileRange (const HexCoord::IntT lowerX, const HexCoord::IntT upperX,
+                const HexCoord::IntT y)
+  {
+    for (HexCoord::IntT x = lowerX; x <= upperX; ++x)
+      AddRegionTile (HexCoord (x, y));
+  }
+
+  /**
    * Extracts the next tile for which we need to process its neighbours.
    * Returns false if there is none (i.e. we are done).
    */
@@ -165,11 +186,12 @@ public:
 std::set<HexCoord>
 RegionMap::GetRegionShape (const HexCoord& c, IdT& id) const
 {
-  id = GetRegionInternal (c);
+  HexCoord::IntT lowerX, upperX;
+  id = GetRegionInternal (c, lowerX, upperX);
   CHECK_NE (id, OUT_OF_MAP) << "Coordinate is out of the map: " << c;
 
   RegionFiller filler(c);
-  filler.AddRegionTile (c);
+  filler.AddTileRange (lowerX, upperX, c.GetY ());
 
   HexCoord todo;
   while (filler.NextTodo (todo))
@@ -180,8 +202,8 @@ RegionMap::GetRegionShape (const HexCoord& c, IdT& id) const
         if (filler.AlreadyProcessed (n))
           continue;
 
-        if (GetRegionInternal (n) == id)
-          filler.AddRegionTile (n);
+        if (GetRegionInternal (n, lowerX, upperX) == id)
+          filler.AddTileRange (lowerX, upperX, n.GetY ());
       }
 
   return filler.MoveResult ();
