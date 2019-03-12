@@ -8,7 +8,6 @@
 
 #include <gtest/gtest.h>
 
-#include <sstream>
 #include <vector>
 
 namespace pxd
@@ -57,10 +56,7 @@ protected:
   Database::IdT
   InsertCharacter (const HexCoord& pos, const Faction faction)
   {
-    std::ostringstream name;
-    name << "character " << ++characterCnt;
-
-    auto h = characters.CreateNew ("domob", name.str (), faction);
+    auto h = characters.CreateNew ("domob", faction);
     h->SetPosition (pos);
 
     return h->GetId ();

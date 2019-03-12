@@ -61,14 +61,6 @@ MoveProcessor::HandleCharacterCreation (const std::string& name,
 
   VLOG (1) << "Attempting to create new character through move: " << cmd;
 
-  const auto& charNameVal = cmd["name"];
-  if (!charNameVal.isString ())
-    {
-      LOG (WARNING) << "Character creation does not specify name: " << cmd;
-      return;
-    }
-  const std::string charName = charNameVal.asString ();
-
   const auto& factionVal = cmd["faction"];
   if (!factionVal.isString ())
     {
@@ -82,7 +74,7 @@ MoveProcessor::HandleCharacterCreation (const std::string& name,
       return;
     }
 
-  if (cmd.size () != 2)
+  if (cmd.size () != 1)
     {
       LOG (WARNING) << "Character creation has extra fields: " << cmd;
       return;
@@ -94,13 +86,7 @@ MoveProcessor::HandleCharacterCreation (const std::string& name,
       return;
     }
 
-  if (!characters.IsValidName (charName))
-    {
-      LOG (WARNING) << "Invalid character name: " << charName;
-      return;
-    }
-
-  auto newChar = characters.CreateNew (name, charName, faction);
+  auto newChar = characters.CreateNew (name, faction);
 
   /* The starting position depends on the faction.  For initial testing,
      we start each faction a bit off the other (so there is no immediate combat)
@@ -162,7 +148,7 @@ MaybeTransferCharacter (Character& c, const Json::Value& upd)
 
   VLOG (1)
       << "Sending character " << c.GetId ()
-      << " (name: " << c.GetName () << ") from " << c.GetOwner ()
+      << " from " << c.GetOwner ()
       << " to " << sendTo.asString ();
   c.SetOwner (sendTo.asString ());
 }
@@ -186,7 +172,7 @@ MaybeSetCharacterWaypoints (Character& c, const Json::Value& upd)
       if (!CoordFromJson (entry, coord))
         {
           LOG (WARNING)
-              << "Invalid waypoints given for " << c.GetName ()
+              << "Invalid waypoints given for character " << c.GetId ()
               << ", not updating movement";
           return;
         }
@@ -194,7 +180,7 @@ MaybeSetCharacterWaypoints (Character& c, const Json::Value& upd)
     }
 
   VLOG (1)
-      << "Updating movement for character " << c.GetName ()
+      << "Updating movement for character " << c.GetId ()
       << " from waypoints: " << wpArr;
 
   c.SetPartialStep (0);

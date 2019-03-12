@@ -29,13 +29,13 @@ TEST_F (CharacterTests, Creation)
 {
   const HexCoord pos(5, -2);
 
-  auto c = tbl.CreateNew  ("domob", "abc", Faction::RED);
+  auto c = tbl.CreateNew  ("domob", Faction::RED);
   c->SetPosition (pos);
   const auto id1 = c->GetId ();
   c->MutableHP ().set_armour (10);
   c.reset ();
 
-  c = tbl.CreateNew ("domob", u8"äöü", Faction::GREEN);
+  c = tbl.CreateNew ("domob", Faction::GREEN);
   const auto id2 = c->GetId ();
   c->MutableProto ().mutable_movement ();
   c.reset ();
@@ -46,7 +46,6 @@ TEST_F (CharacterTests, Creation)
   c = tbl.GetFromResult (res);
   ASSERT_EQ (c->GetId (), id1);
   EXPECT_EQ (c->GetOwner (), "domob");
-  EXPECT_EQ (c->GetName (), "abc");
   EXPECT_EQ (c->GetFaction (), Faction::RED);
   EXPECT_EQ (c->GetPosition (), pos);
   EXPECT_EQ (c->GetHP ().armour (), 10);
@@ -56,7 +55,6 @@ TEST_F (CharacterTests, Creation)
   c = tbl.GetFromResult (res);
   ASSERT_EQ (c->GetId (), id2);
   EXPECT_EQ (c->GetOwner (), "domob");
-  EXPECT_EQ (c->GetName (), u8"äöü");
   EXPECT_EQ (c->GetFaction (), Faction::GREEN);
   EXPECT_TRUE (c->GetProto ().has_movement ());
 
@@ -67,7 +65,7 @@ TEST_F (CharacterTests, ModificationWithProto)
 {
   const HexCoord pos(-2, 5);
 
-  tbl.CreateNew ("domob", "foo", Faction::RED);
+  tbl.CreateNew ("domob", Faction::RED);
 
   auto res = tbl.QueryAll ();
   ASSERT_TRUE (res.Step ());
@@ -90,7 +88,6 @@ TEST_F (CharacterTests, ModificationWithProto)
   ASSERT_TRUE (res.Step ());
   c = tbl.GetFromResult (res);
   EXPECT_EQ (c->GetOwner (), "andy");
-  EXPECT_EQ (c->GetName (), "foo");
   EXPECT_EQ (c->GetFaction (), Faction::RED);
   EXPECT_EQ (c->GetPosition (), pos);
   EXPECT_EQ (c->GetPartialStep (), 10);
@@ -103,7 +100,7 @@ TEST_F (CharacterTests, ModificationFieldsOnly)
 {
   const HexCoord pos(-2, 5);
 
-  tbl.CreateNew ("domob", "foo", Faction::RED);
+  tbl.CreateNew ("domob", Faction::RED);
 
   auto c = tbl.GetById (1);
   ASSERT_TRUE (c != nullptr);
@@ -115,7 +112,6 @@ TEST_F (CharacterTests, ModificationFieldsOnly)
 
   c = tbl.GetById (1);
   ASSERT_TRUE (c != nullptr);
-  EXPECT_EQ (c->GetName (), "foo");
   EXPECT_EQ (c->GetOwner (), "andy");
   EXPECT_EQ (c->GetFaction (), Faction::RED);
   EXPECT_EQ (c->GetPosition (), pos);
@@ -123,36 +119,29 @@ TEST_F (CharacterTests, ModificationFieldsOnly)
   EXPECT_EQ (c->GetHP ().shield (), 5);
 }
 
-TEST_F (CharacterTests, EmptyNameNotAllowed)
-{
-  EXPECT_DEATH ({
-    tbl.CreateNew ("domob", "", Faction::RED);
-  }, "name");
-}
-
 using CharacterTableTests = CharacterTests;
 
 TEST_F (CharacterTableTests, GetById)
 {
-  const auto id1 = tbl.CreateNew ("domob", "abc", Faction::RED)->GetId ();
-  const auto id2 = tbl.CreateNew ("domob", "foo", Faction::RED)->GetId ();
+  const auto id1 = tbl.CreateNew ("domob", Faction::RED)->GetId ();
+  const auto id2 = tbl.CreateNew ("andy", Faction::RED)->GetId ();
 
   CHECK (tbl.GetById (500) == nullptr);
-  CHECK_EQ (tbl.GetById (id1)->GetName (), "abc");
-  CHECK_EQ (tbl.GetById (id2)->GetName (), "foo");
+  CHECK_EQ (tbl.GetById (id1)->GetOwner (), "domob");
+  CHECK_EQ (tbl.GetById (id2)->GetOwner (), "andy");
 }
 
 TEST_F (CharacterTableTests, QueryForOwner)
 {
-  tbl.CreateNew ("domob", "abc", Faction::RED);
-  tbl.CreateNew ("domob", "foo", Faction::RED);
-  tbl.CreateNew ("andy", "test", Faction::RED);
+  tbl.CreateNew ("domob", Faction::RED);
+  tbl.CreateNew ("domob", Faction::GREEN);
+  tbl.CreateNew ("andy", Faction::BLUE);
 
   auto res = tbl.QueryForOwner ("domob");
   ASSERT_TRUE (res.Step ());
-  EXPECT_EQ (tbl.GetFromResult (res)->GetName (), "abc");
+  EXPECT_EQ (tbl.GetFromResult (res)->GetFaction (), Faction::RED);
   ASSERT_TRUE (res.Step ());
-  EXPECT_EQ (tbl.GetFromResult (res)->GetName (), "foo");
+  EXPECT_EQ (tbl.GetFromResult (res)->GetFaction (), Faction::GREEN);
   ASSERT_FALSE (res.Step ());
 
   res = tbl.QueryForOwner ("not there");
@@ -161,28 +150,28 @@ TEST_F (CharacterTableTests, QueryForOwner)
 
 TEST_F (CharacterTableTests, QueryMoving)
 {
-  tbl.CreateNew ("domob", "foo", Faction::RED);
-  tbl.CreateNew ("domob", "bar", Faction::RED)
+  tbl.CreateNew ("domob", Faction::RED);
+  tbl.CreateNew ("andy", Faction::RED)
     ->MutableProto ().mutable_movement ();
 
   auto res = tbl.QueryMoving ();
   ASSERT_TRUE (res.Step ());
-  EXPECT_EQ (tbl.GetFromResult (res)->GetName (), "bar");
+  EXPECT_EQ (tbl.GetFromResult (res)->GetOwner (), "andy");
   ASSERT_FALSE (res.Step ());
 }
 
 TEST_F (CharacterTableTests, QueryWithTarget)
 {
-  auto c = tbl.CreateNew ("domob", "foo", Faction::RED);
+  auto c = tbl.CreateNew ("domob", Faction::RED);
   const auto id1 = c->GetId ();
   c->MutableProto ().mutable_target ()->set_id (5);
   c.reset ();
 
-  const auto id2 = tbl.CreateNew ("domob", "bar", Faction::GREEN)->GetId ();
+  const auto id2 = tbl.CreateNew ("andy", Faction::GREEN)->GetId ();
 
   auto res = tbl.QueryWithTarget ();
   ASSERT_TRUE (res.Step ());
-  EXPECT_EQ (tbl.GetFromResult (res)->GetName (), "foo");
+  EXPECT_EQ (tbl.GetFromResult (res)->GetOwner (), "domob");
   ASSERT_FALSE (res.Step ());
 
   tbl.GetById (id1)->MutableProto ().clear_target ();
@@ -190,14 +179,14 @@ TEST_F (CharacterTableTests, QueryWithTarget)
 
   res = tbl.QueryWithTarget ();
   ASSERT_TRUE (res.Step ());
-  EXPECT_EQ (tbl.GetFromResult (res)->GetName (), "bar");
+  EXPECT_EQ (tbl.GetFromResult (res)->GetOwner (), "andy");
   ASSERT_FALSE (res.Step ());
 }
 
 TEST_F (CharacterTableTests, DeleteById)
 {
-  const auto id1 = tbl.CreateNew ("domob", "foo", Faction::RED)->GetId ();
-  const auto id2 = tbl.CreateNew ("domob", "bar", Faction::RED)->GetId ();
+  const auto id1 = tbl.CreateNew ("domob", Faction::RED)->GetId ();
+  const auto id2 = tbl.CreateNew ("domob", Faction::RED)->GetId ();
 
   EXPECT_TRUE (tbl.GetById (id1) != nullptr);
   EXPECT_TRUE (tbl.GetById (id2) != nullptr);
@@ -207,15 +196,6 @@ TEST_F (CharacterTableTests, DeleteById)
   tbl.DeleteById (id2);
   EXPECT_TRUE (tbl.GetById (id1) == nullptr);
   EXPECT_TRUE (tbl.GetById (id2) == nullptr);
-}
-
-TEST_F (CharacterTableTests, IsValidName)
-{
-  tbl.CreateNew ("domob", "abc", Faction::RED);
-
-  EXPECT_FALSE (tbl.IsValidName (""));
-  EXPECT_FALSE (tbl.IsValidName ("abc"));
-  EXPECT_TRUE (tbl.IsValidName ("foo"));
 }
 
 } // anonymous namespace

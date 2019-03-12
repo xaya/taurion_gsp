@@ -11,8 +11,6 @@
 
 #include <benchmark/benchmark.h>
 
-#include <sstream>
-
 namespace pxd
 {
 namespace
@@ -32,17 +30,13 @@ InsertCharacters (Database& db, const Faction f,
 
   CharacterTable tbl(db);
 
-  static unsigned cnt = 0;
   for (unsigned r = 0; r < rows; ++r)
     for (unsigned c = 0; c < cols; ++c)
       {
         const HexCoord pos(c * spacing, r * spacing);
         for (unsigned i = 0; i < k; ++i)
           {
-            std::ostringstream name;
-            name << "test character " << ++cnt;
-
-            auto c = tbl.CreateNew ("domob", name.str (), f);
+            auto c = tbl.CreateNew ("domob", f);
             c->SetPosition (pos);
             auto& pb = c->MutableProto ();
             auto* attack = pb.mutable_combat_data ()->add_attacks ();

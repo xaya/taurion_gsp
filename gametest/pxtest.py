@@ -107,13 +107,12 @@ class PXTest (XayaGameTest):
 
     return self.sendMove (name, move, {"sendCoins": {DEVADDR: devAmount}})
 
-  def createCharacter (self, owner, name, faction):
+  def createCharacter (self, owner, faction):
     """
     Utility method to send a move creating a character.
     """
 
     data = {
-      "name": name,
       "faction": faction,
     }
 
@@ -121,7 +120,9 @@ class PXTest (XayaGameTest):
 
   def getCharacters (self):
     """
-    Retrieves the existing characters from the current game state.
+    Retrieves the existing characters from the current game state.  The result
+    is a dictionary indexed by owner.  If multiple names have the same owner,
+    then the second will have the key "owner 2", the third "owner 3" and so on.
     """
 
     state = self.getGameState ()
@@ -129,8 +130,13 @@ class PXTest (XayaGameTest):
 
     res = {}
     for c in state["characters"]:
-      assert "name" in c
-      res[c["name"]] = Character (self, c)
+      assert "owner" in c
+      nm = c["owner"]
+      idx = 2
+      while nm in res:
+        nm = "%s %d" % (c["owner"], idx)
+        idx += 1
+      res[nm] = Character (self, c)
 
     return res
 

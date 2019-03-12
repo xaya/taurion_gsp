@@ -97,7 +97,6 @@ CharacterToJson (const Character& c)
   Json::Value res(Json::objectValue);
   res["id"] = static_cast<int> (c.GetId ());
   res["owner"] = c.GetOwner ();
-  res["name"] = c.GetName ();
   res["faction"] = FactionToString (c.GetFaction ());
   res["position"] = CoordToJson (c.GetPosition ());
   res["combat"] = GetCombatJsonObject (c);

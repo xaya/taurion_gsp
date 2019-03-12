@@ -5,15 +5,14 @@
 namespace pxd
 {
 
-Character::Character (Database& d, const std::string& o, const std::string& n,
-                      const Faction f)
-  : db(d), id(db.GetNextId ()), owner(o), name(n), faction(f),
+Character::Character (Database& d, const std::string& o, const Faction f)
+  : db(d), id(db.GetNextId ()), owner(o), faction(f),
     pos(0, 0), partialStep(0),
     dirtyFields(true), dirtyProto(true)
 {
   VLOG (1)
       << "Created new character with ID " << id << ": "
-      << "owner=" << owner << ", name=" << name;
+      << "owner=" << owner;
 }
 
 Character::Character (Database& d, const Database::Result& res)
@@ -22,7 +21,6 @@ Character::Character (Database& d, const Database::Result& res)
   CHECK_EQ (res.GetName (), "characters");
   id = res.Get<int64_t> ("id");
   owner = res.Get<std::string> ("owner");
-  name = res.Get<std::string> ("name");
   faction = GetFactionFromColumn (res, "faction");
   pos = HexCoord (res.Get<int64_t> ("x"), res.Get<int64_t> ("y"));
   partialStep = res.Get<int64_t> ("partialstep");
@@ -35,7 +33,6 @@ Character::Character (Database& d, const Database::Result& res)
 Character::~Character ()
 {
   CHECK_NE (id, Database::EMPTY_ID);
-  CHECK_NE (name, "");
 
   if (dirtyProto)
     {
@@ -47,22 +44,21 @@ Character::~Character ()
           (`id`,
            `owner`, `x`, `y`, `partialstep`,
            `hp`,
-           `name`, `faction`,
+           `faction`,
            `ismoving`, `hastarget`, `proto`)
           VALUES
           (?1,
            ?2, ?3, ?4, ?5,
            ?6,
-           ?7, ?8,
-           ?9, ?10, ?11)
+           ?7,
+           ?8, ?9, ?10)
       )");
 
       BindFieldValues (stmt);
-      stmt.Bind (7, name);
-      BindFactionParameter (stmt, 8, faction);
-      stmt.Bind (9, data.has_movement ());
-      stmt.Bind (10, data.has_target ());
-      stmt.BindProto (11, data);
+      BindFactionParameter (stmt, 7, faction);
+      stmt.Bind (8, data.has_movement ());
+      stmt.Bind (9, data.has_target ());
+      stmt.BindProto (10, data);
       stmt.Execute ();
 
       return;
@@ -104,10 +100,9 @@ Character::BindFieldValues (Database::Statement& stmt) const
 }
 
 CharacterTable::Handle
-CharacterTable::CreateNew (const std::string& owner, const std::string&  name,
-                           const Faction faction)
+CharacterTable::CreateNew (const std::string& owner, const Faction faction)
 {
-  return Handle (new Character (db, owner, name, faction));
+  return Handle (new Character (db, owner, faction));
 }
 
 CharacterTable::Handle
@@ -175,26 +170,6 @@ CharacterTable::DeleteById (const Database::IdT id)
   )");
   stmt.Bind (1, id);
   stmt.Execute ();
-}
-
-bool
-CharacterTable::IsValidName (const std::string& name)
-{
-  if (name.empty ())
-    return false;
-
-  auto stmt = db.Prepare (R"(
-    SELECT COUNT(*) AS `cnt` FROM `characters` WHERE `name` = ?1
-  )");
-  stmt.Bind (1, name);
-
-  auto res = stmt.Query ();
-  CHECK (res.Step ());
-  const auto cnt = res.Get<int64_t> ("cnt");
-  CHECK (!res.Step ());
-
-  VLOG (1) << "Name " << name << " is used " << cnt << " times";
-  return cnt == 0;
 }
 
 } // namespace pxd

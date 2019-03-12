@@ -5,12 +5,6 @@ CREATE TABLE IF NOT EXISTS `characters` (
   -- moves for it).
   `owner` TEXT NOT NULL,
 
-  -- The name of the character in the game world.  This has to be unique
-  -- among all characters and is used mainly for display purposes.  It is
-  -- tracked directly in the database (rather than the encoded proto) so
-  -- that we can verify uniqueness when creating a new character.
-  `name` TEXT NOT NULL UNIQUE,
-
   -- The faction (as integer corresponding to the Faction enum in C++).
   -- We need this for querying combat targets, which should be possible to
   -- do without decoding the proto.

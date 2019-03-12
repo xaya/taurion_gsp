@@ -9,16 +9,16 @@ Tests the target selection aspect of combat.
 
 class CombatTargetTest (PXTest):
 
-  def getTargetCharacter (self, character):
+  def getTargetCharacter (self, owner):
     """
-    Looks up the target of the given character (by name).  Returns None
+    Looks up the target of the given character (by owner).  Returns None
     if there is none.  If there is one, verify that it refers to a character
     and return that character's name (rather than ID).
     """
 
     chars = self.getCharacters ()
-    assert character in chars
-    c = chars[character]
+    assert owner in chars
+    c = chars[owner]
 
     if "combat" not in c.data:
       return None
@@ -35,10 +35,10 @@ class CombatTargetTest (PXTest):
 
     raise AssertionError ("Character with id %d not found" % charId)
 
-  def stepCharacterUntil (self, character, pos):
+  def stepCharacterUntil (self, owner, pos):
     """
     Generates new blocks (one by one) until the character with the given
-    name is at the given position.
+    owner is at the given position.
 
     Returns the number of generated blocks.
     """
@@ -47,7 +47,7 @@ class CombatTargetTest (PXTest):
 
     cnt = 0
     while True:
-      c = self.getCharacters ()[character]
+      c = self.getCharacters ()[owner]
       if c.getPosition () == pos:
         return cnt
       assert c.isMoving ()
@@ -58,32 +58,32 @@ class CombatTargetTest (PXTest):
     self.generate (101);
 
     self.mainLogger.info ("Creating test characters...")
-    self.createCharacter ("a", "foo", "r")
-    self.createCharacter ("b", "bar", "g")
-    self.createCharacter ("c", "baz", "g")
+    self.createCharacter ("a", "r")
+    self.createCharacter ("b", "g")
+    self.createCharacter ("c", "g")
     self.generate (1)
 
     # We use the starting coordinate of bar as offset for coordinates,
     # so that the test is independent of the actual starting positions
     # of the characters.
-    c = self.getCharacters ()["bar"]
+    c = self.getCharacters ()["b"]
     self.offset = c.getPosition ()
 
     # Move all other characters to the same origin position before
     # continuing with the rest of the test.
     self.moveCharactersTo ({
-      "foo": self.offset,
-      "baz": self.offset,
+      "a": self.offset,
+      "c": self.offset,
     })
 
     self.mainLogger.info ("Testing randomised target selection...")
-    cnts = {"bar": 0, "baz": 0}
+    cnts = {"b": 0, "c": 0}
     rolls = 10
     for _ in range (rolls):
       self.generate (1)
-      self.assertEqual (self.getTargetCharacter ("bar"), "foo")
-      self.assertEqual (self.getTargetCharacter ("baz"), "foo")
-      fooTarget = self.getTargetCharacter ("foo")
+      self.assertEqual (self.getTargetCharacter ("b"), "a")
+      self.assertEqual (self.getTargetCharacter ("c"), "a")
+      fooTarget = self.getTargetCharacter ("a")
       assert fooTarget is not None
       assert fooTarget in cnts
       cnts[fooTarget] += 1
@@ -95,15 +95,15 @@ class CombatTargetTest (PXTest):
       assert cnt > 0
 
     self.mainLogger.info ("Testing target selection when moving into range...")
-    c = self.getCharacters ()["foo"]
+    c = self.getCharacters ()["a"]
     wp = [{"x": 20, "y": 0}, {"x": 0, "y": 0}]
     wp = [offsetCoord (p, self.offset, False) for p in wp]
     c.sendMove ({"wp": wp})
     self.generate (35)
-    self.stepCharacterUntil ("foo", {"x": 11, "y": 0})
-    assert self.getTargetCharacter ("bar") is None
-    self.stepCharacterUntil ("foo", {"x": 10, "y": 0})
-    self.assertEqual (self.getTargetCharacter ("bar"), "foo")
+    self.stepCharacterUntil ("a", {"x": 11, "y": 0})
+    assert self.getTargetCharacter ("b") is None
+    self.stepCharacterUntil ("a", {"x": 10, "y": 0})
+    self.assertEqual (self.getTargetCharacter ("b"), "a")
 
 
 if __name__ == "__main__":

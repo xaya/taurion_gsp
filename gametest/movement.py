@@ -9,24 +9,24 @@ Tests movement of characters on the map.
 
 class MovementTest (PXTest):
 
-  def setWaypoints (self, character, wp):
+  def setWaypoints (self, owner, wp):
     """
-    Sends a move to update the waypoints of the character with the given name.
+    Sends a move to update the waypoints of the character with the given owner.
     """
 
     wpOffs = [offsetCoord (p, self.offset, False) for p in wp]
 
-    c = self.getCharacters ()[character]
+    c = self.getCharacters ()[owner]
     return c.sendMove ({"wp": wpOffs})
 
-  def getMovement (self, character):
+  def getMovement (self, owner):
     """
     Retrieves the movement structure of the given character from the current
     game state (and None if the character is not moving).  Returns a pair
     of (position, movement).
     """
 
-    c = self.getCharacters ()[character]
+    c = self.getCharacters ()[owner]
     pos = offsetCoord (c.getPosition (), self.offset, True)
 
     if c.isMoving ():
@@ -34,7 +34,7 @@ class MovementTest (PXTest):
 
     return pos, None
 
-  def expectMovement (self, character, wp):
+  def expectMovement (self, owner, wp):
     """
     Expects that the given character moves along the set of waypoints
     specified.  Generates blocks and verifies that.
@@ -42,7 +42,7 @@ class MovementTest (PXTest):
 
     finalWp = wp[-1]
 
-    lastPos, _ = self.getMovement (character)
+    lastPos, _ = self.getMovement (owner)
     nonMoves = 0
     blocks = 0
 
@@ -53,7 +53,7 @@ class MovementTest (PXTest):
 
       self.generate (1)
       blocks += 1
-      pos, _ = self.getMovement (character)
+      pos, _ = self.getMovement (owner)
 
       if pos == lastPos:
         nonMoves += 1
@@ -66,7 +66,7 @@ class MovementTest (PXTest):
         % (blocks, nonMoves))
 
     # In the end, we should have stopped at the final position.
-    pos, mv = self.getMovement (character)
+    pos, mv = self.getMovement (owner)
     self.assertEqual (pos, finalWp)
     assert mv is None
 
@@ -74,13 +74,13 @@ class MovementTest (PXTest):
     self.generate (101);
 
     self.mainLogger.info ("Creating test character...")
-    self.createCharacter ("domob", "foo", "r")
+    self.createCharacter ("domob", "r")
     self.generate (1)
 
     # Get the initial position and store it as offset for further coordinates.
     # By doing this, we get our test data "simple" and independent of the
     # concrete starting location.
-    c = self.getCharacters ()["foo"]
+    c = self.getCharacters ()["domob"]
     self.offset = c.getPosition ()
 
     self.mainLogger.info ("Setting basic path for character...")
@@ -92,14 +92,14 @@ class MovementTest (PXTest):
       {"x": -2, "y": -2},
       {"x": -2, "y": -2},
     ]
-    self.setWaypoints ("foo", wp)
+    self.setWaypoints ("domob", wp)
     self.generate (1)
-    pos, mv = self.getMovement ("foo")
+    pos, mv = self.getMovement ("domob")
     self.assertEqual (mv["partialstep"], 750)
     self.assertEqual (pos, {"x": 0, "y": 0})
 
     self.mainLogger.info ("Finishing the movement...")
-    self.expectMovement ("foo", wp)
+    self.expectMovement ("domob", wp)
 
     self.mainLogger.info ("Testing path with too far waypoints...")
     wp = [
@@ -107,9 +107,9 @@ class MovementTest (PXTest):
       {"x": 99, "y": 1},
       {"x": 0, "y": -1},
     ]
-    self.setWaypoints ("foo", wp)
+    self.setWaypoints ("domob", wp)
     self.generate (200)
-    pos, mv = self.getMovement ("foo")
+    pos, mv = self.getMovement ("domob")
     self.assertEqual (pos, {"x": 99, "y": 1})
     assert mv is None
 
@@ -134,8 +134,8 @@ class MovementTest (PXTest):
     wp = [
       {"x": -1, "y": 5},
     ]
-    self.setWaypoints ("foo", wp)
-    self.expectMovement ("foo", wp)
+    self.setWaypoints ("domob", wp)
+    self.expectMovement ("domob", wp)
 
     self.rpc.xaya.reconsiderblock (blk)
     self.expectGameState (originalState)

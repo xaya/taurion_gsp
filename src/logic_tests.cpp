@@ -74,7 +74,7 @@ protected:
 
 TEST_F (PXLogicTests, WaypointsBeforeMovement)
 {
-  auto c = characters.CreateNew ("domob", "foo", Faction::RED);
+  auto c = characters.CreateNew ("domob", Faction::RED);
   ASSERT_EQ (c->GetId (), 1);
   c->SetPartialStep (1000);
   auto& pb = c->MutableProto ();
@@ -96,14 +96,14 @@ TEST_F (PXLogicTests, WaypointsBeforeMovement)
 
 TEST_F (PXLogicTests, MovementBeforeTargeting)
 {
-  auto c = characters.CreateNew ("domob", "foo", Faction::RED);
+  auto c = characters.CreateNew ("domob", Faction::RED);
   const auto id1 = c->GetId ();
   auto* attack = c->MutableProto ().mutable_combat_data ()->add_attacks ();
   attack->set_range (10);
   attack->set_max_damage (1);
   c.reset ();
 
-  c = characters.CreateNew ("domob", "bar", Faction::GREEN);
+  c = characters.CreateNew ("domob", Faction::GREEN);
   const auto id2 = c->GetId ();
   c->SetPosition (HexCoord (11, 0));
   c->MutableProto ().mutable_combat_data ();
@@ -132,13 +132,13 @@ TEST_F (PXLogicTests, MovementBeforeTargeting)
 
 TEST_F (PXLogicTests, DamageInNextRound)
 {
-  auto c = characters.CreateNew ("domob", "attacker", Faction::RED);
+  auto c = characters.CreateNew ("domob", Faction::RED);
   auto* attack = c->MutableProto ().mutable_combat_data ()->add_attacks ();
   attack->set_range (1);
   attack->set_max_damage (1);
   c.reset ();
 
-  c = characters.CreateNew ("domob", "target", Faction::GREEN);
+  c = characters.CreateNew ("domob", Faction::GREEN);
   const auto idTarget = c->GetId ();
   c->MutableHP ().set_armour (100);
   c->MutableProto ().mutable_combat_data ();
@@ -152,13 +152,13 @@ TEST_F (PXLogicTests, DamageInNextRound)
 
 TEST_F (PXLogicTests, DamageKillsRegeneration)
 {
-  auto c = characters.CreateNew ("domob", "attacker", Faction::RED);
+  auto c = characters.CreateNew ("domob", Faction::RED);
   auto* attack = c->MutableProto ().mutable_combat_data ()->add_attacks ();
   attack->set_range (1);
   attack->set_max_damage (1);
   c.reset ();
 
-  c = characters.CreateNew ("domob", "target", Faction::GREEN);
+  c = characters.CreateNew ("domob", Faction::GREEN);
   const auto idTarget = c->GetId ();
   c->MutableProto ().mutable_combat_data ();
   c.reset ();

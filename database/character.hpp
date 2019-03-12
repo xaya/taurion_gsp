@@ -39,9 +39,6 @@ private:
   /** The owner string.  */
   std::string owner;
 
-  /** The name of the character as string.  This is immutable.  */
-  std::string name;
-
   /** The character's faction.  This is immutable.  */
   Faction faction;
 
@@ -76,8 +73,7 @@ private:
    * Constructs a new character with an auto-generated ID meant to be inserted
    * into the database.
    */
-  explicit Character (Database& d, const std::string& o, const std::string& n,
-                      Faction f);
+  explicit Character (Database& d, const std::string& o, Faction f);
 
   /**
    * Constructs a character instance based on the given query result.  This
@@ -91,8 +87,8 @@ private:
    * to share code between the proto and non-proto updates.  The ID is always
    * bound to parameter ?1.
    *
-   * The immutable non-proto fields name and faction are also not bound
-   * here, since they are only present in the INSERT OR REPLACE statement
+   * The immutable non-proto field faction is also not bound
+   * here, since it is only present in the INSERT OR REPLACE statement
    * (with proto update) and not the UPDATE one.
    */
   void BindFieldValues (Database::Statement& stmt) const;
@@ -130,12 +126,6 @@ public:
   {
     dirtyFields = true;
     owner = o;
-  }
-
-  const std::string&
-  GetName () const
-  {
-    return name;
   }
 
   Faction
@@ -228,8 +218,7 @@ public:
    * Returns a Character handle for a fresh instance corresponding to a new
    * character that will be created.
    */
-  Handle CreateNew (const std::string& owner, const std::string& name,
-                    Faction faction);
+  Handle CreateNew (const std::string& owner, Faction faction);
 
   /**
    * Returns a handle for the instance based on a Database::Result.
@@ -269,12 +258,6 @@ public:
    * Deletes the character with the given ID.
    */
   void DeleteById (Database::IdT id);
-
-  /**
-   * Verifies whether the given string is valid as name for a new character.
-   * This means that it is non-empty and not yet used in the database.
-   */
-  bool IsValidName (const std::string& name);
 
 };
 

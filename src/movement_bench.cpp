@@ -13,7 +13,6 @@
 #include <benchmark/benchmark.h>
 
 #include <algorithm>
-#include <sstream>
 #include <vector>
 
 namespace pxd
@@ -55,10 +54,7 @@ MovementOneSegment (benchmark::State& state)
   std::vector<Database::IdT> charIds;
   for (unsigned i = 0; i < numMoving; ++i)
     {
-      std::ostringstream name;
-      name << "char " << i;
-
-      const auto h = tbl.CreateNew ("domob", name.str (), Faction::RED);
+      const auto h = tbl.CreateNew ("domob", Faction::RED);
       charIds.push_back (h->GetId ());
     }
 
@@ -124,7 +120,7 @@ MovementLongHaul (benchmark::State& state)
   const HexCoord::IntT total = state.range (1);
 
   CharacterTable tbl(db);
-  const auto id = tbl.CreateNew ("domob", "test", Faction::RED)->GetId ();
+  const auto id = tbl.CreateNew ("domob", Faction::RED)->GetId ();
 
   for (auto _ : state)
     {

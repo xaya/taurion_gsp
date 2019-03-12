@@ -19,7 +19,7 @@ constexpr bool CONTINUE_PROCESSING = false;
 void
 StopCharacter (Character& c)
 {
-  VLOG (1) << "Stopping movement for " << c.GetName ();
+  VLOG (1) << "Stopping movement for " << c.GetId ();
   c.MutableProto ().clear_movement ();
   c.SetPartialStep (0);
 }
@@ -67,7 +67,7 @@ StepAlongPrecomputed (Character& c, const PathFinder::EdgeWeightFcn& edges)
   if (dist == PathFinder::NO_CONNECTION)
     {
       LOG (WARNING)
-          << "Character " << c.GetName ()
+          << "Character " << c.GetId ()
           << " is stepping into obstacle, stopping";
       StopCharacter (c);
       return PROCESSING_DONE;
@@ -132,7 +132,7 @@ PrecomputeNextSegment (Character& c, const Params& params,
          correctly if the "step" would be zero-distance to the same tile.  */
 
       LOG (WARNING)
-          << "Next waypoint equals current position of " << c.GetName ();
+          << "Next waypoint equals current position of " << c.GetId ();
 
       auto* wp = c.MutableProto ().mutable_movement ()->mutable_waypoints ();
       wp->erase (wp->begin ());
@@ -154,7 +154,7 @@ PrecomputeNextSegment (Character& c, const Params& params,
   if (dist == PathFinder::NO_CONNECTION)
     {
       LOG (WARNING)
-          << "Character " << c.GetName () << " cannot reach next waypoint "
+          << "Character " << c.GetId () << " cannot reach next waypoint "
           << wp << " from current position " << pos;
       StopCharacter (c);
       return PROCESSING_DONE;
@@ -187,10 +187,10 @@ ProcessCharacterMovement (Character& c, const PathFinder::DistanceT speed,
                           const PathFinder::EdgeWeightFcn& edges)
 {
   VLOG (1)
-      << "Processing movement for character: " << c.GetName ()
+      << "Processing movement for character: " << c.GetId ()
       << " (speed: " << speed << ")";
   CHECK (c.GetProto ().has_movement ())
-      << "Character " << c.GetName ()
+      << "Character " << c.GetId ()
       << " was selected for movement but is not actually moving";
 
   c.SetPartialStep (c.GetPartialStep () + speed);
@@ -201,7 +201,7 @@ ProcessCharacterMovement (Character& c, const PathFinder::DistanceT speed,
     {
       const auto& mv = c.GetProto ().movement ();
       CHECK_GT (mv.waypoints_size (), 0)
-          << "Character " << c.GetName ()
+          << "Character " << c.GetId ()
           << " has active movement but no waypoitns";
 
       /* If we have a precomputed path, try to do one step along it.  */

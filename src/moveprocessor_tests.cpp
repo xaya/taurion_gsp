@@ -107,13 +107,12 @@ TEST_F (CharacterCreationTests, InvalidCommands)
     {"name": "domob", "move": {}},
     {"name": "domob", "move": {"nc": 42}},
     {"name": "domob", "move": {"nc": {}}},
-    {"name": "domob", "move": {"nc": {"name": "foo"}}},
     {"name": "domob", "move":
       {
-        "nc": {"name": "foo", "faction": "r", "other": false}
+        "nc": {"faction": "r", "other": false}
       }},
-    {"name": "domob", "move": {"nc": {"name": "foo", "faction": "x"}}},
-    {"name": "domob", "move": {"nc": {"name": "foo", "faction": 0}}}
+    {"name": "domob", "move": {"nc": {"faction": "x"}}},
+    {"name": "domob", "move": {"nc": {"faction": 0}}}
   ])", params.CharacterCost ());
 
   CharacterTable tbl(db);
@@ -124,9 +123,9 @@ TEST_F (CharacterCreationTests, InvalidCommands)
 TEST_F (CharacterCreationTests, ValidCreation)
 {
   ProcessWithDevPayment (R"([
-    {"name": "domob", "move": {"nc": {"name": "foo", "faction": "r"}}},
-    {"name": "domob", "move": {"nc": {"name": "bar", "faction": "g"}}},
-    {"name": "andy", "move": {"nc": {"name": "baz", "faction": "b"}}}
+    {"name": "domob", "move": {"nc": {"faction": "r"}}},
+    {"name": "domob", "move": {"nc": {"faction": "g"}}},
+    {"name": "andy", "move": {"nc": {"faction": "b"}}}
   ])", params.CharacterCost ());
 
   CharacterTable tbl(db);
@@ -135,21 +134,18 @@ TEST_F (CharacterCreationTests, ValidCreation)
   ASSERT_TRUE (res.Step ());
   auto c = tbl.GetFromResult (res);
   EXPECT_EQ (c->GetOwner (), "domob");
-  EXPECT_EQ (c->GetName (), "foo");
   EXPECT_EQ (c->GetFaction (), Faction::RED);
   EXPECT_EQ (c->GetPosition (), HexCoord (-1100, 942));
 
   ASSERT_TRUE (res.Step ());
   c = tbl.GetFromResult (res);
   EXPECT_EQ (c->GetOwner (), "domob");
-  EXPECT_EQ (c->GetName (), "bar");
   EXPECT_EQ (c->GetFaction (), Faction::GREEN);
   EXPECT_EQ (c->GetPosition (), HexCoord (-1042, 1165));
 
   ASSERT_TRUE (res.Step ());
   c = tbl.GetFromResult (res);
   EXPECT_EQ (c->GetOwner (), "andy");
-  EXPECT_EQ (c->GetName (), "baz");
   EXPECT_EQ (c->GetFaction (), Faction::BLUE);
   EXPECT_EQ (c->GetPosition (), HexCoord (-1377, 1163));
 
@@ -159,13 +155,13 @@ TEST_F (CharacterCreationTests, ValidCreation)
 TEST_F (CharacterCreationTests, InitialData)
 {
   ProcessWithDevPayment (R"([
-    {"name": "domob", "move": {"nc": {"name": "foo", "faction": "r"}}}
+    {"name": "domob", "move": {"nc": {"faction": "r"}}}
   ])", params.CharacterCost ());
 
   CharacterTable tbl(db);
   auto c = tbl.GetById (1);
   ASSERT_TRUE (c != nullptr);
-  ASSERT_EQ (c->GetName (), "foo");
+  ASSERT_EQ (c->GetOwner (), "domob");
 
   EXPECT_TRUE (c->GetProto ().has_combat_data ());
   EXPECT_EQ (c->GetProto ().combat_data ().attacks_size (), 2);
@@ -174,13 +170,13 @@ TEST_F (CharacterCreationTests, InitialData)
 TEST_F (CharacterCreationTests, DevPayment)
 {
   Process (R"([
-    {"name": "domob", "move": {"nc": {"name": "foo", "faction": "r"}}}
+    {"name": "domob", "move": {"nc": {"faction": "r"}}}
   ])");
   ProcessWithDevPayment (R"([
-    {"name": "domob", "move": {"nc": {"name": "bar", "faction": "r"}}}
+    {"name": "domob", "move": {"nc": {"faction": "g"}}}
   ])", params.CharacterCost () - 1);
   ProcessWithDevPayment (R"([
-    {"name": "domob", "move": {"nc": {"name": "baz", "faction": "r"}}}
+    {"name": "domob", "move": {"nc": {"faction": "b"}}}
   ])", params.CharacterCost () + 1);
 
   CharacterTable tbl(db);
@@ -188,29 +184,7 @@ TEST_F (CharacterCreationTests, DevPayment)
   ASSERT_TRUE (res.Step ());
   auto c = tbl.GetFromResult (res);
   EXPECT_EQ (c->GetOwner (), "domob");
-  EXPECT_EQ (c->GetName (), "baz");
-  EXPECT_FALSE (res.Step ());
-}
-
-TEST_F (CharacterCreationTests, NameValidation)
-{
-  ProcessWithDevPayment (R"([
-    {"name": "domob", "move": {"nc": {"name": "", "faction": "r"}}},
-    {"name": "domob", "move": {"nc": {"name": "foo", "faction": "r"}}},
-    {"name": "domob", "move": {"nc": {"name": "bar", "faction": "r"}}},
-    {"name": "andy", "move": {"nc": {"name": "foo", "faction": "r"}}}
-  ])", params.CharacterCost ());
-
-  CharacterTable tbl(db);
-  auto res = tbl.QueryAll ();
-  ASSERT_TRUE (res.Step ());
-  auto c = tbl.GetFromResult (res);
-  EXPECT_EQ (c->GetOwner (), "domob");
-  EXPECT_EQ (c->GetName (), "foo");
-  ASSERT_TRUE (res.Step ());
-  c = tbl.GetFromResult (res);
-  EXPECT_EQ (c->GetOwner (), "domob");
-  EXPECT_EQ (c->GetName (), "bar");
+  EXPECT_EQ (c->GetFaction (), Faction::BLUE);
   EXPECT_FALSE (res.Step ());
 }
 
@@ -232,7 +206,6 @@ protected:
   {
     auto h = tbl.GetById (1);
     CHECK (h != nullptr);
-    CHECK_EQ (h->GetName (), "test");
     return h;
   }
 
@@ -240,15 +213,14 @@ protected:
    * Inserts a new character with the given ID, name and owner.
    */
   void
-  SetupCharacter (const Database::IdT id, const std::string& owner,
-                  const std::string& name)
+  SetupCharacter (const Database::IdT id, const std::string& owner)
   {
     db.SetNextId (id);
-    tbl.CreateNew (owner, name, Faction::RED);
+    tbl.CreateNew (owner, Faction::RED);
 
     auto h = tbl.GetById (id);
     CHECK (h != nullptr);
-    CHECK_EQ (h->GetName (), name);
+    CHECK_EQ (h->GetId (), id);
     CHECK_EQ (h->GetOwner (), owner);
   }
 
@@ -259,7 +231,7 @@ protected:
   CharacterUpdateTests ()
     : tbl(db)
   {
-    SetupCharacter (1, "domob", "test");
+    SetupCharacter (1, "domob");
   }
 
 };
@@ -270,7 +242,7 @@ TEST_F (CharacterUpdateTests, CreationAndUpdate)
     "name": "domob",
     "move":
       {
-        "nc": {"name": "foo", "faction": "r"},
+        "nc": {"faction": "r"},
         "c": {"1": {"send": "daniel"}, "2": {"send": "andy"}}
       }
   }])", params.CharacterCost ());
@@ -282,7 +254,6 @@ TEST_F (CharacterUpdateTests, CreationAndUpdate)
   /* The character created in the same move should not be transferred.  */
   auto h = tbl.GetById (2);
   ASSERT_TRUE (h != nullptr);
-  EXPECT_EQ (h->GetName (), "foo");
   EXPECT_EQ (h->GetOwner (), "domob");
 }
 
@@ -309,7 +280,7 @@ TEST_F (CharacterUpdateTests, OwnerCheck)
 {
   /* Verify that a later update works fine even if a previous character update
      (from the same move) failed due to the owner check.  */
-  SetupCharacter (9, "andy", "later");
+  SetupCharacter (9, "andy");
 
   EXPECT_EQ (GetTest ()->GetOwner (), "domob");
   EXPECT_EQ (tbl.GetById (9)->GetOwner (), "andy");
@@ -327,7 +298,7 @@ TEST_F (CharacterUpdateTests, InvalidUpdate)
      updates (i.e. other characters) to be done successfully in the same
      move transaction.  Thus create another character with a later ID that
      we will use for successful updates.  */
-  SetupCharacter (9, "domob", "later");
+  SetupCharacter (9, "domob");
 
   for (const std::string upd : {"\"1\": []", "\"1\": false",
                                 R"(" ": {"send": "andy"})",

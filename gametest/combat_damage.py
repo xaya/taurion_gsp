@@ -6,7 +6,7 @@ from pxtest import PXTest, offsetCoord
 Tests dealing damage, regenerating the shield and killing characters.
 """
 
-# Name of the target character.
+# Owner of the target character.
 TARGET = "target"
 
 
@@ -43,17 +43,17 @@ class CombatDamageTest (PXTest):
 
     self.mainLogger.info ("Creating test characters...")
     for i in range (numAttackers):
-      self.createCharacter ("name %d" % i, "char %d" % i, "r")
-    self.createCharacter ("domob", TARGET, "b")
+      self.createCharacter ("name %d" % i, "r")
+    self.createCharacter (TARGET, "b")
     self.generate (1)
 
     # We use one of the attackers as offset and move others there (to ensure
     # that all of them are in a single spot).
-    c = self.getCharacters ()["char 0"]
+    c = self.getCharacters ()["name 0"]
     self.offset = c.getPosition ()
     charTargets = {}
     for i in range (1, numAttackers):
-      charTargets["char %d" % i] = self.offset
+      charTargets["name %d" % i] = self.offset
     self.moveCharactersTo (charTargets)
 
     startPos = offsetCoord ({"x": 0, "y": 5}, self.offset, False)

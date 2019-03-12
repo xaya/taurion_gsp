@@ -10,8 +10,6 @@
 
 #include <glog/logging.h>
 
-#include <sstream>
-
 namespace pxd
 {
 namespace
@@ -27,10 +25,7 @@ InsertTestCharacters (Database& db, const unsigned n,
   CharacterTable tbl(db);
   for (unsigned i = 0; i < n; ++i)
     {
-      std::ostringstream name;
-      name << "char " << i << " @ " << pos;
-
-      auto h = tbl.CreateNew ("domob", name.str (), f);
+      auto h = tbl.CreateNew ("domob", f);
       h->SetPosition (pos);
     }
 }

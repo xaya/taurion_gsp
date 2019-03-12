@@ -33,14 +33,14 @@ protected:
 
 TEST_F (FighterTests, Characters)
 {
-  auto c = characters.CreateNew ("domob", "foo", Faction::RED);
+  auto c = characters.CreateNew ("domob", Faction::RED);
   const auto id1 = c->GetId ();
   c->SetPosition (HexCoord (2, 5));
   c->MutableProto ().mutable_combat_data ()->add_attacks ();
   c->MutableHP ().set_armour (10);
   c.reset ();
 
-  c = characters.CreateNew ("domob", "bar", Faction::GREEN);
+  c = characters.CreateNew ("domob", Faction::GREEN);
   const auto id2 = c->GetId ();
   c->MutableProto ().mutable_target ()->set_id (42);
   c.reset ();
@@ -90,7 +90,7 @@ TEST_F (FighterTests, Characters)
 
 TEST_F (FighterTests, GetForTarget)
 {
-  auto c = characters.CreateNew ("domob", "foo", Faction::RED);
+  auto c = characters.CreateNew ("domob", Faction::RED);
   const auto id = c->GetId ();
   c->SetPosition (HexCoord (42, -35));
   c.reset ();
@@ -114,11 +114,11 @@ TEST_F (FighterTests, GetForTarget)
 
 TEST_F (FighterTests, ProcessWithTarget)
 {
-  auto c = characters.CreateNew ("domob", "foo", Faction::RED);
+  auto c = characters.CreateNew ("domob", Faction::RED);
   c->MutableProto ().mutable_target ()->set_id (5);
   c.reset ();
 
-  characters.CreateNew ("domob", "bar", Faction::GREEN);
+  characters.CreateNew ("domob", Faction::GREEN);
 
   unsigned cnt = 0;
   tbl.ProcessWithTarget ([this, &cnt] (Fighter f)

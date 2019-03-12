@@ -71,7 +71,6 @@ message Character
 
      - int ID
      - string owner
-     - string name
      - int faction
      - position on the map
      - partial movement towards next tile

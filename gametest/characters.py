@@ -31,45 +31,38 @@ class CharactersTest (PXTest):
     self.generate (101);
 
     self.mainLogger.info ("Creating first character...")
-    self.createCharacter ("domob", "adam", "r")
+    self.createCharacter ("adam", "r")
     self.sendMove ("", {"nc": {"name": "eve", "faction": "r"}})
     self.generate (1)
     self.expectPartial ({
-      "adam": {"owner": "domob", "faction": "r"},
-    })
-
-    self.mainLogger.info ("Already existing name cannot be recreated...")
-    self.createCharacter ("", "adam", "g")
-    self.generate (1)
-    self.expectPartial ({
-      "adam": {"owner": "domob"},
+      "adam": {"owner": "adam", "faction": "r"},
     })
 
     self.mainLogger.info ("Testing \"\" as owner name...")
-    self.createCharacter ("", "eve", "g")
+    self.createCharacter ("", "g")
     self.generate (1)
     self.expectPartial ({
-      "adam": {"owner": "domob", "faction": "r"},
-      "eve": {"owner": "", "faction": "g"},
+      "adam": {"owner": "adam", "faction": "r"},
+      "": {"owner": "", "faction": "g"},
     })
 
-    self.mainLogger.info ("Creating second character for domob...")
-    self.createCharacter ("domob", "foo", "b")
+    self.mainLogger.info ("Creating second character for one owner...")
+    self.createCharacter ("adam", "b")
     self.generate (1)
     self.expectPartial ({
-      "adam": {"owner": "domob", "faction": "r"},
-      "eve": {"owner": "", "faction": "g"},
-      "foo": {"owner": "domob", "faction": "b"},
+      "adam": {"owner": "adam", "faction": "r"},
+      "adam 2": {"owner": "adam", "faction": "b"},
+      "": {"owner": "", "faction": "g"},
     })
 
-    self.mainLogger.info ("Testing Unicode names...")
-    self.createCharacter (u"ß", u"äöü", "b")
+    self.mainLogger.info ("Testing Unicode owner...")
+    self.createCharacter (u"äöü", "b")
     self.generate (1)
     self.expectPartial ({
-      "adam": {"owner": "domob"},
-      "eve": {"owner": ""},
-      "foo": {"owner": "domob"},
-      u"äöü": {"owner": u"ß"},
+      "adam": {"owner": "adam"},
+      "adam 2": {"owner": "adam"},
+      "": {"owner": ""},
+      u"äöü": {"owner": u"äöü"},
     })
 
     self.mainLogger.info ("Transfering a character...")
@@ -77,19 +70,10 @@ class CharactersTest (PXTest):
     c.sendMove ({"send": "andy"})
     self.generate (1)
     self.expectPartial ({
-      "adam": {"owner": "andy"},
-      "eve": {"owner": ""},
-      "foo": {"owner": "domob"},
-      u"äöü": {"owner": u"ß"},
-    })
-    c = self.getCharacters ()["adam"]
-    c.sendMove ({"send": ""})
-    self.generate (1)
-    self.expectPartial ({
-      "adam": {"owner": ""},
-      "eve": {"owner": ""},
-      "foo": {"owner": "domob"},
-      u"äöü": {"owner": u"ß"},
+      "adam": {"owner": "adam", "faction": "b"},
+      "andy": {"owner": "andy", "faction": "r"},
+      "": {"owner": ""},
+      u"äöü": {"owner": u"äöü"},
     })
 
     self.mainLogger.info ("Non-owner cannot update the character...")
@@ -98,10 +82,10 @@ class CharactersTest (PXTest):
     self.sendMove ("domob", {"c": {idStr: {"send": "domob"}}})
     self.generate (1)
     self.expectPartial ({
-      "adam": {"owner": ""},
-      "eve": {"owner": ""},
-      "foo": {"owner": "domob"},
-      u"äöü": {"owner": u"ß"},
+      "adam": {"owner": "adam"},
+      "andy": {"owner": "andy"},
+      "": {"owner": ""},
+      u"äöü": {"owner": u"äöü"},
     })
 
     self.testReorg ()
@@ -120,10 +104,10 @@ class CharactersTest (PXTest):
     self.rpc.xaya.invalidateblock (blk)
 
     self.generate (101)
-    self.createCharacter ("domob", "alt", "b")
+    self.createCharacter ("domob", "b")
     self.generate (1)
     self.expectPartial ({
-      "alt": {"owner": "domob"},
+      "domob": {"owner": "domob"},
     })
 
     self.rpc.xaya.reconsiderblock (blk)

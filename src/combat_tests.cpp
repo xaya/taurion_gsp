@@ -14,7 +14,6 @@
 #include <glog/logging.h>
 
 #include <map>
-#include <sstream>
 #include <vector>
 
 namespace pxd
@@ -72,21 +71,21 @@ using TargetSelectionTests = CombatTests;
 
 TEST_F (TargetSelectionTests, NoTargets)
 {
-  auto c = characters.CreateNew ("domob", "foo", Faction::RED);
+  auto c = characters.CreateNew ("domob", Faction::RED);
   const auto id1 = c->GetId ();
   c->SetPosition (HexCoord (-10, 0));
   c->MutableProto ().mutable_target ();
   AddAttackWithRange (c->MutableProto (), 10);
   c.reset ();
 
-  c = characters.CreateNew ("domob", "bar", Faction::RED);
+  c = characters.CreateNew ("domob",Faction::RED);
   const auto id2 = c->GetId ();
   c->SetPosition (HexCoord (-10, 1));
   c->MutableProto ().mutable_target ();
   AddAttackWithRange (c->MutableProto (), 10);
   c.reset ();
 
-  c = characters.CreateNew ("domob", "baz", Faction::GREEN);
+  c = characters.CreateNew ("domob", Faction::GREEN);
   const auto id3 = c->GetId ();
   c->SetPosition (HexCoord (10, 0));
   c->MutableProto ().mutable_target ();
@@ -102,18 +101,18 @@ TEST_F (TargetSelectionTests, NoTargets)
 
 TEST_F (TargetSelectionTests, ClosestTarget)
 {
-  auto c = characters.CreateNew ("domob", "foo", Faction::RED);
+  auto c = characters.CreateNew ("domob", Faction::RED);
   const auto idFighter = c->GetId ();
   c->SetPosition (HexCoord (0, 0));
   AddAttackWithRange (c->MutableProto (), 10);
   c.reset ();
 
-  c = characters.CreateNew ("domob", "bar", Faction::GREEN);
+  c = characters.CreateNew ("domob", Faction::GREEN);
   c->SetPosition (HexCoord (2, 2));
   AddAttackWithRange (c->MutableProto (), 10);
   c.reset ();
 
-  c = characters.CreateNew ("domob", "baz", Faction::GREEN);
+  c = characters.CreateNew ("domob", Faction::GREEN);
   const auto idTarget = c->GetId ();
   c->SetPosition (HexCoord (1, 1));
   AddAttackWithRange (c->MutableProto (), 10);
@@ -135,14 +134,14 @@ TEST_F (TargetSelectionTests, ClosestTarget)
 
 TEST_F (TargetSelectionTests, MultipleAttacks)
 {
-  auto c = characters.CreateNew ("domob", "foo", Faction::RED);
+  auto c = characters.CreateNew ("domob", Faction::RED);
   const auto id1 = c->GetId ();
   c->SetPosition (HexCoord (0, 0));
   AddAttackWithRange (c->MutableProto (), 1);
   AddAttackWithRange (c->MutableProto (), 10);
   c.reset ();
 
-  c = characters.CreateNew ("domob", "bar", Faction::GREEN);
+  c = characters.CreateNew ("domob", Faction::GREEN);
   const auto id2 = c->GetId ();
   c->SetPosition (HexCoord (7, 0));
   NoAttacks (c->MutableProto ());
@@ -165,7 +164,7 @@ TEST_F (TargetSelectionTests, Randomisation)
   constexpr unsigned rolls = 1000;
   constexpr unsigned threshold = rolls / nTargets * 80 / 100;
 
-  auto c = characters.CreateNew ("domob", "foo", Faction::RED);
+  auto c = characters.CreateNew ("domob", Faction::RED);
   const auto idFighter = c->GetId ();
   c->SetPosition (HexCoord (0, 0));
   AddAttackWithRange (c->MutableProto (), 10);
@@ -174,10 +173,7 @@ TEST_F (TargetSelectionTests, Randomisation)
   std::map<Database::IdT, unsigned> targetMap;
   for (unsigned i = 0; i < nTargets; ++i)
     {
-      std::ostringstream name;
-      name << "target " << i;
-
-      c = characters.CreateNew ("domob", name.str (), Faction::GREEN);
+      c = characters.CreateNew ("domob", Faction::GREEN);
       targetMap.emplace (c->GetId (), i);
       c->SetPosition (HexCoord (1, 1));
       NoAttacks (c->MutableProto ());
@@ -238,11 +234,11 @@ protected:
 
 TEST_F (DealDamageTests, NoAttacks)
 {
-  auto c = characters.CreateNew ("domob", "attacker", Faction::RED);
+  auto c = characters.CreateNew ("domob", Faction::RED);
   NoAttacks (c->MutableProto ());
   c.reset ();
 
-  c = characters.CreateNew ("domob", "target", Faction::GREEN);
+  c = characters.CreateNew ("domob", Faction::GREEN);
   const auto idTarget = c->GetId ();
   NoAttacks (c->MutableProto ());
   c->MutableHP ().set_armour (10);
@@ -254,13 +250,13 @@ TEST_F (DealDamageTests, NoAttacks)
 
 TEST_F (DealDamageTests, OnlyAttacksInRange)
 {
-  auto c = characters.CreateNew ("domob", "attacker", Faction::RED);
+  auto c = characters.CreateNew ("domob", Faction::RED);
   AddAttack (c->MutableProto (), 1, 1);
   AddAttack (c->MutableProto (), 2, 1);
   AddAttack (c->MutableProto (), 3, 1);
   c.reset ();
 
-  c = characters.CreateNew ("domob", "target", Faction::GREEN);
+  c = characters.CreateNew ("domob", Faction::GREEN);
   const auto idTarget = c->GetId ();
   c->SetPosition (HexCoord (2, 0));
   NoAttacks (c->MutableProto ());
@@ -277,11 +273,11 @@ TEST_F (DealDamageTests, RandomisedDamage)
   constexpr unsigned rolls = 1000;
   constexpr unsigned threshold = rolls / dmg * 80 / 100;
 
-  auto c = characters.CreateNew ("domob", "attacker", Faction::RED);
+  auto c = characters.CreateNew ("domob", Faction::RED);
   AddAttack (c->MutableProto (), 1, dmg);
   c.reset ();
 
-  c = characters.CreateNew ("domob", "target", Faction::GREEN);
+  c = characters.CreateNew ("domob", Faction::GREEN);
   const auto idTarget = c->GetId ();
   NoAttacks (c->MutableProto ());
   c->MutableHP ().set_armour (dmg * rolls);
@@ -312,11 +308,11 @@ TEST_F (DealDamageTests, HpReduction)
 {
   constexpr unsigned trials = 100;
 
-  auto c = characters.CreateNew ("domob", "attacker", Faction::RED);
+  auto c = characters.CreateNew ("domob", Faction::RED);
   const auto idAttacker = c->GetId ();
   c.reset ();
 
-  c = characters.CreateNew ("domob", "target", Faction::GREEN);
+  c = characters.CreateNew ("domob", Faction::GREEN);
   const auto idTarget = c->GetId ();
   NoAttacks (c->MutableProto ());
   c.reset ();
@@ -377,20 +373,20 @@ TEST_F (DealDamageTests, HpReduction)
 
 TEST_F (DealDamageTests, Kills)
 {
-  auto c = characters.CreateNew ("domob", "attacker 1", Faction::RED);
+  auto c = characters.CreateNew ("domob", Faction::RED);
   AddAttack (c->MutableProto (), 1, 1);
   c.reset ();
 
-  c = characters.CreateNew ("domob", "attacker 2", Faction::RED);
+  c = characters.CreateNew ("domob", Faction::RED);
   AddAttack (c->MutableProto (), 1, 1);
   c.reset ();
 
-  c = characters.CreateNew ("domob", "attacker 3", Faction::RED);
+  c = characters.CreateNew ("domob", Faction::RED);
   c->SetPosition (HexCoord (10, 10));
   AddAttack (c->MutableProto (), 1, 1);
   c.reset ();
 
-  c = characters.CreateNew ("domob", "target 1", Faction::GREEN);
+  c = characters.CreateNew ("domob", Faction::GREEN);
   const auto id1 = c->GetId ();
   NoAttacks (c->MutableProto ());
   c->MutableHP ().set_shield (0);
@@ -398,7 +394,7 @@ TEST_F (DealDamageTests, Kills)
   c->MutableHP ().set_armour (1);
   c.reset ();
 
-  c = characters.CreateNew ("domob", "target 2", Faction::GREEN);
+  c = characters.CreateNew ("domob", Faction::GREEN);
   const auto id2 = c->GetId ();
   c->SetPosition (HexCoord (10, 10));
   NoAttacks (c->MutableProto ());
@@ -423,8 +419,8 @@ using ProcessKillsTests = CombatTests;
 
 TEST_F (ProcessKillsTests, Works)
 {
-  const auto id1 = characters.CreateNew ("domob", "a", Faction::RED)->GetId ();
-  const auto id2 = characters.CreateNew ("domob", "b", Faction::RED)->GetId ();
+  const auto id1 = characters.CreateNew ("domob", Faction::RED)->GetId ();
+  const auto id2 = characters.CreateNew ("domob", Faction::RED)->GetId ();
 
   ProcessKills (db, {});
   EXPECT_TRUE (characters.GetById (id1) != nullptr);
@@ -445,7 +441,7 @@ using RegenerateHpTests = CombatTests;
 
 TEST_F (RegenerateHpTests, Works)
 {
-  auto c = characters.CreateNew ("domob", "foo", Faction::RED);
+  auto c = characters.CreateNew ("domob", Faction::RED);
   const auto id = c->GetId ();
   auto* cd = c->MutableProto ().mutable_combat_data ();
   cd->mutable_max_hp ()->set_shield (100);

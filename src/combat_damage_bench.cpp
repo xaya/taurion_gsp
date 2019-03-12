@@ -12,8 +12,6 @@
 
 #include <benchmark/benchmark.h>
 
-#include <sstream>
-
 namespace pxd
 {
 namespace
@@ -33,20 +31,14 @@ InsertCharacters (Database& db, const unsigned numIdle,
 
   for (unsigned i = 0; i < numIdle; ++i)
     {
-      std::ostringstream name;
-      name << "idle " << i;
-
-      auto c = tbl.CreateNew ("domob", name.str (), Faction::RED);
+      auto c = tbl.CreateNew ("domob", Faction::RED);
       c->MutableProto ().mutable_combat_data ();
       c.reset ();
     }
 
   for (unsigned i = 0; i < numTargets; ++i)
     {
-      std::ostringstream nameTarget;
-      nameTarget << "target " << i;
-
-      auto c = tbl.CreateNew ("domob", nameTarget.str (), Faction::GREEN);
+      auto c = tbl.CreateNew ("domob", Faction::GREEN);
       const auto id = c->GetId ();
       auto* cd = c->MutableProto ().mutable_combat_data ();
       cd->set_shield_regeneration_mhp (1000);
@@ -54,10 +46,7 @@ InsertCharacters (Database& db, const unsigned numIdle,
       c->MutableHP ().set_armour (targetHP);
       c.reset ();
 
-      std::ostringstream nameAttacker;
-      nameAttacker << "attacker " << i;
-
-      c = tbl.CreateNew ("domob", nameAttacker.str (), Faction::RED);
+      c = tbl.CreateNew ("domob", Faction::RED);
       cd = c->MutableProto ().mutable_combat_data ();
       for (unsigned j = 0; j < numAttacks; ++j)
         {

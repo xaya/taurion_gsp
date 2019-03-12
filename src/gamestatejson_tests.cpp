@@ -256,21 +256,21 @@ protected:
 
 TEST_F (CharacterJsonTests, Basic)
 {
-  auto c = tbl.CreateNew ("domob", "foo", Faction::RED);
+  auto c = tbl.CreateNew ("domob", Faction::RED);
   c->SetPosition (HexCoord (-5, 2));
   c.reset ();
 
-  tbl.CreateNew ("andy", u8"äöü", Faction::GREEN);
+  tbl.CreateNew ("andy", Faction::GREEN);
 
-  ExpectStateJson (u8R"({
+  ExpectStateJson (R"({
     "characters":
       [
         {
-          "id": 1, "name": "foo", "owner": "domob", "faction": "r",
+          "id": 1, "owner": "domob", "faction": "r",
           "position": {"x": -5, "y": 2}
         },
         {
-          "id": 2, "name": "äöü", "owner": "andy", "faction": "g",
+          "id": 2, "owner": "andy", "faction": "g",
           "position": {"x": -0, "y": 0}
         }
       ]
@@ -279,7 +279,7 @@ TEST_F (CharacterJsonTests, Basic)
 
 TEST_F (CharacterJsonTests, Waypoints)
 {
-  auto c = tbl.CreateNew ("domob", "foo", Faction::RED);
+  auto c = tbl.CreateNew ("domob", Faction::RED);
   c->SetPartialStep (5);
   auto* wp = c->MutableProto ().mutable_movement ()->mutable_waypoints ();
   *wp->Add () = CoordToProto (HexCoord (-3, 0));
@@ -302,7 +302,7 @@ TEST_F (CharacterJsonTests, Waypoints)
 
 TEST_F (CharacterJsonTests, OnlyOneStep)
 {
-  auto c = tbl.CreateNew ("domob", "foo", Faction::RED);
+  auto c = tbl.CreateNew ("domob", Faction::RED);
   c->SetPosition (HexCoord (2, 3));
   auto* mvProto = c->MutableProto ().mutable_movement ();
   *mvProto->mutable_waypoints ()->Add () = CoordToProto (HexCoord (42, -42));
@@ -325,7 +325,7 @@ TEST_F (CharacterJsonTests, OnlyOneStep)
 
 TEST_F (CharacterJsonTests, PositionIsLastStep)
 {
-  auto c = tbl.CreateNew ("domob", "foo", Faction::RED);
+  auto c = tbl.CreateNew ("domob", Faction::RED);
   c->SetPosition (HexCoord (2, 3));
   auto* mvProto = c->MutableProto ().mutable_movement ();
   *mvProto->mutable_waypoints ()->Add () = CoordToProto (HexCoord (42, -42));
@@ -349,7 +349,7 @@ TEST_F (CharacterJsonTests, PositionIsLastStep)
 
 TEST_F (CharacterJsonTests, MultipleStep)
 {
-  auto c = tbl.CreateNew ("domob", "foo", Faction::RED);
+  auto c = tbl.CreateNew ("domob", Faction::RED);
   c->SetPosition (HexCoord (2, 3));
   auto* mvProto = c->MutableProto ().mutable_movement ();
   *mvProto->mutable_waypoints ()->Add () = CoordToProto (HexCoord (42, -42));
@@ -378,33 +378,33 @@ TEST_F (CharacterJsonTests, MultipleStep)
 
 TEST_F (CharacterJsonTests, Target)
 {
-  auto c = tbl.CreateNew ("domob", "foo", Faction::RED);
+  auto c = tbl.CreateNew ("domob", Faction::RED);
   auto* targetProto = c->MutableProto ().mutable_target ();
   targetProto->set_id (5);
   targetProto->set_type (proto::TargetId::TYPE_CHARACTER);
   c.reset ();
 
-  c = tbl.CreateNew ("domob", "bar", Faction::GREEN);
+  c = tbl.CreateNew ("domob", Faction::GREEN);
   targetProto = c->MutableProto ().mutable_target ();
   targetProto->set_id (42);
   targetProto->set_type (proto::TargetId::TYPE_BUILDING);
   c.reset ();
 
-  tbl.CreateNew ("domob", "baz", Faction::BLUE);
+  tbl.CreateNew ("domob", Faction::BLUE);
 
   ExpectStateJson (R"({
     "characters":
       [
-        {"name": "foo", "combat": {"target": {"id": 5, "type": "character"}}},
-        {"name": "bar", "combat": {"target": {"id": 42, "type": "building"}}},
-        {"name": "baz", "combat": {"target": null}}
+        {"faction": "r", "combat": {"target": {"id": 5, "type": "character"}}},
+        {"faction": "g", "combat": {"target": {"id": 42, "type": "building"}}},
+        {"faction": "b", "combat": {"target": null}}
       ]
   })");
 }
 
 TEST_F (CharacterJsonTests, Attacks)
 {
-  auto c = tbl.CreateNew ("domob", "foo", Faction::RED);
+  auto c = tbl.CreateNew ("domob", Faction::RED);
   auto* cd = c->MutableProto ().mutable_combat_data ();
   auto* attack = cd->add_attacks ();
   attack->set_range (5);
@@ -433,7 +433,7 @@ TEST_F (CharacterJsonTests, Attacks)
 
 TEST_F (CharacterJsonTests, HP)
 {
-  auto c = tbl.CreateNew ("domob", "foo", Faction::RED);
+  auto c = tbl.CreateNew ("domob", Faction::RED);
   c->MutableHP ().set_armour (42);
   c->MutableHP ().set_shield (5);
   c->MutableHP ().set_shield_mhp (1);

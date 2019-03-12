@@ -7,7 +7,6 @@
 
 #include <glog/logging.h>
 
-#include <sstream>
 #include <vector>
 
 namespace pxd
@@ -27,10 +26,7 @@ InsertTestCharacters (Database& db, const unsigned n, const unsigned numWP)
   std::vector<Database::IdT> ids;
   for (unsigned i = 0; i < n; ++i)
     {
-      std::ostringstream name;
-      name << "char " << i;
-
-      const auto h = tbl.CreateNew ("domob", name.str (), Faction::RED);
+      const auto h = tbl.CreateNew ("domob", Faction::RED);
       ids.push_back (h->GetId ());
 
       auto* wp = h->MutableProto ().mutable_movement ()->mutable_waypoints ();
