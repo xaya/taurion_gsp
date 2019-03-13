@@ -46,6 +46,12 @@ bool AmountFromJson (const Json::Value& val, Amount& amount);
  */
 bool IdFromString (const std::string& str, Database::IdT& id);
 
+/**
+ * Converts an integer value to the proper JSON representation.
+ */
+template <typename T>
+  Json::Value IntToJson (T val);
+
 } // namespace pxd
 
 #endif // PXD_JSONUTILS_HPP

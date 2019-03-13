@@ -31,6 +31,13 @@ PartialJsonEqual (const Json::Value& actual, const Json::Value& expected)
 {
   if (!expected.isObject () && !expected.isArray ())
     {
+      /* Special case:  If both values are integers, then we compare them
+         explicitly here.  This allows values of type "unsigned int" to be
+         equal to values of type "int" (from golden data).  */
+      if (actual.isInt64 () && expected.isInt64 ()
+            && actual.asInt64 () == expected.asInt64 ())
+        return true;
+
       if (actual == expected)
         return true;
 
@@ -127,7 +134,7 @@ TEST_F (PartialJsonEqualTests, BasicValues)
   EXPECT_TRUE (PartialStrEqual ("\"foo\"", " \"foo\""));
 
   EXPECT_FALSE (PartialStrEqual ("42", "0"));
-  EXPECT_FALSE (PartialStrEqual ("1", "1.0"));
+  EXPECT_FALSE (PartialStrEqual ("1", "1.1"));
   EXPECT_FALSE (PartialStrEqual ("\"a\"", "\"b\""));
   EXPECT_FALSE (PartialStrEqual ("true", "false"));
 }

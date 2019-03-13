@@ -21,7 +21,7 @@ Json::Value
 TargetIdToJson (const proto::TargetId& target)
 {
   Json::Value res(Json::objectValue);
-  res["id"] = static_cast<int> (target.id ());
+  res["id"] = IntToJson (target.id ());
 
   switch (target.type ())
     {
@@ -45,7 +45,7 @@ Json::Value
 HpProtoToJson (const proto::HP& hp)
 {
   Json::Value res(Json::objectValue);
-  res["armour"] = static_cast<int> (hp.armour ());
+  res["armour"] = IntToJson (hp.armour ());
 
   const int baseShield = hp.shield ();
   if (hp.shield_mhp () == 0)
@@ -72,8 +72,8 @@ GetCombatJsonObject (const Character& c)
   for (const auto& attack : pb.combat_data ().attacks ())
     {
       Json::Value obj(Json::objectValue);
-      obj["range"] = static_cast<int> (attack.range ());
-      obj["maxdamage"] = static_cast<int> (attack.max_damage ());
+      obj["range"] = IntToJson (attack.range ());
+      obj["maxdamage"] = IntToJson (attack.max_damage ());
       attacks.append (obj);
     }
   if (!attacks.empty ())
@@ -97,7 +97,7 @@ template <>
   const auto& pb = c.GetProto ();
 
   Json::Value res(Json::objectValue);
-  res["id"] = static_cast<int> (c.GetId ());
+  res["id"] = IntToJson (c.GetId ());
   res["owner"] = c.GetOwner ();
   res["faction"] = FactionToString (c.GetFaction ());
   res["position"] = CoordToJson (c.GetPosition ());
@@ -105,7 +105,7 @@ template <>
 
   Json::Value mv(Json::objectValue);
   if (c.GetPartialStep () != 0)
-    mv["partialstep"] = static_cast<int> (c.GetPartialStep ());
+    mv["partialstep"] = IntToJson (c.GetPartialStep ());
   if (pb.has_movement ())
     {
       const auto& mvProto = pb.movement ();

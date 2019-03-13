@@ -4,6 +4,7 @@
 
 #include <glog/logging.h>
 
+#include <limits>
 #include <sstream>
 
 namespace pxd
@@ -119,6 +120,43 @@ TEST_F (IdFromStringTests, Invalid)
       EXPECT_FALSE (IdFromString (str, id));
     }
 }
+
+using IntToJsonTests = testing::Test;
+
+TEST_F (IntToJsonTests, UInt)
+{
+  const Json::Value res = IntToJson (std::numeric_limits<uint32_t>::max ());
+  ASSERT_TRUE (res.isUInt ());
+  EXPECT_FALSE (res.isInt ());
+  EXPECT_EQ (res.asUInt (), std::numeric_limits<uint32_t>::max ());
+}
+
+TEST_F (IntToJsonTests, Int)
+{
+  const Json::Value res = IntToJson (std::numeric_limits<int32_t>::min ());
+  ASSERT_TRUE (res.isInt ());
+  EXPECT_FALSE (res.isUInt ());
+  EXPECT_EQ (res.asInt (), std::numeric_limits<int32_t>::min ());
+}
+
+TEST_F (IntToJsonTests, UInt64)
+{
+  const Json::Value res = IntToJson (std::numeric_limits<uint64_t>::max ());
+  ASSERT_TRUE (res.isUInt64 ());
+  EXPECT_FALSE (res.isInt64 ());
+  EXPECT_FALSE (res.isUInt ());
+  EXPECT_EQ (res.asUInt64 (), std::numeric_limits<uint64_t>::max ());
+}
+
+TEST_F (IntToJsonTests, Int64)
+{
+  const Json::Value res = IntToJson (std::numeric_limits<int64_t>::min ());
+  ASSERT_TRUE (res.isInt64 ());
+  EXPECT_FALSE (res.isUInt64 ());
+  EXPECT_FALSE (res.isInt ());
+  EXPECT_EQ (res.asInt64 (), std::numeric_limits<int64_t>::min ());
+}
+
 
 } // anonymous namespace
 } // namespace pxd

@@ -131,4 +131,32 @@ IdFromString (const std::string& str, Database::IdT& id)
   return out.str () == str;
 }
 
+template <>
+  Json::Value
+  IntToJson<int32_t> (const int32_t val)
+{
+  return static_cast<Json::Int> (val);
+}
+
+template <>
+  Json::Value
+  IntToJson<uint32_t> (const uint32_t val)
+{
+  return static_cast<Json::UInt> (val);
+}
+
+template <>
+  Json::Value
+  IntToJson<int64_t> (const int64_t val)
+{
+  return static_cast<Json::Int64> (val);
+}
+
+template <>
+  Json::Value
+  IntToJson<uint64_t> (const uint64_t val)
+{
+  return static_cast<Json::UInt64> (val);
+}
+
 } // namespace pxd
