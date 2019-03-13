@@ -3,6 +3,7 @@
 #include "jsonutils.hpp"
 #include "protoutils.hpp"
 
+#include "database/character.hpp"
 #include "database/faction.hpp"
 #include "hexagonal/pathfinder.hpp"
 #include "proto/character.pb.h"
@@ -89,8 +90,9 @@ GetCombatJsonObject (const Character& c)
 
 } // anonymous namespace
 
-Json::Value
-CharacterToJson (const Character& c)
+template <>
+  Json::Value
+  ToStateJson<Character> (const Character& c)
 {
   const auto& pb = c.GetProto ();
 
@@ -145,23 +147,38 @@ CharacterToJson (const Character& c)
   return res;
 }
 
+namespace
+{
+
+/**
+ * Extracts all results from the Database::Result instance, converts them
+ * to JSON, and returns a JSON array.
+ */
+template <typename T>
+  Json::Value
+  ResultsAsArray (T& tbl, Database::Result res)
+{
+  Json::Value arr(Json::arrayValue);
+
+  while (res.Step ())
+    {
+      const auto h = tbl.GetFromResult (res);
+      arr.append (ToStateJson (*h));
+    }
+
+  return arr;
+}
+
+} // anonymous namespace
+
 Json::Value
 GameStateToJson (Database& db)
 {
   Json::Value res(Json::objectValue);
 
   {
-    Json::Value chars(Json::arrayValue);
-
     CharacterTable tbl(db);
-    auto dbRes = tbl.QueryAll ();
-    while (dbRes.Step ())
-      {
-        const auto c = tbl.GetFromResult (dbRes);
-        chars.append (CharacterToJson (*c));
-      }
-
-    res["characters"] = chars;
+    res["characters"] = ResultsAsArray (tbl, tbl.QueryAll ());
   }
 
   return res;

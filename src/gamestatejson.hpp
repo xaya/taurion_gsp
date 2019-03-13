@@ -1,7 +1,6 @@
 #ifndef PXD_GAMESTATEJSON_HPP
 #define PXD_GAMESTATEJSON_HPP
 
-#include "database/character.hpp"
 #include "database/database.hpp"
 
 #include <json/json.h>
@@ -10,9 +9,11 @@ namespace pxd
 {
 
 /**
- * Converts a Character instance to its JSON form in the game-state RPCs.
+ * Converts a state instance (like a Character or Region) to the corresponding
+ * JSON value in the game state.
  */
-Json::Value CharacterToJson (const Character& c);
+template <typename T>
+  Json::Value ToStateJson (const T& val);
 
 /**
  * Returns the full game state JSON for the given Database handle.  The full
