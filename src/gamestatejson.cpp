@@ -5,6 +5,7 @@
 
 #include "database/character.hpp"
 #include "database/faction.hpp"
+#include "database/region.hpp"
 #include "hexagonal/pathfinder.hpp"
 #include "proto/character.pb.h"
 
@@ -159,6 +160,27 @@ template <>
   return res;
 }
 
+template <>
+  Json::Value
+  ToStateJson<Region> (const Region& r)
+{
+  const auto& pb = r.GetProto ();
+
+  Json::Value res(Json::objectValue);
+  res["id"] = r.GetId ();
+
+  Json::Value prospection(Json::objectValue);
+  if (pb.has_prospecting_character ())
+    prospection["inprogress"] = IntToJson (pb.prospecting_character ());
+  if (pb.has_prospection ())
+    prospection["name"] = pb.prospection ().name ();
+
+  if (!prospection.empty ())
+    res["prospection"] = prospection;
+
+  return res;
+}
+
 namespace
 {
 
@@ -191,6 +213,11 @@ GameStateToJson (Database& db)
   {
     CharacterTable tbl(db);
     res["characters"] = ResultsAsArray (tbl, tbl.QueryAll ());
+  }
+
+  {
+    RegionsTable tbl(db);
+    res["regions"] = ResultsAsArray (tbl, tbl.QueryNonTrivial ());
   }
 
   return res;

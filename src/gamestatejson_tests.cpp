@@ -4,7 +4,9 @@
 
 #include "database/character.hpp"
 #include "database/dbtest.hpp"
+#include "database/region.hpp"
 #include "proto/character.pb.h"
+#include "proto/region.pb.h"
 
 #include <gtest/gtest.h>
 
@@ -464,6 +466,55 @@ TEST_F (CharacterJsonTests, HP)
                 }
             }
         }
+      ]
+  })");
+}
+
+/* ************************************************************************** */
+
+class RegionJsonTests : public GameStateJsonTests
+{
+
+protected:
+
+  RegionsTable tbl;
+
+  RegionJsonTests ()
+    : tbl(db)
+  {}
+
+};
+
+TEST_F (RegionJsonTests, Empty)
+{
+  /* This region is never changed to be non-trivial, and thus not in the result
+     of the database query at all.  */
+  tbl.GetById (10);
+
+  /* This region ends up in a trivial state, but is written to the database
+     because it is changed temporarily.  */
+  tbl.GetById (20)->MutableProto ().set_prospecting_character (42);
+  tbl.GetById (20)->MutableProto ().clear_prospecting_character ();
+
+
+  ExpectStateJson (R"({
+    "regions":
+      [
+        {"id": 20}
+      ]
+  })");
+}
+
+TEST_F (RegionJsonTests, Prospection)
+{
+  tbl.GetById (20)->MutableProto ().set_prospecting_character (42);
+  tbl.GetById (10)->MutableProto ().mutable_prospection ()->set_name ("foo");
+
+  ExpectStateJson (R"({
+    "regions":
+      [
+        {"id": 10, "prospection": {"name": "foo"}},
+        {"id": 20, "prospection": {"inprogress": 42}}
       ]
   })");
 }
