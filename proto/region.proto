@@ -1,0 +1,28 @@
+syntax = "proto2";
+
+package pxd.proto;
+
+/**
+ * Data about the prospecting outcome of a region.
+ */
+message ProspectionOutcome
+{
+
+  /** The Xaya name of the user who prospected the region.  */
+  optional string name = 1;
+
+}
+
+/**
+ * All data stored about a particular region on the map.
+ */
+message RegionData
+{
+
+  /** The character ID who is currently prospecting here (if any).  */
+  optional uint64 prospecting_character = 1;
+
+  /** If already prospected, the outcome.  */
+  optional ProspectionOutcome prospection = 2;
+
+}

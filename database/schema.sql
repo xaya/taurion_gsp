@@ -1,4 +1,7 @@
+-- Data for the characters in the game.
 CREATE TABLE IF NOT EXISTS `characters` (
+
+  -- The character ID, which is assigned based on libxayagame's AutoIds.
   `id` INTEGER PRIMARY KEY,
 
   -- The Xaya name that owns this character (and is thus allowed to send
@@ -45,6 +48,7 @@ CREATE TABLE IF NOT EXISTS `characters` (
 
   -- Additional data encoded as a Character protocol buffer.
   `proto` BLOB NOT NULL
+
 );
 
 -- Non-unique indices for the characters table.
@@ -52,3 +56,20 @@ CREATE INDEX IF NOT EXISTS `characters_owner` ON `characters` (`owner`);
 CREATE INDEX IF NOT EXISTS `characters_pos` ON `characters` (`x`, `y`);
 CREATE INDEX IF NOT EXISTS `characters_ismoving` ON `characters` (`ismoving`);
 CREATE INDEX IF NOT EXISTS `characters_hastarget` ON `characters` (`hastarget`);
+
+-- =============================================================================
+
+-- Data for regions where we already have non-trivial data.  Rows here are
+-- only created over time, for regions when the first change is made
+-- away from the "default / empty" state.
+CREATE TABLE IF NOT EXISTS `regions` (
+
+  -- The region ID as defined by the base map data.  Note that ID 0 is a valid
+  -- value for one of the regions.  This ranges up to about 700k, but not
+  -- all values are real regions.
+  `id` INTEGER PRIMARY KEY,
+
+  -- Additional data encoded as a RegionData protocol buffer.
+  `proto` BLOB NOT NULL
+
+);
