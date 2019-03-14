@@ -140,6 +140,35 @@ GetCombatJsonObject (const Character& c)
   return res;
 }
 
+/**
+ * Constructs the JSON state object for a character's busy state.  Returns
+ * JSON null if the character is not busy.
+ */
+Json::Value
+GetBusyJsonObject (const BaseMap& map, const Character& c)
+{
+  const auto busyBlocks = c.GetBusy ();
+  if (busyBlocks == 0)
+    return Json::Value ();
+
+  Json::Value res(Json::objectValue);
+  res["blocks"] = IntToJson (busyBlocks);
+
+  const auto& pb = c.GetProto ();
+  switch (pb.busy_case ())
+    {
+    case proto::Character::kProspection:
+      res["operation"] = "prospecting";
+      res["region"] = IntToJson (map.Regions ().GetRegionId (c.GetPosition ()));
+      break;
+
+    default:
+      LOG (FATAL) << "Unexpected busy state for character: " << pb.busy_case ();
+    }
+
+  return res;
+}
+
 } // anonymous namespace
 
 template <>
@@ -156,6 +185,10 @@ template <>
   const Json::Value mv = GetMovementJsonObject (c);
   if (!mv.empty ())
     res["movement"] = mv;
+
+  const Json::Value busy = GetBusyJsonObject (map, c);
+  if (!busy.isNull ())
+    res["busy"] = busy;
 
   return res;
 }

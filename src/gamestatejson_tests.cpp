@@ -226,13 +226,13 @@ class GameStateJsonTests : public DBTestWithSchema
 
 private:
 
-  /** Basemap instance for the test.  */
-  BaseMap map;
-
   /** GameStateJson instance used in testing.  */
   GameStateJson converter;
 
 protected:
+
+  /** Basemap instance for the test.  */
+  BaseMap map;
 
   GameStateJsonTests ()
     : converter(map)
@@ -477,6 +477,39 @@ TEST_F (CharacterJsonTests, HP)
                   "regeneration": 1.001
                 }
             }
+        }
+      ]
+  })");
+}
+
+TEST_F (CharacterJsonTests, Prospecting)
+{
+  const HexCoord pos(10, -5);
+  ASSERT_EQ (map.Regions ().GetRegionId (pos), 350146);
+
+  auto c = tbl.CreateNew ("domob", Faction::RED);
+  c->SetPosition (HexCoord (10, -5));
+  c->SetBusy (42);
+  c->MutableProto ().mutable_prospection ();
+  c.reset ();
+
+  tbl.CreateNew ("notbusy", Faction::RED);
+
+  ExpectStateJson (R"({
+    "characters":
+      [
+        {
+          "owner": "domob",
+          "busy":
+            {
+              "blocks": 42,
+              "operation": "prospecting",
+              "region": 350146
+            }
+        },
+        {
+          "owner": "notbusy",
+          "busy": null
         }
       ]
   })");
