@@ -57,6 +57,57 @@ HpProtoToJson (const proto::HP& hp)
 }
 
 /**
+ * Computes the "movement" sub-object for a Character's JSON state.
+ */
+Json::Value
+GetMovementJsonObject (const Character& c)
+{
+  const auto& pb = c.GetProto ();
+  Json::Value res(Json::objectValue);
+
+  if (c.GetPartialStep () != 0)
+    res["partialstep"] = IntToJson (c.GetPartialStep ());
+
+  if (pb.has_movement ())
+    {
+      const auto& mvProto = pb.movement ();
+
+      Json::Value wp(Json::arrayValue);
+      for (const auto& entry : mvProto.waypoints ())
+        wp.append (CoordToJson (CoordFromProto (entry)));
+      if (wp.size () > 0)
+        res["waypoints"] = wp;
+
+      /* The precomputed path is processed (rather than just translated from
+         proto to JSON):  We strip off already visited points from it, and
+         we "shift" it by one so that the points represent destinations
+         and it is easier to understand.  */
+      Json::Value path(Json::arrayValue);
+      bool foundPosition = false;
+      for (const auto& s : mvProto.steps ())
+        {
+          const HexCoord from = CoordFromProto (s);
+          if (from == c.GetPosition ())
+            {
+              CHECK (!foundPosition);
+              foundPosition = true;
+            }
+          else if (foundPosition)
+            path.append (CoordToJson (from));
+        }
+      CHECK (foundPosition || mvProto.steps_size () == 0);
+      if (foundPosition)
+        {
+          CHECK (wp.size () > 0);
+          path.append (wp[0]);
+          res["steps"] = path;
+        }
+    }
+
+  return res;
+}
+
+/**
  * Computes the "combat" sub-object for a Character's JSON state.
  */
 Json::Value
@@ -94,8 +145,6 @@ template <>
   Json::Value
   ToStateJson<Character> (const Character& c)
 {
-  const auto& pb = c.GetProto ();
-
   Json::Value res(Json::objectValue);
   res["id"] = IntToJson (c.GetId ());
   res["owner"] = c.GetOwner ();
@@ -103,44 +152,7 @@ template <>
   res["position"] = CoordToJson (c.GetPosition ());
   res["combat"] = GetCombatJsonObject (c);
 
-  Json::Value mv(Json::objectValue);
-  if (c.GetPartialStep () != 0)
-    mv["partialstep"] = IntToJson (c.GetPartialStep ());
-  if (pb.has_movement ())
-    {
-      const auto& mvProto = pb.movement ();
-
-      Json::Value wp(Json::arrayValue);
-      for (const auto& entry : mvProto.waypoints ())
-        wp.append (CoordToJson (CoordFromProto (entry)));
-      if (wp.size () > 0)
-        mv["waypoints"] = wp;
-
-      /* The precomputed path is processed (rather than just translated from
-         proto to JSON):  We strip off already visited points from it, and
-         we "shift" it by one so that the points represent destinations
-         and it is easier to understand.  */
-      Json::Value path(Json::arrayValue);
-      bool foundPosition = false;
-      for (const auto& s : mvProto.steps ())
-        {
-          const HexCoord from = CoordFromProto (s);
-          if (from == c.GetPosition ())
-            {
-              CHECK (!foundPosition);
-              foundPosition = true;
-            }
-          else if (foundPosition)
-            path.append (CoordToJson (from));
-        }
-      CHECK (foundPosition || mvProto.steps_size () == 0);
-      if (foundPosition)
-        {
-          CHECK (wp.size () > 0);
-          path.append (wp[0]);
-          mv["steps"] = path;
-        }
-    }
+  const Json::Value mv = GetMovementJsonObject (c);
   if (!mv.empty ())
     res["movement"] = mv;
 
