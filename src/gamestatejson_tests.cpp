@@ -224,7 +224,19 @@ TEST_F (PartialJsonEqualTests, Nested)
 class GameStateJsonTests : public DBTestWithSchema
 {
 
+private:
+
+  /** Basemap instance for the test.  */
+  BaseMap map;
+
+  /** GameStateJson instance used in testing.  */
+  GameStateJson converter;
+
 protected:
+
+  GameStateJsonTests ()
+    : converter(map)
+  {}
 
   /**
    * Expects that the current state matches the given one, after parsing
@@ -241,7 +253,7 @@ protected:
     std::istringstream in(expectedStr);
     in >> expected;
 
-    const Json::Value actual = GameStateToJson (db);
+    const Json::Value actual = converter.FullState (db);
     VLOG (1) << "Actual JSON for the game state:\n" << actual;
     ASSERT_TRUE (PartialJsonEqual (actual, expected));
   }

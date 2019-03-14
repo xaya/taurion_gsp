@@ -144,7 +144,7 @@ GetCombatJsonObject (const Character& c)
 
 template <>
   Json::Value
-  ToStateJson<Character> (const Character& c)
+  GameStateJson::Convert<Character> (const Character& c) const
 {
   Json::Value res(Json::objectValue);
   res["id"] = IntToJson (c.GetId ());
@@ -162,7 +162,7 @@ template <>
 
 template <>
   Json::Value
-  ToStateJson<Region> (const Region& r)
+  GameStateJson::Convert<Region> (const Region& r) const
 {
   const auto& pb = r.GetProto ();
 
@@ -181,32 +181,23 @@ template <>
   return res;
 }
 
-namespace
-{
-
-/**
- * Extracts all results from the Database::Result instance, converts them
- * to JSON, and returns a JSON array.
- */
 template <typename T>
   Json::Value
-  ResultsAsArray (T& tbl, Database::Result res)
+  GameStateJson::ResultsAsArray (T& tbl, Database::Result res) const
 {
   Json::Value arr(Json::arrayValue);
 
   while (res.Step ())
     {
       const auto h = tbl.GetFromResult (res);
-      arr.append (ToStateJson (*h));
+      arr.append (Convert (*h));
     }
 
   return arr;
 }
 
-} // anonymous namespace
-
 Json::Value
-GameStateToJson (Database& db)
+GameStateJson::FullState (Database& db) const
 {
   Json::Value res(Json::objectValue);
 

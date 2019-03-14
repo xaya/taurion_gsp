@@ -2,6 +2,7 @@
 #define PXD_GAMESTATEJSON_HPP
 
 #include "database/database.hpp"
+#include "mapdata/basemap.hpp"
 
 #include <json/json.h>
 
@@ -9,18 +10,48 @@ namespace pxd
 {
 
 /**
- * Converts a state instance (like a Character or Region) to the corresponding
- * JSON value in the game state.
+ * Utility class that handles construction of game-state JSON.
  */
-template <typename T>
-  Json::Value ToStateJson (const T& val);
+class GameStateJson
+{
 
-/**
- * Returns the full game state JSON for the given Database handle.  The full
- * game state as JSON should mainly be used for debugging and testing, not
- * in production.  For that, more targeted RPC results should be used.
- */
-Json::Value GameStateToJson (Database& db);
+private:
+
+  /** Basemap instance that can be used.  */
+  const BaseMap& map;
+
+  /**
+   * Extracts all results from the Database::Result instance, converts them
+   * to JSON, and returns a JSON array.
+   */
+  template <typename T>
+    Json::Value ResultsAsArray (T& tbl, Database::Result res) const;
+
+public:
+
+  explicit GameStateJson (const BaseMap& m)
+    : map(m)
+  {}
+
+  GameStateJson () = delete;
+  GameStateJson (const GameStateJson&) = delete;
+  void operator= (const GameStateJson&) = delete;
+
+  /**
+   * Converts a state instance (like a Character or Region) to the corresponding
+   * JSON value in the game state.
+   */
+  template <typename T>
+    Json::Value Convert (const T& val) const;
+
+  /**
+   * Returns the full game state JSON for the given Database handle.  The full
+   * game state as JSON should mainly be used for debugging and testing, not
+   * in production.  For that, more targeted RPC results should be used.
+   */
+  Json::Value FullState (Database& db) const;
+
+};
 
 } // namespace pxd
 

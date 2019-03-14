@@ -120,7 +120,8 @@ Json::Value
 PXLogic::GetStateAsJson (sqlite3* db)
 {
   SQLiteGameDatabase dbObj(*this);
-  return pxd::GameStateToJson (dbObj);
+  GameStateJson converter(map);
+  return converter.FullState (dbObj);
 }
 
 } // namespace pxd
