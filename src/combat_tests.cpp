@@ -3,6 +3,7 @@
 #include "database/character.hpp"
 #include "database/dbtest.hpp"
 #include "database/faction.hpp"
+#include "database/region.hpp"
 #include "hexagonal/coord.hpp"
 #include "proto/combat.pb.h"
 
@@ -27,6 +28,9 @@ class CombatTests : public DBTestWithSchema
 {
 
 protected:
+
+  /** Basemap instance to use.  */
+  const BaseMap map;
 
   /** Character table for access to characters in the test.  */
   CharacterTable characters;
@@ -417,22 +421,49 @@ TEST_F (DealDamageTests, Kills)
 
 using ProcessKillsTests = CombatTests;
 
-TEST_F (ProcessKillsTests, Works)
+TEST_F (ProcessKillsTests, DeletesCharacters)
 {
   const auto id1 = characters.CreateNew ("domob", Faction::RED)->GetId ();
   const auto id2 = characters.CreateNew ("domob", Faction::RED)->GetId ();
 
-  ProcessKills (db, {});
+  ProcessKills (db, {}, map);
   EXPECT_TRUE (characters.GetById (id1) != nullptr);
   EXPECT_TRUE (characters.GetById (id2) != nullptr);
 
   proto::TargetId targetId;
   targetId.set_type (proto::TargetId::TYPE_CHARACTER);
   targetId.set_id (id2);
-  ProcessKills (db, {targetId});
+  ProcessKills (db, {targetId}, map);
 
   EXPECT_TRUE (characters.GetById (id1) != nullptr);
   EXPECT_TRUE (characters.GetById (id2) == nullptr);
+}
+
+TEST_F (ProcessKillsTests, CancelsProspection)
+{
+  const HexCoord pos(-42, 100);
+  const auto regionId = map.Regions ().GetRegionId (pos);
+
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  const auto id = c->GetId ();
+  c->SetPosition (pos);
+  c->SetBusy (10);
+  c->MutableProto ().mutable_prospection ();
+  c.reset ();
+
+  RegionsTable regions(db);
+  auto r = regions.GetById (regionId);
+  r->MutableProto ().set_prospecting_character (id);
+  r.reset ();
+
+  proto::TargetId targetId;
+  targetId.set_type (proto::TargetId::TYPE_CHARACTER);
+  targetId.set_id (id);
+  ProcessKills (db, {targetId}, map);
+
+  EXPECT_TRUE (characters.GetById (id) == nullptr);
+  r = regions.GetById (regionId);
+  EXPECT_FALSE (r->GetProto ().has_prospecting_character ());
 }
 
 /* ************************************************************************** */

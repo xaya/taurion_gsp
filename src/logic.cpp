@@ -56,7 +56,7 @@ PXLogic::UpdateState (Database& db, xaya::Random& rnd,
                       const Params& params, const BaseMap& map,
                       const Json::Value& blockData)
 {
-  AllHpUpdates (db, rnd);
+  AllHpUpdates (db, rnd, map);
 
   MoveProcessor mvProc(db, params);
   mvProc.ProcessAll (blockData["moves"]);

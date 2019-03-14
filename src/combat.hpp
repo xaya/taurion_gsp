@@ -2,6 +2,7 @@
 #define PXD_COMBAT_HPP
 
 #include "database/database.hpp"
+#include "mapdata/basemap.hpp"
 #include "proto/combat.pb.h"
 
 #include <xayagame/random.hpp>
@@ -26,7 +27,8 @@ std::vector<proto::TargetId> DealCombatDamage (Database& db, xaya::Random& rnd);
  * Processes killed fighers from the given list, actually performing the
  * necessary database changes for having them dead.
  */
-void ProcessKills (Database& db, const std::vector<proto::TargetId>& dead);
+void ProcessKills (Database& db, const std::vector<proto::TargetId>& dead,
+                   const BaseMap& map);
 
 /**
  * Handles HP regeneration.
@@ -37,7 +39,7 @@ void RegenerateHP (Database& db);
  * Runs the three coupled steps to update HP at the beginning of computing
  * a block:  Dealing damage, handling kills and regenerating.
  */
-void AllHpUpdates (Database& db, xaya::Random& rnd);
+void AllHpUpdates (Database& db, xaya::Random& rnd, const BaseMap& map);
 
 } // namespace pxd
 

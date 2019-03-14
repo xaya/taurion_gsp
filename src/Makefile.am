@@ -91,6 +91,7 @@ benchmarks_LDADD = \
   $(top_builddir)/database/libdatabase.la \
   $(top_builddir)/hexagonal/libbenchmain.la \
   $(top_builddir)/hexagonal/libhexagonal.la \
+  $(top_builddir)/mapdata/libmapdata.la \
   $(top_builddir)/proto/libpxproto.la \
   $(JSON_LIBS) $(GLOG_LIBS) $(PROTOBUF_LIBS) $(BENCHMARK_LIBS)
 benchmarks_SOURCES = \

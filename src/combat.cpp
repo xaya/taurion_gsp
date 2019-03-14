@@ -2,6 +2,7 @@
 
 #include "database/character.hpp"
 #include "database/fighter.hpp"
+#include "database/region.hpp"
 #include "database/target.hpp"
 #include "hexagonal/coord.hpp"
 
@@ -160,16 +161,40 @@ DealCombatDamage (Database& db, xaya::Random& rnd)
 }
 
 void
-ProcessKills (Database& db, const std::vector<proto::TargetId>& dead)
+ProcessKills (Database& db, const std::vector<proto::TargetId>& dead,
+              const BaseMap& map)
 {
   CharacterTable characters(db);
+  RegionsTable regions(db);
 
   for (const auto& id : dead)
     switch (id.type ())
       {
       case proto::TargetId::TYPE_CHARACTER:
-        characters.DeleteById (id.id ());
-        break;
+        {
+          auto c = characters.GetById (id.id ());
+
+          /* If the character was prospecting some region, cancel that
+             operation and mark the region as not being prospected.  */
+          if (c->GetProto ().has_prospection ())
+            {
+              const auto& pos = c->GetPosition ();
+              const auto regionId = map.Regions ().GetRegionId (pos);
+
+              LOG (INFO)
+                  << "Killed character " << id.id ()
+                  << " was prospecting region " << regionId
+                  << ", cancelling";
+
+              auto r = regions.GetById (regionId);
+              CHECK_EQ (r->GetProto ().prospecting_character (), id.id ());
+              r->MutableProto ().clear_prospecting_character ();
+            }
+
+          c.reset ();
+          characters.DeleteById (id.id ());
+          break;
+        }
 
       default:
         LOG (FATAL)
@@ -229,10 +254,10 @@ RegenerateHP (Database& db)
 }
 
 void
-AllHpUpdates (Database& db, xaya::Random& rnd)
+AllHpUpdates (Database& db, xaya::Random& rnd, const BaseMap& map)
 {
   const auto dead = DealCombatDamage (db, rnd);
-  ProcessKills (db, dead);
+  ProcessKills (db, dead, map);
   RegenerateHP (db);
 }
 

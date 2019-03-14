@@ -5,6 +5,7 @@
 #include "database/faction.hpp"
 #include "database/schema.hpp"
 #include "hexagonal/coord.hpp"
+#include "mapdata/basemap.hpp"
 #include "proto/combat.pb.h"
 
 #include <xayagame/hash.hpp>
@@ -66,10 +67,10 @@ InsertCharacters (Database& db, const unsigned numIdle,
  * also in the real state-update function.
  */
 void
-UpdateHP (Database& db, xaya::Random& rnd)
+UpdateHP (Database& db, xaya::Random& rnd, const BaseMap& map)
 {
   const auto dead = DealCombatDamage (db, rnd);
-  ProcessKills (db, dead);
+  ProcessKills (db, dead, map);
   RegenerateHP (db);
 }
 
@@ -85,6 +86,8 @@ UpdateHP (Database& db, xaya::Random& rnd)
 void
 CombatHpUpdate (benchmark::State& state)
 {
+  const BaseMap map;
+
   TestDatabase db;
   SetupDatabaseSchema (db.GetHandle ());
 
@@ -102,7 +105,7 @@ CombatHpUpdate (benchmark::State& state)
   for (auto _ : state)
     {
       TemporaryDatabaseChanges checkpoint(db, state);
-      UpdateHP (db, rnd);
+      UpdateHP (db, rnd, map);
     }
 }
 BENCHMARK (CombatHpUpdate)
@@ -126,6 +129,8 @@ BENCHMARK (CombatHpUpdate)
 void
 CombatKills (benchmark::State& state)
 {
+  const BaseMap map;
+
   TestDatabase db;
   SetupDatabaseSchema (db.GetHandle ());
 
@@ -143,7 +148,7 @@ CombatKills (benchmark::State& state)
   for (auto _ : state)
     {
       TemporaryDatabaseChanges checkpoint(db, state);
-      UpdateHP (db, rnd);
+      UpdateHP (db, rnd, map);
     }
 }
 BENCHMARK (CombatKills)
