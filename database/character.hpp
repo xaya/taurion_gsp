@@ -54,6 +54,9 @@ private:
   /** Current HP proto.  */
   proto::HP hp;
 
+  /** The number of blocks (or zero) the character is still busy.  */
+  int busy;
+
   /** All other data in the protocol buffer.  */
   proto::Character data;
 
@@ -92,6 +95,12 @@ private:
    * (with proto update) and not the UPDATE one.
    */
   void BindFieldValues (Database::Statement& stmt) const;
+
+  /**
+   * Validates the character state for consistency.  CHECK-fails if there
+   * is any mismatch in the fields.
+   */
+  void Validate () const;
 
   friend class CharacterTable;
 
@@ -171,6 +180,19 @@ public:
   {
     dirtyFields = true;
     return hp;
+  }
+
+  unsigned
+  GetBusy () const
+  {
+    return busy;
+  }
+
+  void
+  SetBusy (const unsigned b)
+  {
+    busy = b;
+    dirtyFields = true;
   }
 
   const proto::Character&
@@ -255,9 +277,25 @@ public:
   Database::Result QueryWithTarget ();
 
   /**
+   * Queries all characters that have busy=1, i.e. need their operation
+   * processed and finished next.
+   */
+  Database::Result QueryBusyDone ();
+
+  /**
    * Deletes the character with the given ID.
    */
   void DeleteById (Database::IdT id);
+
+  /**
+   * Decrements the busy counter for all characters (and keeps it at zero
+   * where it already is zero).  This function must only be called if there
+   * are no characters with a count exactly one (it CHECK-fails instead).
+   * The reason is that those characters should be processed manually, including
+   * an update to their busy field in the proto.  Otherwise their state would
+   * become inconsistent.
+   */
+  void DecrementBusy ();
 
 };
 

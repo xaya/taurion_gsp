@@ -45,6 +45,21 @@ message Movement
 }
 
 /**
+ * Data representing an on-going prospection by a character.
+ */
+message OngoingProspection
+{
+
+  /* There are no fields required.  The only piece of data is which region
+     is being prospected, but that is implicit from the character's
+     position on the map.
+
+     This message is simply used as a flag to indicate that a prospecting
+     operation is ongoing in the character's "busy" oneof.  */
+
+}
+
+/**
  * The state of one character in the game.  Note that this does not include
  * data fields that are stored directly in database columns, namely those on
  * which the database keeps indices.
@@ -66,6 +81,15 @@ message Character
    */
   optional CombatData combat_data = 3;
 
+  /**
+   * If the character is currently busy, then this holds data about the
+   * currently ongoing operation.
+   */
+  oneof busy
+  {
+    OngoingProspection prospection = 4;
+  }
+
   /* Fields that are stored directly in the database and thus not part of the
      encoded protocol buffer:
 
@@ -75,6 +99,7 @@ message Character
      - position on the map
      - partial movement towards next tile
      - current HP proto
+     - number of blocks the character is still "busy"
   */
 
 }

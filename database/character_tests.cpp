@@ -11,6 +11,23 @@ namespace pxd
 namespace
 {
 
+/**
+ * Sets the busy field of a character to the given value.  Makes sure to
+ * add a prospection operation (or remove it) as necessary to make the
+ * state consistent.
+ */
+void
+SetBusy (Character& c, const unsigned val)
+{
+  c.SetBusy (val);
+  if (val == 0)
+    c.MutableProto ().clear_prospection ();
+  else
+    c.MutableProto ().mutable_prospection ();
+}
+
+/* ************************************************************************** */
+
 class CharacterTests : public DBTestWithSchema
 {
 
@@ -33,6 +50,7 @@ TEST_F (CharacterTests, Creation)
   c->SetPosition (pos);
   const auto id1 = c->GetId ();
   c->MutableHP ().set_armour (10);
+  SetBusy (*c, 42);
   c.reset ();
 
   c = tbl.CreateNew ("domob", Faction::GREEN);
@@ -49,6 +67,7 @@ TEST_F (CharacterTests, Creation)
   EXPECT_EQ (c->GetFaction (), Faction::RED);
   EXPECT_EQ (c->GetPosition (), pos);
   EXPECT_EQ (c->GetHP ().armour (), 10);
+  EXPECT_EQ (c->GetBusy (), 42);
   EXPECT_FALSE (c->GetProto ().has_movement ());
 
   ASSERT_TRUE (res.Step ());
@@ -56,6 +75,7 @@ TEST_F (CharacterTests, Creation)
   ASSERT_EQ (c->GetId (), id2);
   EXPECT_EQ (c->GetOwner (), "domob");
   EXPECT_EQ (c->GetFaction (), Faction::GREEN);
+  EXPECT_EQ (c->GetBusy (), 0);
   EXPECT_TRUE (c->GetProto ().has_movement ());
 
   ASSERT_FALSE (res.Step ());
@@ -74,14 +94,16 @@ TEST_F (CharacterTests, ModificationWithProto)
   EXPECT_EQ (c->GetPosition (), HexCoord (0, 0));
   EXPECT_EQ (c->GetPartialStep (), 0);
   EXPECT_FALSE (c->GetHP ().has_shield ());
-  EXPECT_FALSE (c->GetProto ().has_movement ());
+  EXPECT_EQ (c->GetBusy (), 0);
+  EXPECT_FALSE (c->GetProto ().has_target ());
   ASSERT_FALSE (res.Step ());
 
   c->SetOwner ("andy");
   c->SetPosition (pos);
   c->SetPartialStep (10);
   c->MutableHP ().set_shield (5);
-  c->MutableProto ().mutable_movement ();
+  SetBusy (*c, 42);
+  c->MutableProto ().mutable_target ();
   c.reset ();
 
   res = tbl.QueryAll ();
@@ -92,7 +114,8 @@ TEST_F (CharacterTests, ModificationWithProto)
   EXPECT_EQ (c->GetPosition (), pos);
   EXPECT_EQ (c->GetPartialStep (), 10);
   EXPECT_EQ (c->GetHP ().shield (), 5);
-  EXPECT_TRUE (c->GetProto ().has_movement ());
+  EXPECT_EQ (c->GetBusy (), 42);
+  EXPECT_TRUE (c->GetProto ().has_target ());
   ASSERT_FALSE (res.Step ());
 }
 
@@ -100,24 +123,35 @@ TEST_F (CharacterTests, ModificationFieldsOnly)
 {
   const HexCoord pos(-2, 5);
 
-  tbl.CreateNew ("domob", Faction::RED);
+  /* When we set the busy value using SetBusy, the proto gets modified.
+     Only once we have the prospection proto set, we can modify the busy
+     value without touching the proto.  Thus set up a non-zero value here
+     and later modify just the value.  */
+  auto c = tbl.CreateNew ("domob", Faction::RED);
+  const auto id = c->GetId ();
+  SetBusy (*c, 100);
+  c.reset ();
 
-  auto c = tbl.GetById (1);
+  c = tbl.GetById (id);
   ASSERT_TRUE (c != nullptr);
   c->SetOwner ("andy");
   c->SetPosition (pos);
-  c->SetPartialStep (42);
+  c->SetPartialStep (24);
   c->MutableHP ().set_shield (5);
+  c->SetBusy (42);
   c.reset ();
 
-  c = tbl.GetById (1);
+  c = tbl.GetById (id);
   ASSERT_TRUE (c != nullptr);
   EXPECT_EQ (c->GetOwner (), "andy");
   EXPECT_EQ (c->GetFaction (), Faction::RED);
   EXPECT_EQ (c->GetPosition (), pos);
-  EXPECT_EQ (c->GetPartialStep (), 42);
+  EXPECT_EQ (c->GetPartialStep (), 24);
   EXPECT_EQ (c->GetHP ().shield (), 5);
+  EXPECT_EQ (c->GetBusy (), 42);
 }
+
+/* ************************************************************************** */
 
 using CharacterTableTests = CharacterTests;
 
@@ -183,6 +217,21 @@ TEST_F (CharacterTableTests, QueryWithTarget)
   ASSERT_FALSE (res.Step ());
 }
 
+TEST_F (CharacterTableTests, QueryBusyDone)
+{
+  tbl.CreateNew ("leisurely", Faction::RED);
+  SetBusy (*tbl.CreateNew ("verybusy", Faction::RED), 2);
+  SetBusy (*tbl.CreateNew ("done 1", Faction::RED), 1);
+  SetBusy (*tbl.CreateNew ("done 2", Faction::RED), 1);
+
+  auto res = tbl.QueryBusyDone ();
+  ASSERT_TRUE (res.Step ());
+  EXPECT_EQ (tbl.GetFromResult (res)->GetOwner (), "done 1");
+  ASSERT_TRUE (res.Step ());
+  EXPECT_EQ (tbl.GetFromResult (res)->GetOwner (), "done 2");
+  ASSERT_FALSE (res.Step ());
+}
+
 TEST_F (CharacterTableTests, DeleteById)
 {
   const auto id1 = tbl.CreateNew ("domob", Faction::RED)->GetId ();
@@ -197,6 +246,22 @@ TEST_F (CharacterTableTests, DeleteById)
   EXPECT_TRUE (tbl.GetById (id1) == nullptr);
   EXPECT_TRUE (tbl.GetById (id2) == nullptr);
 }
+
+TEST_F (CharacterTableTests, DecrementBusy)
+{
+  const auto id1 = tbl.CreateNew ("leisurely", Faction::RED)->GetId ();
+
+  auto c = tbl.CreateNew ("verybusy", Faction::RED);
+  const auto id2 = c->GetId ();
+  SetBusy (*c, 10);
+  c.reset ();
+
+  tbl.DecrementBusy ();
+  EXPECT_EQ (tbl.GetById (id1)->GetBusy (), 0);
+  EXPECT_EQ (tbl.GetById (id2)->GetBusy (), 9);
+}
+
+/* ************************************************************************** */
 
 } // anonymous namespace
 } // namespace pxd

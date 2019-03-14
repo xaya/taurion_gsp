@@ -35,6 +35,10 @@ CREATE TABLE IF NOT EXISTS `characters` (
   -- costs and undo data size.
   `hp` BLOB NOT NULL,
 
+  -- If non-zero, then the number represents for how many more blocks the
+  -- character is "locked" at being busy (e.g. prospecting).
+  `busy` INTEGER NOT NULL,
+
   -- Flag indicating if the character is currently moving.  This is set
   -- based on the encoded protocol buffer when updating the table, and is
   -- used so that we can efficiently retrieve only those characters that are
@@ -54,6 +58,7 @@ CREATE TABLE IF NOT EXISTS `characters` (
 -- Non-unique indices for the characters table.
 CREATE INDEX IF NOT EXISTS `characters_owner` ON `characters` (`owner`);
 CREATE INDEX IF NOT EXISTS `characters_pos` ON `characters` (`x`, `y`);
+CREATE INDEX IF NOT EXISTS `characters_busy` ON `characters` (`busy`);
 CREATE INDEX IF NOT EXISTS `characters_ismoving` ON `characters` (`ismoving`);
 CREATE INDEX IF NOT EXISTS `characters_hastarget` ON `characters` (`hastarget`);
 

@@ -7,12 +7,13 @@ namespace pxd
 
 Character::Character (Database& d, const std::string& o, const Faction f)
   : db(d), id(db.GetNextId ()), owner(o), faction(f),
-    pos(0, 0), partialStep(0),
+    pos(0, 0), partialStep(0), busy(0),
     dirtyFields(true), dirtyProto(true)
 {
   VLOG (1)
       << "Created new character with ID " << id << ": "
       << "owner=" << owner;
+  Validate ();
 }
 
 Character::Character (Database& d, const Database::Result& res)
@@ -25,14 +26,16 @@ Character::Character (Database& d, const Database::Result& res)
   pos = HexCoord (res.Get<int64_t> ("x"), res.Get<int64_t> ("y"));
   partialStep = res.Get<int64_t> ("partialstep");
   res.GetProto ("hp", hp);
+  busy = res.Get<int64_t> ("busy");
   res.GetProto ("proto", data);
 
   VLOG (1) << "Fetched character with ID " << id << " from database result";
+  Validate ();
 }
 
 Character::~Character ()
 {
-  CHECK_NE (id, Database::EMPTY_ID);
+  Validate ();
 
   if (dirtyProto)
     {
@@ -44,6 +47,7 @@ Character::~Character ()
           (`id`,
            `owner`, `x`, `y`, `partialstep`,
            `hp`,
+           `busy`,
            `faction`,
            `ismoving`, `hastarget`, `proto`)
           VALUES
@@ -51,14 +55,15 @@ Character::~Character ()
            ?2, ?3, ?4, ?5,
            ?6,
            ?7,
-           ?8, ?9, ?10)
+           ?101,
+           ?102, ?103, ?104)
       )");
 
       BindFieldValues (stmt);
-      BindFactionParameter (stmt, 7, faction);
-      stmt.Bind (8, data.has_movement ());
-      stmt.Bind (9, data.has_target ());
-      stmt.BindProto (10, data);
+      BindFactionParameter (stmt, 101, faction);
+      stmt.Bind (102, data.has_movement ());
+      stmt.Bind (103, data.has_target ());
+      stmt.BindProto (104, data);
       stmt.Execute ();
 
       return;
@@ -72,7 +77,11 @@ Character::~Character ()
 
       auto stmt = db.Prepare (R"(
         UPDATE `characters`
-          SET `owner` = ?2, `x` = ?3, `y` = ?4, `partialstep` = ?5, `hp` = ?6
+          SET `owner` = ?2,
+              `x` = ?3, `y` = ?4,
+              `partialstep` = ?5,
+              `hp` = ?6,
+              `busy` = ?7
           WHERE `id` = ?1
       )");
 
@@ -83,6 +92,21 @@ Character::~Character ()
     }
 
   VLOG (1) << "Character " << id << " is not dirty, no update";
+}
+
+void
+Character::Validate () const
+{
+  CHECK_NE (id, Database::EMPTY_ID);
+  CHECK_GE (busy, 0);
+
+  if (busy == 0)
+    CHECK_EQ (data.busy_case (), proto::Character::BUSY_NOT_SET);
+  else
+    {
+      CHECK_NE (data.busy_case (), proto::Character::BUSY_NOT_SET);
+      CHECK (!data.has_movement ()) << "Busy character should not be moving";
+    }
 }
 
 void
@@ -97,6 +121,7 @@ Character::BindFieldValues (Database::Statement& stmt) const
   else
     stmt.Bind (5, partialStep);
   stmt.BindProto (6, hp);
+  stmt.Bind (7, busy);
 }
 
 CharacterTable::Handle
@@ -160,6 +185,15 @@ CharacterTable::QueryWithTarget ()
   return stmt.Query ("characters");
 }
 
+Database::Result
+CharacterTable::QueryBusyDone ()
+{
+  auto stmt = db.Prepare (R"(
+    SELECT * FROM `characters` WHERE `busy` = 1 ORDER BY `id`
+  )");
+  return stmt.Query ("characters");
+}
+
 void
 CharacterTable::DeleteById (const Database::IdT id)
 {
@@ -169,6 +203,28 @@ CharacterTable::DeleteById (const Database::IdT id)
     DELETE FROM `characters` WHERE `id` = ?1
   )");
   stmt.Bind (1, id);
+  stmt.Execute ();
+}
+
+void
+CharacterTable::DecrementBusy ()
+{
+  VLOG (1) << "Decrementing busy counter for all characters...";
+
+  auto stmt = db.Prepare (R"(
+    SELECT COUNT(*) AS `cnt` FROM `characters` WHERE `busy` = 1
+  )");
+  auto res = stmt.Query ();
+  CHECK (res.Step ());
+  CHECK_EQ (res.Get<int64_t> ("cnt"), 0)
+      << "DecrementBusy called but there are characters with busy=1";
+  CHECK (!res.Step ());
+
+  stmt = db.Prepare (R"(
+    UPDATE `characters`
+      SET `busy` = `busy` - 1
+      WHERE `busy` > 0
+  )");
   stmt.Execute ();
 }
 
