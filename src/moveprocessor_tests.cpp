@@ -373,6 +373,25 @@ TEST_F (CharacterUpdateTests, Waypoints)
   EXPECT_EQ (CoordFromProto (wp.Get (1)), HexCoord (5, 0));
 }
 
+TEST_F (CharacterUpdateTests, WhenBusy)
+{
+  auto h = GetTest ();
+  h->SetBusy (100);
+  h->MutableProto ().mutable_prospection ();
+  h.reset ();
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"wp": [{"x": -3, "y": 4}]}}}
+    }
+  ])");
+
+  h = GetTest ();
+  EXPECT_EQ (h->GetBusy (), 100);
+  EXPECT_FALSE (h->GetProto ().has_movement ());
+}
+
 /* ************************************************************************** */
 
 } // anonymous namespace

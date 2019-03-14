@@ -165,6 +165,13 @@ MaybeSetCharacterWaypoints (Character& c, const Json::Value& upd)
   if (!wpArr.isArray ())
     return;
 
+  if (c.GetBusy () > 0)
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId () << " is busy, can't set waypoints";
+      return;
+    }
+
   std::vector<HexCoord> wp;
   for (const auto& entry : wpArr)
     {
