@@ -53,6 +53,11 @@ class Character (object):
   def getSpeed (self):
     return 750
 
+  def getBusy (self):
+    if "busy" in self.data:
+      return self.data["busy"]
+    return None
+
   def schedulePath (self, target):
     """
     Sends a move to path to the given target.  This uses findpath as necessary
@@ -85,6 +90,18 @@ class Character (object):
     for key, val in expected.iteritems ():
       assert key in self.data
       self.test.assertEqual (self.data[key], val)
+
+
+class Region (object):
+  """
+  Basic handle for a region in the game state.
+  """
+
+  def __init__ (self, data):
+    self.data = data
+
+  def getId (self):
+    return self.data["id"]
 
 
 class PXTest (XayaGameTest):
@@ -160,6 +177,32 @@ class PXTest (XayaGameTest):
     chars = self.getCharacters ()
     for nm, c in charTargets.iteritems ():
       self.assertEqual (chars[nm].getPosition (), c)
+
+  def getRegion (self, regionId):
+    """
+    Retrieves data for the given region from the current game state.  This
+    handles also the case that the region only has trivial data and is not
+    explicitly present.
+    """
+
+    state = self.getGameState ()
+    assert "regions" in state
+
+    for r in state["regions"]:
+      if r["id"] == regionId:
+        return Region (r)
+
+    data = {"id": regionId}
+    return Region (data)
+
+  def getRegionAt (self, pos):
+    """
+    Returns the region data from the game state for the region at the
+    given coordinate.
+    """
+
+    data = self.rpc.game.getregionat (coord=pos)
+    return self.getRegion (data["id"])
 
   def assertEqual (self, a, b):
     """

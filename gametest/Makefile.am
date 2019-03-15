@@ -7,7 +7,8 @@ REGTESTS = \
   combat_targets.py \
   findpath.py \
   getregionat.py \
-  movement.py
+  movement.py \
+  prospecting.py
 
 EXTRA_DIST = $(REGTESTS) $(TEST_LIBRARY)
 TESTS = $(REGTESTS)
