@@ -154,6 +154,70 @@ MaybeTransferCharacter (Character& c, const Json::Value& upd)
 }
 
 /**
+ * Processes a command to start prospecting at the character's current location.
+ */
+void
+MaybeStartProspecting (Character& c, const Json::Value& upd,
+                       RegionsTable& regions, const BaseMap& map)
+{
+  CHECK (upd.isObject ());
+  const auto& cmd = upd["prospect"];
+  if (!cmd.isObject ())
+    return;
+
+  if (!cmd.empty ())
+    {
+      LOG (WARNING)
+          << "Invalid prospecting command for character " << c.GetId ()
+          << ": " << cmd;
+      return;
+    }
+
+  if (c.GetBusy () > 0)
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId () << " is busy, can't prospect";
+      return;
+    }
+
+  const auto& pos = c.GetPosition ();
+  const auto regionId = map.Regions ().GetRegionId (pos);
+  VLOG (1)
+      << "Character " << c.GetId ()
+      << " is trying to prospect region " << regionId;
+
+  auto r = regions.GetById (regionId);
+  const auto& rpb = r->GetProto ();
+  if (rpb.has_prospecting_character ())
+    {
+      LOG (WARNING)
+          << "Region " << regionId
+          << " is already being prospected by character "
+          << rpb.prospecting_character ()
+          << ", can't be prospected by " << c.GetId ();
+      return;
+    }
+  if (rpb.has_prospection ())
+    {
+      LOG (WARNING)
+          << "Region " << regionId
+          << " is already prospected, can't be prospected by " << c.GetId ();
+      return;
+    }
+
+  VLOG (1)
+      << "Starting prospection of region " << regionId
+      << " by character " << c.GetId ();
+
+  r->MutableProto ().set_prospecting_character (c.GetId ());
+
+  c.SetPartialStep (0);
+  c.MutableProto ().clear_movement ();
+  c.SetBusy (10);
+  c.MutableProto ().mutable_prospection ();
+}
+
+/**
  * Sets the character's waypoints if a valid command for starting a move
  * is there.
  */
@@ -242,6 +306,7 @@ MoveProcessor::HandleCharacterUpdate (const std::string& name,
         }
 
       MaybeTransferCharacter (*c, upd);
+      MaybeStartProspecting (*c, upd, regions, map);
       MaybeSetCharacterWaypoints (*c, upd);
     }
 }

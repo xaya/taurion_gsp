@@ -58,7 +58,7 @@ PXLogic::UpdateState (Database& db, xaya::Random& rnd,
 {
   AllHpUpdates (db, rnd, map);
 
-  MoveProcessor mvProc(db, params);
+  MoveProcessor mvProc(db, params, map);
   mvProc.ProcessAll (blockData["moves"]);
 
   ProcessAllMovement (db, params, map.GetEdgeWeights ());

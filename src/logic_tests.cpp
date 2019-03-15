@@ -6,6 +6,7 @@
 #include "database/character.hpp"
 #include "database/dbtest.hpp"
 #include "database/faction.hpp"
+#include "database/region.hpp"
 #include "hexagonal/coord.hpp"
 #include "mapdata/basemap.hpp"
 
@@ -32,9 +33,6 @@ class PXLogicTests : public DBTestWithSchema
 
 private:
 
-  /** Base map instance for testing.  */
-  const BaseMap map;
-
   /** Random instance for testing.  */
   xaya::Random rnd;
 
@@ -43,11 +41,17 @@ private:
 
 protected:
 
+  /** Base map instance for testing.  */
+  const BaseMap map;
+
   /** Character table for use in tests.  */
   CharacterTable characters;
 
+  /** Regions table for testing.  */
+  RegionsTable regions;
+
   PXLogicTests ()
-    : params(xaya::Chain::MAIN), characters(db)
+    : params(xaya::Chain::MAIN), characters(db), regions(db)
   {
     xaya::SHA256 seed;
     seed << "test seed";
@@ -166,7 +170,7 @@ TEST_F (PXLogicTests, DamageKillsRegeneration)
   /* Progress one round forward to target.  */
   UpdateState ("[]");
 
-  /* Update the target character so that it will be killed wil the attack,
+  /* Update the target character so that it will be killed with the attack,
      but would regenerate HP if that were done before applying damage.  */
   c = characters.GetById (idTarget);
   ASSERT_TRUE (c != nullptr);
@@ -180,6 +184,115 @@ TEST_F (PXLogicTests, DamageKillsRegeneration)
   /* Now the attack should kill the target before it can regenerate.  */
   UpdateState ("[]");
   EXPECT_TRUE (characters.GetById (idTarget) == nullptr);
+}
+
+TEST_F (PXLogicTests, ProspectingBeforeMovement)
+{
+  /* This should test that prospecting is started before processing
+     movement.  In other words, if a character is about to move to the
+     next region when a "prospect" command hits, then prospecting should
+     be started at the "old" region.  For this, we need two coordinates
+     next to each other but in different regions.  */
+  HexCoord pos1, pos2;
+  RegionMap::IdT region1, region2;
+  for (HexCoord::IntT x = 0; ; ++x)
+    {
+      pos1 = HexCoord (x, 0);
+      region1 = map.Regions ().GetRegionId (pos1);
+      pos2 = HexCoord (x + 1, 0);
+      region2 = map.Regions ().GetRegionId (pos2);
+      if (region1 != region2)
+        break;
+    }
+  CHECK_NE (region1, region2);
+  CHECK_EQ (HexCoord::DistanceL1 (pos1, pos2), 1);
+  LOG (INFO)
+      << "Neighbouring coordinates " << pos1 << " and " << pos2
+      << " are in differing regions " << region1 << " and " << region2;
+
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  ASSERT_EQ (c->GetId (), 1);
+  c->SetPosition (pos1);
+  c->SetPartialStep (1000);
+  auto& pb = c->MutableProto ();
+  pb.mutable_combat_data ();
+  *pb.mutable_movement ()->add_waypoints () = CoordToProto (pos2);
+  c.reset ();
+
+  UpdateState (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"prospect": {}}}}
+    }
+  ])");
+
+  c = characters.GetById (1);
+  EXPECT_EQ (c->GetPosition (), pos1);
+  EXPECT_EQ (c->GetBusy (), 10);
+  EXPECT_TRUE (c->GetProto ().has_prospection ());
+
+  auto r = regions.GetById (region1);
+  EXPECT_EQ (r->GetProto ().prospecting_character (), 1);
+  r = regions.GetById (region2);
+  EXPECT_FALSE (r->GetProto ().has_prospecting_character ());
+}
+
+TEST_F (PXLogicTests, ProspectingUserKilled)
+{
+  const HexCoord pos(5, 5);
+  const auto region = map.Regions ().GetRegionId (pos);
+
+  /* Set up characters such that one is killing the other on the next round.  */
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  ASSERT_EQ (c->GetId (), 1);
+  c->SetPosition (pos);
+  auto* attack = c->MutableProto ().mutable_combat_data ()->add_attacks ();
+  attack->set_range (1);
+  attack->set_max_damage (1);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", Faction::GREEN);
+  ASSERT_EQ (c->GetId (), 2);
+  c->SetPosition (pos);
+  auto* cd = c->MutableProto ().mutable_combat_data ();
+  cd->mutable_max_hp ()->set_shield (100);
+  c->MutableHP ().set_shield (1);
+  c->MutableHP ().set_armour (0);
+  c.reset ();
+
+  /* Progress one round forward to target and also start prospecting
+     with the character that will be killed.  */
+  UpdateState (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"2": {"prospect": {}}}}
+    }
+  ])");
+
+  c = characters.GetById (2);
+  EXPECT_EQ (c->GetBusy (), 10);
+  EXPECT_TRUE (c->GetProto ().has_prospection ());
+
+  auto r = regions.GetById (region);
+  EXPECT_EQ (r->GetProto ().prospecting_character (), 2);
+
+  /* Process another round, where the prospecting character is killed.  Thus
+     the other is able to start prospecting at the same spot.  */
+  UpdateState (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"prospect": {}}}}
+    }
+  ])");
+
+  EXPECT_TRUE (characters.GetById (2) == nullptr);
+
+  c = characters.GetById (1);
+  EXPECT_EQ (c->GetBusy (), 10);
+  EXPECT_TRUE (c->GetProto ().has_prospection ());
+
+  r = regions.GetById (region);
+  EXPECT_EQ (r->GetProto ().prospecting_character (), 1);
 }
 
 } // namespace pxd

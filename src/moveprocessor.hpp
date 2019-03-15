@@ -6,6 +6,8 @@
 
 #include "database/character.hpp"
 #include "database/database.hpp"
+#include "database/region.hpp"
+#include "mapdata/basemap.hpp"
 
 #include <json/json.h>
 
@@ -20,6 +22,9 @@ class MoveProcessor
 
 private:
 
+  /** Basemap instance that can be used.  */
+  const BaseMap& map;
+
   /**
    * The Database handle we use for making any changes (and looking up the
    * current state while validating moves).
@@ -31,6 +36,9 @@ private:
 
   /** Access handle for the characters table in the DB.  */
   CharacterTable characters;
+
+  /** Access to the regions table.  */
+  RegionsTable regions;
 
   /**
    * Processes the move corresponding to one transaction.
@@ -50,8 +58,8 @@ private:
 
 public:
 
-  explicit MoveProcessor (Database& d, const Params& p)
-    : db(d), params(p), characters(db)
+  explicit MoveProcessor (Database& d, const Params& p, const BaseMap& m)
+    : map(m), db(d), params(p), characters(db), regions(db)
   {}
 
   MoveProcessor () = delete;
