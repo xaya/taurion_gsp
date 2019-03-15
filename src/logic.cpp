@@ -4,6 +4,7 @@
 #include "gamestatejson.hpp"
 #include "movement.hpp"
 #include "moveprocessor.hpp"
+#include "prospecting.hpp"
 
 #include "database/schema.hpp"
 
@@ -51,12 +52,50 @@ public:
 
 };
 
+namespace
+{
+
+/**
+ * Decrements busy blocks for all characters and processes those that have
+ * their operation finished.
+ */
+void
+ProcessBusy (Database& db, const BaseMap& map)
+{
+  CharacterTable characters(db);
+  RegionsTable regions(db);
+
+  auto res = characters.QueryBusyDone ();
+  while (res.Step ())
+    {
+      auto c = characters.GetFromResult (res);
+      CHECK_EQ (c->GetBusy (), 1);
+      switch (c->GetProto ().busy_case ())
+        {
+        case proto::Character::kProspection:
+          FinishProspecting (*c, regions, map);
+          break;
+
+        default:
+          LOG (FATAL)
+              << "Unexpected busy case: " << c->GetProto ().busy_case ();
+        }
+
+      CHECK_EQ (c->GetBusy (), 0);
+    }
+
+  characters.DecrementBusy ();
+}
+
+} // anonymous namespace
+
 void
 PXLogic::UpdateState (Database& db, xaya::Random& rnd,
                       const Params& params, const BaseMap& map,
                       const Json::Value& blockData)
 {
   AllHpUpdates (db, rnd, map);
+  ProcessBusy (db, map);
 
   MoveProcessor mvProc(db, params, map);
   mvProc.ProcessAll (blockData["moves"]);

@@ -24,6 +24,7 @@ libtaurion_la_SOURCES = \
   movement.cpp \
   moveprocessor.cpp \
   params.cpp \
+  prospecting.cpp \
   protoutils.cpp
 libtaurionheaders = \
   amount.hpp \
@@ -34,6 +35,7 @@ libtaurionheaders = \
   movement.hpp \
   moveprocessor.hpp \
   params.hpp \
+  prospecting.hpp \
   protoutils.hpp
 
 tauriond_CXXFLAGS = \
@@ -80,6 +82,7 @@ tests_SOURCES = \
   logic_tests.cpp \
   movement_tests.cpp \
   moveprocessor_tests.cpp \
+  prospecting_tests.cpp \
   protoutils_tests.cpp
 
 benchmarks_CXXFLAGS = \

@@ -273,6 +273,11 @@ TEST_F (PXLogicTests, ProspectingUserKilled)
   EXPECT_EQ (c->GetBusy (), 10);
   EXPECT_TRUE (c->GetProto ().has_prospection ());
 
+  /* Make sure that the prospecting operation would be finished on the next
+     step (but it won't be as the character is killed).  */
+  c->SetBusy (1);
+  c.reset ();
+
   auto r = regions.GetById (region);
   EXPECT_EQ (r->GetProto ().prospecting_character (), 2);
 
@@ -293,6 +298,56 @@ TEST_F (PXLogicTests, ProspectingUserKilled)
 
   r = regions.GetById (region);
   EXPECT_EQ (r->GetProto ().prospecting_character (), 1);
+  EXPECT_FALSE (r->GetProto ().has_prospection ());
+}
+
+TEST_F (PXLogicTests, FinishingProspecting)
+{
+  const HexCoord pos(5, 5);
+  const auto region = map.Regions ().GetRegionId (pos);
+
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  ASSERT_EQ (c->GetId (), 1);
+  c->SetPosition (pos);
+  c->MutableProto ().mutable_combat_data ();
+  c.reset ();
+
+  /* Start prospecting with that character.  */
+  UpdateState (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"prospect": {}}}}
+    }
+  ])");
+  EXPECT_EQ (characters.GetById (1)->GetBusy (), 10);
+
+  /* Process blocks until the operation is nearly done.  */
+  for (unsigned i = 0; i < 9; ++i)
+    UpdateState ("[]");
+  EXPECT_EQ (characters.GetById (1)->GetBusy (), 1);
+
+  auto r = regions.GetById (region);
+  EXPECT_EQ (r->GetProto ().prospecting_character (), 1);
+  EXPECT_FALSE (r->GetProto ().has_prospection ());
+
+  /* Process the last block which finishes prospecting.  We should be able
+     to do a movement command right away as well, since the busy state is
+     processed before the moves.  */
+  UpdateState (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"wp": [{"x": 0, "y": 0}]}}}
+    }
+  ])");
+
+  c = characters.GetById (1);
+  EXPECT_EQ (c->GetBusy (), 0);
+  EXPECT_FALSE (c->GetProto ().has_prospection ());
+  EXPECT_TRUE (c->GetProto ().has_movement ());
+
+  r = regions.GetById (region);
+  EXPECT_FALSE (r->GetProto ().has_prospecting_character ());
+  EXPECT_EQ (r->GetProto ().prospection ().name (), "domob");
 }
 
 } // namespace pxd
