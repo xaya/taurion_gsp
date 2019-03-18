@@ -70,6 +70,12 @@ public:
  * Specialised implementation of RangeMap that is able to hold all of the
  * map tiles at once.  This uses a lot of memory, but can be useful in
  * specific situations (e.g. tests).
+ *
+ * DynTiles from mapdata is a more efficient version of such a map, which
+ * really just stores as many tiles as necessary.  It depends on the actual
+ * map data layout, though.  Thus it should be preferred in real production
+ * use for the game backend, but tests (and the map processing code itself)
+ * can still make good use of FullRangeMap instead.
  */
 template <typename T>
   class FullRangeMap : public RangeMap<T>

@@ -22,6 +22,16 @@ extern const int minX[];
 /** For given y, the maximum x coordinate for tiles to be still on the map.  */
 extern const int maxX[];
 
+/**
+ * For given y, the index into a general data array with entries for each
+ * tile where the row for that y starts.  This is used, for instance, for
+ * the maps of dynamic obstacles.
+ */
+extern const size_t offsetForY[];
+
+/** Total number of tiles.  */
+extern const size_t numTiles;
+
 namespace obstacles
 {
 

@@ -187,6 +187,20 @@ public:
       CHECK_YARRAY_LEN (minX);
       CHECK_YARRAY_LEN (maxX);
     )";
+
+    size_t numTiles = 0;
+    out << "const size_t offsetForY[] = {" << std::endl;
+    for (int y = rowRange.minVal; y <= rowRange.maxVal; ++y)
+      {
+        out << "  " << numTiles << "," << std::endl;
+        const auto mit = columnRange.find (y);
+        CHECK (mit != columnRange.end ());
+        numTiles += mit->second.maxVal - mit->second.minVal + 1;
+      }
+    out << "}; // offsetForY" << std::endl;
+    out << "CHECK_YARRAY_LEN (offsetForY);" << std::endl;
+
+    out << "const size_t numTiles = " << numTiles << ";" << std::endl;
   }
 
   friend bool

@@ -24,6 +24,7 @@ libmapdata_la_SOURCES = \
   blobs.s
 noinst_HEADERS = \
   basemap.hpp \
+  dyntiles.hpp dyntiles.tpp \
   regionmap.hpp \
   tiledata.hpp \
   \
@@ -43,6 +44,7 @@ tests_LDADD = \
   $(GTEST_LIBS) $(GLOG_LIBS)
 tests_SOURCES = \
   basemap_tests.cpp \
+  dyntiles_tests.cpp \
   regionmap_tests.cpp \
   \
   dataio.cpp
