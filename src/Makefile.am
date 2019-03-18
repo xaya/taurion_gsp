@@ -18,6 +18,7 @@ libtaurion_la_LIBADD = \
   $(XAYAGAME_LIBS) $(JSON_LIBS) $(GLOG_LIBS) $(PROTOBUF_LIBS)
 libtaurion_la_SOURCES = \
   combat.cpp \
+  dynobstacles.cpp \
   gamestatejson.cpp \
   jsonutils.cpp \
   logic.cpp \
@@ -30,6 +31,7 @@ libtaurion_la_SOURCES = \
 libtaurionheaders = \
   amount.hpp \
   combat.hpp \
+  dynobstacles.hpp \
   gamestatejson.hpp \
   jsonutils.hpp \
   logic.hpp \
@@ -79,6 +81,7 @@ tests_LDADD = \
   $(JSON_LIBS) $(GTEST_LIBS) $(GLOG_LIBS) $(PROTOBUF_LIBS)
 tests_SOURCES = \
   combat_tests.cpp \
+  dynobstacles_tests.cpp \
   gamestatejson_tests.cpp \
   jsonutils_tests.cpp \
   logic_tests.cpp \
