@@ -4,11 +4,13 @@ libhexagonal_la_CXXFLAGS = $(GLOG_CFLAGS)
 libhexagonal_la_LIBADD = $(GLOG_LIBS)
 libhexagonal_la_SOURCES = \
   coord.cpp \
-  pathfinder.cpp
+  pathfinder.cpp \
+  ring.cpp
 noinst_HEADERS = \
   coord.hpp \
   pathfinder.hpp \
-  rangemap.hpp rangemap.tpp
+  rangemap.hpp rangemap.tpp \
+  ring.hpp
 
 check_LTLIBRARIES = libbenchmain.la
 check_PROGRAMS = tests benchmarks
@@ -28,7 +30,8 @@ tests_LDADD = \
 tests_SOURCES = \
   coord_tests.cpp \
   pathfinder_tests.cpp \
-  rangemap_tests.cpp
+  rangemap_tests.cpp \
+  ring_tests.cpp
 
 benchmarks_CXXFLAGS = $(BENCHMARK_CFLAGS) $(GLOG_CFLAGS)
 benchmarks_LDADD = \
