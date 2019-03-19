@@ -36,4 +36,48 @@ Params::MaximumWaypointL1Distance () const
   return 100;
 }
 
+unsigned
+Params::ProspectingBlocks () const
+{
+  return 10;
+}
+
+HexCoord
+Params::SpawnArea (const Faction f, HexCoord::IntT& radius) const
+{
+  radius = 50;
+
+  switch (f)
+    {
+    case Faction::RED:
+      return HexCoord (-1100, 942);
+
+    case Faction::GREEN:
+      return HexCoord (-1042, 1165);
+
+    case Faction::BLUE:
+      return HexCoord (-1377, 1163);
+
+    default:
+      LOG (FATAL) << "Invalid faction: " << static_cast<int> (f);
+    }
+}
+
+void
+Params::InitCharacterStats (proto::Character& pb) const
+{
+  auto* cd = pb.mutable_combat_data ();
+  auto* attack = cd->add_attacks ();
+  attack->set_range (10);
+  attack->set_max_damage (1);
+  attack = cd->add_attacks ();
+  attack->set_range (1);
+  attack->set_max_damage (5);
+
+  auto* maxHP = cd->mutable_max_hp ();
+  maxHP->set_armour (100);
+  maxHP->set_shield (30);
+  cd->set_shield_regeneration_mhp (500);
+}
+
 } // namespace pxd

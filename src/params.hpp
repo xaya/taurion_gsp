@@ -4,6 +4,8 @@
 #include "amount.hpp"
 
 #include "hexagonal/coord.hpp"
+#include "database/faction.hpp"
+#include "proto/character.pb.h"
 
 #include <xayagame/gamelogic.hpp>
 
@@ -52,6 +54,22 @@ public:
    * Returns the maximum L1 distance between waypoints for movement.
    */
   HexCoord::IntT MaximumWaypointL1Distance () const;
+
+  /**
+   * Returns the duration of prospecting in blocks.
+   */
+  unsigned ProspectingBlocks () const;
+
+  /**
+   * Returns the spawn centre and radius for the given faction.
+   */
+  HexCoord SpawnArea (Faction f, HexCoord::IntT& radius) const;
+
+  /**
+   * Initialises the stats for a newly created character.  This fills in the
+   * combat data and other fields in the protocol buffer as needed.
+   */
+  void InitCharacterStats (proto::Character& pb) const;
 
 };
 

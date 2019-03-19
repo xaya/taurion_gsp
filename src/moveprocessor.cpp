@@ -88,47 +88,12 @@ MoveProcessor::HandleCharacterCreation (const std::string& name,
 
   auto newChar = characters.CreateNew (name, faction);
 
-  /* The starting position depends on the faction.  For initial testing,
-     we start each faction a bit off the other (so there is no immediate combat)
-     but not yet in the final way.  */
-  switch (faction)
-    {
-    case Faction::RED:
-      newChar->SetPosition (HexCoord (-1100, 942));
-      break;
-
-    case Faction::GREEN:
-      newChar->SetPosition (HexCoord (-1042, 1165));
-      break;
-
-    case Faction::BLUE:
-      newChar->SetPosition (HexCoord (-1377, 1163));
-      break;
-
-    default:
-      LOG (FATAL) << "Invalid faction: " << static_cast<int> (faction);
-    }
-
-  /* For now, we just define some stats that every character has.  This will
-     be changed later when the stats can be modified and are dynamic
-     themselves.  */
+  HexCoord::IntT spawnRadius;
+  newChar->SetPosition (params.SpawnArea (faction, spawnRadius));
 
   auto& pb = newChar->MutableProto ();
-  auto* cd = pb.mutable_combat_data ();
-
-  auto* attack = cd->add_attacks ();
-  attack->set_range (10);
-  attack->set_max_damage (1);
-  attack = cd->add_attacks ();
-  attack->set_range (1);
-  attack->set_max_damage (5);
-
-  auto* maxHP = cd->mutable_max_hp ();
-  maxHP->set_armour (100);
-  maxHP->set_shield (30);
-  cd->set_shield_regeneration_mhp (500);
-
-  newChar->MutableHP () = *maxHP;
+  params.InitCharacterStats (pb);
+  newChar->MutableHP () = pb.combat_data ().max_hp ();
 }
 
 namespace
@@ -158,7 +123,8 @@ MaybeTransferCharacter (Character& c, const Json::Value& upd)
  */
 void
 MaybeStartProspecting (Character& c, const Json::Value& upd,
-                       RegionsTable& regions, const BaseMap& map)
+                       RegionsTable& regions,
+                       const Params& params, const BaseMap& map)
 {
   CHECK (upd.isObject ());
   const auto& cmd = upd["prospect"];
@@ -213,7 +179,7 @@ MaybeStartProspecting (Character& c, const Json::Value& upd,
 
   c.SetPartialStep (0);
   c.MutableProto ().clear_movement ();
-  c.SetBusy (10);
+  c.SetBusy (params.ProspectingBlocks ());
   c.MutableProto ().mutable_prospection ();
 }
 
@@ -306,7 +272,7 @@ MoveProcessor::HandleCharacterUpdate (const std::string& name,
         }
 
       MaybeTransferCharacter (*c, upd);
-      MaybeStartProspecting (*c, upd, regions, map);
+      MaybeStartProspecting (*c, upd, regions, params, map);
       MaybeSetCharacterWaypoints (*c, upd);
     }
 }
