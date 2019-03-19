@@ -88,6 +88,19 @@ public:
     return y;
   }
 
+  void
+  operator+= (const HexCoord& delta)
+  {
+    x += delta.GetX ();
+    y += delta.GetY ();
+  }
+
+  friend HexCoord
+  operator* (const IntT f, const HexCoord& c)
+  {
+    return HexCoord (f * c.GetX (), f * c.GetY ());
+  }
+
   /**
    * Computes and returns the matching z coordinate in cubic hex coordinates.
    */
@@ -102,15 +115,6 @@ public:
    * neighbouring hex cells.
    */
   NeighbourList Neighbours () const;
-
-  /**
-   * Computes the L1 distance to the origin, i.e. on what "ring" this coordinate
-   * is placed on.
-   */
-  inline IntT GetRing () const
-  {
-    return DistanceL1 (*this, HexCoord (0, 0));
-  }
 
   /**
    * Computes the L1 distance between two coordinates.

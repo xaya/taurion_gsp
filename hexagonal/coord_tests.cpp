@@ -39,6 +39,17 @@ TEST_F (CoordTests, LessThan)
   EXPECT_FALSE (c < b);
 }
 
+TEST_F (CoordTests, Arithmetic)
+{
+  HexCoord test(-2, 5);
+  EXPECT_EQ (2 * test, HexCoord (-4, 10));
+  EXPECT_EQ (0 * test, HexCoord (0, 0));
+  EXPECT_EQ (-1 * test, HexCoord (2, -5));
+
+  test += HexCoord (5, -5);
+  EXPECT_EQ (test, HexCoord (3, 0));
+}
+
 TEST_F (CoordTests, DistanceL1)
 {
   const HexCoord a(-2, 1);
@@ -49,13 +60,6 @@ TEST_F (CoordTests, DistanceL1)
 
   EXPECT_EQ (HexCoord::DistanceL1 (a, a), 0);
   EXPECT_EQ (HexCoord::DistanceL1 (b, b), 0);
-}
-
-TEST_F (CoordTests, GetRing)
-{
-  EXPECT_EQ (HexCoord (0, 0).GetRing (), 0);
-  EXPECT_EQ (HexCoord (-3, 1).GetRing (), 3);
-  EXPECT_EQ (HexCoord (0, 2).GetRing (), 2);
 }
 
 TEST_F (CoordTests, Hashing)
