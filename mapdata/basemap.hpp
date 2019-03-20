@@ -22,14 +22,6 @@ private:
   /** RegionMap instance that is exposed as part of the BaseMap.  */
   RegionMap rm;
 
-  /**
-   * Returns true if the given coordinate is passable according to the
-   * obstacle layer data.
-   */
-  bool IsPassable (const HexCoord& c) const;
-
-  friend class BaseMapTests;
-
 public:
 
   BaseMap ();
@@ -41,6 +33,12 @@ public:
    * Returns true if the given coordinate is "on the map".
    */
   bool IsOnMap (const HexCoord& c) const;
+
+  /**
+   * Returns true if the given coordinate is passable according to the
+   * obstacle layer data.
+   */
+  bool IsPassable (const HexCoord& c) const;
 
   const RegionMap&
   Regions () const
