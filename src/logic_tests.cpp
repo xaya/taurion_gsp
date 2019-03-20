@@ -2,6 +2,7 @@
 
 #include "params.hpp"
 #include "protoutils.hpp"
+#include "testutils.hpp"
 
 #include "database/character.hpp"
 #include "database/dbtest.hpp"
@@ -9,9 +10,6 @@
 #include "database/region.hpp"
 #include "hexagonal/coord.hpp"
 #include "mapdata/basemap.hpp"
-
-#include <xayagame/hash.hpp>
-#include <xayagame/random.hpp>
 
 #include <gtest/gtest.h>
 
@@ -34,7 +32,7 @@ class PXLogicTests : public DBTestWithSchema
 private:
 
   /** Random instance for testing.  */
-  xaya::Random rnd;
+  TestRandom rnd;
 
   /** Test parameters.  */
   const Params params;
@@ -52,11 +50,7 @@ protected:
 
   PXLogicTests ()
     : params(xaya::Chain::MAIN), characters(db), regions(db)
-  {
-    xaya::SHA256 seed;
-    seed << "test seed";
-    rnd.Seed (seed.Finalise ());
-  }
+  {}
 
   /**
    * Calls PXLogic::UpdateState with our test instances of the database,

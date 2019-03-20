@@ -86,7 +86,11 @@ tests_SOURCES = \
   moveprocessor_tests.cpp \
   prospecting_tests.cpp \
   protoutils_tests.cpp \
-  spawn_tests.cpp
+  spawn_tests.cpp \
+  \
+  testutils.cpp
+check_HEADERS = \
+  testutils.hpp
 
 benchmarks_CXXFLAGS = \
   -I$(top_srcdir) \
