@@ -147,35 +147,18 @@ TEST_F (CharacterCreationTests, ValidCreation)
   auto c = tbl.GetFromResult (res);
   EXPECT_EQ (c->GetOwner (), "domob");
   EXPECT_EQ (c->GetFaction (), Faction::RED);
-  EXPECT_EQ (c->GetPosition (), HexCoord (-1100, 942));
 
   ASSERT_TRUE (res.Step ());
   c = tbl.GetFromResult (res);
   EXPECT_EQ (c->GetOwner (), "domob");
   EXPECT_EQ (c->GetFaction (), Faction::GREEN);
-  EXPECT_EQ (c->GetPosition (), HexCoord (-1042, 1165));
 
   ASSERT_TRUE (res.Step ());
   c = tbl.GetFromResult (res);
   EXPECT_EQ (c->GetOwner (), "andy");
   EXPECT_EQ (c->GetFaction (), Faction::BLUE);
-  EXPECT_EQ (c->GetPosition (), HexCoord (-1377, 1163));
 
   EXPECT_FALSE (res.Step ());
-}
-
-TEST_F (CharacterCreationTests, InitialData)
-{
-  ProcessWithDevPayment (R"([
-    {"name": "domob", "move": {"nc": {"faction": "r"}}}
-  ])", params.CharacterCost ());
-
-  auto c = tbl.GetById (1);
-  ASSERT_TRUE (c != nullptr);
-  ASSERT_EQ (c->GetOwner (), "domob");
-
-  EXPECT_TRUE (c->GetProto ().has_combat_data ());
-  EXPECT_EQ (c->GetProto ().combat_data ().attacks_size (), 2);
 }
 
 TEST_F (CharacterCreationTests, DevPayment)

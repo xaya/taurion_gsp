@@ -2,6 +2,7 @@
 
 #include "jsonutils.hpp"
 #include "protoutils.hpp"
+#include "spawn.hpp"
 
 #include "database/faction.hpp"
 #include "proto/character.pb.h"
@@ -86,14 +87,7 @@ MoveProcessor::HandleCharacterCreation (const std::string& name,
       return;
     }
 
-  auto newChar = characters.CreateNew (name, faction);
-
-  HexCoord::IntT spawnRadius;
-  newChar->SetPosition (params.SpawnArea (faction, spawnRadius));
-
-  auto& pb = newChar->MutableProto ();
-  params.InitCharacterStats (pb);
-  newChar->MutableHP () = pb.combat_data ().max_hp ();
+  SpawnCharacter (name, faction, characters, params);
 }
 
 namespace
