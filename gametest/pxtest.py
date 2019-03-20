@@ -51,7 +51,7 @@ class Character (object):
     return "movement" in self.data
 
   def getSpeed (self):
-    return 750
+    return self.data["speed"]
 
   def getBusy (self):
     if "busy" in self.data:

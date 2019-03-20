@@ -181,6 +181,7 @@ template <>
   res["faction"] = FactionToString (c.GetFaction ());
   res["position"] = CoordToJson (c.GetPosition ());
   res["combat"] = GetCombatJsonObject (c);
+  res["speed"] = c.GetProto ().speed ();
 
   const Json::Value mv = GetMovementJsonObject (c);
   if (!mv.empty ())

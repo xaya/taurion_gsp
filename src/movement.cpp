@@ -182,10 +182,11 @@ PrecomputeNextSegment (Character& c, const Params& params,
 } // anonymous namespace
 
 void
-ProcessCharacterMovement (Character& c, const PathFinder::DistanceT speed,
-                          const Params& params,
+ProcessCharacterMovement (Character& c, const Params& params,
                           const PathFinder::EdgeWeightFcn& edges)
 {
+  const auto speed = c.GetProto ().speed ();
+
   VLOG (1)
       << "Processing movement for character: " << c.GetId ()
       << " (speed: " << speed << ")";
@@ -227,7 +228,7 @@ ProcessAllMovement (Database& db, const Params& params,
   while (res.Step ())
     {
       const auto h = tbl.GetFromResult (res);
-      ProcessCharacterMovement (*h, 750, params, edges);
+      ProcessCharacterMovement (*h, params, edges);
     }
 }
 

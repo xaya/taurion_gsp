@@ -112,10 +112,11 @@ protected:
                  const PathFinder::EdgeWeightFcn& edges,
                  const unsigned n)
   {
+    GetTest ()->MutableProto ().set_speed (speed);
     for (unsigned i = 0; i < n; ++i)
       {
         ASSERT_TRUE (IsMoving ());
-        ProcessCharacterMovement (*GetTest (), speed, params, edges);
+        ProcessCharacterMovement (*GetTest (), params, edges);
       }
   }
 

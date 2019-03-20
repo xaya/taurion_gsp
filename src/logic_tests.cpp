@@ -82,6 +82,7 @@ TEST_F (PXLogicTests, WaypointsBeforeMovement)
   ASSERT_EQ (c->GetId (), 1);
   c->SetPartialStep (1000);
   auto& pb = c->MutableProto ();
+  pb.set_speed (750);
   pb.mutable_combat_data ();
   pb.mutable_movement ()->add_waypoints ()->set_x (5);
   c.reset ();
@@ -110,7 +111,9 @@ TEST_F (PXLogicTests, MovementBeforeTargeting)
   c = characters.CreateNew ("domob", Faction::GREEN);
   const auto id2 = c->GetId ();
   c->SetPosition (HexCoord (11, 0));
-  c->MutableProto ().mutable_combat_data ();
+  auto& pb = c->MutableProto ();
+  pb.set_speed (750);
+  pb.mutable_combat_data ();
   c.reset ();
 
   UpdateState ("[]");

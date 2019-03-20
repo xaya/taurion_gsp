@@ -279,6 +279,7 @@ TEST_F (CharacterJsonTests, Basic)
 {
   auto c = tbl.CreateNew ("domob", Faction::RED);
   c->SetPosition (HexCoord (-5, 2));
+  c->MutableProto ().set_speed (750);
   c.reset ();
 
   tbl.CreateNew ("andy", Faction::GREEN);
@@ -288,6 +289,7 @@ TEST_F (CharacterJsonTests, Basic)
       [
         {
           "id": 1, "owner": "domob", "faction": "r",
+          "speed": 750,
           "position": {"x": -5, "y": 2}
         },
         {

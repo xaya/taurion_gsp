@@ -13,8 +13,7 @@ namespace pxd
 /**
  * Processes movement (if any) for the given character handle and edge weights.
  */
-void ProcessCharacterMovement (Character& c, PathFinder::DistanceT speed,
-                               const Params& params,
+void ProcessCharacterMovement (Character& c, const Params& params,
                                const PathFinder::EdgeWeightFcn& edges);
 
 /**

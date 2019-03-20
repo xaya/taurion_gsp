@@ -20,11 +20,29 @@ namespace pxd
 namespace
 {
 
+/**
+ * The speed of characters used in the benchmark.  The actual value does not
+ * matter, since we match it to the edge weights such that the characters
+ * move one tile per block.
+ */
+constexpr PathFinder::DistanceT SPEED = 1000;
+
 PathFinder::DistanceT
 EdgeWeights (const HexCoord& from, const HexCoord& to)
 {
-  /* Match the speed that characters have.  */
-  return 750;
+  return SPEED;
+}
+
+/**
+ * Constructs a test character in the given character table.  This takes
+ * care of all necessary setup (e.g. the speed field).
+ */
+CharacterTable::Handle
+CreateCharacter (CharacterTable& tbl)
+{
+  auto c = tbl.CreateNew ("domob", Faction::RED);
+  c->MutableProto ().set_speed (SPEED);
+  return c;
 }
 
 /**
@@ -53,10 +71,7 @@ MovementOneSegment (benchmark::State& state)
   CharacterTable tbl(db);
   std::vector<Database::IdT> charIds;
   for (unsigned i = 0; i < numMoving; ++i)
-    {
-      const auto h = tbl.CreateNew ("domob", Faction::RED);
-      charIds.push_back (h->GetId ());
-    }
+    charIds.push_back (CreateCharacter (tbl)->GetId ());
 
   for (auto _ : state)
     {
@@ -120,7 +135,7 @@ MovementLongHaul (benchmark::State& state)
   const HexCoord::IntT total = state.range (1);
 
   CharacterTable tbl(db);
-  const auto id = tbl.CreateNew ("domob", Faction::RED)->GetId ();
+  const auto id = CreateCharacter (tbl)->GetId ();
 
   for (auto _ : state)
     {

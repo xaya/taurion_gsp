@@ -90,6 +90,9 @@ message Character
     OngoingProspection prospection = 4;
   }
 
+  /** Movement speed of the character.  */
+  optional uint32 speed = 5;
+
   /* Fields that are stored directly in the database and thus not part of the
      encoded protocol buffer:
 

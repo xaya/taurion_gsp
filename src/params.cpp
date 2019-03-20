@@ -66,6 +66,8 @@ Params::SpawnArea (const Faction f, HexCoord::IntT& radius) const
 void
 Params::InitCharacterStats (proto::Character& pb) const
 {
+  pb.set_speed (750);
+
   auto* cd = pb.mutable_combat_data ();
   auto* attack = cd->add_attacks ();
   attack->set_range (10);
