@@ -87,7 +87,7 @@ MoveProcessor::HandleCharacterCreation (const std::string& name,
       return;
     }
 
-  SpawnCharacter (name, faction, characters, rnd, map, params);
+  SpawnCharacter (name, faction, characters, dyn, rnd, map, params);
 }
 
 namespace

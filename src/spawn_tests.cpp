@@ -9,6 +9,8 @@
 
 #include <gtest/gtest.h>
 
+#include <unordered_set>
+
 namespace pxd
 {
 namespace
@@ -30,11 +32,14 @@ protected:
   /** Basemap instance for testing.  */
   const BaseMap map;
 
+  /** Dynamic obstacle instance for testing.  */
+  DynObstacles dyn;
+
   /** Character table for tests.  */
   CharacterTable tbl;
 
   SpawnTests ()
-    : params(xaya::Chain::MAIN), tbl(db)
+    : params(xaya::Chain::MAIN), dyn(db), tbl(db)
   {}
 
   /**
@@ -43,7 +48,7 @@ protected:
   CharacterTable::Handle
   Spawn (const std::string& owner, const Faction f)
   {
-    return SpawnCharacter (owner, f, tbl, rnd, map, params);
+    return SpawnCharacter (owner, f, tbl, dyn, rnd, map, params);
   }
 
 };
@@ -103,7 +108,9 @@ protected:
     const HexCoord res = c->GetPosition ();
     c.reset ();
 
+    dyn.RemoveVehicle (res, f);
     tbl.DeleteById (id);
+
     return res;
   }
 
@@ -175,6 +182,52 @@ TEST_F (SpawnLocationTests, WithObstacles)
 
   LOG (INFO) << outside << " locations were displaced to outside the ring";
   EXPECT_GT (outside, 0);
+}
+
+TEST_F (SpawnLocationTests, DynObstacles)
+{
+  /* Faction blue has no obstacles on the basemap in the spawn area, so by
+     choosing this faction, we will be able to really fill up the entire
+     area of the spawn with vehicles.  */
+  constexpr Faction f = Faction::BLUE;
+
+  HexCoord::IntT spawnRadius;
+  const HexCoord spawnCentre = params.SpawnArea (f, spawnRadius);
+
+  /* The 50x50 spawn area has less than 10k tiles.  So if we create 10k
+     characters, some will be displaced out of the spawn area.  It should
+     still work fine.  In the end, we should get all locations in the spawn
+     area filled up, and we should not get any vehicle on top of another.  */
+  constexpr unsigned vehicles = 10000;
+
+  unsigned outside = 0;
+  std::unordered_set<HexCoord> positions;
+  for (unsigned i = 0; i < vehicles; ++i)
+    {
+      auto c = Spawn ("domob", f);
+      const auto& pos = c->GetPosition ();
+
+      if (HexCoord::DistanceL1 (pos, spawnCentre) > spawnRadius)
+        ++outside;
+
+      const auto res = positions.insert (pos);
+      ASSERT_TRUE (res.second);
+    }
+  ASSERT_EQ (positions.size (), vehicles);
+  LOG (INFO) << "Vehicles outside of spawn ring: " << outside;
+
+  unsigned tilesInside = 0;
+  for (HexCoord::IntT r = 0; r <= spawnRadius; ++r)
+    {
+      const L1Ring ring(spawnCentre, r);
+      for (const auto& pos : ring)
+        {
+          ++tilesInside;
+          ASSERT_EQ (positions.count (pos), 1);
+        }
+    }
+  LOG (INFO) << "Tiles inside spawn ring: " << tilesInside;
+  EXPECT_EQ (tilesInside + outside, vehicles);
 }
 
 } // anonymous namespace

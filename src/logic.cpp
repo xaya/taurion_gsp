@@ -1,6 +1,7 @@
 #include "logic.hpp"
 
 #include "combat.hpp"
+#include "dynobstacles.hpp"
 #include "gamestatejson.hpp"
 #include "movement.hpp"
 #include "moveprocessor.hpp"
@@ -97,7 +98,8 @@ PXLogic::UpdateState (Database& db, xaya::Random& rnd,
   AllHpUpdates (db, rnd, map);
   ProcessBusy (db, map);
 
-  MoveProcessor mvProc(db, rnd, params, map);
+  DynObstacles dyn(db);
+  MoveProcessor mvProc(db, dyn, rnd, params, map);
   mvProc.ProcessAll (blockData["moves"]);
 
   ProcessAllMovement (db, params, map.GetEdgeWeights ());

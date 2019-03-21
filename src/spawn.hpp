@@ -1,6 +1,7 @@
 #ifndef PXD_SPAWN_HPP
 #define PXD_SPAWN_HPP
 
+#include "dynobstacles.hpp"
 #include "params.hpp"
 
 #include "database/character.hpp"
@@ -22,7 +23,8 @@ namespace pxd
  * This function returns a handle to the newly created character.
  */
 CharacterTable::Handle SpawnCharacter (const std::string& owner, Faction f,
-                                       CharacterTable& tbl, xaya::Random& rnd,
+                                       CharacterTable& tbl, DynObstacles& dyn,
+                                       xaya::Random& rnd,
                                        const BaseMap& map,
                                        const Params& params);
 

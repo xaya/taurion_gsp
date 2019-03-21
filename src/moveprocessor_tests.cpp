@@ -32,6 +32,9 @@ protected:
   /** Basemap instance for use in tests.  */
   const BaseMap map;
 
+  /** DynObstacles instance for the test.  */
+  DynObstacles dyn;
+
 private:
 
   /** Random instance for testing.  */
@@ -43,7 +46,7 @@ private:
 protected:
 
   MoveProcessorTests ()
-    : params(xaya::Chain::MAIN), mvProc(db, rnd, params, map)
+    : params(xaya::Chain::MAIN), dyn(db), mvProc(db, dyn, rnd, params, map)
   {}
 
   /**

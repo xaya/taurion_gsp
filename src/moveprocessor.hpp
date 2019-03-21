@@ -2,6 +2,7 @@
 #define PXD_MOVEPROCESSOR_HPP
 
 #include "amount.hpp"
+#include "dynobstacles.hpp"
 #include "params.hpp"
 
 #include "database/character.hpp"
@@ -27,17 +28,20 @@ private:
   /** Basemap instance that can be used.  */
   const BaseMap& map;
 
+  /** Parameters for the current situation.  */
+  const Params& params;
+
   /**
    * The Database handle we use for making any changes (and looking up the
    * current state while validating moves).
    */
   Database& db;
 
+  /** Dynamic obstacle layer, used for spawning characters.  */
+  DynObstacles& dyn;
+
   /** Handle for random numbers.  */
   xaya::Random& rnd;
-
-  /** Parameters for the current situation.  */
-  const Params& params;
 
   /** Access handle for the characters table in the DB.  */
   CharacterTable characters;
@@ -63,9 +67,11 @@ private:
 
 public:
 
-  explicit MoveProcessor (Database& d, xaya::Random& r,
+  explicit MoveProcessor (Database& d, DynObstacles& dyo, xaya::Random& r,
                           const Params& p, const BaseMap& m)
-    : map(m), db(d), rnd(r), params(p), characters(db), regions(db)
+    : map(m), params(p),
+      db(d), dyn(dyo), rnd(r),
+      characters(db), regions(db)
   {}
 
   MoveProcessor () = delete;

@@ -56,7 +56,8 @@ RandomSpawnLocation (const HexCoord& centre, const HexCoord::IntT radius,
  */
 HexCoord
 ChooseSpawnLocation (const Faction f, xaya::Random& rnd,
-                     const BaseMap& map, const Params& params)
+                     const BaseMap& map, const DynObstacles& dyn,
+                     const Params& params)
 {
   HexCoord::IntT radius;
   const HexCoord spawnCentre = params.SpawnArea (f, radius);
@@ -76,7 +77,7 @@ ChooseSpawnLocation (const Faction f, xaya::Random& rnd,
             continue;
           foundOnMap = true;
 
-          if (map.IsPassable (pos))
+          if (map.IsPassable (pos) && dyn.IsPassable (pos, f))
             return pos;
         }
 
@@ -92,15 +93,18 @@ ChooseSpawnLocation (const Faction f, xaya::Random& rnd,
 
 CharacterTable::Handle
 SpawnCharacter (const std::string& owner, const Faction f,
-                CharacterTable& tbl, xaya::Random& rnd,
+                CharacterTable& tbl, DynObstacles& dyn, xaya::Random& rnd,
                 const BaseMap& map, const Params& params)
 {
   VLOG (1)
       << "Spawning new character for " << owner
       << " in faction " << FactionToString (f) << "...";
 
+  const HexCoord pos = ChooseSpawnLocation (f, rnd, map, dyn, params);
+
   auto c = tbl.CreateNew (owner, f);
-  c->SetPosition (ChooseSpawnLocation (f, rnd, map, params));
+  c->SetPosition (pos);
+  dyn.AddVehicle (pos, f);
 
   auto& pb = c->MutableProto ();
   params.InitCharacterStats (pb);
