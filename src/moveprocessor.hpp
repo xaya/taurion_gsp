@@ -9,6 +9,8 @@
 #include "database/region.hpp"
 #include "mapdata/basemap.hpp"
 
+#include <xayagame/random.hpp>
+
 #include <json/json.h>
 
 namespace pxd
@@ -30,6 +32,9 @@ private:
    * current state while validating moves).
    */
   Database& db;
+
+  /** Handle for random numbers.  */
+  xaya::Random& rnd;
 
   /** Parameters for the current situation.  */
   const Params& params;
@@ -58,8 +63,9 @@ private:
 
 public:
 
-  explicit MoveProcessor (Database& d, const Params& p, const BaseMap& m)
-    : map(m), db(d), params(p), characters(db), regions(db)
+  explicit MoveProcessor (Database& d, xaya::Random& r,
+                          const Params& p, const BaseMap& m)
+    : map(m), db(d), rnd(r), params(p), characters(db), regions(db)
   {}
 
   MoveProcessor () = delete;

@@ -3,6 +3,7 @@
 #include "jsonutils.hpp"
 #include "params.hpp"
 #include "protoutils.hpp"
+#include "testutils.hpp"
 
 #include "database/dbtest.hpp"
 
@@ -33,13 +34,16 @@ protected:
 
 private:
 
+  /** Random instance for testing.  */
+  TestRandom rnd;
+
   /** MoveProcessor instance for use in the test.  */
   MoveProcessor mvProc;
 
 protected:
 
   MoveProcessorTests ()
-    : params(xaya::Chain::MAIN), mvProc(db, params, map)
+    : params(xaya::Chain::MAIN), mvProc(db, rnd, params, map)
   {}
 
   /**
