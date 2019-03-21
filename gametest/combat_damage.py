@@ -47,12 +47,10 @@ class CombatDamageTest (PXTest):
     self.createCharacter (TARGET, "b")
     self.generate (1)
 
-    # We use one of the attackers as offset and move others there (to ensure
-    # that all of them are in a single spot).
-    c = self.getCharacters ()["name 0"]
-    self.offset = c.getPosition ()
+    # We use a known good position as offset and move the attackers there.
+    self.offset = {"x": -1100, "y": 1042}
     charTargets = {}
-    for i in range (1, numAttackers):
+    for i in range (numAttackers):
       charTargets["name %d" % i] = self.offset
     self.moveCharactersTo (charTargets)
 

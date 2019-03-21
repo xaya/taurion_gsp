@@ -77,11 +77,10 @@ class MovementTest (PXTest):
     self.createCharacter ("domob", "r")
     self.generate (1)
 
-    # Get the initial position and store it as offset for further coordinates.
-    # By doing this, we get our test data "simple" and independent of the
-    # concrete starting location.
-    c = self.getCharacters ()["domob"]
-    self.offset = c.getPosition ()
+    # Start off from a known good location to make sure all is fine and
+    # not flaky depending on the randomised spawn position.
+    self.offset = {"x": -1100, "y": 1042}
+    self.moveCharactersTo ({"domob": self.offset})
 
     self.mainLogger.info ("Setting basic path for character...")
     wp = [
@@ -97,6 +96,7 @@ class MovementTest (PXTest):
     pos, mv = self.getMovement ("domob")
     self.assertEqual (mv["partialstep"], 750)
     self.assertEqual (pos, {"x": 0, "y": 0})
+    self.reorgBlock = self.rpc.xaya.getbestblockhash ()
 
     self.mainLogger.info ("Finishing the movement...")
     self.expectMovement ("domob", wp)
@@ -128,8 +128,7 @@ class MovementTest (PXTest):
     self.mainLogger.info ("Testing a reorg...")
     originalState = self.getGameState ()
 
-    blk = self.rpc.xaya.getblockhash (105)
-    self.rpc.xaya.invalidateblock (blk)
+    self.rpc.xaya.invalidateblock (self.reorgBlock)
 
     wp = [
       {"x": -1, "y": 5},
@@ -137,7 +136,7 @@ class MovementTest (PXTest):
     self.setWaypoints ("domob", wp)
     self.expectMovement ("domob", wp)
 
-    self.rpc.xaya.reconsiderblock (blk)
+    self.rpc.xaya.reconsiderblock (self.reorgBlock)
     self.expectGameState (originalState)
 
 

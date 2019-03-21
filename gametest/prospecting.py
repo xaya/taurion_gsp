@@ -19,15 +19,14 @@ class ProspectingTest (PXTest):
       self.createCharacter ("attacker %d" % i, "g")
     self.generate (1)
 
-    # Set up known positions of the characters.  We use one of the attackers
-    # as origin and move all others there.  The target will be moved to a point
-    # nearby (but not in range yet).
-    c = self.getCharacters ()["attacker 0"]
-    self.offset = c.getPosition ()
+    # Set up known positions of the characters.  We use a known good position
+    # as origin and move all attackers there.  The target will be moved to a
+    # point nearby (but not in range yet).
+    self.offset = {"x": -1045, "y": 1265}
     movements = {
       "target": offsetCoord ({"x": 20, "y": 0}, self.offset, False),
     }
-    for i in range (1, 10):
+    for i in range (10):
       movements["attacker %d" % i] = self.offset
     self.moveCharactersTo (movements)
 
