@@ -102,7 +102,7 @@ PXLogic::UpdateState (Database& db, xaya::Random& rnd,
   MoveProcessor mvProc(db, dyn, rnd, params, map);
   mvProc.ProcessAll (blockData["moves"]);
 
-  ProcessAllMovement (db, params, map.GetEdgeWeights ());
+  ProcessAllMovement (db, dyn, params, map.GetEdgeWeights ());
   FindCombatTargets (db, rnd);
 }
 

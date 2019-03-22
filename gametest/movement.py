@@ -113,10 +113,43 @@ class MovementTest (PXTest):
     self.assertEqual (pos, {"x": 99, "y": 1})
     assert mv is None
 
-    # TODO: Once we have buildings, test the situation of an obstacle
-    # appearing dynamically on the next steps or later in the waypoint list.
-
+    self.testBlockingVehicle ()
     self.testReorg ()
+
+  def testBlockingVehicle (self):
+    """
+    Tests how another vehicle can block the movement when it is placed
+    into the path during the "stepping" phase.
+    """
+
+    self.mainLogger.info ("Testing blocking the path...")
+
+    self.createCharacter ("blocker", "r")
+    self.generate (1)
+
+    mv = {
+      "domob": offsetCoord ({"x": 100, "y": 0}, self.offset, False),
+      "blocker": offsetCoord ({"x": 50, "y": 1}, self.offset, False),
+    }
+    self.moveCharactersTo (mv)
+
+    # Calculate the steps and then block the path.
+    self.setWaypoints ("domob", [{"x": 0, "y": 0}])
+    self.generate (10)
+    self.setWaypoints ("blocker", [{"x": 50, "y": 0}])
+    self.generate (100)
+
+    # The movement should stop right before the obstacle.
+    pos, mv = self.getMovement ("domob")
+    self.assertEqual (pos, {"x": 51, "y": 0})
+    self.assertEqual (mv, None)
+
+    # Doing another path finding should work around it.
+    self.setWaypoints ("domob", [{"x": 0, "y": 0}])
+    self.generate (100)
+    pos, mv = self.getMovement ("domob")
+    self.assertEqual (pos, {"x": 0, "y": 0})
+    self.assertEqual (mv, None)
 
   def testReorg (self):
     """

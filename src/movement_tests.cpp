@@ -22,6 +22,8 @@ namespace pxd
 namespace
 {
 
+/* ************************************************************************** */
+
 /**
  * Returns an edge-weight function that has the given distance between
  * tiles and no obstacles.
@@ -50,6 +52,55 @@ EdgesWithObstacle (const PathFinder::DistanceT dist)
     };
 }
 
+/* ************************************************************************** */
+
+class MovementEdgeWeightTests : public DBTestWithSchema
+{
+
+protected:
+
+  /** Test instance for dynamic obstacles.  */
+  DynObstacles dyn;
+
+  MovementEdgeWeightTests ()
+    : dyn(db)
+  {}
+
+};
+
+TEST_F (MovementEdgeWeightTests, BaseEdgesPassedThrough)
+{
+  const auto baseEdges = EdgesWithObstacle (42);
+  EXPECT_EQ (MovementEdgeWeight (HexCoord (0, 0), HexCoord (1, 0),
+                                 baseEdges, dyn, Faction::RED),
+             42);
+  EXPECT_EQ (MovementEdgeWeight (HexCoord (0, 0), HexCoord (-1, 0),
+                                 baseEdges, dyn, Faction::RED),
+             PathFinder::NO_CONNECTION);
+}
+
+TEST_F (MovementEdgeWeightTests, DynamicObstacle)
+{
+  const auto baseEdges = EdgeWeights (42);
+  dyn.AddVehicle (HexCoord (0, 0), Faction::RED);
+
+  EXPECT_EQ (MovementEdgeWeight (HexCoord (0, 0), HexCoord (1, 0),
+                                 baseEdges, dyn, Faction::RED),
+             PathFinder::NO_CONNECTION);
+  EXPECT_EQ (MovementEdgeWeight (HexCoord (1, 0), HexCoord (0, 0),
+                                 baseEdges, dyn, Faction::RED),
+             PathFinder::NO_CONNECTION);
+
+  EXPECT_EQ (MovementEdgeWeight (HexCoord (0, 0), HexCoord (1, 0),
+                                 baseEdges, dyn, Faction::GREEN),
+             42);
+  EXPECT_EQ (MovementEdgeWeight (HexCoord (1, 0), HexCoord (0, 0),
+                                 baseEdges, dyn, Faction::GREEN),
+             42);
+}
+
+/* ************************************************************************** */
+
 /**
  * Test fixture for the character movement.  It automatically sets up a test
  * character and has convenient functions for setting up its movement data
@@ -58,15 +109,13 @@ EdgesWithObstacle (const PathFinder::DistanceT dist)
 class MovementTests : public DBTestWithSchema
 {
 
-private:
+protected:
 
   /** Params instance, set to mainnet.  */
   const Params params;
 
   /** Character table used for interacting with the test database.  */
   CharacterTable tbl;
-
-protected:
 
   MovementTests ()
     : params(xaya::Chain::MAIN), tbl(db)
@@ -236,6 +285,89 @@ TEST_F (MovementTests, CharacterInObstacle)
       {1, HexCoord (-1, 0)},
     });
 }
+
+/* ************************************************************************** */
+
+class AllMovementTests : public MovementTests
+{
+
+protected:
+
+  /**
+   * Steps all characters for one block.  This constructs a fresh dynamic
+   * obstacle map from the database (as is done in the real game logic).
+   */
+  void
+  StepAll (const PathFinder::EdgeWeightFcn& baseEdges)
+  {
+    DynObstacles dyn(db);
+    ProcessAllMovement (db, dyn, params, baseEdges);
+  }
+
+};
+
+TEST_F (AllMovementTests, LongSteps)
+{
+  /* This test verifies that we are able to perform many steps in a single
+     block.  In particular, this only works if updating the dynamic obstacle
+     map for the vehicle being moved works correctly.  */
+
+  GetTest ()->SetPartialStep (1000);
+  SetWaypoints ({
+    HexCoord (5, 0),
+    HexCoord (5, 0),
+    HexCoord (0, 0),
+    HexCoord (0, 0),
+    HexCoord (2, 0),
+    HexCoord (10, 0),
+    HexCoord (-10, 0),
+    HexCoord (-10, 0),
+  });
+  StepAll (EdgeWeights (1));
+
+  EXPECT_FALSE (IsMoving ());
+  EXPECT_EQ (GetTest ()->GetPosition (), HexCoord (-10, 0));
+}
+
+TEST_F (AllMovementTests, OtherVehicles)
+{
+  /* Movement is processed ordered by the character ID.  Thus when multiple
+     vehicles move onto the same tile through their steps, then the one with
+     lowest ID takes precedence.  */
+
+  /* Move the test character from the fixture out of the way.  */
+  GetTest ()->SetPosition (HexCoord (100, 0));
+
+  /* Helper function to create one of our characters set up to move to
+     the origin in the next step.  */
+  const auto setupChar = [this] (const Faction f, const HexCoord& pos)
+    {
+      auto c = tbl.CreateNew ("domob", f);
+
+      c->MutableProto ().set_speed (1);
+      c->SetPosition (pos);
+
+      auto* mv = c->MutableProto ().mutable_movement ();
+      *mv->add_waypoints () = CoordToProto (HexCoord (0, 0));
+      *mv->add_steps () = CoordToProto (c->GetPosition ());
+
+      return c->GetId ();
+    };
+
+  const auto id1 = setupChar (Faction::RED, HexCoord (1, 0));
+  const auto id2 = setupChar (Faction::RED, HexCoord (-1, 0));
+  ASSERT_GT (id2, id1);
+  const auto id3 = setupChar (Faction::GREEN, HexCoord (0, 1));
+  ASSERT_GT (id3, id2);
+
+  StepAll (EdgeWeights (1));
+
+  EXPECT_EQ (tbl.GetById (id1)->GetPosition (), HexCoord (0, 0));
+  EXPECT_EQ (tbl.GetById (id2)->GetPosition (), HexCoord (-1, 0));
+  EXPECT_EQ (tbl.GetById (id3)->GetPosition (), HexCoord (0, 0));
+}
+
+/* ************************************************************************** */
 
 } // anonymous namespace
 } // namespace pxd

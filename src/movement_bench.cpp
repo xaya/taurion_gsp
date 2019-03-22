@@ -80,17 +80,18 @@ MovementOneSegment (benchmark::State& state)
         {
           const auto h = tbl.GetById (id);
           h->SetPartialStep (0);
-          h->SetPosition (HexCoord (0, 0));
+          h->SetPosition (HexCoord (0, id));
           auto* mv = h->MutableProto ().mutable_movement ();
           mv->Clear ();
           auto* wp = mv->mutable_waypoints ();
           for (unsigned i = 0; i < numWP; ++i)
-            *wp->Add () = CoordToProto (HexCoord (numTiles, 0));
+            *wp->Add () = CoordToProto (HexCoord (numTiles, id));
         }
+      DynObstacles dyn(db);
       state.ResumeTiming ();
 
       for (int i = 0; i < numTiles; ++i)
-        ProcessAllMovement (db, params, &EdgeWeights);
+        ProcessAllMovement (db, dyn, params, &EdgeWeights);
 
       /* Make sure that we moved exactly the first part of the path.  This
          verifies that the benchmark is actually set up correctly, and ensures
@@ -100,7 +101,7 @@ MovementOneSegment (benchmark::State& state)
         {
           const auto h = tbl.GetById (id);
           CHECK (!h->GetProto ().has_movement ());
-          CHECK_EQ (h->GetPosition (), HexCoord (numTiles, 0));
+          CHECK_EQ (h->GetPosition (), HexCoord (numTiles, id));
         }
       state.ResumeTiming ();
     }
@@ -160,11 +161,12 @@ MovementLongHaul (benchmark::State& state)
             << "Using " << wp->size () << " waypoints to move " << total
             << " tiles with spacing of " << wpDist;
       }
+      DynObstacles dyn(db);
       state.ResumeTiming ();
 
       do
         {
-          ProcessAllMovement (db, params, &EdgeWeights);
+          ProcessAllMovement (db, dyn, params, &EdgeWeights);
         }
       while (tbl.GetById (id)->GetProto ().has_movement ());
 
@@ -177,10 +179,8 @@ BENCHMARK (MovementLongHaul)
   ->Unit (benchmark::kMillisecond)
   ->Args ({10, 100})
   ->Args ({10, 1000})
-  ->Args ({10, 10000})
   ->Args ({100, 100})
-  ->Args ({100, 1000})
-  ->Args ({100, 10000});
+  ->Args ({100, 1000});
 
 } // anonymous namespace
 } // namespace pxd

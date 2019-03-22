@@ -131,6 +131,51 @@ TEST_F (PXLogicTests, MovementBeforeTargeting)
   EXPECT_EQ (t.id (), id2);
 }
 
+TEST_F (PXLogicTests, KilledVehicleNoLongerBlocks)
+{
+  auto c = characters.CreateNew ("attacker", Faction::GREEN);
+  const auto idAttacker = c->GetId ();
+  c->SetPosition (HexCoord (11, 0));
+  auto* attack = c->MutableProto ().mutable_combat_data ()->add_attacks ();
+  attack->set_range (1);
+  attack->set_max_damage (1);
+  c.reset ();
+
+  c = characters.CreateNew ("obstacle", Faction::RED);
+  const auto idObstacle = c->GetId ();
+  c->SetPosition (HexCoord (10, 0));
+  c->MutableHP ().set_armour (1);
+  c->MutableProto ().mutable_combat_data ();
+  c.reset ();
+
+  c = characters.CreateNew ("moving", Faction::RED);
+  const auto idMoving = c->GetId ();
+  c->SetPosition (HexCoord (9, 0));
+  auto& pb = c->MutableProto ();
+  pb.set_speed (1000);
+  pb.mutable_combat_data ();
+  c.reset ();
+
+  /* Process one block to allow targeting.  */
+  UpdateState ("[]");
+  ASSERT_NE (characters.GetById (idObstacle), nullptr);
+  ASSERT_EQ (characters.GetById (idAttacker)->GetProto ().target ().id (),
+             idObstacle);
+
+  /* Next block, the obstacle should be killed and the moving vehicle
+     can be moved into its spot.  */
+  ASSERT_EQ (idMoving, 3);
+  UpdateState (R"([
+    {
+      "name": "moving",
+      "move": {"c": {"3": {"wp": [{"x": 10, "y": 0}]}}}
+    }
+  ])");
+
+  ASSERT_EQ (characters.GetById (idObstacle), nullptr);
+  EXPECT_EQ (characters.GetById (idMoving)->GetPosition (), HexCoord (10, 0));
+}
+
 TEST_F (PXLogicTests, DamageInNextRound)
 {
   auto c = characters.CreateNew ("domob", Faction::RED);

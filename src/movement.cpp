@@ -2,8 +2,6 @@
 
 #include "protoutils.hpp"
 
-#include "hexagonal/coord.hpp"
-
 namespace pxd
 {
 
@@ -68,7 +66,9 @@ StepAlongPrecomputed (Character& c, const PathFinder::EdgeWeightFcn& edges)
     {
       LOG (WARNING)
           << "Character " << c.GetId ()
-          << " is stepping into obstacle, stopping";
+          << " is stepping into obstacle from "
+          << c.GetPosition () << " to " << dest
+          << ", stopping";
       StopCharacter (c);
       return PROCESSING_DONE;
     }
@@ -219,16 +219,91 @@ ProcessCharacterMovement (Character& c, const Params& params,
     }
 }
 
+PathFinder::DistanceT
+MovementEdgeWeight (const HexCoord& from, const HexCoord& to,
+                    const PathFinder::EdgeWeightFcn& baseEdges,
+                    const DynObstacles& dyn,
+                    const Faction f)
+{
+  /* With dynamic obstacles, we do not handle the situation well if from and
+     to are the same location.  In that case, the vehicle itself will be
+     seen as obstacle (which it should not).  */
+  CHECK_NE (from, to);
+
+  const auto res = baseEdges (from, to);
+
+  if (res == PathFinder::NO_CONNECTION
+        || !dyn.IsPassable (from, f) || !dyn.IsPassable (to, f))
+    return PathFinder::NO_CONNECTION;
+
+  return res;
+}
+
+namespace
+{
+
+/**
+ * RAII helper class to remove a vehicle from the dynamic obstacles and
+ * then add it back again at the (potentially) changed position.
+ */
+class MoveInDynObstacles
+{
+
+private:
+
+  /** The character to move.  */
+  const Character& character;
+
+  /** Dynamic obstacles instance to update.  */
+  DynObstacles& dyn;
+
+public:
+
+  MoveInDynObstacles () = delete;
+  MoveInDynObstacles (const MoveInDynObstacles&) = delete;
+  void operator= (const MoveInDynObstacles&) = delete;
+
+  explicit MoveInDynObstacles (const Character& c, DynObstacles& d)
+    : character(c), dyn(d)
+  {
+    VLOG (1)
+        << "Removing character " << character.GetId ()
+        << " at position " << character.GetPosition ()
+        << " from the dynamic obstacle map before moving it...";
+    dyn.RemoveVehicle (character.GetPosition (), character.GetFaction ());
+  }
+
+  ~MoveInDynObstacles ()
+  {
+    VLOG (1)
+        << "Adding back character " << character.GetId ()
+        << " at position " << character.GetPosition ()
+        << " to the dynamic obstacle map...";
+    dyn.AddVehicle (character.GetPosition (), character.GetFaction ());
+  }
+
+};
+
+} // anonymous namespace
+
 void
-ProcessAllMovement (Database& db, const Params& params,
-                    const PathFinder::EdgeWeightFcn& edges)
+ProcessAllMovement (Database& db, DynObstacles& dyn, const Params& params,
+                    const PathFinder::EdgeWeightFcn& baseEdges)
 {
   CharacterTable tbl(db);
   auto res = tbl.QueryMoving ();
   while (res.Step ())
     {
-      const auto h = tbl.GetFromResult (res);
-      ProcessCharacterMovement (*h, params, edges);
+      const auto c = tbl.GetFromResult (res);
+      MoveInDynObstacles dynMover(*c, dyn);
+
+      const Faction f = c->GetFaction ();
+      const auto edges = [&baseEdges, &dyn, f] (const HexCoord& from,
+                                                const HexCoord& to)
+        {
+          return MovementEdgeWeight (from, to, baseEdges, dyn, f);
+        };
+      ProcessCharacterMovement (*c, params, edges);
     }
 }
 
