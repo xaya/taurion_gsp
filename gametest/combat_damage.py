@@ -42,17 +42,15 @@ class CombatDamageTest (PXTest):
     numAttackers = 5
 
     self.mainLogger.info ("Creating test characters...")
-    for i in range (numAttackers):
-      self.createCharacter ("name %d" % i, "r")
     self.createCharacter (TARGET, "b")
     self.generate (1)
 
-    # We use a known good position as offset and move the attackers there.
+    # We use a known good position as offset and create a block of attackers
+    # around there.
     self.offset = {"x": -1100, "y": 1042}
-    charTargets = {}
-    for i in range (numAttackers):
-      charTargets["name %d" % i] = self.offset
-    self.moveCharactersTo (charTargets)
+    blkLower = offsetCoord ({"x": -1, "y": -1}, self.offset, False)
+    blkUpper = offsetCoord ({"x": 0, "y": 0}, self.offset, False)
+    self.createCharacterBlock ("name %d", "r", blkLower, blkUpper)
 
     startPos = offsetCoord ({"x": 0, "y": 5}, self.offset, False)
     self.moveCharactersTo ({TARGET: startPos})

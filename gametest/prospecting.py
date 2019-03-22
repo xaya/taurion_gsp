@@ -15,20 +15,18 @@ class ProspectingTest (PXTest):
 
     self.mainLogger.info ("Setting up test characters...")
     self.createCharacter ("target", "r")
-    for i in range (10):
-      self.createCharacter ("attacker %d" % i, "g")
     self.generate (1)
 
     # Set up known positions of the characters.  We use a known good position
     # as origin and move all attackers there.  The target will be moved to a
     # point nearby (but not in range yet).
     self.offset = {"x": -1045, "y": 1265}
-    movements = {
+    blkLower = offsetCoord ({"x": -1, "y": -1}, self.offset, False)
+    blkUpper = offsetCoord ({"x": 0, "y": 1}, self.offset, False)
+    self.createCharacterBlock ("attacker %d", "g", blkLower, blkUpper)
+    self.moveCharactersTo ({
       "target": offsetCoord ({"x": 20, "y": 0}, self.offset, False),
-    }
-    for i in range (10):
-      movements["attacker %d" % i] = self.offset
-    self.moveCharactersTo (movements)
+    })
 
     # Move character and start prospecting.  This should stop the movement.
     # Further movements should be ignored.  Verify the prospection effects.
@@ -76,9 +74,15 @@ class ProspectingTest (PXTest):
 
     pos = offsetCoord ({"x": 5, "y": 0}, self.offset, False)
     region = self.getRegionAt (pos)
-    self.assertEqual (region.getId (), self.getRegionAt (self.offset).getId ())
+
+    self.prospectors = ["attacker 3", "attacker 4"]
+    char = self.getCharacters ()
+    for p in self.prospectors:
+      prospRegion = self.getRegionAt (char[p].getPosition ())
+      self.assertEqual (region.getId (), prospRegion.getId ())
+
     self.getCharacters ()["target"].sendMove ({"wp": [pos]})
-    self.generate (20)
+    self.generate (35)
 
     c = self.getCharacters ()["target"]
     self.assertEqual (c.getPosition (), pos)
@@ -101,36 +105,38 @@ class ProspectingTest (PXTest):
     self.mainLogger.info ("Competing prospectors...")
 
     self.reorgBlock = self.rpc.xaya.getbestblockhash ()
-    self.getCharacters ()["attacker 1"].sendMove ({"prospect": {}})
+    self.getCharacters ()[self.prospectors[0]].sendMove ({"prospect": {}})
     self.generate (1)
-    self.getCharacters ()["attacker 2"].sendMove ({"prospect": {}})
+    self.getCharacters ()[self.prospectors[1]].sendMove ({"prospect": {}})
     self.generate (1)
 
     region = self.getRegionAt (self.offset)
     chars = self.getCharacters ()
-    self.assertEqual (chars["attacker 1"].getBusy (), {
+    self.assertEqual (chars[self.prospectors[0]].getBusy (), {
       "blocks": 9,
       "operation": "prospecting",
       "region": region.getId (),
     })
-    self.assertEqual (chars["attacker 2"].getBusy (), None)
+    self.assertEqual (chars[self.prospectors[1]].getBusy (), None)
     self.assertEqual (region.data["prospection"], {
-      "inprogress": chars["attacker 1"].getId ()
+      "inprogress": chars[self.prospectors[0]].getId ()
     })
 
     self.generate (9)
     region = self.getRegionAt (self.offset)
-    self.assertEqual (self.getCharacters ()["attacker 1"].getBusy (), None)
-    self.assertEqual (region.data["prospection"], {"name": "attacker 1"})
+    self.assertEqual (self.getCharacters ()[self.prospectors[0]].getBusy (),
+                      None)
+    self.assertEqual (region.data["prospection"], {"name": self.prospectors[0]})
 
     # Now that the region is already prospected, further attempts should
     # just be ignored.
     self.mainLogger.info ("Trying in already prospected region...")
-    self.getCharacters ()["attacker 2"].sendMove ({"prospect": {}})
+    self.getCharacters ()[self.prospectors[1]].sendMove ({"prospect": {}})
     self.generate (1)
-    self.assertEqual (self.getCharacters ()["attacker 2"].getBusy (), None)
+    self.assertEqual (self.getCharacters ()[self.prospectors[1]].getBusy (),
+                      None)
     region = self.getRegionAt (self.offset)
-    self.assertEqual (region.data["prospection"], {"name": "attacker 1"})
+    self.assertEqual (region.data["prospection"], {"name": self.prospectors[0]})
 
     # Finally, test a reorg situation.
     self.testReorg ()
@@ -145,10 +151,10 @@ class ProspectingTest (PXTest):
     originalState = self.getGameState ()
 
     self.rpc.xaya.invalidateblock (self.reorgBlock)
-    self.getCharacters ()["attacker 2"].sendMove ({"prospect": {}})
+    self.getCharacters ()[self.prospectors[1]].sendMove ({"prospect": {}})
     self.generate (1)
     region = self.getRegionAt (self.offset)
-    c = self.getCharacters ()["attacker 2"]
+    c = self.getCharacters ()[self.prospectors[1]]
     self.assertEqual (c.getBusy (), {
       "blocks": 10,
       "operation": "prospecting",
@@ -158,8 +164,9 @@ class ProspectingTest (PXTest):
 
     self.generate (10)
     region = self.getRegionAt (self.offset)
-    self.assertEqual (self.getCharacters ()["attacker 2"].getBusy (), None)
-    self.assertEqual (region.data["prospection"], {"name": "attacker 2"})
+    self.assertEqual (self.getCharacters ()[self.prospectors[1]].getBusy (),
+                      None)
+    self.assertEqual (region.data["prospection"], {"name": self.prospectors[1]})
 
     self.rpc.xaya.reconsiderblock (self.reorgBlock)
     self.expectGameState (originalState)

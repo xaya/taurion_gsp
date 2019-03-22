@@ -163,20 +163,60 @@ class PXTest (XayaGameTest):
     This generates as many blocks as is necessary for that (and perhaps more).
     """
 
-    chars = self.getCharacters ()
-    maxBlks = 0
+    # Since characters may block each other during the movement, we may
+    # need to do multiple iterations of scheduling new paths and moving.
+    iterations = 0
+    while True:
+      chars = self.getCharacters ()
+      maxBlks = 0
 
-    for nm, c in charTargets.iteritems ():
-      blks = chars[nm].schedulePath (c)
-      maxBlks = max (blks, maxBlks)
+      scheduledPath = False
+      for nm, c in charTargets.iteritems ():
+        if chars[nm].getPosition () == c:
+          continue
 
-    self.log.info ("Generating %d blocks to finalise character movement..."
-                    % maxBlks)
-    self.generate (maxBlks)
+        blks = chars[nm].schedulePath (c)
+        scheduledPath = True
+        maxBlks = max (blks, maxBlks)
+
+      if not scheduledPath:
+        break
+
+      self.log.info ("Generating %d blocks to finalise character movement..."
+                        % maxBlks)
+      self.generate (maxBlks)
+      iterations += 1
+      assert iterations < 10
+
+    self.log.info ("Finished character movement after %d iterations"
+                      % iterations)
 
     chars = self.getCharacters ()
     for nm, c in charTargets.iteritems ():
       self.assertEqual (chars[nm].getPosition (), c)
+
+  def createCharacterBlock (self, fmt, faction, lower, upper):
+    """
+    Creates and positions characters with the given faction and names
+    formatted as "fmt % index" as a block on each tile between the
+    lower and upper coordinates.
+
+    This is useful to create a bunch of attacking characters for testing
+    the killing of some other character.
+    """
+
+    nextIndex = 0
+    mv = {}
+    for x in range (lower["x"], upper["x"] + 1):
+      for y in range (lower["y"], upper["y"] + 1):
+        nm = fmt % nextIndex
+        self.createCharacter (nm, faction)
+        mv[nm] = {"x": x, "y": y}
+        nextIndex += 1
+    self.generate (1)
+    self.log.info ("Created %d characters for the block" % nextIndex)
+
+    self.moveCharactersTo (mv)
 
   def getRegion (self, regionId):
     """

@@ -35,25 +35,6 @@ class CombatTargetTest (PXTest):
 
     raise AssertionError ("Character with id %d not found" % charId)
 
-  def stepCharacterUntil (self, owner, pos):
-    """
-    Generates new blocks (one by one) until the character with the given
-    owner is at the given position.
-
-    Returns the number of generated blocks.
-    """
-
-    pos = offsetCoord (pos, self.offset, False)
-
-    cnt = 0
-    while True:
-      c = self.getCharacters ()[owner]
-      if c.getPosition () == pos:
-        return cnt
-      assert c.isMoving ()
-      self.generate (1)
-      cnt += 1
-
   def run (self):
     self.generate (101);
 
@@ -63,17 +44,17 @@ class CombatTargetTest (PXTest):
     self.createCharacter ("c", "g")
     self.generate (1)
 
-    # We use the starting coordinate of bar as offset for coordinates,
+    # We use the starting coordinate of b as offset for coordinates,
     # so that the test is independent of the actual starting positions
     # of the characters.
     c = self.getCharacters ()["b"]
     self.offset = c.getPosition ()
 
-    # Move all other characters to the same origin position before
-    # continuing with the rest of the test.
+    # Move all other characters in range before continuing with
+    # the rest of the test.
     self.moveCharactersTo ({
-      "a": self.offset,
-      "c": self.offset,
+      "a": offsetCoord ({"x": 1, "y": 0}, self.offset, False),
+      "c": offsetCoord ({"x": 0, "y": 1}, self.offset, False),
     })
 
     self.mainLogger.info ("Testing randomised target selection...")
@@ -96,13 +77,16 @@ class CombatTargetTest (PXTest):
 
     self.mainLogger.info ("Testing target selection when moving into range...")
     c = self.getCharacters ()["a"]
-    wp = [{"x": 20, "y": 0}, {"x": 0, "y": 0}]
-    wp = [offsetCoord (p, self.offset, False) for p in wp]
-    c.sendMove ({"wp": wp})
-    self.generate (35)
-    self.stepCharacterUntil ("a", {"x": 11, "y": 0})
+    self.moveCharactersTo ({
+      "a": offsetCoord ({"x": 11, "y": 0}, self.offset, False),
+    })
     assert self.getTargetCharacter ("b") is None
-    self.stepCharacterUntil ("a", {"x": 10, "y": 0})
+    # Note that we can move a directly to the offset coordinate (where also
+    # b is), since a and b are of different factions.
+    c.sendMove ({"wp": [self.offset]})
+    self.generate (2)
+    self.assertEqual (self.getCharacters ()["a"].getPosition (),
+                      offsetCoord ({"x": 10, "y": 0}, self.offset, False))
     self.assertEqual (self.getTargetCharacter ("b"), "a")
 
 
