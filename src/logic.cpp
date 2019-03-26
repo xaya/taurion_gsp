@@ -155,7 +155,10 @@ PXLogic::GetInitialStateBlock (unsigned& height,
 void
 PXLogic::InitialiseState (sqlite3* db)
 {
-  /* Nothing needs to be done, we just start with an empty database.  */
+  SQLiteGameDatabase dbObj(*this);
+  const Params params(GetChain ());
+
+  InitialisePrizes (dbObj, params);
 }
 
 void

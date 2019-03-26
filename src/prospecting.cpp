@@ -4,6 +4,21 @@ namespace pxd
 {
 
 void
+InitialisePrizes (Database& db, const Params& params)
+{
+  auto stmt = db.Prepare (R"(
+    INSERT INTO `prizes` (`name`, `found`) VALUES (?1, 0)
+  )");
+
+  for (const auto& p : params.ProspectingPrizes ())
+    {
+      stmt.Reset ();
+      stmt.Bind (1, p.name);
+      stmt.Execute ();
+    }
+}
+
+void
 FinishProspecting (Character& c, RegionsTable& regions, const BaseMap& map)
 {
   const auto& pos = c.GetPosition ();
