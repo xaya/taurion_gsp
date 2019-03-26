@@ -20,6 +20,15 @@ MoveProcessor::ProcessAll (const Json::Value& moveArray)
 }
 
 void
+MoveProcessor::ProcessAdmin (const Json::Value& cmd)
+{
+  if (!cmd.isObject ())
+    return;
+
+  HandleGodMode (cmd["god"]);
+}
+
+void
 MoveProcessor::ProcessOne (const Json::Value& moveObj)
 {
   VLOG (1) << "Processing move:\n" << moveObj;
@@ -269,6 +278,66 @@ MoveProcessor::HandleCharacterUpdate (const std::string& name,
       MaybeStartProspecting (*c, upd, regions, params, map);
       MaybeSetCharacterWaypoints (*c, upd);
     }
+}
+
+namespace
+{
+
+/**
+ * Tries to parse and execute a god-mode teleport command.
+ */
+void
+MaybeGodTeleport (CharacterTable& tbl, const Json::Value& cmd)
+{
+  if (!cmd.isObject ())
+    return;
+
+  for (auto i = cmd.begin (); i != cmd.end (); ++i)
+    {
+      Database::IdT id;
+      if (!IdFromString (i.name (), id))
+        {
+          LOG (WARNING)
+              << "Ignoring invalid character ID for teleport: " << i.name ();
+          continue;
+        }
+
+      HexCoord target;
+      if (!CoordFromJson (*i, target))
+        {
+          LOG (WARNING) << "Invalid teleport target: " << *i;
+          continue;
+        }
+
+      auto c = tbl.GetById (id);
+      if (c == nullptr)
+        {
+          LOG (WARNING)
+              << "Character ID does not exist: " << id;
+          continue;
+        }
+
+      LOG (INFO) << "Teleporting character " << id << " to: " << target;
+      c->SetPosition (target);
+      StopCharacter (*c);
+    }
+}
+
+} // anonymous namespace
+
+void
+MoveProcessor::HandleGodMode (const Json::Value& cmd)
+{
+  if (!cmd.isObject ())
+    return;
+
+  if (!params.GodModeEnabled ())
+    {
+      LOG (WARNING) << "God mode command ignored: " << cmd;
+      return;
+    }
+
+  MaybeGodTeleport (characters, cmd["teleport"]);
 }
 
 } // namespace pxd

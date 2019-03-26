@@ -7,6 +7,7 @@ REGTESTS = \
   combat_targets.py \
   findpath.py \
   getregionat.py \
+  godmode.py \
   movement.py \
   prospecting.py
 

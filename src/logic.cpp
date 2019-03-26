@@ -100,6 +100,7 @@ PXLogic::UpdateState (Database& db, xaya::Random& rnd,
 
   DynObstacles dyn(db);
   MoveProcessor mvProc(db, dyn, rnd, params, map);
+  mvProc.ProcessAdmin (blockData["cmd"]);
   mvProc.ProcessAll (blockData["moves"]);
 
   ProcessAllMovement (db, dyn, params, map.GetEdgeWeights ());

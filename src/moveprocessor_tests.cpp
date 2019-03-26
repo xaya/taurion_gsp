@@ -45,9 +45,22 @@ private:
 
 protected:
 
-  MoveProcessorTests ()
-    : params(xaya::Chain::MAIN), dyn(db), mvProc(db, dyn, rnd, params, map)
+  explicit MoveProcessorTests (const xaya::Chain c = xaya::Chain::MAIN)
+    : params(c), dyn(db), mvProc(db, dyn, rnd, params, map)
   {}
+
+  /**
+   * Processes an admin command given as JSON string.
+   */
+  void
+  ProcessAdmin (const std::string& str)
+  {
+    Json::Value cmd;
+    std::istringstream in(str);
+    in >> cmd;
+
+    mvProc.ProcessAdmin (cmd);
+  }
 
   /**
    * Processes the given data (which is passed as string and converted to
@@ -104,6 +117,15 @@ TEST_F (MoveProcessorTests, InvalidDataFromXaya)
     "name": "domob", "move": {},
     "out": {")" DEVADDR R"(": false}
   }])"), "JSON value for amount is not double");
+}
+
+TEST_F (MoveProcessorTests, InvalidAdmin)
+{
+  ProcessAdmin ("42");
+  ProcessAdmin ("false");
+  ProcessAdmin ("null");
+  ProcessAdmin ("[5]");
+  ProcessAdmin (R"({"foo": "bar"})");
 }
 
 /* ************************************************************************** */
@@ -398,6 +420,8 @@ TEST_F (CharacterUpdateTests, Waypoints)
   EXPECT_EQ (CoordFromProto (wp.Get (1)), HexCoord (5, 0));
 }
 
+/* ************************************************************************** */
+
 class ProspectingMoveTests : public CharacterUpdateTests
 {
 
@@ -526,6 +550,94 @@ TEST_F (ProspectingMoveTests, MultipleCharacters)
 
   auto r = regions.GetById (region);
   EXPECT_EQ (r->GetProto ().prospecting_character (), 2);
+}
+
+/* ************************************************************************** */
+
+class GodModeTests : public MoveProcessorTests
+{
+
+protected:
+
+  /** Character table for use in the test.  */
+  CharacterTable tbl;
+
+  GodModeTests ()
+    : MoveProcessorTests (xaya::Chain::REGTEST), tbl(db)
+  {}
+
+};
+
+TEST_F (GodModeTests, InvalidTeleport)
+{
+  const auto id = tbl.CreateNew ("domob", Faction::RED)->GetId ();
+  ASSERT_EQ (id, 1);
+
+  ProcessAdmin (R"({
+    "god": false
+  })");
+  ProcessAdmin (R"({
+    "god": {"teleport": {"1": {"x": 5, "y": 0, "z": 42}}}
+  })");
+
+  EXPECT_EQ (tbl.GetById (id)->GetPosition (), HexCoord (0, 0));
+}
+
+TEST_F (GodModeTests, Teleport)
+{
+  auto c = tbl.CreateNew ("domob", Faction::RED);
+  const auto id = c->GetId ();
+  ASSERT_EQ (id, 1);
+  c->SetPartialStep (42);
+  c->MutableProto ().mutable_movement ();
+  c.reset ();
+
+  ProcessAdmin (R"({
+    "god":
+      {
+        "teleport":
+          {
+            "2": {"x": 0, "y": 0},
+            "1": {"x": 5, "y": -42}
+          }
+      },
+    "foo": "bar"
+  })");
+
+  c = tbl.GetById (id);
+  EXPECT_EQ (c->GetPosition (), HexCoord (5, -42));
+  EXPECT_EQ (c->GetPartialStep (), 0);
+  EXPECT_FALSE (c->GetProto ().has_movement ());
+}
+
+/**
+ * Test fixture for god mode but set up on mainnet, so that god mode is
+ * actually not allowed.
+ */
+class GodModeDisabledTests : public MoveProcessorTests
+{
+
+protected:
+
+  /** Character table for use in the test.  */
+  CharacterTable tbl;
+
+  GodModeDisabledTests ()
+    : tbl(db)
+  {}
+
+};
+
+TEST_F (GodModeDisabledTests, Teleport)
+{
+  const auto id = tbl.CreateNew ("domob", Faction::RED)->GetId ();
+  ASSERT_EQ (id, 1);
+
+  ProcessAdmin (R"({
+    "god": {"teleport": {"1": {"x": 5, "y": -42}}}
+  })");
+
+  EXPECT_EQ (tbl.GetById (id)->GetPosition (), HexCoord (0, 0));
 }
 
 /* ************************************************************************** */

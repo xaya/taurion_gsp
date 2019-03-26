@@ -65,6 +65,12 @@ private:
    */
   void HandleCharacterUpdate (const std::string& name, const Json::Value& mv);
 
+  /**
+   * Handles a god-mode admin command, if any.  These are used only for
+   * integration testing, so that this will only be done on regtest.
+   */
+  void HandleGodMode (const Json::Value& cmd);
+
 public:
 
   explicit MoveProcessor (Database& d, DynObstacles& dyo, xaya::Random& r,
@@ -82,6 +88,11 @@ public:
    * Processes all moves from the given JSON array.
    */
   void ProcessAll (const Json::Value& moveArray);
+
+  /**
+   * Processes an admin command sent in a block.
+   */
+  void ProcessAdmin (const Json::Value& cmd);
 
 };
 

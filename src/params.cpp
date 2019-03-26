@@ -82,4 +82,10 @@ Params::InitCharacterStats (proto::Character& pb) const
   cd->set_shield_regeneration_mhp (500);
 }
 
+bool
+Params::GodModeEnabled () const
+{
+  return chain == xaya::Chain::REGTEST;
+}
+
 } // namespace pxd
