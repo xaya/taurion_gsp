@@ -24,6 +24,55 @@ namespace
 
 /* ************************************************************************** */
 
+class StopCharacterTests : public DBTestWithSchema
+{
+
+protected:
+
+  /** Character table for the test.  */
+  CharacterTable tbl;
+
+  StopCharacterTests ()
+    : tbl(db)
+  {}
+
+};
+
+TEST_F (StopCharacterTests, Works)
+{
+  auto c = tbl.CreateNew ("domob", Faction::RED);
+  const auto id = c->GetId ();
+  c->SetPosition (HexCoord (5, 7));
+  c->SetPartialStep (42);
+  auto* mv = c->MutableProto ().mutable_movement ();
+  *mv->add_waypoints () = CoordToProto (HexCoord (10, 10));
+  c.reset ();
+
+  StopCharacter (*tbl.GetById (id));
+
+  c = tbl.GetById (id);
+  EXPECT_EQ (c->GetPosition (), HexCoord (5, 7));
+  EXPECT_FALSE (c->GetProto ().has_movement ());
+  EXPECT_EQ (c->GetPartialStep (), 0);
+}
+
+TEST_F (StopCharacterTests, AlreadyStopped)
+{
+  auto c = tbl.CreateNew ("domob", Faction::RED);
+  const auto id = c->GetId ();
+  c->SetPosition (HexCoord (5, 7));
+  c.reset ();
+
+  StopCharacter (*tbl.GetById (id));
+
+  c = tbl.GetById (id);
+  EXPECT_EQ (c->GetPosition (), HexCoord (5, 7));
+  EXPECT_FALSE (c->GetProto ().has_movement ());
+  EXPECT_EQ (c->GetPartialStep (), 0);
+}
+
+/* ************************************************************************** */
+
 /**
  * Returns an edge-weight function that has the given distance between
  * tiles and no obstacles.

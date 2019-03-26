@@ -5,15 +5,6 @@
 namespace pxd
 {
 
-namespace
-{
-
-constexpr bool PROCESSING_DONE = true;
-constexpr bool CONTINUE_PROCESSING = false;
-
-/**
- * Clears all movement for the given character (stops its movement entirely).
- */
 void
 StopCharacter (Character& c)
 {
@@ -21,6 +12,12 @@ StopCharacter (Character& c)
   c.MutableProto ().clear_movement ();
   c.SetPartialStep (0);
 }
+
+namespace
+{
+
+constexpr bool PROCESSING_DONE = true;
+constexpr bool CONTINUE_PROCESSING = false;
 
 /**
  * Try to step along the precomputed path of the given character.  Returns true

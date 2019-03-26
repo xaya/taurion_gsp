@@ -1,6 +1,7 @@
 #include "moveprocessor.hpp"
 
 #include "jsonutils.hpp"
+#include "movement.hpp"
 #include "protoutils.hpp"
 #include "spawn.hpp"
 
@@ -171,8 +172,7 @@ MaybeStartProspecting (Character& c, const Json::Value& upd,
 
   r->MutableProto ().set_prospecting_character (c.GetId ());
 
-  c.SetPartialStep (0);
-  c.MutableProto ().clear_movement ();
+  StopCharacter (c);
   c.SetBusy (params.ProspectingBlocks ());
   c.MutableProto ().mutable_prospection ();
 }

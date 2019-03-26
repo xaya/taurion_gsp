@@ -14,6 +14,11 @@ namespace pxd
 {
 
 /**
+ * Clears all movement for the given character (stops its movement entirely).
+ */
+void StopCharacter (Character& c);
+
+/**
  * Processes movement (if any) for the given character handle and edge weights.
  */
 void ProcessCharacterMovement (Character& c, const Params& params,
