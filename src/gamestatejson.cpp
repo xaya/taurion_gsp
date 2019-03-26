@@ -216,7 +216,11 @@ template <>
   if (pb.has_prospecting_character ())
     prospection["inprogress"] = IntToJson (pb.prospecting_character ());
   if (pb.has_prospection ())
-    prospection["name"] = pb.prospection ().name ();
+    {
+      prospection["name"] = pb.prospection ().name ();
+      if (pb.prospection ().has_prize ())
+        prospection["prize"] = pb.prospection ().prize ();
+    }
 
   if (!prospection.empty ())
     res["prospection"] = prospection;
