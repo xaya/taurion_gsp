@@ -226,6 +226,9 @@ class GameStateJsonTests : public DBTestWithSchema
 
 private:
 
+  /** Parameter instance for testing.  */
+  const Params params;
+
   /** GameStateJson instance used in testing.  */
   GameStateJson converter;
 
@@ -235,7 +238,7 @@ protected:
   BaseMap map;
 
   GameStateJsonTests ()
-    : converter(map)
+    : params(xaya::Chain::MAIN), converter(db, params, map)
   {}
 
   /**
@@ -253,7 +256,7 @@ protected:
     std::istringstream in(expectedStr);
     in >> expected;
 
-    const Json::Value actual = converter.FullState (db);
+    const Json::Value actual = converter.FullState ();
     VLOG (1) << "Actual JSON for the game state:\n" << actual;
     ASSERT_TRUE (PartialJsonEqual (actual, expected));
   }

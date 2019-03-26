@@ -1,6 +1,8 @@
 #ifndef PXD_GAMESTATEJSON_HPP
 #define PXD_GAMESTATEJSON_HPP
 
+#include "params.hpp"
+
 #include "database/database.hpp"
 #include "mapdata/basemap.hpp"
 
@@ -17,6 +19,12 @@ class GameStateJson
 
 private:
 
+  /** Database to read from.  */
+  Database& db;
+
+  /** Game parameters.  */
+  const Params& params;
+
   /** Basemap instance that can be used.  */
   const BaseMap& map;
 
@@ -29,8 +37,8 @@ private:
 
 public:
 
-  explicit GameStateJson (const BaseMap& m)
-    : map(m)
+  explicit GameStateJson (Database& d, const Params& p, const BaseMap& m)
+    : db(d), params(p), map(m)
   {}
 
   GameStateJson () = delete;
@@ -49,7 +57,7 @@ public:
    * game state as JSON should mainly be used for debugging and testing, not
    * in production.  For that, more targeted RPC results should be used.
    */
-  Json::Value FullState (Database& db) const;
+  Json::Value FullState ();
 
 };
 

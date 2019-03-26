@@ -231,7 +231,7 @@ template <typename T>
 }
 
 Json::Value
-GameStateJson::FullState (Database& db) const
+GameStateJson::FullState ()
 {
   Json::Value res(Json::objectValue);
 

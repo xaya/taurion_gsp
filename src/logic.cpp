@@ -153,7 +153,7 @@ void
 PXLogic::UpdateState (sqlite3* db, const Json::Value& blockData)
 {
   SQLiteGameDatabase dbObj(*this);
-  const Params params(GetContext ().GetChain ());
+  const Params params(GetChain ());
 
   UpdateState (dbObj, GetContext ().GetRandom (), params, map, blockData);
 }
@@ -162,8 +162,10 @@ Json::Value
 PXLogic::GetStateAsJson (sqlite3* db)
 {
   SQLiteGameDatabase dbObj(*this);
-  GameStateJson converter(map);
-  return converter.FullState (dbObj);
+  const Params params(GetChain ());
+
+  GameStateJson converter(dbObj, params, map);
+  return converter.FullState ();
 }
 
 } // namespace pxd
