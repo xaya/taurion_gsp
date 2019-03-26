@@ -57,6 +57,7 @@ class CombatDamageTest (PXTest):
     self.getTargetHP ()
 
     self.mainLogger.info ("Taking some damage...")
+    self.generate (10)
     self.setTargetWP ({"x": 0, "y": 11})
     self.generate (10)
     hp, maxHP = self.getTargetHP ()

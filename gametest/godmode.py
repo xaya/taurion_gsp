@@ -16,7 +16,7 @@ class GodModeTest (PXTest):
     self.generate (1)
     c = self.getCharacters ()["domob"]
     pos = c.getPosition ()
-    idStr = "%d" % c.getId ()
+    idStr = c.getIdStr ()
 
     self.mainLogger.info ("Testing teleport...")
     target = {"x": 28, "y": 9}

@@ -44,6 +44,14 @@ class Character (object):
   def getId (self):
     return self.data["id"]
 
+  def getIdStr (self):
+    """
+    Returns the character ID as a string, suitable for indexing
+    JSON dictionaries in commands.
+    """
+
+    return "%d" % self.getId ()
+
   def getPosition (self):
     return self.data["position"]
 
@@ -58,26 +66,12 @@ class Character (object):
       return self.data["busy"]
     return None
 
-  def schedulePath (self, target):
-    """
-    Sends a move to path to the given target.  This uses findpath as necessary
-    to construct waypoints in-between.  Returned is an upper bound for the
-    number of blocks to reach the target.
-    """
-
-    source = self.getPosition ()
-    path = self.test.rpc.game.findpath (source=source, target=target,
-                                        l1range=1000, wpdist=100)
-
-    self.sendMove ({"wp": path["wp"]})
-    return path["dist"] // self.getSpeed () + 1
-
   def sendMove (self, mv):
     """
     Sends a move to update the given character with the given data.
     """
 
-    idStr = "%d" % self.data["id"]
+    idStr = self.getIdStr ()
     return self.test.sendMove (self.data["owner"], {"c": {idStr: mv}})
 
   def expectPartial (self, expected):
@@ -160,36 +154,18 @@ class PXTest (XayaGameTest):
   def moveCharactersTo (self, charTargets):
     """
     Moves all characters from the dictionary to the given coordinates.
-    This generates as many blocks as is necessary for that (and perhaps more).
+    This issues a god-mode teleport command and then generates one block
+    to ensure that all characters are moved after return.
     """
 
-    # Since characters may block each other during the movement, we may
-    # need to do multiple iterations of scheduling new paths and moving.
-    iterations = 0
-    while True:
-      chars = self.getCharacters ()
-      maxBlks = 0
+    chars = self.getCharacters ()
+    teleport = {}
+    for nm, c in charTargets.iteritems ():
+      idStr = chars[nm].getIdStr ()
+      teleport[idStr] = c
 
-      scheduledPath = False
-      for nm, c in charTargets.iteritems ():
-        if chars[nm].getPosition () == c:
-          continue
-
-        blks = chars[nm].schedulePath (c)
-        scheduledPath = True
-        maxBlks = max (blks, maxBlks)
-
-      if not scheduledPath:
-        break
-
-      self.log.info ("Generating %d blocks to finalise character movement..."
-                        % maxBlks)
-      self.generate (maxBlks)
-      iterations += 1
-      assert iterations < 10
-
-    self.log.info ("Finished character movement after %d iterations"
-                      % iterations)
+    self.adminCommand ({"god": {"teleport": teleport}})
+    self.generate (1)
 
     chars = self.getCharacters ()
     for nm, c in charTargets.iteritems ():
