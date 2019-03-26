@@ -8,6 +8,8 @@
 #include "database/region.hpp"
 #include "mapdata/basemap.hpp"
 
+#include <xayagame/random.hpp>
+
 namespace pxd
 {
 
@@ -20,8 +22,9 @@ void InitialisePrizes (Database& db, const Params& params);
 /**
  * Finishes a done prospecting operation by the given character.
  */
-void FinishProspecting (Character& c, RegionsTable& regions,
-                        const BaseMap& map);
+void FinishProspecting (Character& c, Database& db, RegionsTable& regions,
+                        xaya::Random& rnd,
+                        const Params& params, const BaseMap& map);
 
 } // namespace pxd
 

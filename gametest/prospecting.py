@@ -10,6 +10,18 @@ movement and combat.
 
 class ProspectingTest (PXTest):
 
+  def expectProspectedBy (self, pos, name):
+    """
+    Asserts that the region at the given position is marked as having been
+    prospected by the given name.  Eventual prizes won will be ignored.
+    """
+
+    region = self.getRegionAt (pos)
+    data = region.data["prospection"]
+    if "prize" in data:
+      del data["prize"]
+    self.assertEqual (data, {"name": name})
+
   def run (self):
     self.generate (110);
 
@@ -65,8 +77,7 @@ class ProspectingTest (PXTest):
     c = self.getCharacters ()["target"]
     self.assertEqual (c.getPosition (), pos)
     self.assertEqual (c.getBusy (), None)
-    region = self.getRegionAt (pos)
-    self.assertEqual (region.data["prospection"], {"name": "target"})
+    self.expectProspectedBy (pos, "target")
 
     # Move towards attackers and prospect there, but have the character
     # killed before it is done.
@@ -125,10 +136,9 @@ class ProspectingTest (PXTest):
     })
 
     self.generate (9)
-    region = self.getRegionAt (self.offset)
     self.assertEqual (self.getCharacters ()[self.prospectors[0]].getBusy (),
                       None)
-    self.assertEqual (region.data["prospection"], {"name": self.prospectors[0]})
+    self.expectProspectedBy (self.offset, self.prospectors[0])
 
     # Now that the region is already prospected, further attempts should
     # just be ignored.
@@ -137,11 +147,87 @@ class ProspectingTest (PXTest):
     self.generate (1)
     self.assertEqual (self.getCharacters ()[self.prospectors[1]].getBusy (),
                       None)
-    region = self.getRegionAt (self.offset)
-    self.assertEqual (region.data["prospection"], {"name": self.prospectors[0]})
+    self.expectProspectedBy (self.offset, self.prospectors[0])
 
-    # Finally, test a reorg situation.
+    self.testPrizes ()
     self.testReorg ()
+
+  def testPrizes (self):
+    """
+    Tests allocation of prizes for prospecting.
+    """
+
+    # First test:  Try and retry (with a reorg) prospecting in the
+    # same region to get both no prize and a silver tier.
+    self.mainLogger.info ("Testing randomisation of prizes...")
+
+    c = self.createCharacter ("prize trier", "r")
+    self.generate (1)
+    pos = {"x": -1000, "y": 1000}
+    self.moveCharactersTo ({"prize trier": pos})
+    stillNeedNone = True
+    stillNeedSilver = True
+    blk = None
+    while stillNeedNone or stillNeedSilver:
+      self.generate (1)
+      blk = self.rpc.xaya.getbestblockhash ()
+
+      self.getCharacters ()["prize trier"].sendMove ({"prospect": {}})
+      self.generate (11)
+
+      prosp = self.getRegionAt (pos).data["prospection"]
+      self.assertEqual (prosp["name"], "prize trier")
+      if not "prize" in prosp:
+        stillNeedNone = False
+      elif prosp["prize"] == "silver":
+        stillNeedSilver = False
+
+      self.rpc.xaya.invalidateblock (blk)
+
+    # Restore the last randomised attempt.  Else we might end up with
+    # a long invalid chain, which can confuse the reorg test.
+    assert blk is not None
+    self.rpc.xaya.reconsiderblock (blk)
+
+    # Prospect in some regions and verify some basic expectations
+    # on the number of prizes found.
+    self.mainLogger.info ("Testing prize numbers...")
+
+    sendTo = {}
+    regionIds = set ()
+    for i in range (2):
+      for j in range (10):
+        pos = {"x": 20 * i, "y": 20 * j}
+        region = self.getRegionAt (pos)
+        assert "prospection" not in region.data
+        assert region.getId () not in regionIds
+        regionIds.add (region.getId ())
+
+        nm = "char %d, %d" % (i, j)
+        self.createCharacter (nm, "r")
+        sendTo[nm] = pos
+    self.generate (1)
+    self.moveCharactersTo (sendTo)
+
+    chars = self.getCharacters ()
+    for nm in sendTo:
+      chars[nm].sendMove ({"prospect": {}})
+    self.generate (11)
+
+    state = self.getGameState ()
+    prizesInRegions = {
+      "gold": 0,
+      "silver": 0,
+      "bronze": 0,
+    }
+    for r in state["regions"]:
+      if ("prospection" in r) and "prize" in r["prospection"]:
+        prizesInRegions[r["prospection"]["prize"]] += 1
+    for nm, val in state["prizes"].iteritems ():
+      self.assertEqual (prizesInRegions[nm], val["found"])
+    self.log.info ("Found prizes:\n%s" % prizesInRegions)
+    self.assertEqual (prizesInRegions["bronze"], 0)
+    assert prizesInRegions["silver"] > 0
 
   def testReorg (self):
     """
@@ -150,6 +236,7 @@ class ProspectingTest (PXTest):
     """
 
     self.mainLogger.info ("Testing a reorg...")
+    bestBlk = self.rpc.xaya.getbestblockhash ()
     originalState = self.getGameState ()
 
     self.rpc.xaya.invalidateblock (self.reorgBlock)
@@ -165,12 +252,12 @@ class ProspectingTest (PXTest):
     self.assertEqual (region.data["prospection"], {"inprogress": c.getId ()})
 
     self.generate (10)
-    region = self.getRegionAt (self.offset)
     self.assertEqual (self.getCharacters ()[self.prospectors[1]].getBusy (),
                       None)
-    self.assertEqual (region.data["prospection"], {"name": self.prospectors[1]})
+    self.expectProspectedBy (self.offset, self.prospectors[1])
 
     self.rpc.xaya.reconsiderblock (self.reorgBlock)
+    self.assertEqual (self.rpc.xaya.getbestblockhash (), bestBlk)
     self.expectGameState (originalState)
 
 

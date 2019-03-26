@@ -61,7 +61,8 @@ namespace
  * their operation finished.
  */
 void
-ProcessBusy (Database& db, const BaseMap& map)
+ProcessBusy (Database& db, xaya::Random& rnd,
+             const Params& params, const BaseMap& map)
 {
   CharacterTable characters(db);
   RegionsTable regions(db);
@@ -74,7 +75,7 @@ ProcessBusy (Database& db, const BaseMap& map)
       switch (c->GetProto ().busy_case ())
         {
         case proto::Character::kProspection:
-          FinishProspecting (*c, regions, map);
+          FinishProspecting (*c, db, regions, rnd, params, map);
           break;
 
         default:
@@ -105,7 +106,7 @@ PXLogic::UpdateState (Database& db, xaya::Random& rnd,
   dl.RemoveOld (params.DamageListBlocks ());
 
   AllHpUpdates (db, dl, rnd, map);
-  ProcessBusy (db, map);
+  ProcessBusy (db, rnd, params, map);
 
   DynObstacles dyn(db);
   MoveProcessor mvProc(db, dyn, rnd, params, map);

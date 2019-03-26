@@ -1,5 +1,7 @@
 #include "prospecting.hpp"
 
+#include "database/prizes.hpp"
+
 namespace pxd
 {
 
@@ -19,7 +21,9 @@ InitialisePrizes (Database& db, const Params& params)
 }
 
 void
-FinishProspecting (Character& c, RegionsTable& regions, const BaseMap& map)
+FinishProspecting (Character& c, Database& db, RegionsTable& regions,
+                   xaya::Random& rnd,
+                   const Params& params, const BaseMap& map)
 {
   const auto& pos = c.GetPosition ();
   const auto regionId = map.Regions ().GetRegionId (pos);
@@ -39,7 +43,31 @@ FinishProspecting (Character& c, RegionsTable& regions, const BaseMap& map)
   CHECK_EQ (mpb.prospecting_character (), c.GetId ());
   mpb.clear_prospecting_character ();
   CHECK (!mpb.has_prospection ());
-  mpb.mutable_prospection ()->set_name (c.GetOwner ());
+  auto* prosp = mpb.mutable_prospection ();
+  prosp->set_name (c.GetOwner ());
+
+  /* Check the prizes in order to see if we won any.  */
+  CHECK (!prosp->has_prize ());
+  Prizes prizeTable(db);
+  for (const auto& p : params.ProspectingPrizes ())
+    {
+      const unsigned found = prizeTable.GetFound (p.name);
+      CHECK_LE (found, p.number);
+      if (found == p.number)
+        continue;
+
+      const auto pick = rnd.NextInt (p.probability);
+      if (pick != 0)
+        continue;
+
+      LOG (INFO)
+        << "Character " << c.GetId ()
+        << " found a prize of tier " << p.name
+        << " prospecting region " << regionId;
+      prizeTable.IncrementFound (p.name);
+      prosp->set_prize (p.name);
+      break;
+    }
 }
 
 } // namespace pxd
