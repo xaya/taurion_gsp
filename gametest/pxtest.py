@@ -220,19 +220,6 @@ class PXTest (XayaGameTest):
     data = self.rpc.game.getregionat (coord=pos)
     return self.getRegion (data["id"])
 
-  def assertEqual (self, a, b):
-    """
-    Utility method that tests for equality between a and b, yielding a
-    nicer error message if it is not true.
-    """
-
-    if a == b:
-      return
-
-    self.log.error ("Equality assertion failed:\n%s\n  vs\n%s" % (a, b))
-    msg = "%s is not equal to %s" % (a, b)
-    raise AssertionError (msg)
-
   def expectError (self, code, msgRegExp, method, *args, **kwargs):
     """
     Calls the method object with the given arguments, and expects that
