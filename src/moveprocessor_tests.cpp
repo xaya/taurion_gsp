@@ -370,7 +370,7 @@ TEST_F (CharacterUpdateTests, Waypoints)
 {
   /* Set up some stuff that will be cleared.  */
   auto h = GetTest ();
-  h->SetPartialStep (42);
+  h->MutableVolatileMv ().set_partial_step (42);
   auto* mv = h->MutableProto ().mutable_movement ();
   mv->mutable_waypoints ()->Add ();
   mv->mutable_steps ()->Add ();
@@ -399,7 +399,7 @@ TEST_F (CharacterUpdateTests, Waypoints)
   /* Verify that we still have the original stuff (i.e. the invalid moves
      had no effect at all).  */
   h = GetTest ();
-  EXPECT_EQ (h->GetPartialStep (), 42);
+  EXPECT_EQ (h->GetVolatileMv ().partial_step (), 42);
   EXPECT_EQ (h->GetProto ().movement ().waypoints_size (), 1);
   EXPECT_EQ (h->GetProto ().movement ().steps_size (), 1);
   h.reset ();
@@ -412,7 +412,7 @@ TEST_F (CharacterUpdateTests, Waypoints)
 
   /* Verify that the valid move had the expected effect.  */
   h = GetTest ();
-  EXPECT_EQ (h->GetPartialStep (), 0);
+  EXPECT_FALSE (h->GetVolatileMv ().has_partial_step ());
   EXPECT_EQ (h->GetProto ().movement ().steps_size (), 0);
   const auto& wp = h->GetProto ().movement ().waypoints ();
   ASSERT_EQ (wp.size (), 2);
@@ -447,7 +447,7 @@ protected:
 TEST_F (ProspectingMoveTests, Success)
 {
   auto h = GetTest ();
-  h->SetPartialStep (42);
+  h->MutableVolatileMv ().set_partial_step (42);
   h->MutableProto ().mutable_movement ()->add_waypoints ();
 
   Process (R"([
@@ -463,7 +463,7 @@ TEST_F (ProspectingMoveTests, Success)
   h = GetTest ();
   EXPECT_EQ (h->GetBusy (), 10);
   EXPECT_TRUE (h->GetProto ().has_prospection ());
-  EXPECT_EQ (h->GetPartialStep (), 0);
+  EXPECT_FALSE (h->GetVolatileMv ().has_partial_step ());
   EXPECT_FALSE (h->GetProto ().has_movement ());
 
   auto r = regions.GetById (region);
@@ -588,7 +588,7 @@ TEST_F (GodModeTests, Teleport)
   auto c = tbl.CreateNew ("domob", Faction::RED);
   const auto id = c->GetId ();
   ASSERT_EQ (id, 1);
-  c->SetPartialStep (42);
+  c->MutableVolatileMv ().set_partial_step (42);
   c->MutableProto ().mutable_movement ();
   c.reset ();
 
@@ -606,7 +606,7 @@ TEST_F (GodModeTests, Teleport)
 
   c = tbl.GetById (id);
   EXPECT_EQ (c->GetPosition (), HexCoord (5, -42));
-  EXPECT_EQ (c->GetPartialStep (), 0);
+  EXPECT_FALSE (c->GetVolatileMv ().has_partial_step ());
   EXPECT_FALSE (c->GetProto ().has_movement ());
 }
 

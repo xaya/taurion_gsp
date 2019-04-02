@@ -102,7 +102,7 @@ CharacterFieldsUpdate (benchmark::State& state)
     for (unsigned i = 0; i < n; ++i)
       {
         const auto h = tbl.GetById (charIds[i]);
-        h->SetPartialStep (cnt++);
+        h->MutableVolatileMv ().set_partial_step (cnt++);
         h->MutableHP ().set_armour (42);
       }
 }

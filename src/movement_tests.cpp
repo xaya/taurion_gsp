@@ -43,7 +43,7 @@ TEST_F (StopCharacterTests, Works)
   auto c = tbl.CreateNew ("domob", Faction::RED);
   const auto id = c->GetId ();
   c->SetPosition (HexCoord (5, 7));
-  c->SetPartialStep (42);
+  c->MutableVolatileMv ().set_partial_step (42);
   auto* mv = c->MutableProto ().mutable_movement ();
   *mv->add_waypoints () = CoordToProto (HexCoord (10, 10));
   c.reset ();
@@ -53,7 +53,7 @@ TEST_F (StopCharacterTests, Works)
   c = tbl.GetById (id);
   EXPECT_EQ (c->GetPosition (), HexCoord (5, 7));
   EXPECT_FALSE (c->GetProto ().has_movement ());
-  EXPECT_EQ (c->GetPartialStep (), 0);
+  EXPECT_FALSE (c->GetVolatileMv ().has_partial_step ());
 }
 
 TEST_F (StopCharacterTests, AlreadyStopped)
@@ -68,7 +68,7 @@ TEST_F (StopCharacterTests, AlreadyStopped)
   c = tbl.GetById (id);
   EXPECT_EQ (c->GetPosition (), HexCoord (5, 7));
   EXPECT_FALSE (c->GetProto ().has_movement ());
-  EXPECT_EQ (c->GetPartialStep (), 0);
+  EXPECT_FALSE (c->GetVolatileMv ().has_partial_step ());
 }
 
 /* ************************************************************************** */
@@ -361,7 +361,7 @@ TEST_F (AllMovementTests, LongSteps)
      block.  In particular, this only works if updating the dynamic obstacle
      map for the vehicle being moved works correctly.  */
 
-  GetTest ()->SetPartialStep (1000);
+  GetTest ()->MutableVolatileMv ().set_partial_step (1000);
   SetWaypoints ({
     HexCoord (5, 0),
     HexCoord (5, 0),

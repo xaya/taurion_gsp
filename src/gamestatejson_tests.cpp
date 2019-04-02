@@ -306,7 +306,7 @@ TEST_F (CharacterJsonTests, Basic)
 TEST_F (CharacterJsonTests, Waypoints)
 {
   auto c = tbl.CreateNew ("domob", Faction::RED);
-  c->SetPartialStep (5);
+  c->MutableVolatileMv ().set_partial_step (5);
   auto* wp = c->MutableProto ().mutable_movement ()->mutable_waypoints ();
   *wp->Add () = CoordToProto (HexCoord (-3, 0));
   *wp->Add () = CoordToProto (HexCoord (0, 42));

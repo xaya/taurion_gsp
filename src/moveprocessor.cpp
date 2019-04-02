@@ -223,9 +223,8 @@ MaybeSetCharacterWaypoints (Character& c, const Json::Value& upd)
       << "Updating movement for character " << c.GetId ()
       << " from waypoints: " << wpArr;
 
-  c.SetPartialStep (0);
+  StopCharacter (c);
   auto* mv = c.MutableProto ().mutable_movement ();
-  mv->Clear ();
   SetRepeatedCoords (wp, *mv->mutable_waypoints ());
 }
 

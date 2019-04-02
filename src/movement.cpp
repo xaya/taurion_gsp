@@ -10,7 +10,7 @@ StopCharacter (Character& c)
 {
   VLOG (1) << "Stopping movement for " << c.GetId ();
   c.MutableProto ().clear_movement ();
-  c.SetPartialStep (0);
+  c.MutableVolatileMv ().Clear ();
 }
 
 namespace
@@ -70,14 +70,15 @@ StepAlongPrecomputed (Character& c, const PathFinder::EdgeWeightFcn& edges)
       return PROCESSING_DONE;
     }
 
-  if (dist > c.GetPartialStep ())
+  const auto& volMv = c.GetVolatileMv ();
+  if (dist > volMv.partial_step ())
     {
       VLOG (1) << "Next step is too far, waiting for now";
       return PROCESSING_DONE;
     }
 
   VLOG (1) << "Performing this step now...";
-  c.SetPartialStep (c.GetPartialStep () - dist);
+  c.MutableVolatileMv ().set_partial_step (volMv.partial_step () - dist);
   c.SetPosition (dest);
 
   if (finishedSteps)
@@ -191,9 +192,10 @@ ProcessCharacterMovement (Character& c, const Params& params,
       << "Character " << c.GetId ()
       << " was selected for movement but is not actually moving";
 
-  c.SetPartialStep (c.GetPartialStep () + speed);
+  const unsigned partialStep = c.GetVolatileMv ().partial_step () + speed;
+  c.MutableVolatileMv ().set_partial_step (partialStep);
   VLOG (1)
-      << "Accumulated movement points for this step: " << c.GetPartialStep ();
+      << "Accumulated movement points for this step: " << partialStep;
 
   while (true)
     {

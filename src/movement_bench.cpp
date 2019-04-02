@@ -79,10 +79,9 @@ MovementOneSegment (benchmark::State& state)
       for (const auto id : charIds)
         {
           const auto h = tbl.GetById (id);
-          h->SetPartialStep (0);
+          StopCharacter (*h);
           h->SetPosition (HexCoord (0, id));
           auto* mv = h->MutableProto ().mutable_movement ();
-          mv->Clear ();
           auto* wp = mv->mutable_waypoints ();
           for (unsigned i = 0; i < numWP; ++i)
             *wp->Add () = CoordToProto (HexCoord (numTiles, id));
@@ -143,10 +142,9 @@ MovementLongHaul (benchmark::State& state)
       state.PauseTiming ();
       {
         const auto h = tbl.GetById (id);
-        h->SetPartialStep (0);
+        StopCharacter (*h);
         h->SetPosition (HexCoord (0, 0));
         auto* mv = h->MutableProto ().mutable_movement ();
-        mv->Clear ();
         auto* wp = mv->mutable_waypoints ();
 
         HexCoord::IntT lastX = 0;

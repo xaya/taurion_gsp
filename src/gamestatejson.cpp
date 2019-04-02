@@ -66,8 +66,9 @@ GetMovementJsonObject (const Character& c)
   const auto& pb = c.GetProto ();
   Json::Value res(Json::objectValue);
 
-  if (c.GetPartialStep () != 0)
-    res["partialstep"] = IntToJson (c.GetPartialStep ());
+  const auto& volMv = c.GetVolatileMv ();
+  if (volMv.has_partial_step ())
+    res["partialstep"] = IntToJson (volMv.partial_step ());
 
   if (pb.has_movement ())
     {
