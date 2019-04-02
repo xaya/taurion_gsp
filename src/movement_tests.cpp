@@ -311,16 +311,60 @@ TEST_F (MovementTests, ObstacleInSteps)
   StepCharacter (1, EdgeWeights (1), 7);
   EXPECT_TRUE (IsMoving ());
   EXPECT_EQ (GetTest ()->GetPosition (), HexCoord (3, 0));
-  const auto mv = GetTest ()->GetProto ().movement ();
+  const auto& mv = GetTest ()->GetProto ().movement ();
   EXPECT_EQ (mv.waypoints_size (), 1);
   EXPECT_GT (mv.steps_size (), 0);
 
   /* Now let the obstacle appear.  This should move the character right up to
-     it and then stop.  */
+     it, retry there for a couple blocks, and then stop.  */
   ExpectSteps (1, EdgesWithObstacle (1),
     {
+      /* After three blocks we reach the obstacle.  */
       {3, HexCoord (0, 0)},
+
+      /* After ten more blocks we stop retrying.  */
+      {9, HexCoord (0, 0)},
+      {1, HexCoord (0, 0)},
     });
+}
+
+TEST_F (MovementTests, BlockedTurns)
+{
+  SetWaypoints ({HexCoord (5, 0), HexCoord (-10, 0)});
+
+  /* Step first without the obstacle, so that the final steps are already
+     planned through where it will be later on.  */
+  StepCharacter (1, EdgeWeights (1), 10);
+  EXPECT_TRUE (IsMoving ());
+  EXPECT_EQ (GetTest ()->GetPosition (), HexCoord (0, 0));
+  const auto& mv = GetTest ()->GetProto ().movement ();
+  EXPECT_EQ (mv.waypoints_size (), 1);
+  EXPECT_GT (mv.steps_size (), 0);
+  EXPECT_FALSE (GetTest ()->GetVolatileMv ().has_blocked_turns ());
+
+  /* Try stepping into the obstacle, which should increment the blocked turns
+     counter and reset any partial step progress.  */
+  GetTest ()->MutableVolatileMv ().set_partial_step (500);
+  StepCharacter (1, EdgesWithObstacle (1000), 10);
+  EXPECT_EQ (GetTest ()->GetPosition (), HexCoord (0, 0));
+  EXPECT_TRUE (IsMoving ());
+  EXPECT_FALSE (GetTest ()->GetVolatileMv ().has_partial_step ());
+  EXPECT_EQ (GetTest ()->GetVolatileMv ().blocked_turns (), 10);
+
+  /* Stepping with free way (even if we can't do a full step) will reset
+     the counter again.  */
+  StepCharacter (1, EdgeWeights (1000), 1);
+  EXPECT_EQ (GetTest ()->GetPosition (), HexCoord (0, 0));
+  EXPECT_TRUE (IsMoving ());
+  EXPECT_EQ (GetTest ()->GetVolatileMv ().partial_step (), 1);
+  EXPECT_FALSE (GetTest ()->GetVolatileMv ().has_blocked_turns ());
+
+  /* Trying too often will stop movement.  */
+  StepCharacter (1, EdgesWithObstacle (1000), 11);
+  EXPECT_EQ (GetTest ()->GetPosition (), HexCoord (0, 0));
+  EXPECT_FALSE (IsMoving ());
+  EXPECT_FALSE (GetTest ()->GetVolatileMv ().has_partial_step ());
+  EXPECT_FALSE (GetTest ()->GetVolatileMv ().has_blocked_turns ());
 }
 
 TEST_F (MovementTests, CharacterInObstacle)

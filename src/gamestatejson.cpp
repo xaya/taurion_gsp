@@ -69,6 +69,8 @@ GetMovementJsonObject (const Character& c)
   const auto& volMv = c.GetVolatileMv ();
   if (volMv.has_partial_step ())
     res["partialstep"] = IntToJson (volMv.partial_step ());
+  if (volMv.has_blocked_turns ())
+    res["blockedturns"] = IntToJson (volMv.blocked_turns ());
 
   if (pb.has_movement ())
     {

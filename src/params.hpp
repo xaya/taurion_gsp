@@ -56,6 +56,14 @@ public:
   HexCoord::IntT MaximumWaypointL1Distance () const;
 
   /**
+   * Number of retries of a blocked movement step before the movement
+   * is cancelled completely.  Note that this is really the numbef of *retries*,
+   * meaning that movement is only cancelled after N+1 blocked turns if N is
+   * the value returned from this function.
+   */
+  unsigned BlockedStepRetries () const;
+
+  /**
    * Returns the duration of prospecting in blocks.
    */
   unsigned ProspectingBlocks () const;

@@ -37,6 +37,12 @@ Params::MaximumWaypointL1Distance () const
 }
 
 unsigned
+Params::BlockedStepRetries () const
+{
+  return 10;
+}
+
+unsigned
 Params::ProspectingBlocks () const
 {
   return 10;

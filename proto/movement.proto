@@ -55,4 +55,11 @@ message VolatileMovement
   /** Partial progress towards the next tile.  */
   optional uint32 partial_step = 1;
 
+  /**
+   * Number of turns for which the character has been blocked by an obstacle
+   * in its (already computed) path.  This is used to stop movement after a
+   * certain number of tries, rather than trying forever.
+   */
+  optional uint32 blocked_turns = 2;
+
 }

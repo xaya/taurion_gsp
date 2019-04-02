@@ -127,21 +127,36 @@ class MovementTest (PXTest):
     self.createCharacter ("blocker", "r")
     self.generate (1)
 
-    mv = {
-      "domob": offsetCoord ({"x": 100, "y": 0}, self.offset, False),
+    self.moveCharactersTo ({
+      "domob": offsetCoord ({"x": 55, "y": 0}, self.offset, False),
       "blocker": offsetCoord ({"x": 50, "y": 1}, self.offset, False),
-    }
-    self.moveCharactersTo (mv)
+    })
 
     # Calculate the steps and then block the path.
     self.setWaypoints ("domob", [{"x": 0, "y": 0}])
-    self.generate (10)
+    self.generate (3)
     self.setWaypoints ("blocker", [{"x": 50, "y": 0}])
-    self.generate (100)
+    self.generate (5)
 
-    # The movement should stop right before the obstacle.
+    # The character should be blocked by the obstacle.
     pos, mv = self.getMovement ("domob")
     self.assertEqual (pos, {"x": 51, "y": 0})
+    assert mv["blockedturns"] > 0
+
+    # Move the obstacle away and let the character continue moving.
+    self.setWaypoints ("blocker", [{"x": 50, "y": 1}])
+    self.generate (5)
+    pos, mv = self.getMovement ("domob")
+    assert pos["x"] < 50
+    assert "blockedturns" not in mv
+
+    # Block the path again and let movement stop completely.
+    self.moveCharactersTo ({
+      "blocker": offsetCoord ({"x": 45, "y": 0}, self.offset, False),
+    })
+    self.generate (20)
+    pos, mv = self.getMovement ("domob")
+    self.assertEqual (pos, {"x": 46, "y": 0})
     self.assertEqual (mv, None)
 
     # Doing another path finding should work around it.

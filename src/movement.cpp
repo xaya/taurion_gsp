@@ -26,7 +26,8 @@ constexpr bool CONTINUE_PROCESSING = false;
  * next path).
  */
 bool
-StepAlongPrecomputed (Character& c, const PathFinder::EdgeWeightFcn& edges)
+StepAlongPrecomputed (Character& c, const Params& params,
+                      const PathFinder::EdgeWeightFcn& edges)
 {
   VLOG (1) << "We have a precomputed path, trying to step it...";
 
@@ -54,6 +55,7 @@ StepAlongPrecomputed (Character& c, const PathFinder::EdgeWeightFcn& edges)
       dest = CoordFromProto (mv.waypoints (0));
       finishedSteps = true;
     }
+  CHECK_EQ (HexCoord::DistanceL1 (c.GetPosition (), dest), 1);
   const auto dist = edges (c.GetPosition (), dest);
   VLOG (1)
       << "Current step from " << c.GetPosition () << " to " << dest
@@ -64,13 +66,41 @@ StepAlongPrecomputed (Character& c, const PathFinder::EdgeWeightFcn& edges)
       LOG (WARNING)
           << "Character " << c.GetId ()
           << " is stepping into obstacle from "
-          << c.GetPosition () << " to " << dest
-          << ", stopping";
-      StopCharacter (c);
+          << c.GetPosition () << " to " << dest;
+
+      /* When the step is blocked, we set all partial steps to zero and stop
+         processing for now.  However, we keep retrying that step a couple of
+         times, in case it is just a passing vehicle and movement will be
+         free again later.  But if the way is still blocked after some time,
+         we stop movement completely to avoid trying forever.  */
+
+      auto& volMv = c.MutableVolatileMv ();
+      volMv.clear_partial_step ();
+      volMv.set_blocked_turns (volMv.blocked_turns () + 1);
+      VLOG (1)
+          << "Incremented blocked turns counter to " << volMv.blocked_turns ();
+
+      if (volMv.blocked_turns () > params.BlockedStepRetries ())
+        {
+          VLOG (1)
+              << "Too many blocked turns, stopping character " << c.GetId ();
+          StopCharacter (c);
+        }
+
       return PROCESSING_DONE;
     }
 
+  /* If the way is free (independent of whether or not we can step there),
+     reset the blocked turns counter to zero.  */
   const auto& volMv = c.GetVolatileMv ();
+  if (volMv.has_blocked_turns ())
+    {
+      VLOG (1)
+          << "Clearing blocked turns counter (old value: "
+          << volMv.blocked_turns () << ")";
+      c.MutableVolatileMv ().clear_blocked_turns ();
+    }
+
   if (dist > volMv.partial_step ())
     {
       VLOG (1) << "Next step is too far, waiting for now";
@@ -207,7 +237,7 @@ ProcessCharacterMovement (Character& c, const Params& params,
       /* If we have a precomputed path, try to do one step along it.  */
       if (mv.steps_size () > 0)
         {
-          if (StepAlongPrecomputed (c, edges) == PROCESSING_DONE)
+          if (StepAlongPrecomputed (c, params, edges) == PROCESSING_DONE)
             break;
           continue;
         }
