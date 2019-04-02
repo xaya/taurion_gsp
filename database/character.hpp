@@ -8,6 +8,7 @@
 #include "hexagonal/pathfinder.hpp"
 #include "proto/character.pb.h"
 #include "proto/combat.pb.h"
+#include "proto/movement.pb.h"
 
 #include <memory>
 #include <string>
@@ -45,11 +46,8 @@ private:
   /** The current position.  */
   HexCoord pos;
 
-  /**
-   * The current accumulated movement towards the next step.  If there is none
-   * yet or there is no movement, it will be zero.
-   */
-  PathFinder::DistanceT partialStep;
+  /** Volatile movement proto.  */
+  proto::VolatileMovement volatileMv;
 
   /** Current HP proto.  */
   proto::HP hp;
@@ -156,17 +154,17 @@ public:
     pos = c;
   }
 
-  PathFinder::DistanceT
-  GetPartialStep () const
+  const proto::VolatileMovement&
+  GetVolatileMv () const
   {
-    return partialStep;
+    return volatileMv;
   }
 
-  void
-  SetPartialStep (const PathFinder::DistanceT val)
+  proto::VolatileMovement&
+  MutableVolatileMv ()
   {
     dirtyFields = true;
-    partialStep = val;
+    return volatileMv;
   }
 
   const proto::HP&

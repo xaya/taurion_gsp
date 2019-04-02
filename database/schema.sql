@@ -20,13 +20,9 @@ CREATE TABLE IF NOT EXISTS `characters` (
   `x` INTEGER NOT NULL,
   `y` INTEGER NOT NULL,
 
-  -- Partial movement already done towards next tile.  This is used to
-  -- "accumulate" movement when the speed is slower than one tile per block.
-  -- This is a field in the database rather than the proto data so that it
-  -- can be updated without replacing the entire proto BLOB.  This leads
-  -- to more efficient undo data for the very common case of movement
-  -- along the stepped path.
-  `partialstep` INTEGER,
+  -- Movement data for the character that changes frequently and is thus
+  -- not part of the big main proto.
+  `volatilemv` BLOB NOT NULL,
 
   -- Current HP data as an encoded HP proto.  This is stored directly in
   -- the database rather than the "proto" BLOB since it is a field that

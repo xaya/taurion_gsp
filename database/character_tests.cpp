@@ -92,7 +92,7 @@ TEST_F (CharacterTests, ModificationWithProto)
   auto c = tbl.GetFromResult (res);
   EXPECT_EQ (c->GetOwner (), "domob");
   EXPECT_EQ (c->GetPosition (), HexCoord (0, 0));
-  EXPECT_EQ (c->GetPartialStep (), 0);
+  EXPECT_FALSE (c->GetVolatileMv ().has_partial_step ());
   EXPECT_FALSE (c->GetHP ().has_shield ());
   EXPECT_EQ (c->GetBusy (), 0);
   EXPECT_FALSE (c->GetProto ().has_target ());
@@ -100,7 +100,7 @@ TEST_F (CharacterTests, ModificationWithProto)
 
   c->SetOwner ("andy");
   c->SetPosition (pos);
-  c->SetPartialStep (10);
+  c->MutableVolatileMv ().set_partial_step (10);
   c->MutableHP ().set_shield (5);
   SetBusy (*c, 42);
   c->MutableProto ().mutable_target ();
@@ -112,7 +112,7 @@ TEST_F (CharacterTests, ModificationWithProto)
   EXPECT_EQ (c->GetOwner (), "andy");
   EXPECT_EQ (c->GetFaction (), Faction::RED);
   EXPECT_EQ (c->GetPosition (), pos);
-  EXPECT_EQ (c->GetPartialStep (), 10);
+  EXPECT_EQ (c->GetVolatileMv ().partial_step (), 10);
   EXPECT_EQ (c->GetHP ().shield (), 5);
   EXPECT_EQ (c->GetBusy (), 42);
   EXPECT_TRUE (c->GetProto ().has_target ());
@@ -136,7 +136,7 @@ TEST_F (CharacterTests, ModificationFieldsOnly)
   ASSERT_TRUE (c != nullptr);
   c->SetOwner ("andy");
   c->SetPosition (pos);
-  c->SetPartialStep (24);
+  c->MutableVolatileMv ().set_partial_step (24);
   c->MutableHP ().set_shield (5);
   c->SetBusy (42);
   c.reset ();
@@ -146,7 +146,7 @@ TEST_F (CharacterTests, ModificationFieldsOnly)
   EXPECT_EQ (c->GetOwner (), "andy");
   EXPECT_EQ (c->GetFaction (), Faction::RED);
   EXPECT_EQ (c->GetPosition (), pos);
-  EXPECT_EQ (c->GetPartialStep (), 24);
+  EXPECT_EQ (c->GetVolatileMv ().partial_step (), 24);
   EXPECT_EQ (c->GetHP ().shield (), 5);
   EXPECT_EQ (c->GetBusy (), 42);
 }

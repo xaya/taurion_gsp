@@ -1,0 +1,65 @@
+syntax = "proto2";
+
+import "geometry.proto";
+
+package pxd.proto;
+
+/**
+ * An "active" movement of a character.  The way in which movement works
+ * is two-fold:  First, we have a list of waypoints that will be visited
+ * in order.  Second, we have a fully-computed path (tile-by-tile) between
+ * the current position and the first waypoint.  That is used to avoid
+ * recomputation on every block.  It has to be part of the consensus state,
+ * though, and cannot be computed / cached on the fly, so that dynamic
+ * obstacles (buildings) are supported.
+ */
+message Movement
+{
+
+  /**
+   * The waypoints that will still be visited.  While they are traversed,
+   * already visited points are removed from this list.  In other words,
+   * the first element will always be the current target of the
+   * character.  When this list becomes empty, then it stops moving.
+   */
+  repeated HexCoord waypoints = 1;
+
+  /**
+   * The precomputed steps to the first waypoint.  The character's current
+   * position (as per the DB fields) will be one of the coordinates
+   * of the path.  In other words, this list is not updated on every step;
+   * instead, it will be set once and then kept around until finished, namely
+   * when the character reaches the next waypoint or gets stuck at an obstacle.
+   *
+   * The *destination* of a step is just the following entry.  There is
+   * also an implied last step to the first waypoint.
+   *
+   * It is enough to store just the coordinates of the precomputed path (not
+   * the distances as well), since we check the edge weights anyway for each
+   * step before executing it.  That is needed to detect newly created
+   * obstacles on the map.
+   */
+  repeated HexCoord steps = 2;
+
+}
+
+/**
+ * Additional data for movement, which is stored separately in the database
+ * and not as part of the broader "character proto".  This is the data that
+ * is expected to change frequently, e.g. potentially on every turn without
+ * explicit moves being sent by the player.
+ */
+message VolatileMovement
+{
+
+  /** Partial progress towards the next tile.  */
+  optional uint32 partial_step = 1;
+
+  /**
+   * Number of turns for which the character has been blocked by an obstacle
+   * in its (already computed) path.  This is used to stop movement after a
+   * certain number of tries, rather than trying forever.
+   */
+  optional uint32 blocked_turns = 2;
+
+}

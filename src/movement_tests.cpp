@@ -43,7 +43,7 @@ TEST_F (StopCharacterTests, Works)
   auto c = tbl.CreateNew ("domob", Faction::RED);
   const auto id = c->GetId ();
   c->SetPosition (HexCoord (5, 7));
-  c->SetPartialStep (42);
+  c->MutableVolatileMv ().set_partial_step (42);
   auto* mv = c->MutableProto ().mutable_movement ();
   *mv->add_waypoints () = CoordToProto (HexCoord (10, 10));
   c.reset ();
@@ -53,7 +53,7 @@ TEST_F (StopCharacterTests, Works)
   c = tbl.GetById (id);
   EXPECT_EQ (c->GetPosition (), HexCoord (5, 7));
   EXPECT_FALSE (c->GetProto ().has_movement ());
-  EXPECT_EQ (c->GetPartialStep (), 0);
+  EXPECT_FALSE (c->GetVolatileMv ().has_partial_step ());
 }
 
 TEST_F (StopCharacterTests, AlreadyStopped)
@@ -68,7 +68,7 @@ TEST_F (StopCharacterTests, AlreadyStopped)
   c = tbl.GetById (id);
   EXPECT_EQ (c->GetPosition (), HexCoord (5, 7));
   EXPECT_FALSE (c->GetProto ().has_movement ());
-  EXPECT_EQ (c->GetPartialStep (), 0);
+  EXPECT_FALSE (c->GetVolatileMv ().has_partial_step ());
 }
 
 /* ************************************************************************** */
@@ -311,16 +311,60 @@ TEST_F (MovementTests, ObstacleInSteps)
   StepCharacter (1, EdgeWeights (1), 7);
   EXPECT_TRUE (IsMoving ());
   EXPECT_EQ (GetTest ()->GetPosition (), HexCoord (3, 0));
-  const auto mv = GetTest ()->GetProto ().movement ();
+  const auto& mv = GetTest ()->GetProto ().movement ();
   EXPECT_EQ (mv.waypoints_size (), 1);
   EXPECT_GT (mv.steps_size (), 0);
 
   /* Now let the obstacle appear.  This should move the character right up to
-     it and then stop.  */
+     it, retry there for a couple blocks, and then stop.  */
   ExpectSteps (1, EdgesWithObstacle (1),
     {
+      /* After three blocks we reach the obstacle.  */
       {3, HexCoord (0, 0)},
+
+      /* After ten more blocks we stop retrying.  */
+      {9, HexCoord (0, 0)},
+      {1, HexCoord (0, 0)},
     });
+}
+
+TEST_F (MovementTests, BlockedTurns)
+{
+  SetWaypoints ({HexCoord (5, 0), HexCoord (-10, 0)});
+
+  /* Step first without the obstacle, so that the final steps are already
+     planned through where it will be later on.  */
+  StepCharacter (1, EdgeWeights (1), 10);
+  EXPECT_TRUE (IsMoving ());
+  EXPECT_EQ (GetTest ()->GetPosition (), HexCoord (0, 0));
+  const auto& mv = GetTest ()->GetProto ().movement ();
+  EXPECT_EQ (mv.waypoints_size (), 1);
+  EXPECT_GT (mv.steps_size (), 0);
+  EXPECT_FALSE (GetTest ()->GetVolatileMv ().has_blocked_turns ());
+
+  /* Try stepping into the obstacle, which should increment the blocked turns
+     counter and reset any partial step progress.  */
+  GetTest ()->MutableVolatileMv ().set_partial_step (500);
+  StepCharacter (1, EdgesWithObstacle (1000), 10);
+  EXPECT_EQ (GetTest ()->GetPosition (), HexCoord (0, 0));
+  EXPECT_TRUE (IsMoving ());
+  EXPECT_FALSE (GetTest ()->GetVolatileMv ().has_partial_step ());
+  EXPECT_EQ (GetTest ()->GetVolatileMv ().blocked_turns (), 10);
+
+  /* Stepping with free way (even if we can't do a full step) will reset
+     the counter again.  */
+  StepCharacter (1, EdgeWeights (1000), 1);
+  EXPECT_EQ (GetTest ()->GetPosition (), HexCoord (0, 0));
+  EXPECT_TRUE (IsMoving ());
+  EXPECT_EQ (GetTest ()->GetVolatileMv ().partial_step (), 1);
+  EXPECT_FALSE (GetTest ()->GetVolatileMv ().has_blocked_turns ());
+
+  /* Trying too often will stop movement.  */
+  StepCharacter (1, EdgesWithObstacle (1000), 11);
+  EXPECT_EQ (GetTest ()->GetPosition (), HexCoord (0, 0));
+  EXPECT_FALSE (IsMoving ());
+  EXPECT_FALSE (GetTest ()->GetVolatileMv ().has_partial_step ());
+  EXPECT_FALSE (GetTest ()->GetVolatileMv ().has_blocked_turns ());
 }
 
 TEST_F (MovementTests, CharacterInObstacle)
@@ -361,7 +405,7 @@ TEST_F (AllMovementTests, LongSteps)
      block.  In particular, this only works if updating the dynamic obstacle
      map for the vehicle being moved works correctly.  */
 
-  GetTest ()->SetPartialStep (1000);
+  GetTest ()->MutableVolatileMv ().set_partial_step (1000);
   SetWaypoints ({
     HexCoord (5, 0),
     HexCoord (5, 0),

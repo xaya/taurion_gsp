@@ -7,7 +7,7 @@ namespace pxd
 
 Character::Character (Database& d, const std::string& o, const Faction f)
   : db(d), id(db.GetNextId ()), owner(o), faction(f),
-    pos(0, 0), partialStep(0), busy(0),
+    pos(0, 0), busy(0),
     dirtyFields(true), dirtyProto(true)
 {
   VLOG (1)
@@ -24,7 +24,7 @@ Character::Character (Database& d, const Database::Result& res)
   owner = res.Get<std::string> ("owner");
   faction = GetFactionFromColumn (res, "faction");
   pos = HexCoord (res.Get<int64_t> ("x"), res.Get<int64_t> ("y"));
-  partialStep = res.Get<int64_t> ("partialstep");
+  res.GetProto ("volatilemv", volatileMv);
   res.GetProto ("hp", hp);
   busy = res.Get<int64_t> ("busy");
   res.GetProto ("proto", data);
@@ -45,15 +45,15 @@ Character::~Character ()
       auto stmt = db.Prepare (R"(
         INSERT OR REPLACE INTO `characters`
           (`id`,
-           `owner`, `x`, `y`, `partialstep`,
-           `hp`,
+           `owner`, `x`, `y`,
+           `volatilemv`, `hp`,
            `busy`,
            `faction`,
            `ismoving`, `hastarget`, `proto`)
           VALUES
           (?1,
-           ?2, ?3, ?4, ?5,
-           ?6,
+           ?2, ?3, ?4,
+           ?5, ?6,
            ?7,
            ?101,
            ?102, ?103, ?104)
@@ -79,7 +79,7 @@ Character::~Character ()
         UPDATE `characters`
           SET `owner` = ?2,
               `x` = ?3, `y` = ?4,
-              `partialstep` = ?5,
+              `volatilemv` = ?5,
               `hp` = ?6,
               `busy` = ?7
           WHERE `id` = ?1
@@ -116,10 +116,7 @@ Character::BindFieldValues (Database::Statement& stmt) const
   stmt.Bind (2, owner);
   stmt.Bind (3, pos.GetX ());
   stmt.Bind (4, pos.GetY ());
-  if (partialStep == 0)
-    stmt.BindNull (5);
-  else
-    stmt.Bind (5, partialStep);
+  stmt.BindProto (5, volatileMv);
   stmt.BindProto (6, hp);
   stmt.Bind (7, busy);
 }

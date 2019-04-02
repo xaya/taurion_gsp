@@ -74,7 +74,7 @@ TEST_F (PXLogicTests, WaypointsBeforeMovement)
 {
   auto c = characters.CreateNew ("domob", Faction::RED);
   ASSERT_EQ (c->GetId (), 1);
-  c->SetPartialStep (1000);
+  c->MutableVolatileMv ().set_partial_step (1000);
   auto& pb = c->MutableProto ();
   pb.set_speed (750);
   pb.mutable_combat_data ();
@@ -117,7 +117,7 @@ TEST_F (PXLogicTests, MovementBeforeTargeting)
 
   c = characters.GetById (id2);
   auto* wp = c->MutableProto ().mutable_movement ()->mutable_waypoints ();
-  c->SetPartialStep (500);
+  c->MutableVolatileMv ().set_partial_step (500);
   *wp->Add () = CoordToProto (HexCoord (0, 0));
   c.reset ();
 
@@ -255,7 +255,7 @@ TEST_F (PXLogicTests, ProspectingBeforeMovement)
   auto c = characters.CreateNew ("domob", Faction::RED);
   ASSERT_EQ (c->GetId (), 1);
   c->SetPosition (pos1);
-  c->SetPartialStep (1000);
+  c->MutableVolatileMv ().set_partial_step (1000);
   auto& pb = c->MutableProto ();
   pb.mutable_combat_data ();
   *pb.mutable_movement ()->add_waypoints () = CoordToProto (pos2);
