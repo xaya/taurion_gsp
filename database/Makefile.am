@@ -14,6 +14,7 @@ libdatabase_la_LIBADD = \
   $(GLOG_LIBS) $(SQLITE3_LIBS) $(PROTOBUF_LIBS)
 libdatabase_la_SOURCES = \
   character.cpp \
+  damagelists.cpp \
   database.cpp \
   faction.cpp \
   fighter.cpp \
@@ -22,6 +23,7 @@ libdatabase_la_SOURCES = \
   target.cpp
 noinst_HEADERS = \
   character.hpp \
+  damagelists.hpp \
   database.hpp \
   faction.hpp \
   fighter.hpp \
@@ -59,6 +61,7 @@ tests_LDADD = \
   $(GTEST_LIBS) $(GLOG_LIBS)
 tests_SOURCES = \
   character_tests.cpp \
+  damagelists_tests.cpp \
   database_tests.cpp \
   faction_tests.cpp \
   fighter_tests.cpp \

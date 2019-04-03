@@ -60,6 +60,35 @@ CREATE INDEX IF NOT EXISTS `characters_hastarget` ON `characters` (`hastarget`);
 
 -- =============================================================================
 
+-- Tracks the damage lists:  Who damaged some character in the last N blocks,
+-- so that we can award fame to them later.
+CREATE TABLE IF NOT EXISTS `damage_lists` (
+
+  -- The character being attacked.
+  `victim` INTEGER NOT NULL,
+
+  -- The attacking character.
+  `attacker` INTEGER NOT NULL,
+
+  -- The block height of the last damage done.
+  `height` INTEGER NOT NULL,
+
+  -- For each (victim, attacker) combination, there should only be a single
+  -- entry.  For each new round of damage done, we "INSERT OR REPLACE" into
+  -- the table, which updates the height for existing rows rather than
+  -- adding new ones.
+  PRIMARY KEY (`victim`, `attacker`)
+
+);
+
+-- Additional indices we need.  Note that lookups per victim are already
+-- possible due to the primary key.
+CREATE INDEX IF NOT EXISTS `damage_lists_attacker`
+    ON `damage_lists` (`attacker`);
+CREATE INDEX IF NOT EXISTS `damage_lists_height` ON `damage_lists` (`height`);
+
+-- =============================================================================
+
 -- Data for regions where we already have non-trivial data.  Rows here are
 -- only created over time, for regions when the first change is made
 -- away from the "default / empty" state.
