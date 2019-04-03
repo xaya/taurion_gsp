@@ -5,6 +5,7 @@
 #include "testutils.hpp"
 
 #include "database/character.hpp"
+#include "database/damagelists.hpp"
 #include "database/dbtest.hpp"
 #include "database/faction.hpp"
 #include "database/region.hpp"
@@ -31,26 +32,37 @@ class PXLogicTests : public DBTestWithSchema
 
 private:
 
-  /** Random instance for testing.  */
   TestRandom rnd;
-
-  /** Test parameters.  */
   const Params params;
 
 protected:
 
-  /** Base map instance for testing.  */
   const BaseMap map;
-
-  /** Character table for use in tests.  */
   CharacterTable characters;
-
-  /** Regions table for testing.  */
   RegionsTable regions;
 
   PXLogicTests ()
     : params(xaya::Chain::MAIN), characters(db), regions(db)
   {}
+
+  /**
+   * Builds a blockData JSON value from the given moves (JSON serialised
+   * to a string).
+   */
+  Json::Value
+  BuildBlockData (const std::string& movesStr)
+  {
+    Json::Value blockData(Json::objectValue);
+
+    Json::Value meta(Json::objectValue);
+    meta["height"] = 42;
+    blockData["block"] = meta;
+
+    std::istringstream in(movesStr);
+    in >> blockData["moves"];
+
+    return blockData;
+  }
 
   /**
    * Calls PXLogic::UpdateState with our test instances of the database,
@@ -60,11 +72,18 @@ protected:
   void
   UpdateState (const std::string& movesStr)
   {
-    Json::Value blockData(Json::objectValue);
+    UpdateStateWithData (BuildBlockData (movesStr));
+  }
 
-    std::istringstream in(movesStr);
-    in >> blockData["moves"];
-
+  /**
+   * Calls PXLogic::UpdateState with the given block data and our params, RNG
+   * and stuff.  This is a more general variant of UpdateState(std::string),
+   * where the block data can be modified to include extra stuff (e.g. a block
+   * height of our choosing).
+   */
+  void
+  UpdateStateWithData (const Json::Value& blockData)
+  {
     PXLogic::UpdateState (db, rnd, params, map, blockData);
   }
 
@@ -226,6 +245,53 @@ TEST_F (PXLogicTests, DamageKillsRegeneration)
   /* Now the attack should kill the target before it can regenerate.  */
   UpdateState ("[]");
   EXPECT_TRUE (characters.GetById (idTarget) == nullptr);
+}
+
+TEST_F (PXLogicTests, DamageLists)
+{
+  DamageLists dl(db, 0);
+
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  const auto idAttacker = c->GetId ();
+  auto* attack = c->MutableProto ().mutable_combat_data ()->add_attacks ();
+  attack->set_range (1);
+  attack->set_max_damage (1);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", Faction::GREEN);
+  const auto idTarget = c->GetId ();
+  auto* cd = c->MutableProto ().mutable_combat_data ();
+  cd->mutable_max_hp ()->set_shield (100);
+  c->MutableHP ().set_shield (100);
+  c.reset ();
+
+  /* Progress one round forward to target.  */
+  UpdateState ("[]");
+
+  /* Deal damage, which should be recorded in the damage list.  */
+  Json::Value blockData = BuildBlockData ("[]");
+  blockData["block"]["height"] = 100;
+  UpdateStateWithData (blockData);
+  EXPECT_EQ (dl.GetAttackers (idTarget),
+             DamageLists::Attackers ({idAttacker}));
+
+  /* Remove the attacks, so the damage list entry is not refreshed.  */
+  c = characters.GetById (idAttacker);
+  c->MutableProto ().mutable_combat_data ()->clear_attacks ();
+  c.reset ();
+
+  /* The damage list entry should still be present 99 blocks after.  */
+  blockData = BuildBlockData ("[]");
+  blockData["block"]["height"] = 199;
+  UpdateStateWithData (blockData);
+  EXPECT_EQ (dl.GetAttackers (idTarget),
+             DamageLists::Attackers ({idAttacker}));
+
+  /* The entry should be removed at block 200.  */
+  blockData = BuildBlockData ("[]");
+  blockData["block"]["height"] = 200;
+  UpdateStateWithData (blockData);
+  EXPECT_EQ (dl.GetAttackers (idTarget), DamageLists::Attackers ({}));
 }
 
 TEST_F (PXLogicTests, ProspectingBeforeMovement)

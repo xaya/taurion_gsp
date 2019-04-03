@@ -1,6 +1,7 @@
 #include "combat.hpp"
 
 #include "database/character.hpp"
+#include "database/damagelists.hpp"
 #include "database/dbtest.hpp"
 #include "database/faction.hpp"
 #include "database/schema.hpp"
@@ -69,8 +70,10 @@ InsertCharacters (Database& db, const unsigned numIdle,
 void
 UpdateHP (Database& db, xaya::Random& rnd, const BaseMap& map)
 {
-  const auto dead = DealCombatDamage (db, rnd);
-  ProcessKills (db, dead, map);
+  DamageLists dl(db, 0);
+
+  const auto dead = DealCombatDamage (db, dl, rnd);
+  ProcessKills (db, dl, dead, map);
   RegenerateHP (db);
 }
 

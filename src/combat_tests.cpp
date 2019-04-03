@@ -1,6 +1,7 @@
 #include "combat.hpp"
 
 #include "database/character.hpp"
+#include "database/damagelists.hpp"
 #include "database/dbtest.hpp"
 #include "database/faction.hpp"
 #include "database/region.hpp"
@@ -29,17 +30,13 @@ class CombatTests : public DBTestWithSchema
 
 protected:
 
-  /** Basemap instance to use.  */
   const BaseMap map;
-
-  /** Character table for access to characters in the test.  */
   CharacterTable characters;
-
-  /** Random instance for finding the targets.  */
+  DamageLists dl;
   xaya::Random rnd;
 
   CombatTests ()
-    : characters(db)
+    : characters(db), dl(db, 0)
   {
     xaya::SHA256 seed;
     seed << "random seed";
@@ -231,7 +228,7 @@ protected:
   FindTargetsAndDamage ()
   {
     FindCombatTargets (db, rnd);
-    return DealCombatDamage (db, rnd);
+    return DealCombatDamage (db, dl, rnd);
   }
 
 };
@@ -269,6 +266,34 @@ TEST_F (DealDamageTests, OnlyAttacksInRange)
 
   FindTargetsAndDamage ();
   EXPECT_EQ (characters.GetById (idTarget)->GetHP ().armour (), 8);
+}
+
+TEST_F (DealDamageTests, DamageLists)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  const auto idAttacker = c->GetId ();
+  AddAttack (c->MutableProto (), 2, 1);
+  c.reset ();
+
+  /* This character has no attack in range, so should not be put onto
+     the damage list.  */
+  c = characters.CreateNew ("domob", Faction::RED);
+  AddAttack (c->MutableProto (), 1, 1);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", Faction::GREEN);
+  const auto idTarget = c->GetId ();
+  c->SetPosition (HexCoord (2, 0));
+  NoAttacks (c->MutableProto ());
+  c->MutableHP ().set_armour (10);
+  c.reset ();
+
+  /* Add an existing dummy entry to verify it is kept.  */
+  dl.AddEntry (idTarget, 42);
+
+  FindTargetsAndDamage ();
+  EXPECT_EQ (dl.GetAttackers (idTarget),
+             DamageLists::Attackers ({42, idAttacker}));
 }
 
 TEST_F (DealDamageTests, RandomisedDamage)
@@ -426,17 +451,37 @@ TEST_F (ProcessKillsTests, DeletesCharacters)
   const auto id1 = characters.CreateNew ("domob", Faction::RED)->GetId ();
   const auto id2 = characters.CreateNew ("domob", Faction::RED)->GetId ();
 
-  ProcessKills (db, {}, map);
+  ProcessKills (db, dl, {}, map);
   EXPECT_TRUE (characters.GetById (id1) != nullptr);
   EXPECT_TRUE (characters.GetById (id2) != nullptr);
 
   proto::TargetId targetId;
   targetId.set_type (proto::TargetId::TYPE_CHARACTER);
   targetId.set_id (id2);
-  ProcessKills (db, {targetId}, map);
+  ProcessKills (db, dl, {targetId}, map);
 
   EXPECT_TRUE (characters.GetById (id1) != nullptr);
   EXPECT_TRUE (characters.GetById (id2) == nullptr);
+}
+
+TEST_F (ProcessKillsTests, RemovesFromDamageLists)
+{
+  const auto id1 = characters.CreateNew ("domob", Faction::RED)->GetId ();
+  const auto id2 = characters.CreateNew ("domob", Faction::RED)->GetId ();
+  const auto id3 = characters.CreateNew ("domob", Faction::RED)->GetId ();
+
+  DamageLists dl(db, 0);
+  dl.AddEntry (id1, id2);
+  dl.AddEntry (id1, id3);
+  dl.AddEntry (id2, id1);
+
+  proto::TargetId targetId2;
+  targetId2.set_type (proto::TargetId::TYPE_CHARACTER);
+  targetId2.set_id (id2);
+  ProcessKills (db, dl, {targetId2}, map);
+
+  EXPECT_EQ (dl.GetAttackers (id1), DamageLists::Attackers ({id3}));
+  EXPECT_EQ (dl.GetAttackers (id2), DamageLists::Attackers ({}));
 }
 
 TEST_F (ProcessKillsTests, CancelsProspection)
@@ -459,7 +504,7 @@ TEST_F (ProcessKillsTests, CancelsProspection)
   proto::TargetId targetId;
   targetId.set_type (proto::TargetId::TYPE_CHARACTER);
   targetId.set_id (id);
-  ProcessKills (db, {targetId}, map);
+  ProcessKills (db, dl, {targetId}, map);
 
   EXPECT_TRUE (characters.GetById (id) == nullptr);
   r = regions.GetById (regionId);
