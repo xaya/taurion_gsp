@@ -43,6 +43,11 @@ public:
   void operator= (const Fighter&) = delete;
 
   /**
+   * Returns this fighter's type and ID.
+   */
+  proto::TargetId GetId () const;
+
+  /**
    * Returns this fighter's faction association.  This is used to determine
    * friendlyness towards potential targets.
    */

@@ -5,6 +5,18 @@
 namespace pxd
 {
 
+proto::TargetId
+Fighter::GetId () const
+{
+  CHECK (character != nullptr);
+
+  proto::TargetId res;
+  res.set_type (proto::TargetId::TYPE_CHARACTER);
+  res.set_id (character->GetId ());
+
+  return res;
+}
+
 Faction
 Fighter::GetFaction () const
 {

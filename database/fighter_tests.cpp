@@ -46,7 +46,7 @@ TEST_F (FighterTests, Characters)
   c.reset ();
 
   unsigned cnt = 0;
-  tbl.ProcessAll ([this, &cnt] (Fighter f)
+  tbl.ProcessAll ([this, id1, &cnt] (Fighter f)
     {
       ++cnt;
 
@@ -56,6 +56,10 @@ TEST_F (FighterTests, Characters)
           {
             EXPECT_EQ (f.GetPosition (), HexCoord (2, 5));
             EXPECT_EQ (f.GetCombatData ().attacks_size (), 1);
+
+            const auto id = f.GetId ();
+            EXPECT_EQ (id.type (), proto::TargetId::TYPE_CHARACTER);
+            EXPECT_EQ (id.id (), id1);
 
             auto& hp = f.MutableHP ();
             EXPECT_EQ (hp.armour (), 10);
