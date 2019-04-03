@@ -115,7 +115,7 @@ GetMovementJsonObject (const Character& c)
  * Computes the "combat" sub-object for a Character's JSON state.
  */
 Json::Value
-GetCombatJsonObject (const Character& c)
+GetCombatJsonObject (const Character& c, const DamageLists& dl)
 {
   Json::Value res(Json::objectValue);
 
@@ -139,6 +139,12 @@ GetCombatJsonObject (const Character& c)
   hp["current"] = HpProtoToJson (c.GetHP ());
   hp["regeneration"] = pb.combat_data ().shield_regeneration_mhp () / 1000.0;
   res["hp"] = hp;
+
+  Json::Value attackers(Json::arrayValue);
+  for (const auto id : dl.GetAttackers (c.GetId ()))
+    attackers.append (IntToJson (id));
+  if (!attackers.empty ())
+    res["attackers"] = attackers;
 
   return res;
 }
@@ -183,7 +189,7 @@ template <>
   res["owner"] = c.GetOwner ();
   res["faction"] = FactionToString (c.GetFaction ());
   res["position"] = CoordToJson (c.GetPosition ());
-  res["combat"] = GetCombatJsonObject (c);
+  res["combat"] = GetCombatJsonObject (c, dl);
   res["speed"] = c.GetProto ().speed ();
 
   const Json::Value mv = GetMovementJsonObject (c);

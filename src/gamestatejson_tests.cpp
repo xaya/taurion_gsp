@@ -489,6 +489,36 @@ TEST_F (CharacterJsonTests, HP)
   })");
 }
 
+TEST_F (CharacterJsonTests, DamageLists)
+{
+  const auto id1 = tbl.CreateNew ("domob", Faction::RED)->GetId ();
+  const auto id2 = tbl.CreateNew ("domob", Faction::GREEN)->GetId ();
+  ASSERT_EQ (id2, 2);
+
+  DamageLists dl(db, 0);
+  dl.AddEntry (id1, id2);
+
+  ExpectStateJson (R"({
+    "characters":
+      [
+        {
+          "faction": "r",
+          "combat":
+            {
+              "attackers": [2]
+            }
+        },
+        {
+          "faction": "g",
+          "combat":
+            {
+              "attackers": null
+            }
+        }
+      ]
+  })");
+}
+
 TEST_F (CharacterJsonTests, Prospecting)
 {
   const HexCoord pos(10, -5);
