@@ -79,23 +79,23 @@ class MovementTest (PXTest):
 
     # Start off from a known good location to make sure all is fine and
     # not flaky depending on the randomised spawn position.
-    self.offset = {"x": -1100, "y": 1042}
+    self.offset = {"x": -1377, "y": 1263}
     self.moveCharactersTo ({"domob": self.offset})
 
     self.mainLogger.info ("Setting basic path for character...")
     wp = [
-      {"x": 5, "y": -2},
+      {"x": 12, "y": 0},
       {"x": 3, "y": 3},
       {"x": 3, "y": 3},
       {"x": 0, "y": 0},
-      {"x": -2, "y": -2},
-      {"x": -2, "y": -2},
+      {"x": -9, "y": -6},
+      {"x": -9, "y": -6},
     ]
     self.setWaypoints ("domob", wp)
     self.generate (1)
     pos, mv = self.getMovement ("domob")
-    self.assertEqual (mv["partialstep"], 750)
-    self.assertEqual (pos, {"x": 0, "y": 0})
+    self.assertEqual (mv["partialstep"], 0)
+    self.assertEqual (pos, {"x": 3, "y": 0})
     self.reorgBlock = self.rpc.xaya.getbestblockhash ()
 
     self.mainLogger.info ("Finishing the movement...")
@@ -128,7 +128,7 @@ class MovementTest (PXTest):
     self.generate (1)
 
     self.moveCharactersTo ({
-      "domob": offsetCoord ({"x": 55, "y": 0}, self.offset, False),
+      "domob": offsetCoord ({"x": 70, "y": 0}, self.offset, False),
       "blocker": offsetCoord ({"x": 50, "y": 1}, self.offset, False),
     })
 
@@ -152,11 +152,11 @@ class MovementTest (PXTest):
 
     # Block the path again and let movement stop completely.
     self.moveCharactersTo ({
-      "blocker": offsetCoord ({"x": 45, "y": 0}, self.offset, False),
+      "blocker": offsetCoord ({"x": 30, "y": 0}, self.offset, False),
     })
     self.generate (20)
     pos, mv = self.getMovement ("domob")
-    self.assertEqual (pos, {"x": 46, "y": 0})
+    self.assertEqual (pos, {"x": 31, "y": 0})
     self.assertEqual (mv, None)
 
     # Doing another path finding should work around it.

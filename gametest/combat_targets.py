@@ -78,13 +78,13 @@ class CombatTargetTest (PXTest):
     self.mainLogger.info ("Testing target selection when moving into range...")
     c = self.getCharacters ()["a"]
     self.moveCharactersTo ({
-      "a": offsetCoord ({"x": 11, "y": 0}, self.offset, False),
+      "a": offsetCoord ({"x": 13, "y": 0}, self.offset, False),
     })
     assert self.getTargetCharacter ("b") is None
     # Note that we can move a directly to the offset coordinate (where also
     # b is), since a and b are of different factions.
     c.sendMove ({"wp": [self.offset]})
-    self.generate (2)
+    self.generate (1)
     self.assertEqual (self.getCharacters ()["a"].getPosition (),
                       offsetCoord ({"x": 10, "y": 0}, self.offset, False))
     self.assertEqual (self.getTargetCharacter ("b"), "a")

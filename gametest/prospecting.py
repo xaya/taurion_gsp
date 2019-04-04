@@ -81,8 +81,10 @@ class ProspectingTest (PXTest):
       prospRegion = self.getRegionAt (char[p].getPosition ())
       self.assertEqual (region.getId (), prospRegion.getId ())
 
-    self.getCharacters ()["target"].sendMove ({"wp": [pos]})
-    self.generate (35)
+    self.moveCharactersTo ({
+      "target": pos
+    })
+    self.generate (20)
 
     c = self.getCharacters ()["target"]
     self.assertEqual (c.getPosition (), pos)
