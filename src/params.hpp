@@ -64,6 +64,11 @@ public:
   unsigned BlockedStepRetries () const;
 
   /**
+   * Returns the number of blocks for which a character stays on a damage list.
+   */
+  unsigned DamageListBlocks () const;
+
+  /**
    * Returns the duration of prospecting in blocks.
    */
   unsigned ProspectingBlocks () const;

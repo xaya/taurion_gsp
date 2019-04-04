@@ -97,8 +97,8 @@ namespace
  * to zero and is now dead.
  */
 void
-DealDamage (FighterTable& fighters, xaya::Random& rnd, Fighter f,
-            std::vector<proto::TargetId>& dead)
+DealDamage (FighterTable& fighters, DamageLists& dl, xaya::Random& rnd,
+            Fighter f, std::vector<proto::TargetId>& dead)
 {
   const auto& target = f.GetTarget ();
   Fighter tf = fighters.GetForTarget (target);
@@ -120,6 +120,11 @@ DealDamage (FighterTable& fighters, xaya::Random& rnd, Fighter f,
     }
   VLOG (1)
       << "Dealing " << dmg << " damage to target:\n" << target.DebugString ();
+
+  const auto attackerId = f.GetId ();
+  if (attackerId.type () == proto::TargetId::TYPE_CHARACTER
+        && target.type () == proto::TargetId::TYPE_CHARACTER)
+    dl.AddEntry (target.id (), attackerId.id ());
 
   auto& hp = tf.MutableHP ();
 
@@ -146,7 +151,7 @@ DealDamage (FighterTable& fighters, xaya::Random& rnd, Fighter f,
 } // anonymous namespace
 
 std::vector<proto::TargetId>
-DealCombatDamage (Database& db, xaya::Random& rnd)
+DealCombatDamage (Database& db, DamageLists& dl, xaya::Random& rnd)
 {
   CharacterTable characters(db);
   FighterTable fighters(characters);
@@ -154,14 +159,15 @@ DealCombatDamage (Database& db, xaya::Random& rnd)
   std::vector<proto::TargetId> dead;
   fighters.ProcessWithTarget ([&] (Fighter f)
     {
-      DealDamage (fighters, rnd, std::move (f), dead);
+      DealDamage (fighters, dl, rnd, std::move (f), dead);
     });
 
   return dead;
 }
 
 void
-ProcessKills (Database& db, const std::vector<proto::TargetId>& dead,
+ProcessKills (Database& db, DamageLists& dl,
+              const std::vector<proto::TargetId>& dead,
               const BaseMap& map)
 {
   CharacterTable characters(db);
@@ -192,6 +198,7 @@ ProcessKills (Database& db, const std::vector<proto::TargetId>& dead,
             }
 
           c.reset ();
+          dl.RemoveCharacter (id.id ());
           characters.DeleteById (id.id ());
           break;
         }
@@ -254,10 +261,11 @@ RegenerateHP (Database& db)
 }
 
 void
-AllHpUpdates (Database& db, xaya::Random& rnd, const BaseMap& map)
+AllHpUpdates (Database& db, DamageLists& dl, xaya::Random& rnd,
+              const BaseMap& map)
 {
-  const auto dead = DealCombatDamage (db, rnd);
-  ProcessKills (db, dead, map);
+  const auto dead = DealCombatDamage (db, dl, rnd);
+  ProcessKills (db, dl, dead, map);
   RegenerateHP (db);
 }
 

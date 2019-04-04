@@ -95,7 +95,16 @@ PXLogic::UpdateState (Database& db, xaya::Random& rnd,
                       const Params& params, const BaseMap& map,
                       const Json::Value& blockData)
 {
-  AllHpUpdates (db, rnd, map);
+  const auto& blockMeta = blockData["block"];
+  CHECK (blockMeta.isObject ());
+  const auto& heightVal = blockMeta["height"];
+  CHECK (heightVal.isUInt64 ());
+  const unsigned height = heightVal.asUInt64 ();
+
+  DamageLists dl(db, height);
+  dl.RemoveOld (params.DamageListBlocks ());
+
+  AllHpUpdates (db, dl, rnd, map);
   ProcessBusy (db, map);
 
   DynObstacles dyn(db);

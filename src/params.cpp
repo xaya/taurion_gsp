@@ -43,6 +43,12 @@ Params::BlockedStepRetries () const
 }
 
 unsigned
+Params::DamageListBlocks () const
+{
+  return 100;
+}
+
+unsigned
 Params::ProspectingBlocks () const
 {
   return 10;

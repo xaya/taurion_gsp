@@ -3,6 +3,7 @@
 
 #include "params.hpp"
 
+#include "database/damagelists.hpp"
 #include "database/database.hpp"
 #include "mapdata/basemap.hpp"
 
@@ -22,6 +23,9 @@ private:
   /** Database to read from.  */
   Database& db;
 
+  /** Damage lists accessor (for adding the attackers to a character JSON).  */
+  const DamageLists dl;
+
   /** Game parameters.  */
   const Params& params;
 
@@ -38,7 +42,7 @@ private:
 public:
 
   explicit GameStateJson (Database& d, const Params& p, const BaseMap& m)
-    : db(d), params(p), map(m)
+    : db(d), dl(db), params(p), map(m)
   {}
 
   GameStateJson () = delete;
