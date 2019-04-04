@@ -54,6 +54,46 @@ Params::ProspectingBlocks () const
   return 10;
 }
 
+namespace
+{
+
+/**
+ * Prospecting prizes for mainnet/testnet.  They are chosen such that the
+ * expected value of the Bernoulli distribution is to reach the available
+ * prizes after 200k trials for each one.
+ */
+const std::vector<Params::PrizeData> PRIZES =
+  {
+    {"gold", 2, 100000},
+    {"silver", 50, 4000},
+    {"bronze", 2000, 100},
+  };
+
+/** Prospecting prizes for regtest (easier to find / exhaust).  */
+const std::vector<Params::PrizeData> PRIZES_REGTEST =
+  {
+    {"gold", 3, 100},
+    {"silver", 1000, 10},
+    {"bronze", 0, 1},
+  };
+
+} // anonymous namespace
+
+const std::vector<Params::PrizeData>&
+Params::ProspectingPrizes () const
+{
+  switch (chain)
+    {
+    case xaya::Chain::MAIN:
+    case xaya::Chain::TEST:
+      return PRIZES;
+    case xaya::Chain::REGTEST:
+      return PRIZES_REGTEST;
+    default:
+      LOG (FATAL) << "Invalid chain value: " << static_cast<int> (chain);
+    }
+}
+
 HexCoord
 Params::SpawnArea (const Faction f, HexCoord::IntT& radius) const
 {

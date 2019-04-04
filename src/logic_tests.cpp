@@ -1,6 +1,7 @@
 #include "logic.hpp"
 
 #include "params.hpp"
+#include "prospecting.hpp"
 #include "protoutils.hpp"
 #include "testutils.hpp"
 
@@ -43,7 +44,9 @@ protected:
 
   PXLogicTests ()
     : params(xaya::Chain::MAIN), characters(db), regions(db)
-  {}
+  {
+    InitialisePrizes (db, params);
+  }
 
   /**
    * Builds a blockData JSON value from the given moves (JSON serialised

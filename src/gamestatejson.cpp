@@ -5,6 +5,7 @@
 
 #include "database/character.hpp"
 #include "database/faction.hpp"
+#include "database/prizes.hpp"
 #include "database/region.hpp"
 #include "hexagonal/pathfinder.hpp"
 #include "proto/character.pb.h"
@@ -216,7 +217,11 @@ template <>
   if (pb.has_prospecting_character ())
     prospection["inprogress"] = IntToJson (pb.prospecting_character ());
   if (pb.has_prospection ())
-    prospection["name"] = pb.prospection ().name ();
+    {
+      prospection["name"] = pb.prospection ().name ();
+      if (pb.prospection ().has_prize ())
+        prospection["prize"] = pb.prospection ().prize ();
+    }
 
   if (!prospection.empty ())
     res["prospection"] = prospection;
@@ -240,6 +245,30 @@ template <typename T>
 }
 
 Json::Value
+GameStateJson::PrizeStats ()
+{
+  Prizes prizeTable(db);
+
+  Json::Value res(Json::objectValue);
+  for (const auto& p : params.ProspectingPrizes ())
+    {
+      Json::Value cur(Json::objectValue);
+      cur["number"] = p.number;
+      cur["probability"] = p.probability;
+
+      const unsigned found = prizeTable.GetFound (p.name);
+      CHECK_LE (found, p.number);
+
+      cur["found"] = found;
+      cur["available"] = p.number - found;
+
+      res[p.name] = cur;
+    }
+
+  return res;
+}
+
+Json::Value
 GameStateJson::FullState ()
 {
   Json::Value res(Json::objectValue);
@@ -253,6 +282,8 @@ GameStateJson::FullState ()
     RegionsTable tbl(db);
     res["regions"] = ResultsAsArray (tbl, tbl.QueryNonTrivial ());
   }
+
+  res["prizes"] = PrizeStats ();
 
   return res;
 }

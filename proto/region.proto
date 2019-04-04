@@ -11,6 +11,9 @@ message ProspectionOutcome
   /** The Xaya name of the user who prospected the region.  */
   optional string name = 1;
 
+  /** The prize won, if any.  */
+  optional string prize = 2;
+
 }
 
 /**

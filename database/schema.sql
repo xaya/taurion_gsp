@@ -103,3 +103,17 @@ CREATE TABLE IF NOT EXISTS `regions` (
   `proto` BLOB NOT NULL
 
 );
+
+-- =============================================================================
+
+-- Data about the still available prospecting prizes (so that we can
+-- ensure only a certain number can be found).
+CREATE TABLE IF NOT EXISTS `prizes` (
+
+  -- Name of the prize (as defined in the game params).
+  `name` TEXT PRIMARY KEY,
+
+  -- Number of prizes found from this type already.
+  `found` INTEGER NOT NULL
+
+);

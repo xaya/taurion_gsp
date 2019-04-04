@@ -1,9 +1,11 @@
 #include "gamestatejson.hpp"
 
+#include "prospecting.hpp"
 #include "protoutils.hpp"
 
 #include "database/character.hpp"
 #include "database/dbtest.hpp"
+#include "database/prizes.hpp"
 #include "database/region.hpp"
 #include "proto/character.pb.h"
 #include "proto/region.pb.h"
@@ -239,7 +241,9 @@ protected:
 
   GameStateJsonTests ()
     : params(xaya::Chain::MAIN), converter(db, params, map)
-  {}
+  {
+    InitialisePrizes (db, params);
+  }
 
   /**
    * Expects that the current state matches the given one, after parsing
@@ -592,12 +596,68 @@ TEST_F (RegionJsonTests, Prospection)
   tbl.GetById (20)->MutableProto ().set_prospecting_character (42);
   tbl.GetById (10)->MutableProto ().mutable_prospection ()->set_name ("foo");
 
+  auto r = tbl.GetById (30);
+  auto* prosp = r->MutableProto ().mutable_prospection ();
+  prosp->set_name ("bar");
+  prosp->set_prize ("gold");
+  r.reset ();
+
   ExpectStateJson (R"({
     "regions":
       [
-        {"id": 10, "prospection": {"name": "foo"}},
-        {"id": 20, "prospection": {"inprogress": 42}}
+        {"id": 10, "prospection": {"name": "foo", "prize": null}},
+        {"id": 20, "prospection": {"inprogress": 42}},
+        {"id": 30, "prospection": {"name": "bar", "prize": "gold"}}
       ]
+  })");
+}
+
+/* ************************************************************************** */
+
+class PrizesJsonTests : public GameStateJsonTests
+{
+
+protected:
+
+  Prizes tbl;
+
+  PrizesJsonTests ()
+    : tbl(db)
+  {}
+
+};
+
+TEST_F (PrizesJsonTests, Works)
+{
+  tbl.IncrementFound ("gold");
+  for (unsigned i = 0; i < 10; ++i)
+    tbl.IncrementFound ("bronze");
+
+  ExpectStateJson (R"({
+    "prizes":
+      {
+        "gold":
+          {
+            "number": 2,
+            "probability": 100000,
+            "found": 1,
+            "available": 1
+          },
+        "silver":
+          {
+            "number": 50,
+            "probability": 4000,
+            "found": 0,
+            "available": 50
+          },
+        "bronze":
+          {
+            "number": 2000,
+            "probability": 100,
+            "found": 10,
+            "available": 1990
+          }
+      }
   })");
 }
 
