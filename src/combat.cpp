@@ -261,11 +261,13 @@ RegenerateHP (Database& db)
 }
 
 void
-AllHpUpdates (Database& db, DamageLists& dl, xaya::Random& rnd,
+AllHpUpdates (Database& db, FameUpdater& fame, xaya::Random& rnd,
               const BaseMap& map)
 {
-  const auto dead = DealCombatDamage (db, dl, rnd);
-  ProcessKills (db, dl, dead, map);
+  const auto dead = DealCombatDamage (db, fame.GetDamageLists (), rnd);
+  for (const auto& id : dead)
+    fame.UpdateForKill (id);
+  ProcessKills (db, fame.GetDamageLists (), dead, map);
   RegenerateHP (db);
 }
 

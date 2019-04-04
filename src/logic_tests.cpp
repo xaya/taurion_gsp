@@ -1,5 +1,6 @@
 #include "logic.hpp"
 
+#include "fame_tests.hpp"
 #include "params.hpp"
 #include "prospecting.hpp"
 #include "protoutils.hpp"
@@ -13,12 +14,14 @@
 #include "hexagonal/coord.hpp"
 #include "mapdata/basemap.hpp"
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <json/json.h>
 
 #include <sstream>
 #include <string>
+#include <vector>
 
 namespace pxd
 {
@@ -88,6 +91,17 @@ protected:
   UpdateStateWithData (const Json::Value& blockData)
   {
     PXLogic::UpdateState (db, rnd, params, map, blockData);
+  }
+
+  /**
+   * Calls PXLogic::UpdateState with the given moves and a provided (mocked)
+   * FameUpdater instance.
+   */
+  void
+  UpdateStateWithFame (FameUpdater& fame, const std::string& moveStr)
+  {
+    const auto blockData = BuildBlockData (moveStr);
+    PXLogic::UpdateState (db, fame, rnd, params, map, blockData);
   }
 
 };
@@ -295,6 +309,36 @@ TEST_F (PXLogicTests, DamageLists)
   blockData["block"]["height"] = 200;
   UpdateStateWithData (blockData);
   EXPECT_EQ (dl.GetAttackers (idTarget), DamageLists::Attackers ({}));
+}
+
+TEST_F (PXLogicTests, FameUpdate)
+{
+  /* Set up two characters that will kill each other in the same turn.  */
+  std::vector<Database::IdT> ids;
+  for (const auto f : {Faction::RED, Faction::GREEN})
+    {
+      auto c = characters.CreateNew ("domob", f);
+      ids.push_back (c->GetId ());
+      auto* cd = c->MutableProto ().mutable_combat_data ();
+      cd->mutable_max_hp ()->set_shield (1);
+      c->MutableHP ().set_shield (1);
+      auto* attack = cd->add_attacks ();
+      attack->set_range (1);
+      attack->set_max_damage (1);
+    }
+
+  MockFameUpdater fame(db, 0);
+
+  EXPECT_CALL (fame, UpdateForKill (ids[0], DamageLists::Attackers ({ids[1]})));
+  EXPECT_CALL (fame, UpdateForKill (ids[1], DamageLists::Attackers ({ids[0]})));
+
+  /* Do two updates, first for targeting and the second for the actual kill.  */
+  UpdateStateWithFame (fame, "[]");
+  ASSERT_NE (characters.GetById (ids[0]), nullptr);
+  ASSERT_NE (characters.GetById (ids[1]), nullptr);
+  UpdateStateWithFame (fame, "[]");
+  ASSERT_EQ (characters.GetById (ids[0]), nullptr);
+  ASSERT_EQ (characters.GetById (ids[1]), nullptr);
 }
 
 TEST_F (PXLogicTests, ProspectingBeforeMovement)

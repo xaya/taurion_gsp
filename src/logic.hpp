@@ -1,6 +1,7 @@
 #ifndef PXD_LOGIC_HPP
 #define PXD_LOGIC_HPP
 
+#include "fame.hpp"
 #include "params.hpp"
 
 #include "database/database.hpp"
@@ -41,6 +42,14 @@ private:
    * independently of SQLiteGame.
    */
   static void UpdateState (Database& db, xaya::Random& rnd,
+                           const Params& params, const BaseMap& map,
+                           const Json::Value& blockData);
+
+  /**
+   * Updates the state with a custom FameUpdater.  This is used for mocking
+   * the instance in tests.
+   */
+  static void UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
                            const Params& params, const BaseMap& map,
                            const Json::Value& blockData);
 
