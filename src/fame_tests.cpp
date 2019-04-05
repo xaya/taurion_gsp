@@ -18,8 +18,57 @@ MockFameUpdater::MockFameUpdater (Database& db, const unsigned height)
   EXPECT_CALL (*this, UpdateForKill (_, _)).Times (0);
 }
 
+/* ************************************************************************** */
+
+class FameTests : public DBTestWithSchema
+{
+
+protected:
+
+  CharacterTable characters;
+  AccountsTable accounts;
+
+  /** Updater instance used in testing.  */
+  FameUpdater fame;
+
+  FameTests ()
+    : characters(db), accounts(db), fame(db, 0)
+  {}
+
+  /**
+   * Calls the FameUpdater::UpdateForKill method for the given data.
+   */
+  void
+  UpdateForKill (const Database::IdT victim,
+                 const DamageLists::Attackers& attackers)
+  {
+    fame.UpdateForKill (victim, attackers);
+  }
+
+};
+
 namespace
 {
+
+TEST_F (FameTests, TrackingKills)
+{
+  const auto id1 = characters.CreateNew ("foo", Faction::RED)->GetId ();
+  const auto id2 = characters.CreateNew ("foo", Faction::RED)->GetId ();
+  const auto id3 = characters.CreateNew ("bar", Faction::RED)->GetId ();
+  const auto id4 = characters.CreateNew ("bar", Faction::RED)->GetId ();
+
+  /* Add initial data to make sure that's taken into account.  */
+  accounts.GetByName ("foo")->SetKills (10);
+
+  /* Multiple killers (including the character owner himself) as well as
+     multiple killing characters of one owner.  */
+  UpdateForKill (id4, {id1, id2, id3});
+
+  EXPECT_EQ (accounts.GetByName ("foo")->GetKills (), 11);
+  EXPECT_EQ (accounts.GetByName ("bar")->GetKills (), 1);
+}
+
+/* ************************************************************************** */
 
 using FameFrameworkTests = DBTestWithSchema;
 
@@ -44,6 +93,8 @@ TEST_F (FameFrameworkTests, UpdateForKill)
   id.set_id (2);
   fame.UpdateForKill (id);
 }
+
+/* ************************************************************************** */
 
 } // anonymous namespace
 } // namespace pxd

@@ -1,6 +1,8 @@
 #ifndef PXD_FAME_HPP
 #define PXD_FAME_HPP
 
+#include "database/account.hpp"
+#include "database/character.hpp"
 #include "database/damagelists.hpp"
 #include "database/database.hpp"
 #include "proto/combat.pb.h"
@@ -23,11 +25,21 @@ private:
   /** A DamageLists instance we use for the updates during computation.  */
   DamageLists dl;
 
+  /** Character table used for looking up owners.  */
+  CharacterTable characters;
+
+  /** Accounts table for updating fame and kills.  */
+  AccountsTable accounts;
+
+  friend class FameTests;
+
 protected:
 
   /**
    * Updates fame accordingly for the given kill.  This is the main internal
    * routine handling fame computation, which holds the actual logic.
+   *
+   * It is virtual so that it can be mocked for testing.
    */
   virtual void UpdateForKill (Database::IdT victim,
                               const DamageLists::Attackers& attackers);
@@ -35,7 +47,7 @@ protected:
 public:
 
   explicit FameUpdater (Database& db, const unsigned height)
-    : dl(db, height)
+    : dl(db, height), characters(db), accounts(db)
   {}
 
   virtual ~FameUpdater () = default;
