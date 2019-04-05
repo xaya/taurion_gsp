@@ -89,6 +89,22 @@ CREATE INDEX IF NOT EXISTS `damage_lists_height` ON `damage_lists` (`height`);
 
 -- =============================================================================
 
+-- Data stored for the Xaya accounts (names) themselves.
+CREATE TABLE IF NOT EXISTS `accounts` (
+
+  -- The Xaya p/ name of this account.
+  `name` TEXT PRIMARY KEY,
+
+  -- The number of characters killed by the account in total.
+  `kills` INTEGER NOT NULL,
+
+  -- The fame of this account.
+  `fame` INTEGER NOT NULL
+
+);
+
+-- =============================================================================
+
 -- Data for regions where we already have non-trivial data.  Rows here are
 -- only created over time, for regions when the first change is made
 -- away from the "default / empty" state.
