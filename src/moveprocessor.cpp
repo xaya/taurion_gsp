@@ -64,40 +64,61 @@ MoveProcessor::ProcessOne (const Json::Value& moveObj)
 void
 MoveProcessor::HandleCharacterCreation (const std::string& name,
                                         const Json::Value& mv,
-                                        const Amount paidToDev)
+                                        Amount paidToDev)
 {
   const auto& cmd = mv["nc"];
-  if (!cmd.isObject ())
+  if (!cmd.isArray ())
     return;
 
-  VLOG (1) << "Attempting to create new character through move: " << cmd;
+  VLOG (1) << "Attempting to create new characters through move: " << cmd;
 
-  const auto& factionVal = cmd["faction"];
-  if (!factionVal.isString ())
+  for (const auto& cur : cmd)
     {
-      LOG (WARNING) << "Character creation does not specify faction: " << cmd;
-      return;
-    }
-  const Faction faction = FactionFromString (factionVal.asString ());
-  if (faction == Faction::INVALID)
-    {
-      LOG (WARNING) << "Invalid faction specified for character: " << cmd;
-      return;
+      if (!cur.isObject ())
+        {
+          LOG (WARNING)
+              << "Character creation entry is not an object: " << cur;
+          continue;
+        }
+
+      const auto& factionVal = cur["faction"];
+      if (!factionVal.isString ())
+        {
+          LOG (WARNING)
+              << "Character creation does not specify faction: " << cur;
+          continue;
+        }
+      const Faction faction = FactionFromString (factionVal.asString ());
+      if (faction == Faction::INVALID)
+        {
+          LOG (WARNING) << "Invalid faction specified for character: " << cur;
+          continue;
+        }
+
+      if (cur.size () != 1)
+        {
+          LOG (WARNING) << "Character creation has extra fields: " << cur;
+          continue;
+        }
+
+      if (paidToDev < params.CharacterCost ())
+        {
+          /* In this case, we can return rather than continue with the next
+             iteration.  If all money paid is "used up" already, then it won't
+             be enough for later entries of the array, either.  */
+          LOG (WARNING)
+              << "Required amount for new character not paid by " << name;
+          return;
+        }
+
+      SpawnCharacter (name, faction, characters, dyn, rnd, map, params);
+      paidToDev -= params.CharacterCost ();
     }
 
-  if (cmd.size () != 1)
-    {
-      LOG (WARNING) << "Character creation has extra fields: " << cmd;
-      return;
-    }
-
-  if (paidToDev < params.CharacterCost ())
-    {
-      LOG (WARNING) << "Required amount for new character not paid by " << name;
-      return;
-    }
-
-  SpawnCharacter (name, faction, characters, dyn, rnd, map, params);
+  if (paidToDev > 0)
+    LOG (WARNING)
+        << "Developer payment unused for character creation by " << name
+        << ": " << paidToDev;
 }
 
 namespace

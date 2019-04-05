@@ -149,13 +149,13 @@ TEST_F (CharacterCreationTests, InvalidCommands)
   ProcessWithDevPayment (R"([
     {"name": "domob", "move": {}},
     {"name": "domob", "move": {"nc": 42}},
-    {"name": "domob", "move": {"nc": {}}},
+    {"name": "domob", "move": {"nc": [{}]}},
     {"name": "domob", "move":
       {
-        "nc": {"faction": "r", "other": false}
+        "nc": [{"faction": "r", "other": false}]
       }},
-    {"name": "domob", "move": {"nc": {"faction": "x"}}},
-    {"name": "domob", "move": {"nc": {"faction": 0}}}
+    {"name": "domob", "move": {"nc": [{"faction": "x"}]}},
+    {"name": "domob", "move": {"nc": [{"faction": 0}]}}
   ])", params.CharacterCost ());
 
   auto res = tbl.QueryAll ();
@@ -165,9 +165,10 @@ TEST_F (CharacterCreationTests, InvalidCommands)
 TEST_F (CharacterCreationTests, ValidCreation)
 {
   ProcessWithDevPayment (R"([
-    {"name": "domob", "move": {"nc": {"faction": "r"}}},
-    {"name": "domob", "move": {"nc": {"faction": "g"}}},
-    {"name": "andy", "move": {"nc": {"faction": "b"}}}
+    {"name": "domob", "move": {"nc": []}},
+    {"name": "domob", "move": {"nc": [{"faction": "r"}]}},
+    {"name": "domob", "move": {"nc": [{"faction": "g"}]}},
+    {"name": "andy", "move": {"nc": [{"faction": "b"}]}}
   ])", params.CharacterCost ());
 
   auto res = tbl.QueryAll ();
@@ -193,13 +194,13 @@ TEST_F (CharacterCreationTests, ValidCreation)
 TEST_F (CharacterCreationTests, DevPayment)
 {
   Process (R"([
-    {"name": "domob", "move": {"nc": {"faction": "r"}}}
+    {"name": "domob", "move": {"nc": [{"faction": "r"}]}}
   ])");
   ProcessWithDevPayment (R"([
-    {"name": "domob", "move": {"nc": {"faction": "g"}}}
+    {"name": "domob", "move": {"nc": [{"faction": "g"}]}}
   ])", params.CharacterCost () - 1);
   ProcessWithDevPayment (R"([
-    {"name": "domob", "move": {"nc": {"faction": "b"}}}
+    {"name": "domob", "move": {"nc": [{"faction": "b"}]}}
   ])", params.CharacterCost () + 1);
 
   auto res = tbl.QueryAll ();
@@ -207,6 +208,37 @@ TEST_F (CharacterCreationTests, DevPayment)
   auto c = tbl.GetFromResult (res);
   EXPECT_EQ (c->GetOwner (), "domob");
   EXPECT_EQ (c->GetFaction (), Faction::BLUE);
+  EXPECT_FALSE (res.Step ());
+}
+
+TEST_F (CharacterCreationTests, Multiple)
+{
+  ProcessWithDevPayment (R"([
+    {
+      "name": "domob",
+      "move":
+        {
+          "nc":
+            [
+              {"faction": "invalid"},
+              {"faction": "r"},
+              {"faction": "g"},
+              {"faction": "b"}
+            ]
+        }
+    }
+  ])", 2 * params.CharacterCost ());
+
+  auto res = tbl.QueryAll ();
+
+  ASSERT_TRUE (res.Step ());
+  auto c = tbl.GetFromResult (res);
+  EXPECT_EQ (c->GetFaction (), Faction::RED);
+
+  EXPECT_TRUE (res.Step ());
+  c = tbl.GetFromResult (res);
+  EXPECT_EQ (c->GetFaction (), Faction::GREEN);
+
   EXPECT_FALSE (res.Step ());
 }
 
@@ -264,7 +296,7 @@ TEST_F (CharacterUpdateTests, CreationAndUpdate)
     "name": "domob",
     "move":
       {
-        "nc": {"faction": "r"},
+        "nc": [{"faction": "r"}],
         "c": {"1": {"send": "daniel"}, "2": {"send": "andy"}}
       }
   }])", params.CharacterCost ());

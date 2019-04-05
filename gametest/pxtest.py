@@ -125,7 +125,7 @@ class PXTest (XayaGameTest):
       "faction": faction,
     }
 
-    return self.moveWithPayment (owner, {"nc": data}, CHARACTER_COST)
+    return self.moveWithPayment (owner, {"nc": [data]}, CHARACTER_COST)
 
   def getCharacters (self):
     """
