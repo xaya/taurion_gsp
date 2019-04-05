@@ -3,6 +3,7 @@
 #include "prospecting.hpp"
 #include "protoutils.hpp"
 
+#include "database/account.hpp"
 #include "database/character.hpp"
 #include "database/dbtest.hpp"
 #include "database/prizes.hpp"
@@ -552,6 +553,35 @@ TEST_F (CharacterJsonTests, Prospecting)
           "owner": "notbusy",
           "busy": null
         }
+      ]
+  })");
+}
+
+/* ************************************************************************** */
+
+class AccountJsonTests : public GameStateJsonTests
+{
+
+protected:
+
+  AccountsTable tbl;
+
+  AccountJsonTests ()
+    : tbl(db)
+  {}
+
+};
+
+TEST_F (AccountJsonTests, KillsAndFame)
+{
+  tbl.GetByName ("foo")->SetKills (10);
+  tbl.GetByName ("bar")->SetFame (42);
+
+  ExpectStateJson (R"({
+    "accounts":
+      [
+        {"name": "bar", "kills": 0, "fame": 42},
+        {"name": "foo", "kills": 10, "fame": 100}
       ]
   })");
 }
