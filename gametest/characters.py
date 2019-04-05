@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding=utf8
 
-from pxtest import PXTest
+from pxtest import PXTest, CHARACTER_COST
 
 """
 Runs tests about the basic handling of characters (creating them, transferring
@@ -86,6 +86,23 @@ class CharactersTest (PXTest):
       "andy": {"owner": "andy"},
       "": {"owner": ""},
       u"äöü": {"owner": u"äöü"},
+    })
+
+    self.mainLogger.info ("Multiple creations in one transaction...")
+    data = [
+      {"faction": "r"},
+      {"faction": "g"},
+      {"faction": "b"},
+    ]
+    self.moveWithPayment ("domob", {"nc": data}, 2.5 * CHARACTER_COST)
+    self.generate (1)
+    self.expectPartial ({
+      "adam": {"owner": "adam"},
+      "andy": {"owner": "andy"},
+      "": {"owner": ""},
+      u"äöü": {"owner": u"äöü"},
+      "domob": {"faction": "r"},
+      "domob 2": {"faction": "g"},
     })
 
     self.testReorg ()
