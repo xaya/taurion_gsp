@@ -1,6 +1,8 @@
 #ifndef PXD_COMBAT_HPP
 #define PXD_COMBAT_HPP
 
+#include "fame.hpp"
+
 #include "database/damagelists.hpp"
 #include "database/database.hpp"
 #include "mapdata/basemap.hpp"
@@ -42,7 +44,7 @@ void RegenerateHP (Database& db);
  * Runs the three coupled steps to update HP at the beginning of computing
  * a block:  Dealing damage, handling kills and regenerating.
  */
-void AllHpUpdates (Database& db, DamageLists& dl, xaya::Random& rnd,
+void AllHpUpdates (Database& db, FameUpdater& fame, xaya::Random& rnd,
                    const BaseMap& map);
 
 } // namespace pxd

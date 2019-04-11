@@ -19,6 +19,7 @@ libtaurion_la_LIBADD = \
 libtaurion_la_SOURCES = \
   combat.cpp \
   dynobstacles.cpp \
+  fame.cpp \
   gamestatejson.cpp \
   jsonutils.cpp \
   logic.cpp \
@@ -32,6 +33,7 @@ libtaurionheaders = \
   amount.hpp \
   combat.hpp \
   dynobstacles.hpp \
+  fame.hpp \
   gamestatejson.hpp \
   jsonutils.hpp \
   logic.hpp \
@@ -82,6 +84,7 @@ tests_LDADD = \
 tests_SOURCES = \
   combat_tests.cpp \
   dynobstacles_tests.cpp \
+  fame_tests.cpp \
   gamestatejson_tests.cpp \
   jsonutils_tests.cpp \
   logic_tests.cpp \
@@ -93,6 +96,8 @@ tests_SOURCES = \
   \
   testutils.cpp
 check_HEADERS = \
+  fame_tests.hpp \
+  \
   testutils.hpp
 
 benchmarks_CXXFLAGS = \

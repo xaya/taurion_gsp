@@ -84,6 +84,18 @@ class Character (object):
       self.test.assertEqual (self.data[key], val)
 
 
+class Account (object):
+  """
+  Basic handle for an account (Xaya name) in the game state.
+  """
+
+  def __init__ (self, data):
+    self.data = data
+
+  def getName (self):
+    return self.data["name"]
+
+
 class Region (object):
   """
   Basic handle for a region in the game state.
@@ -126,6 +138,18 @@ class PXTest (XayaGameTest):
     }
 
     return self.moveWithPayment (owner, {"nc": [data]}, CHARACTER_COST)
+
+  def createCharacters (self, owner, factions):
+    """
+    Utility method to create multiple characters for a given owner.
+    """
+
+    data = [{
+      "faction": faction,
+    } for faction in factions]
+
+    return self.moveWithPayment (owner, {"nc": data},
+                                 len (data) * CHARACTER_COST)
 
   def getCharacters (self):
     """
@@ -191,6 +215,23 @@ class PXTest (XayaGameTest):
     self.log.info ("Created %d characters for the block" % nextIndex)
 
     self.moveCharactersTo (mv)
+
+  def getAccounts (self):
+    """
+    Returns all accounts with non-trivial data in the current game state.
+    """
+
+    state = self.getGameState ()
+    assert "accounts" in state
+
+    res = {}
+    for a in state["accounts"]:
+      handle = Account (a)
+      nm = handle.getName ()
+      assert nm not in res
+      res[nm] = handle
+
+    return res
 
   def getRegion (self, regionId):
     """

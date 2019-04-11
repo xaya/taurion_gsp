@@ -102,10 +102,18 @@ PXLogic::UpdateState (Database& db, xaya::Random& rnd,
   CHECK (heightVal.isUInt64 ());
   const unsigned height = heightVal.asUInt64 ();
 
-  DamageLists dl(db, height);
-  dl.RemoveOld (params.DamageListBlocks ());
+  FameUpdater fame(db, height);
+  UpdateState (db, fame, rnd, params, map, blockData);
+}
 
-  AllHpUpdates (db, dl, rnd, map);
+void
+PXLogic::UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
+                      const Params& params, const BaseMap& map,
+                      const Json::Value& blockData)
+{
+  fame.GetDamageLists ().RemoveOld (params.DamageListBlocks ());
+
+  AllHpUpdates (db, fame, rnd, map);
   ProcessBusy (db, rnd, params, map);
 
   DynObstacles dyn(db);

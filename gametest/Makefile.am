@@ -6,6 +6,7 @@ REGTESTS = \
   combat_damage.py \
   combat_targets.py \
   damage_lists.py \
+  fame.py \
   findpath.py \
   getregionat.py \
   godmode.py \

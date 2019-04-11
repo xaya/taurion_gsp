@@ -13,6 +13,7 @@ libdatabase_la_LIBADD = \
   $(XAYAGAME_LIBS) \
   $(GLOG_LIBS) $(SQLITE3_LIBS) $(PROTOBUF_LIBS)
 libdatabase_la_SOURCES = \
+  account.cpp \
   character.cpp \
   damagelists.cpp \
   database.cpp \
@@ -23,6 +24,7 @@ libdatabase_la_SOURCES = \
   schema.cpp \
   target.cpp
 noinst_HEADERS = \
+  account.hpp \
   character.hpp \
   damagelists.hpp \
   database.hpp \
@@ -62,6 +64,7 @@ tests_LDADD = \
   $(GTEST_MAIN_LIBS) \
   $(GTEST_LIBS) $(GLOG_LIBS)
 tests_SOURCES = \
+  account_tests.cpp \
   character_tests.cpp \
   damagelists_tests.cpp \
   database_tests.cpp \

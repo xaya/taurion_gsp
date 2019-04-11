@@ -3,6 +3,7 @@
 #include "jsonutils.hpp"
 #include "protoutils.hpp"
 
+#include "database/account.hpp"
 #include "database/character.hpp"
 #include "database/faction.hpp"
 #include "database/prizes.hpp"
@@ -206,6 +207,18 @@ template <>
 
 template <>
   Json::Value
+  GameStateJson::Convert<Account> (const Account& a) const
+{
+  Json::Value res(Json::objectValue);
+  res["name"] = a.GetName ();
+  res["kills"] = IntToJson (a.GetKills ());
+  res["fame"] = IntToJson (a.GetFame ());
+
+  return res;
+}
+
+template <>
+  Json::Value
   GameStateJson::Convert<Region> (const Region& r) const
 {
   const auto& pb = r.GetProto ();
@@ -276,6 +289,11 @@ GameStateJson::FullState ()
   {
     CharacterTable tbl(db);
     res["characters"] = ResultsAsArray (tbl, tbl.QueryAll ());
+  }
+
+  {
+    AccountsTable tbl(db);
+    res["accounts"] = ResultsAsArray (tbl, tbl.QueryNonTrivial ());
   }
 
   {
