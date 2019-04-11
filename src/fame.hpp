@@ -7,6 +7,9 @@
 #include "database/database.hpp"
 #include "proto/combat.pb.h"
 
+#include <map>
+#include <string>
+
 namespace pxd
 {
 
@@ -31,6 +34,29 @@ private:
   /** Accounts table for updating fame and kills.  */
   AccountsTable accounts;
 
+  /**
+   * For accounts that had their fame updated, we keep the "original" fame
+   * value in this cache.  This allows us do the whole update computation
+   * on a single, consistent, frozen set of fame values, rather than have
+   * it depend on the exact order of changes.
+   */
+  std::map<std::string, unsigned> originalFame;
+
+  /**
+   * Retrieves the original fame value of the given account.  This tries to look
+   * it up in originalFame.  If not found there, we use the current value
+   * from the Account instance and also store it in the cache.
+   */
+  unsigned GetOriginalFame (const Account& a);
+
+  /**
+   * Computes the "fame level" of a player.  This is used to determine who
+   * gets fame (namely those max one level above/below).  This is an int so
+   * that we can safely compute differences.
+   */
+  static int GetLevel (unsigned fame);
+
+  friend class FameLevelTests;
   friend class FameTests;
 
 protected:
