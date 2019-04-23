@@ -3,9 +3,10 @@ noinst_PROGRAMS = procmap
 
 COMPRESSED = obstacledata.dat.xz regiondata.dat.xz
 UNCOMPRESSED = $(COMPRESSED:%.xz=%)
+CHECKSUMS = $(COMPRESSED:%.xz=%.sha512)
 BLOBS = obstacles.bin regionxcoord.bin regionids.bin
 
-EXTRA_DIST = $(COMPRESSED)
+EXTRA_DIST = $(COMPRESSED) $(CHECKSUMS)
 
 BUILT_SOURCES = tiledata.cpp
 CLEANFILES = $(UNCOMPRESSED) tiledata.cpp $(BLOBS)
@@ -69,8 +70,9 @@ procmap_LDADD = \
 procmap_SOURCES = procmap.cpp \
   dataio.cpp
 
-$(UNCOMPRESSED): %: %.xz
+$(UNCOMPRESSED): %: %.xz %.sha512
 	xz -dc $< >$@
+	sha512sum -c $(srcdir)/$*.sha512
 
 tiledata.cpp $(BLOBS): $(UNCOMPRESSED) procmap$(EXEEXT)
 	$(builddir)/procmap$(EXEEKT) \
