@@ -106,6 +106,21 @@ protected:
 
 };
 
+namespace
+{
+
+/**
+ * Adds an attack to the character that does always exactly one damage and
+ * has the given range.
+ */
+void
+AddUnityAttack (Character& c, const HexCoord::IntT range)
+{
+  auto* attack = c.MutableProto ().mutable_combat_data ()->add_attacks ();
+  attack->set_range (range);
+  attack->set_max_damage (1);
+}
+
 TEST_F (PXLogicTests, WaypointsBeforeMovement)
 {
   auto c = characters.CreateNew ("domob", Faction::RED);
@@ -133,9 +148,7 @@ TEST_F (PXLogicTests, MovementBeforeTargeting)
 {
   auto c = characters.CreateNew ("domob", Faction::RED);
   const auto id1 = c->GetId ();
-  auto* attack = c->MutableProto ().mutable_combat_data ()->add_attacks ();
-  attack->set_range (10);
-  attack->set_max_damage (1);
+  AddUnityAttack (*c, 10);
   c.reset ();
 
   c = characters.CreateNew ("domob", Faction::GREEN);
@@ -172,9 +185,7 @@ TEST_F (PXLogicTests, KilledVehicleNoLongerBlocks)
   auto c = characters.CreateNew ("attacker", Faction::GREEN);
   const auto idAttacker = c->GetId ();
   c->SetPosition (HexCoord (11, 0));
-  auto* attack = c->MutableProto ().mutable_combat_data ()->add_attacks ();
-  attack->set_range (1);
-  attack->set_max_damage (1);
+  AddUnityAttack (*c, 1);
   c.reset ();
 
   c = characters.CreateNew ("obstacle", Faction::RED);
@@ -215,9 +226,7 @@ TEST_F (PXLogicTests, KilledVehicleNoLongerBlocks)
 TEST_F (PXLogicTests, DamageInNextRound)
 {
   auto c = characters.CreateNew ("domob", Faction::RED);
-  auto* attack = c->MutableProto ().mutable_combat_data ()->add_attacks ();
-  attack->set_range (1);
-  attack->set_max_damage (1);
+  AddUnityAttack (*c, 1);
   c.reset ();
 
   c = characters.CreateNew ("domob", Faction::GREEN);
@@ -235,9 +244,7 @@ TEST_F (PXLogicTests, DamageInNextRound)
 TEST_F (PXLogicTests, DamageKillsRegeneration)
 {
   auto c = characters.CreateNew ("domob", Faction::RED);
-  auto* attack = c->MutableProto ().mutable_combat_data ()->add_attacks ();
-  attack->set_range (1);
-  attack->set_max_damage (1);
+  AddUnityAttack (*c, 1);
   c.reset ();
 
   c = characters.CreateNew ("domob", Faction::GREEN);
@@ -270,9 +277,7 @@ TEST_F (PXLogicTests, DamageLists)
 
   auto c = characters.CreateNew ("domob", Faction::RED);
   const auto idAttacker = c->GetId ();
-  auto* attack = c->MutableProto ().mutable_combat_data ()->add_attacks ();
-  attack->set_range (1);
-  attack->set_max_damage (1);
+  AddUnityAttack (*c, 1);
   c.reset ();
 
   c = characters.CreateNew ("domob", Faction::GREEN);
@@ -319,12 +324,10 @@ TEST_F (PXLogicTests, FameUpdate)
     {
       auto c = characters.CreateNew ("domob", f);
       ids.push_back (c->GetId ());
+      AddUnityAttack (*c, 1);
       auto* cd = c->MutableProto ().mutable_combat_data ();
       cd->mutable_max_hp ()->set_shield (1);
       c->MutableHP ().set_shield (1);
-      auto* attack = cd->add_attacks ();
-      attack->set_range (1);
-      attack->set_max_damage (1);
     }
 
   MockFameUpdater fame(db, 0);
@@ -401,9 +404,7 @@ TEST_F (PXLogicTests, ProspectingUserKilled)
   auto c = characters.CreateNew ("domob", Faction::RED);
   ASSERT_EQ (c->GetId (), 1);
   c->SetPosition (pos);
-  auto* attack = c->MutableProto ().mutable_combat_data ()->add_attacks ();
-  attack->set_range (1);
-  attack->set_max_damage (1);
+  AddUnityAttack (*c, 1);
   c.reset ();
 
   c = characters.CreateNew ("domob", Faction::GREEN);
@@ -505,4 +506,5 @@ TEST_F (PXLogicTests, FinishingProspecting)
   EXPECT_EQ (r->GetProto ().prospection ().name (), "domob");
 }
 
+} // anonymous namespace
 } // namespace pxd
