@@ -216,9 +216,11 @@ protected:
    */
   static void
   AddAttack (proto::Character& pb, const HexCoord::IntT range,
-             const unsigned dmg)
+             const unsigned minDmg, const unsigned maxDmg)
   {
-    AddAttackWithRange (pb, range).set_max_damage (dmg);
+    auto& attack = AddAttackWithRange (pb, range);
+    attack.set_min_damage (minDmg);
+    attack.set_max_damage (maxDmg);
   }
 
   /**
@@ -252,9 +254,9 @@ TEST_F (DealDamageTests, NoAttacks)
 TEST_F (DealDamageTests, OnlyAttacksInRange)
 {
   auto c = characters.CreateNew ("domob", Faction::RED);
-  AddAttack (c->MutableProto (), 1, 1);
-  AddAttack (c->MutableProto (), 2, 1);
-  AddAttack (c->MutableProto (), 3, 1);
+  AddAttack (c->MutableProto (), 1, 1, 1);
+  AddAttack (c->MutableProto (), 2, 1, 1);
+  AddAttack (c->MutableProto (), 3, 1, 1);
   c.reset ();
 
   c = characters.CreateNew ("domob", Faction::GREEN);
@@ -272,13 +274,13 @@ TEST_F (DealDamageTests, DamageLists)
 {
   auto c = characters.CreateNew ("domob", Faction::RED);
   const auto idAttacker = c->GetId ();
-  AddAttack (c->MutableProto (), 2, 1);
+  AddAttack (c->MutableProto (), 2, 1, 1);
   c.reset ();
 
   /* This character has no attack in range, so should not be put onto
      the damage list.  */
   c = characters.CreateNew ("domob", Faction::RED);
-  AddAttack (c->MutableProto (), 1, 1);
+  AddAttack (c->MutableProto (), 1, 1, 1);
   c.reset ();
 
   c = characters.CreateNew ("domob", Faction::GREEN);
@@ -298,21 +300,22 @@ TEST_F (DealDamageTests, DamageLists)
 
 TEST_F (DealDamageTests, RandomisedDamage)
 {
-  constexpr unsigned dmg = 10;
+  constexpr unsigned minDmg = 5;
+  constexpr unsigned maxDmg = 10;
   constexpr unsigned rolls = 1000;
-  constexpr unsigned threshold = rolls / dmg * 80 / 100;
+  constexpr unsigned threshold = rolls / (maxDmg - minDmg + 1) * 80 / 100;
 
   auto c = characters.CreateNew ("domob", Faction::RED);
-  AddAttack (c->MutableProto (), 1, dmg);
+  AddAttack (c->MutableProto (), 1, minDmg, maxDmg);
   c.reset ();
 
   c = characters.CreateNew ("domob", Faction::GREEN);
   const auto idTarget = c->GetId ();
   NoAttacks (c->MutableProto ());
-  c->MutableHP ().set_armour (dmg * rolls);
+  c->MutableHP ().set_armour (maxDmg * rolls);
   c.reset ();
 
-  std::vector<unsigned> cnts(dmg + 1);
+  std::vector<unsigned> cnts(maxDmg + 1);
   for (unsigned i = 0; i < rolls; ++i)
     {
       const int before = characters.GetById (idTarget)->GetHP ().armour ();
@@ -320,13 +323,13 @@ TEST_F (DealDamageTests, RandomisedDamage)
       const int after = characters.GetById (idTarget)->GetHP ().armour ();
 
       const int dmgDone = before - after;
-      ASSERT_GE (dmgDone, 1);
-      ASSERT_LE (dmgDone, dmg);
+      ASSERT_GE (dmgDone, minDmg);
+      ASSERT_LE (dmgDone, maxDmg);
 
       ++cnts[dmgDone];
     }
 
-  for (unsigned i = 1; i <= dmg; ++i)
+  for (unsigned i = minDmg; i <= maxDmg; ++i)
     {
       LOG (INFO) << "Damage " << i << " done: " << cnts[i] << " times";
       EXPECT_GE (cnts[i], threshold);
@@ -335,8 +338,6 @@ TEST_F (DealDamageTests, RandomisedDamage)
 
 TEST_F (DealDamageTests, HpReduction)
 {
-  constexpr unsigned trials = 100;
-
   auto c = characters.CreateNew ("domob", Faction::RED);
   const auto idAttacker = c->GetId ();
   c.reset ();
@@ -355,6 +356,7 @@ TEST_F (DealDamageTests, HpReduction)
     unsigned hpAfterArmour;
   };
   const TestCase tests[] = {
+    {0, 5, 5, 5, 5},
     {1, 1, 10, 0, 10},
     {1, 0, 10, 0, 9},
     {2, 1, 10, 0, 9},
@@ -367,52 +369,40 @@ TEST_F (DealDamageTests, HpReduction)
     {
       c = characters.GetById (idAttacker);
       c->MutableProto ().clear_combat_data ();
-      AddAttack (c->MutableProto (), 1, t.dmg);
+      AddAttack (c->MutableProto (), 1, t.dmg, t.dmg);
       c.reset ();
 
-      /* Since the total damage dealt is random, we cannot enforce directly
-         that all of t.dmg is dealt.  Thus we roll multiple times until we
-         actually hit a situation where the expectation is satisfied.  */
-      bool found = false;
-      for (unsigned i = 0; i < trials; ++i)
-        {
-          c = characters.GetById (idTarget);
-          c->MutableHP ().set_shield_mhp (999);
-          c->MutableHP ().set_shield (t.hpBeforeShield);
-          c->MutableHP ().set_armour (t.hpBeforeArmour);
-          c.reset ();
+      c = characters.GetById (idTarget);
+      c->MutableHP ().set_shield_mhp (999);
+      c->MutableHP ().set_shield (t.hpBeforeShield);
+      c->MutableHP ().set_armour (t.hpBeforeArmour);
+      c.reset ();
 
-          FindTargetsAndDamage ();
+      FindTargetsAndDamage ();
 
-          c = characters.GetById (idTarget);
-          EXPECT_GE (c->GetHP ().shield_mhp (), 999);
-          EXPECT_GE (c->GetHP ().shield (), t.hpAfterShield);
-          EXPECT_GE (c->GetHP ().armour (), t.hpAfterArmour);
+      c = characters.GetById (idTarget);
+      EXPECT_GE (c->GetHP ().shield_mhp (), 999);
+      EXPECT_GE (c->GetHP ().shield (), t.hpAfterShield);
+      EXPECT_GE (c->GetHP ().armour (), t.hpAfterArmour);
 
-          if (c->GetHP ().shield () == t.hpAfterShield
-                && c->GetHP ().armour () == t.hpAfterArmour)
-            {
-              found = true;
-              break;
-            }
-        }
-      EXPECT_TRUE (found);
+      EXPECT_EQ (c->GetHP ().shield (), t.hpAfterShield);
+      EXPECT_EQ (c->GetHP ().armour (), t.hpAfterArmour);
     }
 }
 
 TEST_F (DealDamageTests, Kills)
 {
   auto c = characters.CreateNew ("domob", Faction::RED);
-  AddAttack (c->MutableProto (), 1, 1);
+  AddAttack (c->MutableProto (), 1, 1, 1);
   c.reset ();
 
   c = characters.CreateNew ("domob", Faction::RED);
-  AddAttack (c->MutableProto (), 1, 1);
+  AddAttack (c->MutableProto (), 1, 1, 1);
   c.reset ();
 
   c = characters.CreateNew ("domob", Faction::RED);
   c->SetPosition (HexCoord (10, 10));
-  AddAttack (c->MutableProto (), 1, 1);
+  AddAttack (c->MutableProto (), 1, 1, 1);
   c.reset ();
 
   c = characters.CreateNew ("domob", Faction::GREEN);

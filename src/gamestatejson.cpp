@@ -130,6 +130,7 @@ GetCombatJsonObject (const Character& c, const DamageLists& dl)
     {
       Json::Value obj(Json::objectValue);
       obj["range"] = IntToJson (attack.range ());
+      obj["mindamage"] = IntToJson (attack.min_damage ());
       obj["maxdamage"] = IntToJson (attack.max_damage ());
       attacks.append (obj);
     }
