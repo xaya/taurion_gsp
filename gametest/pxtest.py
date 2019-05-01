@@ -193,28 +193,19 @@ class PXTest (XayaGameTest):
     for nm, c in charTargets.iteritems ():
       self.assertEqual (chars[nm].getPosition (), c)
 
-  def createCharacterBlock (self, fmt, faction, lower, upper):
+  def setCharactersHP (self, charHP):
     """
-    Creates and positions characters with the given faction and names
-    formatted as "fmt % index" as a block on each tile between the
-    lower and upper coordinates.
-
-    This is useful to create a bunch of attacking characters for testing
-    the killing of some other character.
+    Sets the HP and max HP of the characters with the given owners.
     """
 
-    nextIndex = 0
-    mv = {}
-    for x in range (lower["x"], upper["x"] + 1):
-      for y in range (lower["y"], upper["y"] + 1):
-        nm = fmt % nextIndex
-        self.createCharacter (nm, faction)
-        mv[nm] = {"x": x, "y": y}
-        nextIndex += 1
+    chars = self.getCharacters ()
+    sethp = {}
+    for nm, c in charHP.iteritems ():
+      idStr = chars[nm].getIdStr ()
+      sethp[idStr] = c
+
+    self.adminCommand ({"god": {"sethp": sethp}})
     self.generate (1)
-    self.log.info ("Created %d characters for the block" % nextIndex)
-
-    self.moveCharactersTo (mv)
 
   def getAccounts (self):
     """

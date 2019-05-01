@@ -24,6 +24,21 @@ class GodModeTest (PXTest):
     self.adminCommand ({"god": {"teleport": {idStr: target}}})
     self.generate (1)
     self.assertEqual (self.getCharacters ()["domob"].getPosition (), target)
+
+    self.mainLogger.info ("Testing sethp...")
+    self.adminCommand ({
+      "god":
+        {
+          "sethp":
+            {
+              idStr: {"a": 32, "s": 15, "ma": 100, "ms": 90},
+            },
+        },
+    })
+    self.generate (1)
+    hp = self.getCharacters ()["domob"].data["combat"]["hp"]
+    self.assertEqual (hp["current"], {"armour": 32, "shield": 15})
+    self.assertEqual (hp["max"], {"armour": 100, "shield": 90})
     
 
 if __name__ == "__main__":

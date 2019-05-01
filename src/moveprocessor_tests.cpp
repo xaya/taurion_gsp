@@ -642,6 +642,54 @@ TEST_F (GodModeTests, Teleport)
   EXPECT_FALSE (c->GetProto ().has_movement ());
 }
 
+TEST_F (GodModeTests, SetHp)
+{
+  auto c = tbl.CreateNew ("domob", Faction::RED);
+  const auto id = c->GetId ();
+  ASSERT_EQ (id, 1);
+  c->MutableHP ().set_armour (50);
+  c->MutableHP ().set_shield (20);
+  auto* cd = c->MutableProto ().mutable_combat_data ();
+  cd->mutable_max_hp ()->set_armour (50);
+  cd->mutable_max_hp ()->set_shield (20);
+  c.reset ();
+
+  ProcessAdmin (R"({
+    "god":
+      {
+        "sethp":
+          {
+            "2": {"a": 5},
+            "1": {"a": 32, "s": 15, "ma": -5, "ms": false, "x": "y"}
+          }
+      }
+  })");
+
+  c = tbl.GetById (id);
+  EXPECT_EQ (c->GetHP ().armour (), 32);
+  EXPECT_EQ (c->GetHP ().shield (), 15);
+  EXPECT_EQ (c->GetProto ().combat_data ().max_hp ().armour (), 50);
+  EXPECT_EQ (c->GetProto ().combat_data ().max_hp ().shield (), 20);
+  c.reset ();
+
+  ProcessAdmin (R"({
+    "god":
+      {
+        "sethp":
+          {
+            "1": {"a": 1.5, "s": -15, "ma": 100, "ms": 90}
+          }
+      }
+  })");
+
+  c = tbl.GetById (id);
+  EXPECT_EQ (c->GetHP ().armour (), 32);
+  EXPECT_EQ (c->GetHP ().shield (), 15);
+  EXPECT_EQ (c->GetProto ().combat_data ().max_hp ().armour (), 100);
+  EXPECT_EQ (c->GetProto ().combat_data ().max_hp ().shield (), 90);
+  c.reset ();
+}
+
 /**
  * Test fixture for god mode but set up on mainnet, so that god mode is
  * actually not allowed.

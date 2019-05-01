@@ -441,9 +441,11 @@ TEST_F (CharacterJsonTests, Attacks)
   auto* cd = c->MutableProto ().mutable_combat_data ();
   auto* attack = cd->add_attacks ();
   attack->set_range (5);
+  attack->set_min_damage (2);
   attack->set_max_damage (10);
   attack = cd->add_attacks ();
   attack->set_range (1);
+  attack->set_min_damage (0);
   attack->set_max_damage (1);
   c.reset ();
 
@@ -455,8 +457,8 @@ TEST_F (CharacterJsonTests, Attacks)
             {
               "attacks":
                 [
-                  {"range": 5, "maxdamage": 10},
-                  {"range": 1, "maxdamage": 1}
+                  {"range": 5, "mindamage": 2, "maxdamage": 10},
+                  {"range": 1, "mindamage": 0, "maxdamage": 1}
                 ]
             }
         }

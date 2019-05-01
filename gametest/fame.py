@@ -18,9 +18,13 @@ class FameTest (PXTest):
     self.generate (1)
     self.moveCharactersTo ({
       "foo": {"x": 0, "y": 0},
-      "bar": {"x": 5, "y": 0},
+      "bar": {"x": 0, "y": 0},
     })
-    self.generate (300)
+    self.setCharactersHP ({
+      "foo": {"a": 1, "s": 0},
+      "bar": {"a": 1, "s": 0},
+    })
+    self.generate (1)
     chars = self.getCharacters ()
     assert "foo" not in chars
     assert "bar" not in chars
@@ -41,9 +45,15 @@ class FameTest (PXTest):
       "red 2": {"x": 0, "y": 10},
       "green": {"x": -10, "y": 0},
     })
-    self.generate (100)
+    self.setCharactersHP ({
+      "blue": {"a": 1, "s": 0},
+    })
+    self.generate (1)
     chars = self.getCharacters ()
     assert "blue" not in chars
+    assert "red" in chars
+    assert "red 2" in chars
+    assert "green" in chars
     accounts = self.getAccounts ()
     self.assertEqual (accounts["red"].data["kills"], 1)
     self.assertEqual (accounts["red"].data["fame"], 150)

@@ -54,6 +54,7 @@ InsertCharacters (Database& db, const unsigned numIdle,
         {
           auto* attack = cd->add_attacks ();
           attack->set_range (1);
+          attack->set_min_damage (1);
           attack->set_max_damage (1);
         }
       auto* targetId = c->MutableProto ().mutable_target ();

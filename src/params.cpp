@@ -123,10 +123,12 @@ Params::InitCharacterStats (proto::Character& pb) const
   auto* cd = pb.mutable_combat_data ();
   auto* attack = cd->add_attacks ();
   attack->set_range (10);
-  attack->set_max_damage (1);
+  attack->set_min_damage (1);
+  attack->set_max_damage (20);
   attack = cd->add_attacks ();
   attack->set_range (1);
-  attack->set_max_damage (5);
+  attack->set_min_damage (5);
+  attack->set_max_damage (30);
 
   auto* maxHP = cd->mutable_max_hp ();
   maxHP->set_armour (100);

@@ -110,7 +110,10 @@ DealDamage (FighterTable& fighters, DamageLists& dl, xaya::Random& rnd,
     {
       if (dist > static_cast<int> (attack.range ()))
         continue;
-      dmg += 1 + rnd.NextInt (attack.max_damage ());
+
+      CHECK_LE (attack.min_damage (), attack.max_damage ());
+      const auto n = attack.max_damage () - attack.min_damage () + 1;
+      dmg += attack.min_damage () + rnd.NextInt (n);
     }
 
   if (dmg == 0)
