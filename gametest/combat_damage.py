@@ -26,16 +26,6 @@ class CombatDamageTest (PXTest):
     hp = chars[TARGET].data["combat"]["hp"]
     return hp["current"], hp["max"]
 
-  def setTargetWP (self, wp):
-    """
-    Sets the waypoint to which the target character should move.
-    """
-
-    wp = offsetCoord (wp, self.offset, False)
-
-    c = self.getCharacters ()[TARGET]
-    c.sendMove ({"wp": [wp]})
-
   def run (self):
     self.generate (110);
 
@@ -43,31 +33,33 @@ class CombatDamageTest (PXTest):
 
     self.mainLogger.info ("Creating test characters...")
     self.createCharacter (TARGET, "b")
+    self.createCharacter ("attacker 1", "r")
+    self.createCharacter ("attacker 2", "r")
     self.generate (1)
 
-    # We use a known good position as offset and create a block of attackers
-    # around there.
+    # We use a known good position as offset for our test.
     self.offset = {"x": -1100, "y": 1042}
-    blkLower = offsetCoord ({"x": -1, "y": -1}, self.offset, False)
-    blkUpper = offsetCoord ({"x": 0, "y": 0}, self.offset, False)
-    self.createCharacterBlock ("name %d", "r", blkLower, blkUpper)
-
-    startPos = offsetCoord ({"x": 0, "y": 5}, self.offset, False)
-    self.moveCharactersTo ({TARGET: startPos})
+    self.inRange = offsetCoord ({"x": 0, "y": 0}, self.offset, False)
+    outOfRange = offsetCoord ({"x": 0, "y": 20}, self.offset, False)
+    self.moveCharactersTo ({
+      "attacker 1": offsetCoord ({"x": 0, "y": 1}, self.offset, False),
+      "attacker 2": offsetCoord ({"x": 1, "y": 0}, self.offset, False),
+    })
     self.getTargetHP ()
 
     self.mainLogger.info ("Taking some damage...")
-    self.generate (10)
-    self.setTargetWP ({"x": 0, "y": 11})
-    self.generate (10)
+    self.moveCharactersTo ({TARGET: self.inRange})
+    self.setCharactersHP ({TARGET: {"ma": 1000, "a": 1000, "s": 2}})
+    self.generate (3)
     hp, maxHP = self.getTargetHP ()
     assert (hp is not None) and (maxHP is not None)
     assert hp["armour"] < maxHP["armour"]
-    assert hp["shield"] < maxHP["shield"]
+    assert hp["shield"] < 2
 
     self.restoreBlock = self.rpc.xaya.getbestblockhash ()
 
     self.mainLogger.info ("Regenerating shield...")
+    self.moveCharactersTo ({TARGET: outOfRange})
     self.generate (60)
     hp, maxHP = self.getTargetHP ()
     assert (hp is not None) and (maxHP is not None)
@@ -75,8 +67,9 @@ class CombatDamageTest (PXTest):
     self.assertEqual (hp["shield"], maxHP["shield"])
 
     self.mainLogger.info ("Killing character...")
-    self.setTargetWP ({"x": 0, "y": 0})
-    self.generate (30)
+    self.moveCharactersTo ({TARGET: self.inRange})
+    self.setCharactersHP ({TARGET: {"a": 1, "s": 0}})
+    self.generate (5)
     hp, maxHP = self.getTargetHP ()
     assert (hp is None) and (maxHP is None)
 
@@ -94,8 +87,9 @@ class CombatDamageTest (PXTest):
 
     self.rpc.xaya.invalidateblock (self.restoreBlock)
 
-    self.setTargetWP ({"x": 0, "y": 0})
-    self.generate (20)
+    self.moveCharactersTo ({TARGET: self.inRange})
+    self.setCharactersHP ({TARGET: {"a": 1, "s": 0}})
+    self.generate (5)
     hp, maxHP = self.getTargetHP ()
     assert (hp is None) and (maxHP is None)
 

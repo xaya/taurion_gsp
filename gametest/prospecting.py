@@ -27,17 +27,18 @@ class ProspectingTest (PXTest):
 
     self.mainLogger.info ("Setting up test characters...")
     self.createCharacter ("target", "r")
+    self.createCharacter ("attacker 1", "g")
+    self.createCharacter ("attacker 2", "g")
     self.generate (1)
 
     # Set up known positions of the characters.  We use a known good position
     # as origin and move all attackers there.  The target will be moved to a
     # point nearby (but not in range yet).
-    self.offset = {"x": -1045, "y": 1265}
-    blkLower = offsetCoord ({"x": -1, "y": -1}, self.offset, False)
-    blkUpper = offsetCoord ({"x": 0, "y": 1}, self.offset, False)
-    self.createCharacterBlock ("attacker %d", "g", blkLower, blkUpper)
+    self.offset = {"x": -1050, "y": 1272}
     self.moveCharactersTo ({
       "target": offsetCoord ({"x": 20, "y": 0}, self.offset, False),
+      "attacker 1": offsetCoord ({"x": 0, "y": 0}, self.offset, False),
+      "attacker 2": offsetCoord ({"x": -1, "y": 0}, self.offset, False),
     })
 
     # Move character and start prospecting.  This should stop the movement.
@@ -86,7 +87,7 @@ class ProspectingTest (PXTest):
     pos = offsetCoord ({"x": 5, "y": 0}, self.offset, False)
     region = self.getRegionAt (pos)
 
-    self.prospectors = ["attacker 3", "attacker 4"]
+    self.prospectors = ["attacker 1", "attacker 2"]
     char = self.getCharacters ()
     for p in self.prospectors:
       prospRegion = self.getRegionAt (char[p].getPosition ())
@@ -95,7 +96,7 @@ class ProspectingTest (PXTest):
     self.moveCharactersTo ({
       "target": pos
     })
-    self.generate (20)
+    self.generate (1)
 
     c = self.getCharacters ()["target"]
     self.assertEqual (c.getPosition (), pos)
@@ -108,7 +109,10 @@ class ProspectingTest (PXTest):
       "region": region.getId (),
     })
 
-    self.generate (5)
+    self.setCharactersHP ({
+      "target": {"a": 1, "s": 0},
+    })
+    self.generate (1)
     assert "target" not in self.getCharacters ()
     region = self.getRegionAt (pos)
     assert "prospection" not in region.data
