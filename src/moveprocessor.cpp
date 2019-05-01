@@ -343,6 +343,54 @@ MaybeGodTeleport (CharacterTable& tbl, const Json::Value& cmd)
     }
 }
 
+/**
+ * Tries to parse and execute a god-mode command to set HP.
+ */
+void
+MaybeGodSetHp (CharacterTable& tbl, const Json::Value& cmd)
+{
+  if (!cmd.isObject ())
+    return;
+
+  for (auto i = cmd.begin (); i != cmd.end (); ++i)
+    {
+      Database::IdT id;
+      if (!IdFromString (i.name (), id))
+        {
+          LOG (WARNING)
+              << "Ignoring invalid character ID for sethp: " << i.name ();
+          continue;
+        }
+
+      auto c = tbl.GetById (id);
+      if (c == nullptr)
+        {
+          LOG (WARNING)
+              << "Character ID does not exist: " << id;
+          continue;
+        }
+
+      LOG (INFO) << "Setting HP points for " << id << "...";
+      auto& hp = c->MutableHP ();
+      auto& maxHP = *c->MutableProto ().mutable_combat_data ()
+                      ->mutable_max_hp ();
+
+      Json::Value val = (*i)["a"];
+      if (val.isUInt64 ())
+        hp.set_armour (val.asUInt64 ());
+      val = (*i)["s"];
+      if (val.isUInt64 ())
+        hp.set_shield (val.asUInt64 ());
+
+      val = (*i)["ma"];
+      if (val.isUInt64 ())
+        maxHP.set_armour (val.asUInt64 ());
+      val = (*i)["ms"];
+      if (val.isUInt64 ())
+        maxHP.set_shield (val.asUInt64 ());
+    }
+}
+
 } // anonymous namespace
 
 void
@@ -358,6 +406,7 @@ MoveProcessor::HandleGodMode (const Json::Value& cmd)
     }
 
   MaybeGodTeleport (characters, cmd["teleport"]);
+  MaybeGodSetHp (characters, cmd["sethp"]);
 }
 
 } // namespace pxd
