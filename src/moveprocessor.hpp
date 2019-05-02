@@ -66,6 +66,11 @@ private:
   void HandleCharacterUpdate (const std::string& name, const Json::Value& mv);
 
   /**
+   * Processes one admin command.
+   */
+  void ProcessOneAdmin (const Json::Value& cmd);
+
+  /**
    * Handles a god-mode admin command, if any.  These are used only for
    * integration testing, so that this will only be done on regtest.
    */
@@ -90,9 +95,9 @@ public:
   void ProcessAll (const Json::Value& moveArray);
 
   /**
-   * Processes an admin command sent in a block.
+   * Processes all admin commands sent in a block.
    */
-  void ProcessAdmin (const Json::Value& cmd);
+  void ProcessAdmin (const Json::Value& arr);
 
 };
 

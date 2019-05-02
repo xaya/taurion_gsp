@@ -96,6 +96,12 @@ main (int argc, char** argv)
   config.EnablePruning = FLAGS_enable_pruning;
   config.DataDirectory = FLAGS_datadir;
 
+  /* We need the "proper" implementation of admin commands in the ZMQ
+     notifications, which was implemented for 1.3 and up in
+     https://github.com/xaya/xaya/pull/93, as well as backported for the
+     1.2.0 release.  */
+  config.MinXayaVersion = 1020000;
+
   pxd::PXLogic rules;
   PXInstanceFactory instanceFact(rules);
   config.InstanceFactory = &instanceFact;

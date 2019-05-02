@@ -59,6 +59,7 @@ protected:
   BuildBlockData (const std::string& movesStr)
   {
     Json::Value blockData(Json::objectValue);
+    blockData["admin"] = Json::Value (Json::arrayValue);
 
     Json::Value meta(Json::objectValue);
     meta["height"] = 42;

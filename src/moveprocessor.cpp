@@ -15,12 +15,27 @@ void
 MoveProcessor::ProcessAll (const Json::Value& moveArray)
 {
   CHECK (moveArray.isArray ());
+  LOG (INFO) << "Processing " << moveArray.size () << " moves...";
+
   for (const auto& m : moveArray)
     ProcessOne (m);
 }
 
 void
-MoveProcessor::ProcessAdmin (const Json::Value& cmd)
+MoveProcessor::ProcessAdmin (const Json::Value& admArray)
+{
+  CHECK (admArray.isArray ());
+  LOG (INFO) << "Processing " << admArray.size () << " admin commands...";
+
+  for (const auto& cmd : admArray)
+    {
+      CHECK (cmd.isObject ());
+      ProcessOneAdmin (cmd["cmd"]);
+    }
+}
+
+void
+MoveProcessor::ProcessOneAdmin (const Json::Value& cmd)
 {
   if (!cmd.isObject ())
     return;

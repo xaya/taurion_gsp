@@ -50,7 +50,7 @@ protected:
   {}
 
   /**
-   * Processes an admin command given as JSON string.
+   * Processes an array of admin commands given as JSON string.
    */
   void
   ProcessAdmin (const std::string& str)
@@ -119,13 +119,42 @@ TEST_F (MoveProcessorTests, InvalidDataFromXaya)
   }])"), "JSON value for amount is not double");
 }
 
-TEST_F (MoveProcessorTests, InvalidAdmin)
+TEST_F (MoveProcessorTests, InvalidAdminFromXaya)
 {
-  ProcessAdmin ("42");
-  ProcessAdmin ("false");
-  ProcessAdmin ("null");
-  ProcessAdmin ("[5]");
-  ProcessAdmin (R"({"foo": "bar"})");
+  EXPECT_DEATH (ProcessAdmin ("42"), "isArray");
+  EXPECT_DEATH (ProcessAdmin ("false"), "isArray");
+  EXPECT_DEATH (ProcessAdmin ("null"), "isArray");
+  EXPECT_DEATH (ProcessAdmin ("{}"), "isArray");
+  EXPECT_DEATH (ProcessAdmin ("[5]"), "isObject");
+}
+
+TEST_F (MoveProcessorTests, AllMoveDataAccepted)
+{
+  for (const auto& mvStr : {"5", "false", "\"foo\"", "{}"})
+    {
+      LOG (INFO) << "Testing move data (in valid array): " << mvStr;
+
+      std::ostringstream fullMoves;
+      fullMoves
+          << R"([{"name": "test", "move": )"
+          << mvStr
+          << "}]";
+
+      Process (fullMoves.str ());
+    }
+}
+
+TEST_F (MoveProcessorTests, AllAdminDataAccepted)
+{
+  for (const auto& admStr : {"42", "[5]", "\"foo\"", "null"})
+    {
+      LOG (INFO) << "Testing admin data (in valid array): " << admStr;
+
+      std::ostringstream fullAdm;
+      fullAdm << R"([{"cmd": )" << admStr << "}]";
+
+      ProcessAdmin (fullAdm.str ());
+    }
 }
 
 /* ************************************************************************** */
@@ -605,12 +634,12 @@ TEST_F (GodModeTests, InvalidTeleport)
   const auto id = tbl.CreateNew ("domob", Faction::RED)->GetId ();
   ASSERT_EQ (id, 1);
 
-  ProcessAdmin (R"({
+  ProcessAdmin (R"([{"cmd": {
     "god": false
-  })");
-  ProcessAdmin (R"({
+  }}])");
+  ProcessAdmin (R"([{"cmd": {
     "god": {"teleport": {"1": {"x": 5, "y": 0, "z": 42}}}
-  })");
+  }}])");
 
   EXPECT_EQ (tbl.GetById (id)->GetPosition (), HexCoord (0, 0));
 }
@@ -624,7 +653,7 @@ TEST_F (GodModeTests, Teleport)
   c->MutableProto ().mutable_movement ();
   c.reset ();
 
-  ProcessAdmin (R"({
+  ProcessAdmin (R"([{"cmd": {
     "god":
       {
         "teleport":
@@ -634,7 +663,7 @@ TEST_F (GodModeTests, Teleport)
           }
       },
     "foo": "bar"
-  })");
+  }}])");
 
   c = tbl.GetById (id);
   EXPECT_EQ (c->GetPosition (), HexCoord (5, -42));
@@ -654,7 +683,7 @@ TEST_F (GodModeTests, SetHp)
   cd->mutable_max_hp ()->set_shield (20);
   c.reset ();
 
-  ProcessAdmin (R"({
+  ProcessAdmin (R"([{"cmd": {
     "god":
       {
         "sethp":
@@ -663,7 +692,7 @@ TEST_F (GodModeTests, SetHp)
             "1": {"a": 32, "s": 15, "ma": -5, "ms": false, "x": "y"}
           }
       }
-  })");
+  }}])");
 
   c = tbl.GetById (id);
   EXPECT_EQ (c->GetHP ().armour (), 32);
@@ -672,7 +701,7 @@ TEST_F (GodModeTests, SetHp)
   EXPECT_EQ (c->GetProto ().combat_data ().max_hp ().shield (), 20);
   c.reset ();
 
-  ProcessAdmin (R"({
+  ProcessAdmin (R"([{"cmd": {
     "god":
       {
         "sethp":
@@ -680,7 +709,7 @@ TEST_F (GodModeTests, SetHp)
             "1": {"a": 1.5, "s": -15, "ma": 100, "ms": 90}
           }
       }
-  })");
+  }}])");
 
   c = tbl.GetById (id);
   EXPECT_EQ (c->GetHP ().armour (), 32);
@@ -713,11 +742,26 @@ TEST_F (GodModeDisabledTests, Teleport)
   const auto id = tbl.CreateNew ("domob", Faction::RED)->GetId ();
   ASSERT_EQ (id, 1);
 
-  ProcessAdmin (R"({
+  ProcessAdmin (R"([{"cmd": {
     "god": {"teleport": {"1": {"x": 5, "y": -42}}}
-  })");
+  }}])");
 
   EXPECT_EQ (tbl.GetById (id)->GetPosition (), HexCoord (0, 0));
+}
+
+TEST_F (GodModeDisabledTests, SetHp)
+{
+  auto c = tbl.CreateNew ("domob", Faction::RED);
+  const auto id = c->GetId ();
+  ASSERT_EQ (id, 1);
+  c->MutableHP ().set_armour (50);
+  c.reset ();
+
+  ProcessAdmin (R"([{"cmd": {
+    "god": {"sethp": {"1": {"a": 10}}}
+  }}])");
+
+  EXPECT_EQ (tbl.GetById (id)->GetHP ().armour (), 50);
 }
 
 /* ************************************************************************** */
