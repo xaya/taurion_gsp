@@ -1,6 +1,6 @@
 #include "testutils.hpp"
 
-#include <xayagame/hash.hpp>
+#include <xayautil/hash.hpp>
 
 namespace pxd
 {

@@ -8,7 +8,7 @@
 #include "mapdata/basemap.hpp"
 #include "proto/combat.pb.h"
 
-#include <xayagame/random.hpp>
+#include <xayautil/random.hpp>
 
 #include <vector>
 

@@ -8,8 +8,8 @@
 #include "hexagonal/coord.hpp"
 #include "proto/combat.pb.h"
 
-#include <xayagame/hash.hpp>
-#include <xayagame/random.hpp>
+#include <xayautil/hash.hpp>
+#include <xayautil/random.hpp>
 
 #include <gtest/gtest.h>
 

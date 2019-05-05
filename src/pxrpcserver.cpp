@@ -2,7 +2,7 @@
 
 #include "jsonutils.hpp"
 
-#include <xayagame/uint256.hpp>
+#include <xayautil/uint256.hpp>
 
 #include <glog/logging.h>
 

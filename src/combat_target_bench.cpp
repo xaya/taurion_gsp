@@ -6,8 +6,8 @@
 #include "database/schema.hpp"
 #include "hexagonal/coord.hpp"
 
-#include <xayagame/hash.hpp>
-#include <xayagame/random.hpp>
+#include <xayautil/hash.hpp>
+#include <xayautil/random.hpp>
 
 #include <benchmark/benchmark.h>
 

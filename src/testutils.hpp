@@ -1,7 +1,7 @@
 #ifndef PXD_TESTUTILS_HPP
 #define PXD_TESTUTILS_HPP
 
-#include <xayagame/random.hpp>
+#include <xayautil/random.hpp>
 
 namespace pxd
 {

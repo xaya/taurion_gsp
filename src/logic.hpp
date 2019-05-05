@@ -8,8 +8,8 @@
 #include "mapdata/basemap.hpp"
 #include "proto/character.pb.h"
 
-#include <xayagame/random.hpp>
 #include <xayagame/sqlitegame.hpp>
+#include <xayautil/random.hpp>
 
 #include <sqlite3.h>
 

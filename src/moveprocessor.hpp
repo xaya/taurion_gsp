@@ -10,7 +10,7 @@
 #include "database/region.hpp"
 #include "mapdata/basemap.hpp"
 
-#include <xayagame/random.hpp>
+#include <xayautil/random.hpp>
 
 #include <json/json.h>
 

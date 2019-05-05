@@ -8,7 +8,7 @@
 #include "database/region.hpp"
 #include "mapdata/basemap.hpp"
 
-#include <xayagame/random.hpp>
+#include <xayautil/random.hpp>
 
 namespace pxd
 {
