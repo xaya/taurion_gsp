@@ -25,6 +25,8 @@ DEFINE_string (xaya_rpc_url, "",
 DEFINE_int32 (game_rpc_port, 0,
               "the port at which the game's JSON-RPC server will be started"
               " (if non-zero)");
+DEFINE_bool (game_rpc_listen_locally, true,
+             "whether the game's JSON-RPC server should listen locally");
 
 DEFINE_int32 (enable_pruning, -1,
               "if non-negative (including zero), old undo data will be pruned"
@@ -92,6 +94,7 @@ main (int argc, char** argv)
     {
       config.GameRpcServer = xaya::RpcServerType::HTTP;
       config.GameRpcPort = FLAGS_game_rpc_port;
+      config.GameRpcListenLocally = FLAGS_game_rpc_listen_locally;
     }
   config.EnablePruning = FLAGS_enable_pruning;
   config.DataDirectory = FLAGS_datadir;
