@@ -179,7 +179,9 @@ protected:
   CharacterTable::Handle
   GetTest ()
   {
-    return tbl.GetById (1);
+    auto h = tbl.GetById (1);
+    CHECK (h != nullptr);
+    return h;
   }
 
   /**
@@ -310,8 +312,9 @@ TEST_F (MovementTests, ObstacleInSteps)
      planned through where it will be later on.  */
   StepCharacter (1, EdgeWeights (1), 7);
   EXPECT_TRUE (IsMoving ());
-  EXPECT_EQ (GetTest ()->GetPosition (), HexCoord (3, 0));
-  const auto& mv = GetTest ()->GetProto ().movement ();
+  auto h = GetTest ();
+  EXPECT_EQ (h->GetPosition (), HexCoord (3, 0));
+  const auto& mv = h->GetProto ().movement ();
   EXPECT_EQ (mv.waypoints_size (), 1);
   EXPECT_GT (mv.steps_size (), 0);
 
@@ -336,11 +339,12 @@ TEST_F (MovementTests, BlockedTurns)
      planned through where it will be later on.  */
   StepCharacter (1, EdgeWeights (1), 10);
   EXPECT_TRUE (IsMoving ());
-  EXPECT_EQ (GetTest ()->GetPosition (), HexCoord (0, 0));
-  const auto& mv = GetTest ()->GetProto ().movement ();
+  auto h = GetTest ();
+  EXPECT_EQ (h->GetPosition (), HexCoord (0, 0));
+  const auto& mv = h->GetProto ().movement ();
   EXPECT_EQ (mv.waypoints_size (), 1);
   EXPECT_GT (mv.steps_size (), 0);
-  EXPECT_FALSE (GetTest ()->GetVolatileMv ().has_blocked_turns ());
+  EXPECT_FALSE (h->GetVolatileMv ().has_blocked_turns ());
 
   /* Try stepping into the obstacle, which should increment the blocked turns
      counter and reset any partial step progress.  */

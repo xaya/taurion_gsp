@@ -122,6 +122,9 @@ IdFromString (const std::string& str, Database::IdT& id)
   std::istringstream in(str);
   in >> id;
 
+  if (!in)
+    return false;
+
   if (id == Database::EMPTY_ID)
     return false;
 
