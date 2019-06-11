@@ -112,8 +112,12 @@ AmountFromJson (const Json::Value& val, Amount& amount)
       return false;
     }
 
-  amount = std::lround (dval);
+  amount = std::llround (dval);
   VLOG (1) << "Converted JSON " << val << " to amount: " << amount;
+
+  /* Sanity check once more, to guard against potential overflow bugs.  */
+  CHECK_GE (amount, 0);
+  CHECK_LE (amount, MAX_AMOUNT);
 
   return true;
 }
