@@ -94,8 +94,11 @@ GetRegionShape (benchmark::State& state)
       state.PauseTiming ();
       LOG_FIRST_N (INFO, 10) << "Region size: " << tiles.size ();
       CHECK_EQ (tiles.count (c), 1);
-      CHECK_GT (tiles.size (), 10)
-          << "Region " << id << " has only " << tiles.size () << " tiles";
+      if (tiles.size () < 10)
+        {
+          LOG_FIRST_N (WARNING, 100)
+            << "Region " << id << " has only " << tiles.size () << " tiles";
+        }
       state.ResumeTiming ();
     }
 }
