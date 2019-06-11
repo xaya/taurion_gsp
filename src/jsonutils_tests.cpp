@@ -69,6 +69,31 @@ TEST_F (JsonAmountTests, AmountToJson)
   ASSERT_EQ (val.asDouble (), 1.0);
 }
 
+TEST_F (JsonAmountTests, ValidAmountFromString)
+{
+  struct Test
+  {
+    std::string str;
+    Amount expected;
+  };
+  const Test tests[] =
+    {
+      {"0", 0},
+      {"1.5", 150000000},
+      {"0.1", 10000000},
+      {"30.0", 3000000000},
+      {"70123456.12345678", 7012345612345678},
+    };
+
+  for (const auto& t : tests)
+    {
+      LOG (INFO) << "Testing: " << t.str;
+      Amount actual;
+      ASSERT_TRUE (AmountFromJson (ParseJson (t.str), actual));
+      EXPECT_EQ (actual, t.expected);
+    }
+}
+
 TEST_F (JsonAmountTests, ValidAmountRoundtrip)
 {
   const Amount testValues[] = {

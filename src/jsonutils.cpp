@@ -113,6 +113,8 @@ AmountFromJson (const Json::Value& val, Amount& amount)
     }
 
   amount = std::lround (dval);
+  VLOG (1) << "Converted JSON " << val << " to amount: " << amount;
+
   return true;
 }
 
