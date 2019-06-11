@@ -116,18 +116,21 @@ MoveProcessor::HandleCharacterCreation (const std::string& name,
           continue;
         }
 
+      VLOG (1) << "Trying to create character, amount paid left: " << paidToDev;
       if (paidToDev < params.CharacterCost ())
         {
           /* In this case, we can return rather than continue with the next
              iteration.  If all money paid is "used up" already, then it won't
              be enough for later entries of the array, either.  */
           LOG (WARNING)
-              << "Required amount for new character not paid by " << name;
+              << "Required amount for new character not paid by " << name
+              << " (only have " << paidToDev << ")";
           return;
         }
 
       SpawnCharacter (name, faction, characters, dyn, rnd, map, params);
       paidToDev -= params.CharacterCost ();
+      VLOG (1) << "Created character, paid to dev left: " << paidToDev;
     }
 
   if (paidToDev > 0)
