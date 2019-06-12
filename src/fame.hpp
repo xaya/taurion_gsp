@@ -35,19 +35,12 @@ private:
   AccountsTable accounts;
 
   /**
-   * For accounts that had their fame updated, we keep the "original" fame
-   * value in this cache.  This allows us do the whole update computation
-   * on a single, consistent, frozen set of fame values, rather than have
-   * it depend on the exact order of changes.
+   * The delta computed in fame for given account names.  We compute this here
+   * before applying it at the very end (in the destructor).  That allows us
+   * to compute everything independent of the processing order, since the
+   * computations themselves are done on the initial fame values.
    */
-  std::map<std::string, unsigned> originalFame;
-
-  /**
-   * Retrieves the original fame value of the given account.  This tries to look
-   * it up in originalFame.  If not found there, we use the current value
-   * from the Account instance and also store it in the cache.
-   */
-  unsigned GetOriginalFame (const Account& a);
+  std::map<std::string, int> deltas;
 
   /**
    * Computes the "fame level" of a player.  This is used to determine who
@@ -76,7 +69,7 @@ public:
     : dl(db, height), characters(db), accounts(db)
   {}
 
-  virtual ~FameUpdater () = default;
+  virtual ~FameUpdater ();
 
   FameUpdater () = delete;
   FameUpdater (const FameUpdater&) = delete;

@@ -68,16 +68,15 @@ private:
   /** Counter variable to create unique account names.  */
   unsigned cnt = 0;
 
+  std::unique_ptr<FameUpdater> fame;
+
 protected:
 
   CharacterTable characters;
   AccountsTable accounts;
 
-  /** Updater instance used in testing.  */
-  FameUpdater fame;
-
   FameTests ()
-    : characters(db), accounts(db), fame(db, 0)
+    : characters(db), accounts(db)
   {}
 
   /**
@@ -107,33 +106,24 @@ protected:
   UpdateForKill (const Database::IdT victim,
                  const DamageLists::Attackers& attackers)
   {
-    fame.UpdateForKill (victim, attackers);
+    if (fame == nullptr)
+      fame = std::make_unique<FameUpdater> (db, 0);
+    fame->UpdateForKill (victim, attackers);
   }
 
   /**
-   * Exposes FameUpdater::GetOriginalFame to the tests.
+   * Flushes the fame delta cache so we can verify the updates.
    */
-  unsigned
-  GetOriginalFame (const Account& a)
+  void
+  FlushDeltas ()
   {
-    return fame.GetOriginalFame (a);
+    fame.reset ();
   }
 
 };
 
 namespace
 {
-
-TEST_F (FameTests, GetOriginalFame)
-{
-  auto a = accounts.GetByName ("foo");
-
-  a->SetFame (1234);
-  EXPECT_EQ (GetOriginalFame (*a), 1234);
-
-  a->SetFame (500);
-  EXPECT_EQ (GetOriginalFame (*a), 1234);
-}
 
 TEST_F (FameTests, TrackingKills)
 {
@@ -191,6 +181,7 @@ TEST_F (FameTests, BasicUpdates)
         }
 
       UpdateForKill (victimId, killerIds);
+      FlushDeltas ();
 
       EXPECT_EQ (accounts.GetByName (victimName)->GetFame (), t.newVictimFame);
 
@@ -214,12 +205,9 @@ TEST_F (FameTests, SelfKills)
       {10, 10},
       {100, 100},
       {8000, 8000},
-
-      /* Near the cap, a self kill actually loses fame:  The account first
-         gains but runs into the cap, and then loses.  */
       {9899, 9899},
-      {9950, 9899},
-      {9999, 9899},
+      {9950, 9950},
+      {9999, 9999},
     };
 
   for (const auto& t : tests)
@@ -233,6 +221,7 @@ TEST_F (FameTests, SelfKills)
 
       accounts.GetByName (name)->SetFame (t.oldFame);
       UpdateForKill (id1, {id2});
+      FlushDeltas ();
 
       EXPECT_EQ (accounts.GetByName (name)->GetFame (), t.newFame);
     }
@@ -248,10 +237,55 @@ TEST_F (FameTests, AccountsWithMultipleCharacters)
 
   accounts.GetByName ("baz")->SetFame (5000);
   UpdateForKill (id1, {id2, id3, id4, id5});
+  FlushDeltas ();
 
   EXPECT_EQ (accounts.GetByName ("foo")->GetFame (), 33);
   EXPECT_EQ (accounts.GetByName ("bar")->GetFame (), 133);
   EXPECT_EQ (accounts.GetByName ("baz")->GetFame (), 5000);
+}
+
+TEST_F (FameTests, ZeroFloorForMultipleCharactersKilled)
+{
+  const auto id1 = CreateCharacter ("foo");
+  const auto id2 = CreateCharacter ("foo");
+  const auto id3 = CreateCharacter ("bar");
+  const auto id4 = CreateCharacter ("baz");
+
+  UpdateForKill (id1, {id3});
+  UpdateForKill (id2, {id4});
+  FlushDeltas ();
+
+  EXPECT_EQ (accounts.GetByName ("foo")->GetFame (), 0);
+  EXPECT_EQ (accounts.GetByName ("bar")->GetFame (), 200);
+  EXPECT_EQ (accounts.GetByName ("baz")->GetFame (), 200);
+}
+
+TEST_F (FameTests, TemporarilyBeyondCap)
+{
+  /* If we go "temporarily" above the 9999 cap or below 0, we should still end
+     up with the correct final difference applied and only capped then.  */
+  const auto id1 = CreateCharacter ("a");
+  const auto id2 = CreateCharacter ("b");
+  const auto id3 = CreateCharacter ("c");
+  const auto id4 = CreateCharacter ("d");
+
+  accounts.GetByName ("a")->SetFame (9995);
+  accounts.GetByName ("b")->SetFame (9500);
+  accounts.GetByName ("c")->SetFame (10);
+  accounts.GetByName ("d")->SetFame (100);
+
+  /* id1 will gain 50 and lose 100 fame, going beyond the cap in between.  */
+  UpdateForKill (id2, {id1, id3});
+  UpdateForKill (id1, {id2});
+
+  /* id3 will lose 20 and gain 100 fame, going below zero temporarily.  */
+  UpdateForKill (id3, {id4});
+  UpdateForKill (id3, {id4});
+  UpdateForKill (id4, {id3});
+
+  FlushDeltas ();
+  EXPECT_EQ (accounts.GetByName ("a")->GetFame (), 9945);
+  EXPECT_EQ (accounts.GetByName ("c")->GetFame (), 90);
 }
 
 TEST_F (FameTests, BasedOnOriginalFame)
@@ -267,10 +301,9 @@ TEST_F (FameTests, BasedOnOriginalFame)
   accounts.GetByName ("bar")->SetFame (3000);
 
   UpdateForKill (id2, {id1});
-  EXPECT_EQ (accounts.GetByName ("foo")->GetFame (), 5099);
-  EXPECT_EQ (accounts.GetByName ("bar")->GetFame (), 2900);
-
   UpdateForKill (id2, {id1});
+  FlushDeltas ();
+
   EXPECT_EQ (accounts.GetByName ("foo")->GetFame (), 5199);
   EXPECT_EQ (accounts.GetByName ("bar")->GetFame (), 2800);
 }

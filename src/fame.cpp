@@ -21,24 +21,26 @@ constexpr unsigned FAME_PER_KILL = 100;
 
 } // anonymous namespace
 
+FameUpdater::~FameUpdater ()
+{
+  for (const auto& entry : deltas)
+    {
+      VLOG (1)
+          << "Applying fame delta " << entry.second << " for " << entry.first;
+
+      auto h = accounts.GetByName (entry.first);
+      int fame = h->GetFame ();
+      fame += entry.second;
+      fame = std::min<int> (MAX_FAME, std::max (0, fame));
+      h->SetFame (fame);
+    }
+}
+
 int
 FameUpdater::GetLevel (const unsigned fame)
 {
   const int res = fame / 1000;
   return std::min (res, 8);
-}
-
-unsigned
-FameUpdater::GetOriginalFame (const Account& a)
-{
-  const auto mit = originalFame.find (a.GetName ());
-  if (mit != originalFame.end ())
-    return mit->second;
-
-  const unsigned res = a.GetFame ();
-  originalFame.emplace (a.GetName (), res);
-
-  return res;
 }
 
 void
@@ -50,8 +52,7 @@ FameUpdater::UpdateForKill (const Database::IdT victim,
   /* Determine the victim's fame level.  */
   auto victimCharacter = characters.GetById (victim);
   const std::string& victimOwner = victimCharacter->GetOwner ();
-  const unsigned victimFame
-      = GetOriginalFame (*accounts.GetByName (victimOwner));
+  const unsigned victimFame = accounts.GetByName (victimOwner)->GetFame ();
   const int victimLevel = GetLevel (victimFame);
   VLOG (1)
       << "Victim fame: " << victimFame << " (level: " << victimLevel << ")";
@@ -75,7 +76,7 @@ FameUpdater::UpdateForKill (const Database::IdT victim,
       auto a = accounts.GetByName (owner);
       a->SetKills (a->GetKills () + 1);
 
-      const unsigned fame = GetOriginalFame (*a);
+      const unsigned fame = a->GetFame ();
       const int level = GetLevel (fame);
       VLOG (1) << "Killer fame: " << fame << " (level: " << level << ")";
 
@@ -94,15 +95,10 @@ FameUpdater::UpdateForKill (const Database::IdT victim,
   const unsigned famePerKiller = fameLost / owners.size ();
   VLOG (1) << "Fame gained per killer: " << famePerKiller;
   for (auto& entry : inRangeKillers)
-    entry->SetFame (std::min (MAX_FAME, entry->GetFame () + famePerKiller));
+    deltas[entry->GetName ()] += famePerKiller;
 
-  /* Finally, update the victim fame itself.  A tricky situation arises if the
-     victim is one of the killers as well:  For this situation, we need to make
-     sure that all killer fame updates are "flushed" already to the database
-     before we update the victim for the losses!  */
-  inRangeKillers.clear ();
-  auto victimAccount = accounts.GetByName (victimOwner);
-  victimAccount->SetFame (victimAccount->GetFame () - fameLost);
+  /* Finally, update the victim fame itself.  */
+  deltas[victimOwner] -= fameLost;
 }
 
 void

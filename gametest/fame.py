@@ -65,21 +65,33 @@ class FameTest (PXTest):
     self.mainLogger.info ("Many characters for a name...")
     armySize = 10
     self.createCharacters ("army", armySize * ["r"])
-    self.createCharacter ("target", "b")
+    self.createCharacters ("other army", armySize * ["r"])
+    self.createCharacters ("target", 2 * ["b"])
     self.generate (1)
-    mv = {"target": {"x": 100, "y": 0}}
-    for i in range (1, armySize):
-      mv["army %d" % (i + 1)] = {"x": 101, "y": i - armySize // 2}
+    mv = {
+      "target": {"x": 100, "y": 0},
+      "target 2": {"x": -100, "y": 0},
+    }
+    for i in range (0, armySize):
+      suff = ""
+      if i > 0:
+        suff = " %d" % (i + 1)
+      mv["army" + suff] = {"x": 101, "y": i - armySize // 2}
+      mv["other army" + suff] = {"x": -101, "y": i - armySize // 2}
     self.moveCharactersTo (mv)
     self.setCharactersHP ({
       "target": {"a": 1, "s": 0},
+      "target 2": {"a": 1, "s": 0},
     })
     self.generate (1)
     accounts = self.getAccounts ()
     chars = self.getCharacters ()
     assert "target" not in chars
+    assert "target 2" not in chars
     self.assertEqual (accounts["army"].data["kills"], 1)
     self.assertEqual (accounts["army"].data["fame"], 200)
+    self.assertEqual (accounts["other army"].data["kills"], 1)
+    self.assertEqual (accounts["other army"].data["fame"], 200)
     self.assertEqual (accounts["target"].data["kills"], 0)
     self.assertEqual (accounts["target"].data["fame"], 0)
 
