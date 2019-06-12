@@ -62,6 +62,27 @@ class FameTest (PXTest):
     self.assertEqual (accounts["blue"].data["kills"], 0)
     self.assertEqual (accounts["blue"].data["fame"], 0)
 
+    self.mainLogger.info ("Many characters for a name...")
+    armySize = 10
+    self.createCharacters ("army", armySize * ["r"])
+    self.createCharacter ("target", "b")
+    self.generate (1)
+    mv = {"target": {"x": 100, "y": 0}}
+    for i in range (1, armySize):
+      mv["army %d" % (i + 1)] = {"x": 101, "y": i - armySize // 2}
+    self.moveCharactersTo (mv)
+    self.setCharactersHP ({
+      "target": {"a": 1, "s": 0},
+    })
+    self.generate (1)
+    accounts = self.getAccounts ()
+    chars = self.getCharacters ()
+    assert "target" not in chars
+    self.assertEqual (accounts["army"].data["kills"], 1)
+    self.assertEqual (accounts["army"].data["fame"], 200)
+    self.assertEqual (accounts["target"].data["kills"], 0)
+    self.assertEqual (accounts["target"].data["fame"], 0)
+
 
 if __name__ == "__main__":
   FameTest ().main ()
