@@ -56,7 +56,7 @@ public:
 
   virtual void stop () override;
   virtual Json::Value getcurrentstate () override;
-  virtual Json::Value waitforchange () override;
+  virtual Json::Value waitforchange (const std::string& knownBlock) override;
 
   virtual Json::Value findpath (int l1range, const Json::Value& source,
                                 const Json::Value& target, int wpdist) override;

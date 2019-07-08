@@ -10,7 +10,7 @@
   },
   {
     "name": "waitforchange",
-    "params": {},
+    "params": [ "known block" ],
     "returns": {}
   },
 
