@@ -98,7 +98,7 @@ PXRpcServer::getcurrentstate ()
   return game.GetCurrentJsonState ();
 }
 
-Json::Value
+std::string
 PXRpcServer::waitforchange (const std::string& knownBlock)
 {
   LOG (INFO) << "RPC method called: waitforchange " << knownBlock;

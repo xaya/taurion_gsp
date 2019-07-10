@@ -54,13 +54,13 @@ public:
     : PXRpcServerStub(conn), game(g), logic(l)
   {}
 
-  virtual void stop () override;
-  virtual Json::Value getcurrentstate () override;
-  virtual Json::Value waitforchange (const std::string& knownBlock) override;
+  void stop () override;
+  Json::Value getcurrentstate () override;
+  std::string waitforchange (const std::string& knownBlock) override;
 
-  virtual Json::Value findpath (int l1range, const Json::Value& source,
-                                const Json::Value& target, int wpdist) override;
-  virtual Json::Value getregionat (const Json::Value& coord) override;
+  Json::Value findpath (int l1range, const Json::Value& source,
+                        const Json::Value& target, int wpdist) override;
+  Json::Value getregionat (const Json::Value& coord) override;
 
 };
 
