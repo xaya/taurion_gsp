@@ -9,6 +9,14 @@ To build you will need to install libxayagame - check the tutorials for building
 
 Once you have installed libxayagame you can clone this repository and build:
 
+you will need the region and obstacle layer data. Download these and put them in the mapdata folder
+
+https://xaya.io/downloads/regiondata.dat.xz
+
+https://xaya.io/downloads/obstacledata.dat.xz
+
+Then
+
 ```
 ./autogen.sh
 
@@ -20,7 +28,7 @@ make
 To run this GSP (so you can access the rpc interface) you can do so like:
 
 ```
-./shipsd --xaya_rpc_url="http://user:password@localhost:8396" --game_rpc_port=8200 --datadir="%appdata%\Xaya-Electron\shipsdatadir" -alsologtostderr
+./shipsd --xaya_rpc_url="http://user:password@localhost:8396" --game_rpc_port=8200 --datadir="somepath" -alsologtostderr
 ```
 
 replace user and password with your Xayad's rpcuser and rpcpassword
