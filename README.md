@@ -1,4 +1,4 @@
-Taurion - A Fully Decentralised MMO built for the Xaya platform. 
+Taurion - A Fully Decentralised MMO built for the Xaya platform.
 ================================================================
 
 https://taurion.io
@@ -9,7 +9,7 @@ To build you will need to install libxayagame - check the tutorials for building
 
 Once you have installed libxayagame you can clone this repository and build:
 
-you will need the region and obstacle layer data. Download these and put them in the mapdata folder
+you will need the region and obstacle layer data. Download these and put them in the `data` folder (or `mapdata` if the symlinks do not work for you)
 
 https://xaya.io/downloads/regiondata.dat.xz
 
