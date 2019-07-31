@@ -75,14 +75,10 @@ Params::ProspectingBlocks () const
 namespace
 {
 
-/**
- * Prospecting prizes for mainnet/testnet.  They are chosen such that the
- * expected value of the Bernoulli distribution is to reach the available
- * prizes after 200k trials for each one.
- */
+/** Prospecting prizes for mainnet/testnet.  */
 const std::vector<Params::PrizeData> PRIZES =
   {
-    {"gold", 2, 100000},
+    {"gold", 5, 150000},
     {"silver", 50, 4000},
     {"bronze", 2000, 100},
   };

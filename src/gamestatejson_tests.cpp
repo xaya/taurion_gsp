@@ -688,10 +688,10 @@ TEST_F (PrizesJsonTests, Works)
       {
         "gold":
           {
-            "number": 2,
-            "probability": 100000,
+            "number": 5,
+            "probability": 150000,
             "found": 1,
-            "available": 1
+            "available": 4
           },
         "silver":
           {
