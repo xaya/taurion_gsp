@@ -19,6 +19,7 @@ test-driver
 
 *.la
 *.lo
+*.pyc
 
 Makefile
 Makefile.in
