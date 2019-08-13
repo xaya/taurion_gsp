@@ -93,6 +93,7 @@ tests_SOURCES = \
   prospecting_tests.cpp \
   protoutils_tests.cpp \
   spawn_tests.cpp \
+  testutils_tests.cpp \
   \
   testutils.cpp
 check_HEADERS = \

@@ -20,6 +20,8 @@
 
 #include <xayautil/hash.hpp>
 
+#include <glog/logging.h>
+
 namespace pxd
 {
 
@@ -28,6 +30,85 @@ TestRandom::TestRandom ()
   xaya::SHA256 seed;
   seed << "test seed";
   Seed (seed.Finalise ());
+}
+
+bool
+PartialJsonEqual (const Json::Value& actual, const Json::Value& expected)
+{
+  if (!expected.isObject () && !expected.isArray ())
+    {
+      /* Special case:  If both values are integers, then we compare them
+         explicitly here.  This allows values of type "unsigned int" to be
+         equal to values of type "int" (from golden data).  */
+      if (actual.isInt64 () && expected.isInt64 ()
+            && actual.asInt64 () == expected.asInt64 ())
+        return true;
+
+      if (actual == expected)
+        return true;
+
+      LOG (ERROR)
+          << "Actual value:\n" << actual
+          << "\nis not equal to expected:\n" << expected;
+      return false;
+    }
+
+  if (expected.isArray ())
+    {
+      if (!actual.isArray ())
+        {
+          LOG (ERROR) << "Expected value is array, actual not: " << actual;
+          return false;
+        }
+
+      if (actual.size () != expected.size ())
+        {
+          LOG (ERROR)
+              << "Array sizes do not match: got " << actual.size ()
+              << ", want " << expected.size ();
+          return false;
+        }
+
+      for (unsigned i = 0; i < expected.size (); ++i)
+        if (!PartialJsonEqual (actual[i], expected[i]))
+          return false;
+
+      return true;
+    }
+
+  if (!actual.isObject ())
+    {
+      LOG (ERROR) << "Expected value is object, actual not: " << actual;
+      return false;
+    }
+
+  for (const auto& expectedKey : expected.getMemberNames ())
+    {
+      const auto& expectedVal = expected[expectedKey];
+      if (expectedVal.isNull ())
+        {
+          if (actual.isMember (expectedKey))
+            {
+              LOG (ERROR)
+                  << "Actual has member expected to be not there: "
+                  << expectedKey;
+              return false;
+            }
+          continue;
+        }
+
+      if (!actual.isMember (expectedKey))
+        {
+          LOG (ERROR)
+              << "Actual does not have expected member: " << expectedKey;
+          return false;
+        }
+
+      if (!PartialJsonEqual (actual[expectedKey], expected[expectedKey]))
+        return false;
+    }
+
+  return true;
 }
 
 } // namespace pxd
