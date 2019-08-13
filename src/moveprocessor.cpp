@@ -29,75 +29,40 @@
 namespace pxd
 {
 
-void
-MoveProcessor::ProcessAll (const Json::Value& moveArray)
-{
-  CHECK (moveArray.isArray ());
-  LOG (INFO) << "Processing " << moveArray.size () << " moves...";
+/* ************************************************************************** */
 
-  for (const auto& m : moveArray)
-    ProcessOne (m);
-}
-
-void
-MoveProcessor::ProcessAdmin (const Json::Value& admArray)
-{
-  CHECK (admArray.isArray ());
-  LOG (INFO) << "Processing " << admArray.size () << " admin commands...";
-
-  for (const auto& cmd : admArray)
-    {
-      CHECK (cmd.isObject ());
-      ProcessOneAdmin (cmd["cmd"]);
-    }
-}
-
-void
-MoveProcessor::ProcessOneAdmin (const Json::Value& cmd)
-{
-  if (!cmd.isObject ())
-    return;
-
-  HandleGodMode (cmd["god"]);
-}
-
-void
-MoveProcessor::ProcessOne (const Json::Value& moveObj)
+bool
+BaseMoveProcessor::ExtractMoveBasics (const Json::Value& moveObj,
+                                      std::string& name, Json::Value& mv,
+                                      Amount& paidToDev) const
 {
   VLOG (1) << "Processing move:\n" << moveObj;
   CHECK (moveObj.isObject ());
 
   CHECK (moveObj.isMember ("move"));
-  const Json::Value& mv = moveObj["move"];
+  mv = moveObj["move"];
   if (!mv.isObject ())
     {
       LOG (WARNING) << "Move is not an object: " << mv;
-      return;
+      return false;
     }
 
   const auto& nameVal = moveObj["name"];
   CHECK (nameVal.isString ());
-  const std::string name = nameVal.asString ();
+  name = nameVal.asString ();
 
-  Amount paidToDev = 0;
+  paidToDev = 0;
   const auto& outVal = moveObj["out"];
   if (outVal.isObject () && outVal.isMember (params.DeveloperAddress ()))
     CHECK (AmountFromJson (outVal[params.DeveloperAddress ()], paidToDev));
 
-  /* Note that the order between character update and character creation
-     matters:  By having the update *before* the creation, we explicitly
-     forbid a situation in which a newly created character is updated right
-     away.  That would be tricky (since the ID would have to be predicated),
-     but it would have been possible sometimes if the order were reversed.
-     We want to exclude such trickery and thus do the update first.  */
-  HandleCharacterUpdate (name, mv);
-  HandleCharacterCreation (name, mv, paidToDev);
+  return true;
 }
 
 void
-MoveProcessor::HandleCharacterCreation (const std::string& name,
-                                        const Json::Value& mv,
-                                        Amount paidToDev)
+BaseMoveProcessor::TryCharacterCreation (const std::string& name,
+                                         const Json::Value& mv,
+                                         Amount paidToDev)
 {
   const auto& cmd = mv["nc"];
   if (!cmd.isArray ())
@@ -146,15 +111,150 @@ MoveProcessor::HandleCharacterCreation (const std::string& name,
           return;
         }
 
-      SpawnCharacter (name, faction, characters, dyn, rnd, map, params);
+      PerformCharacterCreation (name, faction);
       paidToDev -= params.CharacterCost ();
-      VLOG (1) << "Created character, paid to dev left: " << paidToDev;
+      VLOG (1) << "After character creation, paid to dev left: " << paidToDev;
+    }
+}
+
+void
+BaseMoveProcessor::TryCharacterUpdates (const std::string& name,
+                                        const Json::Value& mv)
+{
+  const auto& cmd = mv["c"];
+  if (!cmd.isObject ())
+    return;
+
+  for (auto i = cmd.begin (); i != cmd.end (); ++i)
+    {
+      Database::IdT id;
+      if (!IdFromString (i.name (), id))
+        {
+          LOG (WARNING)
+              << "Ignoring invalid character ID for update: " << i.name ();
+          continue;
+        }
+
+      const auto& upd = *i;
+      if (!upd.isObject ())
+        {
+          LOG (WARNING)
+              << "Character update is not an object: " << upd;
+          continue;
+        }
+
+      auto c = characters.GetById (id);
+      if (c == nullptr)
+        {
+          LOG (WARNING)
+              << "Character ID does not exist: " << id;
+          continue;
+        }
+
+      if (c->GetOwner () != name)
+        {
+          LOG (WARNING)
+              << "User " << name
+              << " is not allowed to update character owned by "
+              << c->GetOwner ();
+          continue;
+        }
+
+      PerformCharacterUpdate (*c, upd);
+    }
+}
+
+bool
+BaseMoveProcessor::ParseCharacterWaypoints (const Character& c,
+                                            const Json::Value& upd,
+                                            std::vector<HexCoord>& wp)
+{
+  CHECK (upd.isObject ());
+  const auto& wpArr = upd["wp"];
+  if (!wpArr.isArray ())
+    return false;
+
+  if (c.GetBusy () > 0)
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId () << " is busy, can't set waypoints";
+      return false;
     }
 
-  if (paidToDev > 0)
-    LOG (WARNING)
-        << "Developer payment unused for character creation by " << name
-        << ": " << paidToDev;
+  for (const auto& entry : wpArr)
+    {
+      HexCoord coord;
+      if (!CoordFromJson (entry, coord))
+        {
+          LOG (WARNING)
+              << "Invalid waypoints given for character " << c.GetId ()
+              << ", not updating movement";
+          return false;
+        }
+      wp.push_back (coord);
+    }
+
+  return true;
+}
+
+/* ************************************************************************** */
+
+void
+MoveProcessor::ProcessAll (const Json::Value& moveArray)
+{
+  CHECK (moveArray.isArray ());
+  LOG (INFO) << "Processing " << moveArray.size () << " moves...";
+
+  for (const auto& m : moveArray)
+    ProcessOne (m);
+}
+
+void
+MoveProcessor::ProcessAdmin (const Json::Value& admArray)
+{
+  CHECK (admArray.isArray ());
+  LOG (INFO) << "Processing " << admArray.size () << " admin commands...";
+
+  for (const auto& cmd : admArray)
+    {
+      CHECK (cmd.isObject ());
+      ProcessOneAdmin (cmd["cmd"]);
+    }
+}
+
+void
+MoveProcessor::ProcessOneAdmin (const Json::Value& cmd)
+{
+  if (!cmd.isObject ())
+    return;
+
+  HandleGodMode (cmd["god"]);
+}
+
+void
+MoveProcessor::ProcessOne (const Json::Value& moveObj)
+{
+  std::string name;
+  Json::Value mv;
+  Amount paidToDev;
+  if (!ExtractMoveBasics (moveObj, name, mv, paidToDev))
+    return;
+
+  /* Note that the order between character update and character creation
+     matters:  By having the update *before* the creation, we explicitly
+     forbid a situation in which a newly created character is updated right
+     away.  That would be tricky (since the ID would have to be predicated),
+     but it would have been possible sometimes if the order were reversed.
+     We want to exclude such trickery and thus do the update first.  */
+  TryCharacterUpdates (name, mv);
+  TryCharacterCreation (name, mv, paidToDev);
+}
+
+void
+MoveProcessor::PerformCharacterCreation (const std::string& name,
+                                         const Faction f)
+{
+  SpawnCharacter (name, f, characters, dyn, rnd, map, params);
 }
 
 namespace
@@ -243,97 +343,30 @@ MaybeStartProspecting (Character& c, const Json::Value& upd,
   c.MutableProto ().mutable_prospection ();
 }
 
-/**
- * Sets the character's waypoints if a valid command for starting a move
- * is there.
- */
+} // anonymous namespace
+
 void
-MaybeSetCharacterWaypoints (Character& c, const Json::Value& upd)
+MoveProcessor::MaybeSetCharacterWaypoints (Character& c, const Json::Value& upd)
 {
-  CHECK (upd.isObject ());
-  const auto& wpArr = upd["wp"];
-  if (!wpArr.isArray ())
-    return;
-
-  if (c.GetBusy () > 0)
-    {
-      LOG (WARNING)
-          << "Character " << c.GetId () << " is busy, can't set waypoints";
-      return;
-    }
-
   std::vector<HexCoord> wp;
-  for (const auto& entry : wpArr)
-    {
-      HexCoord coord;
-      if (!CoordFromJson (entry, coord))
-        {
-          LOG (WARNING)
-              << "Invalid waypoints given for character " << c.GetId ()
-              << ", not updating movement";
-          return;
-        }
-      wp.push_back (coord);
-    }
+  if (!ParseCharacterWaypoints (c, upd, wp))
+    return;
 
   VLOG (1)
       << "Updating movement for character " << c.GetId ()
-      << " from waypoints: " << wpArr;
+      << " from waypoints: " << upd["wp"];
 
   StopCharacter (c);
   auto* mv = c.MutableProto ().mutable_movement ();
   SetRepeatedCoords (wp, *mv->mutable_waypoints ());
 }
 
-} // anonymous namespace
-
 void
-MoveProcessor::HandleCharacterUpdate (const std::string& name,
-                                      const Json::Value& mv)
+MoveProcessor::PerformCharacterUpdate (Character& c, const Json::Value& upd)
 {
-  const auto& cmd = mv["c"];
-  if (!cmd.isObject ())
-    return;
-
-  for (auto i = cmd.begin (); i != cmd.end (); ++i)
-    {
-      Database::IdT id;
-      if (!IdFromString (i.name (), id))
-        {
-          LOG (WARNING)
-              << "Ignoring invalid character ID for update: " << i.name ();
-          continue;
-        }
-
-      const auto& upd = *i;
-      if (!upd.isObject ())
-        {
-          LOG (WARNING)
-              << "Character update is not an object: " << upd;
-          continue;
-        }
-
-      auto c = characters.GetById (id);
-      if (c == nullptr)
-        {
-          LOG (WARNING)
-              << "Character ID does not exist: " << id;
-          continue;
-        }
-
-      if (c->GetOwner () != name)
-        {
-          LOG (WARNING)
-              << "User " << name
-              << " is not allowed to update character owned by "
-              << c->GetOwner ();
-          continue;
-        }
-
-      MaybeTransferCharacter (*c, upd);
-      MaybeStartProspecting (*c, upd, regions, params, map);
-      MaybeSetCharacterWaypoints (*c, upd);
-    }
+  MaybeTransferCharacter (c, upd);
+  MaybeStartProspecting (c, upd, regions, params, map);
+  MaybeSetCharacterWaypoints (c, upd);
 }
 
 namespace
@@ -444,5 +477,7 @@ MoveProcessor::HandleGodMode (const Json::Value& cmd)
   MaybeGodTeleport (characters, cmd["teleport"]);
   MaybeGodSetHp (characters, cmd["sethp"]);
 }
+
+/* ************************************************************************** */
 
 } // namespace pxd

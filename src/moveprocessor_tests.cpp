@@ -358,6 +358,38 @@ TEST_F (CharacterUpdateTests, CreationAndUpdate)
   EXPECT_EQ (h->GetOwner (), "domob");
 }
 
+TEST_F (CharacterUpdateTests, SameIdTwice)
+{
+  /* JSON and Xaya Core allow objects with duplicated keys.  When they are
+     parsed by JsonCpp (i.e. in Taurion), then the second value for a key
+     overrides the first.  This test verifies this behaviour, so that we
+     can make sure it does not get broken (which would be a fork).  */
+
+  auto h = GetTest ();
+  EXPECT_EQ (h->GetOwner (), "domob");
+  EXPECT_FALSE (h->GetProto ().has_movement ());
+  h.reset ();
+
+  Process (R"([{
+    "name": "domob",
+    "move":
+      {
+        "c":
+          {
+            "1": {"send": "bob"},
+            "1": {"wp": [{"x": 5, "y": 3}]}
+          }
+      }
+  }])");
+
+  h = GetTest ();
+  EXPECT_EQ (h->GetOwner (), "domob");
+  const auto& wp = h->GetProto ().movement ().waypoints ();
+  ASSERT_EQ (wp.size (), 1);
+  EXPECT_EQ (CoordFromProto (wp.Get (0)), HexCoord (5, 3));
+  h.reset ();
+}
+
 TEST_F (CharacterUpdateTests, ValidTransfer)
 {
   EXPECT_EQ (GetTest ()->GetOwner (), "domob");
