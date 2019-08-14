@@ -147,6 +147,73 @@ TEST_F (PendingStateTests, Waypoints)
   )");
 }
 
+TEST_F (PendingStateTests, Prospecting)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  ASSERT_EQ (c->GetId (), 1);
+
+  state.AddCharacterProspecting (*c, 12345);
+  state.AddCharacterProspecting (*c, 12345);
+  EXPECT_DEATH (state.AddCharacterProspecting (*c, 999), "another region");
+
+  c.reset ();
+
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {
+            "id": 1,
+            "prospecting": 12345
+          }
+        ]
+    }
+  )");
+}
+
+TEST_F (PendingStateTests, ProspectingAndWaypoints)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  ASSERT_EQ (c->GetId (), 1);
+
+  state.AddCharacterProspecting (*c, 12345);
+  state.AddCharacterWaypoints (*c, {});
+
+  c.reset ();
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {
+            "id": 1,
+            "prospecting": 12345,
+            "waypoints": null
+          }
+        ]
+    }
+  )");
+
+  c = characters.GetById (1);
+
+  state.Clear ();
+  state.AddCharacterWaypoints (*c, {});
+  state.AddCharacterProspecting (*c, 12345);
+
+  c.reset ();
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {
+            "id": 1,
+            "prospecting": 12345,
+            "waypoints": null
+          }
+        ]
+    }
+  )");
+}
+
 TEST_F (PendingStateTests, CharacterCreation)
 {
   state.AddCharacterCreation ("foo", Faction::RED);

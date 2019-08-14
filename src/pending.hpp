@@ -64,6 +64,12 @@ private:
     std::unique_ptr<std::vector<HexCoord>> wp;
 
     /**
+     * The ID of the region this character is starting to prospect.  Set to
+     * RegionMap::OUT_OF_MAP if no prospection is coming.
+     */
+    Database::IdT prospectingRegionId = RegionMap::OUT_OF_MAP;
+
+    /**
      * Returns the JSON representation of the pending state.
      */
     Json::Value ToJson () const;
@@ -96,6 +102,13 @@ private:
   /** Pending creations of new characters (by account name).  */
   std::map<std::string, std::vector<NewCharacter>> newCharacters;
 
+  /**
+   * Returns the pending character state for the given instance, creating one
+   * if we do not have it yet.  The reference follows iterator-invalidation
+   * rules for "characters".
+   */
+  CharacterState& GetCharacterState (const Character& c);
+
 public:
 
   PendingState () = default;
@@ -111,9 +124,21 @@ public:
 
   /**
    * Updates the state for waypoints found for a character in a pending move.
+   *
+   * If the character is already pending to start prospecting, then this
+   * will do nothing as a prospecting character cannot move.
    */
   void AddCharacterWaypoints (const Character& ch,
                               const std::vector<HexCoord>& wp);
+
+  /**
+   * Updates the state of a character to include a pending prospecting
+   * for the given region.
+   *
+   * A character that prospects can't move, so this will unset the pending
+   * waypoints for it (if any).
+   */
+  void AddCharacterProspecting (const Character& ch, Database::IdT regionId);
 
   /**
    * Updates the state for a new pending character creation.

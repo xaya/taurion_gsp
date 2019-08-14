@@ -33,24 +33,74 @@ PendingState::Clear ()
   newCharacters.clear ();
 }
 
+PendingState::CharacterState&
+PendingState::GetCharacterState (const Character& c)
+{
+  const auto id = c.GetId ();
+
+  const auto mit = characters.find (id);
+  if (mit == characters.end ())
+    {
+      const auto ins = characters.emplace (id, CharacterState ());
+      CHECK (ins.second);
+      VLOG (1)
+          << "Character " << id << " was not yet pending, added pending entry";
+      return ins.first->second;
+    }
+
+  VLOG (1) << "Character " << id << " is already pending, updating entry";
+  return mit->second;
+}
+
 void
 PendingState::AddCharacterWaypoints (const Character& ch,
                                      const std::vector<HexCoord>& wp)
 {
   VLOG (1) << "Adding pending waypoints for character " << ch.GetId ();
+  auto& chState = GetCharacterState (ch);
 
-  auto mit = characters.find (ch.GetId ());
-  if (mit == characters.end ())
+  if (chState.prospectingRegionId != RegionMap::OUT_OF_MAP)
     {
-      const auto ins = characters.emplace (ch.GetId (), CharacterState ());
-      CHECK (ins.second);
-      mit = ins.first;
-      VLOG (1) << "Character was not yet pending, added pending entry";
+      LOG (WARNING)
+          << "Character " << ch.GetId ()
+          << " is pending to start prospecting, ignoring waypoints";
+      return;
     }
-  else
-    VLOG (1) << "Character is already pending, updating entry";
 
-  mit->second.wp = std::make_unique<std::vector<HexCoord>> (wp);
+  chState.wp = std::make_unique<std::vector<HexCoord>> (wp);
+}
+
+void
+PendingState::AddCharacterProspecting (const Character& ch,
+                                       const Database::IdT regionId)
+{
+  VLOG (1)
+      << "Character " << ch.GetId ()
+      << " is pending to start prospecting region " << regionId;
+
+  auto& chState = GetCharacterState (ch);
+
+  /* If there is already a pending region, then it will be the same ID.
+     That is because the ID is set from the character's current position, and
+     that can not change between blocks (when the pending state is rebuilt from
+     scratch anyway).  */
+  if (chState.prospectingRegionId != RegionMap::OUT_OF_MAP)
+    CHECK_EQ (chState.prospectingRegionId, regionId)
+        << "Character " << ch.GetId ()
+        << " is pending to prospect another region";
+
+  chState.prospectingRegionId = regionId;
+
+  /* Clear any waypoints that are pending.  This assumes that both moves
+     will be confirmed at the same time (i.e. not just the movement), but
+     that is the best guess we can make.  */
+  if (chState.wp != nullptr)
+    {
+      LOG (WARNING)
+          << "Character " << ch.GetId ()
+          << " will start prospecting, clearing pending waypoints";
+      chState.wp.reset ();
+    }
 }
 
 void
@@ -85,6 +135,9 @@ PendingState::CharacterState::ToJson () const
 
       res["waypoints"] = wpJson;
     }
+
+  if (prospectingRegionId != RegionMap::OUT_OF_MAP)
+    res["prospecting"] = IntToJson (prospectingRegionId);
 
   return res;
 }
