@@ -29,16 +29,45 @@
 #include <xayagame/sqlitegame.hpp>
 #include <xayautil/random.hpp>
 
-#include <sqlite3.h>
-
 #include <json/json.h>
+
+#include <sqlite3.h>
 
 #include <string>
 
 namespace pxd
 {
 
-class SQLiteGameDatabase;
+class PXLogic;
+
+/**
+ * Database instance that uses an SQLiteGame instance for everything.
+ */
+class SQLiteGameDatabase : public Database
+{
+
+private:
+
+  /** The underlying SQLiteGame instance.  */
+  PXLogic& game;
+
+protected:
+
+  sqlite3_stmt* PrepareStatement (const std::string& sql) override;
+
+public:
+
+  explicit SQLiteGameDatabase (PXLogic& g)
+    : game(g)
+  {}
+
+  SQLiteGameDatabase () = delete;
+  SQLiteGameDatabase (const SQLiteGameDatabase&) = delete;
+  void operator= (const SQLiteGameDatabase&) = delete;
+
+  Database::IdT GetNextId () override;
+
+};
 
 /**
  * The game logic implementation for Taurion.  This is the main class that

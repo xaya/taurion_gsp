@@ -98,6 +98,20 @@ PXRpcServer::getcurrentstate ()
   return game.GetCurrentJsonState ();
 }
 
+Json::Value
+PXRpcServer::getpendingstate ()
+{
+  LOG (INFO) << "RPC method called: getpendingstate";
+  return game.GetPendingJsonState ();
+}
+
+Json::Value
+PXRpcServer::waitforpendingchange (const int oldVersion)
+{
+  LOG (INFO) << "RPC method called: waitforpendingchange " << oldVersion;
+  return game.WaitForPendingChange (oldVersion);
+}
+
 std::string
 PXRpcServer::waitforchange (const std::string& knownBlock)
 {

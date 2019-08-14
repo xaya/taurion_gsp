@@ -29,47 +29,20 @@
 
 #include <glog/logging.h>
 
-#include <sqlite3.h>
-
 namespace pxd
 {
 
-/**
- * Database instance that uses an SQLiteGame instance for everything.
- */
-class SQLiteGameDatabase : public Database
+sqlite3_stmt*
+SQLiteGameDatabase::PrepareStatement (const std::string& sql)
 {
+  return game.PrepareStatement (sql);
+}
 
-private:
-
-  /** The underlying SQLiteGame instance.  */
-  PXLogic& game;
-
-protected:
-
-  sqlite3_stmt*
-  PrepareStatement (const std::string& sql) override
-  {
-    return game.PrepareStatement (sql);
-  }
-
-public:
-
-  explicit SQLiteGameDatabase (PXLogic& g)
-    : game(g)
-  {}
-
-  SQLiteGameDatabase () = delete;
-  SQLiteGameDatabase (const SQLiteGameDatabase&) = delete;
-  void operator= (const SQLiteGameDatabase&) = delete;
-
-  Database::IdT
-  GetNextId () override
-  {
-    return game.Ids ("pxd").GetNext ();
-  }
-
-};
+Database::IdT
+SQLiteGameDatabase::GetNextId ()
+{
+  return game.Ids ("pxd").GetNext ();
+}
 
 namespace
 {

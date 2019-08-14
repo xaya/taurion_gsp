@@ -12,6 +12,7 @@ REGTESTS = \
   godmode.py \
   movement.py \
   multiupdate.py \
+  pending.py \
   prospecting.py
 
 EXTRA_DIST = $(REGTESTS) $(TEST_LIBRARY)

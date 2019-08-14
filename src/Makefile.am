@@ -26,6 +26,7 @@ libtaurion_la_SOURCES = \
   movement.cpp \
   moveprocessor.cpp \
   params.cpp \
+  pending.cpp \
   prospecting.cpp \
   protoutils.cpp \
   spawn.cpp
@@ -40,6 +41,7 @@ libtaurionheaders = \
   movement.hpp \
   moveprocessor.hpp \
   params.hpp \
+  pending.hpp \
   prospecting.hpp \
   protoutils.hpp \
   spawn.hpp
@@ -90,9 +92,11 @@ tests_SOURCES = \
   logic_tests.cpp \
   movement_tests.cpp \
   moveprocessor_tests.cpp \
+  pending_tests.cpp \
   prospecting_tests.cpp \
   protoutils_tests.cpp \
   spawn_tests.cpp \
+  testutils_tests.cpp \
   \
   testutils.cpp
 check_HEADERS = \

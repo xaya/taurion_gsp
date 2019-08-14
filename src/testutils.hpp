@@ -21,6 +21,8 @@
 
 #include <xayautil/random.hpp>
 
+#include <json/json.h>
+
 namespace pxd
 {
 
@@ -35,6 +37,14 @@ public:
   TestRandom ();
 
 };
+
+/**
+ * Checks for "partial equality" of the given JSON values.  This means that
+ * keys not present in the expected value (if it is an object) are not checked
+ * in the actual value at all.  If keys have a value of null in expected,
+ * then they must not be there in actual at all.
+ */
+bool PartialJsonEqual (const Json::Value& actual, const Json::Value& expected);
 
 } // namespace pxd
 

@@ -56,7 +56,9 @@ public:
 
   void stop () override;
   Json::Value getcurrentstate () override;
+  Json::Value getpendingstate () override;
   std::string waitforchange (const std::string& knownBlock) override;
+  Json::Value waitforpendingchange (int oldVersion) override;
 
   Json::Value findpath (int l1range, const Json::Value& source,
                         const Json::Value& target, int wpdist) override;

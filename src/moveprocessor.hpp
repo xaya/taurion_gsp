@@ -36,15 +36,14 @@ namespace pxd
 {
 
 /**
- * Class that handles processing of all moves made in a block.
+ * Base class for MoveProcessor (handling confirmed moves) and PendingProcessor
+ * (for processing pending moves).  It holds some common stuff for both
+ * as well as some basic logic for processing some moves.
  */
-class MoveProcessor
+class BaseMoveProcessor
 {
 
-private:
-
-  /** Basemap instance that can be used.  */
-  const BaseMap& map;
+protected:
 
   /** Parameters for the current situation.  */
   const Params& params;
@@ -55,14 +54,91 @@ private:
    */
   Database& db;
 
+  /** Access handle for the characters table in the DB.  */
+  CharacterTable characters;
+
+  explicit BaseMoveProcessor (Database& d, const Params& p)
+    : params(p), db(d), characters(db)
+  {}
+
+  /**
+   * Parses some basic stuff from a move JSON object.  This extracts the
+   * actual move JSON value, the name and the dev payment.  The function
+   * returns true if the extraction went well so far and the move
+   * may be processed further.
+   */
+  bool ExtractMoveBasics (const Json::Value& moveObj,
+                          std::string& name, Json::Value& mv,
+                          Amount& paidToDev) const;
+
+  /**
+   * Parses and verifies a potential character creation as part of the
+   * given move.  For all valid creations, PerformCharacterCreation
+   * is called with the relevant data.
+   */
+  void TryCharacterCreation (const std::string& name, const Json::Value& mv,
+                             Amount paidToDev);
+
+  /**
+   * Parses and verifies potential character updates as part of the
+   * given move.  This extracts all commands to update characters
+   * and verifies if they are in general valid (e.g. the character exists
+   * and is owned by the user sending the move).  For all which are valid,
+   * PerformCharacterUpdate will be called.
+   */
+  void TryCharacterUpdates (const std::string& name, const Json::Value& mv);
+
+  /**
+   * This function is called when TryCharacterCreation found a creation that
+   * is valid and should be performed.
+   */
+  virtual void
+  PerformCharacterCreation (const std::string& name, Faction f)
+  {}
+
+  /**
+   * This function is called when TryCharacterUpdates found an update that
+   * should actually be performed.
+   */
+  virtual void
+  PerformCharacterUpdate (Character& c, const Json::Value& upd)
+  {}
+
+  /**
+   * Parses and verifies a potential update to the character waypoints
+   * in the update JSON.  Returns true if a valid waypoint update was found,
+   * in which case wp will be set accordingly.
+   */
+  static bool ParseCharacterWaypoints (const Character& c,
+                                       const Json::Value& upd,
+                                       std::vector<HexCoord>& wp);
+
+public:
+
+  virtual ~BaseMoveProcessor () = default;
+
+  BaseMoveProcessor () = delete;
+  BaseMoveProcessor (const BaseMoveProcessor&) = delete;
+  void operator= (const BaseMoveProcessor&) = delete;
+
+};
+
+/**
+ * Class that handles processing of all moves made in a block.
+ */
+class MoveProcessor : public BaseMoveProcessor
+{
+
+private:
+
+  /** Basemap instance that can be used.  */
+  const BaseMap& map;
+
   /** Dynamic obstacle layer, used for spawning characters.  */
   DynObstacles& dyn;
 
   /** Handle for random numbers.  */
   xaya::Random& rnd;
-
-  /** Access handle for the characters table in the DB.  */
-  CharacterTable characters;
 
   /** Access to the regions table.  */
   RegionsTable regions;
@@ -71,17 +147,6 @@ private:
    * Processes the move corresponding to one transaction.
    */
   void ProcessOne (const Json::Value& moveObj);
-
-  /**
-   * Processes commands to create new characters in the given move.
-   */
-  void HandleCharacterCreation (const std::string& name, const Json::Value& mv,
-                                Amount paidToDev);
-
-  /**
-   * Processes commands to make changes to existing characters.
-   */
-  void HandleCharacterUpdate (const std::string& name, const Json::Value& mv);
 
   /**
    * Processes one admin command.
@@ -94,18 +159,26 @@ private:
    */
   void HandleGodMode (const Json::Value& cmd);
 
+  /**
+   * Sets the character's waypoints if a valid command for starting a move
+   * is there.
+   */
+  static void MaybeSetCharacterWaypoints (Character& c, const Json::Value& upd);
+
+protected:
+
+  void PerformCharacterCreation (const std::string& name, Faction f) override;
+  void PerformCharacterUpdate (Character& c, const Json::Value& mv) override;
+
 public:
 
   explicit MoveProcessor (Database& d, DynObstacles& dyo, xaya::Random& r,
                           const Params& p, const BaseMap& m)
-    : map(m), params(p),
-      db(d), dyn(dyo), rnd(r),
-      characters(db), regions(db)
+    : BaseMoveProcessor(d, p),
+      map(m),
+      dyn(dyo), rnd(r),
+      regions(db)
   {}
-
-  MoveProcessor () = delete;
-  MoveProcessor (const MoveProcessor&) = delete;
-  void operator= (const MoveProcessor&) = delete;
 
   /**
    * Processes all moves from the given JSON array.

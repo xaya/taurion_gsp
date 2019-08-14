@@ -9,9 +9,19 @@
     "returns": {}
   },
   {
+    "name": "getpendingstate",
+    "params": {},
+    "returns": {}
+  },
+  {
     "name": "waitforchange",
-    "params": [ "known block" ],
+    "params": ["known block"],
     "returns": ""
+  },
+  {
+    "name": "waitforpendingchange",
+    "params": [42],
+    "returns": {}
   },
 
   {
