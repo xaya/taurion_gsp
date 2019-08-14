@@ -37,8 +37,6 @@ namespace pxd
 namespace
 {
 
-#define DEVADDR "DHy2615XKevE23LVRVZVxGeqxadRGyiFW4"
-
 class MoveProcessorTests : public DBTestWithSchema
 {
 
@@ -107,7 +105,7 @@ protected:
     in >> val;
 
     for (auto& entry : val)
-      entry["out"][DEVADDR] = AmountToJson (amount);
+      entry["out"][params.DeveloperAddress ()] = AmountToJson (amount);
 
     mvProc.ProcessAll (val);
   }
@@ -133,7 +131,7 @@ TEST_F (MoveProcessorTests, InvalidDataFromXaya)
 
   EXPECT_DEATH (Process (R"([{
     "name": "domob", "move": {},
-    "out": {")" DEVADDR R"(": false}
+    "out": {")" + params.DeveloperAddress () + R"(": false}
   }])"), "JSON value for amount is not double");
 }
 

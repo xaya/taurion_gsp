@@ -19,6 +19,9 @@
 #ifndef PXD_PENDING_HPP
 #define PXD_PENDING_HPP
 
+#include "moveprocessor.hpp"
+#include "params.hpp"
+
 #include "database/character.hpp"
 #include "database/database.hpp"
 #include "database/faction.hpp"
@@ -120,6 +123,37 @@ public:
    * Returns the JSON representation of the pending state.
    */
   Json::Value ToJson () const;
+
+};
+
+/**
+ * BaseMoveProcessor class that updates the pending state.  This contains the
+ * main logic for PendingMoves::AddPendingMove, and is also accessible from
+ * the unit tests independently of SQLiteGame.
+ */
+class PendingStateUpdater : public BaseMoveProcessor
+{
+
+private:
+
+  /** The PendingState instance that is updated.  */
+  PendingState& state;
+
+protected:
+
+  void PerformCharacterCreation (const std::string& name, Faction f) override;
+  void PerformCharacterUpdate (Character& c, const Json::Value& upd) override;
+
+public:
+
+  explicit PendingStateUpdater (Database& d, PendingState& s, const Params& p)
+    : BaseMoveProcessor(d, p), state(s)
+  {}
+
+  /**
+   * Processes the given move.
+   */
+  void ProcessMove (const Json::Value& moveObj);
 
 };
 

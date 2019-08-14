@@ -127,6 +127,42 @@ PendingState::ToJson () const
 
 /* ************************************************************************** */
 
+void
+PendingStateUpdater::PerformCharacterCreation (const std::string& name,
+                                               const Faction f)
+{
+  state.AddCharacterCreation (name, f);
+}
+
+void
+PendingStateUpdater::PerformCharacterUpdate (Character& c,
+                                             const Json::Value& upd)
+{
+  std::vector<HexCoord> wp;
+  if (ParseCharacterWaypoints (c, upd, wp))
+    {
+      VLOG (1)
+          << "Found pending waypoints for character " << c.GetId ()
+          << ": " << upd["wp"];
+      state.AddCharacterWaypoints (c, wp);
+    }
+}
+
+void
+PendingStateUpdater::ProcessMove (const Json::Value& moveObj)
+{
+  std::string name;
+  Json::Value mv;
+  Amount paidToDev;
+  if (!ExtractMoveBasics (moveObj, name, mv, paidToDev))
+    return;
+
+  TryCharacterUpdates (name, mv);
+  TryCharacterCreation (name, mv, paidToDev);
+}
+
+/* ************************************************************************** */
+
 PendingMoves::PendingMoves (PXLogic& rules)
   : xaya::SQLiteGame::PendingMoves(rules)
 {}
@@ -140,7 +176,14 @@ PendingMoves::Clear ()
 void
 PendingMoves::AddPendingMove (const Json::Value& mv)
 {
-  LOG (WARNING) << "Ignoring pending move: " << mv;
+  AccessConfirmedState ();
+  PXLogic& rules = dynamic_cast<PXLogic&> (GetSQLiteGame ());
+  SQLiteGameDatabase dbObj(rules);
+
+  const Params params(GetChain ());
+
+  PendingStateUpdater updater(dbObj, state, params);
+  updater.ProcessMove (mv);
 }
 
 Json::Value

@@ -18,6 +18,7 @@
 
 #include "pending.hpp"
 
+#include "jsonutils.hpp"
 #include "testutils.hpp"
 
 #include "database/character.hpp"
@@ -31,6 +32,8 @@ namespace pxd
 {
 namespace
 {
+
+/* ************************************************************************** */
 
 class PendingStateTests : public DBTestWithSchema
 {
@@ -169,6 +172,197 @@ TEST_F (PendingStateTests, CharacterCreation)
     }
   )");
 }
+
+/* ************************************************************************** */
+
+class PendingStateUpdaterTests : public PendingStateTests
+{
+
+protected:
+
+  const Params params;
+
+private:
+
+  PendingStateUpdater updater;
+
+protected:
+
+  PendingStateUpdaterTests ()
+    : params(xaya::Chain::MAIN), updater(db, state, params)
+  {}
+
+  /**
+   * Processes a move for the given name and with the given move data, parsed
+   * from JSON string.  If paidToDev is non-zero, then add an "out" entry
+   * paying the given amount to the dev address.
+   */
+  void
+  ProcessWithDevPayment (const std::string& name, const Amount paidToDev,
+                         const std::string& mvStr)
+  {
+    Json::Value moveObj(Json::objectValue);
+    moveObj["name"] = name;
+
+    if (paidToDev != 0)
+      moveObj["out"][params.DeveloperAddress ()] = AmountToJson (paidToDev);
+
+    std::istringstream in(mvStr);
+    in >> moveObj["move"];
+
+    updater.ProcessMove (moveObj);
+  }
+
+  /**
+   * Processes a move for the given name and with the given move data
+   * as JSON string, without developer payment.
+   */
+  void
+  Process (const std::string& name, const std::string& mvStr)
+  {
+    ProcessWithDevPayment (name, 0, mvStr);
+  }
+
+};
+
+TEST_F (PendingStateUpdaterTests, InvalidCreation)
+{
+  ProcessWithDevPayment ("domob", params.CharacterCost (), R"(
+    {
+      "nc": [{"faction": "r", "x": 5}]
+    }
+  )");
+  Process ("domob", R"(
+    {
+      "nc": [{"faction": "r"}]
+    }
+  )");
+
+  ExpectStateJson (R"(
+    {
+      "newcharacters":
+        {
+          "domob": null
+        }
+    }
+  )");
+}
+
+TEST_F (PendingStateUpdaterTests, ValidCreations)
+{
+  ProcessWithDevPayment ("domob", 2 * params.CharacterCost (), R"({
+    "nc": [{"faction": "r"}, {"faction": "g"}, {"faction": "b"}]
+  })");
+  ProcessWithDevPayment ("andy", params.CharacterCost (), R"({
+    "nc": [{"faction": "r"}]
+  })");
+  ProcessWithDevPayment ("domob", params.CharacterCost (), R"({
+    "nc": [{"faction": "r"}]
+  })");
+
+  ExpectStateJson (R"(
+    {
+      "newcharacters":
+        {
+          "domob":
+            [
+              {"faction": "r"},
+              {"faction": "g"},
+              {"faction": "r"}
+            ],
+          "andy":
+            [
+              {"faction": "r"}
+            ]
+        }
+    }
+  )");
+}
+
+TEST_F (PendingStateUpdaterTests, InvalidUpdate)
+{
+  CHECK_EQ (characters.CreateNew ("domob", Faction::RED)->GetId (), 1);
+
+  Process ("andy", R"({
+    "c": {"1": {"wp": []}}
+  })");
+  Process ("domob", R"({
+    "c": {" 1 ": {"wp": []}}
+  })");
+  Process ("domob", R"({
+    "c": {"42": {"wp": []}}
+  })");
+
+  ExpectStateJson (R"(
+    {
+      "characters": []
+    }
+  )");
+}
+
+TEST_F (PendingStateUpdaterTests, Waypoints)
+{
+  CHECK_EQ (characters.CreateNew ("domob", Faction::RED)->GetId (), 1);
+  CHECK_EQ (characters.CreateNew ("domob", Faction::RED)->GetId (), 2);
+  CHECK_EQ (characters.CreateNew ("domob", Faction::RED)->GetId (), 3);
+
+  /* Some invalid updates that will just not show up (i.e. ID 1 will have no
+     pending updates later on).  */
+  Process ("domob", R"({
+    "c": {"1": {"wp": "foo"}}
+  })");
+  Process ("domob", R"({
+    "c": {"1": {"wp": {"x": 4.5, "y": 3.141}}}
+  })");
+
+  /* Perform valid updates.  Only the waypoints updates will be tracked, and
+     we will keep the latest one for any character.  */
+  Process ("domob", R"({
+    "c":
+      {
+        "2": {"wp": [{"x": 0, "y": 100}]},
+        "3": {"wp": [{"x": 1, "y": -2}]}
+      }
+  })");
+  Process ("domob", R"({
+    "c": {"2": {"wp": []}}
+  })");
+  Process ("domob", R"({
+    "c": {"2": {"send": "andy"}}
+  })");
+
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {"id": 2, "waypoints": []},
+          {"id": 3, "waypoints": [{"x": 1, "y": -2}]}
+        ]
+    }
+  )");
+}
+
+TEST_F (PendingStateUpdaterTests, CreationAndUpdateTogether)
+{
+  CHECK_EQ (characters.CreateNew ("domob", Faction::RED)->GetId (), 1);
+
+  ProcessWithDevPayment ("domob", params.CharacterCost (), R"({
+    "nc": [{"faction": "r"}],
+    "c": {"1": {"wp": []}}
+  })");
+
+  ExpectStateJson (R"(
+    {
+      "characters": [{"id": 1, "waypoints": []}],
+      "newcharacters":
+        {
+          "domob": [{"faction": "r"}]
+        }
+    }
+  )");
+}
+
+/* ************************************************************************** */
 
 } // anonymous namespace
 } // namespace pxd
