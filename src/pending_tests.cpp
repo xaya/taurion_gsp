@@ -147,6 +147,73 @@ TEST_F (PendingStateTests, Waypoints)
   )");
 }
 
+TEST_F (PendingStateTests, Prospecting)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  ASSERT_EQ (c->GetId (), 1);
+
+  state.AddCharacterProspecting (*c, 12345);
+  state.AddCharacterProspecting (*c, 12345);
+  EXPECT_DEATH (state.AddCharacterProspecting (*c, 999), "another region");
+
+  c.reset ();
+
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {
+            "id": 1,
+            "prospecting": 12345
+          }
+        ]
+    }
+  )");
+}
+
+TEST_F (PendingStateTests, ProspectingAndWaypoints)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  ASSERT_EQ (c->GetId (), 1);
+
+  state.AddCharacterProspecting (*c, 12345);
+  state.AddCharacterWaypoints (*c, {});
+
+  c.reset ();
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {
+            "id": 1,
+            "prospecting": 12345,
+            "waypoints": null
+          }
+        ]
+    }
+  )");
+
+  c = characters.GetById (1);
+
+  state.Clear ();
+  state.AddCharacterWaypoints (*c, {});
+  state.AddCharacterProspecting (*c, 12345);
+
+  c.reset ();
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {
+            "id": 1,
+            "prospecting": 12345,
+            "waypoints": null
+          }
+        ]
+    }
+  )");
+}
+
 TEST_F (PendingStateTests, CharacterCreation)
 {
   state.AddCharacterCreation ("foo", Faction::RED);
@@ -181,6 +248,7 @@ class PendingStateUpdaterTests : public PendingStateTests
 protected:
 
   const Params params;
+  const BaseMap map;
 
 private:
 
@@ -189,7 +257,7 @@ private:
 protected:
 
   PendingStateUpdaterTests ()
-    : params(xaya::Chain::MAIN), updater(db, state, params)
+    : params(xaya::Chain::MAIN), updater(db, state, params, map)
   {}
 
   /**
@@ -337,6 +405,38 @@ TEST_F (PendingStateUpdaterTests, Waypoints)
         [
           {"id": 2, "waypoints": []},
           {"id": 3, "waypoints": [{"x": 1, "y": -2}]}
+        ]
+    }
+  )");
+}
+
+TEST_F (PendingStateUpdaterTests, Prospecting)
+{
+  const HexCoord pos(456, -789);
+  auto h = characters.CreateNew ("domob", Faction::RED);
+  ASSERT_EQ (h->GetId (), 1);
+  h->SetPosition (pos);
+  h.reset ();
+
+  h = characters.CreateNew ("domob", Faction::GREEN);
+  ASSERT_EQ (h->GetId (), 2);
+  h->SetBusy (10);
+  h->MutableProto ().mutable_prospection ();
+  h.reset ();
+
+  Process ("domob", R"({
+    "c":
+      {
+        "1": {"prospect": {}},
+        "2": {"prospect": {}}
+      }
+  })");
+
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {"id": 1, "prospecting": 345820}
         ]
     }
   )");

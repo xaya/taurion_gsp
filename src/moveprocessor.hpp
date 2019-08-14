@@ -48,6 +48,9 @@ protected:
   /** Parameters for the current situation.  */
   const Params& params;
 
+  /** BaseMap instance that can be used.  */
+  const BaseMap& map;
+
   /**
    * The Database handle we use for making any changes (and looking up the
    * current state while validating moves).
@@ -57,8 +60,12 @@ protected:
   /** Access handle for the characters table in the DB.  */
   CharacterTable characters;
 
-  explicit BaseMoveProcessor (Database& d, const Params& p)
-    : params(p), db(d), characters(db)
+  /** Access to the regions table.  */
+  RegionsTable regions;
+
+  explicit BaseMoveProcessor (Database& d, const Params& p, const BaseMap& m)
+    : params(p), map(m), db(d),
+      characters(db), regions(db)
   {}
 
   /**
@@ -70,6 +77,23 @@ protected:
   bool ExtractMoveBasics (const Json::Value& moveObj,
                           std::string& name, Json::Value& mv,
                           Amount& paidToDev) const;
+
+  /**
+   * Parses and verifies a potential update to the character waypoints
+   * in the update JSON.  Returns true if a valid waypoint update was found,
+   * in which case wp will be set accordingly.
+   */
+  static bool ParseCharacterWaypoints (const Character& c,
+                                       const Json::Value& upd,
+                                       std::vector<HexCoord>& wp);
+
+  /**
+   * Parses and verifies a potential prospecting command.  Returns true if the
+   * character will start prospecting (and sets the prospected region ID) and
+   * false otherwise.
+   */
+  bool ParseCharacterProspecting (const Character& c, const Json::Value& upd,
+                                  Database::IdT& regionId);
 
   /**
    * Parses and verifies a potential character creation as part of the
@@ -104,15 +128,6 @@ protected:
   PerformCharacterUpdate (Character& c, const Json::Value& upd)
   {}
 
-  /**
-   * Parses and verifies a potential update to the character waypoints
-   * in the update JSON.  Returns true if a valid waypoint update was found,
-   * in which case wp will be set accordingly.
-   */
-  static bool ParseCharacterWaypoints (const Character& c,
-                                       const Json::Value& upd,
-                                       std::vector<HexCoord>& wp);
-
 public:
 
   virtual ~BaseMoveProcessor () = default;
@@ -131,17 +146,11 @@ class MoveProcessor : public BaseMoveProcessor
 
 private:
 
-  /** Basemap instance that can be used.  */
-  const BaseMap& map;
-
   /** Dynamic obstacle layer, used for spawning characters.  */
   DynObstacles& dyn;
 
   /** Handle for random numbers.  */
   xaya::Random& rnd;
-
-  /** Access to the regions table.  */
-  RegionsTable regions;
 
   /**
    * Processes the move corresponding to one transaction.
@@ -165,6 +174,12 @@ private:
    */
   static void MaybeSetCharacterWaypoints (Character& c, const Json::Value& upd);
 
+  /**
+   * Processes a command to start prospecting at the character's current
+   * location on the map.
+   */
+  void MaybeStartProspecting (Character& c, const Json::Value& upd);
+
 protected:
 
   void PerformCharacterCreation (const std::string& name, Faction f) override;
@@ -174,10 +189,8 @@ public:
 
   explicit MoveProcessor (Database& d, DynObstacles& dyo, xaya::Random& r,
                           const Params& p, const BaseMap& m)
-    : BaseMoveProcessor(d, p),
-      map(m),
-      dyn(dyo), rnd(r),
-      regions(db)
+    : BaseMoveProcessor(d, p, m),
+      dyn(dyo), rnd(r)
   {}
 
   /**

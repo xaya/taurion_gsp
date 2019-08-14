@@ -17,8 +17,7 @@
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 """
-Runs tests about the basic handling of characters (creating them, transferring
-them and retrieving them through RPC).
+Tests the tracking of pending moves.
 """
 
 from pxtest import PXTest
@@ -40,9 +39,17 @@ class PendingTest (PXTest):
   def run (self):
     self.generate (101);
 
+    # Some well-defined position that we use, which also reflects the
+    # region that will be prospected.
+    position = {"x": 0, "y": 0}
+    regionId = self.rpc.game.getregionat (coord=position)["id"]
+
     self.mainLogger.info ("Creating test character...")
     self.createCharacter ("domob", "r")
     self.generate (1)
+    self.moveCharactersTo ({
+      "domob": position,
+    })
     # getGameState ensures that we sync up at least for the confirmed state
     # before we look at the pending state.
     self.getGameState ()
@@ -76,13 +83,30 @@ class PendingTest (PXTest):
     c.sendMove ({"wp": [{"x": 5, "y": -5}]})
 
     sleepSome ()
+    self.assertEqual (self.getPendingState (), {
+      "characters":
+        [
+          {
+            "id": c.getId (),
+            "waypoints": [{"x": 5, "y": -5}],
+          }
+        ],
+      "newcharacters":
+        {
+          "domob": [{"faction": "g"}, {"faction": "b"}],
+          "andy": [{"faction": "r"}],
+        },
+    })
+
+    c.sendMove ({"prospect": {}})
+    sleepSome ()
     oldPending = self.getPendingState ()
     self.assertEqual (oldPending, {
       "characters":
         [
           {
             "id": c.getId (),
-            "waypoints": [{"x": 5, "y": -5}],
+            "prospecting": regionId,
           }
         ],
       "newcharacters":
