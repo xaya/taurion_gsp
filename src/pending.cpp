@@ -191,6 +191,10 @@ void
 PendingStateUpdater::PerformCharacterUpdate (Character& c,
                                              const Json::Value& upd)
 {
+  Database::IdT regionId;
+  if (ParseCharacterProspecting (c, upd, regionId))
+    state.AddCharacterProspecting (c, regionId);
+
   std::vector<HexCoord> wp;
   if (ParseCharacterWaypoints (c, upd, wp))
     {

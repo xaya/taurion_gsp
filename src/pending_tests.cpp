@@ -410,6 +410,38 @@ TEST_F (PendingStateUpdaterTests, Waypoints)
   )");
 }
 
+TEST_F (PendingStateUpdaterTests, Prospecting)
+{
+  const HexCoord pos(456, -789);
+  auto h = characters.CreateNew ("domob", Faction::RED);
+  ASSERT_EQ (h->GetId (), 1);
+  h->SetPosition (pos);
+  h.reset ();
+
+  h = characters.CreateNew ("domob", Faction::GREEN);
+  ASSERT_EQ (h->GetId (), 2);
+  h->SetBusy (10);
+  h->MutableProto ().mutable_prospection ();
+  h.reset ();
+
+  Process ("domob", R"({
+    "c":
+      {
+        "1": {"prospect": {}},
+        "2": {"prospect": {}}
+      }
+  })");
+
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {"id": 1, "prospecting": 345820}
+        ]
+    }
+  )");
+}
+
 TEST_F (PendingStateUpdaterTests, CreationAndUpdateTogether)
 {
   CHECK_EQ (characters.CreateNew ("domob", Faction::RED)->GetId (), 1);
