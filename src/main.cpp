@@ -19,6 +19,7 @@
 #include "config.h"
 
 #include "logic.hpp"
+#include "pending.hpp"
 #include "pxrpcserver.hpp"
 
 #include <xayagame/defaultmain.hpp>
@@ -53,6 +54,9 @@ DEFINE_int32 (enable_pruning, -1,
 DEFINE_string (datadir, "",
                "base data directory for game data (will be extended by game ID"
                " and the chain)");
+
+DEFINE_bool (pending_moves, true,
+             "whether or not pending moves should be tracked");
 
 class PXInstanceFactory : public xaya::CustomisedInstanceFactory
 {
@@ -126,6 +130,10 @@ main (int argc, char** argv)
   pxd::PXLogic rules;
   PXInstanceFactory instanceFact(rules);
   config.InstanceFactory = &instanceFact;
+
+  pxd::PendingMoves pending(rules);
+  if (FLAGS_pending_moves)
+    config.PendingMoves = &pending;
 
   const int rc = xaya::SQLiteMain (config, "tn", rules);
 
