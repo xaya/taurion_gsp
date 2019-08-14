@@ -181,6 +181,7 @@ class PendingStateUpdaterTests : public PendingStateTests
 protected:
 
   const Params params;
+  const BaseMap map;
 
 private:
 
@@ -189,7 +190,7 @@ private:
 protected:
 
   PendingStateUpdaterTests ()
-    : params(xaya::Chain::MAIN), updater(db, state, params)
+    : params(xaya::Chain::MAIN), updater(db, state, params, map)
   {}
 
   /**

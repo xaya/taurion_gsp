@@ -182,7 +182,7 @@ PendingMoves::AddPendingMove (const Json::Value& mv)
 
   const Params params(GetChain ());
 
-  PendingStateUpdater updater(dbObj, state, params);
+  PendingStateUpdater updater(dbObj, state, params, rules.GetBaseMap ());
   updater.ProcessMove (mv);
 }
 

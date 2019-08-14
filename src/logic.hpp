@@ -123,6 +123,16 @@ public:
   PXLogic (const PXLogic&) = delete;
   void operator= (const PXLogic&) = delete;
 
+  /**
+   * Gives access to the underlying BaseMap instance (so that it can be reused
+   * for other parts of the game like pending processing).
+   */
+  const BaseMap&
+  GetBaseMap ()
+  {
+    return map;
+  }
+
 };
 
 } // namespace pxd

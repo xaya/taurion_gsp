@@ -26,6 +26,7 @@
 #include "database/database.hpp"
 #include "database/faction.hpp"
 #include "hexagonal/coord.hpp"
+#include "mapdata/basemap.hpp"
 
 #include <xayagame/sqlitegame.hpp>
 
@@ -146,8 +147,9 @@ protected:
 
 public:
 
-  explicit PendingStateUpdater (Database& d, PendingState& s, const Params& p)
-    : BaseMoveProcessor(d, p), state(s)
+  explicit PendingStateUpdater (Database& d, PendingState& s,
+                                const Params& p, const BaseMap& m)
+    : BaseMoveProcessor(d, p, m), state(s)
   {}
 
   /**
