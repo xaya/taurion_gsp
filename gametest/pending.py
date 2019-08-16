@@ -55,7 +55,7 @@ class PendingTest (PXTest):
     self.getGameState ()
     self.assertEqual (self.getPendingState (), {
       "characters": [],
-      "newcharacters": {},
+      "newcharacters": [],
     })
 
     self.mainLogger.info ("Performing pending updates...")
@@ -73,9 +73,9 @@ class PendingTest (PXTest):
           }
         ],
       "newcharacters":
-        {
-          "domob": [{"faction": "g"}],
-        },
+        [
+          {"name": "domob", "creations": [{"faction": "g"}]},
+        ],
     })
 
     self.createCharacter ("domob", "b")
@@ -92,10 +92,10 @@ class PendingTest (PXTest):
           }
         ],
       "newcharacters":
-        {
-          "domob": [{"faction": "g"}, {"faction": "b"}],
-          "andy": [{"faction": "r"}],
-        },
+        [
+          {"name": "andy", "creations": [{"faction": "r"}]},
+          {"name": "domob", "creations": [{"faction": "g"}, {"faction": "b"}]},
+        ],
     })
 
     c.sendMove ({"prospect": {}})
@@ -110,10 +110,10 @@ class PendingTest (PXTest):
           }
         ],
       "newcharacters":
-        {
-          "domob": [{"faction": "g"}, {"faction": "b"}],
-          "andy": [{"faction": "r"}],
-        },
+        [
+          {"name": "andy", "creations": [{"faction": "r"}]},
+          {"name": "domob", "creations": [{"faction": "g"}, {"faction": "b"}]},
+        ],
     })
 
     self.mainLogger.info ("Confirming the moves...")
@@ -121,7 +121,7 @@ class PendingTest (PXTest):
     self.getGameState ()
     self.assertEqual (self.getPendingState (), {
       "characters": [],
-      "newcharacters": {},
+      "newcharacters": [],
     })
 
     self.mainLogger.info ("Unconfirming the moves...")

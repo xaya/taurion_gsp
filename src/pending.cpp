@@ -165,13 +165,18 @@ PendingState::ToJson () const
     }
   res["characters"] = chJson;
 
-  Json::Value newCh(Json::objectValue);
+  Json::Value newCh(Json::arrayValue);
   for (const auto& entry : newCharacters)
     {
+      Json::Value curName(Json::objectValue);
+      curName["name"] = entry.first;
+
       Json::Value arr(Json::arrayValue);
       for (const auto& nc : entry.second)
         arr.append (nc.ToJson ());
-      newCh[entry.first] = arr;
+      curName["creations"] = arr;
+
+      newCh.append (curName);
     }
   res["newcharacters"] = newCh;
 

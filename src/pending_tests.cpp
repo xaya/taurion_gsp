@@ -72,7 +72,7 @@ TEST_F (PendingStateTests, Empty)
   ExpectStateJson (R"(
     {
       "characters": [],
-      "newcharacters": {}
+      "newcharacters": []
     }
   )");
 }
@@ -88,10 +88,7 @@ TEST_F (PendingStateTests, Clear)
   ExpectStateJson (R"(
     {
       "characters": [{}],
-      "newcharacters":
-        {
-          "domob": [{}]
-        }
+      "newcharacters": [{}]
     }
   )");
 
@@ -99,10 +96,7 @@ TEST_F (PendingStateTests, Clear)
   ExpectStateJson (R"(
     {
       "characters": [],
-      "newcharacters":
-        {
-          "domob": null
-        }
+      "newcharacters": []
     }
   )");
 }
@@ -224,18 +218,24 @@ TEST_F (PendingStateTests, CharacterCreation)
   ExpectStateJson (R"(
     {
       "newcharacters":
-        {
-          "foo":
-            [
-              {"faction": "r"},
-              {"faction": "r"}
-            ],
-          "bar":
-            [
-              {"faction": "g"},
-              {"faction": "b"}
-            ]
-        }
+        [
+          {
+            "name": "bar",
+            "creations":
+              [
+                {"faction": "g"},
+                {"faction": "b"}
+              ]
+          },
+          {
+            "name": "foo",
+            "creations":
+              [
+                {"faction": "r"},
+                {"faction": "r"}
+              ]
+          }
+        ]
     }
   )");
 }
@@ -308,10 +308,7 @@ TEST_F (PendingStateUpdaterTests, InvalidCreation)
 
   ExpectStateJson (R"(
     {
-      "newcharacters":
-        {
-          "domob": null
-        }
+      "newcharacters": []
     }
   )");
 }
@@ -331,18 +328,24 @@ TEST_F (PendingStateUpdaterTests, ValidCreations)
   ExpectStateJson (R"(
     {
       "newcharacters":
-        {
-          "domob":
-            [
-              {"faction": "r"},
-              {"faction": "g"},
-              {"faction": "r"}
-            ],
-          "andy":
-            [
-              {"faction": "r"}
-            ]
-        }
+        [
+          {
+            "name": "andy",
+            "creations":
+              [
+                {"faction": "r"}
+              ]
+          },
+          {
+            "name": "domob",
+            "creations":
+              [
+                {"faction": "r"},
+                {"faction": "g"},
+                {"faction": "r"}
+              ]
+          }
+        ]
     }
   )");
 }
@@ -455,9 +458,12 @@ TEST_F (PendingStateUpdaterTests, CreationAndUpdateTogether)
     {
       "characters": [{"id": 1, "waypoints": []}],
       "newcharacters":
-        {
-          "domob": [{"faction": "r"}]
-        }
+        [
+          {
+            "name": "domob",
+            "creations": [{"faction": "r"}]
+          }
+        ]
     }
   )");
 }
