@@ -45,7 +45,7 @@ Params::DeveloperAddress () const
 Amount
 Params::CharacterCost () const
 {
-  return 5 * COIN;
+  return 50 * COIN;
 }
 
 HexCoord::IntT
