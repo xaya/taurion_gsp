@@ -52,7 +52,7 @@ class CombatTargetTest (PXTest):
     raise AssertionError ("Character with id %d not found" % charId)
 
   def run (self):
-    self.generate (101);
+    self.collectPremine ()
 
     self.mainLogger.info ("Creating test characters...")
     self.createCharacter ("a", "r")

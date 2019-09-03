@@ -26,7 +26,7 @@ Tests that Taurion works fine with multiple name updates in a single block.
 class MultiUpdateTest (PXTest):
 
   def run (self):
-    self.generate (101);
+    self.collectPremine ()
 
     self.mainLogger.info ("Creating test character...")
     self.createCharacter ("domob", "r")

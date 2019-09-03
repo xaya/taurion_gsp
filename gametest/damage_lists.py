@@ -51,7 +51,7 @@ class DamageListsTest (PXTest):
     self.assertEqual (self.getAttackers (name), set (expectedIds))
 
   def run (self):
-    self.generate (110);
+    self.collectPremine ()
 
     self.mainLogger.info ("Creating test characters...")
     self.createCharacter ("target", "b")

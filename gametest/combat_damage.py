@@ -43,7 +43,7 @@ class CombatDamageTest (PXTest):
     return hp["current"], hp["max"]
 
   def run (self):
-    self.generate (110);
+    self.collectPremine ()
 
     numAttackers = 5
 

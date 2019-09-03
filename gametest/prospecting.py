@@ -39,7 +39,15 @@ class ProspectingTest (PXTest):
     self.assertEqual (data, {"name": name})
 
   def run (self):
-    self.generate (110);
+    self.collectPremine ()
+
+    # Somehow the test fails with the reorgs if we start off with just
+    # a single output of coins.  Thus split it up.
+    sendTo = {}
+    for _ in range (100):
+      sendTo[self.rpc.xaya.getnewaddress ()] = 1000
+    self.rpc.xaya.sendmany ("", sendTo)
+    self.generate (1)
 
     self.mainLogger.info ("Setting up test characters...")
     self.createCharacter ("target", "r")
@@ -203,6 +211,7 @@ class ProspectingTest (PXTest):
         stillNeedSilver = False
 
       self.rpc.xaya.invalidateblock (blk)
+      self.assertEqual (self.rpc.xaya.name_pending ("p/prize trier"), [])
 
     # Restore the last randomised attempt.  Else we might end up with
     # a long invalid chain, which can confuse the reorg test.

@@ -26,7 +26,7 @@ Tests the fame and kills update of accounts.
 class FameTest (PXTest):
 
   def run (self):
-    self.generate (110);
+    self.collectPremine ()
 
     self.mainLogger.info ("Characters killing each other at the same time...")
     self.createCharacter ("foo", "r")

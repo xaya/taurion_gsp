@@ -87,7 +87,7 @@ class MovementTest (PXTest):
     assert mv is None
 
   def run (self):
-    self.generate (101);
+    self.collectPremine ()
 
     self.mainLogger.info ("Creating test character...")
     self.createCharacter ("domob", "r")
