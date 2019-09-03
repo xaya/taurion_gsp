@@ -81,6 +81,22 @@ const std::vector<Params::PrizeData> PRIZES =
     {"gold", 5, 150000},
     {"silver", 50, 4000},
     {"bronze", 2000, 100},
+
+    /* The odds for the extra pizes are chosen so that we expect a 90%
+       probability to find all of them with 150k trials.  This can be computed
+       with the script in contrib/competition/findOdds.m.  */
+    {"shr", 60, 2139},
+    {"spirit clash", 730, 196},
+    {"dio", 50, 2532},
+    {"1up", 20, 5791},
+    {"battle racers", 3, 28184},
+    {"divi", 20, 5791},
+    {"dft", 50, 2532},
+    {"9la necklace", 30, 4033},
+    {"9la miner", 10, 10559},
+    {"9la yellow", 10, 10559},
+    {"9la horned", 10, 10559},
+    {"snails", 20, 5791},
   };
 
 /** Prospecting prizes for regtest (easier to find / exhaust).  */
