@@ -136,9 +136,9 @@ protected:
 
 TEST_F (SpawnLocationTests, SpawnLocation)
 {
-  /* Faction blue has a spawn area without obstacles.  This simplifies things
+  /* Faction red has a spawn area without obstacles.  This simplifies things
      a lot for this test, as we do not have to consider displaced spawns.  */
-  constexpr Faction f = Faction::BLUE;
+  constexpr Faction f = Faction::RED;
 
   HexCoord::IntT spawnRadius;
   const HexCoord spawnCentre = params.SpawnArea (f, spawnRadius);
@@ -173,10 +173,10 @@ TEST_F (SpawnLocationTests, SpawnLocation)
 
 TEST_F (SpawnLocationTests, WithObstacles)
 {
-  /* Faction red has a significant amount of obstacles in the spawning area,
+  /* Faction blue has a significant amount of obstacles in the spawning area,
      including on the ring boundary.  Thus we can use it to test that map
      obstacles are fine.  */
-  constexpr Faction f = Faction::RED;
+  constexpr Faction f = Faction::BLUE;
 
   HexCoord::IntT spawnRadius;
   const HexCoord spawnCentre = params.SpawnArea (f, spawnRadius);
@@ -204,10 +204,10 @@ TEST_F (SpawnLocationTests, WithObstacles)
 
 TEST_F (SpawnLocationTests, DynObstacles)
 {
-  /* Faction blue has no obstacles on the basemap in the spawn area, so by
+  /* Faction red has no obstacles on the basemap in the spawn area, so by
      choosing this faction, we will be able to really fill up the entire
      area of the spawn with vehicles.  */
-  constexpr Faction f = Faction::BLUE;
+  constexpr Faction f = Faction::RED;
 
   HexCoord::IntT spawnRadius;
   const HexCoord spawnCentre = params.SpawnArea (f, spawnRadius);
