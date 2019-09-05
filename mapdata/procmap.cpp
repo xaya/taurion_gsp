@@ -218,7 +218,9 @@ public:
     out << "}; // offsetForY" << std::endl;
     out << "CHECK_YARRAY_LEN (offsetForY);" << std::endl;
 
-    out << "const size_t numTiles = " << numTiles << ";" << std::endl;
+    out << "static_assert (numTiles == " << numTiles << R"(,
+      "mismatch for numTiles between hardcoded value and map data");
+    )" << std::endl;
   }
 
   friend bool

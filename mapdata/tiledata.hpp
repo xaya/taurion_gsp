@@ -47,8 +47,13 @@ extern const int maxX[];
  */
 extern const size_t offsetForY[];
 
-/** Total number of tiles.  */
-extern const size_t numTiles;
+/**
+ * Total number of tiles.  Unlike the other data, this is specified here so
+ * that it can be constexpr and used e.g. as template parameters for
+ * std::array.  It is only checked against the actual data from the raw
+ * map files using static_assert.
+ */
+constexpr size_t numTiles = 66080641;
 
 namespace obstacles
 {
