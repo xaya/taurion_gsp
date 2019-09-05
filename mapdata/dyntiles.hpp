@@ -19,20 +19,54 @@
 #ifndef MAPDATA_DYNTILES_HPP
 #define MAPDATA_DYNTILES_HPP
 
+#include "tiledata.hpp"
+
 #include "hexagonal/coord.hpp"
 
+#include <bitset>
 #include <vector>
 
 namespace pxd
 {
+
+namespace dyntiles
+{
+
+/**
+ * Size of each "bucket" of values.  We use one std::vector instance
+ * for each bucket, and have a larger vector of vectors.  That way,
+ * we can initialise each bucket only when needed (i.e. it is changed
+ * from the default value), which improves performance for mostly sparse
+ * data (e.g. dynamic obstacles from vehicles).
+ */
+constexpr size_t BUCKET_SIZE = (1 << 16);
+
+/** Number of buckets to cover (at least) numTiles.  */
+constexpr size_t NUM_BUCKETS = tiledata::numTiles / BUCKET_SIZE + 1;
+static_assert (BUCKET_SIZE * NUM_BUCKETS >= tiledata::numTiles,
+               "number of buckets is too small to cover all tiles");
+
+/**
+ * Custom implementation of an "optional object" of the given type.
+ * We use that internally to represent bucket arrays in DynTiles.
+ */
+template <typename T> class Optional;
+
+/**
+ * Fixed array of N entries of type T like std::array, but this class
+ * has a specialisation to bool that uses std::bitset instead.
+ */
+template <typename T, size_t N> class BucketArray;
+
+} // namespace dyntiles
 
 /**
  * Dynamic map of each tile to a value with given type.  This holds storage
  * exactly for each map tile, unlike FullRangeMap which overestimates the
  * data requirement (but does not depend on the exact map structure).
  *
- * Note that the data is stored in a std::vector behind the scenes, so this
- * is memory-efficient also for bool.
+ * For boolean type, this is memory efficient and stores them as individual
+ * bits rather than bytes (using std::bitset under the hood).
  */
 template <typename T>
   class DynTiles
@@ -40,14 +74,18 @@ template <typename T>
 
 private:
 
-  /** The underlying data.  It is stored row-by-row in the vector.  */
-  std::vector<T> data;
+  /** The type of array for our buckets.  */
+  using Array = dyntiles::BucketArray<T, dyntiles::BUCKET_SIZE>;
+
+  /** The default value.  */
+  const T defaultValue;
 
   /**
-   * Computes the index into the data vector at which a certain coordinate
-   * will be found.
+   * The underlying data, as a vector of vectors.  Each entry here corresponds
+   * to BUCKET_SIZE tiles; it may be empty instead, in which case we assume
+   * that all of those tiles are still at the default value.
    */
-  static size_t GetIndex (const HexCoord& c);
+  std::array<dyntiles::Optional<Array>, dyntiles::NUM_BUCKETS> data;
 
 public:
 
@@ -63,12 +101,12 @@ public:
   /**
    * Accesses and potentially modifies the element.  c must be on the map.
    */
-  typename std::vector<T>::reference Access (const HexCoord& c);
+  typename Array::reference Access (const HexCoord& c);
 
   /**
    * Gives read-only access to the element.  c must be on the map.
    */
-  typename std::vector<T>::const_reference Get (const HexCoord& c) const;
+  typename Array::const_reference Get (const HexCoord& c) const;
 
 };
 

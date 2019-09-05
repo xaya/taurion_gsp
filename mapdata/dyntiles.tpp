@@ -18,21 +18,21 @@
 
 /* Template implementation code for dyntiles.hpp.  */
 
-#include "tiledata.hpp"
-
 #include <glog/logging.h>
 
 namespace pxd
 {
 
-template <typename T>
-  DynTiles<T>::DynTiles (const T& val)
-  : data(tiledata::numTiles, val)
-{}
+namespace dyntiles
+{
 
-template <typename T>
-  size_t
-  DynTiles<T>::GetIndex (const HexCoord& c)
+/**
+ * Computes the index into our abstract data vector at which a certain
+ * coordinate will be found.  The abstract data vector is the assumed
+ * array of all tiles, stored row-by-row.
+ */
+inline size_t
+GetIndex (const HexCoord& c)
 {
   const auto x = c.GetX ();
   const auto y = c.GetY ();
@@ -46,18 +46,138 @@ template <typename T>
   return offsetForY[yInd] + x - minX[yInd];
 }
 
-template <typename T>
-  typename std::vector<T>::reference
-  DynTiles<T>::Access (const HexCoord& c)
+/**
+ * Computes both the bucket number and index within the bucket for the
+ * given overall index into the abstract data vector.
+ */
+inline void
+GetBuckets (const size_t fullIndex, size_t& bucket, size_t& within)
 {
-  return data[GetIndex (c)];
+  bucket = fullIndex / BUCKET_SIZE;
+  within = fullIndex % BUCKET_SIZE;
+  CHECK_EQ (BUCKET_SIZE * bucket + within, fullIndex);
 }
 
 template <typename T>
-  typename std::vector<T>::const_reference
+  class Optional
+{
+
+private:
+
+  /** The value if present.  */
+  T* value = nullptr;
+
+public:
+
+  Optional () = default;
+
+  ~Optional ()
+  {
+    /* For some reason, it makes a huge performance difference (e.g. in the
+       DynTilesBoolConstruction benchmark) to explicitly check for the
+       pointer being null before the delete.  */
+    if (value != nullptr)
+      delete value;
+  }
+
+  Optional (const Optional<T>&) = delete;
+  void operator= (const Optional<T>&) = delete;
+
+  /**
+   * Extracts the value if it is present, returning nullptr if not.
+   */
+  T*
+  Get ()
+  {
+    return value;
+  }
+
+  /**
+   * Extracts the value if it is present, returning nullptr if not.
+   */
+  const T*
+  Get () const
+  {
+    return value;
+  }
+
+  /**
+   * Ensures that there is a value.  If there is not, it is
+   * default-constructed.  Returns true if the value was constructed.
+   */
+  bool
+  MaybeConstruct ()
+  {
+    if (value != nullptr)
+      return false;
+
+    value = new T ();
+    return true;
+  }
+
+};
+
+/* By default, BucketArray is just a std::array.  */
+template <typename T, size_t N>
+  class BucketArray : public std::array<T, N>
+{};
+
+/* Specialisation of BucketArray to type bool, which is stored more efficiently
+   in a std::bitset instead of std::array.  We make it look like std::array
+   as much as necessary, though.  */
+template <size_t N>
+  class BucketArray<bool, N> : public std::bitset<N>
+{
+
+public:
+
+  /* Just pass bool by value back from Get().  */
+  using const_reference = bool;
+
+  void
+  fill (const bool val)
+  {
+    if (val)
+      this->set ();
+    else
+      this->reset ();
+  }
+
+};
+
+} // namespace dyntiles
+
+template <typename T>
+  DynTiles<T>::DynTiles (const T& val)
+  : defaultValue(val)
+{}
+
+template <typename T>
+  typename DynTiles<T>::Array::reference
+  DynTiles<T>::Access (const HexCoord& c)
+{
+  size_t bucket, within;
+  dyntiles::GetBuckets (dyntiles::GetIndex (c), bucket, within);
+
+  auto& part = data[bucket];
+  if (part.MaybeConstruct ())
+    part.Get ()->fill (defaultValue);
+
+  return (*part.Get ())[within];
+}
+
+template <typename T>
+  typename DynTiles<T>::Array::const_reference
   DynTiles<T>::Get (const HexCoord& c) const
 {
-  return data[GetIndex (c)];
+  size_t bucket, within;
+  dyntiles::GetBuckets (dyntiles::GetIndex (c), bucket, within);
+
+  const auto& part = data[bucket];
+  if (part.Get () == nullptr)
+    return defaultValue;
+
+  return (*part.Get ())[within];
 }
 
 } // namespace pxd
