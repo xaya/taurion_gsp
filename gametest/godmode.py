@@ -26,7 +26,7 @@ Tests the god-mode commands.
 class GodModeTest (PXTest):
 
   def run (self):
-    self.generate (101);
+    self.collectPremine ()
 
     self.createCharacter ("domob", "r")
     self.generate (1)

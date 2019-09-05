@@ -44,7 +44,7 @@ class CharactersTest (PXTest):
       c.expectPartial (expected[nm])
 
   def run (self):
-    self.generate (101);
+    self.collectPremine ()
 
     self.mainLogger.info ("Creating first character...")
     self.createCharacter ("adam", "r")
@@ -136,7 +136,7 @@ class CharactersTest (PXTest):
     blk = self.rpc.xaya.getblockhash (1)
     self.rpc.xaya.invalidateblock (blk)
 
-    self.generate (101)
+    self.collectPremine ()
     self.createCharacter ("domob", "b")
     self.generate (1)
     self.expectPartial ({

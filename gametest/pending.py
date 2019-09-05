@@ -37,7 +37,7 @@ def sleepSome ():
 class PendingTest (PXTest):
 
   def run (self):
-    self.generate (101);
+    self.collectPremine ()
 
     # Some well-defined position that we use, which also reflects the
     # region that will be prospected.

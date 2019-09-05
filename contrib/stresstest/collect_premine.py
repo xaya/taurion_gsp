@@ -24,6 +24,8 @@ for all testing.
 
 import utils
 
+from xayagametest import premine
+
 import argparse
 import sys
 
@@ -36,45 +38,9 @@ parser.add_argument ("--address", default="",
 args = parser.parse_args ()
 
 logger = utils.setupLogging ()
-
 rpc = utils.connectRegtestRpc (args.xaya_rpc_url, logger)
-
-logger.info ("Adding premine keys...")
-for key in ["b69iyynFSWcU54LqXisbbqZ8uTJ7Dawk3V3yhht6ykxgttqMQFjb",
-            "b3fgAKVQpMj24gbuh6DiXVwCCjCbo1cWiZC2fXgWEU9nXy6sdxD5"]:
-  rpc.importprivkey (key, "premine", False)
-multisig = rpc.addmultisigaddress (1,
-                                   ["cRH94YMZVk4MnRwPqRVebkLWerCPJDrXGN",
-                                    "ceREF8QnXPsJ2iVQ1M4emggoXiXEynm59D"],
-                                   "", "legacy")
-assert multisig["address"] == "dHNvNaqcD7XPDnoRjAoyfcMpHRi5upJD7p"
-
-logger.info ("Locating premine...")
-genesisHash = rpc.getblockhash (0)
-genesisBlk = rpc.getblock (genesisHash, 2)
-assert len (genesisBlk["tx"]) == 1
-genesisTx = genesisBlk["tx"][0]
-assert len (genesisTx["vout"]) == 1
-txid = genesisTx["txid"]
-vout = 0
-amount = genesisTx["vout"][vout]["value"]
-logger.info ("Genesis transaction has value of %d CHI" % amount)
-
-txout = rpc.gettxout (txid, vout)
-if txout is None:
-  logger.fatal ("Premine is already spent!")
-  sys.exit (1)
 
 addr = args.address
 if addr == "":
-  addr = rpc.getnewaddress ()
-logger.info ("Collecting premine coins to %s..." % addr)
-
-fee = 0.01
-inputs = [{"txid": txid, "vout": vout}]
-outputs = [{addr: amount - fee}]
-rawTx = rpc.createrawtransaction (inputs, outputs)
-signed = rpc.signrawtransactionwithwallet (rawTx)
-assert signed["complete"]
-rpc.sendrawtransaction (signed["hex"], 0)
-rpc.generatetoaddress (1, rpc.getnewaddress ())
+  addr = None
+premine.collect (rpc, addr, logger)
