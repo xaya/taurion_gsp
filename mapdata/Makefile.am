@@ -59,6 +59,7 @@ benchmarks_LDADD = \
   $(top_builddir)/hexagonal/libhexagonal.la \
   $(GLOG_LIBS) $(BENCHMARK_LIBS)
 benchmarks_SOURCES = \
+  dyntiles_bench.cpp \
   regionmap_bench.cpp
 
 procmap_CXXFLAGS = \
