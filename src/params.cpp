@@ -138,7 +138,7 @@ Params::SpawnArea (const Faction f, HexCoord::IntT& radius) const
       return HexCoord (-3430, 1793);
 
     case Faction::BLUE:
-      return HexCoord (-553, 2417);
+      return HexCoord (-321, 2424);
 
     default:
       LOG (FATAL) << "Invalid faction: " << static_cast<int> (f);

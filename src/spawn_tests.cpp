@@ -134,10 +134,26 @@ protected:
 
 };
 
+TEST_F (SpawnLocationTests, NoObstaclesInSpawns)
+{
+  for (const Faction f : {Faction::RED, Faction::GREEN, Faction::BLUE})
+    {
+      HexCoord::IntT spawnRadius;
+      const auto spawnCentre = params.SpawnArea (f, spawnRadius);
+
+      for (HexCoord::IntT r = 0; r <= spawnRadius; ++r)
+        {
+          const L1Ring ring(spawnCentre, r);
+          for (const auto& pos : ring)
+            ASSERT_TRUE (map.IsPassable (pos))
+                << "Tile " << pos << " for faction " << FactionToString (f)
+                << " is not passable";
+        }
+    }
+}
+
 TEST_F (SpawnLocationTests, SpawnLocation)
 {
-  /* Faction red has a spawn area without obstacles.  This simplifies things
-     a lot for this test, as we do not have to consider displaced spawns.  */
   constexpr Faction f = Faction::RED;
 
   HexCoord::IntT spawnRadius;
@@ -171,42 +187,8 @@ TEST_F (SpawnLocationTests, SpawnLocation)
   EXPECT_GT (foundInner, 0);
 }
 
-TEST_F (SpawnLocationTests, WithObstacles)
-{
-  /* Faction blue has a significant amount of obstacles in the spawning area,
-     including on the ring boundary.  Thus we can use it to test that map
-     obstacles are fine.  */
-  constexpr Faction f = Faction::BLUE;
-
-  HexCoord::IntT spawnRadius;
-  const HexCoord spawnCentre = params.SpawnArea (f, spawnRadius);
-
-  /* We spawn a couple of characters (and remove them again) and expect
-     that some of them are actually placed outside the spawn radius; namely
-     because they got placed on an obstacle and had to be displaced to
-     outside the map.  We also expect that all locations are passable.  */
-  constexpr unsigned trials = 1000;
-
-  unsigned outside = 0;
-  for (unsigned i = 0; i < trials; ++i)
-    {
-      const auto pos = SpawnLocation (f);
-      ASSERT_TRUE (map.IsPassable (pos));
-
-      const auto dist = HexCoord::DistanceL1 (pos, spawnCentre);
-      if (dist > spawnRadius)
-        ++outside;
-    }
-
-  LOG (INFO) << outside << " locations were displaced to outside the ring";
-  EXPECT_GT (outside, 0);
-}
-
 TEST_F (SpawnLocationTests, DynObstacles)
 {
-  /* Faction red has no obstacles on the basemap in the spawn area, so by
-     choosing this faction, we will be able to really fill up the entire
-     area of the spawn with vehicles.  */
   constexpr Faction f = Faction::RED;
 
   HexCoord::IntT spawnRadius;
