@@ -25,13 +25,16 @@ CXXFLAGS+=" -DGLOG_NO_ABBREVIATED_SEVERITIES"
 
 PKG_PROG_PKG_CONFIG
 
-PKG_CHECK_MODULES([XAYAGAME], [libxayautil libxayagame])
 PKG_CHECK_MODULES([SQLITE3], [sqlite3])
 PKG_CHECK_MODULES([JSON], [jsoncpp])
 PKG_CHECK_MODULES([GLOG], [libglog])
 PKG_CHECK_MODULES([GTEST], [gmock gtest])
 PKG_CHECK_MODULES([GTEST_MAIN], [gtest_main])
 PKG_CHECK_MODULES([PROTOBUF], [protobuf])
+
+# For Taurion 0.1 (tech demo competition), we use libxayagame at commit
+# 493f3379f3e3efd3686b20dac7f7ee2d3ea77c96 in the official builds.
+PKG_CHECK_MODULES([XAYAGAME], [libxayautil libxayagame])
 
 # Make sure that pkg-config provides the right libraries for some dependencies
 # that may only be available statically (e.g. gflags).  For context, see:
