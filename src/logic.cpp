@@ -53,7 +53,7 @@ namespace
  */
 void
 ProcessBusy (Database& db, xaya::Random& rnd,
-             const Params& params, const BaseMap& map)
+             const int64_t timestamp, const Params& params, const BaseMap& map)
 {
   CharacterTable characters(db);
   RegionsTable regions(db);
@@ -66,7 +66,7 @@ ProcessBusy (Database& db, xaya::Random& rnd,
       switch (c->GetProto ().busy_case ())
         {
         case proto::Character::kProspection:
-          FinishProspecting (*c, db, regions, rnd, params, map);
+          FinishProspecting (*c, db, regions, rnd, timestamp, params, map);
           break;
 
         default:
@@ -102,10 +102,16 @@ PXLogic::UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
                       const Params& params, const BaseMap& map,
                       const Json::Value& blockData)
 {
+  const auto& block = blockData["block"];
+  CHECK (block.isObject ());
+  const auto& timestampVal = block["timestamp"];
+  CHECK (timestampVal.isInt64 ());
+  const int64_t timestamp = timestampVal.asInt64 ();
+
   fame.GetDamageLists ().RemoveOld (params.DamageListBlocks ());
 
   AllHpUpdates (db, fame, rnd, map);
-  ProcessBusy (db, rnd, params, map);
+  ProcessBusy (db, rnd, timestamp, params, map);
 
   DynObstacles dyn(db);
   MoveProcessor mvProc(db, dyn, rnd, params, map);

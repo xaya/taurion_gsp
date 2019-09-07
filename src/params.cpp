@@ -72,6 +72,13 @@ Params::ProspectingBlocks () const
   return 10;
 }
 
+int64_t
+Params::CompetitionEndTime () const
+{
+  /* 2019-10-15, 14:00 UTC */
+  return 1571148000;
+}
+
 namespace
 {
 

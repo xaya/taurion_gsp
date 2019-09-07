@@ -38,11 +38,14 @@ namespace pxd
 void InitialisePrizes (Database& db, const Params& params);
 
 /**
- * Finishes a done prospecting operation by the given character.
+ * Finishes a done prospecting operation by the given character.  If the
+ * competition is still active (not yet past the end time), then also
+ * prizes can be won.
  */
 void FinishProspecting (Character& c, Database& db, RegionsTable& regions,
                         xaya::Random& rnd,
-                        const Params& params, const BaseMap& map);
+                        int64_t timestamp, const Params& params,
+                        const BaseMap& map);
 
 } // namespace pxd
 
