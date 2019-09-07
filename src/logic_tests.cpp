@@ -81,6 +81,7 @@ protected:
 
     Json::Value meta(Json::objectValue);
     meta["height"] = 42;
+    meta["timestamp"] = 1500000000;
     blockData["block"] = meta;
 
     std::istringstream in(movesStr);

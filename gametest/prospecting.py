@@ -23,6 +23,14 @@ Tests prospecting with characters and various interactions of that with
 movement and combat.
 """
 
+# Timestamps when the competition is still active and when it is
+# already over.  Note that for some reason we cannot be exact to the
+# second here, since the mined block timestamps not always match the
+# mocktime exactly.  We verify the correct behaviour with respect to the
+# timestamp in unit tests, though.
+COMPETITION_RUNNING = 1500000000
+COMPETITION_OVER = 1600000000
+
 
 class ProspectingTest (PXTest):
 
@@ -39,6 +47,11 @@ class ProspectingTest (PXTest):
     self.assertEqual (data, {"name": name})
 
   def run (self):
+    # Mine a couple of blocks to get a meaningful median time
+    # that is before the times we'll use in testing.
+    self.rpc.xaya.setmocktime (COMPETITION_RUNNING)
+    self.generate (10)
+
     self.collectPremine ()
 
     # Somehow the test fails with the reorgs if we start off with just
@@ -196,12 +209,12 @@ class ProspectingTest (PXTest):
     stillNeedNone = True
     stillNeedSilver = True
     blk = None
+    self.getCharacters ()["prize trier"].sendMove ({"prospect": {}})
+    self.generate (9)
     while stillNeedNone or stillNeedSilver:
       self.generate (1)
       blk = self.rpc.xaya.getbestblockhash ()
-
-      self.getCharacters ()["prize trier"].sendMove ({"prospect": {}})
-      self.generate (11)
+      self.generate (1)
 
       prosp = self.getRegionAt (pos).data["prospection"]
       self.assertEqual (prosp["name"], "prize trier")
@@ -211,12 +224,49 @@ class ProspectingTest (PXTest):
         stillNeedSilver = False
 
       self.rpc.xaya.invalidateblock (blk)
-      self.assertEqual (self.rpc.xaya.name_pending ("p/prize trier"), [])
+
+    assert blk is not None
+    blkOldTime = blk
+
+    # Test the impact of the block time onto received prizes.  After
+    # the competition is over, no prizes should be found anymore.  It
+    # is possible to have a "beyond" block and then an earlier block with
+    # prizes, though.  Thus we mine the block before prospecting ends
+    # always after the competition.
+    self.mainLogger.info ("Testing time and prizes...")
+
+    self.rpc.xaya.setmocktime (COMPETITION_OVER)
+    self.generate (1)
+
+    # There's a 12% chance that we will simply not find a silver prize
+    # (with 10% chance) in 20 trials even if we could, but we are fine
+    # with that.
+    for _ in range (20):
+      self.generate (1)
+      blk = self.rpc.xaya.getbestblockhash ()
+
+      prosp = self.getRegionAt (pos).data["prospection"]
+      self.assertEqual (prosp["name"], "prize trier")
+      assert "prize" not in prosp
+
+      self.rpc.xaya.invalidateblock (blk)
+
+    self.rpc.xaya.setmocktime (COMPETITION_RUNNING)
+    stillNeedPrize = True
+    while stillNeedPrize:
+      self.generate (1)
+      blk = self.rpc.xaya.getbestblockhash ()
+
+      prosp = self.getRegionAt (pos).data["prospection"]
+      self.assertEqual (prosp["name"], "prize trier")
+      if "prize" in prosp:
+        stillNeedPrize = False
+
+      self.rpc.xaya.invalidateblock (blk)
 
     # Restore the last randomised attempt.  Else we might end up with
     # a long invalid chain, which can confuse the reorg test.
-    assert blk is not None
-    self.rpc.xaya.reconsiderblock (blk)
+    self.rpc.xaya.reconsiderblock (blkOldTime)
 
     # Prospect in some regions and verify some basic expectations
     # on the number of prizes found.

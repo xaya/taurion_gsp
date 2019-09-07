@@ -34,6 +34,11 @@ namespace pxd
 namespace
 {
 
+/** Timestamp before the competition end.  */
+constexpr int64_t TIME_IN_COMPETITION = 1571148000;
+/** Timestamp after the competition end.  */
+constexpr int64_t TIME_AFTER_COMPETITION = TIME_IN_COMPETITION + 1;
+
 class ProspectingTests : public DBTestWithSchema
 {
 
@@ -80,7 +85,8 @@ protected:
    * Returns the region ID prospected.
    */
   RegionMap::IdT
-  Prospect (CharacterTable::Handle c, const HexCoord& pos)
+  Prospect (CharacterTable::Handle c, const HexCoord& pos,
+            const int64_t timestamp)
   {
     const auto id = c->GetId ();
     c->SetPosition (pos);
@@ -91,7 +97,8 @@ protected:
     const auto region = map.Regions ().GetRegionId (pos);
     regions.GetById (region)->MutableProto ().set_prospecting_character (id);
 
-    FinishProspecting (*characters.GetById (id), db, regions, rnd, params, map);
+    FinishProspecting (*characters.GetById (id), db, regions, rnd,
+                       timestamp, params, map);
     return region;
   }
 
@@ -99,7 +106,8 @@ protected:
 
 TEST_F (ProspectingTests, Basic)
 {
-  const auto region = Prospect (GetTest (), HexCoord (10, -20));
+  const auto region = Prospect (GetTest (), HexCoord (10, -20),
+                                TIME_IN_COMPETITION);
 
   auto c = GetTest ();
   EXPECT_EQ (c->GetBusy (), 0);
@@ -123,7 +131,8 @@ TEST_F (ProspectingTests, Prizes)
         {
           const HexCoord pos(x, 20 * j);
           auto c = characters.CreateNew ("domob", Faction::RED);
-          const auto region = Prospect (std::move (c), pos);
+          const auto region = Prospect (std::move (c), pos,
+                                        TIME_IN_COMPETITION);
           const auto res = regionIds.insert (region);
           ASSERT_TRUE (res.second);
         }
@@ -153,6 +162,27 @@ TEST_F (ProspectingTests, Prizes)
   EXPECT_GE (foundMap["silver"], 50);
   EXPECT_LE (foundMap["silver"], 150);
   EXPECT_EQ (foundMap["bronze"], 0);
+}
+
+TEST_F (ProspectingTests, NoPrizesAfterEnd)
+{
+  constexpr unsigned trials = 1000;
+  constexpr unsigned perRow = 10;
+
+  for (unsigned i = 0; i < trials; i += perRow)
+    {
+      const HexCoord::IntT x = 2 * i;
+      for (unsigned j = 0; j < perRow; ++j)
+        {
+          const HexCoord pos(x, 20 * j);
+          auto c = characters.CreateNew ("domob", Faction::RED);
+          Prospect (std::move (c), pos, TIME_AFTER_COMPETITION);
+        }
+    }
+
+  Prizes prizeTable(db);
+  for (const auto& p : params.ProspectingPrizes ())
+    EXPECT_EQ (prizeTable.GetFound (p.name), 0);
 }
 
 } // anonymous namespace
