@@ -41,7 +41,8 @@ InitialisePrizes (Database& db, const Params& params)
 void
 FinishProspecting (Character& c, Database& db, RegionsTable& regions,
                    xaya::Random& rnd,
-                   const Params& params, const BaseMap& map)
+                   const int64_t timestamp, const Params& params,
+                   const BaseMap& map)
 {
   const auto& pos = c.GetPosition ();
   const auto regionId = map.Regions ().GetRegionId (pos);
@@ -63,6 +64,12 @@ FinishProspecting (Character& c, Database& db, RegionsTable& regions,
   CHECK (!mpb.has_prospection ());
   auto* prosp = mpb.mutable_prospection ();
   prosp->set_name (c.GetOwner ());
+
+  if (timestamp > params.CompetitionEndTime ())
+    {
+      LOG (INFO) << "Competition is over, no prizes can be found";
+      return;
+    }
 
   /* Check the prizes in order to see if we won any.  */
   CHECK (!prosp->has_prize ());
