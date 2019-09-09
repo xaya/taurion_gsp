@@ -21,18 +21,19 @@
 namespace pxd
 {
 
-Account::Account (Database& d, const std::string& n)
-  : db(d), name(n),
+Account::Account (Database& d, const std::string& n, const Faction f)
+  : db(d), name(n), faction(f),
     kills(0), fame(100),
-    dirty(false)
+    dirty(true)
 {
-  VLOG (1) << "Created instance for empty account of Xaya name " << name;
+  VLOG (1) << "Created instance for newly initialised account " << name;
 }
 
 Account::Account (Database& d, const Database::Result<AccountResult>& res)
   : db(d), dirty(false)
 {
   name = res.Get<AccountResult::name> ();
+  faction = GetFactionFromColumn (res);
   kills = res.Get<AccountResult::kills> ();
   fame = res.Get<AccountResult::fame> ();
 
@@ -50,15 +51,24 @@ Account::~Account ()
   VLOG (1) << "Updating account " << name << " in the database";
   auto stmt = db.Prepare (R"(
     INSERT OR REPLACE INTO `accounts`
-      (`name`, `kills`, `fame`)
-      VALUES (?1, ?2, ?3)
+      (`name`, `faction`, `kills`, `fame`)
+      VALUES (?1, ?2, ?3, ?4)
   )");
 
   stmt.Bind (1, name);
-  stmt.Bind (2, kills);
-  stmt.Bind (3, fame);
+  BindFactionParameter (stmt, 2, faction);
+  stmt.Bind (3, kills);
+  stmt.Bind (4, fame);
 
   stmt.Execute ();
+}
+
+AccountsTable::Handle
+AccountsTable::CreateNew (const std::string& name, const Faction f)
+{
+  CHECK (GetByName (name) == nullptr)
+      << "Account for " << name << " exists already";
+  return Handle (new Account (db, name, f));
 }
 
 AccountsTable::Handle
@@ -75,7 +85,7 @@ AccountsTable::GetByName (const std::string& name)
   auto res = stmt.Query<AccountResult> ();
 
   if (!res.Step ())
-    return Handle (new Account (db, name));
+    return nullptr;
 
   auto r = GetFromResult (res);
   CHECK (!res.Step ());
@@ -83,7 +93,7 @@ AccountsTable::GetByName (const std::string& name)
 }
 
 Database::Result<AccountResult>
-AccountsTable::QueryNonTrivial ()
+AccountsTable::QueryInitialised ()
 {
   auto stmt = db.Prepare ("SELECT * FROM `accounts` ORDER BY `name`");
   return stmt.Query<AccountResult> ();

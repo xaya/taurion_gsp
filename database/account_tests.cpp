@@ -42,15 +42,16 @@ protected:
 
 TEST_F (AccountTests, DefaultData)
 {
-  auto a = tbl.GetByName ("foobar");
+  auto a = tbl.CreateNew ("foobar", Faction::BLUE);
   EXPECT_EQ (a->GetName (), "foobar");
+  EXPECT_EQ (a->GetFaction (), Faction::BLUE);
   EXPECT_EQ (a->GetKills (), 0);
   EXPECT_EQ (a->GetFame (), 100);
 }
 
 TEST_F (AccountTests, Update)
 {
-  auto a = tbl.GetByName ("foobar");
+  auto a = tbl.CreateNew ("foobar", Faction::RED);
   a->SetKills (50);
   a->SetFame (200);
   a.reset ();
@@ -61,34 +62,48 @@ TEST_F (AccountTests, Update)
   EXPECT_EQ (a->GetFame (), 200);
 }
 
-TEST_F (AccountTests, DefaultNotWritten)
-{
-  tbl.GetByName ("foobar");
-  auto res = tbl.QueryNonTrivial ();
-  EXPECT_FALSE (res.Step ());
-}
-
 using AccountsTableTests = AccountTests;
 
-TEST_F (AccountsTableTests, QueryNonTrivial)
+TEST_F (AccountsTableTests, CreateAlreadyExisting)
 {
-  tbl.GetByName ("foo");
-  tbl.GetByName ("bar")->SetFame (10);
-  tbl.GetByName ("baz")->SetKills (42);
+  tbl.CreateNew ("domob", Faction::BLUE);
+  EXPECT_DEATH (tbl.CreateNew ("domob", Faction::BLUE), "exists already");
+}
 
-  auto res = tbl.QueryNonTrivial ();
+TEST_F (AccountsTableTests, QueryInitialised)
+{
+  tbl.CreateNew ("foo", Faction::RED);
+  tbl.CreateNew ("bar", Faction::GREEN)->SetFame (10);
+
+  auto res = tbl.QueryInitialised ();
 
   ASSERT_TRUE (res.Step ());
   auto a = tbl.GetFromResult (res);
   EXPECT_EQ (a->GetName (), "bar");
+  EXPECT_EQ (a->GetFaction (), Faction::GREEN);
+  EXPECT_EQ (a->GetKills (), 0);
   EXPECT_EQ (a->GetFame (), 10);
 
   ASSERT_TRUE (res.Step ());
   a = tbl.GetFromResult (res);
-  EXPECT_EQ (a->GetName (), "baz");
-  EXPECT_EQ (a->GetKills (), 42);
+  EXPECT_EQ (a->GetName (), "foo");
+  EXPECT_EQ (a->GetFaction (), Faction::RED);
+  EXPECT_EQ (a->GetKills (), 0);
+  EXPECT_EQ (a->GetFame (), 100);
 
   ASSERT_FALSE (res.Step ());
+}
+
+TEST_F (AccountsTableTests, GetByName)
+{
+  tbl.CreateNew ("foo", Faction::RED);
+
+  auto h = tbl.GetByName ("foo");
+  ASSERT_TRUE (h != nullptr);
+  EXPECT_EQ (h->GetName (), "foo");
+  EXPECT_EQ (h->GetFaction (), Faction::RED);
+
+  EXPECT_TRUE (tbl.GetByName ("bar") == nullptr);
 }
 
 } // anonymous namespace

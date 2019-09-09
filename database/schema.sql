@@ -130,6 +130,9 @@ CREATE TABLE IF NOT EXISTS `accounts` (
   -- The Xaya p/ name of this account.
   `name` TEXT PRIMARY KEY,
 
+  -- The faction (as integer corresponding to the Faction enum in C++).
+  `faction` INTEGER NOT NULL,
+
   -- The number of characters killed by the account in total.
   `kills` INTEGER NOT NULL,
 
