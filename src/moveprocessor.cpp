@@ -125,6 +125,16 @@ BaseMoveProcessor::TryCharacterUpdates (const std::string& name,
   if (!cmd.isObject ())
     return;
 
+  /* The order in which character updates are processed may be relevant for
+     consensus (if the updates to characters interact with each other).  We
+     order the updates in a move increasing by character ID.
+
+     The iteration order over the JSON object itself is also "sorted",
+     although by key as string.  By sorting explicitly for the key as integer
+     we a) make the order explicit in our own code (without depending on
+     JsonCpp) and b) choose a more logical order.  */
+
+  std::map<Database::IdT, Json::Value> updates;
   for (auto i = cmd.begin (); i != cmd.end (); ++i)
     {
       Database::IdT id;
@@ -143,11 +153,17 @@ BaseMoveProcessor::TryCharacterUpdates (const std::string& name,
           continue;
         }
 
-      auto c = characters.GetById (id);
+      const auto res = updates.emplace (id, upd);
+      CHECK (res.second);
+    }
+
+  for (const auto& entry : updates)
+    {
+      auto c = characters.GetById (entry.first);
       if (c == nullptr)
         {
           LOG (WARNING)
-              << "Character ID does not exist: " << id;
+              << "Character ID does not exist: " << entry.first;
           continue;
         }
 
@@ -160,7 +176,7 @@ BaseMoveProcessor::TryCharacterUpdates (const std::string& name,
           continue;
         }
 
-      PerformCharacterUpdate (*c, upd);
+      PerformCharacterUpdate (*c, entry.second);
     }
 }
 

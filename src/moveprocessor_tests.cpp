@@ -311,7 +311,7 @@ protected:
   /**
    * Inserts a new character with the given ID, name and owner.
    */
-  void
+  CharacterTable::Handle
   SetupCharacter (const Database::IdT id, const std::string& owner)
   {
     db.SetNextId (id);
@@ -321,6 +321,8 @@ protected:
     CHECK (h != nullptr);
     CHECK_EQ (h->GetId (), id);
     CHECK_EQ (h->GetOwner (), owner);
+
+    return h;
   }
 
   /**
@@ -387,6 +389,11 @@ TEST_F (CharacterUpdateTests, SameIdTwice)
   EXPECT_EQ (CoordFromProto (wp.Get (0)), HexCoord (5, 3));
   h.reset ();
 }
+
+/* We also test the relative order of updates within a single move
+   transaction for multiple characters.  For that, we use prospecting,
+   as this has interactions between the characters.  Hence that test is
+   further down below, among the ProspectingMoveTests.  */
 
 TEST_F (CharacterUpdateTests, ValidTransfer)
 {
@@ -558,6 +565,7 @@ TEST_F (ProspectingMoveTests, Success)
   auto h = GetTest ();
   h->MutableVolatileMv ().set_partial_step (42);
   h->MutableProto ().mutable_movement ()->add_waypoints ();
+  h.reset ();
 
   Process (R"([
     {
@@ -659,6 +667,31 @@ TEST_F (ProspectingMoveTests, MultipleCharacters)
 
   auto r = regions.GetById (region);
   EXPECT_EQ (r->GetProto ().prospecting_character (), 2);
+}
+
+TEST_F (ProspectingMoveTests, OrderOfCharactersInAMove)
+{
+  /* Character 9 will be processed before character 10, since we order by
+     ID and not by string.  */
+  SetupCharacter (9, "domob")->SetPosition (pos);
+  SetupCharacter (10, "domob")->SetPosition (pos);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {
+        "10": {"prospect": {}},
+        "9": {"prospect": {}}
+      }}
+    }
+  ])");
+
+  auto h = tbl.GetById (9);
+  EXPECT_TRUE (h->GetProto ().has_prospection ());
+  h = tbl.GetById (10);
+  EXPECT_FALSE (h->GetProto ().has_prospection ());
+
+  EXPECT_EQ (regions.GetById (region)->GetProto ().prospecting_character (), 9);
 }
 
 /* ************************************************************************** */
