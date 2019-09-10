@@ -45,6 +45,7 @@ class PendingTest (PXTest):
     regionId = self.rpc.game.getregionat (coord=position)["id"]
 
     self.mainLogger.info ("Creating test character...")
+    self.initAccount ("andy", "b")
     self.initAccount ("domob", "r")
     self.createCharacter ("domob", "r")
     self.generate (1)
@@ -80,7 +81,6 @@ class PendingTest (PXTest):
     })
 
     self.createCharacter ("domob", "r")
-    self.initAccount ("andy", "b")
     self.createCharacter ("andy", "b")
     c.sendMove ({"wp": [{"x": 5, "y": -5}]})
 

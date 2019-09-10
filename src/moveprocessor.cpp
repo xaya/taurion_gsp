@@ -328,10 +328,22 @@ MoveProcessor::ProcessOne (const Json::Value& moveObj)
      e.g. choose one's faction and create characters in a single move.  */
   TryAccountUpdate (name, mv["a"]);
 
+  /* If there is no account (after potentially updating/initialising it),
+     then let's not try to process any more updates.  This explicitly
+     enforces that accounts have to be initialised before doing anything
+     else, even if perhaps some changes wouldn't actually require access
+     to an account in their processing.  */
+  if (accounts.GetByName (name) == nullptr)
+    {
+      LOG (WARNING)
+          << "Account " << name << " does not exist, ignoring move " << moveObj;
+      return;
+    }
+
   /* Note that the order between character update and character creation
      matters:  By having the update *before* the creation, we explicitly
      forbid a situation in which a newly created character is updated right
-     away.  That would be tricky (since the ID would have to be predicated),
+     away.  That would be tricky (since the ID would have to be predicted),
      but it would have been possible sometimes if the order were reversed.
      We want to exclude such trickery and thus do the update first.  */
   TryCharacterUpdates (name, mv);
