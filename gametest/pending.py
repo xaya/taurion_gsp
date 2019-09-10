@@ -45,6 +45,7 @@ class PendingTest (PXTest):
     regionId = self.rpc.game.getregionat (coord=position)["id"]
 
     self.mainLogger.info ("Creating test character...")
+    self.initAccount ("domob", "r")
     self.createCharacter ("domob", "r")
     self.generate (1)
     self.moveCharactersTo ({
@@ -59,7 +60,7 @@ class PendingTest (PXTest):
     })
 
     self.mainLogger.info ("Performing pending updates...")
-    self.createCharacter ("domob", "g")
+    self.createCharacter ("domob", "r")
     c = self.getCharacters ()["domob"]
     c.sendMove ({"wp": []})
 
@@ -74,12 +75,13 @@ class PendingTest (PXTest):
         ],
       "newcharacters":
         [
-          {"name": "domob", "creations": [{"faction": "g"}]},
+          {"name": "domob", "creations": [{"faction": "r"}]},
         ],
     })
 
-    self.createCharacter ("domob", "b")
-    self.createCharacter ("andy", "r")
+    self.createCharacter ("domob", "r")
+    self.initAccount ("andy", "b")
+    self.createCharacter ("andy", "b")
     c.sendMove ({"wp": [{"x": 5, "y": -5}]})
 
     sleepSome ()
@@ -93,8 +95,8 @@ class PendingTest (PXTest):
         ],
       "newcharacters":
         [
-          {"name": "andy", "creations": [{"faction": "r"}]},
-          {"name": "domob", "creations": [{"faction": "g"}, {"faction": "b"}]},
+          {"name": "andy", "creations": [{"faction": "b"}]},
+          {"name": "domob", "creations": [{"faction": "r"}] * 2},
         ],
     })
 
@@ -111,8 +113,8 @@ class PendingTest (PXTest):
         ],
       "newcharacters":
         [
-          {"name": "andy", "creations": [{"faction": "r"}]},
-          {"name": "domob", "creations": [{"faction": "g"}, {"faction": "b"}]},
+          {"name": "andy", "creations": [{"faction": "b"}]},
+          {"name": "domob", "creations": [{"faction": "r"}, {"faction": "r"}]},
         ],
     })
 

@@ -31,6 +31,8 @@ class SplitStateRpcsTest (PXTest):
 
     # Set up a non-trivial situation, where we have characters, prospected
     # regions and kills/fame.
+    self.initAccount ("prospector", "r")
+    self.initAccount ("killed", "g")
     self.createCharacter ("prospector", "r")
     self.createCharacter ("killed", "g")
     self.generate (1)

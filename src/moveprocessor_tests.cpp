@@ -175,6 +175,76 @@ TEST_F (MoveProcessorTests, AllAdminDataAccepted)
 
 /* ************************************************************************** */
 
+class AccountUpdateTests : public MoveProcessorTests
+{
+
+protected:
+
+  AccountsTable tbl;
+
+  AccountUpdateTests ()
+    : tbl(db)
+  {}
+
+};
+
+TEST_F (AccountUpdateTests, Initialisation)
+{
+  Process (R"([
+    {"name": "domob", "move": {"a": {"x": 42, "init": {"faction": "b"}}}}
+  ])");
+
+  auto a = tbl.GetByName ("domob");
+  ASSERT_TRUE (a != nullptr);
+  EXPECT_EQ (a->GetFaction (), Faction::BLUE);
+}
+
+TEST_F (AccountUpdateTests, InvalidInitialisation)
+{
+  Process (R"([
+    {"name": "domob", "move": {"a": {"init": {"x": 1, "faction": "b"}}}},
+    {"name": "domob", "move": {"a": {"init": {"faction": "x"}}}},
+    {"name": "domob", "move": {"a": {"init": {"y": 5}}}},
+    {"name": "domob", "move": {"a": {"init": false}}},
+    {"name": "domob", "move": {"a": 42}}
+  ])");
+
+  EXPECT_TRUE (tbl.GetByName ("domob") == nullptr);
+}
+
+TEST_F (AccountUpdateTests, InitialisationOfExistingAccount)
+{
+  tbl.CreateNew ("domob", Faction::RED);
+
+  Process (R"([
+    {"name": "domob", "move": {"a": {"init": {"faction": "b"}}}}
+  ])");
+
+  auto a = tbl.GetByName ("domob");
+  ASSERT_TRUE (a != nullptr);
+  EXPECT_EQ (a->GetFaction (), Faction::RED);
+}
+
+TEST_F (AccountUpdateTests, InitialisationAndCharacterCreation)
+{
+  ProcessWithDevPayment (R"([
+    {"name": "domob", "move":
+      {
+        "a": {"x": 42, "init": {"faction": "b"}},
+        "nc": [{"faction": "b"}]
+      }
+    }
+  ])", params.CharacterCost ());
+
+  CharacterTable characters(db);
+  auto c = characters.GetById (1);
+  ASSERT_TRUE (c != nullptr);
+  EXPECT_EQ (c->GetOwner (), "domob");
+  EXPECT_EQ (c->GetFaction (), Faction::BLUE);
+}
+
+/* ************************************************************************** */
+
 class CharacterCreationTests : public MoveProcessorTests
 {
 

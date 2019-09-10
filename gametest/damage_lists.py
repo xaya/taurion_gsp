@@ -16,11 +16,11 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from pxtest import PXTest, offsetCoord
-
 """
 Tests tracking of damage lists.
 """
+
+from pxtest import PXTest, offsetCoord
 
 
 class DamageListsTest (PXTest):
@@ -54,9 +54,10 @@ class DamageListsTest (PXTest):
     self.collectPremine ()
 
     self.mainLogger.info ("Creating test characters...")
+    self.initAccount ("target", "b")
     self.createCharacter ("target", "b")
-    self.createCharacter ("attacker 1", "r")
-    self.createCharacter ("attacker 2", "r")
+    self.initAccount ("attacker", "r")
+    self.createCharacters ("attacker", ["r"] * 2)
     self.generate (1)
 
     # We use a known good position as offset and move the characters
@@ -64,19 +65,19 @@ class DamageListsTest (PXTest):
     self.offset = {"x": -1100, "y": 1042}
     self.moveCharactersTo ({
       "target": self.offset,
-      "attacker 1": offsetCoord ({"x": -5, "y": 0}, self.offset, False),
+      "attacker": offsetCoord ({"x": -5, "y": 0}, self.offset, False),
       "attacker 2": offsetCoord ({"x": 5, "y": 0}, self.offset, False),
     })
 
     # Check state after exactly one round of attacks.
     self.mainLogger.info ("Attacking and testing damage lists...")
     self.generate (1)
-    self.expectAttackers ("target", ["attacker 1", "attacker 2"])
-    if len (self.getAttackers ("attacker 1")) > 0:
-      self.expectAttackers ("attacker 1", ["target"])
+    self.expectAttackers ("target", ["attacker", "attacker 2"])
+    if len (self.getAttackers ("attacker")) > 0:
+      self.expectAttackers ("attacker", ["target"])
       self.expectAttackers ("attacker 2", [])
     else:
-      self.expectAttackers ("attacker 1", [])
+      self.expectAttackers ("attacker", [])
       self.expectAttackers ("attacker 2", ["target"])
 
     # Move the target out of range and verify timeout of the damage list.
@@ -88,7 +89,7 @@ class DamageListsTest (PXTest):
       "target": offsetCoord ({"x": -100, "y": 0}, self.offset, False),
     })
     self.generate (99)
-    self.expectAttackers ("target", ["attacker 1", "attacker 2"])
+    self.expectAttackers ("target", ["attacker", "attacker 2"])
     self.generate (1)
     self.expectAttackers ("target", [])
 

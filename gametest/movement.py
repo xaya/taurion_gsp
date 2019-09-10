@@ -16,11 +16,11 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from pxtest import PXTest, offsetCoord
-
 """
 Tests movement of characters on the map.
 """
+
+from pxtest import PXTest, offsetCoord
 
 
 class MovementTest (PXTest):
@@ -95,6 +95,7 @@ class MovementTest (PXTest):
     self.collectPremine ()
 
     self.mainLogger.info ("Creating test character...")
+    self.initAccount ("domob", "r")
     self.createCharacter ("domob", "r")
     self.generate (1)
 
@@ -214,6 +215,7 @@ class MovementTest (PXTest):
 
     self.mainLogger.info ("Testing blocking the path...")
 
+    self.initAccount ("blocker", "r")
     self.createCharacter ("blocker", "r")
     self.generate (1)
 

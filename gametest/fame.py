@@ -16,11 +16,11 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from pxtest import PXTest
-
 """
 Tests the fame and kills update of accounts.
 """
+
+from pxtest import PXTest
 
 
 class FameTest (PXTest):
@@ -29,7 +29,9 @@ class FameTest (PXTest):
     self.collectPremine ()
 
     self.mainLogger.info ("Characters killing each other at the same time...")
+    self.initAccount ("foo", "r")
     self.createCharacter ("foo", "r")
+    self.initAccount ("bar", "g")
     self.createCharacter ("bar", "g")
     self.generate (1)
     self.moveCharactersTo ({
@@ -51,8 +53,11 @@ class FameTest (PXTest):
     self.assertEqual (accounts["bar"].data["fame"], 100)
 
     self.mainLogger.info ("Multiple killers...")
+    self.initAccount ("red", "r")
     self.createCharacters ("red", 2 * ["r"])
+    self.initAccount ("green", "g")
     self.createCharacter ("green", "g")
+    self.initAccount ("blue", "b")
     self.createCharacter ("blue", "b")
     self.generate (1)
     self.moveCharactersTo ({
@@ -80,8 +85,11 @@ class FameTest (PXTest):
 
     self.mainLogger.info ("Many characters for a name...")
     armySize = 10
+    self.initAccount ("army", "r")
     self.createCharacters ("army", armySize * ["r"])
+    self.initAccount ("other army", "r")
     self.createCharacters ("other army", armySize * ["r"])
+    self.initAccount ("target", "b")
     self.createCharacters ("target", 2 * ["b"])
     self.generate (1)
     mv = {

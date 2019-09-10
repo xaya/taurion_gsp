@@ -17,12 +17,12 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from pxtest import PXTest, CHARACTER_COST
-
 """
 Runs tests about the basic handling of characters (creating them, transferring
 them and retrieving them through RPC).
 """
+
+from pxtest import PXTest, CHARACTER_COST
 
 
 class CharactersTest (PXTest):
@@ -47,14 +47,17 @@ class CharactersTest (PXTest):
     self.collectPremine ()
 
     self.mainLogger.info ("Creating first character...")
-    self.createCharacter ("adam", "r")
-    self.sendMove ("", {"nc": {"name": "eve", "faction": "r"}})
+    self.moveWithPayment ("adam", {
+      "a": {"init": {"faction": "r"}},
+      "nc": [{"faction": "r"}],
+    }, CHARACTER_COST)
     self.generate (1)
     self.expectPartial ({
       "adam": {"owner": "adam", "faction": "r"},
     })
 
     self.mainLogger.info ("Testing \"\" as owner name...")
+    self.initAccount ("", "g")
     self.createCharacter ("", "g")
     self.generate (1)
     self.expectPartial ({
@@ -72,6 +75,7 @@ class CharactersTest (PXTest):
     })
 
     self.mainLogger.info ("Testing Unicode owner...")
+    self.initAccount (u"äöü", "b")
     self.createCharacter (u"äöü", "b")
     self.generate (1)
     self.expectPartial ({
@@ -105,10 +109,11 @@ class CharactersTest (PXTest):
     })
 
     self.mainLogger.info ("Multiple creations in one transaction...")
+    self.initAccount ("domob", "r")
     data = [
       {"faction": "r"},
-      {"faction": "g"},
-      {"faction": "b"},
+      {"faction": "r"},
+      {"faction": "r"},
     ]
     self.moveWithPayment ("domob", {"nc": data}, 2.5 * CHARACTER_COST)
     self.generate (1)
@@ -118,7 +123,7 @@ class CharactersTest (PXTest):
       "": {"owner": ""},
       u"äöü": {"owner": u"äöü"},
       "domob": {"faction": "r"},
-      "domob 2": {"faction": "g"},
+      "domob 2": {"faction": "r"},
     })
 
     self.mainLogger.info ("Updates with ID lists...")
@@ -147,6 +152,7 @@ class CharactersTest (PXTest):
     self.rpc.xaya.invalidateblock (blk)
 
     self.collectPremine ()
+    self.initAccount ("domob", "b")
     self.createCharacter ("domob", "b")
     self.generate (1)
     self.expectPartial ({
@@ -155,7 +161,6 @@ class CharactersTest (PXTest):
 
     self.rpc.xaya.reconsiderblock (blk)
     self.expectGameState (originalState)
-
 
 
 if __name__ == "__main__":

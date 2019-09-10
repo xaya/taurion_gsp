@@ -109,11 +109,16 @@ protected:
   }
 
   /**
-   * Creates a character for the given name and returns its ID.
+   * Creates a character for the given name and returns its ID.  Auto-inserts
+   * the account for that name if necessary.
    */
   Database::IdT
   CreateCharacter (const std::string& owner)
   {
+    auto a = accounts.GetByName (owner);
+    if (a == nullptr)
+      accounts.CreateNew (owner, Faction::RED);
+
     return characters.CreateNew (owner, Faction::RED)->GetId ();
   }
 

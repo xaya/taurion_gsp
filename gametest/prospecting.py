@@ -16,12 +16,12 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from pxtest import PXTest, offsetCoord
-
 """
 Tests prospecting with characters and various interactions of that with
 movement and combat.
 """
+
+from pxtest import PXTest, offsetCoord
 
 # Timestamps when the competition is still active and when it is
 # already over.  Note that for some reason we cannot be exact to the
@@ -63,8 +63,11 @@ class ProspectingTest (PXTest):
     self.generate (1)
 
     self.mainLogger.info ("Setting up test characters...")
+    self.initAccount ("target", "r")
     self.createCharacter ("target", "r")
+    self.initAccount ("attacker 1", "g")
     self.createCharacter ("attacker 1", "g")
+    self.initAccount ("attacker 2", "g")
     self.createCharacter ("attacker 2", "g")
     self.generate (1)
 
@@ -202,6 +205,7 @@ class ProspectingTest (PXTest):
     # same region to get both no prize and a silver tier.
     self.mainLogger.info ("Testing randomisation of prizes...")
 
+    self.initAccount ("prize trier", "r")
     c = self.createCharacter ("prize trier", "r")
     self.generate (1)
     pos = {"x": -1000, "y": 1000}
@@ -274,6 +278,7 @@ class ProspectingTest (PXTest):
 
     sendTo = {}
     regionIds = set ()
+    nextInd = 2
     for i in range (2):
       for j in range (10):
         pos = {"x": 20 * i, "y": 20 * j}
@@ -282,8 +287,9 @@ class ProspectingTest (PXTest):
         assert region.getId () not in regionIds
         regionIds.add (region.getId ())
 
-        nm = "char %d, %d" % (i, j)
-        self.createCharacter (nm, "r")
+        self.createCharacter ("prize trier", "r")
+        nm = "prize trier %d" % nextInd
+        nextInd += 1
         sendTo[nm] = pos
     self.generate (1)
     self.moveCharactersTo (sendTo)

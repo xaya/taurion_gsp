@@ -324,6 +324,10 @@ MoveProcessor::ProcessOne (const Json::Value& moveObj)
   if (!ExtractMoveBasics (moveObj, name, mv, paidToDev))
     return;
 
+  /* We perform account updates first.  That ensures that it is possible to
+     e.g. choose one's faction and create characters in a single move.  */
+  TryAccountUpdate (name, mv["a"]);
+
   /* Note that the order between character update and character creation
      matters:  By having the update *before* the creation, we explicitly
      forbid a situation in which a newly created character is updated right
@@ -564,6 +568,55 @@ MoveProcessor::HandleGodMode (const Json::Value& cmd)
 
   MaybeGodTeleport (characters, cmd["teleport"]);
   MaybeGodSetHp (characters, cmd["sethp"]);
+}
+
+void
+MoveProcessor::MaybeInitAccount (const std::string& name,
+                                 const Json::Value& init)
+{
+  if (!init.isObject ())
+    return;
+
+  if (accounts.GetByName (name) != nullptr)
+    {
+      LOG (WARNING) << "Account " << name << " is already initialised";
+      return;
+    }
+
+  const auto& factionVal = init["faction"];
+  if (!factionVal.isString ())
+    {
+      LOG (WARNING)
+          << "Account initialisation does not specify faction: " << init;
+      return;
+    }
+  const Faction faction = FactionFromString (factionVal.asString ());
+  if (faction == Faction::INVALID)
+    {
+      LOG (WARNING) << "Invalid faction specified for account: " << init;
+      return;
+    }
+
+  if (init.size () != 1)
+    {
+      LOG (WARNING) << "Account initialisation has extra fields: " << init;
+      return;
+    }
+
+  accounts.CreateNew (name, faction);
+  LOG (INFO)
+      << "Created account " << name << " of faction "
+      << FactionToString (faction);
+}
+
+void
+MoveProcessor::TryAccountUpdate (const std::string& name,
+                                 const Json::Value& upd)
+{
+  if (!upd.isObject ())
+    return;
+
+  MaybeInitAccount (name, upd["init"]);
 }
 
 /* ************************************************************************** */

@@ -16,11 +16,11 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from pxtest import PXTest, offsetCoord
-
 """
 Tests that Taurion works fine with multiple name updates in a single block.
 """
+
+from pxtest import PXTest, offsetCoord
 
 
 class MultiUpdateTest (PXTest):
@@ -29,6 +29,7 @@ class MultiUpdateTest (PXTest):
     self.collectPremine ()
 
     self.mainLogger.info ("Creating test character...")
+    self.initAccount ("domob", "r")
     self.createCharacter ("domob", "r")
     self.generate (1)
 

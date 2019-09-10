@@ -16,11 +16,11 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from pxtest import PXTest
-
 """
 Tests the god-mode commands.
 """
+
+from pxtest import PXTest
 
 
 class GodModeTest (PXTest):
@@ -28,6 +28,7 @@ class GodModeTest (PXTest):
   def run (self):
     self.collectPremine ()
 
+    self.initAccount ("domob", "r")
     self.createCharacter ("domob", "r")
     self.generate (1)
     c = self.getCharacters ()["domob"]

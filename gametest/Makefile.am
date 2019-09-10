@@ -2,6 +2,7 @@ TEST_LIBRARY = \
   pxtest.py
 
 REGTESTS = \
+  accounts.py \
   characters.py \
   combat_damage.py \
   combat_targets.py \

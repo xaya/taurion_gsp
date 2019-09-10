@@ -18,6 +18,7 @@
 
 #include "combat.hpp"
 
+#include "database/account.hpp"
 #include "database/character.hpp"
 #include "database/dbtest.hpp"
 #include "database/faction.hpp"
@@ -46,7 +47,11 @@ InsertCharacters (Database& db, const Faction f,
 {
   constexpr HexCoord::IntT spacing = 100;
 
+  AccountsTable acc(db);
   CharacterTable tbl(db);
+
+  const std::string nm = FactionToString (f);
+  acc.CreateNew (nm, f);
 
   for (unsigned r = 0; r < rows; ++r)
     for (unsigned c = 0; c < cols; ++c)
@@ -54,7 +59,7 @@ InsertCharacters (Database& db, const Faction f,
         const HexCoord pos(c * spacing, r * spacing);
         for (unsigned i = 0; i < k; ++i)
           {
-            auto c = tbl.CreateNew ("domob", f);
+            auto c = tbl.CreateNew (nm, f);
             c->SetPosition (pos);
             auto& pb = c->MutableProto ();
             auto* attack = pb.mutable_combat_data ()->add_attacks ();
