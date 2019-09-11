@@ -12,6 +12,7 @@ REGTESTS = \
   godmode.py \
   movement.py \
   multiupdate.py \
+  nullstate.py \
   pending.py \
   prospecting.py
 

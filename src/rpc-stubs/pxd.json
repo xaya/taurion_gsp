@@ -9,6 +9,11 @@
     "returns": {}
   },
   {
+    "name": "getnullstate",
+    "params": {},
+    "returns": {}
+  },
+  {
     "name": "getpendingstate",
     "params": {},
     "returns": {}

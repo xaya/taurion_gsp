@@ -99,6 +99,17 @@ PXRpcServer::getcurrentstate ()
 }
 
 Json::Value
+PXRpcServer::getnullstate ()
+{
+  LOG (INFO) << "RPC method called: getnullstate";
+  return logic.GetCustomStateData (game, "data",
+    [] (sqlite3* db)
+      {
+        return Json::Value ();
+      });
+}
+
+Json::Value
 PXRpcServer::getpendingstate ()
 {
   LOG (INFO) << "RPC method called: getpendingstate";
