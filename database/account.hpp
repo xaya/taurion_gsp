@@ -30,8 +30,12 @@ namespace pxd
 /**
  * Database result type for rows from the accounts table.
  */
-class AccountResult : public Database::ResultType
-{};
+struct AccountResult : public Database::ResultType
+{
+  RESULT_COLUMN (std::string, name, 1);
+  RESULT_COLUMN (int64_t, kills, 2);
+  RESULT_COLUMN (int64_t, fame, 3);
+};
 
 /**
  * Wrapper class around the state of one Xaya account (name) in the database.

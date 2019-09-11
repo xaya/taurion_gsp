@@ -20,6 +20,8 @@
 
 #include <glog/logging.h>
 
+#include <cstring>
+
 namespace pxd
 {
 
@@ -33,28 +35,33 @@ template <typename T>
 }
 
 template <typename T>
-  void
-  Database::Result<T>::BuildColumnMap ()
+  Database::Result<T>::Result (Database& d, sqlite3_stmt* s)
+    : db(&d), stmt(s)
 {
-  CHECK (columnInd.empty ());
-  const int num = sqlite3_column_count (stmt);
-  for (int i = 0; i < num; ++i)
-    {
-      const std::string name = sqlite3_column_name (stmt, i);
-      columnInd.emplace (name, i);
-    }
-  CHECK_EQ (columnInd.size (), num);
+  columnInd.fill (MISSING_COLUMN);
 }
 
 template <typename T>
+template <typename Col>
   int
-  Database::Result<T>::ColumnIndex (const std::string& name) const
+  Database::Result<T>::ColumnIndex () const
 {
-  CHECK (initialised);
-  const auto mit = columnInd.find (name);
-  CHECK (mit != columnInd.end ())
-      << "Column name not in result set: " << name;
-  return mit->second;
+  const int res = columnInd[Col::ID];
+  if (res != MISSING_COLUMN)
+    return res;
+
+  const int num = sqlite3_column_count (stmt);
+  for (int i = 0; i < num; ++i)
+    {
+      const char* name = sqlite3_column_name (stmt, i);
+      if (std::strcmp (name, Col::NAME) == 0)
+        {
+          columnInd[Col::ID] = i;
+          return i;
+        }
+    }
+
+  LOG (FATAL) << "Column " << Col::NAME << " not returned by database";
 }
 
 template <typename T>
@@ -66,13 +73,6 @@ template <typename T>
     return false;
 
   CHECK_EQ (rc, SQLITE_ROW);
-
-  if (!initialised)
-    {
-      BuildColumnMap ();
-      initialised = true;
-    }
-
   return true;
 }
 
@@ -90,19 +90,20 @@ template <typename C>
 } // namespace internal
 
 template <typename T>
-template <typename C>
-  C
-  Database::Result<T>::Get (const std::string& name) const
+template <typename Col>
+  typename Col::Type
+  Database::Result<T>::Get () const
 {
-  return internal::GetColumnValue<C> (stmt, ColumnIndex (name));
+  return internal::GetColumnValue<typename Col::Type> (stmt,
+                                                       ColumnIndex<Col> ());
 }
 
 template <typename T>
+template <typename Col>
   void
-  Database::Result<T>::GetProto (const std::string& name,
-                                 google::protobuf::Message& res) const
+  Database::Result<T>::GetProto (typename Col::Type& res) const
 {
-  const int ind = ColumnIndex (name);
+  const int ind = ColumnIndex<Col> ();
 
   const int len = sqlite3_column_bytes (stmt, ind);
   const void* bytes = sqlite3_column_blob (stmt, ind);

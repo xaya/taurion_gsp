@@ -27,12 +27,12 @@ namespace pxd
 
 template <typename T>
   Faction
-  GetFactionFromColumn (const Database::Result<T>& res, const std::string& col)
+  GetFactionFromColumn (const Database::Result<T>& res)
 {
   static_assert (std::is_base_of<ResultWithFaction, T>::value,
                  "GetFactionFromColumn needs a ResultWithFaction");
   
-  const auto val = res.template Get<int64_t> (col);
+  const auto val = res.template Get<typename T::faction> ();
   CHECK (val >= 1 && val <= 3)
       << "Invalid faction value from database: " << val;
 

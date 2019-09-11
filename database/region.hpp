@@ -30,8 +30,11 @@ namespace pxd
 /**
  * Database result for a row from the regions table.
  */
-class RegionResult : public Database::ResultType
-{};
+struct RegionResult : public Database::ResultType
+{
+  RESULT_COLUMN (int64_t, id, 1);
+  RESULT_COLUMN (pxd::proto::RegionData, proto, 2);
+};
 
 /**
  * Wrapper class around the state of one region in the database.  This

@@ -78,6 +78,16 @@ DamageLists::RemoveCharacter (const Database::IdT id)
   stmt.Execute ();
 }
 
+namespace
+{
+
+struct AttackerResult : public Database::ResultType
+{
+  RESULT_COLUMN (int64_t, attacker, 1);
+};
+
+} // anonymous namespace
+
 DamageLists::Attackers
 DamageLists::GetAttackers (const Database::IdT victim) const
 {
@@ -88,14 +98,12 @@ DamageLists::GetAttackers (const Database::IdT victim) const
   )");
   stmt.Bind (1, victim);
 
-  class AttackerResult : public Database::ResultType
-  {};
-
   auto res = stmt.Query<AttackerResult> ();
   Attackers attackers;
   while (res.Step ())
     {
-      const auto insert = attackers.insert (res.Get<int64_t> ("attacker"));
+      const Database::IdT att = res.Get<AttackerResult::attacker> ();
+      const auto insert = attackers.insert (att);
       CHECK (insert.second);
     }
 

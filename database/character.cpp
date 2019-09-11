@@ -37,14 +37,15 @@ Character::Character (Database& d, const std::string& o, const Faction f)
 Character::Character (Database& d, const Database::Result<CharacterResult>& res)
   : db(d), dirtyFields(false), dirtyProto(false)
 {
-  id = res.Get<int64_t> ("id");
-  owner = res.Get<std::string> ("owner");
-  faction = GetFactionFromColumn (res, "faction");
-  pos = HexCoord (res.Get<int64_t> ("x"), res.Get<int64_t> ("y"));
-  res.GetProto ("volatilemv", volatileMv);
-  res.GetProto ("hp", hp);
-  busy = res.Get<int64_t> ("busy");
-  res.GetProto ("proto", data);
+  id = res.Get<CharacterResult::id> ();
+  owner = res.Get<CharacterResult::owner> ();
+  faction = GetFactionFromColumn (res);
+  pos = HexCoord (res.Get<CharacterResult::x> (),
+                  res.Get<CharacterResult::y> ());
+  res.GetProto<CharacterResult::volatilemv> (volatileMv);
+  res.GetProto<CharacterResult::hp> (hp);
+  busy = res.Get<CharacterResult::busy> ();
+  res.GetProto<CharacterResult::proto> (data);
 
   VLOG (1) << "Fetched character with ID " << id << " from database result";
   Validate ();
@@ -220,20 +221,27 @@ CharacterTable::DeleteById (const Database::IdT id)
   stmt.Execute ();
 }
 
+namespace
+{
+
+struct CountResult : public Database::ResultType
+{
+  RESULT_COLUMN (int64_t, cnt, 1);
+};
+
+} // anonymous namespace
+
 void
 CharacterTable::DecrementBusy ()
 {
   VLOG (1) << "Decrementing busy counter for all characters...";
-
-  class CountResult : public Database::ResultType
-  {};
 
   auto stmt = db.Prepare (R"(
     SELECT COUNT(*) AS `cnt` FROM `characters` WHERE `busy` = 1
   )");
   auto res = stmt.Query<CountResult> ();
   CHECK (res.Step ());
-  CHECK_EQ (res.Get<int64_t> ("cnt"), 0)
+  CHECK_EQ (res.Get<CountResult::cnt> (), 0)
       << "DecrementBusy called but there are characters with busy=1";
   CHECK (!res.Step ());
 

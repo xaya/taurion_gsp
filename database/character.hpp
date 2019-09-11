@@ -37,8 +37,17 @@ namespace pxd
 /**
  * Database result type for rows from the characters table.
  */
-class CharacterResult : public ResultWithFaction
-{};
+struct CharacterResult : public ResultWithFaction
+{
+  RESULT_COLUMN (int64_t, id, 1);
+  RESULT_COLUMN (std::string, owner, 2);
+  RESULT_COLUMN (int64_t, x, 3);
+  RESULT_COLUMN (int64_t, y, 4);
+  RESULT_COLUMN (pxd::proto::VolatileMovement, volatilemv, 5);
+  RESULT_COLUMN (pxd::proto::HP, hp, 6);
+  RESULT_COLUMN (int64_t, busy, 7);
+  RESULT_COLUMN (pxd::proto::Character, proto, 8);
+};
 
 /**
  * Wrapper class for the state of one character.  This connects the actual game

@@ -30,8 +30,8 @@ Region::Region (Database& d, const RegionMap::IdT i)
 Region::Region (Database& d, const Database::Result<RegionResult>& res)
   : db(d), dirty(false)
 {
-  id = res.Get<int64_t> ("id");
-  res.GetProto ("proto", data);
+  id = res.Get<RegionResult::id> ();
+  res.GetProto<RegionResult::proto> (data);
 
   VLOG (1) << "Created region data for ID " << id << " from database result";
 }

@@ -93,7 +93,7 @@ TEST_F (FactionDatabaseTests, RoundTrip)
       auto res = stmt.Query<ResultWithFaction> ();
 
       ASSERT_TRUE (res.Step ());
-      EXPECT_EQ (GetFactionFromColumn (res, "faction"), t.first);
+      EXPECT_EQ (GetFactionFromColumn (res), t.first);
       EXPECT_FALSE (res.Step ());
     }
 }
@@ -109,7 +109,7 @@ TEST_F (FactionDatabaseTests, Invalid)
   auto res = stmt.Query<ResultWithFaction> ();
 
   ASSERT_TRUE (res.Step ());
-  EXPECT_DEATH (GetFactionFromColumn (res, "faction"), "Invalid faction value");
+  EXPECT_DEATH (GetFactionFromColumn (res), "Invalid faction value");
 }
 
 } // anonymous namespace

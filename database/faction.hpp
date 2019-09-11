@@ -60,8 +60,10 @@ Faction FactionFromString (const std::string& str);
 /**
  * A database result that includes a "faction" column.
  */
-class ResultWithFaction : public Database::ResultType
-{};
+struct ResultWithFaction : public Database::ResultType
+{
+  RESULT_COLUMN (int64_t, faction, 50);
+};
 
 /**
  * Retrieves a faction from a database column.  This function verifies that
@@ -72,8 +74,7 @@ class ResultWithFaction : public Database::ResultType
  * They should all be derived from ResultWithFaction, though.
  */
 template <typename T>
-  Faction GetFactionFromColumn (const Database::Result<T>& res,
-                                const std::string& col);
+  Faction GetFactionFromColumn (const Database::Result<T>& res);
 
 /**
  * Binds a faction value to a statement parameter.

@@ -23,6 +23,16 @@
 namespace pxd
 {
 
+namespace
+{
+
+struct PrizesResult : public Database::ResultType
+{
+  RESULT_COLUMN (int64_t, found, 1);
+};
+
+} // anonymous namespace
+
 unsigned
 Prizes::GetFound (const std::string& name)
 {
@@ -31,12 +41,9 @@ Prizes::GetFound (const std::string& name)
   )");
   stmt.Bind (1, name);
 
-  class PrizesResult : public Database::ResultType
-  {};
-
   auto res = stmt.Query<PrizesResult> ();
   CHECK (res.Step ()) << "Prize not found in database: " << name;
-  const unsigned found = res.Get<int64_t> ("found");
+  const unsigned found = res.Get<PrizesResult::found> ();
   CHECK (!res.Step ());
 
   return found;

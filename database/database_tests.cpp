@@ -47,8 +47,13 @@ struct RowData
 /**
  * Database result type for our test table.
  */
-class TestResult : public Database::ResultType
-{};
+struct TestResult : public Database::ResultType
+{
+  RESULT_COLUMN (int64_t, id, 1);
+  RESULT_COLUMN (bool, flag, 2);
+  RESULT_COLUMN (std::string, name, 3);
+  RESULT_COLUMN (pxd::proto::HexCoord, proto, 4);
+};
 
 class DatabaseTests : public DBTestFixture
 {
@@ -83,12 +88,12 @@ protected:
         LOG (INFO) << "Verifying golden data with ID " << val.id << "...";
 
         ASSERT_TRUE (res.Step ());
-        EXPECT_EQ (res.Get<int64_t> ("id"), val.id);
-        EXPECT_EQ (res.Get<bool> ("flag"), val.flag);
-        EXPECT_EQ (res.Get<std::string> ("name"), val.name);
+        EXPECT_EQ (res.Get<TestResult::id> (), val.id);
+        EXPECT_EQ (res.Get<TestResult::flag> (), val.flag);
+        EXPECT_EQ (res.Get<TestResult::name> (), val.name);
 
         proto::HexCoord c;
-        res.GetProto ("proto", c);
+        res.GetProto<TestResult::proto> (c);
         EXPECT_EQ (c.x (), val.coordX);
         EXPECT_EQ (c.y (), val.coordY);
       }
@@ -150,12 +155,12 @@ TEST_F (DatabaseTests, StatementReset)
   auto res = stmt.Query<TestResult> ();
 
   ASSERT_TRUE (res.Step ());
-  EXPECT_EQ (res.Get<int64_t> ("id"), 42);
-  EXPECT_EQ (res.Get<bool> ("flag"), true);
+  EXPECT_EQ (res.Get<TestResult::id> (), 42);
+  EXPECT_EQ (res.Get<TestResult::flag> (), true);
 
   ASSERT_TRUE (res.Step ());
-  EXPECT_EQ (res.Get<int64_t> ("id"), 50);
-  EXPECT_EQ (res.Get<bool> ("flag"), false);
+  EXPECT_EQ (res.Get<TestResult::id> (), 50);
+  EXPECT_EQ (res.Get<TestResult::flag> (), false);
 
   ASSERT_FALSE (res.Step ());
 }
@@ -181,7 +186,7 @@ TEST_F (DatabaseTests, ProtoIsOverwritten)
      just merged with the data we read.  */
   proto::HexCoord protoRes;
   protoRes.set_y (42);
-  res.GetProto ("proto", protoRes);
+  res.GetProto<TestResult::proto> (protoRes);
   EXPECT_EQ (protoRes.x (), coord.x ());
   EXPECT_FALSE (protoRes.has_y ());
 

@@ -32,9 +32,9 @@ Account::Account (Database& d, const std::string& n)
 Account::Account (Database& d, const Database::Result<AccountResult>& res)
   : db(d), dirty(false)
 {
-  name = res.Get<std::string> ("name");
-  kills = res.Get<int64_t> ("kills");
-  fame = res.Get<int64_t> ("fame");
+  name = res.Get<AccountResult::name> ();
+  kills = res.Get<AccountResult::kills> ();
+  fame = res.Get<AccountResult::fame> ();
 
   VLOG (1) << "Created account instance for " << name << " from database";
 }

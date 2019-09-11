@@ -27,7 +27,7 @@
 
 #include <sqlite3.h>
 
-#include <map>
+#include <array>
 #include <string>
 #include <type_traits>
 
@@ -176,11 +176,39 @@ public:
  * characters table?).  This class (or rather, subclasses of it) are used as
  * template parameter for Result<T>, and they should define appropriate
  * static methods.  It should not be instantiated.
+ *
+ * Subclasses must define the columns that they accept using the
+ * RESULT_COLUMN macro.
  */
-class Database::ResultType
+struct Database::ResultType
 {
 
-public:
+  /**
+   * Type used for IDs of columns.  Each column accessed in a result of
+   * a certain type must have an ID, which is mapped to its string name
+   * in the database query.  Then lookups of the column are done by that
+   * ID, which is faster than looking up strings in a map.
+   */
+  using ColumnId = unsigned;
+
+  /**
+   * Maximum number of columns we support (namely in the range
+   * 0..MAX_ID-1).
+   */
+  static constexpr ColumnId MAX_ID = 64;
+
+  /**
+   * Define a new column supported by this result set.  It must define
+   * the SQL column name, a unique ColumnId number, and the type.
+   */
+#define RESULT_COLUMN(type, name, id) \
+  struct name \
+  { \
+    using Type = type; \
+    static constexpr const char* NAME = #name; \
+    static constexpr ColumnId ID = id; \
+    static_assert (ID >= 0 && ID < MAX_ID, "Column ID is too large"); \
+  }
 
   ResultType () = delete;
   ResultType (const ResultType&) = delete;
@@ -202,41 +230,31 @@ private:
   static_assert (std::is_base_of<ResultType, T>::value,
                  "Result type has an invalid type");
 
+  /** Values used as SQLite column "index" when the column is not present.  */
+  static constexpr int MISSING_COLUMN = -1;
+
   /** The database this corresponds to.  */
   Database* db;
 
   /** The underlying sqlit3_stmt handle.  */
   sqlite3_stmt* stmt;
 
-  /**
-   * Whether or not the first row has already been read.  This is set when
-   * Step() is called for the first time.  It is used to initialise some
-   * state like the column-name-map.
-   */
-  bool initialised = false;
-
-  /** Map of column names to indices.  */
-  std::map<std::string, int> columnInd;
+  /** Map of ColumnId values to the indices in the SQLite statement.  */
+  mutable std::array<int, ResultType::MAX_ID> columnInd;
 
   /**
    * Constructs an instance based on the given statement handle.  This is called
    * by Statement::Query and not used directly.
    */
-  explicit Result (Database& d, sqlite3_stmt* s)
-    : db(&d), stmt(s)
-  {}
+  explicit Result (Database& d, sqlite3_stmt* s);
 
   /**
-   * Initialises the columnInd map based on the current result row associated
-   * to stmt.
+   * Returns the index for a column defined in the result type.  Fills it in
+   * in columnInd if it is not yet set there (assuming the column's name
+   * can be found in the SQLite result).
    */
-  void BuildColumnMap ();
-
-  /**
-   * Returns the column index for the given name.  Also checks that the
-   * column map has been initialised already.
-   */
-  int ColumnIndex (const std::string& name) const;
+  template <typename Col>
+    int ColumnIndex () const;
 
   friend class Statement;
 
@@ -260,15 +278,16 @@ public:
   bool Step ();
 
   /**
-   * Extracts the column with the given name as type T.
+   * Extracts the column of the given type.
    */
-  template <typename C>
-    C Get (const std::string& name) const;
+  template <typename Col>
+    typename Col::Type Get () const;
 
   /**
-   * Extracts a protocol buffer from the column with the given name.
+   * Extracts a protocol buffer from the column of the given type.
    */
-  void GetProto (const std::string& name, google::protobuf::Message& res) const;
+  template <typename Col>
+    void GetProto (typename Col::Type& res) const;
 
   /**
    * Returns the underlying database handle.
