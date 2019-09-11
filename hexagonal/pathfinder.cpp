@@ -68,7 +68,7 @@ operator< (const CoordWithDistance& a, const CoordWithDistance& b)
 PathFinder::DistanceT
 PathFinder::Compute (const HexCoord& source, const HexCoord::IntT l1Range)
 {
-  LOG (INFO) << "Starting Dijkstra's algorithm for PathFinder";
+  VLOG (1) << "Starting Dijkstra's algorithm for PathFinder";
 
   /* For now, disallow calling this function multiple times on the same
      PathFinder.  There is no strong reason for why we cannot allow that,
@@ -99,12 +99,12 @@ PathFinder::Compute (const HexCoord& source, const HexCoord::IntT l1Range)
       }
   if (!sourceAccessible)
     {
-      LOG (INFO) << "Source tile is not accessible from anywhere";
+      VLOG (1) << "Source tile is not accessible from anywhere";
       return NO_CONNECTION;
     }
   if (HexCoord::DistanceL1 (source, target) > l1Range)
     {
-      LOG (INFO) << "Source and target are further away than the L1 range";
+      VLOG (1) << "Source and target are further away than the L1 range";
       return NO_CONNECTION;
     }
 
@@ -159,7 +159,7 @@ PathFinder::Compute (const HexCoord& source, const HexCoord::IntT l1Range)
       /* If this was the source, we are done.  */
       if (cur.coord == source)
         {
-          LOG (INFO) << "Found source in Dijkstra's, done";
+          VLOG (1) << "Found source in Dijkstra's, done";
           break;
         }
 
@@ -206,7 +206,7 @@ PathFinder::Compute (const HexCoord& source, const HexCoord::IntT l1Range)
         }
     }
 
-  LOG (INFO)
+  VLOG (1)
       << "Dijkstra's algorithm finished, queue still has "
       << todo.size () << " elements left";
 
