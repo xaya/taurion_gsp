@@ -108,8 +108,7 @@ template <typename Col>
   const int len = sqlite3_column_bytes (stmt, ind);
   const void* bytes = sqlite3_column_blob (stmt, ind);
 
-  const std::string str(static_cast<const char*> (bytes), len);
-  CHECK (res.ParseFromString (str));
+  CHECK (res.ParseFromArray (bytes, len));
 }
 
 } // namespace pxd
