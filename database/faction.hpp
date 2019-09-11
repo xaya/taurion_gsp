@@ -60,7 +60,7 @@ Faction FactionFromString (const std::string& str);
 /**
  * A database result that includes a "faction" column.
  */
-class ResultWithFaction
+class ResultWithFaction : public Database::ResultType
 {};
 
 /**

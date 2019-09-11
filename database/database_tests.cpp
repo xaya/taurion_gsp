@@ -47,7 +47,7 @@ struct RowData
 /**
  * Database result type for our test table.
  */
-class TestResult
+class TestResult : public Database::ResultType
 {};
 
 class DatabaseTests : public DBTestFixture

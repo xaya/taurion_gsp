@@ -44,7 +44,7 @@ TargetFinder::ProcessL1Targets (const HexCoord& centre,
 
   BindFactionParameter (stmt, 5, faction);
 
-  class TargetsResult
+  class TargetsResult : public Database::ResultType
   {};
 
   auto res = stmt.Query<TargetsResult> ();

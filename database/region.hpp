@@ -30,7 +30,7 @@ namespace pxd
 /**
  * Database result for a row from the regions table.
  */
-class RegionResult
+class RegionResult : public Database::ResultType
 {};
 
 /**

@@ -30,7 +30,7 @@ namespace pxd
 /**
  * Database result type for rows from the accounts table.
  */
-class AccountResult
+class AccountResult : public Database::ResultType
 {};
 
 /**

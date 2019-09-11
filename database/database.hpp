@@ -29,6 +29,7 @@
 
 #include <map>
 #include <string>
+#include <type_traits>
 
 namespace pxd
 {
@@ -63,6 +64,7 @@ public:
 
   template <typename T>
     class Result;
+  class ResultType;
   class Statement;
 
   Database (const Database&) = delete;
@@ -170,6 +172,22 @@ public:
 };
 
 /**
+ * Type specifying a kind of database result (e.g. is this a row of the
+ * characters table?).  This class (or rather, subclasses of it) are used as
+ * template parameter for Result<T>, and they should define appropriate
+ * static methods.  It should not be instantiated.
+ */
+class Database::ResultType
+{
+
+public:
+
+  ResultType () = delete;
+  ResultType (const ResultType&) = delete;
+
+};
+
+/**
  * Wrapper around sqlite3_stmt, but taking care of reading results of a
  * query rather than binding values.  Results are "typed", where the type
  * indicates what kind of row this is (e.g. from the character table or
@@ -180,6 +198,9 @@ template <typename T>
 {
 
 private:
+
+  static_assert (std::is_base_of<ResultType, T>::value,
+                 "Result type has an invalid type");
 
   /** The database this corresponds to.  */
   Database* db;

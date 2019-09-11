@@ -31,7 +31,7 @@ Prizes::GetFound (const std::string& name)
   )");
   stmt.Bind (1, name);
 
-  class PrizesResult
+  class PrizesResult : public Database::ResultType
   {};
 
   auto res = stmt.Query<PrizesResult> ();

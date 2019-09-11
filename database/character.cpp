@@ -225,7 +225,7 @@ CharacterTable::DecrementBusy ()
 {
   VLOG (1) << "Decrementing busy counter for all characters...";
 
-  class CountResult
+  class CountResult : public Database::ResultType
   {};
 
   auto stmt = db.Prepare (R"(

@@ -88,7 +88,7 @@ DamageLists::GetAttackers (const Database::IdT victim) const
   )");
   stmt.Bind (1, victim);
 
-  class AttackerResult
+  class AttackerResult : public Database::ResultType
   {};
 
   auto res = stmt.Query<AttackerResult> ();
