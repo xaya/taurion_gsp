@@ -51,14 +51,6 @@ Database::Statement::Execute ()
   CHECK_EQ (sqlite3_step (stmt), SQLITE_DONE);
 }
 
-Database::Result
-Database::Statement::Query (const std::string& name)
-{
-  CHECK (!run) << "Database statement has already been run";
-  run = true;
-  return Result (*db, name, stmt);
-}
-
 template <>
   void
   Database::Statement::Bind<int32_t> (const unsigned ind, const int32_t& val)
@@ -139,80 +131,32 @@ Database::Statement::BindProto (const unsigned ind,
 
 /* ************************************************************************** */
 
-void
-Database::Result::BuildColumnMap ()
+namespace internal
 {
-  CHECK (columnInd.empty ());
-  const int num = sqlite3_column_count (stmt);
-  for (int i = 0; i < num; ++i)
-    {
-      const std::string name = sqlite3_column_name (stmt, i);
-      columnInd.emplace (name, i);
-    }
-  CHECK_EQ (columnInd.size (), num);
-}
-
-int
-Database::Result::ColumnIndex (const std::string& name) const
-{
-  CHECK (initialised);
-  const auto mit = columnInd.find (name);
-  CHECK (mit != columnInd.end ())
-      << "Column name not in result set: " << name;
-  return mit->second;
-}
-
-bool
-Database::Result::Step ()
-{
-  const int rc = sqlite3_step (stmt);
-  if (rc == SQLITE_DONE)
-    return false;
-
-  CHECK_EQ (rc, SQLITE_ROW);
-
-  if (!initialised)
-    {
-      BuildColumnMap ();
-      initialised = true;
-    }
-
-  return true;
-}
 
 template <>
   int64_t
-  Database::Result::Get<int64_t> (const std::string& name) const
+  GetColumnValue<int64_t> (sqlite3_stmt* stmt, const int index)
 {
-  return sqlite3_column_int64 (stmt, ColumnIndex (name));
+  return sqlite3_column_int64 (stmt, index);
 }
 
 template <>
   bool
-  Database::Result::Get<bool> (const std::string& name) const
+  GetColumnValue<bool> (sqlite3_stmt* stmt, const int index)
 {
-  return sqlite3_column_int (stmt, ColumnIndex (name));
+  return sqlite3_column_int (stmt, index);
 }
 
 template <>
   std::string
-  Database::Result::Get<std::string> (const std::string& name) const
+  GetColumnValue<std::string> (sqlite3_stmt* stmt, const int index)
 {
-  const unsigned char* str = sqlite3_column_text (stmt, ColumnIndex (name));
+  const unsigned char* str = sqlite3_column_text (stmt, index);
   return reinterpret_cast<const char*> (str);
 }
 
-void
-Database::Result::GetProto (const std::string& name,
-                            google::protobuf::Message& res) const
-{
-  const int ind = ColumnIndex (name);
-  const int len = sqlite3_column_bytes (stmt, ind);
-  const void* bytes = sqlite3_column_blob (stmt, ind);
-
-  const std::string str(static_cast<const char*> (bytes), len);
-  CHECK (res.ParseFromString (str));
-}
+} // namespace internal
 
 /* ************************************************************************** */
 

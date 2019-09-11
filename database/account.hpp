@@ -28,6 +28,12 @@ namespace pxd
 {
 
 /**
+ * Database result type for rows from the accounts table.
+ */
+class AccountResult
+{};
+
+/**
  * Wrapper class around the state of one Xaya account (name) in the database.
  * Instantiations of this class should be made through the AccountsTable.
  */
@@ -63,7 +69,7 @@ private:
    * Constructs an instance based on the given DB result set.  The result
    * set should be constructed by an AccountsTable.
    */
-  explicit Account (Database& d, const Database::Result& res);
+  explicit Account (Database& d, const Database::Result<AccountResult>& res);
 
   friend class AccountsTable;
 
@@ -143,7 +149,7 @@ public:
   /**
    * Returns a handle for the instance based on a Database::Result.
    */
-  Handle GetFromResult (const Database::Result& res);
+  Handle GetFromResult (const Database::Result<AccountResult>& res);
 
   /**
    * Returns the account with the given name.
@@ -155,7 +161,7 @@ public:
    * data stored.  Returns a result set that can be used together with
    * GetFromResult.
    */
-  Database::Result QueryNonTrivial ();
+  Database::Result<AccountResult> QueryNonTrivial ();
 
 };
 

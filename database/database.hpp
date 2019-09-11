@@ -61,7 +61,8 @@ public:
   using IdT = xaya::SQLiteGame::IdT;
   static constexpr IdT EMPTY_ID = xaya::SQLiteGame::EMPTY_ID;
 
-  class Result;
+  template <typename T>
+    class Result;
   class Statement;
 
   Database (const Database&) = delete;
@@ -162,30 +163,26 @@ public:
   /**
    * Executes the statement as SELECT and returns a handle for the resulting
    * database rows.
-   *
-   * The "name" string is associated with the Result and can be retrieved from
-   * it later on.  This can be used to verify that a Result object does indeed
-   * match an expected query (e.g. it could be set to the table name from
-   * which the query is made).
    */
-  Result Query (const std::string& name = "");
+  template <typename T>
+    Result<T> Query ();
 
 };
 
 /**
  * Wrapper around sqlite3_stmt, but taking care of reading results of a
- * query rather than binding values.
+ * query rather than binding values.  Results are "typed", where the type
+ * indicates what kind of row this is (e.g. from the character table or
+ * from accounts).
  */
-class Database::Result
+template <typename T>
+  class Database::Result
 {
 
 private:
 
   /** The database this corresponds to.  */
   Database* db;
-
-  /** The "name" associated with this result when the query was made.  */
-  std::string name;
 
   /** The underlying sqlit3_stmt handle.  */
   sqlite3_stmt* stmt;
@@ -204,8 +201,8 @@ private:
    * Constructs an instance based on the given statement handle.  This is called
    * by Statement::Query and not used directly.
    */
-  explicit Result (Database& d, const std::string& n, sqlite3_stmt* s)
-    : db(&d), name(n), stmt(s)
+  explicit Result (Database& d, sqlite3_stmt* s)
+    : db(&d), stmt(s)
   {}
 
   /**
@@ -230,11 +227,11 @@ public:
        Result r = stmt.Query ();
   */
 
-  Result (const Result&) = delete;
-  Result& operator= (const Result&) = delete;
+  Result (const Result<T>&) = delete;
+  Result& operator= (const Result<T>&) = delete;
 
-  Result (Result&&) = default;
-  Result& operator= (Result&&) = default;
+  Result (Result<T>&&) = default;
+  Result& operator= (Result<T>&&) = default;
 
   /**
    * Tries to step to the next result.  Returns false if there is none.
@@ -244,8 +241,8 @@ public:
   /**
    * Extracts the column with the given name as type T.
    */
-  template <typename T>
-    T Get (const std::string& name) const;
+  template <typename C>
+    C Get (const std::string& name) const;
 
   /**
    * Extracts a protocol buffer from the column with the given name.
@@ -261,17 +258,10 @@ public:
     return *db;
   }
 
-  /**
-   * Returns the associated name for the query that built this result.
-   */
-  const std::string&
-  GetName () const
-  {
-    return name;
-  }
-
 };
 
 } // namespace pxd
+
+#include "database.tpp"
 
 #endif // DATABASE_DATABASE_HPP

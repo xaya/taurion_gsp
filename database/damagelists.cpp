@@ -88,7 +88,10 @@ DamageLists::GetAttackers (const Database::IdT victim) const
   )");
   stmt.Bind (1, victim);
 
-  auto res = stmt.Query ();
+  class AttackerResult
+  {};
+
+  auto res = stmt.Query<AttackerResult> ();
   Attackers attackers;
   while (res.Step ())
     {

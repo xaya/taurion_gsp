@@ -16,44 +16,27 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "prizes.hpp"
+/* Template implementation code for faction.hpp.  */
 
 #include <glog/logging.h>
+
+#include <type_traits>
 
 namespace pxd
 {
 
-unsigned
-Prizes::GetFound (const std::string& name)
+template <typename T>
+  Faction
+  GetFactionFromColumn (const Database::Result<T>& res, const std::string& col)
 {
-  auto stmt = db.Prepare (R"(
-    SELECT `found` FROM `prizes` WHERE `name` = ?1
-  )");
-  stmt.Bind (1, name);
+  static_assert (std::is_base_of<ResultWithFaction, T>::value,
+                 "GetFactionFromColumn needs a ResultWithFaction");
+  
+  const auto val = res.template Get<int64_t> (col);
+  CHECK (val >= 1 && val <= 3)
+      << "Invalid faction value from database: " << val;
 
-  class PrizesResult
-  {};
-
-  auto res = stmt.Query<PrizesResult> ();
-  CHECK (res.Step ()) << "Prize not found in database: " << name;
-  const unsigned found = res.Get<int64_t> ("found");
-  CHECK (!res.Step ());
-
-  return found;
-}
-
-void
-Prizes::IncrementFound (const std::string& name)
-{
-  VLOG (1) << "Incrementing found counter for prize " << name << "...";
-
-  auto stmt = db.Prepare (R"(
-    UPDATE `prizes`
-      SET `found` = `found` + 1
-      WHERE `name` = ?1
-  )");
-  stmt.Bind (1, name);
-  stmt.Execute ();
+  return static_cast<Faction> (val);
 }
 
 } // namespace pxd

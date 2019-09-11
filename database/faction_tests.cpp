@@ -90,7 +90,7 @@ TEST_F (FactionDatabaseTests, RoundTrip)
 
       stmt = db.Prepare ("SELECT `faction` FROM `test` WHERE `name` = ?1");
       stmt.Bind (1, t.second);
-      auto res = stmt.Query ();
+      auto res = stmt.Query<ResultWithFaction> ();
 
       ASSERT_TRUE (res.Step ());
       EXPECT_EQ (GetFactionFromColumn (res, "faction"), t.first);
@@ -106,7 +106,7 @@ TEST_F (FactionDatabaseTests, Invalid)
   stmt.Execute ();
 
   stmt = db.Prepare ("SELECT `faction` FROM `test`");
-  auto res = stmt.Query ();
+  auto res = stmt.Query<ResultWithFaction> ();
 
   ASSERT_TRUE (res.Step ());
   EXPECT_DEATH (GetFactionFromColumn (res, "faction"), "Invalid faction value");

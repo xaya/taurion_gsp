@@ -44,6 +44,12 @@ struct RowData
   int coordY;
 };
 
+/**
+ * Database result type for our test table.
+ */
+class TestResult
+{};
+
 class DatabaseTests : public DBTestFixture
 {
 
@@ -71,7 +77,7 @@ protected:
     auto stmt = db.Prepare (R"(
       SELECT * FROM `test` ORDER BY `id` ASC
     )");
-    auto res = stmt.Query ();
+    auto res = stmt.Query<TestResult> ();
     for (const auto& val : golden)
       {
         LOG (INFO) << "Verifying golden data with ID " << val.id << "...";
@@ -141,7 +147,7 @@ TEST_F (DatabaseTests, StatementReset)
   stmt.Execute ();
 
   stmt = db.Prepare ("SELECT `id`, `flag` FROM `test` ORDER BY `id`");
-  auto res = stmt.Query ();
+  auto res = stmt.Query<TestResult> ();
 
   ASSERT_TRUE (res.Step ());
   EXPECT_EQ (res.Get<int64_t> ("id"), 42);
@@ -167,7 +173,7 @@ TEST_F (DatabaseTests, ProtoIsOverwritten)
   stmt.Execute ();
 
   stmt = db.Prepare ("SELECT `proto` FROM `test`");
-  auto res = stmt.Query ();
+  auto res = stmt.Query<TestResult> ();
 
   ASSERT_TRUE (res.Step ());
 
@@ -185,9 +191,8 @@ TEST_F (DatabaseTests, ProtoIsOverwritten)
 TEST_F (DatabaseTests, ResultProperties)
 {
   auto stmt = db.Prepare ("SELECT * FROM `test`");
-  auto res = stmt.Query ("foo");
+  auto res = stmt.Query<TestResult> ();
   EXPECT_EQ (&res.GetDatabase (), &db);
-  EXPECT_EQ (res.GetName (), "foo");
 }
 
 } // anonymous namespace

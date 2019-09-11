@@ -27,10 +27,9 @@ Region::Region (Database& d, const RegionMap::IdT i)
   VLOG (1) << "Created instance for empty region with ID " << id;
 }
 
-Region::Region (Database& d, const Database::Result& res)
+Region::Region (Database& d, const Database::Result<RegionResult>& res)
   : db(d), dirty(false)
 {
-  CHECK_EQ (res.GetName (), "regions");
   id = res.Get<int64_t> ("id");
   res.GetProto ("proto", data);
 
@@ -58,7 +57,7 @@ Region::~Region ()
 }
 
 RegionsTable::Handle
-RegionsTable::GetFromResult (const Database::Result& res)
+RegionsTable::GetFromResult (const Database::Result<RegionResult>& res)
 {
   return Handle (new Region (db, res));
 }
@@ -68,7 +67,7 @@ RegionsTable::GetById (const RegionMap::IdT id)
 {
   auto stmt = db.Prepare ("SELECT * FROM `regions` WHERE `id` = ?1");
   stmt.Bind (1, id);
-  auto res = stmt.Query ("regions");
+  auto res = stmt.Query<RegionResult> ();
 
   if (!res.Step ())
     return Handle (new Region (db, id));
@@ -78,11 +77,11 @@ RegionsTable::GetById (const RegionMap::IdT id)
   return r;
 }
 
-Database::Result
+Database::Result<RegionResult>
 RegionsTable::QueryNonTrivial ()
 {
   auto stmt = db.Prepare ("SELECT * FROM `regions` ORDER BY `id`");
-  return stmt.Query ("regions");
+  return stmt.Query<RegionResult> ();
 }
 
 } // namespace pxd

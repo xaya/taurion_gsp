@@ -44,7 +44,10 @@ TargetFinder::ProcessL1Targets (const HexCoord& centre,
 
   BindFactionParameter (stmt, 5, faction);
 
-  auto res = stmt.Query ("targets");
+  class TargetsResult
+  {};
+
+  auto res = stmt.Query<TargetsResult> ();
   while (res.Step ())
     {
       const HexCoord coord (res.Get<int64_t> ("x"), res.Get<int64_t> ("y"));
