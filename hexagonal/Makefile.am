@@ -7,7 +7,7 @@ libhexagonal_la_SOURCES = \
   pathfinder.cpp \
   ring.cpp
 noinst_HEADERS = \
-  coord.hpp \
+  coord.hpp coord.tpp \
   pathfinder.hpp \
   rangemap.hpp rangemap.tpp \
   ring.hpp

@@ -23,7 +23,6 @@
 #include <cstdint>
 #include <functional>
 #include <iostream>
-#include <limits>
 
 namespace pxd
 {
@@ -67,32 +66,11 @@ public:
   HexCoord (const HexCoord&) = default;
   HexCoord& operator= (const HexCoord&) = default;
 
-  friend inline bool
-  operator== (const HexCoord& a, const HexCoord& b)
-  {
-    return a.x == b.x && a.y == b.y;
-  }
+  friend bool operator== (const HexCoord& a, const HexCoord& b);
+  friend bool operator!= (const HexCoord& a, const HexCoord& b);
+  friend bool operator< (const HexCoord& a, const HexCoord& b);
 
-  friend inline bool
-  operator!= (const HexCoord& a, const HexCoord& b)
-  {
-    return !(a == b);
-  }
-
-  friend inline bool
-  operator< (const HexCoord& a, const HexCoord& b)
-  {
-    if (a.x != b.x)
-      return a.x < b.x;
-    return a.y < b.y;
-  }
-
-  friend inline std::ostream&
-  operator<< (std::ostream& out, const HexCoord& c)
-  {
-    out << "(" << c.x << ", " << c.y << ")";
-    return out;
-  }
+  friend std::ostream& operator<< (std::ostream& out, const HexCoord& c);
 
   inline IntT
   GetX () const
@@ -106,27 +84,13 @@ public:
     return y;
   }
 
-  void
-  operator+= (const HexCoord& delta)
-  {
-    x += delta.GetX ();
-    y += delta.GetY ();
-  }
-
-  friend HexCoord
-  operator* (const IntT f, const HexCoord& c)
-  {
-    return HexCoord (f * c.GetX (), f * c.GetY ());
-  }
+  void operator+= (const HexCoord& delta);
+  friend HexCoord operator* (const IntT f, const HexCoord& c);
 
   /**
    * Computes and returns the matching z coordinate in cubic hex coordinates.
    */
-  inline IntT
-  GetZ () const
-  {
-    return -x - y;
-  }
+  IntT GetZ () const;
 
   /**
    * Returns an "opaque" object that can be iterated over to yield the
@@ -233,26 +197,12 @@ template <>
   struct hash<pxd::HexCoord>
 {
 
-  inline size_t
-  operator() (const pxd::HexCoord& c) const
-  {
-    /* Just combine the two coordinates with the x coordinate shifted half-way
-       through the size_t.  Since HexCoord::IntT is typically smaller than
-       size_t, this yields a hash function that should not have collisions
-       at all.  Since IntT is signed, we have to "shift" the value up to
-       an unsigned range first.  */
-
-    constexpr size_t offs = -std::numeric_limits<pxd::HexCoord::IntT>::min ();
-    static_assert (offs > 0, "Unexpected minimum for IntT");
-
-    size_t res = c.x + offs;
-    res <<= sizeof (res) * 4;
-    res ^= c.y + offs;
-    return res;
-  }
+  size_t operator() (const pxd::HexCoord& c) const;
 
 };
 
 } // namespace std
+
+#include "coord.tpp"
 
 #endif // HEXAGONAL_COORD_HPP

@@ -31,16 +31,6 @@ HexCoord::Neighbours () const
   return NeighbourList (*this);
 }
 
-HexCoord::IntT
-HexCoord::DistanceL1 (const HexCoord& a, const HexCoord& b)
-{
-  const IntT twice = std::abs (a.x - b.x)
-                      + std::abs (a.y - b.y)
-                      + std::abs (a.GetZ () - b.GetZ ());
-  CHECK (twice % 2 == 0);
-  return twice >> 1;
-}
-
 HexCoord::NeighbourList::ConstIterator
 HexCoord::NeighbourList::begin () const
 {
