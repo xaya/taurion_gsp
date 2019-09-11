@@ -96,6 +96,42 @@ BENCHMARK (CharacterLookup)
   ->Args ({1000, 1, 100});
 
 /**
+ * Benchmarks the lookup of characters from the database while looping
+ * through a single result set.
+ *
+ * Arguments are:
+ *  - Characters to look up
+ *  - Number of waypoints in each character proto
+ */
+void CharacterQuery (benchmark::State& state)
+{
+  TestDatabase db;
+  SetupDatabaseSchema (db.GetHandle ());
+
+  const unsigned numChar = state.range (0);
+  const unsigned numWP = state.range (1);
+
+  InsertTestCharacters (db, numChar, numWP);
+  CharacterTable tbl(db);
+
+  for (auto _ : state)
+    {
+      auto res = tbl.QueryAll ();
+      while (res.Step ())
+        tbl.GetFromResult (res);
+    }
+}
+BENCHMARK (CharacterQuery)
+  ->Unit (benchmark::kMillisecond)
+  ->Args ({100, 0})
+  ->Args ({100, 10})
+  ->Args ({100, 100})
+  ->Args ({100, 1000})
+  ->Args ({1000, 10})
+  ->Args ({10000, 10})
+  ->Args ({100000, 10});
+
+/**
  * Benchmarks updates to characters that do not touch the proto data
  * (just the database fields themselves).
  *
