@@ -90,10 +90,10 @@ TEST_F (FactionDatabaseTests, RoundTrip)
 
       stmt = db.Prepare ("SELECT `faction` FROM `test` WHERE `name` = ?1");
       stmt.Bind (1, t.second);
-      auto res = stmt.Query ();
+      auto res = stmt.Query<ResultWithFaction> ();
 
       ASSERT_TRUE (res.Step ());
-      EXPECT_EQ (GetFactionFromColumn (res, "faction"), t.first);
+      EXPECT_EQ (GetFactionFromColumn (res), t.first);
       EXPECT_FALSE (res.Step ());
     }
 }
@@ -106,10 +106,10 @@ TEST_F (FactionDatabaseTests, Invalid)
   stmt.Execute ();
 
   stmt = db.Prepare ("SELECT `faction` FROM `test`");
-  auto res = stmt.Query ();
+  auto res = stmt.Query<ResultWithFaction> ();
 
   ASSERT_TRUE (res.Step ());
-  EXPECT_DEATH (GetFactionFromColumn (res, "faction"), "Invalid faction value");
+  EXPECT_DEATH (GetFactionFromColumn (res), "Invalid faction value");
 }
 
 } // anonymous namespace

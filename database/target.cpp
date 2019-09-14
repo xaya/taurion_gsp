@@ -21,6 +21,18 @@
 namespace pxd
 {
 
+namespace
+{
+
+struct TargetResult : public Database::ResultType
+{
+  RESULT_COLUMN (int64_t, id, 1);
+  RESULT_COLUMN (int64_t, x, 2);
+  RESULT_COLUMN (int64_t, y, 3);
+};
+
+} // anonymous namespace
+
 void
 TargetFinder::ProcessL1Targets (const HexCoord& centre,
                                 const HexCoord::IntT l1range,
@@ -44,15 +56,16 @@ TargetFinder::ProcessL1Targets (const HexCoord& centre,
 
   BindFactionParameter (stmt, 5, faction);
 
-  auto res = stmt.Query ("targets");
+  auto res = stmt.Query<TargetResult> ();
   while (res.Step ())
     {
-      const HexCoord coord (res.Get<int64_t> ("x"), res.Get<int64_t> ("y"));
+      const HexCoord coord (res.Get<TargetResult::x> (),
+                            res.Get<TargetResult::y> ());
       if (HexCoord::DistanceL1 (centre, coord) > l1range)
         continue;
 
       proto::TargetId targetId;
-      targetId.set_id (res.Get<int64_t> ("id"));
+      targetId.set_id (res.Get<TargetResult::id> ());
       targetId.set_type (proto::TargetId::TYPE_CHARACTER);
 
       cb (coord, targetId);

@@ -58,12 +58,23 @@ std::string FactionToString (Faction f);
 Faction FactionFromString (const std::string& str);
 
 /**
+ * A database result that includes a "faction" column.
+ */
+struct ResultWithFaction : public Database::ResultType
+{
+  RESULT_COLUMN (int64_t, faction, 50);
+};
+
+/**
  * Retrieves a faction from a database column.  This function verifies that
  * the database value represents a valid faction.  Otherwise it crashes the
  * process (data corruption).
+ *
+ * This is templated, so that it can accept different database result types.
+ * They should all be derived from ResultWithFaction, though.
  */
-Faction GetFactionFromColumn (const Database::Result& res,
-                              const std::string& col);
+template <typename T>
+  Faction GetFactionFromColumn (const Database::Result<T>& res);
 
 /**
  * Binds a faction value to a statement parameter.
@@ -71,5 +82,7 @@ Faction GetFactionFromColumn (const Database::Result& res,
 void BindFactionParameter (Database::Statement& stmt, unsigned ind, Faction f);
 
 } // namespace pxd
+
+#include "faction.tpp"
 
 #endif // DATABASE_FACTION_HPP

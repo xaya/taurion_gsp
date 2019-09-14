@@ -29,13 +29,12 @@ Account::Account (Database& d, const std::string& n)
   VLOG (1) << "Created instance for empty account of Xaya name " << name;
 }
 
-Account::Account (Database& d, const Database::Result& res)
+Account::Account (Database& d, const Database::Result<AccountResult>& res)
   : db(d), dirty(false)
 {
-  CHECK_EQ (res.GetName (), "accounts");
-  name = res.Get<std::string> ("name");
-  kills = res.Get<int64_t> ("kills");
-  fame = res.Get<int64_t> ("fame");
+  name = res.Get<AccountResult::name> ();
+  kills = res.Get<AccountResult::kills> ();
+  fame = res.Get<AccountResult::fame> ();
 
   VLOG (1) << "Created account instance for " << name << " from database";
 }
@@ -63,7 +62,7 @@ Account::~Account ()
 }
 
 AccountsTable::Handle
-AccountsTable::GetFromResult (const Database::Result& res)
+AccountsTable::GetFromResult (const Database::Result<AccountResult>& res)
 {
   return Handle (new Account (db, res));
 }
@@ -73,7 +72,7 @@ AccountsTable::GetByName (const std::string& name)
 {
   auto stmt = db.Prepare ("SELECT * FROM `accounts` WHERE `name` = ?1");
   stmt.Bind (1, name);
-  auto res = stmt.Query ("accounts");
+  auto res = stmt.Query<AccountResult> ();
 
   if (!res.Step ())
     return Handle (new Account (db, name));
@@ -83,11 +82,11 @@ AccountsTable::GetByName (const std::string& name)
   return r;
 }
 
-Database::Result
+Database::Result<AccountResult>
 AccountsTable::QueryNonTrivial ()
 {
   auto stmt = db.Prepare ("SELECT * FROM `accounts` ORDER BY `name`");
-  return stmt.Query ("accounts");
+  return stmt.Query<AccountResult> ();
 }
 
 } // namespace pxd

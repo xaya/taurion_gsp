@@ -28,6 +28,15 @@ namespace pxd
 {
 
 /**
+ * Database result for a row from the regions table.
+ */
+struct RegionResult : public Database::ResultType
+{
+  RESULT_COLUMN (int64_t, id, 1);
+  RESULT_COLUMN (pxd::proto::RegionData, proto, 2);
+};
+
+/**
  * Wrapper class around the state of one region in the database.  This
  * abstracts the database accesses themselves away from the other code.
  *
@@ -62,7 +71,7 @@ private:
    * Constructs an instance based on the given DB result set.  The result
    * set should be constructed by a RegionsTable.
    */
-  explicit Region (Database& d, const Database::Result& res);
+  explicit Region (Database& d, const Database::Result<RegionResult>& res);
 
   friend class RegionsTable;
 
@@ -129,7 +138,7 @@ public:
   /**
    * Returns a handle for the instance based on a Database::Result.
    */
-  Handle GetFromResult (const Database::Result& res);
+  Handle GetFromResult (const Database::Result<RegionResult>& res);
 
   /**
    * Returns the region with the given ID.
@@ -141,7 +150,7 @@ public:
    * data stored.  Returns a result set that can be used together with
    * GetFromResult.
    */
-  Database::Result QueryNonTrivial ();
+  Database::Result<RegionResult> QueryNonTrivial ();
 
 };
 

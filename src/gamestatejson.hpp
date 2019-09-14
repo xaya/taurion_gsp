@@ -54,8 +54,8 @@ private:
    * Extracts all results from the Database::Result instance, converts them
    * to JSON, and returns a JSON array.
    */
-  template <typename T>
-    Json::Value ResultsAsArray (T& tbl, Database::Result res) const;
+  template <typename T, typename R>
+    Json::Value ResultsAsArray (T& tbl, Database::Result<R> res) const;
 
 public:
 

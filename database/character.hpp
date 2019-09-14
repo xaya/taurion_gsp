@@ -35,6 +35,21 @@ namespace pxd
 {
 
 /**
+ * Database result type for rows from the characters table.
+ */
+struct CharacterResult : public ResultWithFaction
+{
+  RESULT_COLUMN (int64_t, id, 1);
+  RESULT_COLUMN (std::string, owner, 2);
+  RESULT_COLUMN (int64_t, x, 3);
+  RESULT_COLUMN (int64_t, y, 4);
+  RESULT_COLUMN (pxd::proto::VolatileMovement, volatilemv, 5);
+  RESULT_COLUMN (pxd::proto::HP, hp, 6);
+  RESULT_COLUMN (int64_t, busy, 7);
+  RESULT_COLUMN (pxd::proto::Character, proto, 8);
+};
+
+/**
  * Wrapper class for the state of one character.  This connects the actual game
  * logic (reading the state and doing modifications to it) from the database.
  * All interpretation of database results and upates to the database are done
@@ -99,7 +114,8 @@ private:
    * represents the data from the result row but can then be modified.  The
    * result should come from a query made through CharacterTable.
    */
-  explicit Character (Database& d, const Database::Result& res);
+  explicit Character (Database& d,
+                      const Database::Result<CharacterResult>& res);
 
   /**
    * Binds parameters in a statement to the mutable non-proto fields.  This is
@@ -261,7 +277,7 @@ public:
   /**
    * Returns a handle for the instance based on a Database::Result.
    */
-  Handle GetFromResult (const Database::Result& res);
+  Handle GetFromResult (const Database::Result<CharacterResult>& res);
 
   /**
    * Returns the character with the given ID or a null handle if there is
@@ -273,30 +289,30 @@ public:
    * Queries for all characters in the database table.  The characters are
    * ordered by ID to make the result deterministic.
    */
-  Database::Result QueryAll ();
+  Database::Result<CharacterResult> QueryAll ();
 
   /**
    * Queries for all characters with a given owner, ordered by ID.
    */
-  Database::Result QueryForOwner (const std::string& owner);
+  Database::Result<CharacterResult> QueryForOwner (const std::string& owner);
 
   /**
    * Queries for all characters that are currently moving (and thus may need
    * to be updated for move stepping).
    */
-  Database::Result QueryMoving ();
+  Database::Result<CharacterResult> QueryMoving ();
 
   /**
    * Queries for all characters that have a combat target and thus need
    * to be processed for damage.
    */
-  Database::Result QueryWithTarget ();
+  Database::Result<CharacterResult> QueryWithTarget ();
 
   /**
    * Queries all characters that have busy=1, i.e. need their operation
    * processed and finished next.
    */
-  Database::Result QueryBusyDone ();
+  Database::Result<CharacterResult> QueryBusyDone ();
 
   /**
    * Deletes the character with the given ID.

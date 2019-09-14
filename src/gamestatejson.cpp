@@ -261,9 +261,9 @@ template <>
   return res;
 }
 
-template <typename T>
+template <typename T, typename R>
   Json::Value
-  GameStateJson::ResultsAsArray (T& tbl, Database::Result res) const
+  GameStateJson::ResultsAsArray (T& tbl, Database::Result<R> res) const
 {
   Json::Value arr(Json::arrayValue);
 

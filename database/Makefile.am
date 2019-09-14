@@ -27,8 +27,8 @@ noinst_HEADERS = \
   account.hpp \
   character.hpp \
   damagelists.hpp \
-  database.hpp \
-  faction.hpp \
+  database.hpp database.tpp \
+  faction.hpp faction.tpp \
   fighter.hpp \
   prizes.hpp \
   region.hpp \
