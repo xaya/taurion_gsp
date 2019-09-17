@@ -250,7 +250,7 @@ ProcessCharacterMovement (Character& c, const Params& params,
       const auto& mv = c.GetProto ().movement ();
       CHECK_GT (mv.waypoints_size (), 0)
           << "Character " << c.GetId ()
-          << " has active movement but no waypoitns";
+          << " has active movement but no waypoints";
 
       /* If we have a precomputed path, try to do one step along it.  */
       if (mv.steps_size () > 0)

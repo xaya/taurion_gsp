@@ -117,6 +117,16 @@ class MovementTest (PXTest):
     self.mainLogger.info ("Finishing the movement...")
     self.expectMovement ("domob", wp)
 
+    self.mainLogger.info ("Testing empty waypoints...")
+    self.setWaypoints ("domob", [{"x": 5, "y": 7}])
+    self.generate (1)
+    correctPos, mv = self.getMovement ("domob")
+    assert mv is not None
+    self.setWaypoints ("domob", [])
+    self.generate (1)
+    pos, mv = self.getMovement ("domob")
+    self.assertEqual ((pos, mv), (correctPos, None))
+
     self.mainLogger.info ("Testing path with too far waypoints...")
     wp = [
       {"x": 0, "y": 0},

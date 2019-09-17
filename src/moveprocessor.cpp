@@ -346,8 +346,12 @@ MoveProcessor::MaybeSetCharacterWaypoints (Character& c, const Json::Value& upd)
       << " from waypoints: " << upd["wp"];
 
   StopCharacter (c);
-  auto* mv = c.MutableProto ().mutable_movement ();
-  SetRepeatedCoords (wp, *mv->mutable_waypoints ());
+
+  if (!wp.empty ())
+    {
+      auto* mv = c.MutableProto ().mutable_movement ();
+      SetRepeatedCoords (wp, *mv->mutable_waypoints ());
+    }
 }
 
 void
