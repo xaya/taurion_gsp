@@ -21,8 +21,6 @@
 
 #include <xayagame/sqlitegame.hpp>
 
-#include <glog/logging.h>
-
 #include <google/protobuf/message.h>
 
 #include <sqlite3.h>
