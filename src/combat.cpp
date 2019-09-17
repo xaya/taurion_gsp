@@ -275,7 +275,7 @@ RegenerateHP (Database& db)
   CharacterTable characters(db);
   FighterTable fighters(characters);
 
-  fighters.ProcessAll ([] (Fighter f)
+  fighters.ProcessForRegen ([] (Fighter f)
     {
       RegenerateFighterHP (std::move (f));
     });

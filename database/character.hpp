@@ -49,6 +49,7 @@ struct CharacterResult : public ResultWithFaction
   RESULT_COLUMN (pxd::proto::RegenData, regendata, 7);
   RESULT_COLUMN (int64_t, busy, 8);
   RESULT_COLUMN (pxd::proto::Character, proto, 9);
+  RESULT_COLUMN (bool, canregen, 10);
 };
 
 /**
@@ -99,6 +100,12 @@ private:
 
   /** All other data in the protocol buffer.  */
   LazyProto<proto::Character> data;
+
+  /**
+   * Stores the canregen flag from the database.  We only update it if
+   * the RegenData or HP have been modified.
+   */
+  bool oldCanRegen;
 
   /**
    * Set to true if this is a new character, so we know that we have to
@@ -319,6 +326,11 @@ public:
    * to be updated for move stepping).
    */
   Database::Result<CharacterResult> QueryMoving ();
+
+  /**
+   * Queries for all characters that may need to have HP regenerated.
+   */
+  Database::Result<CharacterResult> QueryForRegen ();
 
   /**
    * Queries for all characters that have a combat target and thus need

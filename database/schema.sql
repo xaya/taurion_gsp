@@ -62,6 +62,11 @@ CREATE TABLE IF NOT EXISTS `characters` (
   -- moving when we do move updates.
   `ismoving` INTEGER NOT NULL,
 
+  -- Flag indicating whether a character may need HP regeneration.  This is
+  -- set here (based on the RegenData and current HP) so that we can only
+  -- retrieve and process characters that need regeneration.
+  `canregen` INTEGER NOT NULL,
+
   -- Flag indicating whether or not the character has a combat target.
   -- This is used so we can later efficiently retrieve only those characters
   -- that need to be processed for combat damage.
@@ -77,6 +82,7 @@ CREATE INDEX IF NOT EXISTS `characters_owner` ON `characters` (`owner`);
 CREATE INDEX IF NOT EXISTS `characters_pos` ON `characters` (`x`, `y`);
 CREATE INDEX IF NOT EXISTS `characters_busy` ON `characters` (`busy`);
 CREATE INDEX IF NOT EXISTS `characters_ismoving` ON `characters` (`ismoving`);
+CREATE INDEX IF NOT EXISTS `characters_canregen` ON `characters` (`canregen`);
 CREATE INDEX IF NOT EXISTS `characters_hastarget` ON `characters` (`hastarget`);
 
 -- =============================================================================

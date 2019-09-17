@@ -164,6 +164,11 @@ public:
   void ProcessAll (const Callback& cb);
 
   /**
+   * Retrieves and processes all fighters that need HP regeneration.
+   */
+  void ProcessForRegen (const Callback& cb);
+
+  /**
    * Retrieves and processes all fighers that have a target, i.e. for whom
    * we need to deal damage.
    */

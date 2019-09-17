@@ -51,6 +51,7 @@ Character::Character (Database& d, const Database::Result<CharacterResult>& res)
   regenData = res.GetProto<CharacterResult::regendata> ();
   busy = res.Get<CharacterResult::busy> ();
   data = res.GetProto<CharacterResult::proto> ();
+  oldCanRegen = res.Get<CharacterResult::canregen> ();
 
   VLOG (1) << "Fetched character with ID " << id << " from database result";
   Validate ();
@@ -59,6 +60,14 @@ Character::Character (Database& d, const Database::Result<CharacterResult>& res)
 Character::~Character ()
 {
   Validate ();
+
+  bool canRegen = oldCanRegen;
+  if (hp.IsDirty () || regenData.IsDirty ())
+    {
+      const auto& regenPb = regenData.Get ();
+      canRegen = (regenPb.shield_regeneration_mhp () > 0
+                    && hp.Get ().shield () < regenPb.max_hp ().shield ());
+    }
 
   if (isNew || regenData.IsDirty () || data.IsDirty ())
     {
@@ -72,22 +81,25 @@ Character::~Character ()
            `volatilemv`, `hp`,
            `busy`,
            `faction`,
-           `ismoving`, `hastarget`, `regendata`, `proto`)
+           `ismoving`, `canregen`, `hastarget`,
+           `regendata`, `proto`)
           VALUES
           (?1,
            ?2, ?3, ?4,
            ?5, ?6,
            ?7,
            ?101,
-           ?102, ?103, ?104, ?105)
+           ?102, ?103, ?104,
+           ?105, ?106)
       )");
 
       BindFieldValues (stmt);
       BindFactionParameter (stmt, 101, faction);
       stmt.Bind (102, data.Get ().has_movement ());
-      stmt.Bind (103, data.Get ().has_target ());
-      stmt.BindProto (104, regenData);
-      stmt.BindProto (105, data);
+      stmt.Bind (103, canRegen);
+      stmt.Bind (104, data.Get ().has_target ());
+      stmt.BindProto (105, regenData);
+      stmt.BindProto (106, data);
       stmt.Execute ();
 
       return;
@@ -105,11 +117,13 @@ Character::~Character ()
               `x` = ?3, `y` = ?4,
               `volatilemv` = ?5,
               `hp` = ?6,
-              `busy` = ?7
+              `busy` = ?7,
+              `canregen` = ?101
           WHERE `id` = ?1
       )");
 
       BindFieldValues (stmt);
+      stmt.Bind (101, canRegen);
       stmt.Execute ();
 
       return;
@@ -190,6 +204,15 @@ CharacterTable::QueryMoving ()
 {
   auto stmt = db.Prepare (R"(
     SELECT * FROM `characters` WHERE `ismoving` ORDER BY `id`
+  )");
+  return stmt.Query<CharacterResult> ();
+}
+
+Database::Result<CharacterResult>
+CharacterTable::QueryForRegen ()
+{
+  auto stmt = db.Prepare (R"(
+    SELECT * FROM `characters` WHERE `canregen` ORDER BY `id`
   )");
   return stmt.Query<CharacterResult> ();
 }

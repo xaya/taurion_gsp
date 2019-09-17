@@ -22,12 +22,15 @@
 
 #include "proto/character.pb.h"
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 namespace pxd
 {
 namespace
 {
+
+using testing::ElementsAre;
 
 /**
  * Sets the busy field of a character to the given value.  Makes sure to
@@ -215,6 +218,70 @@ TEST_F (CharacterTableTests, QueryMoving)
   ASSERT_TRUE (res.Step ());
   EXPECT_EQ (tbl.GetFromResult (res)->GetOwner (), "andy");
   ASSERT_FALSE (res.Step ());
+}
+
+/**
+ * Utility function that sets regeneration-related data on a character.
+ */
+void
+SetRegenData (Character& c, const unsigned rate,
+              const unsigned maxHp, const unsigned hp)
+{
+  c.MutableRegenData ().set_shield_regeneration_mhp (rate);
+  c.MutableRegenData ().mutable_max_hp ()->set_shield (maxHp);
+  c.MutableHP ().set_shield (hp);
+}
+
+TEST_F (CharacterTableTests, QueryForRegen)
+{
+  /* Set up a couple of characters that won't have any regeneration needs.
+     Either immediately on creation, or because we updated them later on
+     in a way that removed the need.  */
+
+  SetRegenData (*tbl.CreateNew ("no regen", Faction::RED), 0, 10, 5);
+
+  auto c = tbl.CreateNew ("no regen", Faction::RED);
+  Database::IdT id = c->GetId ();
+  SetRegenData (*c, 100, 10, 5);
+  c.reset ();
+  tbl.GetById (id)->MutableHP ().set_shield (10);
+
+  c = tbl.CreateNew ("no regen", Faction::RED);
+  id = c->GetId ();
+  SetRegenData (*c, 100, 10, 5);
+  c.reset ();
+  tbl.GetById (id)->MutableRegenData ().set_shield_regeneration_mhp (0);
+
+  /* Set up characters that need regeneration.  Again either immediately
+     or from updates.  */
+
+  SetRegenData (*tbl.CreateNew ("needs from start", Faction::RED), 100, 10, 5);
+
+  c = tbl.CreateNew ("hp update", Faction::RED);
+  id = c->GetId ();
+  SetRegenData (*c, 100, 10, 10);
+  c.reset ();
+  tbl.GetById (id)->MutableHP ().set_shield (5);
+
+  c = tbl.CreateNew ("rate update", Faction::RED);
+  id = c->GetId ();
+  SetRegenData (*c, 0, 10, 5);
+  c.reset ();
+  tbl.GetById (id)->MutableRegenData ().set_shield_regeneration_mhp (100);
+
+  /* Iterate over all characters and do unrelated updates.  This ensures
+     that the carrying over of the old "canregen" field works.  */
+  auto res = tbl.QueryAll ();
+  while (res.Step ())
+    tbl.GetFromResult (res)->MutableVolatileMv ();
+
+  /* Verify that we get the expected regeneration characters.  */
+  std::vector<std::string> regenOwners;
+  res = tbl.QueryForRegen ();
+  while (res.Step ())
+    regenOwners.push_back (tbl.GetFromResult (res)->GetOwner ());
+  EXPECT_THAT (regenOwners,
+               ElementsAre ("needs from start", "hp update", "rate update"));
 }
 
 TEST_F (CharacterTableTests, QueryWithTarget)

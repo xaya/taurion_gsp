@@ -148,6 +148,14 @@ FighterTable::ProcessAll (const Callback& cb)
 }
 
 void
+FighterTable::ProcessForRegen (const Callback& cb)
+{
+  auto res = characters.QueryForRegen ();
+  while (res.Step ())
+    cb (Fighter (characters.GetFromResult (res)));
+}
+
+void
 FighterTable::ProcessWithTarget (const Callback& cb)
 {
   auto res = characters.QueryWithTarget ();
