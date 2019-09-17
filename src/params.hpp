@@ -132,7 +132,7 @@ public:
    * Initialises the stats for a newly created character.  This fills in the
    * combat data and other fields in the protocol buffer as needed.
    */
-  void InitCharacterStats (proto::Character& pb) const;
+  void InitCharacterStats (proto::RegenData& regen, proto::Character& pb) const;
 
   /**
    * Returns true if god-mode commands are allowed (on regtest).

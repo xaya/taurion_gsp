@@ -124,9 +124,10 @@ SpawnCharacter (const std::string& owner, const Faction f,
   c->SetPosition (pos);
   dyn.AddVehicle (pos, f);
 
+  auto& regen = c->MutableRegenData ();
   auto& pb = c->MutableProto ();
-  params.InitCharacterStats (pb);
-  c->MutableHP () = pb.combat_data ().max_hp ();
+  params.InitCharacterStats (regen, pb);
+  c->MutableHP () = regen.max_hp ();
 
   return c;
 }

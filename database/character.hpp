@@ -46,8 +46,9 @@ struct CharacterResult : public ResultWithFaction
   RESULT_COLUMN (int64_t, y, 4);
   RESULT_COLUMN (pxd::proto::VolatileMovement, volatilemv, 5);
   RESULT_COLUMN (pxd::proto::HP, hp, 6);
-  RESULT_COLUMN (int64_t, busy, 7);
-  RESULT_COLUMN (pxd::proto::Character, proto, 8);
+  RESULT_COLUMN (pxd::proto::RegenData, regendata, 7);
+  RESULT_COLUMN (int64_t, busy, 8);
+  RESULT_COLUMN (pxd::proto::Character, proto, 9);
 };
 
 /**
@@ -85,6 +86,13 @@ private:
 
   /** Current HP proto.  */
   LazyProto<proto::HP> hp;
+
+  /**
+   * Data about HP regeneration.  This is accessed often but not updated
+   * frequently.  If modified, then we do a full update as per the proto
+   * update.  But parsing it should be cheap.
+   */
+  LazyProto<proto::RegenData> regenData;
 
   /** The number of blocks (or zero) the character is still busy.  */
   int busy;
@@ -211,6 +219,18 @@ public:
   MutableHP ()
   {
     return hp.Mutable ();
+  }
+
+  const proto::RegenData&
+  GetRegenData () const
+  {
+    return regenData.Get ();
+  }
+
+  proto::RegenData&
+  MutableRegenData ()
+  {
+    return regenData.Mutable ();
   }
 
   unsigned

@@ -78,6 +78,11 @@ public:
   const HexCoord& GetPosition () const;
 
   /**
+   * Returns the HP regeneration data for this fighter.
+   */
+  const proto::RegenData& GetRegenData () const;
+
+  /**
    * Returns the combat data proto for this fighter.
    */
   const proto::CombatData& GetCombatData () const;

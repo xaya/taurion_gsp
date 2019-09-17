@@ -292,10 +292,10 @@ TEST_F (CharacterJsonTests, HP)
   c->MutableHP ().set_armour (42);
   c->MutableHP ().set_shield (5);
   c->MutableHP ().set_shield_mhp (1);
-  auto* cd = c->MutableProto ().mutable_combat_data ();
-  cd->mutable_max_hp ()->set_armour (100);
-  cd->mutable_max_hp ()->set_shield (10);
-  cd->set_shield_regeneration_mhp (1001);
+  auto& regen = c->MutableRegenData ();
+  regen.mutable_max_hp ()->set_armour (100);
+  regen.mutable_max_hp ()->set_shield (10);
+  regen.set_shield_regeneration_mhp (1001);
   c.reset ();
 
   ExpectStateJson (R"({

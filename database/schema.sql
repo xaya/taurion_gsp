@@ -47,6 +47,11 @@ CREATE TABLE IF NOT EXISTS `characters` (
   -- costs and undo data size.
   `hp` BLOB NOT NULL,
 
+  -- Data about HP regeneration encoded as RegenData proto.  This is accessed
+  -- often and independently from the core proto, and thus split out for
+  -- performance reasons.  It is not updated often, mostly read.
+  `regendata` BLOB NOT NULL,
+
   -- If non-zero, then the number represents for how many more blocks the
   -- character is "locked" at being busy (e.g. prospecting).
   `busy` INTEGER NOT NULL,

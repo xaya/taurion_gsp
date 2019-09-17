@@ -49,6 +49,13 @@ Fighter::GetPosition () const
   return character->GetPosition ();
 }
 
+const proto::RegenData&
+Fighter::GetRegenData () const
+{
+  CHECK (character != nullptr);
+  return character->GetRegenData ();
+}
+
 const proto::CombatData&
 Fighter::GetCombatData () const
 {

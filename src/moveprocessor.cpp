@@ -465,8 +465,7 @@ MaybeGodSetHp (CharacterTable& tbl, const Json::Value& cmd)
 
       LOG (INFO) << "Setting HP points for " << id << "...";
       auto& hp = c->MutableHP ();
-      auto& maxHP = *c->MutableProto ().mutable_combat_data ()
-                      ->mutable_max_hp ();
+      auto& maxHP = *c->MutableRegenData ().mutable_max_hp ();
 
       Json::Value val = (*i)["a"];
       if (val.isUInt64 ())

@@ -155,10 +155,11 @@ GetCombatJsonObject (const Character& c, const DamageLists& dl)
   if (!attacks.empty ())
     res["attacks"] = attacks;
 
+  const auto& regen = c.GetRegenData ();
   Json::Value hp(Json::objectValue);
-  hp["max"] = HpProtoToJson (pb.combat_data ().max_hp ());
+  hp["max"] = HpProtoToJson (regen.max_hp ());
   hp["current"] = HpProtoToJson (c.GetHP ());
-  hp["regeneration"] = pb.combat_data ().shield_regeneration_mhp () / 1000.0;
+  hp["regeneration"] = regen.shield_regeneration_mhp () / 1000.0;
   res["hp"] = hp;
 
   Json::Value attackers(Json::arrayValue);

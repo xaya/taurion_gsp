@@ -68,6 +68,7 @@ TEST_F (CharacterTests, Creation)
   c->SetPosition (pos);
   const auto id1 = c->GetId ();
   c->MutableHP ().set_armour (10);
+  c->MutableRegenData ().set_shield_regeneration_mhp (1234);
   SetBusy (*c, 42);
   c.reset ();
 
@@ -85,6 +86,7 @@ TEST_F (CharacterTests, Creation)
   EXPECT_EQ (c->GetFaction (), Faction::RED);
   EXPECT_EQ (c->GetPosition (), pos);
   EXPECT_EQ (c->GetHP ().armour (), 10);
+  EXPECT_EQ (c->GetRegenData ().shield_regeneration_mhp (), 1234);
   EXPECT_EQ (c->GetBusy (), 42);
   EXPECT_FALSE (c->GetProto ().has_movement ());
 
@@ -93,6 +95,7 @@ TEST_F (CharacterTests, Creation)
   ASSERT_EQ (c->GetId (), id2);
   EXPECT_EQ (c->GetOwner (), "domob");
   EXPECT_EQ (c->GetFaction (), Faction::GREEN);
+  EXPECT_FALSE (c->GetRegenData ().has_shield_regeneration_mhp ());
   EXPECT_EQ (c->GetBusy (), 0);
   EXPECT_TRUE (c->GetProto ().has_movement ());
 
@@ -120,6 +123,7 @@ TEST_F (CharacterTests, ModificationWithProto)
   c->SetPosition (pos);
   c->MutableVolatileMv ().set_partial_step (10);
   c->MutableHP ().set_shield (5);
+  c->MutableRegenData ().set_shield_regeneration_mhp (1234);
   SetBusy (*c, 42);
   c->MutableProto ().mutable_target ();
   c.reset ();
@@ -132,6 +136,7 @@ TEST_F (CharacterTests, ModificationWithProto)
   EXPECT_EQ (c->GetPosition (), pos);
   EXPECT_EQ (c->GetVolatileMv ().partial_step (), 10);
   EXPECT_EQ (c->GetHP ().shield (), 5);
+  EXPECT_EQ (c->GetRegenData ().shield_regeneration_mhp (), 1234);
   EXPECT_EQ (c->GetBusy (), 42);
   EXPECT_TRUE (c->GetProto ().has_target ());
   ASSERT_FALSE (res.Step ());

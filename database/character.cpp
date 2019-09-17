@@ -33,6 +33,7 @@ Character::Character (Database& d, const std::string& o, const Faction f)
       << "owner=" << owner;
   volatileMv.SetToDefault ();
   hp.SetToDefault ();
+  regenData.SetToDefault ();
   data.SetToDefault ();
   Validate ();
 }
@@ -47,6 +48,7 @@ Character::Character (Database& d, const Database::Result<CharacterResult>& res)
                   res.Get<CharacterResult::y> ());
   volatileMv = res.GetProto<CharacterResult::volatilemv> ();
   hp = res.GetProto<CharacterResult::hp> ();
+  regenData = res.GetProto<CharacterResult::regendata> ();
   busy = res.Get<CharacterResult::busy> ();
   data = res.GetProto<CharacterResult::proto> ();
 
@@ -58,7 +60,7 @@ Character::~Character ()
 {
   Validate ();
 
-  if (isNew || data.IsDirty ())
+  if (isNew || regenData.IsDirty () || data.IsDirty ())
     {
       VLOG (1)
           << "Character " << id
@@ -70,21 +72,22 @@ Character::~Character ()
            `volatilemv`, `hp`,
            `busy`,
            `faction`,
-           `ismoving`, `hastarget`, `proto`)
+           `ismoving`, `hastarget`, `regendata`, `proto`)
           VALUES
           (?1,
            ?2, ?3, ?4,
            ?5, ?6,
            ?7,
            ?101,
-           ?102, ?103, ?104)
+           ?102, ?103, ?104, ?105)
       )");
 
       BindFieldValues (stmt);
       BindFactionParameter (stmt, 101, faction);
       stmt.Bind (102, data.Get ().has_movement ());
       stmt.Bind (103, data.Get ().has_target ());
-      stmt.BindProto (104, data);
+      stmt.BindProto (104, regenData);
+      stmt.BindProto (105, data);
       stmt.Execute ();
 
       return;

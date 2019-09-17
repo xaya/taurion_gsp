@@ -239,26 +239,26 @@ namespace
 void
 RegenerateFighterHP (Fighter f)
 {
-  const auto& cd = f.GetCombatData ();
+  const auto& regen = f.GetRegenData ();
   const auto& hp = f.GetHP ();
 
   /* Make sure to return early if there is no regeneration at all.  This
      ensures that we are not doing unnecessary database updates triggered
      through MutableHP().  */
-  if (cd.shield_regeneration_mhp () == 0
-        || hp.shield () == cd.max_hp ().shield ())
+  if (regen.shield_regeneration_mhp () == 0
+        || hp.shield () == regen.max_hp ().shield ())
     return;
 
   unsigned shield = hp.shield ();
   unsigned mhp = hp.shield_mhp ();
 
-  mhp += cd.shield_regeneration_mhp ();
+  mhp += regen.shield_regeneration_mhp ();
   shield += mhp / 1000;
   mhp %= 1000;
 
-  if (shield >= cd.max_hp ().shield ())
+  if (shield >= regen.max_hp ().shield ())
     {
-      shield = cd.max_hp ().shield ();
+      shield = regen.max_hp ().shield ();
       mhp = 0;
     }
 
