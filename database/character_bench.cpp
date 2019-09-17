@@ -57,7 +57,7 @@ InsertTestCharacters (Database& db, const unsigned n, const unsigned numWP)
 
 /**
  * Benchmarks the lookup of characters from the database without any
- * modification.
+ * modification nor an access to a proto field.
  *
  * Arguments are:
  *  - Characters in the database
@@ -66,7 +66,7 @@ InsertTestCharacters (Database& db, const unsigned n, const unsigned numWP)
  *    of each character)
  */
 void
-CharacterLookup (benchmark::State& state)
+CharacterLookupSimple (benchmark::State& state)
 {
   TestDatabase db;
   SetupDatabaseSchema (db.GetHandle ());
@@ -86,14 +86,50 @@ CharacterLookup (benchmark::State& state)
         CHECK_EQ (h->GetId (), charIds[i]);
       }
 }
-BENCHMARK (CharacterLookup)
+BENCHMARK (CharacterLookupSimple)
   ->Unit (benchmark::kMicrosecond)
   ->Args ({10, 1, 0})
-  ->Args ({10, 1, 10})
   ->Args ({10, 1, 100})
   ->Args ({10, 1, 1000})
   ->Args ({10, 10, 100})
   ->Args ({1000, 1, 100});
+
+/**
+ * Benchmarks the lookup of characters from the database without any
+ * modification but with access to the main proto field.
+ *
+ * Arguments are:
+ *  - Characters to look up
+ *  - Number of waypoints in the character proto (as a proxy for the data size
+ *    of each character)
+ */
+void
+CharacterLookupProto (benchmark::State& state)
+{
+  TestDatabase db;
+  SetupDatabaseSchema (db.GetHandle ());
+
+  const unsigned numChar = state.range (0);
+  const unsigned numWP = state.range (1);
+
+  const auto charIds = InsertTestCharacters (db, numChar, numWP);
+  CharacterTable tbl(db);
+
+  for (auto _ : state)
+    for (const auto id : charIds)
+      {
+        const auto h = tbl.GetById (id);
+        CHECK_EQ (h->GetId (), id);
+        CHECK (h->GetProto ().has_movement ());
+      }
+}
+BENCHMARK (CharacterLookupProto)
+  ->Unit (benchmark::kMicrosecond)
+  ->Args ({1, 0})
+  ->Args ({1, 10})
+  ->Args ({1, 100})
+  ->Args ({1, 1000})
+  ->Args ({10, 100});
 
 /**
  * Benchmarks the lookup of characters from the database while looping

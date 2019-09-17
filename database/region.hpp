@@ -20,6 +20,7 @@
 #define DATABASE_REGION_HPP
 
 #include "database.hpp"
+#include "lazyproto.hpp"
 
 #include "mapdata/regionmap.hpp"
 #include "proto/region.pb.h"
@@ -54,13 +55,7 @@ private:
   RegionMap::IdT id;
 
   /** Generic data stored in the proto BLOB.  */
-  proto::RegionData data;
-
-  /**
-   * Set to true if any modification has been made and we need to write
-   * the changes back to the database in the destructor.
-   */
-  bool dirty;
+  LazyProto<proto::RegionData> data;
 
   /**
    * Constructs an instance with "default / empty" data for the given ID.
@@ -98,14 +93,13 @@ public:
   const proto::RegionData&
   GetProto () const
   {
-    return data;
+    return data.Get ();
   }
 
   proto::RegionData&
   MutableProto ()
   {
-    dirty = true;
-    return data;
+    return data.Mutable ();
   }
 
 };

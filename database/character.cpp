@@ -26,26 +26,29 @@ namespace pxd
 Character::Character (Database& d, const std::string& o, const Faction f)
   : db(d), id(db.GetNextId ()), owner(o), faction(f),
     pos(0, 0), busy(0),
-    dirtyFields(true), dirtyProto(true)
+    isNew(true), dirtyFields(true)
 {
   VLOG (1)
       << "Created new character with ID " << id << ": "
       << "owner=" << owner;
+  volatileMv.SetToDefault ();
+  hp.SetToDefault ();
+  data.SetToDefault ();
   Validate ();
 }
 
 Character::Character (Database& d, const Database::Result<CharacterResult>& res)
-  : db(d), dirtyFields(false), dirtyProto(false)
+  : db(d), isNew(false), dirtyFields(false)
 {
   id = res.Get<CharacterResult::id> ();
   owner = res.Get<CharacterResult::owner> ();
   faction = GetFactionFromColumn (res);
   pos = HexCoord (res.Get<CharacterResult::x> (),
                   res.Get<CharacterResult::y> ());
-  res.GetProto<CharacterResult::volatilemv> (volatileMv);
-  res.GetProto<CharacterResult::hp> (hp);
+  volatileMv = res.GetProto<CharacterResult::volatilemv> ();
+  hp = res.GetProto<CharacterResult::hp> ();
   busy = res.Get<CharacterResult::busy> ();
-  res.GetProto<CharacterResult::proto> (data);
+  data = res.GetProto<CharacterResult::proto> ();
 
   VLOG (1) << "Fetched character with ID " << id << " from database result";
   Validate ();
@@ -55,7 +58,7 @@ Character::~Character ()
 {
   Validate ();
 
-  if (dirtyProto)
+  if (isNew || data.IsDirty ())
     {
       VLOG (1)
           << "Character " << id
@@ -79,15 +82,15 @@ Character::~Character ()
 
       BindFieldValues (stmt);
       BindFactionParameter (stmt, 101, faction);
-      stmt.Bind (102, data.has_movement ());
-      stmt.Bind (103, data.has_target ());
+      stmt.Bind (102, data.Get ().has_movement ());
+      stmt.Bind (103, data.Get ().has_target ());
       stmt.BindProto (104, data);
       stmt.Execute ();
 
       return;
     }
 
-  if (dirtyFields)
+  if (dirtyFields || volatileMv.IsDirty () || hp.IsDirty ())
     {
       VLOG (1)
           << "Character " << id << " has been modified in the DB fields only,"
@@ -118,13 +121,10 @@ Character::Validate () const
   CHECK_NE (id, Database::EMPTY_ID);
   CHECK_GE (busy, 0);
 
-  if (busy == 0)
-    CHECK_EQ (data.busy_case (), proto::Character::BUSY_NOT_SET);
-  else
-    {
-      CHECK_NE (data.busy_case (), proto::Character::BUSY_NOT_SET);
-      CHECK (!data.has_movement ()) << "Busy character should not be moving";
-    }
+  /* Since this method is always called when loading a character, we should
+     not access any of the protocol buffer fields.  Otherwise we would
+     counteract their lazyness, since we would always parse them anyway.
+     That is not worth it for some extra "unneeded" checks.  */
 }
 
 void

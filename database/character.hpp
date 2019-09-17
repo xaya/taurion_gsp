@@ -21,6 +21,7 @@
 
 #include "database.hpp"
 #include "faction.hpp"
+#include "lazyproto.hpp"
 
 #include "hexagonal/coord.hpp"
 #include "hexagonal/pathfinder.hpp"
@@ -80,28 +81,28 @@ private:
   HexCoord pos;
 
   /** Volatile movement proto.  */
-  proto::VolatileMovement volatileMv;
+  LazyProto<proto::VolatileMovement> volatileMv;
 
   /** Current HP proto.  */
-  proto::HP hp;
+  LazyProto<proto::HP> hp;
 
   /** The number of blocks (or zero) the character is still busy.  */
   int busy;
 
   /** All other data in the protocol buffer.  */
-  proto::Character data;
+  LazyProto<proto::Character> data;
+
+  /**
+   * Set to true if this is a new character, so we know that we have to
+   * insert it into the database.
+   */
+  bool isNew;
 
   /**
    * Set to true if any modification to the non-proto columns was made that
    * needs to be synced back to the database in the destructor.
    */
   bool dirtyFields;
-
-  /**
-   * Set to true if a modification to the proto-data was made that needs to
-   * be written back to the database.
-   */
-  bool dirtyProto;
 
   /**
    * Constructs a new character with an auto-generated ID meant to be inserted
@@ -120,7 +121,7 @@ private:
   /**
    * Binds parameters in a statement to the mutable non-proto fields.  This is
    * to share code between the proto and non-proto updates.  The ID is always
-   * bound to parameter ?1.
+   * bound to parameter ?1, and other fields to following integer IDs.
    *
    * The immutable non-proto field faction is also not bound
    * here, since it is only present in the INSERT OR REPLACE statement
@@ -191,27 +192,25 @@ public:
   const proto::VolatileMovement&
   GetVolatileMv () const
   {
-    return volatileMv;
+    return volatileMv.Get ();
   }
 
   proto::VolatileMovement&
   MutableVolatileMv ()
   {
-    dirtyFields = true;
-    return volatileMv;
+    return volatileMv.Mutable ();
   }
 
   const proto::HP&
   GetHP () const
   {
-    return hp;
+    return hp.Get ();
   }
 
   proto::HP&
   MutableHP ()
   {
-    dirtyFields = true;
-    return hp;
+    return hp.Mutable ();
   }
 
   unsigned
@@ -230,14 +229,13 @@ public:
   const proto::Character&
   GetProto () const
   {
-    return data;
+    return data.Get ();
   }
 
   proto::Character&
   MutableProto ()
   {
-    dirtyProto = true;
-    return data;
+    return data.Mutable ();
   }
 
 };

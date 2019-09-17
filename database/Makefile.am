@@ -30,6 +30,7 @@ noinst_HEADERS = \
   database.hpp database.tpp \
   faction.hpp faction.tpp \
   fighter.hpp \
+  lazyproto.hpp lazyproto.tpp \
   prizes.hpp \
   region.hpp \
   schema.hpp \
@@ -70,6 +71,7 @@ tests_SOURCES = \
   database_tests.cpp \
   faction_tests.cpp \
   fighter_tests.cpp \
+  lazyproto_tests.cpp \
   prizes_tests.cpp \
   region_tests.cpp \
   schema_tests.cpp \

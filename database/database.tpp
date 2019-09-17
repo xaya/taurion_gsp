@@ -34,6 +34,19 @@ template <typename T>
   return Result<T> (*db, stmt);
 }
 
+template <typename Proto>
+  void
+  Database::Statement::BindProto (const unsigned ind,
+                                  const LazyProto<Proto>& msg)
+{
+  CHECK (!run);
+
+  const std::string& str = msg.GetSerialised ();
+  CHECK_EQ (sqlite3_bind_blob (stmt, ind, &str[0], str.size (),
+                               SQLITE_TRANSIENT),
+            SQLITE_OK);
+}
+
 template <typename T>
   Database::Result<T>::Result (Database& d, sqlite3_stmt* s)
     : db(&d), stmt(s)
@@ -100,15 +113,16 @@ template <typename Col>
 
 template <typename T>
 template <typename Col>
-  void
-  Database::Result<T>::GetProto (typename Col::Type& res) const
+  LazyProto<typename Col::Type>
+  Database::Result<T>::GetProto () const
 {
   const int ind = ColumnIndex<Col> ();
 
-  const int len = sqlite3_column_bytes (stmt, ind);
   const void* bytes = sqlite3_column_blob (stmt, ind);
+  const int len = sqlite3_column_bytes (stmt, ind);
 
-  CHECK (res.ParseFromArray (bytes, len));
+  std::string data(static_cast<const char*> (bytes), len);
+  return LazyProto<typename Col::Type> (std::move (data));
 }
 
 } // namespace pxd

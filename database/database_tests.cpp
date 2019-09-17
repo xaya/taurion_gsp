@@ -92,10 +92,9 @@ protected:
         EXPECT_EQ (res.Get<TestResult::flag> (), val.flag);
         EXPECT_EQ (res.Get<TestResult::name> (), val.name);
 
-        proto::HexCoord c;
-        res.GetProto<TestResult::proto> (c);
-        EXPECT_EQ (c.x (), val.coordX);
-        EXPECT_EQ (c.y (), val.coordY);
+        LazyProto<proto::HexCoord> c = res.GetProto<TestResult::proto> ();
+        EXPECT_EQ (c.Get ().x (), val.coordX);
+        EXPECT_EQ (c.Get ().y (), val.coordY);
       }
     ASSERT_FALSE (res.Step ());
   }
@@ -104,13 +103,15 @@ protected:
 
 TEST_F (DatabaseTests, BindingAndQuery)
 {
-  proto::HexCoord coord1;
-  coord1.set_x (5);
-  coord1.set_y (-3);
+  LazyProto<proto::HexCoord> coord1;
+  coord1.SetToDefault ();
+  coord1.Mutable ().set_x (5);
+  coord1.Mutable ().set_y (-3);
 
-  proto::HexCoord coord2;
-  coord2.set_x (-4);
-  coord2.set_y (0);
+  LazyProto<proto::HexCoord> coord2;
+  coord2.SetToDefault ();
+  coord2.Mutable ().set_x (-4);
+  coord2.Mutable ().set_y (0);
 
   auto stmt = db.Prepare (R"(
     INSERT INTO `test`
@@ -132,8 +133,8 @@ TEST_F (DatabaseTests, BindingAndQuery)
   stmt.Execute ();
 
   ExpectData ({
-    {10, true, "bar", coord2.x (), coord2.y ()},
-    {largeInt, false, "foo", coord1.x (), coord1.y ()},
+    {10, true, "bar", coord2.Get ().x (), coord2.Get ().y ()},
+    {largeInt, false, "foo", coord1.Get ().x (), coord1.Get ().y ()},
   });
 }
 
@@ -167,8 +168,9 @@ TEST_F (DatabaseTests, StatementReset)
 
 TEST_F (DatabaseTests, ProtoIsOverwritten)
 {
-  proto::HexCoord coord;
-  coord.set_x (5);
+  LazyProto<proto::HexCoord> coord;
+  coord.SetToDefault ();
+  coord.Mutable ().set_x (5);
   /* Explicitly leave y unset.  */
 
   auto stmt = db.Prepare (R"(
@@ -184,11 +186,12 @@ TEST_F (DatabaseTests, ProtoIsOverwritten)
 
   /* Verify that the input proto is fully overwritten (i.e. cleared) and not
      just merged with the data we read.  */
-  proto::HexCoord protoRes;
-  protoRes.set_y (42);
-  res.GetProto<TestResult::proto> (protoRes);
-  EXPECT_EQ (protoRes.x (), coord.x ());
-  EXPECT_FALSE (protoRes.has_y ());
+  LazyProto<proto::HexCoord> protoRes;
+  protoRes.SetToDefault ();
+  protoRes.Mutable ().set_y (42);
+  protoRes = res.GetProto<TestResult::proto> ();
+  EXPECT_EQ (protoRes.Get ().x (), coord.Get ().x ());
+  EXPECT_FALSE (protoRes.Get ().has_y ());
 
   ASSERT_FALSE (res.Step ());
 }

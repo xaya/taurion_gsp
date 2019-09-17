@@ -19,6 +19,8 @@
 #ifndef DATABASE_DATABASE_HPP
 #define DATABASE_DATABASE_HPP
 
+#include "lazyproto.hpp"
+
 #include <xayagame/sqlitegame.hpp>
 
 #include <google/protobuf/message.h>
@@ -146,7 +148,8 @@ public:
   /**
    * Binds a protocol buffer to a BLOB parameter.
    */
-  void BindProto (unsigned ind, const google::protobuf::Message& msg);
+  template <typename Proto>
+    void BindProto (unsigned ind, const LazyProto<Proto>& msg);
 
   /**
    * Resets the statement so it can be used again with fresh bindings
@@ -285,7 +288,7 @@ public:
    * Extracts a protocol buffer from the column of the given type.
    */
   template <typename Col>
-    void GetProto (typename Col::Type& res) const;
+    LazyProto<typename Col::Type> GetProto () const;
 
   /**
    * Returns the underlying database handle.
