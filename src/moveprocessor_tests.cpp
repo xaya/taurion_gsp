@@ -534,6 +534,16 @@ TEST_F (CharacterUpdateTests, Waypoints)
   ASSERT_EQ (wp.size (), 2);
   EXPECT_EQ (CoordFromProto (wp.Get (0)), HexCoord (-3, 4));
   EXPECT_EQ (CoordFromProto (wp.Get (1)), HexCoord (5, 0));
+
+  /* Process a valid update that just stops the character.  */
+  GetTest ()->MutableVolatileMv ().set_partial_step (42);
+  Process (R"([{
+    "name": "domob",
+    "move": {"c": {"1": {"wp": []}}}
+  }])");
+  h = GetTest ();
+  EXPECT_FALSE (h->GetVolatileMv ().has_partial_step ());
+  EXPECT_FALSE (h->GetProto ().has_movement ());
 }
 
 /* ************************************************************************** */
