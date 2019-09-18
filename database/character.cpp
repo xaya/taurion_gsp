@@ -235,6 +235,36 @@ CharacterTable::QueryBusyDone ()
   return stmt.Query<CharacterResult> ();
 }
 
+namespace
+{
+
+struct PositionResult : public ResultWithFaction
+{
+  RESULT_COLUMN (int64_t, x, 1);
+  RESULT_COLUMN (int64_t, y, 2);
+};
+
+} // anonymous namespace
+
+void
+CharacterTable::ProcessAllPositions (const PositionFcn& cb)
+{
+  auto stmt = db.Prepare (R"(
+    SELECT `x`, `y`, `faction`
+      FROM `characters`
+      ORDER BY `id`
+  )");
+
+  auto res = stmt.Query<PositionResult> ();
+  while (res.Step ())
+    {
+      const HexCoord pos(res.Get<PositionResult::x> (),
+                         res.Get<PositionResult::y> ());
+      const Faction f = GetFactionFromColumn (res);
+      cb (pos, f);
+    }
+}
+
 void
 CharacterTable::DeleteById (const Database::IdT id)
 {

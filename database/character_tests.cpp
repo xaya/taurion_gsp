@@ -322,6 +322,24 @@ TEST_F (CharacterTableTests, QueryBusyDone)
   ASSERT_FALSE (res.Step ());
 }
 
+TEST_F (CharacterTableTests, ProcessAllPositions)
+{
+  tbl.CreateNew ("red", Faction::RED)->SetPosition (HexCoord (1, 5));
+  tbl.CreateNew ("red", Faction::RED)->SetPosition (HexCoord (-1, -5));
+  tbl.CreateNew ("blue", Faction::BLUE)->SetPosition (HexCoord (0, 0));
+
+  using Entry = std::pair<Faction, HexCoord>;
+  std::vector<Entry> entries;
+  tbl.ProcessAllPositions ([&entries] (const HexCoord& pos, const Faction f)
+    {
+      entries.emplace_back (f, pos);
+    });
+
+  EXPECT_THAT (entries, ElementsAre (Entry (Faction::RED, HexCoord (1, 5)),
+                                     Entry (Faction::RED, HexCoord (-1, -5)),
+                                     Entry (Faction::BLUE, HexCoord (0, 0))));
+}
+
 TEST_F (CharacterTableTests, DeleteById)
 {
   const auto id1 = tbl.CreateNew ("domob", Faction::RED)->GetId ();

@@ -29,6 +29,7 @@
 #include "proto/combat.pb.h"
 #include "proto/movement.pb.h"
 
+#include <functional>
 #include <memory>
 #include <string>
 
@@ -285,6 +286,9 @@ public:
   /** Movable handle to a character instance.  */
   using Handle = std::unique_ptr<Character>;
 
+  /** Callback function for processing positions and factions of characters.  */
+  using PositionFcn = std::function<void (const HexCoord& pos, Faction f)>;
+
   explicit CharacterTable (Database& d)
     : db(d)
   {}
@@ -343,6 +347,13 @@ public:
    * processed and finished next.
    */
   Database::Result<CharacterResult> QueryBusyDone ();
+
+  /**
+   * Processes all positions of characters on the map.  This is used to
+   * construct the dynamic obstacle map, avoiding the need to query all data
+   * for each character and construct a full Character handle.
+   */
+  void ProcessAllPositions (const PositionFcn& cb);
 
   /**
    * Deletes the character with the given ID.
