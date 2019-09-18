@@ -47,6 +47,11 @@ CREATE TABLE IF NOT EXISTS `characters` (
   -- costs and undo data size.
   `hp` BLOB NOT NULL,
 
+  -- Data about HP regeneration encoded as RegenData proto.  This is accessed
+  -- often and independently from the core proto, and thus split out for
+  -- performance reasons.  It is not updated often, mostly read.
+  `regendata` BLOB NOT NULL,
+
   -- If non-zero, then the number represents for how many more blocks the
   -- character is "locked" at being busy (e.g. prospecting).
   `busy` INTEGER NOT NULL,
@@ -56,6 +61,17 @@ CREATE TABLE IF NOT EXISTS `characters` (
   -- used so that we can efficiently retrieve only those characters that are
   -- moving when we do move updates.
   `ismoving` INTEGER NOT NULL,
+
+  -- The range of the longest attack this character has or NULL if there
+  -- is no attack at all.  This is used to speed up target finding without
+  -- the need to look through the character's attacks (and parse the
+  -- full proto) every time.
+  `attackrange` INTEGER NULL,
+
+  -- Flag indicating whether a character may need HP regeneration.  This is
+  -- set here (based on the RegenData and current HP) so that we can only
+  -- retrieve and process characters that need regeneration.
+  `canregen` INTEGER NOT NULL,
 
   -- Flag indicating whether or not the character has a combat target.
   -- This is used so we can later efficiently retrieve only those characters
@@ -72,6 +88,9 @@ CREATE INDEX IF NOT EXISTS `characters_owner` ON `characters` (`owner`);
 CREATE INDEX IF NOT EXISTS `characters_pos` ON `characters` (`x`, `y`);
 CREATE INDEX IF NOT EXISTS `characters_busy` ON `characters` (`busy`);
 CREATE INDEX IF NOT EXISTS `characters_ismoving` ON `characters` (`ismoving`);
+CREATE INDEX IF NOT EXISTS `characters_attackrange`
+  ON `characters` (`attackrange`);
+CREATE INDEX IF NOT EXISTS `characters_canregen` ON `characters` (`canregen`);
 CREATE INDEX IF NOT EXISTS `characters_hastarget` ON `characters` (`hastarget`);
 
 -- =============================================================================

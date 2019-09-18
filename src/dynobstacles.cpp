@@ -27,12 +27,10 @@ DynObstacles::DynObstacles (Database& db)
   : red(false), green(false), blue(false)
 {
   CharacterTable tbl(db);
-  auto res = tbl.QueryAll ();
-  while (res.Step ())
+  tbl.ProcessAllPositions ([this] (const HexCoord& pos, const Faction f)
     {
-      auto c = tbl.GetFromResult (res);
-      AddVehicle (c->GetPosition (), c->GetFaction ());
-    }
+      AddVehicle (pos, f);
+    });
 }
 
 DynTiles<bool>&

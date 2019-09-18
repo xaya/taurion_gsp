@@ -81,6 +81,7 @@ message Character
      - position on the map
      - volatile movement proto (partial step, blocked for counter)
      - current HP proto
+     - HP regeneration data proto
      - number of blocks the character is still "busy"
   */
 

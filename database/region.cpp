@@ -22,23 +22,24 @@ namespace pxd
 {
 
 Region::Region (Database& d, const RegionMap::IdT i)
-  : db(d), id(i), dirty(false)
+  : db(d), id(i)
 {
   VLOG (1) << "Created instance for empty region with ID " << id;
+  data.SetToDefault ();
 }
 
 Region::Region (Database& d, const Database::Result<RegionResult>& res)
-  : db(d), dirty(false)
+  : db(d)
 {
   id = res.Get<RegionResult::id> ();
-  res.GetProto<RegionResult::proto> (data);
+  data = res.GetProto<RegionResult::proto> ();
 
   VLOG (1) << "Created region data for ID " << id << " from database result";
 }
 
 Region::~Region ()
 {
-  if (!dirty)
+  if (!data.IsDirty ())
     {
       VLOG (1) << "Region " << id << " is not dirty, no update";
       return;

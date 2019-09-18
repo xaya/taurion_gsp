@@ -153,7 +153,7 @@ Params::SpawnArea (const Faction f, HexCoord::IntT& radius) const
 }
 
 void
-Params::InitCharacterStats (proto::Character& pb) const
+Params::InitCharacterStats (proto::RegenData& regen, proto::Character& pb) const
 {
   pb.set_speed (3000);
 
@@ -167,10 +167,10 @@ Params::InitCharacterStats (proto::Character& pb) const
   attack->set_min_damage (5);
   attack->set_max_damage (30);
 
-  auto* maxHP = cd->mutable_max_hp ();
+  auto* maxHP = regen.mutable_max_hp ();
   maxHP->set_armour (100);
   maxHP->set_shield (30);
-  cd->set_shield_regeneration_mhp (500);
+  regen.set_shield_regeneration_mhp (500);
 }
 
 bool

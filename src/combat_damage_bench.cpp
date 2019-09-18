@@ -60,14 +60,14 @@ InsertCharacters (Database& db, const unsigned numIdle,
     {
       auto c = tbl.CreateNew ("domob", Faction::GREEN);
       const auto id = c->GetId ();
-      auto* cd = c->MutableProto ().mutable_combat_data ();
-      cd->set_shield_regeneration_mhp (1000);
-      cd->mutable_max_hp ()->set_armour (targetHP);
+      auto& regen = c->MutableRegenData ();
+      regen.set_shield_regeneration_mhp (1000);
+      regen.mutable_max_hp ()->set_armour (targetHP);
       c->MutableHP ().set_armour (targetHP);
       c.reset ();
 
       c = tbl.CreateNew ("domob", Faction::RED);
-      cd = c->MutableProto ().mutable_combat_data ();
+      auto* cd = c->MutableProto ().mutable_combat_data ();
       for (unsigned j = 0; j < numAttacks; ++j)
         {
           auto* attack = cd->add_attacks ();

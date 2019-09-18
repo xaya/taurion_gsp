@@ -91,20 +91,31 @@ message HP
 }
 
 /**
+ * Data relevant for HP regeneration.  This is split out from the main
+ * combat data, because it needs to be accessed for every fighter all the
+ * time to figure out if they need regeneration.
+ */
+message RegenData
+{
+
+  /** Maximum HP of the fighter.  */
+  optional HP max_hp = 1;
+
+  /** Regeneration rate of shield HP in "milli HP per block".  */
+  optional uint32 shield_regeneration_mhp = 2;
+
+}
+
+/**
  * All data related to combat that a fighter entity (character or building) has.
  * This only includes basic properties of the fighter and not more dynamic
- * data like the current target or the current HP.
+ * data like the current target or the current HP, nor specific data that
+ * is frequently accessed like HP regeneration.
  */
 message CombatData
 {
 
   /** The offensive attacks the figher has.  */
   repeated Attack attacks = 1;
-
-  /** Maximum HP of the fighter.  */
-  optional HP max_hp = 2;
-
-  /** Regeneration rate of shield HP in "milli HP per block".  */
-  optional uint32 shield_regeneration_mhp = 3;
 
 }

@@ -115,20 +115,6 @@ Database::Statement::BindNull (const unsigned ind)
   CHECK_EQ (sqlite3_bind_null (stmt, ind), SQLITE_OK);
 }
 
-void
-Database::Statement::BindProto (const unsigned ind,
-                                const google::protobuf::Message& msg)
-{
-  CHECK (!run);
-
-  std::string str;
-  CHECK (msg.SerializeToString (&str));
-
-  CHECK_EQ (sqlite3_bind_blob (stmt, ind, &str[0], str.size (),
-                               SQLITE_TRANSIENT),
-            SQLITE_OK);
-}
-
 /* ************************************************************************** */
 
 namespace internal

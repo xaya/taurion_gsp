@@ -40,19 +40,13 @@ SelectTarget (TargetFinder& targets, xaya::Random& rnd, Fighter f)
 {
   const HexCoord pos = f.GetPosition ();
 
-  const auto& data = f.GetCombatData ();
-  HexCoord::IntT range = 0;
-  for (const auto& attack : data.attacks ())
-    {
-      CHECK_GT (attack.range (), 0);
-      range = std::max<HexCoord::IntT> (range, attack.range ());
-    }
+  const HexCoord::IntT range = f.GetAttackRange ();
   if (range == 0)
     {
-      CHECK_EQ (data.attacks_size (), 0);
       VLOG (1) << "Fighter at " << pos << " has no attacks";
       return;
     }
+  CHECK_GT (range, 0);
 
   HexCoord::IntT closestRange;
   std::vector<proto::TargetId> closestTargets;
@@ -100,7 +94,7 @@ FindCombatTargets (Database& db, xaya::Random& rnd)
   FighterTable fighters(characters);
   TargetFinder targets(db);
 
-  fighters.ProcessAll ([&] (Fighter f)
+  fighters.ProcessWithAttacks ([&] (Fighter f)
     {
       SelectTarget (targets, rnd, std::move (f));
     });
@@ -239,26 +233,26 @@ namespace
 void
 RegenerateFighterHP (Fighter f)
 {
-  const auto& cd = f.GetCombatData ();
+  const auto& regen = f.GetRegenData ();
   const auto& hp = f.GetHP ();
 
   /* Make sure to return early if there is no regeneration at all.  This
      ensures that we are not doing unnecessary database updates triggered
      through MutableHP().  */
-  if (cd.shield_regeneration_mhp () == 0
-        || hp.shield () == cd.max_hp ().shield ())
+  if (regen.shield_regeneration_mhp () == 0
+        || hp.shield () == regen.max_hp ().shield ())
     return;
 
   unsigned shield = hp.shield ();
   unsigned mhp = hp.shield_mhp ();
 
-  mhp += cd.shield_regeneration_mhp ();
+  mhp += regen.shield_regeneration_mhp ();
   shield += mhp / 1000;
   mhp %= 1000;
 
-  if (shield >= cd.max_hp ().shield ())
+  if (shield >= regen.max_hp ().shield ())
     {
-      shield = cd.max_hp ().shield ();
+      shield = regen.max_hp ().shield ();
       mhp = 0;
     }
 
@@ -275,7 +269,7 @@ RegenerateHP (Database& db)
   CharacterTable characters(db);
   FighterTable fighters(characters);
 
-  fighters.ProcessAll ([] (Fighter f)
+  fighters.ProcessForRegen ([] (Fighter f)
     {
       RegenerateFighterHP (std::move (f));
     });

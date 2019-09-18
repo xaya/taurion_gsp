@@ -21,6 +21,7 @@
 
 #include "database.hpp"
 #include "faction.hpp"
+#include "lazyproto.hpp"
 
 #include "hexagonal/coord.hpp"
 #include "hexagonal/pathfinder.hpp"
@@ -28,6 +29,7 @@
 #include "proto/combat.pb.h"
 #include "proto/movement.pb.h"
 
+#include <functional>
 #include <memory>
 #include <string>
 
@@ -45,8 +47,12 @@ struct CharacterResult : public ResultWithFaction
   RESULT_COLUMN (int64_t, y, 4);
   RESULT_COLUMN (pxd::proto::VolatileMovement, volatilemv, 5);
   RESULT_COLUMN (pxd::proto::HP, hp, 6);
-  RESULT_COLUMN (int64_t, busy, 7);
-  RESULT_COLUMN (pxd::proto::Character, proto, 8);
+  RESULT_COLUMN (pxd::proto::RegenData, regendata, 7);
+  RESULT_COLUMN (int64_t, busy, 8);
+  RESULT_COLUMN (pxd::proto::Character, proto, 9);
+  RESULT_COLUMN (int64_t, attackrange, 10);
+  RESULT_COLUMN (bool, canregen, 11);
+  RESULT_COLUMN (bool, hastarget, 12);
 };
 
 /**
@@ -80,28 +86,50 @@ private:
   HexCoord pos;
 
   /** Volatile movement proto.  */
-  proto::VolatileMovement volatileMv;
+  LazyProto<proto::VolatileMovement> volatileMv;
 
   /** Current HP proto.  */
-  proto::HP hp;
+  LazyProto<proto::HP> hp;
+
+  /**
+   * Data about HP regeneration.  This is accessed often but not updated
+   * frequently.  If modified, then we do a full update as per the proto
+   * update.  But parsing it should be cheap.
+   */
+  LazyProto<proto::RegenData> regenData;
 
   /** The number of blocks (or zero) the character is still busy.  */
   int busy;
 
   /** All other data in the protocol buffer.  */
-  proto::Character data;
+  LazyProto<proto::Character> data;
+
+  /** The character's longest attack or zero if there are none.  */
+  HexCoord::IntT attackRange;
+
+  /**
+   * Stores the canregen flag from the database.  We only update it if
+   * the RegenData or HP have been modified.
+   */
+  bool oldCanRegen;
+
+  /**
+   * Stores the flag of whether or not the character had a combat target
+   * originally in the database.
+   */
+  bool hasTarget;
+
+  /**
+   * Set to true if this is a new character, so we know that we have to
+   * insert it into the database.
+   */
+  bool isNew;
 
   /**
    * Set to true if any modification to the non-proto columns was made that
    * needs to be synced back to the database in the destructor.
    */
   bool dirtyFields;
-
-  /**
-   * Set to true if a modification to the proto-data was made that needs to
-   * be written back to the database.
-   */
-  bool dirtyProto;
 
   /**
    * Constructs a new character with an auto-generated ID meant to be inserted
@@ -120,7 +148,7 @@ private:
   /**
    * Binds parameters in a statement to the mutable non-proto fields.  This is
    * to share code between the proto and non-proto updates.  The ID is always
-   * bound to parameter ?1.
+   * bound to parameter ?1, and other fields to following integer IDs.
    *
    * The immutable non-proto field faction is also not bound
    * here, since it is only present in the INSERT OR REPLACE statement
@@ -191,27 +219,37 @@ public:
   const proto::VolatileMovement&
   GetVolatileMv () const
   {
-    return volatileMv;
+    return volatileMv.Get ();
   }
 
   proto::VolatileMovement&
   MutableVolatileMv ()
   {
-    dirtyFields = true;
-    return volatileMv;
+    return volatileMv.Mutable ();
   }
 
   const proto::HP&
   GetHP () const
   {
-    return hp;
+    return hp.Get ();
   }
 
   proto::HP&
   MutableHP ()
   {
-    dirtyFields = true;
-    return hp;
+    return hp.Mutable ();
+  }
+
+  const proto::RegenData&
+  GetRegenData () const
+  {
+    return regenData.Get ();
+  }
+
+  proto::RegenData&
+  MutableRegenData ()
+  {
+    return regenData.Mutable ();
   }
 
   unsigned
@@ -230,15 +268,31 @@ public:
   const proto::Character&
   GetProto () const
   {
-    return data;
+    return data.Get ();
   }
 
   proto::Character&
   MutableProto ()
   {
-    dirtyProto = true;
-    return data;
+    return data.Mutable ();
   }
+
+  /**
+   * Returns the character's attack range or zero if there are no attacks.
+   * Note that this method must only be called if the character has been
+   * read from the database (not newly constructed) and if its main proto
+   * has not been modified.  That allows us to use the cached attack-range
+   * column in the database directly.
+   */
+  HexCoord::IntT GetAttackRange () const;
+
+  /**
+   * Returns whether or not the character has a combat target.  This works
+   * without parsing the main proto, and can thus be used for efficient checks
+   * during target finding.  Note that the method must not be called if the
+   * character is new or if the main proto has been modified.
+   */
+  bool HasTarget () const;
 
 };
 
@@ -259,6 +313,9 @@ public:
 
   /** Movable handle to a character instance.  */
   using Handle = std::unique_ptr<Character>;
+
+  /** Callback function for processing positions and factions of characters.  */
+  using PositionFcn = std::function<void (const HexCoord& pos, Faction f)>;
 
   explicit CharacterTable (Database& d)
     : db(d)
@@ -303,6 +360,16 @@ public:
   Database::Result<CharacterResult> QueryMoving ();
 
   /**
+   * Queries for all characters with attacks.
+   */
+  Database::Result<CharacterResult> QueryWithAttacks ();
+
+  /**
+   * Queries for all characters that may need to have HP regenerated.
+   */
+  Database::Result<CharacterResult> QueryForRegen ();
+
+  /**
    * Queries for all characters that have a combat target and thus need
    * to be processed for damage.
    */
@@ -313,6 +380,13 @@ public:
    * processed and finished next.
    */
   Database::Result<CharacterResult> QueryBusyDone ();
+
+  /**
+   * Processes all positions of characters on the map.  This is used to
+   * construct the dynamic obstacle map, avoiding the need to query all data
+   * for each character and construct a full Character handle.
+   */
+  void ProcessAllPositions (const PositionFcn& cb);
 
   /**
    * Deletes the character with the given ID.

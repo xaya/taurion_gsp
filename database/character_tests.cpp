@@ -22,12 +22,15 @@
 
 #include "proto/character.pb.h"
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 namespace pxd
 {
 namespace
 {
+
+using testing::ElementsAre;
 
 /**
  * Sets the busy field of a character to the given value.  Makes sure to
@@ -68,6 +71,7 @@ TEST_F (CharacterTests, Creation)
   c->SetPosition (pos);
   const auto id1 = c->GetId ();
   c->MutableHP ().set_armour (10);
+  c->MutableRegenData ().set_shield_regeneration_mhp (1234);
   SetBusy (*c, 42);
   c.reset ();
 
@@ -85,6 +89,7 @@ TEST_F (CharacterTests, Creation)
   EXPECT_EQ (c->GetFaction (), Faction::RED);
   EXPECT_EQ (c->GetPosition (), pos);
   EXPECT_EQ (c->GetHP ().armour (), 10);
+  EXPECT_EQ (c->GetRegenData ().shield_regeneration_mhp (), 1234);
   EXPECT_EQ (c->GetBusy (), 42);
   EXPECT_FALSE (c->GetProto ().has_movement ());
 
@@ -93,6 +98,7 @@ TEST_F (CharacterTests, Creation)
   ASSERT_EQ (c->GetId (), id2);
   EXPECT_EQ (c->GetOwner (), "domob");
   EXPECT_EQ (c->GetFaction (), Faction::GREEN);
+  EXPECT_FALSE (c->GetRegenData ().has_shield_regeneration_mhp ());
   EXPECT_EQ (c->GetBusy (), 0);
   EXPECT_TRUE (c->GetProto ().has_movement ());
 
@@ -120,6 +126,7 @@ TEST_F (CharacterTests, ModificationWithProto)
   c->SetPosition (pos);
   c->MutableVolatileMv ().set_partial_step (10);
   c->MutableHP ().set_shield (5);
+  c->MutableRegenData ().set_shield_regeneration_mhp (1234);
   SetBusy (*c, 42);
   c->MutableProto ().mutable_target ();
   c.reset ();
@@ -132,6 +139,7 @@ TEST_F (CharacterTests, ModificationWithProto)
   EXPECT_EQ (c->GetPosition (), pos);
   EXPECT_EQ (c->GetVolatileMv ().partial_step (), 10);
   EXPECT_EQ (c->GetHP ().shield (), 5);
+  EXPECT_EQ (c->GetRegenData ().shield_regeneration_mhp (), 1234);
   EXPECT_EQ (c->GetBusy (), 42);
   EXPECT_TRUE (c->GetProto ().has_target ());
   ASSERT_FALSE (res.Step ());
@@ -167,6 +175,44 @@ TEST_F (CharacterTests, ModificationFieldsOnly)
   EXPECT_EQ (c->GetVolatileMv ().partial_step (), 24);
   EXPECT_EQ (c->GetHP ().shield (), 5);
   EXPECT_EQ (c->GetBusy (), 42);
+}
+
+TEST_F (CharacterTests, HasTarget)
+{
+  auto c = tbl.CreateNew ("domob", Faction::RED);
+  const auto id = c->GetId ();
+  c.reset ();
+
+  c = tbl.GetById (id);
+  EXPECT_FALSE (c->HasTarget ());
+  c->MutableProto ().mutable_target ();
+  c.reset ();
+
+  c = tbl.GetById (id);
+  EXPECT_TRUE (c->HasTarget ());
+  c->MutableProto ().clear_target ();
+  c.reset ();
+
+  EXPECT_FALSE (tbl.GetById (id)->HasTarget ());
+}
+
+TEST_F (CharacterTests, AttackRange)
+{
+  auto c = tbl.CreateNew ("domob", Faction::RED);
+  const auto id = c->GetId ();
+  c.reset ();
+
+  c = tbl.GetById (id);
+  EXPECT_EQ (c->GetAttackRange (), 0);
+  c->MutableProto ().mutable_combat_data ()->add_attacks ()->set_range (5);
+  c.reset ();
+
+  c = tbl.GetById (id);
+  EXPECT_EQ (c->GetAttackRange (), 5);
+  c->MutableProto ().clear_combat_data ();
+  c.reset ();
+
+  EXPECT_EQ (tbl.GetById (id)->GetAttackRange (), 0);
 }
 
 /* ************************************************************************** */
@@ -212,6 +258,82 @@ TEST_F (CharacterTableTests, QueryMoving)
   ASSERT_FALSE (res.Step ());
 }
 
+TEST_F (CharacterTableTests, QueryWithAttacks)
+{
+  tbl.CreateNew ("domob", Faction::RED);
+  tbl.CreateNew ("andy", Faction::RED)
+    ->MutableProto ().mutable_combat_data ()->add_attacks ()->set_range (1);
+
+  auto res = tbl.QueryWithAttacks ();
+  ASSERT_TRUE (res.Step ());
+  EXPECT_EQ (tbl.GetFromResult (res)->GetOwner (), "andy");
+  ASSERT_FALSE (res.Step ());
+}
+
+/**
+ * Utility function that sets regeneration-related data on a character.
+ */
+void
+SetRegenData (Character& c, const unsigned rate,
+              const unsigned maxHp, const unsigned hp)
+{
+  c.MutableRegenData ().set_shield_regeneration_mhp (rate);
+  c.MutableRegenData ().mutable_max_hp ()->set_shield (maxHp);
+  c.MutableHP ().set_shield (hp);
+}
+
+TEST_F (CharacterTableTests, QueryForRegen)
+{
+  /* Set up a couple of characters that won't have any regeneration needs.
+     Either immediately on creation, or because we updated them later on
+     in a way that removed the need.  */
+
+  SetRegenData (*tbl.CreateNew ("no regen", Faction::RED), 0, 10, 5);
+
+  auto c = tbl.CreateNew ("no regen", Faction::RED);
+  Database::IdT id = c->GetId ();
+  SetRegenData (*c, 100, 10, 5);
+  c.reset ();
+  tbl.GetById (id)->MutableHP ().set_shield (10);
+
+  c = tbl.CreateNew ("no regen", Faction::RED);
+  id = c->GetId ();
+  SetRegenData (*c, 100, 10, 5);
+  c.reset ();
+  tbl.GetById (id)->MutableRegenData ().set_shield_regeneration_mhp (0);
+
+  /* Set up characters that need regeneration.  Again either immediately
+     or from updates.  */
+
+  SetRegenData (*tbl.CreateNew ("needs from start", Faction::RED), 100, 10, 5);
+
+  c = tbl.CreateNew ("hp update", Faction::RED);
+  id = c->GetId ();
+  SetRegenData (*c, 100, 10, 10);
+  c.reset ();
+  tbl.GetById (id)->MutableHP ().set_shield (5);
+
+  c = tbl.CreateNew ("rate update", Faction::RED);
+  id = c->GetId ();
+  SetRegenData (*c, 0, 10, 5);
+  c.reset ();
+  tbl.GetById (id)->MutableRegenData ().set_shield_regeneration_mhp (100);
+
+  /* Iterate over all characters and do unrelated updates.  This ensures
+     that the carrying over of the old "canregen" field works.  */
+  auto res = tbl.QueryAll ();
+  while (res.Step ())
+    tbl.GetFromResult (res)->MutableVolatileMv ();
+
+  /* Verify that we get the expected regeneration characters.  */
+  std::vector<std::string> regenOwners;
+  res = tbl.QueryForRegen ();
+  while (res.Step ())
+    regenOwners.push_back (tbl.GetFromResult (res)->GetOwner ());
+  EXPECT_THAT (regenOwners,
+               ElementsAre ("needs from start", "hp update", "rate update"));
+}
+
 TEST_F (CharacterTableTests, QueryWithTarget)
 {
   auto c = tbl.CreateNew ("domob", Faction::RED);
@@ -248,6 +370,24 @@ TEST_F (CharacterTableTests, QueryBusyDone)
   ASSERT_TRUE (res.Step ());
   EXPECT_EQ (tbl.GetFromResult (res)->GetOwner (), "done 2");
   ASSERT_FALSE (res.Step ());
+}
+
+TEST_F (CharacterTableTests, ProcessAllPositions)
+{
+  tbl.CreateNew ("red", Faction::RED)->SetPosition (HexCoord (1, 5));
+  tbl.CreateNew ("red", Faction::RED)->SetPosition (HexCoord (-1, -5));
+  tbl.CreateNew ("blue", Faction::BLUE)->SetPosition (HexCoord (0, 0));
+
+  using Entry = std::pair<Faction, HexCoord>;
+  std::vector<Entry> entries;
+  tbl.ProcessAllPositions ([&entries] (const HexCoord& pos, const Faction f)
+    {
+      entries.emplace_back (f, pos);
+    });
+
+  EXPECT_THAT (entries, ElementsAre (Entry (Faction::RED, HexCoord (1, 5)),
+                                     Entry (Faction::RED, HexCoord (-1, -5)),
+                                     Entry (Faction::BLUE, HexCoord (0, 0))));
 }
 
 TEST_F (CharacterTableTests, DeleteById)

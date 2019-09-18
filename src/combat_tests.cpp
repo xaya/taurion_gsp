@@ -527,8 +527,8 @@ TEST_F (RegenerateHpTests, Works)
 {
   auto c = characters.CreateNew ("domob", Faction::RED);
   const auto id = c->GetId ();
-  auto* cd = c->MutableProto ().mutable_combat_data ();
-  cd->mutable_max_hp ()->set_shield (100);
+  auto* regen = &c->MutableRegenData ();
+  regen->mutable_max_hp ()->set_shield (100);
   c.reset ();
 
   struct TestCase
@@ -555,8 +555,8 @@ TEST_F (RegenerateHpTests, Works)
       c = characters.GetById (id);
       c->MutableHP ().set_shield (t.shieldBefore);
       c->MutableHP ().set_shield_mhp (t.mhpShieldBefore);
-      cd = c->MutableProto ().mutable_combat_data ();
-      cd->set_shield_regeneration_mhp (t.mhpRegen);
+      regen = &c->MutableRegenData ();
+      regen->set_shield_regeneration_mhp (t.mhpRegen);
       c.reset ();
 
       RegenerateHP (db);

@@ -280,9 +280,9 @@ TEST_F (PXLogicTests, DamageKillsRegeneration)
      but would regenerate HP if that were done before applying damage.  */
   c = characters.GetById (idTarget);
   ASSERT_TRUE (c != nullptr);
-  auto* cd = c->MutableProto ().mutable_combat_data ();
-  cd->set_shield_regeneration_mhp (2000);
-  cd->mutable_max_hp ()->set_shield (100);
+  auto& regen = c->MutableRegenData ();
+  regen.set_shield_regeneration_mhp (2000);
+  regen.mutable_max_hp ()->set_shield (100);
   c->MutableHP ().set_shield (1);
   c->MutableHP ().set_armour (0);
   c.reset ();
@@ -303,8 +303,9 @@ TEST_F (PXLogicTests, DamageLists)
 
   c = characters.CreateNew ("domob", Faction::GREEN);
   const auto idTarget = c->GetId ();
-  auto* cd = c->MutableProto ().mutable_combat_data ();
-  cd->mutable_max_hp ()->set_shield (100);
+  c->MutableProto ().mutable_combat_data ();
+  auto& regen = c->MutableRegenData ();
+  regen.mutable_max_hp ()->set_shield (100);
   c->MutableHP ().set_shield (100);
   c.reset ();
 
@@ -346,8 +347,8 @@ TEST_F (PXLogicTests, FameUpdate)
       auto c = characters.CreateNew ("domob", f);
       ids.push_back (c->GetId ());
       AddUnityAttack (*c, 1);
-      auto* cd = c->MutableProto ().mutable_combat_data ();
-      cd->mutable_max_hp ()->set_shield (1);
+      auto& regen = c->MutableRegenData ();
+      regen.mutable_max_hp ()->set_shield (1);
       c->MutableHP ().set_shield (1);
     }
 
@@ -431,8 +432,9 @@ TEST_F (PXLogicTests, ProspectingUserKilled)
   c = characters.CreateNew ("domob", Faction::GREEN);
   ASSERT_EQ (c->GetId (), 2);
   c->SetPosition (pos);
-  auto* cd = c->MutableProto ().mutable_combat_data ();
-  cd->mutable_max_hp ()->set_shield (100);
+  c->MutableProto ().mutable_combat_data ();
+  auto& regen = c->MutableRegenData ();
+  regen.mutable_max_hp ()->set_shield (100);
   c->MutableHP ().set_shield (1);
   c->MutableHP ().set_armour (0);
   c.reset ();

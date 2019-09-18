@@ -18,6 +18,8 @@
 
 #include "character.hpp"
 
+#include  "fighter.hpp"
+
 #include <glog/logging.h>
 
 namespace pxd
@@ -26,26 +28,34 @@ namespace pxd
 Character::Character (Database& d, const std::string& o, const Faction f)
   : db(d), id(db.GetNextId ()), owner(o), faction(f),
     pos(0, 0), busy(0),
-    dirtyFields(true), dirtyProto(true)
+    isNew(true), dirtyFields(true)
 {
   VLOG (1)
       << "Created new character with ID " << id << ": "
       << "owner=" << owner;
+  volatileMv.SetToDefault ();
+  hp.SetToDefault ();
+  regenData.SetToDefault ();
+  data.SetToDefault ();
   Validate ();
 }
 
 Character::Character (Database& d, const Database::Result<CharacterResult>& res)
-  : db(d), dirtyFields(false), dirtyProto(false)
+  : db(d), isNew(false), dirtyFields(false)
 {
   id = res.Get<CharacterResult::id> ();
   owner = res.Get<CharacterResult::owner> ();
   faction = GetFactionFromColumn (res);
   pos = HexCoord (res.Get<CharacterResult::x> (),
                   res.Get<CharacterResult::y> ());
-  res.GetProto<CharacterResult::volatilemv> (volatileMv);
-  res.GetProto<CharacterResult::hp> (hp);
+  volatileMv = res.GetProto<CharacterResult::volatilemv> ();
+  hp = res.GetProto<CharacterResult::hp> ();
+  regenData = res.GetProto<CharacterResult::regendata> ();
   busy = res.Get<CharacterResult::busy> ();
-  res.GetProto<CharacterResult::proto> (data);
+  data = res.GetProto<CharacterResult::proto> ();
+  attackRange = res.Get<CharacterResult::attackrange> ();
+  oldCanRegen = res.Get<CharacterResult::canregen> ();
+  hasTarget = res.Get<CharacterResult::hastarget> ();
 
   VLOG (1) << "Fetched character with ID " << id << " from database result";
   Validate ();
@@ -55,7 +65,15 @@ Character::~Character ()
 {
   Validate ();
 
-  if (dirtyProto)
+  bool canRegen = oldCanRegen;
+  if (hp.IsDirty () || regenData.IsDirty ())
+    {
+      const auto& regenPb = regenData.Get ();
+      canRegen = (regenPb.shield_regeneration_mhp () > 0
+                    && hp.Get ().shield () < regenPb.max_hp ().shield ());
+    }
+
+  if (isNew || regenData.IsDirty () || data.IsDirty ())
     {
       VLOG (1)
           << "Character " << id
@@ -67,27 +85,32 @@ Character::~Character ()
            `volatilemv`, `hp`,
            `busy`,
            `faction`,
-           `ismoving`, `hastarget`, `proto`)
+           `ismoving`, `attackrange`, `canregen`, `hastarget`,
+           `regendata`, `proto`)
           VALUES
           (?1,
            ?2, ?3, ?4,
            ?5, ?6,
            ?7,
            ?101,
-           ?102, ?103, ?104)
+           ?102, ?103, ?104, ?105,
+           ?106, ?107)
       )");
 
       BindFieldValues (stmt);
       BindFactionParameter (stmt, 101, faction);
-      stmt.Bind (102, data.has_movement ());
-      stmt.Bind (103, data.has_target ());
-      stmt.BindProto (104, data);
+      stmt.Bind (102, data.Get ().has_movement ());
+      stmt.Bind (103, FindAttackRange (data.Get ().combat_data ()));
+      stmt.Bind (104, canRegen);
+      stmt.Bind (105, data.Get ().has_target ());
+      stmt.BindProto (106, regenData);
+      stmt.BindProto (107, data);
       stmt.Execute ();
 
       return;
     }
 
-  if (dirtyFields)
+  if (dirtyFields || volatileMv.IsDirty () || hp.IsDirty ())
     {
       VLOG (1)
           << "Character " << id << " has been modified in the DB fields only,"
@@ -99,11 +122,13 @@ Character::~Character ()
               `x` = ?3, `y` = ?4,
               `volatilemv` = ?5,
               `hp` = ?6,
-              `busy` = ?7
+              `busy` = ?7,
+              `canregen` = ?101
           WHERE `id` = ?1
       )");
 
       BindFieldValues (stmt);
+      stmt.Bind (101, canRegen);
       stmt.Execute ();
 
       return;
@@ -118,13 +143,10 @@ Character::Validate () const
   CHECK_NE (id, Database::EMPTY_ID);
   CHECK_GE (busy, 0);
 
-  if (busy == 0)
-    CHECK_EQ (data.busy_case (), proto::Character::BUSY_NOT_SET);
-  else
-    {
-      CHECK_NE (data.busy_case (), proto::Character::BUSY_NOT_SET);
-      CHECK (!data.has_movement ()) << "Busy character should not be moving";
-    }
+  /* Since this method is always called when loading a character, we should
+     not access any of the protocol buffer fields.  Otherwise we would
+     counteract their lazyness, since we would always parse them anyway.
+     That is not worth it for some extra "unneeded" checks.  */
 }
 
 void
@@ -137,6 +159,22 @@ Character::BindFieldValues (Database::Statement& stmt) const
   stmt.BindProto (5, volatileMv);
   stmt.BindProto (6, hp);
   stmt.Bind (7, busy);
+}
+
+HexCoord::IntT
+Character::GetAttackRange () const
+{
+  CHECK (!isNew);
+  CHECK (!data.IsDirty ());
+  return attackRange;
+}
+
+bool
+Character::HasTarget () const
+{
+  CHECK (!isNew);
+  CHECK (!data.IsDirty ());
+  return hasTarget;
 }
 
 CharacterTable::Handle
@@ -192,6 +230,27 @@ CharacterTable::QueryMoving ()
 }
 
 Database::Result<CharacterResult>
+CharacterTable::QueryWithAttacks ()
+{
+  auto stmt = db.Prepare (R"(
+    SELECT *
+      FROM `characters`
+      WHERE `attackrange` > 0
+      ORDER BY `id`
+  )");
+  return stmt.Query<CharacterResult> ();
+}
+
+Database::Result<CharacterResult>
+CharacterTable::QueryForRegen ()
+{
+  auto stmt = db.Prepare (R"(
+    SELECT * FROM `characters` WHERE `canregen` ORDER BY `id`
+  )");
+  return stmt.Query<CharacterResult> ();
+}
+
+Database::Result<CharacterResult>
 CharacterTable::QueryWithTarget ()
 {
   auto stmt = db.Prepare (R"(
@@ -207,6 +266,36 @@ CharacterTable::QueryBusyDone ()
     SELECT * FROM `characters` WHERE `busy` = 1 ORDER BY `id`
   )");
   return stmt.Query<CharacterResult> ();
+}
+
+namespace
+{
+
+struct PositionResult : public ResultWithFaction
+{
+  RESULT_COLUMN (int64_t, x, 1);
+  RESULT_COLUMN (int64_t, y, 2);
+};
+
+} // anonymous namespace
+
+void
+CharacterTable::ProcessAllPositions (const PositionFcn& cb)
+{
+  auto stmt = db.Prepare (R"(
+    SELECT `x`, `y`, `faction`
+      FROM `characters`
+      ORDER BY `id`
+  )");
+
+  auto res = stmt.Query<PositionResult> ();
+  while (res.Step ())
+    {
+      const HexCoord pos(res.Get<PositionResult::x> (),
+                         res.Get<PositionResult::y> ());
+      const Faction f = GetFactionFromColumn (res);
+      cb (pos, f);
+    }
 }
 
 void
