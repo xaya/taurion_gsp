@@ -18,6 +18,8 @@
 
 #include "character.hpp"
 
+#include  "fighter.hpp"
+
 #include <glog/logging.h>
 
 namespace pxd
@@ -51,7 +53,9 @@ Character::Character (Database& d, const Database::Result<CharacterResult>& res)
   regenData = res.GetProto<CharacterResult::regendata> ();
   busy = res.Get<CharacterResult::busy> ();
   data = res.GetProto<CharacterResult::proto> ();
+  attackRange = res.Get<CharacterResult::attackrange> ();
   oldCanRegen = res.Get<CharacterResult::canregen> ();
+  hasTarget = res.Get<CharacterResult::hastarget> ();
 
   VLOG (1) << "Fetched character with ID " << id << " from database result";
   Validate ();
@@ -81,7 +85,7 @@ Character::~Character ()
            `volatilemv`, `hp`,
            `busy`,
            `faction`,
-           `ismoving`, `canregen`, `hastarget`,
+           `ismoving`, `attackrange`, `canregen`, `hastarget`,
            `regendata`, `proto`)
           VALUES
           (?1,
@@ -89,17 +93,18 @@ Character::~Character ()
            ?5, ?6,
            ?7,
            ?101,
-           ?102, ?103, ?104,
-           ?105, ?106)
+           ?102, ?103, ?104, ?105,
+           ?106, ?107)
       )");
 
       BindFieldValues (stmt);
       BindFactionParameter (stmt, 101, faction);
       stmt.Bind (102, data.Get ().has_movement ());
-      stmt.Bind (103, canRegen);
-      stmt.Bind (104, data.Get ().has_target ());
-      stmt.BindProto (105, regenData);
-      stmt.BindProto (106, data);
+      stmt.Bind (103, FindAttackRange (data.Get ().combat_data ()));
+      stmt.Bind (104, canRegen);
+      stmt.Bind (105, data.Get ().has_target ());
+      stmt.BindProto (106, regenData);
+      stmt.BindProto (107, data);
       stmt.Execute ();
 
       return;
@@ -156,6 +161,22 @@ Character::BindFieldValues (Database::Statement& stmt) const
   stmt.Bind (7, busy);
 }
 
+HexCoord::IntT
+Character::GetAttackRange () const
+{
+  CHECK (!isNew);
+  CHECK (!data.IsDirty ());
+  return attackRange;
+}
+
+bool
+Character::HasTarget () const
+{
+  CHECK (!isNew);
+  CHECK (!data.IsDirty ());
+  return hasTarget;
+}
+
 CharacterTable::Handle
 CharacterTable::CreateNew (const std::string& owner, const Faction faction)
 {
@@ -204,6 +225,18 @@ CharacterTable::QueryMoving ()
 {
   auto stmt = db.Prepare (R"(
     SELECT * FROM `characters` WHERE `ismoving` ORDER BY `id`
+  )");
+  return stmt.Query<CharacterResult> ();
+}
+
+Database::Result<CharacterResult>
+CharacterTable::QueryWithAttacks ()
+{
+  auto stmt = db.Prepare (R"(
+    SELECT *
+      FROM `characters`
+      WHERE `attackrange` > 0
+      ORDER BY `id`
   )");
   return stmt.Query<CharacterResult> ();
 }

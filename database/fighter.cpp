@@ -71,6 +71,13 @@ Fighter::GetCombatData () const
   return pb.combat_data ();
 }
 
+HexCoord::IntT
+Fighter::GetAttackRange () const
+{
+  CHECK (character != nullptr);
+  return character->GetAttackRange ();
+}
+
 const proto::TargetId&
 Fighter::GetTarget () const
 {
@@ -96,7 +103,7 @@ Fighter::ClearTarget ()
      before.  This avoids updating the proto in the database unnecessarily
      for the common case where there was no target and there also is none
      in the future.  */
-  if (character->GetProto ().has_target ())
+  if (character->HasTarget ())
     character->MutableProto ().clear_target ();
 }
 
@@ -140,9 +147,9 @@ FighterTable::GetForTarget (const proto::TargetId& id)
 }
 
 void
-FighterTable::ProcessAll (const Callback& cb)
+FighterTable::ProcessWithAttacks (const Callback& cb)
 {
-  auto res = characters.QueryAll ();
+  auto res = characters.QueryWithAttacks ();
   while (res.Step ())
     cb (Fighter (characters.GetFromResult (res)));
 }
@@ -161,6 +168,19 @@ FighterTable::ProcessWithTarget (const Callback& cb)
   auto res = characters.QueryWithTarget ();
   while (res.Step ())
     cb (Fighter (characters.GetFromResult (res)));
+}
+
+HexCoord::IntT
+FindAttackRange (const proto::CombatData& cd)
+{
+  HexCoord::IntT res = 0;
+  for (const auto& attack : cd.attacks ())
+    {
+      CHECK_GT (attack.range (), 0);
+      res = std::max<HexCoord::IntT> (res, attack.range ());
+    }
+
+  return res;
 }
 
 } // namespace pxd

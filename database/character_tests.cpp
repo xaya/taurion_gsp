@@ -177,6 +177,44 @@ TEST_F (CharacterTests, ModificationFieldsOnly)
   EXPECT_EQ (c->GetBusy (), 42);
 }
 
+TEST_F (CharacterTests, HasTarget)
+{
+  auto c = tbl.CreateNew ("domob", Faction::RED);
+  const auto id = c->GetId ();
+  c.reset ();
+
+  c = tbl.GetById (id);
+  EXPECT_FALSE (c->HasTarget ());
+  c->MutableProto ().mutable_target ();
+  c.reset ();
+
+  c = tbl.GetById (id);
+  EXPECT_TRUE (c->HasTarget ());
+  c->MutableProto ().clear_target ();
+  c.reset ();
+
+  EXPECT_FALSE (tbl.GetById (id)->HasTarget ());
+}
+
+TEST_F (CharacterTests, AttackRange)
+{
+  auto c = tbl.CreateNew ("domob", Faction::RED);
+  const auto id = c->GetId ();
+  c.reset ();
+
+  c = tbl.GetById (id);
+  EXPECT_EQ (c->GetAttackRange (), 0);
+  c->MutableProto ().mutable_combat_data ()->add_attacks ()->set_range (5);
+  c.reset ();
+
+  c = tbl.GetById (id);
+  EXPECT_EQ (c->GetAttackRange (), 5);
+  c->MutableProto ().clear_combat_data ();
+  c.reset ();
+
+  EXPECT_EQ (tbl.GetById (id)->GetAttackRange (), 0);
+}
+
 /* ************************************************************************** */
 
 using CharacterTableTests = CharacterTests;
@@ -215,6 +253,18 @@ TEST_F (CharacterTableTests, QueryMoving)
     ->MutableProto ().mutable_movement ();
 
   auto res = tbl.QueryMoving ();
+  ASSERT_TRUE (res.Step ());
+  EXPECT_EQ (tbl.GetFromResult (res)->GetOwner (), "andy");
+  ASSERT_FALSE (res.Step ());
+}
+
+TEST_F (CharacterTableTests, QueryWithAttacks)
+{
+  tbl.CreateNew ("domob", Faction::RED);
+  tbl.CreateNew ("andy", Faction::RED)
+    ->MutableProto ().mutable_combat_data ()->add_attacks ()->set_range (1);
+
+  auto res = tbl.QueryWithAttacks ();
   ASSERT_TRUE (res.Step ());
   EXPECT_EQ (tbl.GetFromResult (res)->GetOwner (), "andy");
   ASSERT_FALSE (res.Step ());

@@ -50,7 +50,9 @@ struct CharacterResult : public ResultWithFaction
   RESULT_COLUMN (pxd::proto::RegenData, regendata, 7);
   RESULT_COLUMN (int64_t, busy, 8);
   RESULT_COLUMN (pxd::proto::Character, proto, 9);
-  RESULT_COLUMN (bool, canregen, 10);
+  RESULT_COLUMN (int64_t, attackrange, 10);
+  RESULT_COLUMN (bool, canregen, 11);
+  RESULT_COLUMN (bool, hastarget, 12);
 };
 
 /**
@@ -102,11 +104,20 @@ private:
   /** All other data in the protocol buffer.  */
   LazyProto<proto::Character> data;
 
+  /** The character's longest attack or zero if there are none.  */
+  HexCoord::IntT attackRange;
+
   /**
    * Stores the canregen flag from the database.  We only update it if
    * the RegenData or HP have been modified.
    */
   bool oldCanRegen;
+
+  /**
+   * Stores the flag of whether or not the character had a combat target
+   * originally in the database.
+   */
+  bool hasTarget;
 
   /**
    * Set to true if this is a new character, so we know that we have to
@@ -266,6 +277,23 @@ public:
     return data.Mutable ();
   }
 
+  /**
+   * Returns the character's attack range or zero if there are no attacks.
+   * Note that this method must only be called if the character has been
+   * read from the database (not newly constructed) and if its main proto
+   * has not been modified.  That allows us to use the cached attack-range
+   * column in the database directly.
+   */
+  HexCoord::IntT GetAttackRange () const;
+
+  /**
+   * Returns whether or not the character has a combat target.  This works
+   * without parsing the main proto, and can thus be used for efficient checks
+   * during target finding.  Note that the method must not be called if the
+   * character is new or if the main proto has been modified.
+   */
+  bool HasTarget () const;
+
 };
 
 /**
@@ -330,6 +358,11 @@ public:
    * to be updated for move stepping).
    */
   Database::Result<CharacterResult> QueryMoving ();
+
+  /**
+   * Queries for all characters with attacks.
+   */
+  Database::Result<CharacterResult> QueryWithAttacks ();
 
   /**
    * Queries for all characters that may need to have HP regenerated.

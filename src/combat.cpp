@@ -40,19 +40,13 @@ SelectTarget (TargetFinder& targets, xaya::Random& rnd, Fighter f)
 {
   const HexCoord pos = f.GetPosition ();
 
-  const auto& data = f.GetCombatData ();
-  HexCoord::IntT range = 0;
-  for (const auto& attack : data.attacks ())
-    {
-      CHECK_GT (attack.range (), 0);
-      range = std::max<HexCoord::IntT> (range, attack.range ());
-    }
+  const HexCoord::IntT range = f.GetAttackRange ();
   if (range == 0)
     {
-      CHECK_EQ (data.attacks_size (), 0);
       VLOG (1) << "Fighter at " << pos << " has no attacks";
       return;
     }
+  CHECK_GT (range, 0);
 
   HexCoord::IntT closestRange;
   std::vector<proto::TargetId> closestTargets;
@@ -100,7 +94,7 @@ FindCombatTargets (Database& db, xaya::Random& rnd)
   FighterTable fighters(characters);
   TargetFinder targets(db);
 
-  fighters.ProcessAll ([&] (Fighter f)
+  fighters.ProcessWithAttacks ([&] (Fighter f)
     {
       SelectTarget (targets, rnd, std::move (f));
     });

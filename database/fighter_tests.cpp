@@ -27,10 +27,14 @@
 
 #include <gtest/gtest.h>
 
+#include <google/protobuf/text_format.h>
+
 namespace pxd
 {
 namespace
 {
+
+using google::protobuf::TextFormat;
 
 class FighterTests : public DBTestWithSchema
 {
@@ -54,17 +58,21 @@ TEST_F (FighterTests, Characters)
   auto c = characters.CreateNew ("domob", Faction::RED);
   const auto id1 = c->GetId ();
   c->SetPosition (HexCoord (2, 5));
-  c->MutableProto ().mutable_combat_data ()->add_attacks ();
+  c->MutableProto ().mutable_combat_data ()->add_attacks ()->set_range (5);
   c->MutableHP ().set_armour (10);
   c.reset ();
 
   c = characters.CreateNew ("domob", Faction::GREEN);
   const auto id2 = c->GetId ();
   c->MutableProto ().mutable_target ()->set_id (42);
+  c->MutableProto ().mutable_combat_data ()->add_attacks ()->set_range (10);
   c.reset ();
 
+  /* This one has no attacks.  */
+  characters.CreateNew ("blue", Faction::BLUE);
+
   unsigned cnt = 0;
-  tbl.ProcessAll ([this, id1, &cnt] (Fighter f)
+  tbl.ProcessWithAttacks ([this, id1, &cnt] (Fighter f)
     {
       ++cnt;
 
@@ -74,6 +82,7 @@ TEST_F (FighterTests, Characters)
           {
             EXPECT_EQ (f.GetPosition (), HexCoord (2, 5));
             EXPECT_EQ (f.GetCombatData ().attacks_size (), 1);
+            EXPECT_EQ (f.GetAttackRange (), 5);
 
             const auto id = f.GetId ();
             EXPECT_EQ (id.type (), proto::TargetId::TYPE_CHARACTER);
@@ -92,6 +101,7 @@ TEST_F (FighterTests, Characters)
 
         case Faction::GREEN:
           EXPECT_EQ (f.GetTarget ().id (), 42);
+          EXPECT_EQ (f.GetAttackRange (), 10);
           f.ClearTarget ();
           break;
 
@@ -149,6 +159,39 @@ TEST_F (FighterTests, ProcessWithTarget)
       EXPECT_EQ (f.GetFaction (), Faction::RED);
     });
   EXPECT_EQ (cnt, 1);
+}
+
+class FindAttackRangeTests : public testing::Test
+{
+
+protected:
+
+  /**
+   * Calls FindAttackRange based on the combat data given as text proto.
+   */
+  static HexCoord::IntT
+  FindRange (const std::string str)
+  {
+    proto::CombatData pb;
+    CHECK (TextFormat::ParseFromString (str, &pb));
+
+    return FindAttackRange (pb);
+  }
+
+};
+
+TEST_F (FindAttackRangeTests, NoAttacks)
+{
+  EXPECT_EQ (FindRange (""), 0);
+}
+
+TEST_F (FindAttackRangeTests, MaximumRange)
+{
+  EXPECT_EQ (FindRange (R"(
+    attacks: { range: 5 }
+    attacks: { range: 42 }
+    attacks: { range: 1 }
+  )"), 42);
 }
 
 } // anonymous namespace

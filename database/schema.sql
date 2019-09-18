@@ -62,6 +62,12 @@ CREATE TABLE IF NOT EXISTS `characters` (
   -- moving when we do move updates.
   `ismoving` INTEGER NOT NULL,
 
+  -- The range of the longest attack this character has or NULL if there
+  -- is no attack at all.  This is used to speed up target finding without
+  -- the need to look through the character's attacks (and parse the
+  -- full proto) every time.
+  `attackrange` INTEGER NULL,
+
   -- Flag indicating whether a character may need HP regeneration.  This is
   -- set here (based on the RegenData and current HP) so that we can only
   -- retrieve and process characters that need regeneration.
@@ -82,6 +88,8 @@ CREATE INDEX IF NOT EXISTS `characters_owner` ON `characters` (`owner`);
 CREATE INDEX IF NOT EXISTS `characters_pos` ON `characters` (`x`, `y`);
 CREATE INDEX IF NOT EXISTS `characters_busy` ON `characters` (`busy`);
 CREATE INDEX IF NOT EXISTS `characters_ismoving` ON `characters` (`ismoving`);
+CREATE INDEX IF NOT EXISTS `characters_attackrange`
+  ON `characters` (`attackrange`);
 CREATE INDEX IF NOT EXISTS `characters_canregen` ON `characters` (`canregen`);
 CREATE INDEX IF NOT EXISTS `characters_hastarget` ON `characters` (`hastarget`);
 

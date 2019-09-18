@@ -88,6 +88,11 @@ public:
   const proto::CombatData& GetCombatData () const;
 
   /**
+   * Returns the fighter's attack range or zero if there are no attacks.
+   */
+  HexCoord::IntT GetAttackRange () const;
+
+  /**
    * Returns the target.  This must only be called if there is one.
    */
   const proto::TargetId& GetTarget () const;
@@ -158,10 +163,10 @@ public:
   Fighter GetForTarget (const proto::TargetId& id);
 
   /**
-   * Retrieves all fighters from the database and runs the callback
-   * on each one.
+   * Retrieves all fighters from the database that have an attack and runs
+   * the callback on each one.
    */
-  void ProcessAll (const Callback& cb);
+  void ProcessWithAttacks (const Callback& cb);
 
   /**
    * Retrieves and processes all fighters that need HP regeneration.
@@ -175,6 +180,12 @@ public:
   void ProcessWithTarget (const Callback& cb);
 
 };
+
+/**
+ * Computes the attack range of a fighter with the given combat data.
+ * Returns zero if there are no attacks at all.
+ */
+HexCoord::IntT FindAttackRange (const proto::CombatData& cd);
 
 } // namespace pxd
 
