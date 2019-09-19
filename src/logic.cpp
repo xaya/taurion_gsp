@@ -20,7 +20,6 @@
 
 #include "combat.hpp"
 #include "dynobstacles.hpp"
-#include "gamestatejson.hpp"
 #include "movement.hpp"
 #include "moveprocessor.hpp"
 #include "prospecting.hpp"
@@ -181,9 +180,23 @@ PXLogic::GetStateAsJson (sqlite3* db)
 {
   SQLiteGameDatabase dbObj(*this);
   const Params params(GetChain ());
+  GameStateJson gsj(dbObj, params, map);
 
-  GameStateJson converter(dbObj, params, map);
-  return converter.FullState ();
+  return gsj.FullState ();
+}
+
+Json::Value
+PXLogic::GetCustomStateData (xaya::Game& game, const JsonStateFromDatabase& cb)
+{
+  return SQLiteGame::GetCustomStateData (game, "data",
+      [this, &cb] (sqlite3* db)
+        {
+          SQLiteGameDatabase dbObj(*this);
+          const Params params(GetChain ());
+          GameStateJson gsj(dbObj, params, map);
+
+          return cb (gsj);
+        });
 }
 
 } // namespace pxd

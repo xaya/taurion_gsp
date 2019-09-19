@@ -30,6 +30,27 @@
   },
 
   {
+    "name": "getaccounts",
+    "params": {},
+    "returns": {}
+  },
+  {
+    "name": "getcharacters",
+    "params": {},
+    "returns": {}
+  },
+  {
+    "name": "getregions",
+    "params": {},
+    "returns": {}
+  },
+  {
+    "name": "getprizestats",
+    "params": {},
+    "returns": {}
+  },
+
+  {
     "name": "findpath",
     "params":
       {

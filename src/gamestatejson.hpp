@@ -75,6 +75,21 @@ public:
     Json::Value Convert (const T& val) const;
 
   /**
+   * Returns the JSON data representing all accounts in the game state.
+   */
+  Json::Value Accounts ();
+
+  /**
+   * Returns the JSON data representing all characters in the game state.
+   */
+  Json::Value Characters ();
+
+  /**
+   * Returns the JSON data representing all regions in the game state.
+   */
+  Json::Value Regions ();
+
+  /**
    * Returns the JSON data representing the available and found prizes
    * for prospecting.
    */
