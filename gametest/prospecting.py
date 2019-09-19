@@ -293,16 +293,15 @@ class ProspectingTest (PXTest):
       chars[nm].sendMove ({"prospect": {}})
     self.generate (11)
 
-    state = self.getGameState ()
     prizesInRegions = {
       "gold": 0,
       "silver": 0,
       "bronze": 0,
     }
-    for r in state["regions"]:
+    for r in self.getRpc ("getregions"):
       if ("prospection" in r) and "prize" in r["prospection"]:
         prizesInRegions[r["prospection"]["prize"]] += 1
-    for nm, val in state["prizes"].iteritems ():
+    for nm, val in self.getRpc ("getprizestats").iteritems ():
       self.assertEqual (prizesInRegions[nm], val["found"])
     self.log.info ("Found prizes:\n%s" % prizesInRegions)
     self.assertEqual (prizesInRegions["bronze"], 0)

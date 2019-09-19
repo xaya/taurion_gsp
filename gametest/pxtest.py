@@ -136,6 +136,14 @@ class PXTest (XayaGameTest):
     binary = os.path.join (top_builddir, "src", "tauriond")
     super (PXTest, self).__init__ (GAMEID, binary)
 
+  def getRpc (self, method, *args, **kwargs):
+    """
+    Calls the given "read-type" RPC method on the game daemon and returns
+    the "data" field (holding the main data).
+    """
+
+    return self.getCustomState ("data", method, *args, **kwargs)
+
   def moveWithPayment (self, name, move, devAmount):
     """
     Sends a move (name_update for the given name) and also includes the
@@ -174,11 +182,8 @@ class PXTest (XayaGameTest):
     then the second will have the key "owner 2", the third "owner 3" and so on.
     """
 
-    state = self.getGameState ()
-    assert "characters" in state
-
     res = {}
-    for c in state["characters"]:
+    for c in self.getRpc ("getcharacters"):
       assert "owner" in c
       nm = c["owner"]
       idx = 2
@@ -228,11 +233,8 @@ class PXTest (XayaGameTest):
     Returns all accounts with non-trivial data in the current game state.
     """
 
-    state = self.getGameState ()
-    assert "accounts" in state
-
     res = {}
-    for a in state["accounts"]:
+    for a in self.getRpc ("getaccounts"):
       handle = Account (a)
       nm = handle.getName ()
       assert nm not in res
@@ -247,10 +249,7 @@ class PXTest (XayaGameTest):
     explicitly present.
     """
 
-    state = self.getGameState ()
-    assert "regions" in state
-
-    for r in state["regions"]:
+    for r in self.getRpc ("getregions"):
       if r["id"] == regionId:
         return Region (r)
 
