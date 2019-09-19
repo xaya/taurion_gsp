@@ -28,7 +28,7 @@ class NullstateTest (PXTest):
   def run (self):
     self.generate (10)
 
-    self.assertEqual (self.getCustomState ("data", "getnullstate"), None)
+    self.assertEqual (self.getRpc ("getnullstate"), None)
 
     res = self.rpc.game.getnullstate ()
     self.assertEqual (res["state"], "up-to-date")

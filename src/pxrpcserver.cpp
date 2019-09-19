@@ -102,8 +102,8 @@ Json::Value
 PXRpcServer::getnullstate ()
 {
   LOG (INFO) << "RPC method called: getnullstate";
-  return logic.GetCustomStateData (game, "data",
-    [] (sqlite3* db)
+  return logic.GetCustomStateData (game,
+    [] (GameStateJson& gsj)
       {
         return Json::Value ();
       });
@@ -128,6 +128,50 @@ PXRpcServer::waitforchange (const std::string& knownBlock)
 {
   LOG (INFO) << "RPC method called: waitforchange " << knownBlock;
   return xaya::GameRpcServer::DefaultWaitForChange (game, knownBlock);
+}
+
+Json::Value
+PXRpcServer::getaccounts ()
+{
+  LOG (INFO) << "RPC method called: getaccounts";
+  return logic.GetCustomStateData (game,
+    [] (GameStateJson& gsj)
+      {
+        return gsj.Accounts ();
+      });
+}
+
+Json::Value
+PXRpcServer::getcharacters ()
+{
+  LOG (INFO) << "RPC method called: getcharacters";
+  return logic.GetCustomStateData (game,
+    [] (GameStateJson& gsj)
+      {
+        return gsj.Characters ();
+      });
+}
+
+Json::Value
+PXRpcServer::getregions ()
+{
+  LOG (INFO) << "RPC method called: getregions";
+  return logic.GetCustomStateData (game,
+    [] (GameStateJson& gsj)
+      {
+        return gsj.Regions ();
+      });
+}
+
+Json::Value
+PXRpcServer::getprizestats ()
+{
+  LOG (INFO) << "RPC method called: getprizestats";
+  return logic.GetCustomStateData (game,
+    [] (GameStateJson& gsj)
+      {
+        return gsj.PrizeStats ();
+      });
 }
 
 Json::Value

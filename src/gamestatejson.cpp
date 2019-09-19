@@ -301,25 +301,34 @@ GameStateJson::PrizeStats ()
 }
 
 Json::Value
+GameStateJson::Accounts ()
+{
+  AccountsTable tbl(db);
+  return ResultsAsArray (tbl, tbl.QueryNonTrivial ());
+}
+
+Json::Value
+GameStateJson::Characters ()
+{
+  CharacterTable tbl(db);
+  return ResultsAsArray (tbl, tbl.QueryAll ());
+}
+
+Json::Value
+GameStateJson::Regions ()
+{
+  RegionsTable tbl(db);
+  return ResultsAsArray (tbl, tbl.QueryNonTrivial ());
+}
+
+Json::Value
 GameStateJson::FullState ()
 {
   Json::Value res(Json::objectValue);
 
-  {
-    CharacterTable tbl(db);
-    res["characters"] = ResultsAsArray (tbl, tbl.QueryAll ());
-  }
-
-  {
-    AccountsTable tbl(db);
-    res["accounts"] = ResultsAsArray (tbl, tbl.QueryNonTrivial ());
-  }
-
-  {
-    RegionsTable tbl(db);
-    res["regions"] = ResultsAsArray (tbl, tbl.QueryNonTrivial ());
-  }
-
+  res["accounts"] = Accounts ();
+  res["characters"] = Characters ();
+  res["regions"] = Regions ();
   res["prizes"] = PrizeStats ();
 
   return res;

@@ -50,9 +50,9 @@ class PendingTest (PXTest):
     self.moveCharactersTo ({
       "domob": position,
     })
-    # getGameState ensures that we sync up at least for the confirmed state
+    # getnullstate ensures that we sync up at least for the confirmed state
     # before we look at the pending state.
-    self.getGameState ()
+    self.getRpc ("getnullstate")
     self.assertEqual (self.getPendingState (), {
       "characters": [],
       "newcharacters": [],
@@ -118,7 +118,7 @@ class PendingTest (PXTest):
 
     self.mainLogger.info ("Confirming the moves...")
     self.generate (1)
-    self.getGameState ()
+    self.getRpc ("getnullstate")
     self.assertEqual (self.getPendingState (), {
       "characters": [],
       "newcharacters": [],
