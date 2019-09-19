@@ -20,6 +20,7 @@
 #define PXD_LOGIC_HPP
 
 #include "fame.hpp"
+#include "gamestatejson.hpp"
 #include "params.hpp"
 
 #include "database/database.hpp"
@@ -33,6 +34,7 @@
 
 #include <sqlite3.h>
 
+#include <functional>
 #include <string>
 
 namespace pxd
@@ -118,6 +120,9 @@ protected:
 
 public:
 
+  /** Type for a callback that retrieves JSON data from the database.  */
+  using JsonStateFromDatabase = std::function<Json::Value (GameStateJson& gsj)>;
+
   PXLogic () = default;
 
   PXLogic (const PXLogic&) = delete;
@@ -132,6 +137,14 @@ public:
   {
     return map;
   }
+
+  /**
+   * Returns custom game-state data as JSON.  The provided callback is invoked
+   * with a GameStateJson instance to retrieve the "main" state data that is
+   * returned in the JSON "data" field.
+   */
+  Json::Value GetCustomStateData (xaya::Game& game,
+                                  const JsonStateFromDatabase& cb);
 
 };
 
