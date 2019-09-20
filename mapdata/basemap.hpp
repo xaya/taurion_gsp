@@ -75,4 +75,6 @@ public:
 
 } // namespace pxd
 
+#include "basemap.tpp"
+
 #endif // MAPDATA_BASEMAP_HPP

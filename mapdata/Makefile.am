@@ -24,7 +24,7 @@ libmapdata_la_SOURCES = \
   \
   blobs.s
 noinst_HEADERS = \
-  basemap.hpp \
+  basemap.hpp basemap.tpp \
   dyntiles.hpp dyntiles.tpp \
   regionmap.hpp \
   tiledata.hpp \
