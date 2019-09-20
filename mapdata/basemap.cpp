@@ -75,16 +75,13 @@ BaseMap::IsPassable (const HexCoord& c) const
   return (bits[xInd / BITS] & (1 << xInd % BITS));
 }
 
-PathFinder::EdgeWeightFcn
-BaseMap::GetEdgeWeights () const
+PathFinder::DistanceT
+BaseMap::GetEdgeWeight (const HexCoord& from, const HexCoord& to) const
 {
-  return [this] (const HexCoord& from, const HexCoord& to)
-            -> PathFinder::DistanceT
-    {
-      if (IsPassable (from) && IsPassable (to))
-        return 1000;
-      return PathFinder::NO_CONNECTION;
-    };
+  if (IsPassable (from) && IsPassable (to))
+    return 1000;
+
+  return PathFinder::NO_CONNECTION;
 }
 
 } // namespace pxd

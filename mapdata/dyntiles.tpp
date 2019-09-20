@@ -20,6 +20,8 @@
 
 #include <glog/logging.h>
 
+#include <bitset>
+
 namespace pxd
 {
 

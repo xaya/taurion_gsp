@@ -122,8 +122,8 @@ namespace
 
 TEST_F (PathFinderTests, BasicPath)
 {
-  PathFinder finder(&EdgeWeight, HexCoord (-1, 2));
-  ASSERT_EQ (finder.Compute (HexCoord (0, 0), 10), 8);
+  PathFinder finder(HexCoord (-1, 2));
+  ASSERT_EQ (finder.Compute (&EdgeWeight, HexCoord (0, 0), 10), 8);
   AssertPath (finder.StepPath (HexCoord (0, 0)),
               HexCoord (0, 0), {
                   {HexCoord (1, 0), 1},
@@ -139,15 +139,15 @@ TEST_F (PathFinderTests, BasicPath)
 
 TEST_F (PathFinderTests, SourceIsTarget)
 {
-  PathFinder finder(&EdgeWeight, HexCoord (-1, 2));
-  ASSERT_EQ (finder.Compute (HexCoord (-1, 2), 0), 0);
+  PathFinder finder(HexCoord (-1, 2));
+  ASSERT_EQ (finder.Compute (&EdgeWeight, HexCoord (-1, 2), 0), 0);
   AssertPath (finder.StepPath (HexCoord (-1, 2)), HexCoord (-1, 2), {});
 }
 
 TEST_F (PathFinderTests, FullRange)
 {
-  PathFinder finder(&EdgeWeight, HexCoord (-3, 0));
-  ASSERT_EQ (finder.Compute (HexCoord (0, 0), 3), 3);
+  PathFinder finder(HexCoord (-3, 0));
+  ASSERT_EQ (finder.Compute (&EdgeWeight, HexCoord (0, 0), 3), 3);
   AssertPath (finder.StepPath (HexCoord (0, 0)),
               HexCoord (0, 0), {
                 {HexCoord (-1, 0), 1},
@@ -158,11 +158,11 @@ TEST_F (PathFinderTests, FullRange)
 
 TEST_F (PathFinderTests, ThroughX)
 {
-  PathFinder finder(&EdgeWeight, HexCoord (-1, 2));
+  PathFinder finder(HexCoord (-1, 2));
 
   /* We limit the L1 range such that the path "around" the obstacle is
      not possible and thus the path through x has to be taken.  */
-  ASSERT_EQ (finder.Compute (HexCoord (0, 0), 3), 14);
+  ASSERT_EQ (finder.Compute (&EdgeWeight, HexCoord (0, 0), 3), 14);
 
   AssertPath (finder.StepPath (HexCoord (0, 0)),
               HexCoord (0, 0), {
@@ -175,8 +175,9 @@ TEST_F (PathFinderTests, ThroughX)
 
 TEST_F (PathFinderTests, NoPathWithinRange)
 {
-  PathFinder finder(&EdgeWeight, HexCoord (-10, 0));
-  ASSERT_EQ (finder.Compute (HexCoord (-10, 2), 5), PathFinder::NO_CONNECTION);
+  PathFinder finder(HexCoord (-10, 0));
+  ASSERT_EQ (finder.Compute (&EdgeWeight, HexCoord (-10, 2), 5),
+             PathFinder::NO_CONNECTION);
 
   /* There should have been some non-trivial trials before giving up.  */
   EXPECT_GT (GetComputedTiles (finder), 20);
@@ -184,8 +185,8 @@ TEST_F (PathFinderTests, NoPathWithinRange)
 
 TEST_F (PathFinderTests, OutOfL1Range)
 {
-  PathFinder finder(&EdgeWeight, HexCoord (100, 100));
-  ASSERT_EQ (finder.Compute (HexCoord (200, 200), 2),
+  PathFinder finder(HexCoord (100, 100));
+  ASSERT_EQ (finder.Compute (&EdgeWeight, HexCoord (200, 200), 2),
              PathFinder::NO_CONNECTION);
 
   /* We should have returned quickly, without computing any distances.  */
@@ -195,8 +196,9 @@ TEST_F (PathFinderTests, OutOfL1Range)
 
 TEST_F (PathFinderTests, ToObstacle)
 {
-  PathFinder finder(&EdgeWeight, HexCoord (-10, 1));
-  ASSERT_EQ (finder.Compute (HexCoord (0, 0), 1000), PathFinder::NO_CONNECTION);
+  PathFinder finder(HexCoord (-10, 1));
+  ASSERT_EQ (finder.Compute (&EdgeWeight, HexCoord (0, 0), 1000),
+             PathFinder::NO_CONNECTION);
 
   /* The search should have died out quickly, namely after visiting just the
      target (even with a large L1 range as above).  */
@@ -205,8 +207,8 @@ TEST_F (PathFinderTests, ToObstacle)
 
 TEST_F (PathFinderTests, FromObstacle)
 {
-  PathFinder finder(&EdgeWeight, HexCoord (0, 0));
-  ASSERT_EQ (finder.Compute (HexCoord (-10, 1), 1000),
+  PathFinder finder(HexCoord (0, 0));
+  ASSERT_EQ (finder.Compute (&EdgeWeight, HexCoord (-10, 1), 1000),
              PathFinder::NO_CONNECTION);
 
   /* The path from an obstacle should have been determined to be unavailable
@@ -216,8 +218,8 @@ TEST_F (PathFinderTests, FromObstacle)
 
 TEST_F (PathFinderTests, MultipleSteppers)
 {
-  PathFinder finder(&EdgeWeight, HexCoord (2, 0));
-  ASSERT_EQ (finder.Compute (HexCoord (0, 0), 10), 2);
+  PathFinder finder(HexCoord (2, 0));
+  ASSERT_EQ (finder.Compute (&EdgeWeight, HexCoord (0, 0), 10), 2);
 
   auto s1 = finder.StepPath (HexCoord (0, 0));
   ASSERT_TRUE (s1.HasMore ());
@@ -250,8 +252,8 @@ TEST_F (PathFinderTests, RepathingWithEachStep)
 
   std::vector<std::pair<HexCoord, PathFinder::DistanceT>> fullPath;
   {
-    PathFinder finder(&EdgeWeight, target);
-    PathFinder::DistanceT dist = finder.Compute (source, 100);
+    PathFinder finder(target);
+    PathFinder::DistanceT dist = finder.Compute (&EdgeWeight, source, 100);
     ASSERT_NE (dist, PathFinder::NO_CONNECTION);
 
     auto s = finder.StepPath (source);
@@ -267,8 +269,8 @@ TEST_F (PathFinderTests, RepathingWithEachStep)
 
   for (auto i = fullPath.cbegin (); i != fullPath.cend (); ++i)
     {
-      PathFinder finder(&EdgeWeight, target);
-      ASSERT_EQ (finder.Compute (i->first, 100), i->second);
+      PathFinder finder(target);
+      ASSERT_EQ (finder.Compute (&EdgeWeight, i->first, 100), i->second);
 
       auto s = finder.StepPath (i->first);
       for (auto j = i; ; )

@@ -43,9 +43,9 @@ constexpr bool CONTINUE_PROCESSING = false;
  * is potentially more processing (e.g. a second step or computing the
  * next path).
  */
-bool
-StepAlongPrecomputed (Character& c, const Params& params,
-                      const PathFinder::EdgeWeightFcn& edges)
+template <typename Fcn>
+  bool
+  StepAlongPrecomputed (Character& c, const Params& params, Fcn edges)
 {
   VLOG (1) << "We have a precomputed path, trying to step it...";
 
@@ -156,9 +156,9 @@ StepAlongPrecomputed (Character& c, const Params& params,
  * processing is now done for this block and false if more needs to be done
  * (e.g. potentially already stepping along that segment).
  */
-bool
-PrecomputeNextSegment (Character& c, const Params& params,
-                       const PathFinder::EdgeWeightFcn& edges)
+template <typename Fcn>
+  bool
+  PrecomputeNextSegment (Character& c, const Params& params, Fcn edges)
 {
   VLOG (1) << "Trying to precompute path to the next waypoint...";
 
@@ -193,8 +193,9 @@ PrecomputeNextSegment (Character& c, const Params& params,
       return CONTINUE_PROCESSING;
     }
 
-  PathFinder finder(edges, wp);
-  const auto dist = finder.Compute (pos, params.MaximumWaypointL1Distance ());
+  PathFinder finder(wp);
+  const auto dist = finder.Compute (edges, pos,
+                                    params.MaximumWaypointL1Distance ());
   VLOG (1) << "Shortest path has length " << dist;
 
   if (dist == PathFinder::NO_CONNECTION)
@@ -225,11 +226,28 @@ PrecomputeNextSegment (Character& c, const Params& params,
   return CONTINUE_PROCESSING;
 }
 
-} // anonymous namespace
+template <typename Fcn>
+  inline PathFinder::DistanceT
+  EdgeWeight (const HexCoord& from, const HexCoord& to,
+              Fcn baseEdges, const DynObstacles& dyn, const Faction f)
+{
+  /* With dynamic obstacles, we do not handle the situation well if from and
+     to are the same location.  In that case, the vehicle itself will be
+     seen as obstacle (which it should not).  */
+  CHECK_NE (from, to);
 
-void
-ProcessCharacterMovement (Character& c, const Params& params,
-                          const PathFinder::EdgeWeightFcn& edges)
+  const auto res = baseEdges (from, to);
+
+  if (res == PathFinder::NO_CONNECTION
+        || !dyn.IsPassable (from, f) || !dyn.IsPassable (to, f))
+    return PathFinder::NO_CONNECTION;
+
+  return res;
+}
+
+template <typename Fcn>
+  void
+  CharacterMovement (Character& c, const Params& params, Fcn edges)
 {
   const auto speed = c.GetProto ().speed ();
 
@@ -265,29 +283,6 @@ ProcessCharacterMovement (Character& c, const Params& params,
         break;
     }
 }
-
-PathFinder::DistanceT
-MovementEdgeWeight (const HexCoord& from, const HexCoord& to,
-                    const PathFinder::EdgeWeightFcn& baseEdges,
-                    const DynObstacles& dyn,
-                    const Faction f)
-{
-  /* With dynamic obstacles, we do not handle the situation well if from and
-     to are the same location.  In that case, the vehicle itself will be
-     seen as obstacle (which it should not).  */
-  CHECK_NE (from, to);
-
-  const auto res = baseEdges (from, to);
-
-  if (res == PathFinder::NO_CONNECTION
-        || !dyn.IsPassable (from, f) || !dyn.IsPassable (to, f))
-    return PathFinder::NO_CONNECTION;
-
-  return res;
-}
-
-namespace
-{
 
 /**
  * RAII helper class to remove a vehicle from the dynamic obstacles and
@@ -334,8 +329,8 @@ public:
 } // anonymous namespace
 
 void
-ProcessAllMovement (Database& db, DynObstacles& dyn, const Params& params,
-                    const PathFinder::EdgeWeightFcn& baseEdges)
+ProcessAllMovement (Database& db, DynObstacles& dyn,
+                    const Params& params, const BaseMap& map)
 {
   CharacterTable tbl(db);
   auto res = tbl.QueryMoving ();
@@ -344,14 +339,39 @@ ProcessAllMovement (Database& db, DynObstacles& dyn, const Params& params,
       const auto c = tbl.GetFromResult (res);
       MoveInDynObstacles dynMover(*c, dyn);
 
+      const auto baseEdges = [&map] (const HexCoord& from, const HexCoord& to)
+        {
+          return map.GetEdgeWeight (from, to);
+        };
       const Faction f = c->GetFaction ();
       const auto edges = [&baseEdges, &dyn, f] (const HexCoord& from,
                                                 const HexCoord& to)
         {
-          return MovementEdgeWeight (from, to, baseEdges, dyn, f);
+          return EdgeWeight (from, to, baseEdges, dyn, f);
         };
-      ProcessCharacterMovement (*c, params, edges);
+
+      CharacterMovement (*c, params, edges);
     }
 }
+
+namespace test
+{
+
+PathFinder::DistanceT
+MovementEdgeWeight (const HexCoord& from, const HexCoord& to,
+                    const EdgeWeightFcn& baseEdges, const DynObstacles& dyn,
+                    Faction f)
+{
+  return EdgeWeight (from, to, baseEdges, dyn, f);
+}
+
+void
+ProcessCharacterMovement (Character& c, const Params& params,
+                          const EdgeWeightFcn& edges)
+{
+  return CharacterMovement (c, params, edges);
+}
+
+} // namespace test
 
 } // namespace pxd

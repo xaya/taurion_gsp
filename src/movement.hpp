@@ -25,8 +25,11 @@
 #include "database/character.hpp"
 #include "database/database.hpp"
 #include "database/faction.hpp"
+#include "mapdata/basemap.hpp"
 #include "hexagonal/coord.hpp"
 #include "hexagonal/pathfinder.hpp"
+
+#include <functional>
 
 namespace pxd
 {
@@ -37,10 +40,20 @@ namespace pxd
 void StopCharacter (Character& c);
 
 /**
- * Processes movement (if any) for the given character handle and edge weights.
+ * Handles movement of all characters from the given database.  This also
+ * makes sure to update the dynamic obstacles, and "adds" them on top of
+ * the given edge weights.
  */
-void ProcessCharacterMovement (Character& c, const Params& params,
-                               const PathFinder::EdgeWeightFcn& edges);
+void ProcessAllMovement (Database& db, DynObstacles& dyn,
+                         const Params& params, const BaseMap& map);
+
+namespace test
+{
+
+/** Closure representing base-map edge weights.  */
+using EdgeWeightFcn
+    = std::function<PathFinder::DistanceT (const HexCoord& from,
+                                           const HexCoord& to)>;
 
 /**
  * Evaluates the edge-weight function based on the function of the basemap
@@ -48,16 +61,16 @@ void ProcessCharacterMovement (Character& c, const Params& params,
  */
 PathFinder::DistanceT MovementEdgeWeight (
     const HexCoord& from, const HexCoord& to,
-    const PathFinder::EdgeWeightFcn& baseEdges, const DynObstacles& dyn,
+    const EdgeWeightFcn& baseEdges, const DynObstacles& dyn,
     Faction f);
 
 /**
- * Handles movement of all characters from the given database.  This also
- * makes sure to update the dynamic obstacles, and "adds" them on top of
- * the given edge weights.
+ * Processes movement (if any) for the given character handle and edge weights.
  */
-void ProcessAllMovement (Database& db, DynObstacles& dyn, const Params& params,
-                         const PathFinder::EdgeWeightFcn& baseEdges);
+void ProcessCharacterMovement (Character& c, const Params& params,
+                               const EdgeWeightFcn& edges);
+
+} // namespace test
 
 } // namespace pxd
 

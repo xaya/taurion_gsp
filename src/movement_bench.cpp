@@ -27,6 +27,7 @@
 #include "database/schema.hpp"
 #include "hexagonal/coord.hpp"
 #include "hexagonal/pathfinder.hpp"
+#include "mapdata/basemap.hpp"
 
 #include <benchmark/benchmark.h>
 
@@ -39,17 +40,10 @@ namespace
 {
 
 /**
- * The speed of characters used in the benchmark.  The actual value does not
- * matter, since we match it to the edge weights such that the characters
- * move one tile per block.
+ * The speed of characters used in the benchmark.  We want to move one
+ * tile per block.
  */
 constexpr PathFinder::DistanceT SPEED = 1000;
-
-PathFinder::DistanceT
-EdgeWeights (const HexCoord& from, const HexCoord& to)
-{
-  return SPEED;
-}
 
 /**
  * Constructs a test character in the given character table.  This takes
@@ -81,6 +75,7 @@ MovementOneSegment (benchmark::State& state)
   SetupDatabaseSchema (db.GetHandle ());
 
   const Params params(xaya::Chain::MAIN);
+  const BaseMap map;
 
   const HexCoord::IntT numTiles = state.range (0);
   const unsigned numMoving = state.range (1);
@@ -108,7 +103,7 @@ MovementOneSegment (benchmark::State& state)
       state.ResumeTiming ();
 
       for (int i = 0; i < numTiles; ++i)
-        ProcessAllMovement (db, dyn, params, &EdgeWeights);
+        ProcessAllMovement (db, dyn, params, map);
 
       /* Make sure that we moved exactly the first part of the path.  This
          verifies that the benchmark is actually set up correctly, and ensures
@@ -148,6 +143,7 @@ MovementLongHaul (benchmark::State& state)
   SetupDatabaseSchema (db.GetHandle ());
 
   const Params params(xaya::Chain::MAIN);
+  const BaseMap map;
 
   const HexCoord::IntT wpDist = state.range (0);
   const HexCoord::IntT total = state.range (1);
@@ -155,13 +151,18 @@ MovementLongHaul (benchmark::State& state)
   CharacterTable tbl(db);
   const auto id = CreateCharacter (tbl)->GetId ();
 
+  /* We start travelling from a non-zero origin.  The coordinate is chosen
+     such that movement from it in positive x direction is free for a long
+     enough path.  */
+  const HexCoord origin(1000, -2636);
+
   for (auto _ : state)
     {
       state.PauseTiming ();
       {
         const auto h = tbl.GetById (id);
         StopCharacter (*h);
-        h->SetPosition (HexCoord (0, 0));
+        h->SetPosition (origin);
         auto* mv = h->MutableProto ().mutable_movement ();
         auto* wp = mv->mutable_waypoints ();
 
@@ -171,7 +172,10 @@ MovementLongHaul (benchmark::State& state)
             lastX += wpDist;
             if (lastX > total)
               lastX = total;
-            *wp->Add () = CoordToProto (HexCoord (lastX, 0));
+
+            HexCoord nextWp(lastX, 0);
+            nextWp += origin;
+            *wp->Add () = CoordToProto (nextWp);
           }
         LOG (INFO)
             << "Using " << wp->size () << " waypoints to move " << total
@@ -182,12 +186,14 @@ MovementLongHaul (benchmark::State& state)
 
       do
         {
-          ProcessAllMovement (db, dyn, params, &EdgeWeights);
+          ProcessAllMovement (db, dyn, params, map);
         }
       while (tbl.GetById (id)->GetProto ().has_movement ());
 
       state.PauseTiming ();
-      CHECK_EQ (tbl.GetById (id)->GetPosition (), HexCoord (total, 0));
+      HexCoord expected(total, 0);
+      expected += origin;
+      CHECK_EQ (tbl.GetById (id)->GetPosition (), expected);
       state.ResumeTiming ();
     }
 }

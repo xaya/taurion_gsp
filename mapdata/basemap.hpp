@@ -65,10 +65,11 @@ public:
   }
 
   /**
-   * Returns the edge-weight function for the basemap, to be used with path
+   * Returns the edge-weight for the basemap, to be used with path
    * finding on it.
    */
-  PathFinder::EdgeWeightFcn GetEdgeWeights () const;
+  PathFinder::DistanceT GetEdgeWeight (const HexCoord& from,
+                                       const HexCoord& to) const;
 
 };
 

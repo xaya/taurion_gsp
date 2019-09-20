@@ -23,7 +23,6 @@
 #include "rangemap.hpp"
 
 #include <cstdint>
-#include <functional>
 #include <limits>
 #include <memory>
 
@@ -47,18 +46,6 @@ public:
   using DistanceT = uint32_t;
 
   /**
-   * Call-back function that should return the edge weight (distance)
-   * between two neighbouring hex tiles.
-   *
-   * It will only ever be called for neighbouring tiles.
-   *
-   * If there is no connection at all, it should return NO_CONNECTION instead
-   * of some distance value.
-   */
-  using EdgeWeightFcn
-      = std::function<DistanceT (const HexCoord& from, const HexCoord& to)>;
-
-  /**
    * DistanceT to be returned from the edge weight function if there is
    * no connection between two tiles at all.
    */
@@ -67,8 +54,7 @@ public:
 
 private:
 
-  /** The underlying "edge weight" function that is used.  */
-  const EdgeWeightFcn edgeWeight;
+  class CoordWithDistance;
 
   /** The target coordinate, which is always fixed.  */
   const HexCoord target;
@@ -97,8 +83,8 @@ public:
 
   class Stepper;
 
-  inline explicit PathFinder (const EdgeWeightFcn& ew, const HexCoord& t)
-    : edgeWeight(ew), target(t)
+  explicit PathFinder (const HexCoord& t)
+    : target(t)
   {}
 
   PathFinder () = delete;
@@ -116,8 +102,14 @@ public:
    * For the whole computation, only tiles with a L1 distance to the target
    * of up to the given limit are considered.  This way, we get a guarantee
    * on the computational complexity and protect against DoS vectors.
+   *
+   * The edge-weight functor should return the "distance" between two
+   * neighbouring hex tiles (it will not be called for other pairs of
+   * tiles).  It should return NO_CONNECTION if there is no path at all.
    */
-  DistanceT Compute (const HexCoord& source, HexCoord::IntT l1Range);
+  template <typename Fcn>
+    DistanceT Compute (Fcn edgeWeight, const HexCoord& source,
+                       HexCoord::IntT l1Range);
 
   /**
    * Returns a Stepper instance, which can be used to walk along the shortest
@@ -186,5 +178,7 @@ public:
 };
 
 } // namespace pxd
+
+#include "pathfinder.tpp"
 
 #endif // HEXAGONAL_PATHFINDER_HPP
