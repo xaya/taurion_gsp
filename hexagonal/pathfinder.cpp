@@ -43,6 +43,8 @@ PathFinder::Stepper::Next ()
   HexCoord bestNeighbour;
   for (const auto& n : position.Neighbours ())
     {
+      if (!finder.distances->IsInRange (n))
+        continue;
       const auto dist = finder.distances->Get (n);
       if (dist == NO_CONNECTION)
         continue;
