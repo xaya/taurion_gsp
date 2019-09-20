@@ -20,7 +20,6 @@
 
 #include <gtest/gtest.h>
 
-#include <functional>
 #include <set>
 #include <sstream>
 #include <unordered_set>
