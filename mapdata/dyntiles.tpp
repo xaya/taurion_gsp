@@ -155,7 +155,7 @@ template <typename T>
 {}
 
 template <typename T>
-  typename DynTiles<T>::Array::reference
+  inline typename DynTiles<T>::Array::reference
   DynTiles<T>::Access (const HexCoord& c)
 {
   size_t bucket, within;
@@ -169,7 +169,7 @@ template <typename T>
 }
 
 template <typename T>
-  typename DynTiles<T>::Array::const_reference
+  inline typename DynTiles<T>::Array::const_reference
   DynTiles<T>::Get (const HexCoord& c) const
 {
   size_t bucket, within;

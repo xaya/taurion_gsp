@@ -33,7 +33,7 @@ libtaurion_la_SOURCES = \
 libtaurionheaders = \
   amount.hpp \
   combat.hpp \
-  dynobstacles.hpp \
+  dynobstacles.hpp dynobstacles.tpp \
   fame.hpp \
   gamestatejson.hpp \
   jsonutils.hpp \

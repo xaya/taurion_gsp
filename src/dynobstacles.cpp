@@ -33,42 +33,4 @@ DynObstacles::DynObstacles (Database& db)
     });
 }
 
-DynTiles<bool>&
-DynObstacles::FactionVehicles (const Faction f)
-{
-  switch (f)
-    {
-    case Faction::RED:
-      return red;
-    case Faction::GREEN:
-      return green;
-    case Faction::BLUE:
-      return blue;
-    default:
-      LOG (FATAL) << "Unknown faction: " << static_cast<int> (f);
-    }
-}
-
-bool
-DynObstacles::IsPassable (const HexCoord& c, const Faction f) const
-{
-  return !FactionVehicles (f).Get (c);
-}
-
-void
-DynObstacles::AddVehicle (const HexCoord& c, const Faction f)
-{
-  auto ref = FactionVehicles (f).Access (c);
-  CHECK (!ref);
-  ref = true;
-}
-
-void
-DynObstacles::RemoveVehicle (const HexCoord& c, const Faction f)
-{
-  auto ref = FactionVehicles (f).Access (c);
-  CHECK (ref);
-  ref = false;
-}
-
 } // namespace pxd

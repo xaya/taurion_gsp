@@ -89,4 +89,6 @@ public:
 
 } // namespace pxd
 
+#include "dynobstacles.tpp"
+
 #endif // PXD_DYNOBSTACLES_HPP
