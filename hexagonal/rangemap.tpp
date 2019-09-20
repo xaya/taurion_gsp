@@ -33,7 +33,7 @@ template <typename T>
 {}
 
 template <typename T>
-  int
+  inline int
   RangeMap<T>::GetIndex (const HexCoord& c) const
 {
   if (HexCoord::DistanceL1 (c, centre) > range)
@@ -51,7 +51,7 @@ template <typename T>
 }
 
 template <typename T>
-  typename std::vector<T>::reference
+  inline typename std::vector<T>::reference
   RangeMap<T>::Access (const HexCoord& c)
 {
   const int ind = GetIndex (c);
@@ -63,7 +63,7 @@ template <typename T>
 }
 
 template <typename T>
-  typename std::vector<T>::const_reference
+  inline typename std::vector<T>::const_reference
   RangeMap<T>::Get (const HexCoord& c) const
 {
   const int ind = GetIndex (c);
