@@ -81,17 +81,15 @@ TEST_F (BaseMapTests, MatchesOriginalObstacleData)
 
 TEST_F (BaseMapTests, EdgeWeights)
 {
-  const auto& ew = map.GetEdgeWeights ();
-
   const HexCoord a(0, 0);
   const HexCoord b(1, 0);
-  EXPECT_EQ (ew (a, b), 1000);
+  EXPECT_EQ (map.GetEdgeWeight (a, b), 1000);
 
   const HexCoord outside(-4065, 0);
   const HexCoord inside(-4064, 0);
   ASSERT_FALSE (map.IsOnMap (outside));
   ASSERT_TRUE (map.IsOnMap (inside));
-  EXPECT_EQ (ew (outside, inside), PathFinder::NO_CONNECTION);
+  EXPECT_EQ (map.GetEdgeWeight (outside, inside), PathFinder::NO_CONNECTION);
 }
 
 } // anonymous namespace

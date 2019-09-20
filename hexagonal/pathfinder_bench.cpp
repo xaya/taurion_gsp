@@ -50,8 +50,8 @@ PathToTarget (benchmark::State& state)
 
   for (auto _ : state)
     {
-      PathFinder finder(&EdgeWeights, target);
-      const auto dist = finder.Compute (source, n);
+      PathFinder finder(target);
+      const auto dist = finder.Compute (&EdgeWeights, source, n);
       CHECK_EQ (dist, n);
     }
 }
@@ -71,8 +71,8 @@ PathStepping (benchmark::State& state)
   const HexCoord source(0, 0);
   const HexCoord target(n, 0);
 
-  PathFinder finder(&EdgeWeights, target);
-  const auto dist = finder.Compute (source, n);
+  PathFinder finder(target);
+  const auto dist = finder.Compute (&EdgeWeights, source, n);
   CHECK_EQ (dist, n);
 
   for (auto _ : state)

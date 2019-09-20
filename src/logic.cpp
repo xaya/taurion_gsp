@@ -117,7 +117,7 @@ PXLogic::UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
   mvProc.ProcessAdmin (blockData["admin"]);
   mvProc.ProcessAll (blockData["moves"]);
 
-  ProcessAllMovement (db, dyn, params, map.GetEdgeWeights ());
+  ProcessAllMovement (db, dyn, params, map);
   FindCombatTargets (db, rnd);
 }
 

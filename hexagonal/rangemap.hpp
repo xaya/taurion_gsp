@@ -43,9 +43,6 @@ private:
   /** The range around the centre that this is for.  */
   const HexCoord::IntT range;
 
-  /** The default value, so that we can return it for out-of-range Get().  */
-  const T defaultValue;
-
   /**
    * The underlying data as a flat vector.  It stores the hexagonal L1 range
    * in a rectangular pattern.  This is quick to access, although it wastes
@@ -55,7 +52,7 @@ private:
 
   /**
    * Returns the index into the flat vector at which a certain coordinate
-   * will be found.  Returns -1 if the coordinate is out of range.
+   * will be found.  c must be in range.
    */
   int GetIndex (const HexCoord& c) const;
 
@@ -71,14 +68,19 @@ public:
   void operator= (const RangeMap<T>&) = delete;
 
   /**
+   * Checks if the given coordinate is in-range for the map.
+   */
+  bool IsInRange (const HexCoord& c) const;
+
+  /**
    * Accesses and potentially modifies the element.  c must be within range
    * of the centre.
    */
   typename std::vector<T>::reference Access (const HexCoord& c);
 
   /**
-   * Gives read-only access to the element (or the default value if the
-   * element is out of range).
+   * Gives read-only access to the element.  c must be within range of
+   * the centre.
    */
   typename std::vector<T>::const_reference Get (const HexCoord& c) const;
 

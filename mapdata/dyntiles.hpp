@@ -23,8 +23,7 @@
 
 #include "hexagonal/coord.hpp"
 
-#include <bitset>
-#include <vector>
+#include <array>
 
 namespace pxd
 {
@@ -33,8 +32,8 @@ namespace dyntiles
 {
 
 /**
- * Size of each "bucket" of values.  We use one std::vector instance
- * for each bucket, and have a larger vector of vectors.  That way,
+ * Size of each "bucket" of values.  We use one array
+ * for each bucket, and have a larger array of arrays.  That way,
  * we can initialise each bucket only when needed (i.e. it is changed
  * from the default value), which improves performance for mostly sparse
  * data (e.g. dynamic obstacles from vehicles).

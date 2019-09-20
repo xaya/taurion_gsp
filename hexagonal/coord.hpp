@@ -54,11 +54,11 @@ private:
 
 public:
 
-  inline explicit HexCoord (const IntT xx, const IntT yy)
+  explicit HexCoord (const IntT xx, const IntT yy)
     : x(xx), y(yy)
   {}
 
-  inline HexCoord ()
+  HexCoord ()
     : x(0), y(0)
   {}
 
@@ -71,13 +71,13 @@ public:
 
   friend std::ostream& operator<< (std::ostream& out, const HexCoord& c);
 
-  inline IntT
+  IntT
   GetX () const
   {
     return x;
   }
 
-  inline IntT
+  IntT
   GetY () const
   {
     return y;
@@ -120,7 +120,7 @@ private:
 
 public:
 
-  inline explicit NeighbourList (const HexCoord& c)
+  explicit NeighbourList (const HexCoord& c)
     : centre(c)
   {}
 
@@ -154,7 +154,7 @@ private:
 
 public:
 
-  inline explicit ConstIterator (const HexCoord& c, const bool end)
+  explicit ConstIterator (const HexCoord& c, const bool end)
     : centre(c)
   {
     if (end)

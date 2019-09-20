@@ -24,7 +24,6 @@
 #include "database/character.hpp"
 #include "database/dbtest.hpp"
 #include "hexagonal/coord.hpp"
-#include "hexagonal/pathfinder.hpp"
 
 #include <gtest/gtest.h>
 
@@ -36,6 +35,8 @@
 #include <vector>
 
 namespace pxd
+{
+namespace test
 {
 namespace
 {
@@ -95,7 +96,7 @@ TEST_F (StopCharacterTests, AlreadyStopped)
  * Returns an edge-weight function that has the given distance between
  * tiles and no obstacles.
  */
-PathFinder::EdgeWeightFcn
+EdgeWeightFcn
 EdgeWeights (const PathFinder::DistanceT dist)
 {
   return [dist] (const HexCoord& from, const HexCoord& to)
@@ -108,7 +109,7 @@ EdgeWeights (const PathFinder::DistanceT dist)
  * Returns an edge-weight function that has the given distance between
  * neighbouring tiles but also marks all tiles with x=-1 as obstacle.
  */
-PathFinder::EdgeWeightFcn
+EdgeWeightFcn
 EdgesWithObstacle (const PathFinder::DistanceT dist)
 {
   return [dist] (const HexCoord& from, const HexCoord& to)
@@ -226,8 +227,7 @@ protected:
    * Processes n movement steps for the test character.
    */
   void
-  StepCharacter (const PathFinder::DistanceT speed,
-                 const PathFinder::EdgeWeightFcn& edges,
+  StepCharacter (const PathFinder::DistanceT speed, const EdgeWeightFcn& edges,
                  const unsigned n)
   {
     GetTest ()->MutableProto ().set_speed (speed);
@@ -244,8 +244,7 @@ protected:
    * is reached.
    */
   void
-  ExpectSteps (const PathFinder::DistanceT speed,
-               const PathFinder::EdgeWeightFcn& edges,
+  ExpectSteps (const PathFinder::DistanceT speed, const EdgeWeightFcn& edges,
                const std::vector<std::pair<unsigned, HexCoord>>& milestones)
   {
     for (const auto& m : milestones)
@@ -406,6 +405,10 @@ TEST_F (MovementTests, CharacterInObstacle)
 class AllMovementTests : public MovementTests
 {
 
+private:
+
+  const BaseMap map;
+
 protected:
 
   /**
@@ -413,10 +416,10 @@ protected:
    * obstacle map from the database (as is done in the real game logic).
    */
   void
-  StepAll (const PathFinder::EdgeWeightFcn& baseEdges)
+  StepAll ()
   {
     DynObstacles dyn(db);
-    ProcessAllMovement (db, dyn, params, baseEdges);
+    ProcessAllMovement (db, dyn, params, map);
   }
 
 };
@@ -427,7 +430,7 @@ TEST_F (AllMovementTests, LongSteps)
      block.  In particular, this only works if updating the dynamic obstacle
      map for the vehicle being moved works correctly.  */
 
-  GetTest ()->MutableVolatileMv ().set_partial_step (1000);
+  GetTest ()->MutableVolatileMv ().set_partial_step (1000000);
   SetWaypoints ({
     HexCoord (5, 0),
     HexCoord (5, 0),
@@ -438,7 +441,7 @@ TEST_F (AllMovementTests, LongSteps)
     HexCoord (-10, 0),
     HexCoord (-10, 0),
   });
-  StepAll (EdgeWeights (1));
+  StepAll ();
 
   EXPECT_FALSE (IsMoving ());
   EXPECT_EQ (GetTest ()->GetPosition (), HexCoord (-10, 0));
@@ -459,7 +462,7 @@ TEST_F (AllMovementTests, OtherVehicles)
     {
       auto c = tbl.CreateNew ("domob", f);
 
-      c->MutableProto ().set_speed (1);
+      c->MutableProto ().set_speed (1000);
       c->SetPosition (pos);
 
       auto* mv = c->MutableProto ().mutable_movement ();
@@ -475,7 +478,7 @@ TEST_F (AllMovementTests, OtherVehicles)
   const auto id3 = setupChar (Faction::GREEN, HexCoord (0, 1));
   ASSERT_GT (id3, id2);
 
-  StepAll (EdgeWeights (1));
+  StepAll ();
 
   EXPECT_EQ (tbl.GetById (id1)->GetPosition (), HexCoord (0, 0));
   EXPECT_EQ (tbl.GetById (id2)->GetPosition (), HexCoord (-1, 0));
@@ -485,4 +488,5 @@ TEST_F (AllMovementTests, OtherVehicles)
 /* ************************************************************************** */
 
 } // anonymous namespace
+} // namespace test
 } // namespace pxd

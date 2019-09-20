@@ -54,12 +54,19 @@ TEST_F (RangeMapTests, FullRangeAccess)
   EXPECT_EQ (counter, 37);
 }
 
+TEST_F (RangeMapTests, IsInRange)
+{
+  const HexCoord centre(10, -5);
+  RangeMap<int> map(centre, 10, -42);
+
+  EXPECT_TRUE (map.IsInRange (HexCoord (0, -5)));
+  EXPECT_FALSE (map.IsInRange (HexCoord (-1, -5)));
+}
+
 TEST_F (RangeMapTests, ZeroRange)
 {
   const HexCoord centre(10, -5);
   RangeMap<int> map(centre, 0, -42);
-
-  EXPECT_EQ (map.Get (HexCoord (100, 100)), -42);
 
   auto& val = map.Access (centre);
   EXPECT_EQ (val, -42);
@@ -80,16 +87,12 @@ TEST_F (RangeMapTests, BoolValues)
   EXPECT_TRUE (map.Get (HexCoord (2, 2)));
 }
 
-TEST_F (RangeMapTests, OutOfRangeGet)
-{
-  RangeMap<int> map(HexCoord (0, 0), 10, -42);
-  EXPECT_EQ (map.Get (HexCoord (100, 100)), -42);
-}
-
-TEST_F (RangeMapTests, OutOfRangeAccess)
+TEST_F (RangeMapTests, OutOfRange)
 {
   RangeMap<int> map(HexCoord (0, 0), 1, -42);
+  EXPECT_EQ (map.Get (HexCoord (1, 0)), -42);
   EXPECT_EQ (map.Access (HexCoord (1, 0)), -42);
+  EXPECT_DEATH (map.Get (HexCoord (2, 0)), "Out-of-range access");
   EXPECT_DEATH (map.Access (HexCoord (2, 0)), "Out-of-range access");
 }
 

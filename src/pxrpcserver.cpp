@@ -198,8 +198,13 @@ PXRpcServer::findpath (const int l1range, const Json::Value& source,
   CheckIntBounds ("l1range", l1range, 0, maxInt);
   CheckIntBounds ("wpdist", wpdist, 1, maxInt);
 
-  PathFinder finder(logic.map.GetEdgeWeights (), targetCoord);
-  const PathFinder::DistanceT dist = finder.Compute (sourceCoord, l1range);
+  PathFinder finder(targetCoord);
+  const auto edges = [this] (const HexCoord& from, const HexCoord& to)
+    {
+      return logic.map.GetEdgeWeight (from, to);
+    };
+  const PathFinder::DistanceT dist = finder.Compute (edges, sourceCoord,
+                                                     l1range);
 
   if (dist == PathFinder::NO_CONNECTION)
     ReturnError (ErrorCode::FINDPATH_NO_CONNECTION,

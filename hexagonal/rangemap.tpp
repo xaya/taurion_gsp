@@ -28,16 +28,24 @@ namespace pxd
 template <typename T>
   RangeMap<T>::RangeMap (const HexCoord& c, const HexCoord::IntT r,
                          const T& val)
-  : centre(c), range(r), defaultValue(val),
-    data(std::pow (2 * range + 1, 2), defaultValue)
+  : centre(c), range(r),
+    data(std::pow (2 * range + 1, 2), val)
 {}
 
 template <typename T>
-  int
+  inline bool
+  RangeMap<T>::IsInRange (const HexCoord& c) const
+{
+  return HexCoord::DistanceL1 (c, centre) <= range;
+}
+
+template <typename T>
+  inline int
   RangeMap<T>::GetIndex (const HexCoord& c) const
 {
-  if (HexCoord::DistanceL1 (c, centre) > range)
-    return -1;
+  CHECK (IsInRange (c))
+      << "Out-of-range access: "
+      << c << " is out of range " << range << " around " << centre;
 
   const int row = range + c.GetX () - centre.GetX ();
   CHECK_GE (row, 0);
@@ -51,24 +59,20 @@ template <typename T>
 }
 
 template <typename T>
-  typename std::vector<T>::reference
+  inline typename std::vector<T>::reference
   RangeMap<T>::Access (const HexCoord& c)
 {
   const int ind = GetIndex (c);
-  CHECK_GE (ind, 0)
-      << "Out-of-range access: "
-      << c << " is out of range " << range << " around " << centre;
+  CHECK_GE (ind, 0);
   CHECK_LT (ind, data.size ());
   return data[ind];
 }
 
 template <typename T>
-  typename std::vector<T>::const_reference
+  inline typename std::vector<T>::const_reference
   RangeMap<T>::Get (const HexCoord& c) const
 {
   const int ind = GetIndex (c);
-  if (ind == -1)
-    return defaultValue;
   CHECK_GE (ind, 0);
   CHECK_LT (ind, data.size ());
   return data[ind];
