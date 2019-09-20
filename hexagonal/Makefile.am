@@ -3,7 +3,6 @@ noinst_LTLIBRARIES = libhexagonal.la
 libhexagonal_la_CXXFLAGS = $(GLOG_CFLAGS)
 libhexagonal_la_LIBADD = $(GLOG_LIBS)
 libhexagonal_la_SOURCES = \
-  coord.cpp \
   pathfinder.cpp \
   ring.cpp
 noinst_HEADERS = \
