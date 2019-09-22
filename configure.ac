@@ -23,6 +23,18 @@ AX_CHECK_COMPILE_FLAG([-Wno-deprecated], [CXXFLAGS+=" -Wno-deprecated"])
 # See https://hpc.nih.gov/development/glog.html.
 CXXFLAGS+=" -DGLOG_NO_ABBREVIATED_SEVERITIES"
 
+# The code includes some sanity checks / assertions that noticably slow down
+# general block-processing performance.  Thus enabling them is optional,
+# and should be used only for testing purposes.
+AC_ARG_ENABLE([slow-asserts],
+  AS_HELP_STRING([--enable-slow-asserts],
+                 [Enable slow consistency checks for testing]))
+AS_IF([test "x$enable_slow_asserts" = "xyes"], [
+  CXXFLAGS+=" -DENABLE_SLOW_ASSERTS"
+], [
+  enable_slow_asserts="no"
+])
+
 PKG_PROG_PKG_CONFIG
 
 PKG_CHECK_MODULES([XAYAGAME], [libxayautil libxayagame])
@@ -52,4 +64,5 @@ AC_CONFIG_FILES([
 AC_OUTPUT
 
 echo
+echo "Slow assertions: ${enable_slow_asserts}"
 echo "CXXFLAGS: ${CXXFLAGS}"
