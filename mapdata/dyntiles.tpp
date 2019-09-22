@@ -41,10 +41,13 @@ GetIndex (const HexCoord& c)
 
   using namespace tiledata;
 
-  CHECK (y >= minY && y <= maxY);
   const auto yInd = y - minY;
 
+#ifdef ENABLE_SLOW_ASSERTS
+  CHECK (y >= minY && y <= maxY);
   CHECK (x >= minX[yInd] && x <= maxX[yInd]);
+#endif // ENABLE_SLOW_ASSERTS
+
   return offsetForY[yInd] + x - minX[yInd];
 }
 
@@ -57,7 +60,10 @@ GetBuckets (const size_t fullIndex, size_t& bucket, size_t& within)
 {
   bucket = fullIndex / BUCKET_SIZE;
   within = fullIndex % BUCKET_SIZE;
+
+#ifdef ENABLE_SLOW_ASSERTS
   CHECK_EQ (BUCKET_SIZE * bucket + within, fullIndex);
+#endif // ENABLE_SLOW_ASSERTS
 }
 
 template <typename T>

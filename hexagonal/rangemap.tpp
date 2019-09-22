@@ -43,17 +43,22 @@ template <typename T>
   inline int
   RangeMap<T>::GetIndex (const HexCoord& c) const
 {
+#ifdef ENABLE_SLOW_ASSERTS
   CHECK (IsInRange (c))
       << "Out-of-range access: "
       << c << " is out of range " << range << " around " << centre;
+#endif // ENABLE_SLOW_ASSERTS
 
   const int row = range + c.GetX () - centre.GetX ();
+  const int col = range + c.GetY () - centre.GetY ();
+
+#ifdef ENABLE_SLOW_ASSERTS
   CHECK_GE (row, 0);
   CHECK_LT (row, 2 * range + 1);
 
-  const int col = range + c.GetY () - centre.GetY ();
   CHECK_GE (col, 0);
   CHECK_LT (col, 2 * range + 1);
+#endif // ENABLE_SLOW_ASSERTS
 
   return row + col * (2 * range + 1);
 }
@@ -63,8 +68,12 @@ template <typename T>
   RangeMap<T>::Access (const HexCoord& c)
 {
   const int ind = GetIndex (c);
+
+#ifdef ENABLE_SLOW_ASSERTS
   CHECK_GE (ind, 0);
   CHECK_LT (ind, data.size ());
+#endif // ENABLE_SLOW_ASSERTS
+
   return data[ind];
 }
 
@@ -73,8 +82,12 @@ template <typename T>
   RangeMap<T>::Get (const HexCoord& c) const
 {
   const int ind = GetIndex (c);
+
+#ifdef ENABLE_SLOW_ASSERTS
   CHECK_GE (ind, 0);
   CHECK_LT (ind, data.size ());
+#endif // ENABLE_SLOW_ASSERTS
+
   return data[ind];
 }
 
