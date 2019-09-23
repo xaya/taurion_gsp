@@ -36,11 +36,9 @@ PathFinder::Stepper::Next ()
 {
   CHECK (HasMore ());
 
-  const auto curDist = finder.distances->Access (position);
+  const auto curDist = finder.distances->Get (position);
   CHECK (curDist != NO_CONNECTION);
 
-  DistanceT bestDist = NO_CONNECTION;
-  HexCoord bestNeighbour;
   for (const auto& n : position.Neighbours ())
     {
       if (!finder.distances->IsInRange (n))
@@ -48,18 +46,21 @@ PathFinder::Stepper::Next ()
       const auto dist = finder.distances->Get (n);
       if (dist == NO_CONNECTION)
         continue;
-      if (bestDist == NO_CONNECTION || dist < bestDist)
+
+      const auto thisStep = finder.edges (position, n);
+      if (thisStep == NO_CONNECTION)
+        continue;
+      const auto fullDist = dist + thisStep;
+
+      if (fullDist == curDist)
         {
-          bestDist = dist;
-          bestNeighbour = n;
+          position = n;
+          return thisStep;
         }
+      CHECK_GT (fullDist, curDist);
     }
 
-  CHECK_NE (bestDist, NO_CONNECTION) << "No good neighbour found along path";
-  CHECK_LE (bestDist, curDist);
-
-  position = bestNeighbour;
-  return curDist - bestDist;
+  LOG (FATAL) << "No good neighbour found along path";
 }
 
 } // namespace pxd

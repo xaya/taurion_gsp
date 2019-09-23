@@ -53,9 +53,6 @@ class FindPathTest (PXTest):
 
     # Paths that yield no connection.
     self.expectError (1, "no connection",
-                      findpath, source=obstacle, target=passable,
-                      l1range=10, wpdist=1)
-    self.expectError (1, "no connection",
                       findpath, source=passable, target=obstacle,
                       l1range=10, wpdist=1)
     self.expectError (1, "no connection",

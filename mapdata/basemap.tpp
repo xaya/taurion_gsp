@@ -75,7 +75,7 @@ BaseMap::IsPassable (const HexCoord& c) const
 inline PathFinder::DistanceT
 BaseMap::GetEdgeWeight (const HexCoord& from, const HexCoord& to) const
 {
-  if (IsPassable (from) && IsPassable (to))
+  if (IsPassable (to))
     return 1000;
 
   return PathFinder::NO_CONNECTION;

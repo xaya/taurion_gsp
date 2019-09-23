@@ -238,8 +238,7 @@ template <typename Fcn>
 
   const auto res = baseEdges (from, to);
 
-  if (res == PathFinder::NO_CONNECTION
-        || !dyn.IsPassable (from, f) || !dyn.IsPassable (to, f))
+  if (res == PathFinder::NO_CONNECTION || !dyn.IsPassable (to, f))
     return PathFinder::NO_CONNECTION;
 
   return res;

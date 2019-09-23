@@ -68,7 +68,9 @@ protected:
     for (const  auto& next : golden)
       {
         ASSERT_TRUE (s.HasMore ());
-        ASSERT_EQ (s.Next (), next.second);
+        ASSERT_EQ (s.Next (), next.second)
+            << "expected position: " << next.first
+            << ", actual position: " << s.GetPosition ();
         ASSERT_EQ (s.GetPosition (), next.first);
       }
     ASSERT_FALSE (s.HasMore ());
@@ -106,7 +108,7 @@ IsObstacle (const HexCoord& c)
 PathFinder::DistanceT
 PathFinderTests::EdgeWeight (const HexCoord& from, const HexCoord& to)
 {
-  if (IsObstacle (from) || IsObstacle (to))
+  if (IsObstacle (to))
     return PathFinder::NO_CONNECTION;
 
   if (IsX (from) || IsX (to))
@@ -207,8 +209,22 @@ TEST_F (PathFinderTests, ToObstacle)
 
 TEST_F (PathFinderTests, FromObstacle)
 {
-  PathFinder finder(HexCoord (0, 0));
-  ASSERT_EQ (finder.Compute (&EdgeWeight, HexCoord (-10, 1), 1000),
+  /* This is a custom obstacle map, which has obstacles all in the upper
+     half (y > 0).  That way, we actually have coordinates that are surrounded
+     by obstacles.  For them, the search should return immediately and
+     determine that they are not accessible.  */
+
+  const auto edges = [] (const HexCoord& from, const HexCoord& to)
+                        -> PathFinder::DistanceT
+    {
+      if (to.GetY () > 0)
+        return PathFinder::NO_CONNECTION;
+
+      return 1;
+    };
+
+  PathFinder finder(HexCoord (0, -1));
+  ASSERT_EQ (finder.Compute (edges, HexCoord (0, 2), 1000),
              PathFinder::NO_CONNECTION);
 
   /* The path from an obstacle should have been determined to be unavailable

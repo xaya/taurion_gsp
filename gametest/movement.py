@@ -174,6 +174,7 @@ class MovementTest (PXTest):
     self.generate (5)
     pos, mv = self.getMovement ("domob")
     assert pos["x"] < 50
+    assert pos["x"] > 30
     assert "blockedturns" not in mv
 
     # Block the path again and let movement stop completely.

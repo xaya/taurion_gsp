@@ -89,7 +89,7 @@ TEST_F (BaseMapTests, EdgeWeights)
   const HexCoord inside(-4064, 0);
   ASSERT_FALSE (map.IsOnMap (outside));
   ASSERT_TRUE (map.IsOnMap (inside));
-  EXPECT_EQ (map.GetEdgeWeight (outside, inside), PathFinder::NO_CONNECTION);
+  EXPECT_EQ (map.GetEdgeWeight (inside, outside), PathFinder::NO_CONNECTION);
 }
 
 } // anonymous namespace

@@ -152,16 +152,9 @@ TEST_F (MovementEdgeWeightTests, DynamicObstacle)
   const auto baseEdges = EdgeWeights (42);
   dyn.AddVehicle (HexCoord (0, 0), Faction::RED);
 
-  EXPECT_EQ (MovementEdgeWeight (HexCoord (0, 0), HexCoord (1, 0),
-                                 baseEdges, dyn, Faction::RED),
-             PathFinder::NO_CONNECTION);
   EXPECT_EQ (MovementEdgeWeight (HexCoord (1, 0), HexCoord (0, 0),
                                  baseEdges, dyn, Faction::RED),
              PathFinder::NO_CONNECTION);
-
-  EXPECT_EQ (MovementEdgeWeight (HexCoord (0, 0), HexCoord (1, 0),
-                                 baseEdges, dyn, Faction::GREEN),
-             42);
   EXPECT_EQ (MovementEdgeWeight (HexCoord (1, 0), HexCoord (0, 0),
                                  baseEdges, dyn, Faction::GREEN),
              42);
