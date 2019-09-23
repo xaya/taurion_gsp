@@ -87,6 +87,7 @@ TEST_F (RangeMapTests, BoolValues)
   EXPECT_TRUE (map.Get (HexCoord (2, 2)));
 }
 
+#ifdef ENABLE_SLOW_ASSERTS
 TEST_F (RangeMapTests, OutOfRange)
 {
   RangeMap<int> map(HexCoord (0, 0), 1, -42);
@@ -95,6 +96,7 @@ TEST_F (RangeMapTests, OutOfRange)
   EXPECT_DEATH (map.Get (HexCoord (2, 0)), "Out-of-range access");
   EXPECT_DEATH (map.Access (HexCoord (2, 0)), "Out-of-range access");
 }
+#endif // ENABLE_SLOW_ASSERTS
 
 } // anonymous namespace
 } // namespace pxd
