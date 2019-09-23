@@ -162,6 +162,12 @@ private:
    */
   void Validate () const;
 
+  /**
+   * Computes the "canregen" field based on our protos.  This forces parsing
+   * of the main data proto, so it should only be called when needed.
+   */
+  bool ComputeCanRegen () const;
+
   friend class CharacterTable;
 
 public:

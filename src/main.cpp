@@ -110,6 +110,12 @@ main (int argc, char** argv)
       return EXIT_FAILURE;
     }
 
+#ifdef ENABLE_SLOW_ASSERTS
+  LOG (WARNING)
+      << "Slow assertions are enabled.  This is fine for testing, but will"
+         " slow down syncing";
+#endif // ENABLE_SLOW_ASSERTS
+
   xaya::GameDaemonConfiguration config;
   config.XayaRpcUrl = FLAGS_xaya_rpc_url;
   if (FLAGS_game_rpc_port != 0)

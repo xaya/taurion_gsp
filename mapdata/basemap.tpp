@@ -38,7 +38,10 @@ static constexpr int BITS = 8;
 inline int
 YArrayIndex (const int y)
 {
+#ifdef ENABLE_SLOW_ASSERTS
   CHECK (y >= tiledata::minY && y <= tiledata::maxY);
+#endif // ENABLE_SLOW_ASSERTS
+
   return y - tiledata::minY;
 }
 

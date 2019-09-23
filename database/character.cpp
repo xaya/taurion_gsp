@@ -28,7 +28,7 @@ namespace pxd
 Character::Character (Database& d, const std::string& o, const Faction f)
   : db(d), id(db.GetNextId ()), owner(o), faction(f),
     pos(0, 0), busy(0),
-    isNew(true), dirtyFields(true)
+    oldCanRegen(false), isNew(true), dirtyFields(true)
 {
   VLOG (1)
       << "Created new character with ID " << id << ": "
@@ -67,11 +67,7 @@ Character::~Character ()
 
   bool canRegen = oldCanRegen;
   if (hp.IsDirty () || regenData.IsDirty ())
-    {
-      const auto& regenPb = regenData.Get ();
-      canRegen = (regenPb.shield_regeneration_mhp () > 0
-                    && hp.Get ().shield () < regenPb.max_hp ().shield ());
-    }
+    canRegen = ComputeCanRegen ();
 
   if (isNew || regenData.IsDirty () || data.IsDirty ())
     {
@@ -146,7 +142,30 @@ Character::Validate () const
   /* Since this method is always called when loading a character, we should
      not access any of the protocol buffer fields.  Otherwise we would
      counteract their lazyness, since we would always parse them anyway.
-     That is not worth it for some extra "unneeded" checks.  */
+     Hence, all further checks are subject to "slow assertions".  */
+
+#ifdef ENABLE_SLOW_ASSERTS
+
+  const auto& pb = data.Get ();
+
+  if (busy == 0)
+    CHECK_EQ (pb.busy_case (), proto::Character::BUSY_NOT_SET);
+  else
+    {
+      CHECK_NE (pb.busy_case (), proto::Character::BUSY_NOT_SET);
+      CHECK (!pb.has_movement ()) << "Busy character should not be moving";
+    }
+
+  if (!isNew && !data.IsDirty ())
+    {
+      CHECK_EQ (hasTarget, pb.has_target ());
+      CHECK_EQ (attackRange, FindAttackRange (pb.combat_data ()));
+    }
+
+  if (!regenData.IsDirty () && !hp.IsDirty ())
+    CHECK_EQ (oldCanRegen, ComputeCanRegen ());
+
+#endif // ENABLE_SLOW_ASSERTS
 }
 
 void
@@ -159,6 +178,17 @@ Character::BindFieldValues (Database::Statement& stmt) const
   stmt.BindProto (5, volatileMv);
   stmt.BindProto (6, hp);
   stmt.Bind (7, busy);
+}
+
+bool
+Character::ComputeCanRegen () const
+{
+  const auto& regenPb = regenData.Get ();
+
+  if (regenPb.shield_regeneration_mhp () == 0)
+    return false;
+
+  return hp.Get ().shield () < regenPb.max_hp ().shield ();
 }
 
 HexCoord::IntT
