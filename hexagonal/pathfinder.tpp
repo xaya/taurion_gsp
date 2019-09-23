@@ -73,6 +73,8 @@ template <typename Fcn>
       << "PathFinder allows only one Compute call for now";
   CHECK_EQ (computedTiles, 0);
 
+  edges = edgeWeight;
+
   /* Check that the source is actually accessible from any of its neighbours.
      If it is not, then we would just spend the computations for the full
      l1Range for nothing.  Doing this check here makes sure that we can
@@ -149,6 +151,7 @@ template <typename Fcn>
       /* Insert the current element as a finalised distance.  */
       curDist = cur.dist;
       ++computedTiles;
+      VLOG (2) << "Found new distance: " << cur.coord << " as " << cur.dist;
 
       /* If this was the source, we are done.  */
       if (cur.coord == source)

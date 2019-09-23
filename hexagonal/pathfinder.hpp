@@ -23,6 +23,7 @@
 #include "rangemap.hpp"
 
 #include <cstdint>
+#include <functional>
 #include <limits>
 #include <memory>
 
@@ -69,6 +70,13 @@ private:
    * it means that no distances are known at all.
    */
   std::unique_ptr<RangeMap<DistanceT>> distances;
+
+  /**
+   * The edge weight used for computing distances.  This is used also for
+   * stepping along the path later on, and thus remembered from the Compute
+   * call.
+   */
+  std::function<DistanceT (const HexCoord& from, const HexCoord& to)> edges;
 
   /**
    * The number of tiles processed (in the sense that we finalised a distance
