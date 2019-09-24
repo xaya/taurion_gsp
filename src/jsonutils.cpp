@@ -22,13 +22,14 @@
 
 #include <cmath>
 #include <limits>
-#include <sstream>
 
 namespace pxd
 {
 
 namespace
 {
+
+constexpr Database::IdT MAX_ID = 999999999;
 
 constexpr const char COORD_X[] = "x";
 constexpr const char COORD_Y[] = "y";
@@ -143,19 +144,76 @@ AmountFromJson (const Json::Value& val, Amount& amount)
 bool
 IdFromString (const std::string& str, Database::IdT& id)
 {
-  std::istringstream in(str);
-  in >> id;
-
-  if (!in)
+  std::vector<Database::IdT> ids;
+  if (!IdArrayFromString (str, ids))
     return false;
 
-  if (id == Database::EMPTY_ID)
+  if (ids.size () != 1)
     return false;
 
-  std::ostringstream out;
-  out << id;
+  id = ids[0];
+  return true;
+}
 
-  return out.str () == str;
+bool
+IdArrayFromString (const std::string& str, std::vector<Database::IdT>& ids)
+{
+  ids.clear ();
+
+  bool inNumber = false;
+  Database::IdT num;
+  for (const char c : str)
+    {
+      if (c == ',')
+        {
+          if (!inNumber)
+            return false;
+          ids.push_back (num);
+          inNumber = false;
+          continue;
+        }
+
+      if (c < '0' || c > '9')
+        return false;
+
+      const Database::IdT digit = c - '0';
+
+      if (!inNumber)
+        {
+          /* Zero is not a valid ID.  Thus there should never be zeros
+             at the beginning of a number.  */
+          if (digit == 0)
+            return false;
+
+          inNumber = true;
+          num = digit;
+          continue;
+        }
+
+      /* Very simple check for out-of-bounds.  In practice, we will never
+         see such large IDs anyway.  Nevertheless this is consensus-critical,
+         as it may influence how we handle an entire command where only some
+         IDs are out-of-range (ignore the entire command because it is parsed
+         invalid vs just ignore the individual IDs because they do not
+         match an existing entity in the database).  */
+
+      CHECK_GT (num, 0);
+      num = 10 * num + digit;
+
+      if (num > MAX_ID)
+        return false;
+    }
+
+  /* At the end, we should have a current number unless the string was
+     simply empty.  In that case, we need to push it.  If there is no
+     current number, it likely means that we ended with a comma (which
+     is invalid).  */
+  if (inNumber)
+    ids.push_back (num);
+  else if (!ids.empty ())
+    return false;
+
+  return true;
 }
 
 template <>

@@ -27,6 +27,7 @@
 #include <json/json.h>
 
 #include <string>
+#include <vector>
 
 namespace pxd
 {
@@ -63,6 +64,17 @@ bool AmountFromJson (const Json::Value& val, Amount& amount);
  * false if something is wrong.
  */
 bool IdFromString (const std::string& str, Database::IdT& id);
+
+/**
+ * Parses a string that encodes one or more IDs (separated by commas), e.g.
+ * from a character-update JSON command.  Returns true and fills in the vector
+ * of parsed IDs on success, and returns false if the string is not valid.
+ *
+ * The empty string is valid, and corresponds to an empty array that will be
+ * returned for it.  A string like " " or " 1 " is invalid.
+ */
+bool IdArrayFromString (const std::string& str,
+                        std::vector<Database::IdT>& ids);
 
 /**
  * Converts an integer value to the proper JSON representation.

@@ -18,6 +18,7 @@
 
 #include "jsonutils.hpp"
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <glog/logging.h>
@@ -29,6 +30,8 @@ namespace pxd
 {
 namespace
 {
+
+using testing::ElementsAre;
 
 const Json::Value
 ParseJson (const std::string& str)
@@ -140,27 +143,53 @@ TEST_F (JsonAmountTests, InvalidAmountFromJson)
 
 using IdFromStringTests = testing::Test;
 
-TEST_F (IdFromStringTests, Valid)
+TEST_F (IdFromStringTests, SingleValid)
 {
   Database::IdT id;
 
   ASSERT_TRUE (IdFromString ("1", id));
   EXPECT_EQ (id, 1);
 
-  ASSERT_TRUE (IdFromString ("999", id));
-  EXPECT_EQ (id, 999);
+  ASSERT_TRUE (IdFromString ("1023", id));
+  EXPECT_EQ (id, 1023);
 
-  ASSERT_TRUE (IdFromString ("4000000000", id));
-  EXPECT_EQ (id, 4000000000);
+  ASSERT_TRUE (IdFromString ("456789", id));
+  EXPECT_EQ (id, 456789);
+
+  ASSERT_TRUE (IdFromString ("999999999", id));
+  EXPECT_EQ (id, 999999999);
 }
 
-TEST_F (IdFromStringTests, Invalid)
+TEST_F (IdFromStringTests, SingleInvalid)
 {
-  for (const std::string str : {"0", "-5", "2.3", " 5", "42 ", "02",
-                                "99999999999999999999"})
+  for (const std::string str : {"", "0", "-5", "2.3", " 5", "42 ", "02",
+                                "1,2", "x", "1000000000"})
     {
+      LOG (INFO) << "Testing invalid string: " << str;
       Database::IdT id;
       EXPECT_FALSE (IdFromString (str, id));
+    }
+}
+
+TEST_F (IdFromStringTests, ArrayValid)
+{
+  /* Start with a non-empty list to check it is cleared.  */
+  std::vector<Database::IdT> ids = {1, 2, 3};
+
+  ASSERT_TRUE (IdArrayFromString ("", ids));
+  EXPECT_THAT (ids, ElementsAre ());
+
+  ASSERT_TRUE (IdArrayFromString ("10,1,5", ids));
+  EXPECT_THAT (ids, ElementsAre (10, 1, 5));
+}
+
+TEST_F (IdFromStringTests, ArrayInvalid)
+{
+  for (const std::string str : {",", "1,", "5,", "1,0,5", "1,0"})
+    {
+      LOG (INFO) << "Testing invalid string: " << str;
+      std::vector<Database::IdT> id;
+      EXPECT_FALSE (IdArrayFromString (str, id));
     }
 }
 
