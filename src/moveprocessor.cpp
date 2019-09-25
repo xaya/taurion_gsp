@@ -129,19 +129,25 @@ BaseMoveProcessor::TryCharacterUpdates (const std::string& name,
      consensus (if the updates to characters interact with each other).  We
      order the updates in a move increasing by character ID.
 
-     The iteration order over the JSON object itself is also "sorted",
-     although by key as string.  By sorting explicitly for the key as integer
-     we a) make the order explicit in our own code (without depending on
-     JsonCpp) and b) choose a more logical order.  */
+     If a character ID has more than one update associated to it (e.g. because
+     it appears in multiple, different ID lists used as keys), then the whole
+     update is invalid and no part of it will be processed.  This simplifies
+     handling, avoids any doubt about which one of the updates should be
+     processed, and is something that is not relevant in practice anyway
+     except for malicious moves or buggy software.
+
+     For other errors (that do not lead to ambiguity) like a single malformed
+     key string, a value that is not a JSON object or an ID that does not
+     exist in the database, we only ignore that part.  */
 
   std::map<Database::IdT, Json::Value> updates;
   for (auto i = cmd.begin (); i != cmd.end (); ++i)
     {
-      Database::IdT id;
-      if (!IdFromString (i.name (), id))
+      std::vector<Database::IdT> ids;
+      if (!IdArrayFromString (i.name (), ids))
         {
           LOG (WARNING)
-              << "Ignoring invalid character ID for update: " << i.name ();
+              << "Ignoring invalid character IDs for update: " << i.name ();
           continue;
         }
 
@@ -153,8 +159,17 @@ BaseMoveProcessor::TryCharacterUpdates (const std::string& name,
           continue;
         }
 
-      const auto res = updates.emplace (id, upd);
-      CHECK (res.second);
+      for (const auto id : ids)
+        {
+          const auto res = updates.emplace (id, upd);
+          if (!res.second)
+            {
+              LOG (WARNING)
+                  << "Character update processes ID " << id
+                  << " more than once: " << mv;
+              return;
+            }
+        }
     }
 
   for (const auto& entry : updates)

@@ -121,6 +121,16 @@ class CharactersTest (PXTest):
       "domob 2": {"faction": "g"},
     })
 
+    self.mainLogger.info ("Updates with ID lists...")
+    id1 = self.getCharacters ()["domob"].getId ()
+    id2 = self.getCharacters ()["domob 2"].getId ()
+    self.sendMove ("domob", {
+      "c": {"%d,%d" % (id1, id2): {"send": "idlist"}},
+    })
+    self.generate (1)
+    self.assertEqual (self.getCharacters ()["idlist"].getId (), id1)
+    self.assertEqual (self.getCharacters ()["idlist 2"].getId (), id2)
+
     self.testReorg ()
 
   def testReorg (self):
