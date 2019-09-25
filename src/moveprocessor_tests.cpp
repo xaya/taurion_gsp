@@ -335,6 +335,24 @@ protected:
     SetupCharacter (1, "domob");
   }
 
+  /**
+   * Verifies that ownership of the characters with the given IDs matches
+   * the given names.  This can be used as a simple proxy for determining
+   * whether update commands were executed or not.
+   */
+  void
+  ExpectCharacterOwners (const std::map<Database::IdT, std::string>& expected)
+  {
+    for (const auto& entry : expected)
+      {
+        auto h = tbl.GetById (entry.first);
+        ASSERT_TRUE (h != nullptr)
+            << "Character ID " << entry.first << " does not exist";
+        ASSERT_EQ (h->GetOwner (), entry.second)
+            << "Character ID " << entry.first << " has wrong owner";
+      }
+  }
+
 };
 
 TEST_F (CharacterUpdateTests, CreationAndUpdate)
@@ -349,45 +367,57 @@ TEST_F (CharacterUpdateTests, CreationAndUpdate)
   }])", params.CharacterCost ());
 
   /* Transfer and creation should work fine together for two different
-     characters (but in the same move).  */
-  EXPECT_EQ (GetTest ()->GetOwner (), "daniel");
-
-  /* The character created in the same move should not be transferred.  */
-  auto h = tbl.GetById (2);
-  ASSERT_TRUE (h != nullptr);
-  EXPECT_EQ (h->GetOwner (), "domob");
+     characters (but in the same move).  The character created in the same
+     move should not be transferred.  */
+  ExpectCharacterOwners ({{1, "daniel"}, {2, "domob"}});
 }
 
-TEST_F (CharacterUpdateTests, SameIdTwice)
+TEST_F (CharacterUpdateTests, MultipleCharacters)
 {
-  /* JSON and Xaya Core allow objects with duplicated keys.  When they are
-     parsed by JsonCpp (i.e. in Taurion), then the second value for a key
-     overrides the first.  This test verifies this behaviour, so that we
-     can make sure it does not get broken (which would be a fork).  */
+  SetupCharacter (10, "domob");
+  SetupCharacter (11, "domob");
+  SetupCharacter (12, "domob");
+  SetupCharacter (13, "domob");
+  SetupCharacter (14, "domob");
 
-  auto h = GetTest ();
-  EXPECT_EQ (h->GetOwner (), "domob");
-  EXPECT_FALSE (h->GetProto ().has_movement ());
-  h.reset ();
-
+  /* This whole command is invalid, because an ID is specified twice in it.  */
   Process (R"([{
     "name": "domob",
     "move":
       {
         "c":
           {
-            "1": {"send": "bob"},
-            "1": {"wp": [{"x": 5, "y": 3}]}
+            "10,11": {"send": "bob"},
+            "11,12": {"send": "andy"}
           }
       }
   }])");
+  ExpectCharacterOwners ({{10, "domob"}, {11, "domob"}, {12, "domob"}});
 
-  h = GetTest ();
-  EXPECT_EQ (h->GetOwner (), "domob");
-  const auto& wp = h->GetProto ().movement ().waypoints ();
-  ASSERT_EQ (wp.size (), 1);
-  EXPECT_EQ (CoordFromProto (wp.Get (0)), HexCoord (5, 3));
-  h.reset ();
+  /* This command is valid, and should transfer all characters accordingly;
+     the invalid ID array string is ignored, as is the update part whose
+     value is not an object.  */
+  Process (R"([{
+    "name": "domob",
+    "move":
+      {
+        "c":
+          {
+            "12,11": {"send": "bob"},
+            " 11 ": {"send": "mallory"},
+            "12": "not an object",
+            "13,10": {"send": "andy"},
+            "14": {"send": "charly"}
+          }
+      }
+  }])");
+  ExpectCharacterOwners ({
+    {10, "andy"},
+    {11, "bob"},
+    {12, "bob"},
+    {13, "andy"},
+    {14, "charly"},
+  });
 }
 
 /* We also test the relative order of updates within a single move
@@ -402,7 +432,7 @@ TEST_F (CharacterUpdateTests, ValidTransfer)
     "name": "domob",
     "move": {"c": {"1": {"send": "andy"}}}
   }])");
-  EXPECT_EQ (GetTest ()->GetOwner (), "andy");
+  ExpectCharacterOwners ({{1, "andy"}});
 }
 
 TEST_F (CharacterUpdateTests, InvalidTransfer)
@@ -411,7 +441,7 @@ TEST_F (CharacterUpdateTests, InvalidTransfer)
     "name": "domob",
     "move": {"c": {"1": {"send": false}}}
   }])");
-  EXPECT_EQ (GetTest ()->GetOwner (), "domob");
+  ExpectCharacterOwners ({{1, "domob"}});
 }
 
 TEST_F (CharacterUpdateTests, OwnerCheck)
@@ -420,14 +450,12 @@ TEST_F (CharacterUpdateTests, OwnerCheck)
      (from the same move) failed due to the owner check.  */
   SetupCharacter (9, "andy");
 
-  EXPECT_EQ (GetTest ()->GetOwner (), "domob");
-  EXPECT_EQ (tbl.GetById (9)->GetOwner (), "andy");
+  ExpectCharacterOwners ({{1, "domob"}, {9, "andy"}});
   Process (R"([{
     "name": "andy",
     "move": {"c": {"1": {"send": "andy"}, "9": {"send": "domob"}}}
   }])");
-  EXPECT_EQ (GetTest ()->GetOwner (), "domob");
-  EXPECT_EQ (tbl.GetById (9)->GetOwner (), "domob");
+  ExpectCharacterOwners ({{1, "domob"}, {9, "domob"}});
 }
 
 TEST_F (CharacterUpdateTests, InvalidUpdate)
