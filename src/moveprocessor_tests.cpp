@@ -510,10 +510,11 @@ TEST_F (CharacterUpdateTests, WhenBusy)
   EXPECT_FALSE (h->GetProto ().has_movement ());
 }
 
-TEST_F (CharacterUpdateTests, Waypoints)
+TEST_F (CharacterUpdateTests, BasicWaypoints)
 {
   /* Set up some stuff that will be cleared.  */
   auto h = GetTest ();
+  h->MutableProto ().set_speed (1000);
   h->MutableVolatileMv ().set_partial_step (42);
   auto* mv = h->MutableProto ().mutable_movement ();
   mv->mutable_waypoints ()->Add ();
@@ -562,13 +563,44 @@ TEST_F (CharacterUpdateTests, Waypoints)
   ASSERT_EQ (wp.size (), 2);
   EXPECT_EQ (CoordFromProto (wp.Get (0)), HexCoord (-3, 4));
   EXPECT_EQ (CoordFromProto (wp.Get (1)), HexCoord (5, 0));
+}
 
-  /* Process a valid update that just stops the character.  */
+TEST_F (CharacterUpdateTests, EmptyWaypoints)
+{
+  auto h = GetTest ();
+  h->MutableProto ().set_speed (1000);
+  h->MutableProto ().mutable_movement ();
+  h->MutableVolatileMv ().set_partial_step (42);
+  h.reset ();
+
   GetTest ()->MutableVolatileMv ().set_partial_step (42);
   Process (R"([{
     "name": "domob",
     "move": {"c": {"1": {"wp": []}}}
   }])");
+
+  h = GetTest ();
+  EXPECT_FALSE (h->GetVolatileMv ().has_partial_step ());
+  EXPECT_FALSE (h->GetProto ().has_movement ());
+}
+
+TEST_F (CharacterUpdateTests, WaypointsWithZeroSpeed)
+{
+  auto h = GetTest ();
+  h->MutableProto ().set_speed (0);
+  h->MutableProto ().mutable_movement ();
+  h->MutableVolatileMv ().set_partial_step (42);
+  h.reset ();
+
+  GetTest ()->MutableVolatileMv ().set_partial_step (42);
+  Process (R"([{
+    "name": "domob",
+    "move": {"c": {"1": {"wp": [{"x": -3, "y": 100}]}}}
+  }])");
+
+  /* With zero speed of the character, we should just "stop" it but not
+     create any new movement proto with those waypoints.  */
+
   h = GetTest ();
   EXPECT_FALSE (h->GetVolatileMv ().has_partial_step ());
   EXPECT_FALSE (h->GetProto ().has_movement ());

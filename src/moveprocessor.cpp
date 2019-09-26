@@ -378,11 +378,21 @@ MoveProcessor::MaybeSetCharacterWaypoints (Character& c, const Json::Value& upd)
 
   StopCharacter (c);
 
-  if (!wp.empty ())
+  if (wp.empty ())
+    return;
+
+  /* If the character has no movement speed, then we also do not set any
+     waypoints at all for it.  */
+  if (c.GetProto ().speed () == 0)
     {
-      auto* mv = c.MutableProto ().mutable_movement ();
-      SetRepeatedCoords (wp, *mv->mutable_waypoints ());
+      LOG (WARNING)
+          << "Ignoring waypoints for character " << c.GetId ()
+          << " with zero speed";
+      return;
     }
+
+  auto* mv = c.MutableProto ().mutable_movement ();
+  SetRepeatedCoords (wp, *mv->mutable_waypoints ());
 }
 
 void
