@@ -606,6 +606,69 @@ TEST_F (CharacterUpdateTests, WaypointsWithZeroSpeed)
   EXPECT_FALSE (h->GetProto ().has_movement ());
 }
 
+TEST_F (CharacterUpdateTests, ChosenSpeedWithoutMovement)
+{
+  GetTest ()->MutableProto ().set_speed (1000);
+
+  Process (R"([{
+    "name": "domob",
+    "move": {"c": {"1": {"speed": 100}}}
+  }])");
+
+  EXPECT_FALSE (GetTest ()->GetProto ().has_movement ());
+}
+
+TEST_F (CharacterUpdateTests, ChosenSpeedWorks)
+{
+  GetTest ()->MutableProto ().set_speed (1000);
+
+  Process (R"([{
+    "name": "domob",
+    "move": {"c": {"1": {"wp": [{"x": 5, "y": 1}], "speed": 1000000}}}
+  }])");
+  EXPECT_EQ (GetTest ()->GetProto ().movement ().chosen_speed (), 1000000);
+
+  Process (R"([{
+    "name": "domob",
+    "move": {"c": {"1": {"speed": 1}}}
+  }])");
+  EXPECT_EQ (GetTest ()->GetProto ().movement ().chosen_speed (), 1);
+}
+
+TEST_F (CharacterUpdateTests, ChosenSpeedInvalid)
+{
+  GetTest ()->MutableProto ().set_speed (1000);
+  Process (R"([{
+    "name": "domob",
+    "move": {"c": {"1": {"wp": [{"x": 5, "y": 1}], "speed": 1000}}}
+  }])");
+
+  /* All of them are invalid in one way or another.  */
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"speed": -5}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"speed": 5.2}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"speed": 0}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"speed": {}}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"speed": 1000001}}}
+    }
+  ])");
+  EXPECT_EQ (GetTest ()->GetProto ().movement ().chosen_speed (), 1000);
+}
+
 /* ************************************************************************** */
 
 class ProspectingMoveTests : public CharacterUpdateTests

@@ -25,15 +25,20 @@ Tests movement of characters on the map.
 
 class MovementTest (PXTest):
 
+  def offsetWaypoints (self, wp):
+    """
+    Returns the waypoints, transformed by applying our coordinate offset.
+    """
+
+    return [offsetCoord (p, self.offset, False) for p in wp]
+
   def setWaypoints (self, owner, wp):
     """
     Sends a move to update the waypoints of the character with the given owner.
     """
 
-    wpOffs = [offsetCoord (p, self.offset, False) for p in wp]
-
     c = self.getCharacters ()[owner]
-    return c.sendMove ({"wp": wpOffs})
+    return c.sendMove ({"wp": self.offsetWaypoints (wp)})
 
   def getMovement (self, owner):
     """
@@ -139,8 +144,63 @@ class MovementTest (PXTest):
     self.assertEqual (pos, {"x": 99, "y": 1})
     assert mv is None
 
+    self.testChosenSpeed ()
     self.testBlockingVehicle ()
     self.testReorg ()
+
+  def testChosenSpeed (self):
+    self.mainLogger.info ("Testing chosen speed...")
+
+    self.moveCharactersTo ({
+      "domob": offsetCoord ({"x": 0, "y": 0}, self.offset, False),
+    })
+
+    # Move the character with reduced speed.
+    c = self.getCharacters ()["domob"]
+    wp = self.offsetWaypoints ([{"x": 100, "y": 0}])
+    c.sendMove ({"wp": wp, "speed": 1000})
+    self.generate (10)
+    pos, _ = self.getMovement ("domob")
+    self.assertEqual (pos, {"x": 10, "y": 0})
+
+    # Adjust the speed to be higher than the natural speed of 3000,
+    # and expect movement with the natural speed.
+    c = self.getCharacters ()["domob"]
+    c.sendMove ({"speed": 10000})
+    self.generate (10)
+    pos, _ = self.getMovement ("domob")
+    self.assertEqual (pos, {"x": 40, "y": 0})
+
+    # Sending another movement in-between without speed will revert it to
+    # the default one.
+    c = self.getCharacters ()["domob"]
+    c.sendMove ({"wp": wp, "speed": 1000})
+    self.generate (10)
+    pos, _ = self.getMovement ("domob")
+    self.assertEqual (pos, {"x": 50, "y": 0})
+    self.setWaypoints ("domob", [{"x": 0, "y": 0}])
+    self.generate (10)
+    pos, _ = self.getMovement ("domob")
+    self.assertEqual (pos, {"x": 20, "y": 0})
+
+    # Letting the movement finish and then sending a new movement will also
+    # revert to intrinsic speed.
+    c = self.getCharacters ()["domob"]
+    c.sendMove ({"wp": wp, "speed": 1000})
+    self.generate (10)
+    pos, _ = self.getMovement ("domob")
+    self.assertEqual (pos, {"x": 30, "y": 0})
+    self.generate (100)
+    pos, _ = self.getMovement ("domob")
+    self.assertEqual (pos, {"x": 100, "y": 0})
+    self.setWaypoints ("domob", [{"x": 0, "y": 0}])
+    self.generate (10)
+    pos, _ = self.getMovement ("domob")
+    self.assertEqual (pos, {"x": 70, "y": 0})
+
+    # Stop the character to avoid confusing later tests.
+    self.setWaypoints ("domob", [])
+    self.generate (1)
 
   def testBlockingVehicle (self):
     """
