@@ -59,6 +59,13 @@ message Movement
    */
   repeated HexCoord steps = 2;
 
+  /**
+   * If set, then the character chooses to travel at the minimum of this value
+   * and its actual speed.  This can be used to reduce travel speed for faster
+   * vehicles to stay around slower ones in a convoy.
+   */
+  optional uint32 chosen_speed = 3;
+
 }
 
 /**

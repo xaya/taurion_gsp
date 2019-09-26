@@ -36,6 +36,14 @@ namespace pxd
 {
 
 /**
+ * The maximum valid chosen speed value for a move.  This is consensus
+ * relevant, as it determines what moves will be considered valid.  The value
+ * is small enough to avoid overflowing the uint32 proto field, but it is also
+ * large enough to not be a restriction in practice (1k tiles per block).
+ */
+static constexpr unsigned MAX_CHOSEN_SPEED = 1000000;
+
+/**
  * Base class for MoveProcessor (handling confirmed moves) and PendingProcessor
  * (for processing pending moves).  It holds some common stuff for both
  * as well as some basic logic for processing some moves.

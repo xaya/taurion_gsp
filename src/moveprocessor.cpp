@@ -363,6 +363,41 @@ MaybeTransferCharacter (Character& c, const Json::Value& upd)
   c.SetOwner (sendTo.asString ());
 }
 
+/**
+ * Sets the character's chosen speed from the update, if there is a command
+ * to do so in it.
+ */
+void
+MaybeSetCharacterSpeed (Character& c, const Json::Value& upd)
+{
+  CHECK (upd.isObject ());
+  const auto& val = upd["speed"];
+  if (!val.isUInt64 ())
+    return;
+
+  if (!c.GetProto ().has_movement ())
+    {
+      LOG (WARNING)
+          << "Can't set speed on character " << c.GetId ()
+          << ", which is not moving";
+      return;
+    }
+
+  const unsigned speed = val.asUInt64 ();
+  if (speed == 0 || speed > MAX_CHOSEN_SPEED)
+    {
+      LOG (WARNING)
+          << "Invalid chosen speed for character " << c.GetId ()
+          << ": " << upd;
+      return;
+    }
+
+  VLOG (1)
+      << "Setting chosen speed for character " << c.GetId ()
+      << " to: " << speed;
+  c.MutableProto ().mutable_movement ()->set_chosen_speed (speed);
+}
+
 } // anonymous namespace
 
 void
@@ -378,11 +413,21 @@ MoveProcessor::MaybeSetCharacterWaypoints (Character& c, const Json::Value& upd)
 
   StopCharacter (c);
 
-  if (!wp.empty ())
+  if (wp.empty ())
+    return;
+
+  /* If the character has no movement speed, then we also do not set any
+     waypoints at all for it.  */
+  if (c.GetProto ().speed () == 0)
     {
-      auto* mv = c.MutableProto ().mutable_movement ();
-      SetRepeatedCoords (wp, *mv->mutable_waypoints ());
+      LOG (WARNING)
+          << "Ignoring waypoints for character " << c.GetId ()
+          << " with zero speed";
+      return;
     }
+
+  auto* mv = c.MutableProto ().mutable_movement ();
+  SetRepeatedCoords (wp, *mv->mutable_waypoints ());
 }
 
 void
@@ -405,7 +450,12 @@ MoveProcessor::PerformCharacterUpdate (Character& c, const Json::Value& upd)
 {
   MaybeTransferCharacter (c, upd);
   MaybeStartProspecting (c, upd);
+
+  /* We need to process speed updates after the waypoints, because a speed
+     update is only valid if there is active movement.  That way, we can set
+     waypoints and a chosen speed in a single move.  */
   MaybeSetCharacterWaypoints (c, upd);
+  MaybeSetCharacterSpeed (c, upd);
 }
 
 namespace
