@@ -160,16 +160,18 @@ class MovementTest (PXTest):
     wp = self.offsetWaypoints ([{"x": 100, "y": 0}])
     c.sendMove ({"wp": wp, "speed": 1000})
     self.generate (10)
-    pos, _ = self.getMovement ("domob")
+    pos, mv = self.getMovement ("domob")
     self.assertEqual (pos, {"x": 10, "y": 0})
+    self.assertEqual (mv["chosenspeed"], 1000)
 
     # Adjust the speed to be higher than the natural speed of 3000,
     # and expect movement with the natural speed.
     c = self.getCharacters ()["domob"]
     c.sendMove ({"speed": 10000})
     self.generate (10)
-    pos, _ = self.getMovement ("domob")
+    pos, mv = self.getMovement ("domob")
     self.assertEqual (pos, {"x": 40, "y": 0})
+    self.assertEqual (mv["chosenspeed"], 10000)
 
     # Sending another movement in-between without speed will revert it to
     # the default one.
@@ -180,8 +182,9 @@ class MovementTest (PXTest):
     self.assertEqual (pos, {"x": 50, "y": 0})
     self.setWaypoints ("domob", [{"x": 0, "y": 0}])
     self.generate (10)
-    pos, _ = self.getMovement ("domob")
+    pos, mv = self.getMovement ("domob")
     self.assertEqual (pos, {"x": 20, "y": 0})
+    assert "chosenspeed" not in mv
 
     # Letting the movement finish and then sending a new movement will also
     # revert to intrinsic speed.
@@ -195,8 +198,9 @@ class MovementTest (PXTest):
     self.assertEqual (pos, {"x": 100, "y": 0})
     self.setWaypoints ("domob", [{"x": 0, "y": 0}])
     self.generate (10)
-    pos, _ = self.getMovement ("domob")
+    pos, mv = self.getMovement ("domob")
     self.assertEqual (pos, {"x": 70, "y": 0})
+    assert "chosenspeed" not in mv
 
     # Stop the character to avoid confusing later tests.
     self.setWaypoints ("domob", [])

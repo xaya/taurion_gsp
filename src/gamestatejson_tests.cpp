@@ -128,6 +128,25 @@ TEST_F (CharacterJsonTests, Basic)
   })");
 }
 
+TEST_F (CharacterJsonTests, ChosenSpeed)
+{
+  auto c = tbl.CreateNew ("domob", Faction::RED);
+  c->MutableProto ().mutable_movement ()->set_chosen_speed (1234);
+  c.reset ();
+
+  ExpectStateJson (R"({
+    "characters":
+      [
+        {
+          "movement":
+            {
+              "chosenspeed": 1234
+            }
+        }
+      ]
+  })");
+}
+
 TEST_F (CharacterJsonTests, Waypoints)
 {
   auto c = tbl.CreateNew ("domob", Faction::RED);

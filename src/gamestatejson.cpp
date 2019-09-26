@@ -96,6 +96,9 @@ GetMovementJsonObject (const Character& c)
     {
       const auto& mvProto = pb.movement ();
 
+      if (mvProto.has_chosen_speed ())
+        res["chosenspeed"] = mvProto.chosen_speed ();
+
       Json::Value wp(Json::arrayValue);
       for (const auto& entry : mvProto.waypoints ())
         wp.append (CoordToJson (CoordFromProto (entry)));
