@@ -281,6 +281,28 @@ TEST_F (MovementTests, FastSpeed)
     });
 }
 
+TEST_F (MovementTests, SlowChosenSpeed)
+{
+  SetWaypoints ({HexCoord (10, 0)});
+  GetTest ()->MutableProto ().mutable_movement ()->set_chosen_speed (1);
+  ExpectSteps (5, EdgeWeights (1),
+    {
+      {5, HexCoord (5, 0)},
+      {5, HexCoord (10, 0)},
+    });
+}
+
+TEST_F (MovementTests, FastChosenSpeed)
+{
+  SetWaypoints ({HexCoord (10, 0)});
+  GetTest ()->MutableProto ().mutable_movement ()->set_chosen_speed (5);
+  ExpectSteps (1, EdgeWeights (1),
+    {
+      {5, HexCoord (5, 0)},
+      {5, HexCoord (10, 0)},
+    });
+}
+
 TEST_F (MovementTests, DuplicateWaypoints)
 {
   SetWaypoints (
@@ -423,7 +445,11 @@ TEST_F (AllMovementTests, LongSteps)
      block.  In particular, this only works if updating the dynamic obstacle
      map for the vehicle being moved works correctly.  */
 
-  GetTest ()->MutableVolatileMv ().set_partial_step (1000000);
+  auto c = GetTest ();
+  c->MutableProto ().set_speed (1);
+  c->MutableVolatileMv ().set_partial_step (1000000);
+  c.reset ();
+
   SetWaypoints ({
     HexCoord (5, 0),
     HexCoord (5, 0),

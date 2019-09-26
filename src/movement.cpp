@@ -248,14 +248,22 @@ template <typename Fcn>
   void
   CharacterMovement (Character& c, const Params& params, Fcn edges)
 {
-  const auto speed = c.GetProto ().speed ();
+  const auto& pb = c.GetProto ();
+  CHECK (pb.has_movement ())
+      << "Character " << c.GetId ()
+      << " was selected for movement but is not actually moving";
+
+  auto speed = pb.speed ();
+  if (pb.movement ().has_chosen_speed ())
+    speed = std::min (speed, pb.movement ().chosen_speed ());
+
+  /* If a character cannot move, then we should never even set a movement
+     for it in the first place.  */
+  CHECK_GT (speed, 0);
 
   VLOG (1)
       << "Processing movement for character: " << c.GetId ()
-      << " (speed: " << speed << ")";
-  CHECK (c.GetProto ().has_movement ())
-      << "Character " << c.GetId ()
-      << " was selected for movement but is not actually moving";
+      << " (native speed: " << pb.speed () << ", effective: " << speed << ")";
 
   const unsigned partialStep = c.GetVolatileMv ().partial_step () + speed;
   c.MutableVolatileMv ().set_partial_step (partialStep);
@@ -264,7 +272,7 @@ template <typename Fcn>
 
   while (true)
     {
-      const auto& mv = c.GetProto ().movement ();
+      const auto& mv = pb.movement ();
       CHECK_GT (mv.waypoints_size (), 0)
           << "Character " << c.GetId ()
           << " has active movement but no waypoints";

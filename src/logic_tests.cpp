@@ -489,6 +489,7 @@ TEST_F (PXLogicTests, FinishingProspecting)
   ASSERT_EQ (c->GetId (), 1);
   c->SetPosition (pos);
   c->MutableProto ().mutable_combat_data ();
+  c->MutableProto ().set_speed (1000);
   c.reset ();
 
   /* Start prospecting with that character.  */
