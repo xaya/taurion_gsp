@@ -354,25 +354,6 @@ namespace
 {
 
 /**
- * Transfers the given character if the update JSON contains a request
- * to do so.
- */
-void
-MaybeTransferCharacter (Character& c, const Json::Value& upd)
-{
-  CHECK (upd.isObject ());
-  const auto& sendTo = upd["send"];
-  if (!sendTo.isString ())
-    return;
-
-  VLOG (1)
-      << "Sending character " << c.GetId ()
-      << " from " << c.GetOwner ()
-      << " to " << sendTo.asString ();
-  c.SetOwner (sendTo.asString ());
-}
-
-/**
  * Sets the character's chosen speed from the update, if there is a command
  * to do so in it.
  */
@@ -408,6 +389,37 @@ MaybeSetCharacterSpeed (Character& c, const Json::Value& upd)
 }
 
 } // anonymous namespace
+
+void
+MoveProcessor::MaybeTransferCharacter (Character& c, const Json::Value& upd)
+{
+  CHECK (upd.isObject ());
+  const auto& sendToVal = upd["send"];
+  if (!sendToVal.isString ())
+    return;
+  const std::string sendTo = sendToVal.asString ();
+
+  const auto a = accounts.GetByName (sendTo);
+  if (a == nullptr)
+    {
+      LOG (WARNING)
+          << "Can't send character " << c.GetId ()
+          << " to uninitialised account " << sendTo;
+      return;
+    }
+  if (a->GetFaction () != c.GetFaction ())
+    {
+      LOG (WARNING)
+          << "Can't send character " << c.GetId ()
+          << " to account " << sendTo << " of different faction";
+      return;
+    }
+
+  VLOG (1)
+      << "Sending character " << c.GetId ()
+      << " from " << c.GetOwner () << " to " << sendTo;
+  c.SetOwner (sendTo);
+}
 
 void
 MoveProcessor::MaybeSetCharacterWaypoints (Character& c, const Json::Value& upd)

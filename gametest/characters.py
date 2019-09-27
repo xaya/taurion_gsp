@@ -40,7 +40,6 @@ class CharactersTest (PXTest):
     self.assertEqual (len (chars), len (expected))
 
     for nm, c in chars.iteritems ():
-      assert nm in expected
       c.expectPartial (expected[nm])
 
   def run (self):
@@ -87,15 +86,21 @@ class CharactersTest (PXTest):
 
     self.mainLogger.info ("Transfering a character...")
     self.initAccount ("andy", "r")
+    self.generate (1)
     c = self.getCharacters ()["adam"]
+    cid = c.getId ()
     c.sendMove ({"send": "andy"})
     self.generate (1)
-    self.expectPartial ({
-      "adam": {"owner": "adam", "faction": "r"},
-      "andy": {"owner": "andy", "faction": "r"},
-      "": {"owner": ""},
-      u"äöü": {"owner": u"äöü"},
-    })
+    self.getCharacters ()["andy"].expectPartial ({"id": cid})
+
+    self.mainLogger.info ("Invalid transfers...")
+    self.initAccount ("green", "g")
+    c = self.getCharacters ()["andy"]
+    cid = c.getId ()
+    c.sendMove ({"send": "uninitialised account"})
+    c.sendMove ({"send": "green"})
+    self.generate (1)
+    self.getCharacters ()["andy"].expectPartial ({"id": cid})
 
     self.mainLogger.info ("Non-owner cannot update the character...")
     c = self.getCharacters ()["adam"]
@@ -124,6 +129,7 @@ class CharactersTest (PXTest):
 
     self.mainLogger.info ("Updates with ID lists...")
     self.initAccount ("idlist", "b")
+    self.generate (1)
     id1 = self.getCharacters ()["domob"].getId ()
     id2 = self.getCharacters ()["domob 2"].getId ()
     self.sendMove ("domob", {

@@ -181,6 +181,12 @@ private:
   void HandleGodMode (const Json::Value& cmd);
 
   /**
+   * Transfers the given character if the update JSON contains a request
+   * to do so.
+   */
+  void MaybeTransferCharacter (Character& c, const Json::Value& upd);
+
+  /**
    * Sets the character's waypoints if a valid command for starting a move
    * is there.
    */

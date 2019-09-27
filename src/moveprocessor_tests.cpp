@@ -533,10 +533,23 @@ TEST_F (CharacterUpdateTests, ValidTransfer)
 
 TEST_F (CharacterUpdateTests, InvalidTransfer)
 {
-  Process (R"([{
-    "name": "domob",
-    "move": {"c": {"1": {"send": false}}}
-  }])");
+  accounts.CreateNew ("wrong faction", Faction::GREEN);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"send": false}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"send": "uninitialised account"}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"send": "wrong faction"}}}
+    }
+  ])");
+
   ExpectCharacterOwners ({{1, "domob"}});
 }
 
