@@ -49,7 +49,7 @@ class CharactersTest (PXTest):
     self.mainLogger.info ("Creating first character...")
     self.moveWithPayment ("adam", {
       "a": {"init": {"faction": "r"}},
-      "nc": [{"faction": "r"}],
+      "nc": [{}],
     }, CHARACTER_COST)
     self.generate (1)
     self.expectPartial ({
@@ -58,7 +58,7 @@ class CharactersTest (PXTest):
 
     self.mainLogger.info ("Testing \"\" as owner name...")
     self.initAccount ("", "g")
-    self.createCharacter ("", "g")
+    self.createCharacters ("")
     self.generate (1)
     self.expectPartial ({
       "adam": {"owner": "adam", "faction": "r"},
@@ -66,17 +66,17 @@ class CharactersTest (PXTest):
     })
 
     self.mainLogger.info ("Creating second character for one owner...")
-    self.createCharacter ("adam", "b")
+    self.createCharacters ("adam")
     self.generate (1)
     self.expectPartial ({
       "adam": {"owner": "adam", "faction": "r"},
-      "adam 2": {"owner": "adam", "faction": "b"},
+      "adam 2": {"owner": "adam", "faction": "r"},
       "": {"owner": "", "faction": "g"},
     })
 
     self.mainLogger.info ("Testing Unicode owner...")
     self.initAccount (u"äöü", "b")
-    self.createCharacter (u"äöü", "b")
+    self.createCharacters (u"äöü")
     self.generate (1)
     self.expectPartial ({
       "adam": {"owner": "adam"},
@@ -90,7 +90,7 @@ class CharactersTest (PXTest):
     c.sendMove ({"send": "andy"})
     self.generate (1)
     self.expectPartial ({
-      "adam": {"owner": "adam", "faction": "b"},
+      "adam": {"owner": "adam", "faction": "r"},
       "andy": {"owner": "andy", "faction": "r"},
       "": {"owner": ""},
       u"äöü": {"owner": u"äöü"},
@@ -110,12 +110,7 @@ class CharactersTest (PXTest):
 
     self.mainLogger.info ("Multiple creations in one transaction...")
     self.initAccount ("domob", "r")
-    data = [
-      {"faction": "r"},
-      {"faction": "r"},
-      {"faction": "r"},
-    ]
-    self.moveWithPayment ("domob", {"nc": data}, 2.5 * CHARACTER_COST)
+    self.moveWithPayment ("domob", {"nc": [{}, {}, {}]}, 2.5 * CHARACTER_COST)
     self.generate (1)
     self.expectPartial ({
       "adam": {"owner": "adam"},
@@ -153,7 +148,7 @@ class CharactersTest (PXTest):
 
     self.collectPremine ()
     self.initAccount ("domob", "b")
-    self.createCharacter ("domob", "b")
+    self.createCharacters ("domob")
     self.generate (1)
     self.expectPartial ({
       "domob": {"owner": "domob"},

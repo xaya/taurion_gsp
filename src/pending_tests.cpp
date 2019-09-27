@@ -298,7 +298,7 @@ protected:
 TEST_F (PendingStateUpdaterTests, AccountNotInitialised)
 {
   ProcessWithDevPayment ("domob", params.CharacterCost (), R"({
-    "nc": [{"faction": "r"}]
+    "nc": [{}]
   })");
 
   ExpectStateJson (R"(
@@ -314,12 +314,12 @@ TEST_F (PendingStateUpdaterTests, InvalidCreation)
 
   ProcessWithDevPayment ("domob", params.CharacterCost (), R"(
     {
-      "nc": [{"faction": "r", "x": 5}]
+      "nc": [{"faction": "r"}]
     }
   )");
   Process ("domob", R"(
     {
-      "nc": [{"faction": "r"}]
+      "nc": [{}]
     }
   )");
 
@@ -336,10 +336,10 @@ TEST_F (PendingStateUpdaterTests, ValidCreations)
   accounts.CreateNew ("andy", Faction::GREEN);
 
   ProcessWithDevPayment ("domob", 2 * params.CharacterCost (), R"({
-    "nc": [{"faction": "r"}, {"faction": "r"}, {"faction": "r"}]
+    "nc": [{}, {}, {}]
   })");
   ProcessWithDevPayment ("andy", params.CharacterCost (), R"({
-    "nc": [{"faction": "g"}]
+    "nc": [{}]
   })");
 
   ExpectStateJson (R"(
@@ -475,7 +475,7 @@ TEST_F (PendingStateUpdaterTests, CreationAndUpdateTogether)
   CHECK_EQ (characters.CreateNew ("domob", Faction::RED)->GetId (), 1);
 
   ProcessWithDevPayment ("domob", params.CharacterCost (), R"({
-    "nc": [{"faction": "r"}],
+    "nc": [{}],
     "c": {"1": {"wp": []}}
   })");
 

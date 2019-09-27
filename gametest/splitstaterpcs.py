@@ -33,8 +33,8 @@ class SplitStateRpcsTest (PXTest):
     # regions and kills/fame.
     self.initAccount ("prospector", "r")
     self.initAccount ("killed", "g")
-    self.createCharacter ("prospector", "r")
-    self.createCharacter ("killed", "g")
+    self.createCharacters ("prospector")
+    self.createCharacters ("killed")
     self.generate (1)
     self.moveCharactersTo ({
       "prospector": {"x": 0, "y": 0},

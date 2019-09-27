@@ -30,9 +30,9 @@ class FameTest (PXTest):
 
     self.mainLogger.info ("Characters killing each other at the same time...")
     self.initAccount ("foo", "r")
-    self.createCharacter ("foo", "r")
+    self.createCharacters ("foo")
     self.initAccount ("bar", "g")
-    self.createCharacter ("bar", "g")
+    self.createCharacters ("bar")
     self.generate (1)
     self.moveCharactersTo ({
       "foo": {"x": 0, "y": 0},
@@ -54,11 +54,11 @@ class FameTest (PXTest):
 
     self.mainLogger.info ("Multiple killers...")
     self.initAccount ("red", "r")
-    self.createCharacters ("red", 2 * ["r"])
+    self.createCharacters ("red", 2)
     self.initAccount ("green", "g")
-    self.createCharacter ("green", "g")
+    self.createCharacters ("green")
     self.initAccount ("blue", "b")
-    self.createCharacter ("blue", "b")
+    self.createCharacters ("blue")
     self.generate (1)
     self.moveCharactersTo ({
       "blue": {"x": 0, "y": 0},
@@ -86,11 +86,11 @@ class FameTest (PXTest):
     self.mainLogger.info ("Many characters for a name...")
     armySize = 10
     self.initAccount ("army", "r")
-    self.createCharacters ("army", armySize * ["r"])
+    self.createCharacters ("army", armySize)
     self.initAccount ("other army", "r")
-    self.createCharacters ("other army", armySize * ["r"])
+    self.createCharacters ("other army", armySize)
     self.initAccount ("target", "b")
-    self.createCharacters ("target", 2 * ["b"])
+    self.createCharacters ("target", 2)
     self.generate (1)
     mv = {
       "target": {"x": 100, "y": 0},

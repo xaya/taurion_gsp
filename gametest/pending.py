@@ -47,7 +47,7 @@ class PendingTest (PXTest):
     self.mainLogger.info ("Creating test character...")
     self.initAccount ("andy", "b")
     self.initAccount ("domob", "r")
-    self.createCharacter ("domob", "r")
+    self.createCharacters ("domob")
     self.generate (1)
     self.moveCharactersTo ({
       "domob": position,
@@ -61,7 +61,7 @@ class PendingTest (PXTest):
     })
 
     self.mainLogger.info ("Performing pending updates...")
-    self.createCharacter ("domob", "r")
+    self.createCharacters ("domob")
     c = self.getCharacters ()["domob"]
     c.sendMove ({"wp": []})
 
@@ -80,8 +80,8 @@ class PendingTest (PXTest):
         ],
     })
 
-    self.createCharacter ("domob", "r")
-    self.createCharacter ("andy", "b")
+    self.createCharacters ("domob")
+    self.createCharacters ("andy")
     c.sendMove ({"wp": [{"x": 5, "y": -5}]})
 
     sleepSome ()

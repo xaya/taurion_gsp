@@ -30,7 +30,7 @@ class MultiUpdateTest (PXTest):
 
     self.mainLogger.info ("Creating test character...")
     self.initAccount ("domob", "r")
-    self.createCharacter ("domob", "r")
+    self.createCharacters ("domob")
     self.generate (1)
 
     # Start off from a known good location to make sure all is fine and

@@ -222,7 +222,7 @@ TEST_F (AccountUpdateTests, InitialisationAndCharacterCreation)
     {"name": "domob", "move":
       {
         "a": {"x": 42, "init": {"faction": "b"}},
-        "nc": [{"faction": "b"}]
+        "nc": [{}]
       }
     }
   ])", params.CharacterCost ());
@@ -257,13 +257,7 @@ TEST_F (CharacterCreationTests, InvalidCommands)
   ProcessWithDevPayment (R"([
     {"name": "domob", "move": {}},
     {"name": "domob", "move": {"nc": 42}},
-    {"name": "domob", "move": {"nc": [{}]}},
-    {"name": "domob", "move":
-      {
-        "nc": [{"faction": "r", "other": false}]
-      }},
-    {"name": "domob", "move": {"nc": [{"faction": "x"}]}},
-    {"name": "domob", "move": {"nc": [{"faction": 0}]}}
+    {"name": "domob", "move": {"nc": [{"faction": "r"}]}}
   ])", params.CharacterCost ());
 
   auto res = tbl.QueryAll ();
@@ -273,7 +267,7 @@ TEST_F (CharacterCreationTests, InvalidCommands)
 TEST_F (CharacterCreationTests, AccountNotInitialised)
 {
   ProcessWithDevPayment (R"([
-    {"name": "domob", "move": {"nc": []}}
+    {"name": "domob", "move": {"nc": [{}]}}
   ])", params.CharacterCost ());
 
   auto res = tbl.QueryAll ();
@@ -283,12 +277,12 @@ TEST_F (CharacterCreationTests, AccountNotInitialised)
 TEST_F (CharacterCreationTests, ValidCreation)
 {
   accounts.CreateNew ("domob", Faction::RED);
-  accounts.CreateNew ("andy", Faction::RED);
+  accounts.CreateNew ("andy", Faction::BLUE);
 
   ProcessWithDevPayment (R"([
     {"name": "domob", "move": {"nc": []}},
-    {"name": "domob", "move": {"nc": [{"faction": "r"}]}},
-    {"name": "andy", "move": {"nc": [{"faction": "b"}]}}
+    {"name": "domob", "move": {"nc": [{}]}},
+    {"name": "andy", "move": {"nc": [{}]}}
   ])", params.CharacterCost ());
 
   auto res = tbl.QueryAll ();
@@ -312,13 +306,13 @@ TEST_F (CharacterCreationTests, DevPayment)
   accounts.CreateNew ("andy", Faction::GREEN);
 
   Process (R"([
-    {"name": "domob", "move": {"nc": [{"faction": "r"}]}}
+    {"name": "domob", "move": {"nc": [{}]}}
   ])");
   ProcessWithDevPayment (R"([
-    {"name": "domob", "move": {"nc": [{"faction": "r"}]}}
+    {"name": "domob", "move": {"nc": [{}]}}
   ])", params.CharacterCost () - 1);
   ProcessWithDevPayment (R"([
-    {"name": "andy", "move": {"nc": [{"faction": "g"}]}}
+    {"name": "andy", "move": {"nc": [{}]}}
   ])", params.CharacterCost () + 1);
 
   auto res = tbl.QueryAll ();
@@ -338,13 +332,7 @@ TEST_F (CharacterCreationTests, Multiple)
       "name": "domob",
       "move":
         {
-          "nc":
-            [
-              {"faction": "invalid"},
-              {"faction": "r"},
-              {"faction": "r"},
-              {"faction": "r"}
-            ]
+          "nc": [{}, {}, {}]
         }
     }
   ])", 2 * params.CharacterCost ());
@@ -442,7 +430,7 @@ TEST_F (CharacterUpdateTests, CreationAndUpdate)
     "name": "domob",
     "move":
       {
-        "nc": [{"faction": "r"}],
+        "nc": [{}],
         "c": {"1": {"send": "daniel"}, "2": {"send": "andy"}}
       }
   }])", params.CharacterCost ());

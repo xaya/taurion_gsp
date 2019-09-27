@@ -26,7 +26,9 @@ CREATE TABLE IF NOT EXISTS `characters` (
 
   -- The faction (as integer corresponding to the Faction enum in C++).
   -- We need this for querying combat targets, which should be possible to
-  -- do without decoding the proto.
+  -- do without decoding the proto.  Note that this field is in theory
+  -- redundant with the owner account's faction, but we have it duplicated here
+  -- for easy access and because the faction is often needed for characters.
   `faction` INTEGER NOT NULL,
 
   -- Current position of the character on the map.  We need this in the table

@@ -64,11 +64,11 @@ class ProspectingTest (PXTest):
 
     self.mainLogger.info ("Setting up test characters...")
     self.initAccount ("target", "r")
-    self.createCharacter ("target", "r")
+    self.createCharacters ("target")
     self.initAccount ("attacker 1", "g")
-    self.createCharacter ("attacker 1", "g")
+    self.createCharacters ("attacker 1")
     self.initAccount ("attacker 2", "g")
-    self.createCharacter ("attacker 2", "g")
+    self.createCharacters ("attacker 2")
     self.generate (1)
 
     # Set up known positions of the characters.  We use a known good position
@@ -206,7 +206,7 @@ class ProspectingTest (PXTest):
     self.mainLogger.info ("Testing randomisation of prizes...")
 
     self.initAccount ("prize trier", "r")
-    c = self.createCharacter ("prize trier", "r")
+    c = self.createCharacters ("prize trier")
     self.generate (1)
     pos = {"x": -1000, "y": 1000}
     self.moveCharactersTo ({"prize trier": pos})
@@ -287,7 +287,7 @@ class ProspectingTest (PXTest):
         assert region.getId () not in regionIds
         regionIds.add (region.getId ())
 
-        self.createCharacter ("prize trier", "r")
+        self.createCharacters ("prize trier")
         nm = "prize trier %d" % nextInd
         nextInd += 1
         sendTo[nm] = pos

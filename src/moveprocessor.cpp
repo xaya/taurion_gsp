@@ -70,6 +70,13 @@ BaseMoveProcessor::TryCharacterCreation (const std::string& name,
 
   VLOG (1) << "Attempting to create new characters through move: " << cmd;
 
+  const auto account = accounts.GetByName (name);
+  CHECK (account != nullptr);
+  const Faction faction = account->GetFaction ();
+  VLOG (1)
+      << "The new characters' account " << name
+      << " has faction: " << FactionToString (faction);
+
   for (const auto& cur : cmd)
     {
       if (!cur.isObject ())
@@ -79,21 +86,7 @@ BaseMoveProcessor::TryCharacterCreation (const std::string& name,
           continue;
         }
 
-      const auto& factionVal = cur["faction"];
-      if (!factionVal.isString ())
-        {
-          LOG (WARNING)
-              << "Character creation does not specify faction: " << cur;
-          continue;
-        }
-      const Faction faction = FactionFromString (factionVal.asString ());
-      if (faction == Faction::INVALID)
-        {
-          LOG (WARNING) << "Invalid faction specified for character: " << cur;
-          continue;
-        }
-
-      if (cur.size () != 1)
+      if (cur.size () != 0)
         {
           LOG (WARNING) << "Character creation has extra fields: " << cur;
           continue;

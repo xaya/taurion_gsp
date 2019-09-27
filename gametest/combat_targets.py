@@ -56,10 +56,9 @@ class CombatTargetTest (PXTest):
 
     self.mainLogger.info ("Creating test characters...")
     self.initAccount ("red", "r")
-    self.createCharacter ("red", "r")
+    self.createCharacters ("red")
     self.initAccount ("green", "g")
-    self.createCharacter ("green", "g")
-    self.createCharacter ("green", "g")
+    self.createCharacters ("green", 2)
     self.generate (1)
 
     # We use the starting coordinate of green 1 as offset for coordinates,

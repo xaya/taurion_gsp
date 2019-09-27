@@ -49,10 +49,9 @@ class CombatDamageTest (PXTest):
 
     self.mainLogger.info ("Creating test characters...")
     self.initAccount (TARGET, "b")
-    self.createCharacter (TARGET, "b")
+    self.createCharacters (TARGET)
     self.initAccount ("attacker", "r")
-    self.createCharacter ("attacker", "r")
-    self.createCharacter ("attacker", "r")
+    self.createCharacters ("attacker", 2)
     self.generate (1)
 
     # We use a known good position as offset for our test.

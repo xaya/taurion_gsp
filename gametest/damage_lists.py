@@ -55,9 +55,9 @@ class DamageListsTest (PXTest):
 
     self.mainLogger.info ("Creating test characters...")
     self.initAccount ("target", "b")
-    self.createCharacter ("target", "b")
+    self.createCharacters ("target")
     self.initAccount ("attacker", "r")
-    self.createCharacters ("attacker", ["r"] * 2)
+    self.createCharacters ("attacker", 2)
     self.generate (1)
 
     # We use a known good position as offset and move the characters

@@ -96,7 +96,7 @@ class MovementTest (PXTest):
 
     self.mainLogger.info ("Creating test character...")
     self.initAccount ("domob", "r")
-    self.createCharacter ("domob", "r")
+    self.createCharacters ("domob")
     self.generate (1)
 
     # Start off from a known good location to make sure all is fine and
@@ -216,7 +216,7 @@ class MovementTest (PXTest):
     self.mainLogger.info ("Testing blocking the path...")
 
     self.initAccount ("blocker", "r")
-    self.createCharacter ("blocker", "r")
+    self.createCharacters ("blocker")
     self.generate (1)
 
     self.moveCharactersTo ({

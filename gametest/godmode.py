@@ -29,7 +29,7 @@ class GodModeTest (PXTest):
     self.collectPremine ()
 
     self.initAccount ("domob", "r")
-    self.createCharacter ("domob", "r")
+    self.createCharacters ("domob")
     self.generate (1)
     c = self.getCharacters ()["domob"]
     pos = c.getPosition ()

@@ -172,28 +172,13 @@ class PXTest (XayaGameTest):
 
     return self.sendMove (name, move)
 
-  def createCharacter (self, owner, faction):
-    """
-    Utility method to send a move creating a character.
-    """
-
-    data = {
-      "faction": faction,
-    }
-
-    return self.moveWithPayment (owner, {"nc": [data]}, CHARACTER_COST)
-
-  def createCharacters (self, owner, factions):
+  def createCharacters (self, owner, num=1):
     """
     Utility method to create multiple characters for a given owner.
     """
 
-    data = [{
-      "faction": faction,
-    } for faction in factions]
-
-    return self.moveWithPayment (owner, {"nc": data},
-                                 len (data) * CHARACTER_COST)
+    return self.moveWithPayment (owner, {"nc": [{}] * num},
+                                 num * CHARACTER_COST)
 
   def getCharacters (self):
     """
