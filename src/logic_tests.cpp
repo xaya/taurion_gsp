@@ -45,6 +45,8 @@
 namespace pxd
 {
 
+/* ************************************************************************** */
+
 /**
  * Test fixture for testing PXLogic::UpdateState.  It sets up a test database
  * independent from SQLiteGame, so that we can more easily test custom
@@ -141,6 +143,15 @@ protected:
     PXLogic::UpdateState (db, fame, rnd, params, map, blockData);
   }
 
+  /**
+   * Calls game-state validation.
+   */
+  void
+  ValidateState ()
+  {
+    PXLogic::ValidateStateSlow (db);
+  }
+
 };
 
 namespace
@@ -158,6 +169,8 @@ AddUnityAttack (Character& c, const HexCoord::IntT range)
   attack->set_min_damage (1);
   attack->set_max_damage (1);
 }
+
+/* ************************************************************************** */
 
 TEST_F (PXLogicTests, WaypointsBeforeMovement)
 {
@@ -546,6 +559,27 @@ TEST_F (PXLogicTests, FinishingProspecting)
   EXPECT_FALSE (r->GetProto ().has_prospecting_character ());
   EXPECT_EQ (r->GetProto ().prospection ().name (), "domob");
 }
+
+/* ************************************************************************** */
+
+using ValidateStateTests = PXLogicTests;
+
+TEST_F (ValidateStateTests, CharacterFactions)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  const auto id = c->GetId ();
+  c.reset ();
+  EXPECT_DEATH (ValidateState (), "owned by uninitialised account");
+
+  accounts.CreateNew ("domob", Faction::GREEN);
+  EXPECT_DEATH (ValidateState (), "Faction mismatch");
+
+  accounts.CreateNew ("andy", Faction::RED);
+  characters.GetById (id)->SetOwner ("andy");
+  ValidateState ();
+}
+
+/* ************************************************************************** */
 
 } // anonymous namespace
 } // namespace pxd

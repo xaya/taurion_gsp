@@ -24,6 +24,7 @@
 #include "moveprocessor.hpp"
 #include "prospecting.hpp"
 
+#include "database/account.hpp"
 #include "database/schema.hpp"
 
 #include <glog/logging.h>
@@ -119,6 +120,10 @@ PXLogic::UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
 
   ProcessAllMovement (db, dyn, params, map);
   FindCombatTargets (db, rnd);
+
+#ifdef ENABLE_SLOW_ASSERTS
+  ValidateStateSlow (db);
+#endif // ENABLE_SLOW_ASSERTS
 }
 
 void
@@ -197,6 +202,52 @@ PXLogic::GetCustomStateData (xaya::Game& game, const JsonStateFromDatabase& cb)
 
           return cb (gsj);
         });
+}
+
+namespace
+{
+
+/**
+ * Verifies that each character's faction in the database matches the
+ * owner's faction.
+ */
+void
+ValidateCharacterFactions (Database& db)
+{
+  std::unordered_map<std::string, Faction> accountFactions;
+  {
+    AccountsTable accounts(db);
+    auto res = accounts.QueryInitialised ();
+    while (res.Step ())
+      {
+        auto a = accounts.GetFromResult (res);
+        auto insert = accountFactions.emplace (a->GetName (), a->GetFaction ());
+        CHECK (insert.second) << "Duplicate account name " << a->GetName ();
+      }
+  }
+
+  CharacterTable characters(db);
+  auto res = characters.QueryAll ();
+  while (res.Step ())
+    {
+      auto c = characters.GetFromResult (res);
+      const auto mit = accountFactions.find (c->GetOwner ());
+      CHECK (mit != accountFactions.end ())
+          << "Character " << c->GetId ()
+          << " owned by uninitialised account " << c->GetOwner ();
+      CHECK (c->GetFaction () == mit->second)
+          << "Faction mismatch between character " << c->GetId ()
+          << " and owner account " << c->GetOwner ();
+    }
+}
+
+} // anonymous namespace
+
+void
+PXLogic::ValidateStateSlow (Database& db)
+{
+  LOG (INFO) << "Performing slow validation of the game-state database...";
+  ValidateCharacterFactions (db);
 }
 
 } // namespace pxd

@@ -86,6 +86,7 @@ class CharactersTest (PXTest):
     })
 
     self.mainLogger.info ("Transfering a character...")
+    self.initAccount ("andy", "r")
     c = self.getCharacters ()["adam"]
     c.sendMove ({"send": "andy"})
     self.generate (1)
@@ -109,7 +110,7 @@ class CharactersTest (PXTest):
     })
 
     self.mainLogger.info ("Multiple creations in one transaction...")
-    self.initAccount ("domob", "r")
+    self.initAccount ("domob", "b")
     self.moveWithPayment ("domob", {"nc": [{}, {}, {}]}, 2.5 * CHARACTER_COST)
     self.generate (1)
     self.expectPartial ({
@@ -117,11 +118,12 @@ class CharactersTest (PXTest):
       "andy": {"owner": "andy"},
       "": {"owner": ""},
       u"äöü": {"owner": u"äöü"},
-      "domob": {"faction": "r"},
-      "domob 2": {"faction": "r"},
+      "domob": {"faction": "b"},
+      "domob 2": {"faction": "b"},
     })
 
     self.mainLogger.info ("Updates with ID lists...")
+    self.initAccount ("idlist", "b")
     id1 = self.getCharacters ()["domob"].getId ()
     id2 = self.getCharacters ()["domob 2"].getId ()
     self.sendMove ("domob", {
@@ -147,7 +149,7 @@ class CharactersTest (PXTest):
     self.rpc.xaya.invalidateblock (blk)
 
     self.collectPremine ()
-    self.initAccount ("domob", "b")
+    self.initAccount ("domob", "r")
     self.createCharacters ("domob")
     self.generate (1)
     self.expectPartial ({
