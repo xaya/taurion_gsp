@@ -102,6 +102,15 @@ private:
                            const Params& params, const BaseMap& map,
                            const Json::Value& blockData);
 
+  /**
+   * Performs (potentially slow) validations on the current database state.
+   * This is used when compiled with --enable-slow-asserts after each block
+   * update, for testing purposes.  It should not be run in production builds
+   * because it may really slow down syncing.  If an error is detected, then
+   * this CHECK-fails the binary.
+   */
+  static void ValidateStateSlow (Database& db);
+
   friend class PXLogicTests;
   friend class PXRpcServer;
   friend class SQLiteGameDatabase;

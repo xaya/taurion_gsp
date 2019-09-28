@@ -61,8 +61,10 @@ private:
 
 protected:
 
+  AccountsTable accounts;
+
   explicit MoveProcessorTests (const xaya::Chain c = xaya::Chain::MAIN)
-    : params(c), dyn(db), mvProc(db, dyn, rnd, params, map)
+    : params(c), dyn(db), mvProc(db, dyn, rnd, params, map), accounts(db)
   {}
 
   /**
@@ -175,6 +177,65 @@ TEST_F (MoveProcessorTests, AllAdminDataAccepted)
 
 /* ************************************************************************** */
 
+using AccountUpdateTests = MoveProcessorTests;
+
+TEST_F (AccountUpdateTests, Initialisation)
+{
+  Process (R"([
+    {"name": "domob", "move": {"a": {"x": 42, "init": {"faction": "b"}}}}
+  ])");
+
+  auto a = accounts.GetByName ("domob");
+  ASSERT_TRUE (a != nullptr);
+  EXPECT_EQ (a->GetFaction (), Faction::BLUE);
+}
+
+TEST_F (AccountUpdateTests, InvalidInitialisation)
+{
+  Process (R"([
+    {"name": "domob", "move": {"a": {"init": {"x": 1, "faction": "b"}}}},
+    {"name": "domob", "move": {"a": {"init": {"faction": "x"}}}},
+    {"name": "domob", "move": {"a": {"init": {"y": 5}}}},
+    {"name": "domob", "move": {"a": {"init": false}}},
+    {"name": "domob", "move": {"a": 42}}
+  ])");
+
+  EXPECT_TRUE (accounts.GetByName ("domob") == nullptr);
+}
+
+TEST_F (AccountUpdateTests, InitialisationOfExistingAccount)
+{
+  accounts.CreateNew ("domob", Faction::RED);
+
+  Process (R"([
+    {"name": "domob", "move": {"a": {"init": {"faction": "b"}}}}
+  ])");
+
+  auto a = accounts.GetByName ("domob");
+  ASSERT_TRUE (a != nullptr);
+  EXPECT_EQ (a->GetFaction (), Faction::RED);
+}
+
+TEST_F (AccountUpdateTests, InitialisationAndCharacterCreation)
+{
+  ProcessWithDevPayment (R"([
+    {"name": "domob", "move":
+      {
+        "a": {"x": 42, "init": {"faction": "b"}},
+        "nc": [{}]
+      }
+    }
+  ])", params.CharacterCost ());
+
+  CharacterTable characters(db);
+  auto c = characters.GetById (1);
+  ASSERT_TRUE (c != nullptr);
+  EXPECT_EQ (c->GetOwner (), "domob");
+  EXPECT_EQ (c->GetFaction (), Faction::BLUE);
+}
+
+/* ************************************************************************** */
+
 class CharacterCreationTests : public MoveProcessorTests
 {
 
@@ -191,16 +252,22 @@ protected:
 
 TEST_F (CharacterCreationTests, InvalidCommands)
 {
+  accounts.CreateNew ("domob", Faction::RED);
+
   ProcessWithDevPayment (R"([
     {"name": "domob", "move": {}},
     {"name": "domob", "move": {"nc": 42}},
-    {"name": "domob", "move": {"nc": [{}]}},
-    {"name": "domob", "move":
-      {
-        "nc": [{"faction": "r", "other": false}]
-      }},
-    {"name": "domob", "move": {"nc": [{"faction": "x"}]}},
-    {"name": "domob", "move": {"nc": [{"faction": 0}]}}
+    {"name": "domob", "move": {"nc": [{"faction": "r"}]}}
+  ])", params.CharacterCost ());
+
+  auto res = tbl.QueryAll ();
+  EXPECT_FALSE (res.Step ());
+}
+
+TEST_F (CharacterCreationTests, AccountNotInitialised)
+{
+  ProcessWithDevPayment (R"([
+    {"name": "domob", "move": {"nc": [{}]}}
   ])", params.CharacterCost ());
 
   auto res = tbl.QueryAll ();
@@ -209,11 +276,13 @@ TEST_F (CharacterCreationTests, InvalidCommands)
 
 TEST_F (CharacterCreationTests, ValidCreation)
 {
+  accounts.CreateNew ("domob", Faction::RED);
+  accounts.CreateNew ("andy", Faction::BLUE);
+
   ProcessWithDevPayment (R"([
     {"name": "domob", "move": {"nc": []}},
-    {"name": "domob", "move": {"nc": [{"faction": "r"}]}},
-    {"name": "domob", "move": {"nc": [{"faction": "g"}]}},
-    {"name": "andy", "move": {"nc": [{"faction": "b"}]}}
+    {"name": "domob", "move": {"nc": [{}]}},
+    {"name": "andy", "move": {"nc": [{}]}}
   ])", params.CharacterCost ());
 
   auto res = tbl.QueryAll ();
@@ -225,11 +294,6 @@ TEST_F (CharacterCreationTests, ValidCreation)
 
   ASSERT_TRUE (res.Step ());
   c = tbl.GetFromResult (res);
-  EXPECT_EQ (c->GetOwner (), "domob");
-  EXPECT_EQ (c->GetFaction (), Faction::GREEN);
-
-  ASSERT_TRUE (res.Step ());
-  c = tbl.GetFromResult (res);
   EXPECT_EQ (c->GetOwner (), "andy");
   EXPECT_EQ (c->GetFaction (), Faction::BLUE);
 
@@ -238,38 +302,37 @@ TEST_F (CharacterCreationTests, ValidCreation)
 
 TEST_F (CharacterCreationTests, DevPayment)
 {
+  accounts.CreateNew ("domob", Faction::RED);
+  accounts.CreateNew ("andy", Faction::GREEN);
+
   Process (R"([
-    {"name": "domob", "move": {"nc": [{"faction": "r"}]}}
+    {"name": "domob", "move": {"nc": [{}]}}
   ])");
   ProcessWithDevPayment (R"([
-    {"name": "domob", "move": {"nc": [{"faction": "g"}]}}
+    {"name": "domob", "move": {"nc": [{}]}}
   ])", params.CharacterCost () - 1);
   ProcessWithDevPayment (R"([
-    {"name": "domob", "move": {"nc": [{"faction": "b"}]}}
+    {"name": "andy", "move": {"nc": [{}]}}
   ])", params.CharacterCost () + 1);
 
   auto res = tbl.QueryAll ();
   ASSERT_TRUE (res.Step ());
   auto c = tbl.GetFromResult (res);
-  EXPECT_EQ (c->GetOwner (), "domob");
-  EXPECT_EQ (c->GetFaction (), Faction::BLUE);
+  EXPECT_EQ (c->GetOwner (), "andy");
+  EXPECT_EQ (c->GetFaction (), Faction::GREEN);
   EXPECT_FALSE (res.Step ());
 }
 
 TEST_F (CharacterCreationTests, Multiple)
 {
+  accounts.CreateNew ("domob", Faction::RED);
+
   ProcessWithDevPayment (R"([
     {
       "name": "domob",
       "move":
         {
-          "nc":
-            [
-              {"faction": "invalid"},
-              {"faction": "r"},
-              {"faction": "g"},
-              {"faction": "b"}
-            ]
+          "nc": [{}, {}, {}]
         }
     }
   ])", 2 * params.CharacterCost ());
@@ -282,7 +345,7 @@ TEST_F (CharacterCreationTests, Multiple)
 
   EXPECT_TRUE (res.Step ());
   c = tbl.GetFromResult (res);
-  EXPECT_EQ (c->GetFaction (), Faction::GREEN);
+  EXPECT_EQ (c->GetFaction (), Faction::RED);
 
   EXPECT_FALSE (res.Step ());
 }
@@ -314,6 +377,9 @@ protected:
   CharacterTable::Handle
   SetupCharacter (const Database::IdT id, const std::string& owner)
   {
+    if (accounts.GetByName (owner) == nullptr)
+      accounts.CreateNew (owner, Faction::RED);
+
     db.SetNextId (id);
     tbl.CreateNew (owner, Faction::RED);
 
@@ -357,11 +423,14 @@ protected:
 
 TEST_F (CharacterUpdateTests, CreationAndUpdate)
 {
+  accounts.CreateNew ("daniel", Faction::RED);
+  accounts.CreateNew ("andy", Faction::RED);
+
   ProcessWithDevPayment (R"([{
     "name": "domob",
     "move":
       {
-        "nc": [{"faction": "r"}],
+        "nc": [{}],
         "c": {"1": {"send": "daniel"}, "2": {"send": "andy"}}
       }
   }])", params.CharacterCost ());
@@ -372,6 +441,26 @@ TEST_F (CharacterUpdateTests, CreationAndUpdate)
   ExpectCharacterOwners ({{1, "daniel"}, {2, "domob"}});
 }
 
+TEST_F (CharacterUpdateTests, AccountNotInitialised)
+{
+  db.SetNextId (10);
+  auto c = tbl.CreateNew ("unknown account", Faction::RED);
+  ASSERT_EQ (c->GetId (), 10);
+  c.reset ();
+
+  ASSERT_EQ (accounts.GetByName ("unknown account"), nullptr);
+
+  ProcessWithDevPayment (R"([{
+    "name": "unknown account",
+    "move":
+      {
+        "c": {"10": {"send": "domob"}}
+      }
+  }])", params.CharacterCost ());
+
+  ExpectCharacterOwners ({{10, "unknown account"}});
+}
+
 TEST_F (CharacterUpdateTests, MultipleCharacters)
 {
   SetupCharacter (10, "domob");
@@ -379,6 +468,11 @@ TEST_F (CharacterUpdateTests, MultipleCharacters)
   SetupCharacter (12, "domob");
   SetupCharacter (13, "domob");
   SetupCharacter (14, "domob");
+
+  accounts.CreateNew ("andy", Faction::RED);
+  accounts.CreateNew ("bob", Faction::RED);
+  accounts.CreateNew ("charly", Faction::RED);
+  accounts.CreateNew ("mallory", Faction::RED);
 
   /* This whole command is invalid, because an ID is specified twice in it.  */
   Process (R"([{
@@ -427,6 +521,8 @@ TEST_F (CharacterUpdateTests, MultipleCharacters)
 
 TEST_F (CharacterUpdateTests, ValidTransfer)
 {
+  accounts.CreateNew ("andy", Faction::RED);
+
   EXPECT_EQ (GetTest ()->GetOwner (), "domob");
   Process (R"([{
     "name": "domob",
@@ -437,10 +533,23 @@ TEST_F (CharacterUpdateTests, ValidTransfer)
 
 TEST_F (CharacterUpdateTests, InvalidTransfer)
 {
-  Process (R"([{
-    "name": "domob",
-    "move": {"c": {"1": {"send": false}}}
-  }])");
+  accounts.CreateNew ("wrong faction", Faction::GREEN);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"send": false}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"send": "uninitialised account"}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"send": "wrong faction"}}}
+    }
+  ])");
+
   ExpectCharacterOwners ({{1, "domob"}});
 }
 
@@ -460,6 +569,8 @@ TEST_F (CharacterUpdateTests, OwnerCheck)
 
 TEST_F (CharacterUpdateTests, InvalidUpdate)
 {
+  accounts.CreateNew ("andy", Faction::RED);
+
   /* We want to test that one invalid update still allows for other
      updates (i.e. other characters) to be done successfully in the same
      move transaction.  Thus create another character with a later ID that
@@ -774,6 +885,8 @@ TEST_F (ProspectingMoveTests, RegionAlreadyProspected)
 
 TEST_F (ProspectingMoveTests, MultipleCharacters)
 {
+  accounts.CreateNew ("foo", Faction::RED);
+
   auto c = tbl.CreateNew ("foo", Faction::RED);
   ASSERT_EQ (c->GetId (), 2);
   c->SetPosition (pos);
@@ -845,6 +958,7 @@ protected:
 
 TEST_F (GodModeTests, InvalidTeleport)
 {
+  accounts.CreateNew ("domob", Faction::RED);
   const auto id = tbl.CreateNew ("domob", Faction::RED)->GetId ();
   ASSERT_EQ (id, 1);
 
@@ -860,6 +974,7 @@ TEST_F (GodModeTests, InvalidTeleport)
 
 TEST_F (GodModeTests, Teleport)
 {
+  accounts.CreateNew ("domob", Faction::RED);
   auto c = tbl.CreateNew ("domob", Faction::RED);
   const auto id = c->GetId ();
   ASSERT_EQ (id, 1);
@@ -887,6 +1002,7 @@ TEST_F (GodModeTests, Teleport)
 
 TEST_F (GodModeTests, SetHp)
 {
+  accounts.CreateNew ("domob", Faction::RED);
   auto c = tbl.CreateNew ("domob", Faction::RED);
   const auto id = c->GetId ();
   ASSERT_EQ (id, 1);
@@ -953,6 +1069,7 @@ protected:
 
 TEST_F (GodModeDisabledTests, Teleport)
 {
+  accounts.CreateNew ("domob", Faction::RED);
   const auto id = tbl.CreateNew ("domob", Faction::RED)->GetId ();
   ASSERT_EQ (id, 1);
 
@@ -965,6 +1082,7 @@ TEST_F (GodModeDisabledTests, Teleport)
 
 TEST_F (GodModeDisabledTests, SetHp)
 {
+  accounts.CreateNew ("domob", Faction::RED);
   auto c = tbl.CreateNew ("domob", Faction::RED);
   const auto id = c->GetId ();
   ASSERT_EQ (id, 1);

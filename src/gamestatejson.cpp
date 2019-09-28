@@ -234,6 +234,7 @@ template <>
 {
   Json::Value res(Json::objectValue);
   res["name"] = a.GetName ();
+  res["faction"] = FactionToString (a.GetFaction ());
   res["kills"] = IntToJson (a.GetKills ());
   res["fame"] = IntToJson (a.GetFame ());
 
@@ -308,7 +309,7 @@ Json::Value
 GameStateJson::Accounts ()
 {
   AccountsTable tbl(db);
-  return ResultsAsArray (tbl, tbl.QueryNonTrivial ());
+  return ResultsAsArray (tbl, tbl.QueryInitialised ());
 }
 
 Json::Value

@@ -47,6 +47,7 @@ FameUpdater::~FameUpdater ()
           << "Applying fame delta " << entry.second << " for " << entry.first;
 
       auto h = accounts.GetByName (entry.first);
+      CHECK (h != nullptr);
       int fame = h->GetFame ();
       fame += entry.second;
       fame = std::min<int> (MAX_FAME, std::max (0, fame));
@@ -70,7 +71,9 @@ FameUpdater::UpdateForKill (const Database::IdT victim,
   /* Determine the victim's fame level.  */
   auto victimCharacter = characters.GetById (victim);
   const std::string& victimOwner = victimCharacter->GetOwner ();
-  const unsigned victimFame = accounts.GetByName (victimOwner)->GetFame ();
+  auto victimAccount = accounts.GetByName (victimOwner);
+  CHECK (victimAccount != nullptr);
+  const unsigned victimFame = victimAccount->GetFame ();
   const int victimLevel = GetLevel (victimFame);
   VLOG (1)
       << "Victim fame: " << victimFame << " (level: " << victimLevel << ")";
@@ -92,6 +95,7 @@ FameUpdater::UpdateForKill (const Database::IdT victim,
     {
       VLOG (1) << "Killing account: " << owner;
       auto a = accounts.GetByName (owner);
+      CHECK (a != nullptr);
       a->SetKills (a->GetKills () + 1);
 
       const unsigned fame = a->GetFame ();

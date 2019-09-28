@@ -16,11 +16,11 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from pxtest import PXTest, offsetCoord
-
 """
 Tests dealing damage, regenerating the shield and killing characters.
 """
+
+from pxtest import PXTest, offsetCoord
 
 # Owner of the target character.
 TARGET = "target"
@@ -48,9 +48,10 @@ class CombatDamageTest (PXTest):
     numAttackers = 5
 
     self.mainLogger.info ("Creating test characters...")
-    self.createCharacter (TARGET, "b")
-    self.createCharacter ("attacker 1", "r")
-    self.createCharacter ("attacker 2", "r")
+    self.initAccount (TARGET, "b")
+    self.createCharacters (TARGET)
+    self.initAccount ("attacker", "r")
+    self.createCharacters ("attacker", 2)
     self.generate (1)
 
     # We use a known good position as offset for our test.
@@ -58,7 +59,7 @@ class CombatDamageTest (PXTest):
     self.inRange = offsetCoord ({"x": 0, "y": 0}, self.offset, False)
     outOfRange = offsetCoord ({"x": 0, "y": 20}, self.offset, False)
     self.moveCharactersTo ({
-      "attacker 1": offsetCoord ({"x": 0, "y": 1}, self.offset, False),
+      "attacker": offsetCoord ({"x": 0, "y": 1}, self.offset, False),
       "attacker 2": offsetCoord ({"x": 1, "y": 0}, self.offset, False),
     })
     self.getTargetHP ()

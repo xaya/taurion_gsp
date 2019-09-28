@@ -18,6 +18,7 @@
 
 #include "combat.hpp"
 
+#include "database/account.hpp"
 #include "database/character.hpp"
 #include "database/damagelists.hpp"
 #include "database/dbtest.hpp"
@@ -47,18 +48,22 @@ InsertCharacters (Database& db, const unsigned numIdle,
                   const unsigned numTargets, const unsigned numAttacks,
                   const unsigned targetHP)
 {
+  AccountsTable acc(db);
   CharacterTable tbl(db);
+
+  acc.CreateNew ("red", Faction::RED);
+  acc.CreateNew ("green", Faction::GREEN);
 
   for (unsigned i = 0; i < numIdle; ++i)
     {
-      auto c = tbl.CreateNew ("domob", Faction::RED);
+      auto c = tbl.CreateNew ("red", Faction::RED);
       c->MutableProto ().mutable_combat_data ();
       c.reset ();
     }
 
   for (unsigned i = 0; i < numTargets; ++i)
     {
-      auto c = tbl.CreateNew ("domob", Faction::GREEN);
+      auto c = tbl.CreateNew ("green", Faction::GREEN);
       const auto id = c->GetId ();
       auto& regen = c->MutableRegenData ();
       regen.set_shield_regeneration_mhp (1000);
@@ -66,7 +71,7 @@ InsertCharacters (Database& db, const unsigned numIdle,
       c->MutableHP ().set_armour (targetHP);
       c.reset ();
 
-      c = tbl.CreateNew ("domob", Faction::RED);
+      c = tbl.CreateNew ("red", Faction::RED);
       auto* cd = c->MutableProto ().mutable_combat_data ();
       for (unsigned j = 0; j < numAttacks; ++j)
         {

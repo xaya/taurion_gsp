@@ -111,6 +111,9 @@ class Account (object):
   def getName (self):
     return self.data["name"]
 
+  def getFaction (self):
+    return self.data["faction"]
+
 
 class Region (object):
   """
@@ -152,28 +155,30 @@ class PXTest (XayaGameTest):
 
     return self.sendMove (name, move, {"sendCoins": {DEVADDR: devAmount}})
 
-  def createCharacter (self, owner, faction):
+  def initAccount (self, name, faction):
     """
-    Utility method to send a move creating a character.
+    Utility method to initialise an account.
     """
 
-    data = {
-      "faction": faction,
+    move = {
+      "a":
+        {
+          "init":
+            {
+              "faction": faction,
+            },
+        },
     }
 
-    return self.moveWithPayment (owner, {"nc": [data]}, CHARACTER_COST)
+    return self.sendMove (name, move)
 
-  def createCharacters (self, owner, factions):
+  def createCharacters (self, owner, num=1):
     """
     Utility method to create multiple characters for a given owner.
     """
 
-    data = [{
-      "faction": faction,
-    } for faction in factions]
-
-    return self.moveWithPayment (owner, {"nc": data},
-                                 len (data) * CHARACTER_COST)
+    return self.moveWithPayment (owner, {"nc": [{}] * num},
+                                 num * CHARACTER_COST)
 
   def getCharacters (self):
     """

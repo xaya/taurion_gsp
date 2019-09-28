@@ -24,6 +24,7 @@
 #include "protoutils.hpp"
 #include "testutils.hpp"
 
+#include "database/account.hpp"
 #include "database/character.hpp"
 #include "database/damagelists.hpp"
 #include "database/dbtest.hpp"
@@ -44,6 +45,8 @@
 namespace pxd
 {
 
+/* ************************************************************************** */
+
 /**
  * Test fixture for testing PXLogic::UpdateState.  It sets up a test database
  * independent from SQLiteGame, so that we can more easily test custom
@@ -60,11 +63,12 @@ private:
 protected:
 
   const BaseMap map;
+  AccountsTable accounts;
   CharacterTable characters;
   RegionsTable regions;
 
   PXLogicTests ()
-    : params(xaya::Chain::MAIN), characters(db), regions(db)
+    : params(xaya::Chain::MAIN), accounts(db), characters(db), regions(db)
   {
     InitialisePrizes (db, params);
   }
@@ -88,6 +92,21 @@ protected:
     in >> blockData["moves"];
 
     return blockData;
+  }
+
+  /**
+   * Creates a new character for the given name and faction.  Initialises
+   * the account in the database first as needed.
+   */
+  CharacterTable::Handle
+  CreateCharacter (const std::string& name, const Faction f)
+  {
+    auto a = accounts.GetByName (name);
+    if (a == nullptr)
+      a = accounts.CreateNew (name, f);
+
+    CHECK (a->GetFaction () == f);
+    return characters.CreateNew (name, f);
   }
 
   /**
@@ -124,6 +143,15 @@ protected:
     PXLogic::UpdateState (db, fame, rnd, params, map, blockData);
   }
 
+  /**
+   * Calls game-state validation.
+   */
+  void
+  ValidateState ()
+  {
+    PXLogic::ValidateStateSlow (db);
+  }
+
 };
 
 namespace
@@ -142,9 +170,11 @@ AddUnityAttack (Character& c, const HexCoord::IntT range)
   attack->set_max_damage (1);
 }
 
+/* ************************************************************************** */
+
 TEST_F (PXLogicTests, WaypointsBeforeMovement)
 {
-  auto c = characters.CreateNew ("domob", Faction::RED);
+  auto c = CreateCharacter ("domob", Faction::RED);
   ASSERT_EQ (c->GetId (), 1);
   c->MutableVolatileMv ().set_partial_step (1000);
   auto& pb = c->MutableProto ();
@@ -167,12 +197,12 @@ TEST_F (PXLogicTests, WaypointsBeforeMovement)
 
 TEST_F (PXLogicTests, MovementBeforeTargeting)
 {
-  auto c = characters.CreateNew ("domob", Faction::RED);
+  auto c = CreateCharacter ("domob", Faction::RED);
   const auto id1 = c->GetId ();
   AddUnityAttack (*c, 10);
   c.reset ();
 
-  c = characters.CreateNew ("domob", Faction::GREEN);
+  c = CreateCharacter ("andy", Faction::GREEN);
   const auto id2 = c->GetId ();
   c->SetPosition (HexCoord (11, 0));
   auto& pb = c->MutableProto ();
@@ -203,20 +233,20 @@ TEST_F (PXLogicTests, MovementBeforeTargeting)
 
 TEST_F (PXLogicTests, KilledVehicleNoLongerBlocks)
 {
-  auto c = characters.CreateNew ("attacker", Faction::GREEN);
+  auto c = CreateCharacter ("attacker", Faction::GREEN);
   const auto idAttacker = c->GetId ();
   c->SetPosition (HexCoord (11, 0));
   AddUnityAttack (*c, 1);
   c.reset ();
 
-  c = characters.CreateNew ("obstacle", Faction::RED);
+  c = CreateCharacter ("obstacle", Faction::RED);
   const auto idObstacle = c->GetId ();
   c->SetPosition (HexCoord (10, 0));
   c->MutableHP ().set_armour (1);
   c->MutableProto ().mutable_combat_data ();
   c.reset ();
 
-  c = characters.CreateNew ("moving", Faction::RED);
+  c = CreateCharacter ("moving", Faction::RED);
   const auto idMoving = c->GetId ();
   c->SetPosition (HexCoord (9, 0));
   auto& pb = c->MutableProto ();
@@ -246,11 +276,11 @@ TEST_F (PXLogicTests, KilledVehicleNoLongerBlocks)
 
 TEST_F (PXLogicTests, DamageInNextRound)
 {
-  auto c = characters.CreateNew ("domob", Faction::RED);
+  auto c = CreateCharacter ("domob", Faction::RED);
   AddUnityAttack (*c, 1);
   c.reset ();
 
-  c = characters.CreateNew ("domob", Faction::GREEN);
+  c = CreateCharacter ("andy", Faction::GREEN);
   const auto idTarget = c->GetId ();
   c->MutableHP ().set_armour (100);
   c->MutableProto ().mutable_combat_data ();
@@ -264,11 +294,11 @@ TEST_F (PXLogicTests, DamageInNextRound)
 
 TEST_F (PXLogicTests, DamageKillsRegeneration)
 {
-  auto c = characters.CreateNew ("domob", Faction::RED);
+  auto c = CreateCharacter ("domob", Faction::RED);
   AddUnityAttack (*c, 1);
   c.reset ();
 
-  c = characters.CreateNew ("domob", Faction::GREEN);
+  c = CreateCharacter ("andy", Faction::GREEN);
   const auto idTarget = c->GetId ();
   c->MutableProto ().mutable_combat_data ();
   c.reset ();
@@ -296,12 +326,12 @@ TEST_F (PXLogicTests, DamageLists)
 {
   DamageLists dl(db, 0);
 
-  auto c = characters.CreateNew ("domob", Faction::RED);
+  auto c = CreateCharacter ("domob", Faction::RED);
   const auto idAttacker = c->GetId ();
   AddUnityAttack (*c, 1);
   c.reset ();
 
-  c = characters.CreateNew ("domob", Faction::GREEN);
+  c = CreateCharacter ("andy", Faction::GREEN);
   const auto idTarget = c->GetId ();
   c->MutableProto ().mutable_combat_data ();
   auto& regen = c->MutableRegenData ();
@@ -344,7 +374,7 @@ TEST_F (PXLogicTests, FameUpdate)
   std::vector<Database::IdT> ids;
   for (const auto f : {Faction::RED, Faction::GREEN})
     {
-      auto c = characters.CreateNew ("domob", f);
+      auto c = CreateCharacter (FactionToString (f), f);
       ids.push_back (c->GetId ());
       AddUnityAttack (*c, 1);
       auto& regen = c->MutableRegenData ();
@@ -390,7 +420,7 @@ TEST_F (PXLogicTests, ProspectingBeforeMovement)
       << "Neighbouring coordinates " << pos1 << " and " << pos2
       << " are in differing regions " << region1 << " and " << region2;
 
-  auto c = characters.CreateNew ("domob", Faction::RED);
+  auto c = CreateCharacter ("domob", Faction::RED);
   ASSERT_EQ (c->GetId (), 1);
   c->SetPosition (pos1);
   c->MutableVolatileMv ().set_partial_step (1000);
@@ -423,13 +453,13 @@ TEST_F (PXLogicTests, ProspectingUserKilled)
   const auto region = map.Regions ().GetRegionId (pos);
 
   /* Set up characters such that one is killing the other on the next round.  */
-  auto c = characters.CreateNew ("domob", Faction::RED);
+  auto c = CreateCharacter ("domob", Faction::RED);
   ASSERT_EQ (c->GetId (), 1);
   c->SetPosition (pos);
   AddUnityAttack (*c, 1);
   c.reset ();
 
-  c = characters.CreateNew ("domob", Faction::GREEN);
+  c = CreateCharacter ("andy", Faction::GREEN);
   ASSERT_EQ (c->GetId (), 2);
   c->SetPosition (pos);
   c->MutableProto ().mutable_combat_data ();
@@ -443,7 +473,7 @@ TEST_F (PXLogicTests, ProspectingUserKilled)
      with the character that will be killed.  */
   UpdateState (R"([
     {
-      "name": "domob",
+      "name": "andy",
       "move": {"c": {"2": {"prospect": {}}}}
     }
   ])");
@@ -485,7 +515,7 @@ TEST_F (PXLogicTests, FinishingProspecting)
   const HexCoord pos(5, 5);
   const auto region = map.Regions ().GetRegionId (pos);
 
-  auto c = characters.CreateNew ("domob", Faction::RED);
+  auto c = CreateCharacter ("domob", Faction::RED);
   ASSERT_EQ (c->GetId (), 1);
   c->SetPosition (pos);
   c->MutableProto ().mutable_combat_data ();
@@ -529,6 +559,27 @@ TEST_F (PXLogicTests, FinishingProspecting)
   EXPECT_FALSE (r->GetProto ().has_prospecting_character ());
   EXPECT_EQ (r->GetProto ().prospection ().name (), "domob");
 }
+
+/* ************************************************************************** */
+
+using ValidateStateTests = PXLogicTests;
+
+TEST_F (ValidateStateTests, CharacterFactions)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  const auto id = c->GetId ();
+  c.reset ();
+  EXPECT_DEATH (ValidateState (), "owned by uninitialised account");
+
+  accounts.CreateNew ("domob", Faction::GREEN);
+  EXPECT_DEATH (ValidateState (), "Faction mismatch");
+
+  accounts.CreateNew ("andy", Faction::RED);
+  characters.GetById (id)->SetOwner ("andy");
+  ValidateState ();
+}
+
+/* ************************************************************************** */
 
 } // anonymous namespace
 } // namespace pxd

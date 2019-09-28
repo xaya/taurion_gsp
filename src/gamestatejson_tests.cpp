@@ -415,14 +415,14 @@ protected:
 
 TEST_F (AccountJsonTests, KillsAndFame)
 {
-  tbl.GetByName ("foo")->SetKills (10);
-  tbl.GetByName ("bar")->SetFame (42);
+  tbl.CreateNew ("foo", Faction::RED)->SetKills (10);
+  tbl.CreateNew ("bar", Faction::BLUE)->SetFame (42);
 
   ExpectStateJson (R"({
     "accounts":
       [
-        {"name": "bar", "kills": 0, "fame": 42},
-        {"name": "foo", "kills": 10, "fame": 100}
+        {"name": "bar", "faction": "b", "kills": 0, "fame": 42},
+        {"name": "foo", "faction": "r", "kills": 10, "fame": 100}
       ]
   })");
 }

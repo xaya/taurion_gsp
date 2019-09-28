@@ -23,6 +23,7 @@
 #include "dynobstacles.hpp"
 #include "params.hpp"
 
+#include "database/account.hpp"
 #include "database/character.hpp"
 #include "database/database.hpp"
 #include "database/region.hpp"
@@ -65,6 +66,9 @@ protected:
    */
   Database& db;
 
+  /** Access handle for the accounts database table.  */
+  AccountsTable accounts;
+
   /** Access handle for the characters table in the DB.  */
   CharacterTable characters;
 
@@ -73,7 +77,7 @@ protected:
 
   explicit BaseMoveProcessor (Database& d, const Params& p, const BaseMap& m)
     : params(p), map(m), db(d),
-      characters(db), regions(db)
+      accounts(db), characters(db), regions(db)
   {}
 
   /**
@@ -177,6 +181,12 @@ private:
   void HandleGodMode (const Json::Value& cmd);
 
   /**
+   * Transfers the given character if the update JSON contains a request
+   * to do so.
+   */
+  void MaybeTransferCharacter (Character& c, const Json::Value& upd);
+
+  /**
    * Sets the character's waypoints if a valid command for starting a move
    * is there.
    */
@@ -187,6 +197,17 @@ private:
    * location on the map.
    */
   void MaybeStartProspecting (Character& c, const Json::Value& upd);
+
+  /**
+   * Tries to handle an account initialisation (choosing faction) from
+   * the given move.
+   */
+  void MaybeInitAccount (const std::string& name, const Json::Value& init);
+
+  /**
+   * Tries to handle a move that updates an account.
+   */
+  void TryAccountUpdate (const std::string& name, const Json::Value& upd);
 
 protected:
 

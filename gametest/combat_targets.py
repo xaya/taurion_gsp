@@ -16,11 +16,11 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from pxtest import PXTest, offsetCoord
-
 """
 Tests the target selection aspect of combat.
 """
+
+from pxtest import PXTest, offsetCoord
 
 
 class CombatTargetTest (PXTest):
@@ -55,32 +55,33 @@ class CombatTargetTest (PXTest):
     self.collectPremine ()
 
     self.mainLogger.info ("Creating test characters...")
-    self.createCharacter ("a", "r")
-    self.createCharacter ("b", "g")
-    self.createCharacter ("c", "g")
+    self.initAccount ("red", "r")
+    self.createCharacters ("red")
+    self.initAccount ("green", "g")
+    self.createCharacters ("green", 2)
     self.generate (1)
 
-    # We use the starting coordinate of b as offset for coordinates,
+    # We use the starting coordinate of green 1 as offset for coordinates,
     # so that the test is independent of the actual starting positions
     # of the characters.
-    c = self.getCharacters ()["b"]
+    c = self.getCharacters ()["green"]
     self.offset = c.getPosition ()
 
     # Move all other characters in range before continuing with
     # the rest of the test.
     self.moveCharactersTo ({
-      "a": offsetCoord ({"x": 1, "y": 0}, self.offset, False),
-      "c": offsetCoord ({"x": 0, "y": 1}, self.offset, False),
+      "red": offsetCoord ({"x": 1, "y": 0}, self.offset, False),
+      "green 2": offsetCoord ({"x": 0, "y": 1}, self.offset, False),
     })
 
     self.mainLogger.info ("Testing randomised target selection...")
-    cnts = {"b": 0, "c": 0}
+    cnts = {"green": 0, "green 2": 0}
     rolls = 10
     for _ in range (rolls):
       self.generate (1)
-      self.assertEqual (self.getTargetCharacter ("b"), "a")
-      self.assertEqual (self.getTargetCharacter ("c"), "a")
-      fooTarget = self.getTargetCharacter ("a")
+      self.assertEqual (self.getTargetCharacter ("green"), "red")
+      self.assertEqual (self.getTargetCharacter ("green 2"), "red")
+      fooTarget = self.getTargetCharacter ("red")
       assert fooTarget is not None
       assert fooTarget in cnts
       cnts[fooTarget] += 1
@@ -92,18 +93,18 @@ class CombatTargetTest (PXTest):
       assert cnt > 0
 
     self.mainLogger.info ("Testing target selection when moving into range...")
-    c = self.getCharacters ()["a"]
+    c = self.getCharacters ()["red"]
     self.moveCharactersTo ({
-      "a": offsetCoord ({"x": 13, "y": 0}, self.offset, False),
+      "red": offsetCoord ({"x": 13, "y": 0}, self.offset, False),
     })
-    assert self.getTargetCharacter ("b") is None
+    assert self.getTargetCharacter ("green") is None
     # Note that we can move a directly to the offset coordinate (where also
     # b is), since a and b are of different factions.
     c.sendMove ({"wp": [self.offset]})
     self.generate (1)
-    self.assertEqual (self.getCharacters ()["a"].getPosition (),
+    self.assertEqual (self.getCharacters ()["red"].getPosition (),
                       offsetCoord ({"x": 10, "y": 0}, self.offset, False))
-    self.assertEqual (self.getTargetCharacter ("b"), "a")
+    self.assertEqual (self.getTargetCharacter ("green"), "red")
 
 
 if __name__ == "__main__":

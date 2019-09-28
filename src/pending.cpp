@@ -219,6 +219,16 @@ PendingStateUpdater::ProcessMove (const Json::Value& moveObj)
   if (!ExtractMoveBasics (moveObj, name, mv, paidToDev))
     return;
 
+  if (accounts.GetByName (name) == nullptr)
+    {
+      /* This is also triggered for moves actually registering an account,
+         so it not something really "bad" we need to warn about.  */
+      VLOG (1)
+          << "Account " << name
+          << " does not exist, ignoring pending move " << moveObj;
+      return;
+    }
+
   TryCharacterUpdates (name, mv);
   TryCharacterCreation (name, mv, paidToDev);
 }

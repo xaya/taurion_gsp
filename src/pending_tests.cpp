@@ -21,6 +21,7 @@
 #include "jsonutils.hpp"
 #include "testutils.hpp"
 
+#include "database/account.hpp"
 #include "database/character.hpp"
 #include "database/dbtest.hpp"
 
@@ -42,10 +43,11 @@ protected:
 
   PendingState state;
 
+  AccountsTable accounts;
   CharacterTable characters;
 
   PendingStateTests ()
-    : characters(db)
+    : accounts(db), characters(db)
   {}
 
   /**
@@ -81,7 +83,7 @@ TEST_F (PendingStateTests, Clear)
 {
   state.AddCharacterCreation ("domob", Faction::RED);
 
-  auto h = characters.CreateNew ("domob", Faction::GREEN);
+  auto h = characters.CreateNew ("domob", Faction::RED);
   state.AddCharacterWaypoints (*h, {});
   h.reset ();
 
@@ -104,8 +106,8 @@ TEST_F (PendingStateTests, Clear)
 TEST_F (PendingStateTests, Waypoints)
 {
   auto c1 = characters.CreateNew ("domob", Faction::RED);
-  auto c2 = characters.CreateNew ("domob", Faction::GREEN);
-  auto c3 = characters.CreateNew ("domob", Faction::BLUE);
+  auto c2 = characters.CreateNew ("domob", Faction::RED);
+  auto c3 = characters.CreateNew ("domob", Faction::RED);
 
   ASSERT_EQ (c1->GetId (), 1);
   ASSERT_EQ (c2->GetId (), 2);
@@ -213,7 +215,7 @@ TEST_F (PendingStateTests, CharacterCreation)
   state.AddCharacterCreation ("foo", Faction::RED);
   state.AddCharacterCreation ("bar", Faction::GREEN);
   state.AddCharacterCreation ("foo", Faction::RED);
-  state.AddCharacterCreation ("bar", Faction::BLUE);
+  state.AddCharacterCreation ("bar", Faction::GREEN);
 
   ExpectStateJson (R"(
     {
@@ -224,7 +226,7 @@ TEST_F (PendingStateTests, CharacterCreation)
             "creations":
               [
                 {"faction": "g"},
-                {"faction": "b"}
+                {"faction": "g"}
               ]
           },
           {
@@ -293,16 +295,31 @@ protected:
 
 };
 
+TEST_F (PendingStateUpdaterTests, AccountNotInitialised)
+{
+  ProcessWithDevPayment ("domob", params.CharacterCost (), R"({
+    "nc": [{}]
+  })");
+
+  ExpectStateJson (R"(
+    {
+      "newcharacters": []
+    }
+  )");
+}
+
 TEST_F (PendingStateUpdaterTests, InvalidCreation)
 {
+  accounts.CreateNew ("domob", Faction::RED);
+
   ProcessWithDevPayment ("domob", params.CharacterCost (), R"(
     {
-      "nc": [{"faction": "r", "x": 5}]
+      "nc": [{"faction": "r"}]
     }
   )");
   Process ("domob", R"(
     {
-      "nc": [{"faction": "r"}]
+      "nc": [{}]
     }
   )");
 
@@ -315,14 +332,14 @@ TEST_F (PendingStateUpdaterTests, InvalidCreation)
 
 TEST_F (PendingStateUpdaterTests, ValidCreations)
 {
+  accounts.CreateNew ("domob", Faction::RED);
+  accounts.CreateNew ("andy", Faction::GREEN);
+
   ProcessWithDevPayment ("domob", 2 * params.CharacterCost (), R"({
-    "nc": [{"faction": "r"}, {"faction": "g"}, {"faction": "b"}]
+    "nc": [{}, {}, {}]
   })");
   ProcessWithDevPayment ("andy", params.CharacterCost (), R"({
-    "nc": [{"faction": "r"}]
-  })");
-  ProcessWithDevPayment ("domob", params.CharacterCost (), R"({
-    "nc": [{"faction": "r"}]
+    "nc": [{}]
   })");
 
   ExpectStateJson (R"(
@@ -333,7 +350,7 @@ TEST_F (PendingStateUpdaterTests, ValidCreations)
             "name": "andy",
             "creations":
               [
-                {"faction": "r"}
+                {"faction": "g"}
               ]
           },
           {
@@ -341,7 +358,6 @@ TEST_F (PendingStateUpdaterTests, ValidCreations)
             "creations":
               [
                 {"faction": "r"},
-                {"faction": "g"},
                 {"faction": "r"}
               ]
           }
@@ -352,6 +368,9 @@ TEST_F (PendingStateUpdaterTests, ValidCreations)
 
 TEST_F (PendingStateUpdaterTests, InvalidUpdate)
 {
+  accounts.CreateNew ("domob", Faction::RED);
+  accounts.CreateNew ("andy", Faction::RED);
+
   CHECK_EQ (characters.CreateNew ("domob", Faction::RED)->GetId (), 1);
 
   Process ("andy", R"({
@@ -373,6 +392,8 @@ TEST_F (PendingStateUpdaterTests, InvalidUpdate)
 
 TEST_F (PendingStateUpdaterTests, Waypoints)
 {
+  accounts.CreateNew ("domob", Faction::RED);
+
   CHECK_EQ (characters.CreateNew ("domob", Faction::RED)->GetId (), 1);
   CHECK_EQ (characters.CreateNew ("domob", Faction::RED)->GetId (), 2);
   CHECK_EQ (characters.CreateNew ("domob", Faction::RED)->GetId (), 3);
@@ -415,6 +436,8 @@ TEST_F (PendingStateUpdaterTests, Waypoints)
 
 TEST_F (PendingStateUpdaterTests, Prospecting)
 {
+  accounts.CreateNew ("domob", Faction::RED);
+
   const HexCoord pos(456, -789);
   auto h = characters.CreateNew ("domob", Faction::RED);
   ASSERT_EQ (h->GetId (), 1);
@@ -447,10 +470,12 @@ TEST_F (PendingStateUpdaterTests, Prospecting)
 
 TEST_F (PendingStateUpdaterTests, CreationAndUpdateTogether)
 {
+  accounts.CreateNew ("domob", Faction::RED);
+
   CHECK_EQ (characters.CreateNew ("domob", Faction::RED)->GetId (), 1);
 
   ProcessWithDevPayment ("domob", params.CharacterCost (), R"({
-    "nc": [{"faction": "r"}],
+    "nc": [{}],
     "c": {"1": {"wp": []}}
   })");
 

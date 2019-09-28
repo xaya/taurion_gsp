@@ -70,6 +70,13 @@ BaseMoveProcessor::TryCharacterCreation (const std::string& name,
 
   VLOG (1) << "Attempting to create new characters through move: " << cmd;
 
+  const auto account = accounts.GetByName (name);
+  CHECK (account != nullptr);
+  const Faction faction = account->GetFaction ();
+  VLOG (1)
+      << "The new characters' account " << name
+      << " has faction: " << FactionToString (faction);
+
   for (const auto& cur : cmd)
     {
       if (!cur.isObject ())
@@ -79,21 +86,7 @@ BaseMoveProcessor::TryCharacterCreation (const std::string& name,
           continue;
         }
 
-      const auto& factionVal = cur["faction"];
-      if (!factionVal.isString ())
-        {
-          LOG (WARNING)
-              << "Character creation does not specify faction: " << cur;
-          continue;
-        }
-      const Faction faction = FactionFromString (factionVal.asString ());
-      if (faction == Faction::INVALID)
-        {
-          LOG (WARNING) << "Invalid faction specified for character: " << cur;
-          continue;
-        }
-
-      if (cur.size () != 1)
+      if (cur.size () != 0)
         {
           LOG (WARNING) << "Character creation has extra fields: " << cur;
           continue;
@@ -324,10 +317,26 @@ MoveProcessor::ProcessOne (const Json::Value& moveObj)
   if (!ExtractMoveBasics (moveObj, name, mv, paidToDev))
     return;
 
+  /* We perform account updates first.  That ensures that it is possible to
+     e.g. choose one's faction and create characters in a single move.  */
+  TryAccountUpdate (name, mv["a"]);
+
+  /* If there is no account (after potentially updating/initialising it),
+     then let's not try to process any more updates.  This explicitly
+     enforces that accounts have to be initialised before doing anything
+     else, even if perhaps some changes wouldn't actually require access
+     to an account in their processing.  */
+  if (accounts.GetByName (name) == nullptr)
+    {
+      LOG (WARNING)
+          << "Account " << name << " does not exist, ignoring move " << moveObj;
+      return;
+    }
+
   /* Note that the order between character update and character creation
      matters:  By having the update *before* the creation, we explicitly
      forbid a situation in which a newly created character is updated right
-     away.  That would be tricky (since the ID would have to be predicated),
+     away.  That would be tricky (since the ID would have to be predicted),
      but it would have been possible sometimes if the order were reversed.
      We want to exclude such trickery and thus do the update first.  */
   TryCharacterUpdates (name, mv);
@@ -343,25 +352,6 @@ MoveProcessor::PerformCharacterCreation (const std::string& name,
 
 namespace
 {
-
-/**
- * Transfers the given character if the update JSON contains a request
- * to do so.
- */
-void
-MaybeTransferCharacter (Character& c, const Json::Value& upd)
-{
-  CHECK (upd.isObject ());
-  const auto& sendTo = upd["send"];
-  if (!sendTo.isString ())
-    return;
-
-  VLOG (1)
-      << "Sending character " << c.GetId ()
-      << " from " << c.GetOwner ()
-      << " to " << sendTo.asString ();
-  c.SetOwner (sendTo.asString ());
-}
 
 /**
  * Sets the character's chosen speed from the update, if there is a command
@@ -399,6 +389,37 @@ MaybeSetCharacterSpeed (Character& c, const Json::Value& upd)
 }
 
 } // anonymous namespace
+
+void
+MoveProcessor::MaybeTransferCharacter (Character& c, const Json::Value& upd)
+{
+  CHECK (upd.isObject ());
+  const auto& sendToVal = upd["send"];
+  if (!sendToVal.isString ())
+    return;
+  const std::string sendTo = sendToVal.asString ();
+
+  const auto a = accounts.GetByName (sendTo);
+  if (a == nullptr)
+    {
+      LOG (WARNING)
+          << "Can't send character " << c.GetId ()
+          << " to uninitialised account " << sendTo;
+      return;
+    }
+  if (a->GetFaction () != c.GetFaction ())
+    {
+      LOG (WARNING)
+          << "Can't send character " << c.GetId ()
+          << " to account " << sendTo << " of different faction";
+      return;
+    }
+
+  VLOG (1)
+      << "Sending character " << c.GetId ()
+      << " from " << c.GetOwner () << " to " << sendTo;
+  c.SetOwner (sendTo);
+}
 
 void
 MoveProcessor::MaybeSetCharacterWaypoints (Character& c, const Json::Value& upd)
@@ -564,6 +585,55 @@ MoveProcessor::HandleGodMode (const Json::Value& cmd)
 
   MaybeGodTeleport (characters, cmd["teleport"]);
   MaybeGodSetHp (characters, cmd["sethp"]);
+}
+
+void
+MoveProcessor::MaybeInitAccount (const std::string& name,
+                                 const Json::Value& init)
+{
+  if (!init.isObject ())
+    return;
+
+  if (accounts.GetByName (name) != nullptr)
+    {
+      LOG (WARNING) << "Account " << name << " is already initialised";
+      return;
+    }
+
+  const auto& factionVal = init["faction"];
+  if (!factionVal.isString ())
+    {
+      LOG (WARNING)
+          << "Account initialisation does not specify faction: " << init;
+      return;
+    }
+  const Faction faction = FactionFromString (factionVal.asString ());
+  if (faction == Faction::INVALID)
+    {
+      LOG (WARNING) << "Invalid faction specified for account: " << init;
+      return;
+    }
+
+  if (init.size () != 1)
+    {
+      LOG (WARNING) << "Account initialisation has extra fields: " << init;
+      return;
+    }
+
+  accounts.CreateNew (name, faction);
+  LOG (INFO)
+      << "Created account " << name << " of faction "
+      << FactionToString (faction);
+}
+
+void
+MoveProcessor::TryAccountUpdate (const std::string& name,
+                                 const Json::Value& upd)
+{
+  if (!upd.isObject ())
+    return;
+
+  MaybeInitAccount (name, upd["init"]);
 }
 
 /* ************************************************************************** */

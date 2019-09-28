@@ -21,6 +21,7 @@
 #include "params.hpp"
 #include "protoutils.hpp"
 
+#include "database/account.hpp"
 #include "database/character.hpp"
 #include "database/dbtest.hpp"
 #include "database/faction.hpp"
@@ -44,6 +45,16 @@ namespace
  * tile per block.
  */
 constexpr PathFinder::DistanceT SPEED = 1000;
+
+/**
+ * Initialises the test account in the database.
+ */
+void
+InitialiseAccount (Database& db)
+{
+  AccountsTable tbl(db);
+  tbl.CreateNew ("domob", Faction::RED);
+}
 
 /**
  * Constructs a test character in the given character table.  This takes
@@ -80,6 +91,8 @@ MovementOneSegment (benchmark::State& state)
   const HexCoord::IntT numTiles = state.range (0);
   const unsigned numMoving = state.range (1);
   const unsigned numWP = state.range (2);
+
+  InitialiseAccount (db);
 
   CharacterTable tbl(db);
   std::vector<Database::IdT> charIds;
@@ -147,6 +160,8 @@ MovementLongHaul (benchmark::State& state)
 
   const HexCoord::IntT wpDist = state.range (0);
   const HexCoord::IntT total = state.range (1);
+
+  InitialiseAccount (db);
 
   CharacterTable tbl(db);
   const auto id = CreateCharacter (tbl)->GetId ();

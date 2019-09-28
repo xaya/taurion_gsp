@@ -20,6 +20,7 @@
 #define DATABASE_ACCOUNT_HPP
 
 #include "database.hpp"
+#include "faction.hpp"
 
 #include <memory>
 #include <string>
@@ -30,7 +31,7 @@ namespace pxd
 /**
  * Database result type for rows from the accounts table.
  */
-struct AccountResult : public Database::ResultType
+struct AccountResult : public ResultWithFaction
 {
   RESULT_COLUMN (std::string, name, 1);
   RESULT_COLUMN (int64_t, kills, 2);
@@ -52,6 +53,9 @@ private:
   /** The Xaya name of this account.  */
   std::string name;
 
+  /** The faction of this account.  */
+  Faction faction;
+
   /** The account's number of kills.  */
   unsigned kills;
 
@@ -65,9 +69,10 @@ private:
   bool dirty;
 
   /**
-   * Constructs an instance with "default / empty" data for the given name.
+   * Constructs an instance with "default / empty" data for the given name
+   * and selected faction.
    */
-  explicit Account (Database& d, const std::string& n);
+  explicit Account (Database& d, const std::string& n, Faction f);
 
   /**
    * Constructs an instance based on the given DB result set.  The result
@@ -95,6 +100,12 @@ public:
   GetName () const
   {
     return name;
+  }
+
+  Faction
+  GetFaction () const
+  {
+    return faction;
   }
 
   unsigned
@@ -151,6 +162,15 @@ public:
   void operator= (const AccountsTable&) = delete;
 
   /**
+   * Creates a new entry in the database for the given name and selected
+   * faction.  Each player has to select their faction before doing anything
+   * else, and that move will create the account in the database.
+   *
+   * Calling this method for a name that already has an account is an error.
+   */
+  Handle CreateNew (const std::string& name, Faction faction);
+
+  /**
    * Returns a handle for the instance based on a Database::Result.
    */
   Handle GetFromResult (const Database::Result<AccountResult>& res);
@@ -161,11 +181,11 @@ public:
   Handle GetByName (const std::string& name);
 
   /**
-   * Queries the database for all accounts with (potentially) non-empty
-   * data stored.  Returns a result set that can be used together with
+   * Queries the database for all accounts which have been initialised yet
+   * with a faction.  Returns a result set that can be used together with
    * GetFromResult.
    */
-  Database::Result<AccountResult> QueryNonTrivial ();
+  Database::Result<AccountResult> QueryInitialised ();
 
 };
 

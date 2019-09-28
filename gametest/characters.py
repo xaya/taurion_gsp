@@ -17,12 +17,12 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from pxtest import PXTest, CHARACTER_COST
-
 """
 Runs tests about the basic handling of characters (creating them, transferring
 them and retrieving them through RPC).
 """
+
+from pxtest import PXTest, CHARACTER_COST
 
 
 class CharactersTest (PXTest):
@@ -40,22 +40,24 @@ class CharactersTest (PXTest):
     self.assertEqual (len (chars), len (expected))
 
     for nm, c in chars.iteritems ():
-      assert nm in expected
       c.expectPartial (expected[nm])
 
   def run (self):
     self.collectPremine ()
 
     self.mainLogger.info ("Creating first character...")
-    self.createCharacter ("adam", "r")
-    self.sendMove ("", {"nc": {"name": "eve", "faction": "r"}})
+    self.moveWithPayment ("adam", {
+      "a": {"init": {"faction": "r"}},
+      "nc": [{}],
+    }, CHARACTER_COST)
     self.generate (1)
     self.expectPartial ({
       "adam": {"owner": "adam", "faction": "r"},
     })
 
     self.mainLogger.info ("Testing \"\" as owner name...")
-    self.createCharacter ("", "g")
+    self.initAccount ("", "g")
+    self.createCharacters ("")
     self.generate (1)
     self.expectPartial ({
       "adam": {"owner": "adam", "faction": "r"},
@@ -63,16 +65,17 @@ class CharactersTest (PXTest):
     })
 
     self.mainLogger.info ("Creating second character for one owner...")
-    self.createCharacter ("adam", "b")
+    self.createCharacters ("adam")
     self.generate (1)
     self.expectPartial ({
       "adam": {"owner": "adam", "faction": "r"},
-      "adam 2": {"owner": "adam", "faction": "b"},
+      "adam 2": {"owner": "adam", "faction": "r"},
       "": {"owner": "", "faction": "g"},
     })
 
     self.mainLogger.info ("Testing Unicode owner...")
-    self.createCharacter (u"äöü", "b")
+    self.initAccount (u"äöü", "b")
+    self.createCharacters (u"äöü")
     self.generate (1)
     self.expectPartial ({
       "adam": {"owner": "adam"},
@@ -82,15 +85,22 @@ class CharactersTest (PXTest):
     })
 
     self.mainLogger.info ("Transfering a character...")
+    self.initAccount ("andy", "r")
+    self.generate (1)
     c = self.getCharacters ()["adam"]
+    cid = c.getId ()
     c.sendMove ({"send": "andy"})
     self.generate (1)
-    self.expectPartial ({
-      "adam": {"owner": "adam", "faction": "b"},
-      "andy": {"owner": "andy", "faction": "r"},
-      "": {"owner": ""},
-      u"äöü": {"owner": u"äöü"},
-    })
+    self.getCharacters ()["andy"].expectPartial ({"id": cid})
+
+    self.mainLogger.info ("Invalid transfers...")
+    self.initAccount ("green", "g")
+    c = self.getCharacters ()["andy"]
+    cid = c.getId ()
+    c.sendMove ({"send": "uninitialised account"})
+    c.sendMove ({"send": "green"})
+    self.generate (1)
+    self.getCharacters ()["andy"].expectPartial ({"id": cid})
 
     self.mainLogger.info ("Non-owner cannot update the character...")
     c = self.getCharacters ()["adam"]
@@ -105,23 +115,21 @@ class CharactersTest (PXTest):
     })
 
     self.mainLogger.info ("Multiple creations in one transaction...")
-    data = [
-      {"faction": "r"},
-      {"faction": "g"},
-      {"faction": "b"},
-    ]
-    self.moveWithPayment ("domob", {"nc": data}, 2.5 * CHARACTER_COST)
+    self.initAccount ("domob", "b")
+    self.moveWithPayment ("domob", {"nc": [{}, {}, {}]}, 2.5 * CHARACTER_COST)
     self.generate (1)
     self.expectPartial ({
       "adam": {"owner": "adam"},
       "andy": {"owner": "andy"},
       "": {"owner": ""},
       u"äöü": {"owner": u"äöü"},
-      "domob": {"faction": "r"},
-      "domob 2": {"faction": "g"},
+      "domob": {"faction": "b"},
+      "domob 2": {"faction": "b"},
     })
 
     self.mainLogger.info ("Updates with ID lists...")
+    self.initAccount ("idlist", "b")
+    self.generate (1)
     id1 = self.getCharacters ()["domob"].getId ()
     id2 = self.getCharacters ()["domob 2"].getId ()
     self.sendMove ("domob", {
@@ -147,7 +155,8 @@ class CharactersTest (PXTest):
     self.rpc.xaya.invalidateblock (blk)
 
     self.collectPremine ()
-    self.createCharacter ("domob", "b")
+    self.initAccount ("domob", "r")
+    self.createCharacters ("domob")
     self.generate (1)
     self.expectPartial ({
       "domob": {"owner": "domob"},
@@ -155,7 +164,6 @@ class CharactersTest (PXTest):
 
     self.rpc.xaya.reconsiderblock (blk)
     self.expectGameState (originalState)
-
 
 
 if __name__ == "__main__":
