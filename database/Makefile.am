@@ -15,6 +15,7 @@ libdatabase_la_LIBADD = \
 libdatabase_la_SOURCES = \
   account.cpp \
   character.cpp \
+  coord.cpp \
   damagelists.cpp \
   database.cpp \
   faction.cpp \
@@ -26,6 +27,7 @@ libdatabase_la_SOURCES = \
 noinst_HEADERS = \
   account.hpp \
   character.hpp \
+  coord.hpp coord.tpp \
   damagelists.hpp \
   database.hpp database.tpp \
   faction.hpp faction.tpp \
@@ -67,6 +69,7 @@ tests_LDADD = \
 tests_SOURCES = \
   account_tests.cpp \
   character_tests.cpp \
+  coord_tests.cpp \
   damagelists_tests.cpp \
   database_tests.cpp \
   faction_tests.cpp \

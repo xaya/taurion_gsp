@@ -46,8 +46,7 @@ Character::Character (Database& d, const Database::Result<CharacterResult>& res)
   id = res.Get<CharacterResult::id> ();
   owner = res.Get<CharacterResult::owner> ();
   faction = GetFactionFromColumn (res);
-  pos = HexCoord (res.Get<CharacterResult::x> (),
-                  res.Get<CharacterResult::y> ());
+  pos = GetCoordFromColumn (res);
   volatileMv = res.GetProto<CharacterResult::volatilemv> ();
   hp = res.GetProto<CharacterResult::hp> ();
   regenData = res.GetProto<CharacterResult::regendata> ();
@@ -173,8 +172,7 @@ Character::BindFieldValues (Database::Statement& stmt) const
 {
   stmt.Bind (1, id);
   stmt.Bind (2, owner);
-  stmt.Bind (3, pos.GetX ());
-  stmt.Bind (4, pos.GetY ());
+  BindCoordParameter (stmt, 3, 4, pos);
   stmt.BindProto (5, volatileMv);
   stmt.BindProto (6, hp);
   stmt.Bind (7, busy);
@@ -301,11 +299,8 @@ CharacterTable::QueryBusyDone ()
 namespace
 {
 
-struct PositionResult : public ResultWithFaction
-{
-  RESULT_COLUMN (int64_t, x, 1);
-  RESULT_COLUMN (int64_t, y, 2);
-};
+struct PositionResult : public ResultWithFaction, public ResultWithCoord
+{};
 
 } // anonymous namespace
 
@@ -321,8 +316,7 @@ CharacterTable::ProcessAllPositions (const PositionFcn& cb)
   auto res = stmt.Query<PositionResult> ();
   while (res.Step ())
     {
-      const HexCoord pos(res.Get<PositionResult::x> (),
-                         res.Get<PositionResult::y> ());
+      const HexCoord pos = GetCoordFromColumn (res);
       const Faction f = GetFactionFromColumn (res);
       cb (pos, f);
     }
