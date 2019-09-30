@@ -1,0 +1,38 @@
+/*
+    GSP for the Taurion blockchain game
+    Copyright (C) 2019  Autonomous Worlds Ltd
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
+syntax = "proto2";
+
+package pxd.proto;
+
+/**
+ * Data about loot "somewhere".  This can be the inventory of a character,
+ * it can be the assets of an account in a building, and it can be the loot
+ * on the ground at a certain coordinate.
+ */
+message Inventory
+{
+
+  /**
+   * Data about fungible assets held.  This is simply a map from item types
+   * (which are hardcoded strings) to the amount of each type.  The amount
+   * is an integer number, representing some smallest fraction of the item.
+   */
+  map<string, uint64> fungible = 1;
+
+}

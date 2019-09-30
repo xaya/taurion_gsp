@@ -162,6 +162,23 @@ CREATE TABLE IF NOT EXISTS `regions` (
 
 -- =============================================================================
 
+-- Data for piles of loot on the ground.  These represent the inventory
+-- of each tile of the map that has at least some loot.
+CREATE TABLE IF NOT EXISTS `ground_loot` (
+
+  -- The coordinates of the pile.
+  `x` INTEGER NOT NULL,
+  `y` INTEGER NOT NULL,
+
+  -- Serialised inventory proto.
+  `inventory` BLOB NOT NULL,
+
+  PRIMARY KEY (`x`, `y`)
+
+);
+
+-- =============================================================================
+
 -- Data about the still available prospecting prizes (so that we can
 -- ensure only a certain number can be found).
 CREATE TABLE IF NOT EXISTS `prizes` (
