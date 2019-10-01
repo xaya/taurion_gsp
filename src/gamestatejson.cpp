@@ -24,6 +24,7 @@
 #include "database/account.hpp"
 #include "database/character.hpp"
 #include "database/faction.hpp"
+#include "database/inventory.hpp"
 #include "database/prizes.hpp"
 #include "database/region.hpp"
 #include "hexagonal/pathfinder.hpp"
@@ -243,6 +244,31 @@ template <>
 
 template <>
   Json::Value
+  GameStateJson::Convert<Inventory> (const Inventory& inv) const
+{
+  Json::Value fungible(Json::objectValue);
+  for (const auto& entry : inv.GetFungible ())
+    fungible[entry.first] = IntToJson (entry.second);
+
+  Json::Value res(Json::objectValue);
+  res["fungible"] = fungible;
+
+  return res;
+}
+
+template <>
+  Json::Value
+  GameStateJson::Convert<pxd::GroundLoot> (const pxd::GroundLoot& loot) const
+{
+  Json::Value res(Json::objectValue);
+  res["position"] = CoordToJson (loot.GetPosition ());
+  res["inventory"] = Convert (loot.GetInventory ());
+
+  return res;
+}
+
+template <>
+  Json::Value
   GameStateJson::Convert<Region> (const Region& r) const
 {
   const auto& pb = r.GetProto ();
@@ -320,6 +346,13 @@ GameStateJson::Characters ()
 }
 
 Json::Value
+GameStateJson::GroundLoot ()
+{
+  GroundLootTable tbl(db);
+  return ResultsAsArray (tbl, tbl.QueryNonEmpty ());
+}
+
+Json::Value
 GameStateJson::Regions ()
 {
   RegionsTable tbl(db);
@@ -333,6 +366,7 @@ GameStateJson::FullState ()
 
   res["accounts"] = Accounts ();
   res["characters"] = Characters ();
+  res["groundloot"] = GroundLoot ();
   res["regions"] = Regions ();
   res["prizes"] = PrizeStats ();
 

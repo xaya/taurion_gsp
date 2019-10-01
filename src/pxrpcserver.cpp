@@ -153,6 +153,17 @@ PXRpcServer::getcharacters ()
 }
 
 Json::Value
+PXRpcServer::getgroundloot ()
+{
+  LOG (INFO) << "RPC method called: getgroundloot";
+  return logic.GetCustomStateData (game,
+    [] (GameStateJson& gsj)
+      {
+        return gsj.GroundLoot ();
+      });
+}
+
+Json::Value
 PXRpcServer::getregions ()
 {
   LOG (INFO) << "RPC method called: getregions";
