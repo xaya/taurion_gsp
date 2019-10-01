@@ -616,15 +616,15 @@ MaybeGodDropLoot (GroundLootTable& tbl, const Json::Value& cmd)
           CHECK (keyVal.isString ());
           const std::string key = keyVal.asString ();
 
-          if (!it->isUInt64 ())
+          if (!it->isUInt64 () || it->asUInt64 () > MAX_ITEM_QUANTITY)
             {
               LOG (WARNING)
                   << "Invalid fungible amount for item " << key << ": " << *it;
               continue;
             }
-          const uint64_t cnt = it->asUInt64 ();
+          const Inventory::QuantityT cnt = it->asUInt64 ();
 
-          const uint64_t before = h->GetInventory ().GetFungibleCount (key);
+          const auto before = h->GetInventory ().GetFungibleCount (key);
           LOG (INFO)
               << "God-mode dropping " << cnt << " of " << key << " at " << pos
               << " in addition to existing " << before;

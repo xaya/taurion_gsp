@@ -48,7 +48,7 @@ Inventory::IsEmpty () const
   return data.Get ().fungible ().empty ();
 }
 
-uint64_t
+Inventory::QuantityT
 Inventory::GetFungibleCount (const std::string& type) const
 {
   const auto& fungible = data.Get ().fungible ();
@@ -59,8 +59,11 @@ Inventory::GetFungibleCount (const std::string& type) const
 }
 
 void
-Inventory::SetFungibleCount (const std::string& type, const uint64_t count)
+Inventory::SetFungibleCount (const std::string& type, const QuantityT count)
 {
+  CHECK_GE (count, 0);
+  CHECK_LE (count, MAX_ITEM_QUANTITY);
+
   auto& fungible = *data.Mutable ().mutable_fungible ();
 
   if (count == 0)

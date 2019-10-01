@@ -1082,6 +1082,10 @@ TEST_F (GodModeTests, InvalidDropLoot)
               "pos": {"x": 1, "y": 2},
               "fungible": {"foo": 10},
               "extra": "value"
+            },
+            {
+              "pos": {"x": 1, "y": 2},
+              "fungible": {"foo": 1000000001}
             }
           ]
       }
@@ -1106,7 +1110,7 @@ TEST_F (GodModeTests, ValidDropLoot)
             },
             {
               "pos": {"x": 1, "y": 2},
-              "fungible": {"foo": 10, "bar": 5}
+              "fungible": {"foo": 10, "bar": 1000000000}
             }
           ]
       }
@@ -1114,7 +1118,7 @@ TEST_F (GodModeTests, ValidDropLoot)
 
   auto h = loot.GetByCoord (pos);
   EXPECT_EQ (h->GetInventory ().GetFungibleCount ("foo"), 20);
-  EXPECT_EQ (h->GetInventory ().GetFungibleCount ("bar"), 5);
+  EXPECT_EQ (h->GetInventory ().GetFungibleCount ("bar"), MAX_ITEM_QUANTITY);
 }
 
 /**

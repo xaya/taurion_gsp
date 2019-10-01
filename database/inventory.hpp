@@ -27,10 +27,26 @@
 
 #include <google/protobuf/map.h>
 
+#include <cstdint>
 #include <string>
 
 namespace pxd
 {
+
+/**
+ * The maximum valid value for an item quantity.  If a move contains a number
+ * larger than this, it is considered invalid.  This is consensus relevant.
+ * Through this limit, we ensure that values are "sane" and avoid potential
+ * overflows when working with them.
+ *
+ * But this is not only applied to moves, but checked in general for any
+ * item quantity.  So it should really be the total supply limit of anything
+ * in the game.
+ *
+ * A value of one billion allows multiplication with another value in that
+ * range (e.g. cargo per item or price per unit) without overflowing 64 bits.
+ */
+static constexpr uint64_t MAX_ITEM_QUANTITY = 1'000'000'000;
 
 /**
  * Wrapper class around the state of an inventory.  This is what game-logic
@@ -45,6 +61,9 @@ private:
   LazyProto<proto::Inventory> data;
 
 public:
+
+  /** Type for the quantity of an item.  */
+  using QuantityT = int64_t;
 
   /**
    * Constructs an instance representing an empty inventory (that can then
@@ -80,12 +99,12 @@ public:
    * Returns the number of fungible items with the given key in the inventory.
    * Returns zero for non-existant items.
    */
-  uint64_t GetFungibleCount (const std::string& type) const;
+  QuantityT GetFungibleCount (const std::string& type) const;
 
   /**
    * Sets the number of fungible items with the given key in the inventory.
    */
-  void SetFungibleCount (const std::string& type, uint64_t count);
+  void SetFungibleCount (const std::string& type, QuantityT count);
 
   /**
    * Returns true if the inventory data has been modified (and thus needs to
