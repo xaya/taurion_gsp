@@ -26,6 +26,8 @@
 #include "database/faction.hpp"
 #include "proto/character.pb.h"
 
+#include <sstream>
+
 namespace pxd
 {
 
@@ -353,6 +355,42 @@ MoveProcessor::PerformCharacterCreation (const std::string& name,
 namespace
 {
 
+/** Amounts of fungible items.  */
+using FungibleAmountMap = std::map<std::string, Inventory::QuantityT>;
+
+/**
+ * Parses a JSON dictionary giving fungible items and their quantities
+ * into a std::map.  This will contain all item names and quantities
+ * for "valid" entries, i.e. entries with a uint64 value that is within
+ * the range [0, MAX_ITEM_QUANTITY].
+ */
+FungibleAmountMap
+ParseFungibleQuantities (const Json::Value& obj)
+{
+  CHECK (obj.isObject ());
+
+  FungibleAmountMap res;
+  for (auto it = obj.begin (); it != obj.end (); ++it)
+    {
+      const auto& keyVal = it.key ();
+      CHECK (keyVal.isString ());
+      const std::string key = keyVal.asString ();
+
+      if (!it->isUInt64 () || it->asUInt64 () > MAX_ITEM_QUANTITY)
+        {
+          LOG (WARNING)
+              << "Invalid fungible amount for item " << key << ": " << *it;
+          continue;
+        }
+      const Inventory::QuantityT cnt = it->asUInt64 ();
+
+      const auto ins = res.emplace (key, cnt);
+      CHECK (ins.second) << "Duplicate key: " << key;
+    }
+
+  return res;
+}
+
 /**
  * Sets the character's chosen speed from the update, if there is a command
  * to do so in it.
@@ -466,6 +504,115 @@ MoveProcessor::MaybeStartProspecting (Character& c, const Json::Value& upd)
   c.MutableProto ().mutable_prospection ();
 }
 
+namespace
+{
+
+/**
+ * Parses and validates the content of a drop or pick-up character command.
+ * Returns the fungible items and their quantities to drop or pick up.
+ */
+FungibleAmountMap
+ParseDropPickupFungible (const Json::Value& cmd)
+{
+  if (!cmd.isObject ())
+    return {};
+
+  const auto& fungible = cmd["f"];
+  if (!fungible.isObject ())
+    {
+      LOG (WARNING) << "No fungible object entry in command: " << cmd;
+      return {};
+    }
+  if (cmd.size () != 1)
+    {
+      LOG (WARNING) << "Extra fields in command: " << cmd;
+      return {};
+    }
+
+  return ParseFungibleQuantities (fungible);
+}
+
+/**
+ * Tries to move fungible items from one inventory (e.g. a character's)
+ * to another (e.g. ground loot), based on the quantities given in the
+ * map.  This verifies that there is enough in the "source" inventory,
+ * and reduces the amount accordingly if not.
+ */
+void
+MoveFungibleBetweenInventories (const FungibleAmountMap& items,
+                                Inventory& from, Inventory& to,
+                                const std::string& fromName,
+                                const std::string& toName)
+{
+  for (const auto& entry : items)
+    {
+      const auto available = from.GetFungibleCount (entry.first);
+      Inventory::QuantityT cnt = entry.second;
+      if (cnt > available)
+        {
+          LOG (WARNING)
+              << "Trying to move more of " << entry.first
+              << " (" << cnt << ") than the existing " << available
+              << " from " << fromName << " to " << toName;
+          cnt = available;
+        }
+
+      /* Avoid making the inventories dirty if we do not move anything.  */
+      if (cnt == 0)
+        continue;
+
+      CHECK_LE (cnt, available);
+      from.SetFungibleCount (entry.first, available - cnt);
+
+      const auto already = to.GetFungibleCount (entry.first);
+      VLOG (1)
+          << "Moved " << cnt << " of " << entry.first
+          << " in addition to " << already
+          << " from " << fromName << " to " << toName;
+      to.SetFungibleCount (entry.first, already + cnt);
+    }
+}
+
+} // anonymous namespace
+
+void
+MoveProcessor::MaybeDropLoot (Character& c, const Json::Value& cmd)
+{
+  const auto fungible = ParseDropPickupFungible (cmd);
+  if (fungible.empty ())
+    return;
+
+  std::ostringstream fromName;
+  fromName << "character " << c.GetId ();
+  std::ostringstream toName;
+  toName << "ground loot at " << c.GetPosition ();
+
+  auto ground = groundLoot.GetByCoord (c.GetPosition ());
+  MoveFungibleBetweenInventories (fungible,
+                                  c.GetInventory (),
+                                  ground->GetInventory (),
+                                  fromName.str (), toName.str ());
+}
+
+void
+MoveProcessor::MaybePickupLoot (Character& c, const Json::Value& cmd)
+{
+  const auto fungible = ParseDropPickupFungible (cmd);
+  if (fungible.empty ())
+    return;
+
+  std::ostringstream fromName;
+  fromName << "ground loot at " << c.GetPosition ();
+  std::ostringstream toName;
+  toName << "character " << c.GetId ();
+
+  auto ground = groundLoot.GetByCoord (c.GetPosition ());
+  MoveFungibleBetweenInventories (fungible,
+                                  ground->GetInventory (),
+                                  c.GetInventory (),
+                                  fromName.str (), toName.str ());
+}
+
 void
 MoveProcessor::PerformCharacterUpdate (Character& c, const Json::Value& upd)
 {
@@ -477,6 +624,12 @@ MoveProcessor::PerformCharacterUpdate (Character& c, const Json::Value& upd)
      waypoints and a chosen speed in a single move.  */
   MaybeSetCharacterWaypoints (c, upd);
   MaybeSetCharacterSpeed (c, upd);
+
+  /* Dropping items is done before trying to pick items up.  This allows
+     a player to drop stuff (and thus free cargo) before picking up something
+     else in a single move.  */
+  MaybeDropLoot (c, upd["drop"]);
+  MaybePickupLoot (c, upd["pu"]);
 }
 
 namespace
@@ -609,26 +762,16 @@ MaybeGodDropLoot (GroundLootTable& tbl, const Json::Value& cmd)
           continue;
         }
 
+      const auto quantities = ParseFungibleQuantities (fungible);
       auto h = tbl.GetByCoord (pos);
-      for (auto it = fungible.begin (); it != fungible.end (); ++it)
+      for (const auto& entry : quantities)
         {
-          const auto& keyVal = it.key ();
-          CHECK (keyVal.isString ());
-          const std::string key = keyVal.asString ();
-
-          if (!it->isUInt64 () || it->asUInt64 () > MAX_ITEM_QUANTITY)
-            {
-              LOG (WARNING)
-                  << "Invalid fungible amount for item " << key << ": " << *it;
-              continue;
-            }
-          const Inventory::QuantityT cnt = it->asUInt64 ();
-
-          const auto before = h->GetInventory ().GetFungibleCount (key);
+          const auto before = h->GetInventory ().GetFungibleCount (entry.first);
           LOG (INFO)
-              << "God-mode dropping " << cnt << " of " << key << " at " << pos
-              << " in addition to existing " << before;
-          h->GetInventory ().SetFungibleCount (key, before + cnt);
+              << "God-mode dropping " << entry.second << " of " << entry.first
+              << " at " << pos << " in addition to existing " << before;
+          h->GetInventory ().SetFungibleCount (entry.first,
+                                               before + entry.second);
         }
     }
 }

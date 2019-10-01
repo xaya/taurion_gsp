@@ -357,8 +357,17 @@ class CharacterUpdateTests : public MoveProcessorTests
 
 protected:
 
-  /** Character table to be used in tests.  */
   CharacterTable tbl;
+
+  /**
+   * All CharacterUpdateTests will start with a test character already created.
+   * We also ensure that it has the ID 1.
+   */
+  CharacterUpdateTests ()
+    : tbl(db)
+  {
+    SetupCharacter (1, "domob");
+  }
 
   /**
    * Retrieves a handle to the test character.
@@ -389,16 +398,6 @@ protected:
     CHECK_EQ (h->GetOwner (), owner);
 
     return h;
-  }
-
-  /**
-   * All CharacterUpdateTests will start with a test character already created.
-   * We also ensure that it has the ID 1.
-   */
-  CharacterUpdateTests ()
-    : tbl(db)
-  {
-    SetupCharacter (1, "domob");
   }
 
   /**
@@ -779,6 +778,219 @@ TEST_F (CharacterUpdateTests, ChosenSpeedInvalid)
   ])");
   EXPECT_EQ (GetTest ()->GetProto ().movement ().chosen_speed (), 1000);
 }
+
+/* ************************************************************************** */
+
+class DropPickupMoveTests : public CharacterUpdateTests
+{
+
+protected:
+
+  GroundLootTable loot;
+
+  /** Position we use for testing.  */
+  const HexCoord pos;
+
+  DropPickupMoveTests ()
+    : loot(db), pos(1, 2)
+  {
+    GetTest ()->SetPosition (pos);
+  }
+
+  /**
+   * Sets counts for all the items in the map in the given inventory.
+   */
+  static void
+  SetInventoryItems (Inventory& inv,
+                     const std::map<std::string, Inventory::QuantityT>& items)
+  {
+    for (const auto& entry : items)
+      inv.SetFungibleCount (entry.first, entry.second);
+  }
+
+  /**
+   * Expects that the given inventory has all the listed items (and not
+   * any more).
+   */
+  void
+  ExpectInventoryItems (
+      Inventory& inv,
+      const std::map<std::string, Inventory::QuantityT>& expected)
+  {
+    const auto& actual = inv.GetFungible ();
+    ASSERT_EQ (actual.size (), expected.size ());
+    for (const auto& entry : expected)
+      {
+        const auto mit = actual.find (entry.first);
+        ASSERT_TRUE (mit != actual.end ())
+            << "No actual entry for " << entry.first;
+        ASSERT_EQ (mit->second, entry.second)
+            << "Count mismatch for " << entry.first;
+      }
+  }
+
+};
+
+TEST_F (DropPickupMoveTests, InvalidDrop)
+{
+  SetInventoryItems (GetTest ()->GetInventory (), {{"foo", 1}});
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"drop": 42}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"drop": {"f": []}}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"drop": {"f": {"foo": 1}, "x": 2}}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"drop": {"f": {"foo": 1000000001}}}}}
+    }
+  ])");
+
+  ExpectInventoryItems (loot.GetByCoord (pos)->GetInventory (), {});
+  ExpectInventoryItems (GetTest ()->GetInventory (), {{"foo", 1}});
+}
+
+TEST_F (DropPickupMoveTests, InvalidPickUp)
+{
+  SetInventoryItems (loot.GetByCoord (pos)->GetInventory (), {{"foo", 1}});
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"pu": 42}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"pu": {"f": []}}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"pu": {"f": {"foo": 1}, "x": 2}}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"pu": {"f": {"foo": 1000000001}}}}}
+    }
+  ])");
+
+  ExpectInventoryItems (GetTest ()->GetInventory (), {});
+  ExpectInventoryItems (loot.GetByCoord (pos)->GetInventory (), {{"foo", 1}});
+}
+
+TEST_F (DropPickupMoveTests, BasicDrop)
+{
+  SetInventoryItems (GetTest ()->GetInventory (), {
+    {"foo", 10},
+    {"bar", 5},
+  });
+  SetInventoryItems (loot.GetByCoord (pos)->GetInventory (), {{"foo", 42}});
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"drop": {"f": {
+        "a": 2000000000,
+        "foo": 2,
+        "bar": 1,
+        "x": 10
+      }}}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"drop": {"f": {"foo": 1}}}}}
+    }
+  ])");
+
+  ExpectInventoryItems (GetTest ()->GetInventory (), {
+    {"foo", 7},
+    {"bar", 4},
+  });
+  ExpectInventoryItems (loot.GetByCoord (pos)->GetInventory (), {
+    {"foo", 45},
+    {"bar", 1},
+  });
+}
+
+TEST_F (DropPickupMoveTests, BasicPickUp)
+{
+  SetInventoryItems (GetTest ()->GetInventory (), {{"foo", 10}});
+  SetInventoryItems (loot.GetByCoord (pos)->GetInventory (), {{"foo", 42}});
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"pu": {"f": {
+        "a": 2000000000,
+        "foo": 2,
+        "x": 10
+      }}}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"pu": {"f": {"foo": 1}}}}}
+    }
+  ])");
+
+  ExpectInventoryItems (GetTest ()->GetInventory (), {
+    {"foo", 13},
+  });
+  ExpectInventoryItems (loot.GetByCoord (pos)->GetInventory (), {
+    {"foo", 39},
+  });
+}
+
+TEST_F (DropPickupMoveTests, TooMuch)
+{
+  SetInventoryItems (GetTest ()->GetInventory (), {{"foo", 10}});
+  SetInventoryItems (loot.GetByCoord (pos)->GetInventory (), {{"bar", 5}});
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {
+        "drop": {"f": {"foo": 100}},
+        "pu": {"f": {"bar": 100}}
+      }}}
+    }
+  ])");
+
+  ExpectInventoryItems (GetTest ()->GetInventory (), {{"bar", 5}});
+  ExpectInventoryItems (loot.GetByCoord (pos)->GetInventory (), {{"foo", 10}});
+}
+
+TEST_F (DropPickupMoveTests, RelativeOrder)
+{
+  /* Drop should happen before pickup.  We verify this by dropping too much
+     (i.e. all) and then picking up a specified quantity.  If we were to pick
+     up first, we would then drop all instead.  */
+
+  SetInventoryItems (GetTest ()->GetInventory (), {{"foo", 10}});
+  SetInventoryItems (loot.GetByCoord (pos)->GetInventory (), {{"foo", 10}});
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {
+        "drop": {"f": {"foo": 100}},
+        "pu": {"f": {"foo": 3}}
+      }}}
+    }
+  ])");
+
+  ExpectInventoryItems (GetTest ()->GetInventory (), {{"foo", 3}});
+}
+
+/* FIXME: Also test relative order of items in the move (from sorting through
+   std::map).  That needs cargo limits to be in place, though, since we can't
+   observe an effect otherwise.  */
 
 /* ************************************************************************** */
 
