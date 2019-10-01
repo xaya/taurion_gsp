@@ -26,6 +26,7 @@
 #include "database/account.hpp"
 #include "database/character.hpp"
 #include "database/database.hpp"
+#include "database/inventory.hpp"
 #include "database/region.hpp"
 #include "mapdata/basemap.hpp"
 
@@ -72,12 +73,15 @@ protected:
   /** Access handle for the characters table in the DB.  */
   CharacterTable characters;
 
+  /** Access handle for ground loot.  */
+  GroundLootTable groundLoot;
+
   /** Access to the regions table.  */
   RegionsTable regions;
 
   explicit BaseMoveProcessor (Database& d, const Params& p, const BaseMap& m)
     : params(p), map(m), db(d),
-      accounts(db), characters(db), regions(db)
+      accounts(db), characters(db), groundLoot(db), regions(db)
   {}
 
   /**
