@@ -16,12 +16,12 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from pxtest import PXTest
-
 """
 Tests how the full game state corresponds to the "split state" RPCs
 like getaccounts or getregions.
 """
+
+from pxtest import PXTest
 
 
 class SplitStateRpcsTest (PXTest):
@@ -30,9 +30,11 @@ class SplitStateRpcsTest (PXTest):
     self.collectPremine ()
 
     # Set up a non-trivial situation, where we have characters, prospected
-    # regions and kills/fame.
+    # regions, kills/fame and ground loot.
     self.initAccount ("prospector", "r")
     self.initAccount ("killed", "g")
+    self.dropLoot ({"x": 1, "y": 2}, {"foo": 5, "bar": 10})
+    self.dropLoot ({"x": -1, "y": 20}, {"foo": 5})
     self.createCharacters ("prospector")
     self.createCharacters ("killed")
     self.generate (1)
@@ -50,14 +52,17 @@ class SplitStateRpcsTest (PXTest):
     state = self.getGameState ()
     accounts = self.getRpc ("getaccounts")
     characters = self.getRpc ("getcharacters")
+    loot = self.getRpc ("getgroundloot")
     regions = self.getRpc ("getregions")
     prizes = self.getRpc ("getprizestats")
     assert len (accounts) > 0
     assert len (characters) > 0
+    assert len (loot) > 0
     assert len (regions) > 0
     assert len (prizes) > 0
     self.assertEqual (accounts, state["accounts"])
     self.assertEqual (characters, state["characters"])
+    self.assertEqual (loot, state["groundloot"])
     self.assertEqual (regions, state["regions"])
     self.assertEqual (prizes, state["prizes"])
 

@@ -233,6 +233,18 @@ class PXTest (XayaGameTest):
     self.adminCommand ({"god": {"sethp": sethp}})
     self.generate (1)
 
+  def dropLoot (self, position, fungible):
+    """
+    Issues a god-mode command to drop loot on the ground.  fungible should be
+    a dictionary mapping item-type strings to corresponding counts.
+    """
+
+    self.adminCommand ({"god": {"drop": [{
+      "pos": position,
+      "fungible": fungible,
+    }]}})
+    self.generate (1)
+
   def getAccounts (self):
     """
     Returns all accounts with non-trivial data in the current game state.

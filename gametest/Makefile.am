@@ -11,6 +11,7 @@ REGTESTS = \
   findpath.py \
   getregionat.py \
   godmode.py \
+  loot.py \
   movement.py \
   multiupdate.py \
   nullstate.py \
