@@ -51,6 +51,7 @@ Character::Character (Database& d, const Database::Result<CharacterResult>& res)
   hp = res.GetProto<CharacterResult::hp> ();
   regenData = res.GetProto<CharacterResult::regendata> ();
   busy = res.Get<CharacterResult::busy> ();
+  inv = res.GetProto<CharacterResult::inventory> ();
   data = res.GetProto<CharacterResult::proto> ();
   attackRange = res.Get<CharacterResult::attackrange> ();
   oldCanRegen = res.Get<CharacterResult::canregen> ();
@@ -68,7 +69,7 @@ Character::~Character ()
   if (hp.IsDirty () || regenData.IsDirty ())
     canRegen = ComputeCanRegen ();
 
-  if (isNew || regenData.IsDirty () || data.IsDirty ())
+  if (isNew || regenData.IsDirty () || inv.IsDirty () || data.IsDirty ())
     {
       VLOG (1)
           << "Character " << id
@@ -81,7 +82,7 @@ Character::~Character ()
            `busy`,
            `faction`,
            `ismoving`, `attackrange`, `canregen`, `hastarget`,
-           `regendata`, `proto`)
+           `regendata`, `inventory`, `proto`)
           VALUES
           (?1,
            ?2, ?3, ?4,
@@ -89,7 +90,7 @@ Character::~Character ()
            ?7,
            ?101,
            ?102, ?103, ?104, ?105,
-           ?106, ?107)
+           ?106, ?107, ?108)
       )");
 
       BindFieldValues (stmt);
@@ -99,7 +100,8 @@ Character::~Character ()
       stmt.Bind (104, canRegen);
       stmt.Bind (105, data.Get ().has_target ());
       stmt.BindProto (106, regenData);
-      stmt.BindProto (107, data);
+      stmt.BindProto (107, inv.GetProtoForBinding ());
+      stmt.BindProto (108, data);
       stmt.Execute ();
 
       return;

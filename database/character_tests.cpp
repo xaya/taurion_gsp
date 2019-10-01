@@ -177,6 +177,23 @@ TEST_F (CharacterTests, ModificationFieldsOnly)
   EXPECT_EQ (c->GetBusy (), 42);
 }
 
+TEST_F (CharacterTests, Inventory)
+{
+  auto h = tbl.CreateNew ("domob", Faction::RED);
+  const auto id = h->GetId ();
+  h->GetInventory ().SetFungibleCount ("foo", 10);
+  h.reset ();
+
+  h = tbl.GetById (id);
+  EXPECT_EQ (h->GetInventory ().GetFungibleCount ("foo"), 10);
+  h->GetInventory ().SetFungibleCount ("foo", 0);
+  h.reset ();
+
+  h = tbl.GetById (id);
+  EXPECT_TRUE (h->GetInventory ().IsEmpty ());
+  h.reset ();
+}
+
 TEST_F (CharacterTests, HasTarget)
 {
   auto c = tbl.CreateNew ("domob", Faction::RED);
