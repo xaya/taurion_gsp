@@ -63,6 +63,7 @@ public:
 
   Json::Value getaccounts () override;
   Json::Value getcharacters () override;
+  Json::Value getgroundloot () override;
   Json::Value getregions () override;
   Json::Value getprizestats () override;
 

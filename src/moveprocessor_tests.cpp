@@ -947,11 +947,11 @@ class GodModeTests : public MoveProcessorTests
 
 protected:
 
-  /** Character table for use in the test.  */
   CharacterTable tbl;
+  GroundLootTable loot;
 
   GodModeTests ()
-    : MoveProcessorTests (xaya::Chain::REGTEST), tbl(db)
+    : MoveProcessorTests (xaya::Chain::REGTEST), tbl(db), loot(db)
   {}
 
 };
@@ -1047,6 +1047,74 @@ TEST_F (GodModeTests, SetHp)
   EXPECT_EQ (c->GetRegenData ().max_hp ().armour (), 100);
   EXPECT_EQ (c->GetRegenData ().max_hp ().shield (), 90);
   c.reset ();
+}
+
+TEST_F (GodModeTests, InvalidDropLoot)
+{
+  const HexCoord pos(1, 2);
+
+  ProcessAdmin (R"([{"cmd": {
+    "god":
+      {
+        "drop": {"foo": 1}
+      }
+  }}])");
+  ProcessAdmin (R"([{"cmd": {
+    "god":
+      {
+        "drop":
+          [
+            10,
+            [],
+            {
+              "pos": {"invalid hex": true},
+              "fungible": {"foo": 10}
+            },
+            {
+              "pos": {"x": 1, "y": 2},
+              "fungible": [{"foo": 10}]
+            },
+            {
+              "pos": {"x": 1, "y": 2},
+              "fungible": {"foo": 10.5, "bar": -5, "baz": 0}
+            },
+            {
+              "pos": {"x": 1, "y": 2},
+              "fungible": {"foo": 10},
+              "extra": "value"
+            }
+          ]
+      }
+  }}])");
+
+  EXPECT_TRUE (loot.GetByCoord (pos)->GetInventory ().IsEmpty ());
+}
+
+TEST_F (GodModeTests, ValidDropLoot)
+{
+  const HexCoord pos(1, 2);
+
+  ProcessAdmin (R"([{"cmd": {
+    "god":
+      {
+        "drop":
+          [
+            10,
+            {
+              "pos": {"x": 1, "y": 2},
+              "fungible": {"a": false, "foo": 10, "z": "x"}
+            },
+            {
+              "pos": {"x": 1, "y": 2},
+              "fungible": {"foo": 10, "bar": 5}
+            }
+          ]
+      }
+  }}])");
+
+  auto h = loot.GetByCoord (pos);
+  EXPECT_EQ (h->GetInventory ().GetFungibleCount ("foo"), 20);
+  EXPECT_EQ (h->GetInventory ().GetFungibleCount ("bar"), 5);
 }
 
 /**

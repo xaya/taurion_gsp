@@ -40,6 +40,11 @@
     "returns": {}
   },
   {
+    "name": "getgroundloot",
+    "params": {},
+    "returns": {}
+  },
+  {
     "name": "getregions",
     "params": {},
     "returns": {}

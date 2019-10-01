@@ -25,6 +25,7 @@
 #include "database/account.hpp"
 #include "database/character.hpp"
 #include "database/dbtest.hpp"
+#include "database/inventory.hpp"
 #include "database/prizes.hpp"
 #include "database/region.hpp"
 #include "proto/character.pb.h"
@@ -423,6 +424,69 @@ TEST_F (AccountJsonTests, KillsAndFame)
       [
         {"name": "bar", "faction": "b", "kills": 0, "fame": 42},
         {"name": "foo", "faction": "r", "kills": 10, "fame": 100}
+      ]
+  })");
+}
+
+/* ************************************************************************** */
+
+class GroundLootJsonTests : public GameStateJsonTests
+{
+
+protected:
+
+  GroundLootTable tbl;
+
+  GroundLootJsonTests ()
+    : tbl(db)
+  {}
+
+};
+
+TEST_F (GroundLootJsonTests, Empty)
+{
+  ExpectStateJson (R"({
+    "groundloot": []
+  })");
+}
+
+TEST_F (GroundLootJsonTests, FungibleInventory)
+{
+  auto h = tbl.GetByCoord (HexCoord (1, 2));
+  h->GetInventory ().SetFungibleCount ("foo", 5);
+  h->GetInventory ().SetFungibleCount ("bar", 42);
+  h->GetInventory ().SetFungibleCount ("", 100);
+  h.reset ();
+
+  h = tbl.GetByCoord (HexCoord (-1, 20));
+  h->GetInventory ().SetFungibleCount ("foo", 10);
+  h.reset ();
+
+  ExpectStateJson (R"({
+    "groundloot":
+      [
+        {
+          "position": {"x": -1, "y": 20},
+          "inventory":
+            {
+              "fungible":
+                {
+                  "foo": 10
+                }
+            }
+        },
+        {
+          "position": {"x": 1, "y": 2},
+          "inventory":
+            {
+              "fungible":
+                {
+                  "foo": 5,
+                  "bar": 42,
+                  "": 100
+                }
+            }
+        }
       ]
   })");
 }

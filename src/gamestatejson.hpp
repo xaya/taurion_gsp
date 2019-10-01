@@ -85,6 +85,11 @@ public:
   Json::Value Characters ();
 
   /**
+   * Returns the JSON data representing all ground loot.
+   */
+  Json::Value GroundLoot ();
+
+  /**
    * Returns the JSON data representing all regions in the game state.
    */
   Json::Value Regions ();

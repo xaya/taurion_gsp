@@ -15,10 +15,12 @@ libdatabase_la_LIBADD = \
 libdatabase_la_SOURCES = \
   account.cpp \
   character.cpp \
+  coord.cpp \
   damagelists.cpp \
   database.cpp \
   faction.cpp \
   fighter.cpp \
+  inventory.cpp \
   prizes.cpp \
   region.cpp \
   schema.cpp \
@@ -26,10 +28,12 @@ libdatabase_la_SOURCES = \
 noinst_HEADERS = \
   account.hpp \
   character.hpp \
+  coord.hpp coord.tpp \
   damagelists.hpp \
   database.hpp database.tpp \
   faction.hpp faction.tpp \
   fighter.hpp \
+  inventory.hpp \
   lazyproto.hpp lazyproto.tpp \
   prizes.hpp \
   region.hpp \
@@ -67,10 +71,12 @@ tests_LDADD = \
 tests_SOURCES = \
   account_tests.cpp \
   character_tests.cpp \
+  coord_tests.cpp \
   damagelists_tests.cpp \
   database_tests.cpp \
   faction_tests.cpp \
   fighter_tests.cpp \
+  inventory_tests.cpp \
   lazyproto_tests.cpp \
   prizes_tests.cpp \
   region_tests.cpp \

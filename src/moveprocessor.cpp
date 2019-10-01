@@ -569,6 +569,70 @@ MaybeGodSetHp (CharacterTable& tbl, const Json::Value& cmd)
     }
 }
 
+/**
+ * Tries to parse and execute a god-mode command that creates and drops
+ * loot items on the ground.
+ */
+void
+MaybeGodDropLoot (GroundLootTable& tbl, const Json::Value& cmd)
+{
+  if (!cmd.isArray ())
+    return;
+
+  for (const auto& tile : cmd)
+    {
+      if (!tile.isObject ())
+        {
+          LOG (WARNING) << "Drop-loot element is not an object: " << tile;
+          continue;
+        }
+
+      HexCoord pos;
+      if (!CoordFromJson (tile["pos"], pos))
+        {
+          LOG (WARNING)
+              << "Drop-loot element has invalid position: " << tile;
+          continue;
+        }
+
+      const auto& fungible = tile["fungible"];
+      if (!fungible.isObject ())
+        {
+          LOG (WARNING)
+              << "Drop-loot element has invalid fungible member: " << tile;
+          continue;
+        }
+
+      if (tile.size () != 2)
+        {
+          LOG (WARNING) << "Drop-loot element has extra members: " << tile;
+          continue;
+        }
+
+      auto h = tbl.GetByCoord (pos);
+      for (auto it = fungible.begin (); it != fungible.end (); ++it)
+        {
+          const auto& keyVal = it.key ();
+          CHECK (keyVal.isString ());
+          const std::string key = keyVal.asString ();
+
+          if (!it->isUInt64 ())
+            {
+              LOG (WARNING)
+                  << "Invalid fungible amount for item " << key << ": " << *it;
+              continue;
+            }
+          const uint64_t cnt = it->asUInt64 ();
+
+          const uint64_t before = h->GetInventory ().GetFungibleCount (key);
+          LOG (INFO)
+              << "God-mode dropping " << cnt << " of " << key << " at " << pos
+              << " in addition to existing " << before;
+          h->GetInventory ().SetFungibleCount (key, before + cnt);
+        }
+    }
+}
+
 } // anonymous namespace
 
 void
@@ -585,6 +649,7 @@ MoveProcessor::HandleGodMode (const Json::Value& cmd)
 
   MaybeGodTeleport (characters, cmd["teleport"]);
   MaybeGodSetHp (characters, cmd["sethp"]);
+  MaybeGodDropLoot (groundLoot, cmd["drop"]);
 }
 
 void

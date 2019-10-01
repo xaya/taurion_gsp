@@ -4,6 +4,7 @@ PROTOS = \
   character.proto \
   combat.proto \
   geometry.proto \
+  inventory.proto \
   movement.proto \
   region.proto
 EXTRA_DIST = $(PROTOS)
