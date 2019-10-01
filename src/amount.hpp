@@ -28,13 +28,13 @@ namespace pxd
 using Amount = int64_t;
 
 /** Amount of one CHI.  */
-constexpr Amount COIN = 100000000;
+constexpr Amount COIN = 1'000'000'00;
 
 /**
  * Highest valid value for an amount.  This is just used for sanity checks
  * and not the precise money supply of CHI.
  */
-constexpr Amount MAX_AMOUNT = 80000000 * COIN;
+constexpr Amount MAX_AMOUNT = 80'000'000 * COIN;
 
 } // namespace pxd
 

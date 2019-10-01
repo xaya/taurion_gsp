@@ -43,7 +43,7 @@ namespace pxd
  * is small enough to avoid overflowing the uint32 proto field, but it is also
  * large enough to not be a restriction in practice (1k tiles per block).
  */
-static constexpr unsigned MAX_CHOSEN_SPEED = 1000000;
+static constexpr unsigned MAX_CHOSEN_SPEED = 1'000'000;
 
 /**
  * Base class for MoveProcessor (handling confirmed moves) and PendingProcessor
