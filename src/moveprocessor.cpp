@@ -373,7 +373,7 @@ MaybeSetCharacterSpeed (Character& c, const Json::Value& upd)
       return;
     }
 
-  const unsigned speed = val.asUInt64 ();
+  const uint64_t speed = val.asUInt64 ();
   if (speed == 0 || speed > MAX_CHOSEN_SPEED)
     {
       LOG (WARNING)
