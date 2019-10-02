@@ -931,7 +931,7 @@ TEST_F (DropPickupMoveTests, BasicPickUp)
       "move": {"c": {"1": {"pu": {"f": {
         "a": 2000000000,
         "foo": 2,
-        "x": 10
+        "bar": 10
       }}}}}
     },
     {
@@ -967,6 +967,32 @@ TEST_F (DropPickupMoveTests, TooMuch)
   ExpectInventoryItems (loot.GetByCoord (pos)->GetInventory (), {{"foo", 10}});
 }
 
+TEST_F (DropPickupMoveTests, CargoLimit)
+{
+  GetTest ()->MutableProto ().set_cargo_space (100);
+  SetInventoryItems (loot.GetByCoord (pos)->GetInventory (), {
+    {"bar", 1},
+    {"foo", 100},
+    {"zerospace", 5},
+  });
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {
+        "pu": {"f": {"bar": 1, "foo": 100, "zerospace": 100}}
+      }}}
+    }
+  ])");
+
+  ExpectInventoryItems (GetTest ()->GetInventory (), {
+    {"bar", 1},
+    {"foo", 8},
+    {"zerospace", 5},
+  });
+  ExpectInventoryItems (loot.GetByCoord (pos)->GetInventory (), {{"foo", 92}});
+}
+
 TEST_F (DropPickupMoveTests, RelativeOrder)
 {
   /* Drop should happen before pickup.  We verify this by dropping too much
@@ -989,9 +1015,35 @@ TEST_F (DropPickupMoveTests, RelativeOrder)
   ExpectInventoryItems (GetTest ()->GetInventory (), {{"foo", 3}});
 }
 
-/* FIXME: Also test relative order of items in the move (from sorting through
-   std::map).  That needs cargo limits to be in place, though, since we can't
-   observe an effect otherwise.  */
+TEST_F (DropPickupMoveTests, OrderOfItems)
+{
+  /* This tests the order in which items are processed (should be alphabetically
+     increasing by their string names).  We do this by filling up the cargo
+     space.  "bar" uses 20 space and "foo" 10.  So if we run into the space
+     limit with "bar", we will still be able to pick up one more "foo"
+     afterwards.  If the processing order were reverse, we would fill up the
+     entire cargo just with foo's.  */
+
+  GetTest ()->MutableProto ().set_cargo_space (115);
+  SetInventoryItems (loot.GetByCoord (pos)->GetInventory (), {
+    {"foo", 100},
+    {"bar", 100},
+  });
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {
+        "pu": {"f": {"foo": 100, "bar": 100}}
+      }}}
+    }
+  ])");
+
+  ExpectInventoryItems (GetTest ()->GetInventory (), {
+    {"bar", 5},
+    {"foo", 1},
+  });
+}
 
 /* ************************************************************************** */
 

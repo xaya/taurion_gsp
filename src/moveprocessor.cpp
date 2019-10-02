@@ -25,6 +25,7 @@
 
 #include "database/faction.hpp"
 #include "proto/character.pb.h"
+#include "proto/roconfig.hpp"
 
 #include <sstream>
 
@@ -537,13 +538,20 @@ ParseDropPickupFungible (const Json::Value& cmd)
  * to another (e.g. ground loot), based on the quantities given in the
  * map.  This verifies that there is enough in the "source" inventory,
  * and reduces the amount accordingly if not.
+ *
+ * If maxSpace is not -1, then only items using up at most that much space
+ * will be transferred.  With this, we can e.g. limit the cargo space
+ * of a character inventory.
  */
 void
 MoveFungibleBetweenInventories (const FungibleAmountMap& items,
                                 Inventory& from, Inventory& to,
                                 const std::string& fromName,
-                                const std::string& toName)
+                                const std::string& toName,
+                                int64_t maxSpace = -1)
 {
+  const auto& itemData = RoConfigData ().fungible_items ();
+
   for (const auto& entry : items)
     {
       const auto available = from.GetFungibleCount (entry.first);
@@ -555,6 +563,30 @@ MoveFungibleBetweenInventories (const FungibleAmountMap& items,
               << " (" << cnt << ") than the existing " << available
               << " from " << fromName << " to " << toName;
           cnt = available;
+        }
+
+      if (maxSpace >= 0)
+        {
+          const auto mit = itemData.find (entry.first);
+          CHECK (mit != itemData.end ())
+              << "Unknown item to be transferred: " << entry.first;
+
+          if (mit->second.space () > 0)
+            {
+              const auto maxForSpace = maxSpace / mit->second.space ();
+              if (cnt > maxForSpace)
+                {
+                  LOG (WARNING)
+                      << "Only moving " << maxForSpace << " of " << entry.first
+                      << " instead of " << cnt
+                      << " for lack of space (only " << maxSpace << " free)";
+                  cnt = maxForSpace;
+                }
+
+              maxSpace -= Inventory::Product (cnt, mit->second.space ());
+            }
+
+          CHECK_GE (maxSpace, 0);
         }
 
       /* Avoid making the inventories dirty if we do not move anything.  */
@@ -606,11 +638,18 @@ MoveProcessor::MaybePickupLoot (Character& c, const Json::Value& cmd)
   std::ostringstream toName;
   toName << "character " << c.GetId ();
 
+  const int64_t freeCargo = c.GetProto ().cargo_space () - c.UsedCargoSpace ();
+  CHECK_GE (freeCargo, 0);
+  VLOG (1)
+      << "Character " << c.GetId () << " has " << freeCargo
+      << " free cargo space before picking loot up with " << cmd;
+
   auto ground = groundLoot.GetByCoord (c.GetPosition ());
   MoveFungibleBetweenInventories (fungible,
                                   ground->GetInventory (),
                                   c.GetInventory (),
-                                  fromName.str (), toName.str ());
+                                  fromName.str (), toName.str (),
+                                  freeCargo);
 }
 
 void
