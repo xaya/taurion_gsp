@@ -80,6 +80,9 @@ class Character (object):
       return self.data["busy"]
     return None
 
+  def getFungibleInventory (self):
+    return self.data["inventory"]["fungible"]
+
   def sendMove (self, mv):
     """
     Sends a move to update the given character with the given data.
