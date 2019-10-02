@@ -22,6 +22,7 @@
 #include "coord.hpp"
 #include "database.hpp"
 #include "faction.hpp"
+#include "inventory.hpp"
 #include "lazyproto.hpp"
 
 #include "hexagonal/coord.hpp"
@@ -48,10 +49,11 @@ struct CharacterResult : public ResultWithFaction, public ResultWithCoord
   RESULT_COLUMN (pxd::proto::HP, hp, 4);
   RESULT_COLUMN (pxd::proto::RegenData, regendata, 5);
   RESULT_COLUMN (int64_t, busy, 6);
-  RESULT_COLUMN (pxd::proto::Character, proto, 7);
-  RESULT_COLUMN (int64_t, attackrange, 8);
-  RESULT_COLUMN (bool, canregen, 9);
-  RESULT_COLUMN (bool, hastarget, 10);
+  RESULT_COLUMN (pxd::proto::Inventory, inventory, 7);
+  RESULT_COLUMN (pxd::proto::Character, proto, 8);
+  RESULT_COLUMN (int64_t, attackrange, 9);
+  RESULT_COLUMN (bool, canregen, 10);
+  RESULT_COLUMN (bool, hastarget, 11);
 };
 
 /**
@@ -99,6 +101,9 @@ private:
 
   /** The number of blocks (or zero) the character is still busy.  */
   int busy;
+
+  /** The character's inventory.  */
+  Inventory inv;
 
   /** All other data in the protocol buffer.  */
   LazyProto<proto::Character> data;
@@ -268,6 +273,18 @@ public:
   {
     busy = b;
     dirtyFields = true;
+  }
+
+  const Inventory&
+  GetInventory () const
+  {
+    return inv;
+  }
+
+  Inventory&
+  GetInventory ()
+  {
+    return inv;
   }
 
   const proto::Character&

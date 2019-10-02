@@ -336,6 +336,30 @@ TEST_F (CharacterJsonTests, HP)
   })");
 }
 
+TEST_F (CharacterJsonTests, Inventory)
+{
+  auto h = tbl.CreateNew ("domob", Faction::RED);
+  h->GetInventory ().SetFungibleCount ("foo", 5);
+  h->GetInventory ().SetFungibleCount ("bar", 10);
+  h.reset ();
+
+  ExpectStateJson (R"({
+    "characters":
+      [
+        {
+          "inventory":
+            {
+              "fungible":
+                {
+                  "foo": 5,
+                  "bar": 10
+                }
+            }
+        }
+      ]
+  })");
+}
+
 TEST_F (CharacterJsonTests, DamageLists)
 {
   const auto id1 = tbl.CreateNew ("domob", Faction::RED)->GetId ();

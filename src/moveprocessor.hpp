@@ -203,6 +203,17 @@ private:
   void MaybeStartProspecting (Character& c, const Json::Value& upd);
 
   /**
+   * Processes a command to drop loot from the character's inventory
+   * onto the ground.
+   */
+  void MaybeDropLoot (Character& c, const Json::Value& cmd);
+
+  /**
+   * Processes a command to pick up loot from the ground.
+   */
+  void MaybePickupLoot (Character& c, const Json::Value& cmd);
+
+  /**
    * Tries to handle an account initialisation (choosing faction) from
    * the given move.
    */

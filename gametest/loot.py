@@ -50,6 +50,103 @@ class LootTest (PXTest):
       },
     ])
 
+    self.mainLogger.info ("Picking up loot with a character...")
+    self.initAccount ("red", "r")
+    self.createCharacters ("red")
+    self.generate (1)
+    self.moveCharactersTo ({"red": {"x": 1, "y": 2}})
+    self.generate (1)
+    self.getCharacters ()["red"].sendMove ({"pu": {"f": {"foo": 1000}}})
+    self.generate (1)
+    self.assertEqual (self.getCharacters ()["red"].getFungibleInventory (), {
+      "foo": 10,
+    })
+    self.assertEqual (self.getRpc ("getgroundloot"), [
+      {
+        "position": {"x": -1, "y": 20},
+        "inventory":
+          {
+            "fungible": {"foo": 5},
+          },
+      },
+      {
+        "position": {"x": 1, "y": 2},
+        "inventory":
+          {
+            "fungible": {"bar": 10},
+          },
+      },
+    ])
+
+    self.mainLogger.info ("Dropping loot with a character...")
+    self.moveCharactersTo ({"red": {"x": -1, "y": 20}})
+    self.getCharacters ()["red"].sendMove ({"drop": {"f": {"foo": 1}}})
+    self.generate (1)
+    self.assertEqual (self.getCharacters ()["red"].getFungibleInventory (), {
+      "foo": 9,
+    })
+    self.assertEqual (self.getRpc ("getgroundloot"), [
+      {
+        "position": {"x": -1, "y": 20},
+        "inventory":
+          {
+            "fungible": {"foo": 6},
+          },
+      },
+      {
+        "position": {"x": 1, "y": 2},
+        "inventory":
+          {
+            "fungible": {"bar": 10},
+          },
+      },
+    ])
+
+    self.mainLogger.info ("Death drops of character inventories...")
+    self.initAccount ("green", "g")
+    self.createCharacters ("green")
+    self.generate (1)
+    self.moveCharactersTo ({
+      "red": {"x": 100, "y": 100},
+      "green": {"x": 100, "y": 100},
+    })
+    self.setCharactersHP ({
+      "red": {"a": 1, "s": 0},
+    })
+    self.assertEqual (self.getCharacters ()["red"].getFungibleInventory (), {
+      "foo": 9,
+    })
+    self.getCharacters ()["green"].sendMove ({"pu": {"f": {"foo": 5}}})
+    self.generate (1)
+    chars = self.getCharacters ()
+    assert "red" not in chars
+    self.assertEqual (chars["green"].getFungibleInventory (), {
+      "foo": 5,
+    })
+    self.assertEqual (self.getRpc ("getgroundloot"), [
+      {
+        "position": {"x": -1, "y": 20},
+        "inventory":
+          {
+            "fungible": {"foo": 6},
+          },
+      },
+      {
+        "position": {"x": 1, "y": 2},
+        "inventory":
+          {
+            "fungible": {"bar": 10},
+          },
+      },
+      {
+        "position": {"x": 100, "y": 100},
+        "inventory":
+          {
+            "fungible": {"foo": 4},
+          },
+      },
+    ])
+
 
 if __name__ == "__main__":
   LootTest ().main ()

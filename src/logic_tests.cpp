@@ -322,6 +322,50 @@ TEST_F (PXLogicTests, DamageKillsRegeneration)
   EXPECT_TRUE (characters.GetById (idTarget) == nullptr);
 }
 
+TEST_F (PXLogicTests, PickUpDeadDrop)
+{
+  const HexCoord pos(10, 20);
+
+  auto c = CreateCharacter ("attacker", Faction::RED);
+  const auto idAttacker = c->GetId ();
+  ASSERT_EQ (idAttacker, 1);
+  c->SetPosition (pos);
+  AddUnityAttack (*c, 1);
+  c.reset ();
+
+  c = CreateCharacter ("target", Faction::GREEN);
+  const auto idTarget = c->GetId ();
+  c->SetPosition (pos);
+  c->MutableProto ().mutable_combat_data ();
+  c->GetInventory ().SetFungibleCount ("foo", 10);
+  c.reset ();
+
+  /* Progress one round forward to target.  */
+  UpdateState ("[]");
+
+  /* Update the target character so that it will be killed with the attack.  */
+  c = characters.GetById (idTarget);
+  ASSERT_TRUE (c != nullptr);
+  c->MutableHP ().set_shield (1);
+  c->MutableHP ().set_armour (0);
+  c.reset ();
+
+  /* Now the attack should kill the target.  The attacker should be able to
+     pick up the dropped loot right at the same time, because kills are
+     processed at the beginning of a block, before handling moves.  */
+  UpdateState (R"([
+    {
+      "name": "attacker",
+      "move": {"c": {"1": {"pu": {"f": {"foo": 3}}}}}
+    }
+  ])");
+
+  EXPECT_TRUE (characters.GetById (idTarget) == nullptr);
+  c = characters.GetById (idAttacker);
+  ASSERT_TRUE (c != nullptr);
+  EXPECT_EQ (c->GetInventory ().GetFungibleCount ("foo"), 3);
+}
+
 TEST_F (PXLogicTests, DamageLists)
 {
   DamageLists dl(db, 0);

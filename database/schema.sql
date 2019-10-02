@@ -80,6 +80,9 @@ CREATE TABLE IF NOT EXISTS `characters` (
   -- that need to be processed for combat damage.
   `hastarget` INTEGER NOT NULL,
 
+  -- The character's inventory encoded as Inventory proto.
+  `inventory` BLOB NOT NULL,
+
   -- Additional data encoded as a Character protocol buffer.
   `proto` BLOB NOT NULL
 

@@ -208,6 +208,20 @@ GetBusyJsonObject (const BaseMap& map, const Character& c)
 
 template <>
   Json::Value
+  GameStateJson::Convert<Inventory> (const Inventory& inv) const
+{
+  Json::Value fungible(Json::objectValue);
+  for (const auto& entry : inv.GetFungible ())
+    fungible[entry.first] = IntToJson (entry.second);
+
+  Json::Value res(Json::objectValue);
+  res["fungible"] = fungible;
+
+  return res;
+}
+
+template <>
+  Json::Value
   GameStateJson::Convert<Character> (const Character& c) const
 {
   Json::Value res(Json::objectValue);
@@ -217,6 +231,7 @@ template <>
   res["position"] = CoordToJson (c.GetPosition ());
   res["combat"] = GetCombatJsonObject (c, dl);
   res["speed"] = c.GetProto ().speed ();
+  res["inventory"] = Convert (c.GetInventory ());
 
   const Json::Value mv = GetMovementJsonObject (c);
   if (!mv.empty ())
@@ -238,20 +253,6 @@ template <>
   res["faction"] = FactionToString (a.GetFaction ());
   res["kills"] = IntToJson (a.GetKills ());
   res["fame"] = IntToJson (a.GetFame ());
-
-  return res;
-}
-
-template <>
-  Json::Value
-  GameStateJson::Convert<Inventory> (const Inventory& inv) const
-{
-  Json::Value fungible(Json::objectValue);
-  for (const auto& entry : inv.GetFungible ())
-    fungible[entry.first] = IntToJson (entry.second);
-
-  Json::Value res(Json::objectValue);
-  res["fungible"] = fungible;
 
   return res;
 }

@@ -23,6 +23,7 @@
 
 #include "database/damagelists.hpp"
 #include "database/database.hpp"
+#include "database/inventory.hpp"
 #include "mapdata/basemap.hpp"
 #include "proto/combat.pb.h"
 
@@ -49,7 +50,7 @@ std::vector<proto::TargetId> DealCombatDamage (Database& db, DamageLists& dl,
  * Processes killed fighers from the given list, actually performing the
  * necessary database changes for having them dead.
  */
-void ProcessKills (Database& db, DamageLists& dl,
+void ProcessKills (Database& db, DamageLists& dl, GroundLootTable& loot,
                    const std::vector<proto::TargetId>& dead,
                    const BaseMap& map);
 
