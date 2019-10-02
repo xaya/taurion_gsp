@@ -204,6 +204,22 @@ GetBusyJsonObject (const BaseMap& map, const Character& c)
   return res;
 }
 
+/**
+ * Constructs the JSON representation of a character's cargo space.
+ */
+Json::Value
+GetCargoSpaceJsonObject (const Character& c)
+{
+  const auto used = c.UsedCargoSpace ();
+
+  Json::Value res(Json::objectValue);
+  res["total"] = IntToJson (c.GetProto ().cargo_space ());
+  res["used"] = IntToJson (used);
+  res["free"] = IntToJson (c.GetProto ().cargo_space () - used);
+
+  return res;
+}
+
 } // anonymous namespace
 
 template <>
@@ -232,6 +248,7 @@ template <>
   res["combat"] = GetCombatJsonObject (c, dl);
   res["speed"] = c.GetProto ().speed ();
   res["inventory"] = Convert (c.GetInventory ());
+  res["cargospace"] = GetCargoSpaceJsonObject (c);
 
   const Json::Value mv = GetMovementJsonObject (c);
   if (!mv.empty ())

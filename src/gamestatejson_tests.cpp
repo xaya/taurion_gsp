@@ -361,6 +361,28 @@ TEST_F (CharacterJsonTests, Inventory)
   })");
 }
 
+TEST_F (CharacterJsonTests, CargoSpace)
+{
+  auto h = tbl.CreateNew ("domob", Faction::RED);
+  h->MutableProto ().set_cargo_space (1000);
+  h->GetInventory ().SetFungibleCount ("foo", 35);
+  h.reset ();
+
+  ExpectStateJson (R"({
+    "characters":
+      [
+        {
+          "cargospace":
+            {
+              "total": 1000,
+              "used": 350,
+              "free": 650
+            }
+        }
+      ]
+  })");
+}
+
 TEST_F (CharacterJsonTests, DamageLists)
 {
   const auto id1 = tbl.CreateNew ("domob", Faction::RED)->GetId ();
