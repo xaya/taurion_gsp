@@ -46,7 +46,15 @@ namespace pxd
  * A value of one billion allows multiplication with another value in that
  * range (e.g. cargo per item or price per unit) without overflowing 64 bits.
  */
-static constexpr uint64_t MAX_ITEM_QUANTITY = 1'000'000'000;
+static constexpr int64_t MAX_ITEM_QUANTITY = 1'000'000'000;
+
+/**
+ * The maximum value any "dual variables" for item quantities can have.
+ * These are things that are multiplied with them, for instance per-unit
+ * value/weight or cost.  By limiting this value, we ensure that the product
+ * can always be safely computed in 64 bits.
+ */
+static constexpr int64_t MAX_ITEM_DUAL = 1'000'000'000;
 
 /**
  * Wrapper class around the state of an inventory.  This is what game-logic
@@ -130,6 +138,13 @@ public:
   {
     return data;
   }
+
+  /**
+   * Computes the product of a quantity value with a dual value.  Both
+   * must be within the limits, or else the function CHECK-fails.  They may
+   * be signed, though.
+   */
+  static int64_t Product (QuantityT amount, int64_t dual);
 
 };
 
