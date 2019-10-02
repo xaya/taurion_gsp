@@ -181,7 +181,7 @@ DealCombatDamage (Database& db, DamageLists& dl, xaya::Random& rnd)
 }
 
 void
-ProcessKills (Database& db, DamageLists& dl,
+ProcessKills (Database& db, DamageLists& dl, GroundLootTable& loot,
               const std::vector<proto::TargetId>& dead,
               const BaseMap& map)
 {
@@ -194,14 +194,13 @@ ProcessKills (Database& db, DamageLists& dl,
       case proto::TargetId::TYPE_CHARACTER:
         {
           auto c = characters.GetById (id.id ());
+          const auto& pos = c->GetPosition ();
 
           /* If the character was prospecting some region, cancel that
              operation and mark the region as not being prospected.  */
           if (c->GetProto ().has_prospection ())
             {
-              const auto& pos = c->GetPosition ();
               const auto regionId = map.Regions ().GetRegionId (pos);
-
               LOG (INFO)
                   << "Killed character " << id.id ()
                   << " was prospecting region " << regionId
@@ -210,6 +209,28 @@ ProcessKills (Database& db, DamageLists& dl,
               auto r = regions.GetById (regionId);
               CHECK_EQ (r->GetProto ().prospecting_character (), id.id ());
               r->MutableProto ().clear_prospecting_character ();
+            }
+
+          /* If the character has an inventory, drop everything they had
+             on the ground. */
+          const auto& inv = c->GetInventory ();
+          if (!inv.IsEmpty ())
+            {
+              LOG (INFO)
+                  << "Killed character " << id.id ()
+                  << " has non-empty inventory, dropping loot at " << pos;
+
+              auto ground = loot.GetByCoord (pos);
+              auto& groundInv = ground->GetInventory ();
+              for (const auto& entry : inv.GetFungible ())
+                {
+                  auto amount = groundInv.GetFungibleCount (entry.first);
+                  VLOG (1)
+                      << "Dropping " << entry.second << " of " << entry.first
+                      << " in addition to existing " << amount;
+                  amount += entry.second;
+                  groundInv.SetFungibleCount (entry.first, amount);
+                }
             }
 
           c.reset ();
@@ -280,9 +301,13 @@ AllHpUpdates (Database& db, FameUpdater& fame, xaya::Random& rnd,
               const BaseMap& map)
 {
   const auto dead = DealCombatDamage (db, fame.GetDamageLists (), rnd);
+
   for (const auto& id : dead)
     fame.UpdateForKill (id);
-  ProcessKills (db, fame.GetDamageLists (), dead, map);
+
+  GroundLootTable loot(db);
+  ProcessKills (db, fame.GetDamageLists (), loot, dead, map);
+
   RegenerateHP (db);
 }
 

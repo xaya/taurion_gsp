@@ -23,6 +23,7 @@
 #include "database/damagelists.hpp"
 #include "database/dbtest.hpp"
 #include "database/faction.hpp"
+#include "database/inventory.hpp"
 #include "database/schema.hpp"
 #include "hexagonal/coord.hpp"
 #include "mapdata/basemap.hpp"
@@ -95,9 +96,10 @@ void
 UpdateHP (Database& db, xaya::Random& rnd, const BaseMap& map)
 {
   DamageLists dl(db, 0);
+  GroundLootTable loot(db);
 
   const auto dead = DealCombatDamage (db, dl, rnd);
-  ProcessKills (db, dl, dead, map);
+  ProcessKills (db, dl, loot, dead, map);
   RegenerateHP (db);
 }
 

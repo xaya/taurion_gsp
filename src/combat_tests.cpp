@@ -452,21 +452,32 @@ TEST_F (DealDamageTests, Kills)
 
 /* ************************************************************************** */
 
-using ProcessKillsTests = CombatTests;
+class ProcessKillsTests : public CombatTests
+{
+
+protected:
+
+  GroundLootTable loot;
+
+  ProcessKillsTests ()
+    : loot(db)
+  {}
+
+};
 
 TEST_F (ProcessKillsTests, DeletesCharacters)
 {
   const auto id1 = characters.CreateNew ("domob", Faction::RED)->GetId ();
   const auto id2 = characters.CreateNew ("domob", Faction::RED)->GetId ();
 
-  ProcessKills (db, dl, {}, map);
+  ProcessKills (db, dl, loot, {}, map);
   EXPECT_TRUE (characters.GetById (id1) != nullptr);
   EXPECT_TRUE (characters.GetById (id2) != nullptr);
 
   proto::TargetId targetId;
   targetId.set_type (proto::TargetId::TYPE_CHARACTER);
   targetId.set_id (id2);
-  ProcessKills (db, dl, {targetId}, map);
+  ProcessKills (db, dl, loot, {targetId}, map);
 
   EXPECT_TRUE (characters.GetById (id1) != nullptr);
   EXPECT_TRUE (characters.GetById (id2) == nullptr);
@@ -486,7 +497,7 @@ TEST_F (ProcessKillsTests, RemovesFromDamageLists)
   proto::TargetId targetId2;
   targetId2.set_type (proto::TargetId::TYPE_CHARACTER);
   targetId2.set_id (id2);
-  ProcessKills (db, dl, {targetId2}, map);
+  ProcessKills (db, dl, loot, {targetId2}, map);
 
   EXPECT_EQ (dl.GetAttackers (id1), DamageLists::Attackers ({id3}));
   EXPECT_EQ (dl.GetAttackers (id2), DamageLists::Attackers ({}));
@@ -512,11 +523,34 @@ TEST_F (ProcessKillsTests, CancelsProspection)
   proto::TargetId targetId;
   targetId.set_type (proto::TargetId::TYPE_CHARACTER);
   targetId.set_id (id);
-  ProcessKills (db, dl, {targetId}, map);
+  ProcessKills (db, dl, loot, {targetId}, map);
 
   EXPECT_TRUE (characters.GetById (id) == nullptr);
   r = regions.GetById (regionId);
   EXPECT_FALSE (r->GetProto ().has_prospecting_character ());
+}
+
+TEST_F (ProcessKillsTests, DropsInventory)
+{
+  const HexCoord pos(-42, 100);
+  loot.GetByCoord (pos)->GetInventory ().SetFungibleCount ("foo", 5);
+
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  const auto id = c->GetId ();
+  c->SetPosition (pos);
+  c->GetInventory ().SetFungibleCount ("foo", 2);
+  c->GetInventory ().SetFungibleCount ("bar", 10);
+  c.reset ();
+
+  proto::TargetId targetId;
+  targetId.set_type (proto::TargetId::TYPE_CHARACTER);
+  targetId.set_id (id);
+  ProcessKills (db, dl, loot, {targetId}, map);
+
+  EXPECT_TRUE (characters.GetById (id) == nullptr);
+  auto ground = loot.GetByCoord (pos);
+  EXPECT_EQ (ground->GetInventory ().GetFungibleCount ("foo"), 7);
+  EXPECT_EQ (ground->GetInventory ().GetFungibleCount ("bar"), 10);
 }
 
 /* ************************************************************************** */
