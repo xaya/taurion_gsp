@@ -339,6 +339,7 @@ TEST_F (CharacterJsonTests, HP)
 TEST_F (CharacterJsonTests, Inventory)
 {
   auto h = tbl.CreateNew ("domob", Faction::RED);
+  h->MutableProto ().set_cargo_space (1000);
   h->GetInventory ().SetFungibleCount ("foo", 5);
   h->GetInventory ().SetFungibleCount ("bar", 10);
   h.reset ();
@@ -354,6 +355,28 @@ TEST_F (CharacterJsonTests, Inventory)
                   "foo": 5,
                   "bar": 10
                 }
+            }
+        }
+      ]
+  })");
+}
+
+TEST_F (CharacterJsonTests, CargoSpace)
+{
+  auto h = tbl.CreateNew ("domob", Faction::RED);
+  h->MutableProto ().set_cargo_space (1000);
+  h->GetInventory ().SetFungibleCount ("foo", 35);
+  h.reset ();
+
+  ExpectStateJson (R"({
+    "characters":
+      [
+        {
+          "cargospace":
+            {
+              "total": 1000,
+              "used": 350,
+              "free": 650
             }
         }
       ]

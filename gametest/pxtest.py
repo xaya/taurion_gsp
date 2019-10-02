@@ -99,7 +99,6 @@ class Character (object):
     """
 
     for key, val in expected.iteritems ():
-      assert key in self.data
       self.test.assertEqual (self.data[key], val)
 
 

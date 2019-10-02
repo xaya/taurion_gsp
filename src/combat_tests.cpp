@@ -537,6 +537,7 @@ TEST_F (ProcessKillsTests, DropsInventory)
 
   auto c = characters.CreateNew ("domob", Faction::RED);
   const auto id = c->GetId ();
+  c->MutableProto ().set_cargo_space (1000);
   c->SetPosition (pos);
   c->GetInventory ().SetFungibleCount ("foo", 2);
   c->GetInventory ().SetFungibleCount ("bar", 10);

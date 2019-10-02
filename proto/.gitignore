@@ -1,2 +1,6 @@
+roconfig.cpp
+
+tests
+*.trs
 *.pb.h
 *.pb.cc

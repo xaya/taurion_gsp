@@ -102,6 +102,47 @@ class LootTest (PXTest):
       },
     ])
 
+    self.mainLogger.info ("Cargo limit for picking loot up...")
+    self.initAccount ("cargo", "r")
+    self.dropLoot ({"x": 0, "y": 0}, {"foo": 95})
+    self.createCharacters ("cargo", 1)
+    self.generate (1)
+    self.moveCharactersTo ({"cargo": {"x": 0, "y": 0}})
+    self.getCharacters ()["cargo"].sendMove ({"pu": {"f": {"foo": 100}}})
+    self.generate (1)
+    self.moveCharactersTo ({"cargo": {"x": 1, "y": 2}})
+    self.getCharacters ()["cargo"].sendMove ({"pu": {"f": {"bar": 100}}})
+    self.generate (1)
+    c = self.getCharacters ()["cargo"]
+    self.assertEqual (c.getFungibleInventory (), {
+      "foo": 95,
+      "bar": 2,
+    })
+    c.expectPartial ({
+      "cargospace":
+        {
+          "total": 1000,
+          "used": 990,
+          "free": 10,
+        },
+    })
+    self.assertEqual (self.getRpc ("getgroundloot"), [
+      {
+        "position": {"x": -1, "y": 20},
+        "inventory":
+          {
+            "fungible": {"foo": 6},
+          },
+      },
+      {
+        "position": {"x": 1, "y": 2},
+        "inventory":
+          {
+            "fungible": {"bar": 8},
+          },
+      },
+    ])
+
     self.mainLogger.info ("Death drops of character inventories...")
     self.initAccount ("green", "g")
     self.createCharacters ("green")
@@ -135,7 +176,7 @@ class LootTest (PXTest):
         "position": {"x": 1, "y": 2},
         "inventory":
           {
-            "fungible": {"bar": 10},
+            "fungible": {"bar": 8},
           },
       },
       {

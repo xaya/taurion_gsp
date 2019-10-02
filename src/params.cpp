@@ -156,6 +156,7 @@ void
 Params::InitCharacterStats (proto::RegenData& regen, proto::Character& pb) const
 {
   pb.set_speed (3000);
+  pb.set_cargo_space (1000);
 
   auto* cd = pb.mutable_combat_data ();
   auto* attack = cd->add_attacks ();

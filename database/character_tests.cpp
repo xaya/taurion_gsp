@@ -181,6 +181,7 @@ TEST_F (CharacterTests, Inventory)
 {
   auto h = tbl.CreateNew ("domob", Faction::RED);
   const auto id = h->GetId ();
+  h->MutableProto ().set_cargo_space (100);
   h->GetInventory ().SetFungibleCount ("foo", 10);
   h.reset ();
 
@@ -230,6 +231,15 @@ TEST_F (CharacterTests, AttackRange)
   c.reset ();
 
   EXPECT_EQ (tbl.GetById (id)->GetAttackRange (), 0);
+}
+
+TEST_F (CharacterTests, UsedCargoSpace)
+{
+  auto c = tbl.CreateNew ("domob", Faction::RED);
+  c->MutableProto ().set_cargo_space (1000);
+  c->GetInventory ().SetFungibleCount ("foo", 10);
+  c->GetInventory ().SetFungibleCount ("bar", 3);
+  EXPECT_EQ (c->UsedCargoSpace (), 100 + 60);
 }
 
 /* ************************************************************************** */

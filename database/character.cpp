@@ -18,7 +18,9 @@
 
 #include "character.hpp"
 
-#include  "fighter.hpp"
+#include "fighter.hpp"
+
+#include "proto/roconfig.hpp"
 
 #include <glog/logging.h>
 
@@ -166,6 +168,8 @@ Character::Validate () const
   if (!regenData.IsDirty () && !hp.IsDirty ())
     CHECK_EQ (oldCanRegen, ComputeCanRegen ());
 
+  CHECK_LE (UsedCargoSpace (), pb.cargo_space ());
+
 #endif // ENABLE_SLOW_ASSERTS
 }
 
@@ -205,6 +209,23 @@ Character::HasTarget () const
   CHECK (!isNew);
   CHECK (!data.IsDirty ());
   return hasTarget;
+}
+
+uint64_t
+Character::UsedCargoSpace () const
+{
+  const auto& itemData = RoConfigData ().fungible_items ();
+
+  uint64_t res = 0;
+  for (const auto& entry : inv.GetFungible ())
+    {
+      const auto mit = itemData.find (entry.first);
+      CHECK (mit != itemData.end ())
+          << "Unknown item in character inventory: " << entry.first;
+      res += Inventory::Product (entry.second, mit->second.space ());
+    }
+
+  return res;
 }
 
 CharacterTable::Handle
