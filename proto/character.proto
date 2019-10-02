@@ -72,6 +72,9 @@ message Character
   /** Movement speed of the character.  */
   optional uint32 speed = 5;
 
+  /** Total cargo space the character has.  */
+  optional uint64 cargo_space = 6;
+
   /* Fields that are stored directly in the database and thus not part of the
      encoded protocol buffer:
 

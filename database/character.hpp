@@ -316,6 +316,11 @@ public:
    */
   bool HasTarget () const;
 
+  /**
+   * Returns the used cargo space for the character's inventory.
+   */
+  uint64_t UsedCargoSpace () const;
+
 };
 
 /**

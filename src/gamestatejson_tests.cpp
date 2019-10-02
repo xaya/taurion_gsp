@@ -339,6 +339,7 @@ TEST_F (CharacterJsonTests, HP)
 TEST_F (CharacterJsonTests, Inventory)
 {
   auto h = tbl.CreateNew ("domob", Faction::RED);
+  h->MutableProto ().set_cargo_space (1000);
   h->GetInventory ().SetFungibleCount ("foo", 5);
   h->GetInventory ().SetFungibleCount ("bar", 10);
   h.reset ();

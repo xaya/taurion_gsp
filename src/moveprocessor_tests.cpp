@@ -794,6 +794,7 @@ protected:
   DropPickupMoveTests ()
     : loot(db), pos(1, 2)
   {
+    GetTest ()->MutableProto ().set_cargo_space (1000);
     GetTest ()->SetPosition (pos);
   }
 

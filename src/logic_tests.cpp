@@ -330,12 +330,14 @@ TEST_F (PXLogicTests, PickUpDeadDrop)
   const auto idAttacker = c->GetId ();
   ASSERT_EQ (idAttacker, 1);
   c->SetPosition (pos);
+  c->MutableProto ().set_cargo_space (1000);
   AddUnityAttack (*c, 1);
   c.reset ();
 
   c = CreateCharacter ("target", Faction::GREEN);
   const auto idTarget = c->GetId ();
   c->SetPosition (pos);
+  c->MutableProto ().set_cargo_space (1000);
   c->MutableProto ().mutable_combat_data ();
   c->GetInventory ().SetFungibleCount ("foo", 10);
   c.reset ();
