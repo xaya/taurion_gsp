@@ -104,6 +104,17 @@ namespace
 {
 
 /**
+ * Performs a random roll to determine the damage a particular attack does.
+ */
+unsigned
+RollAttackDamage (const proto::Attack& attack, xaya::Random& rnd)
+{
+  CHECK_LE (attack.min_damage (), attack.max_damage ());
+  const auto n = attack.max_damage () - attack.min_damage () + 1;
+  return attack.min_damage () + rnd.NextInt (n);
+}
+
+/**
  * Applies a fixed given amount of damage to a given attack target.
  */
 void
@@ -153,25 +164,44 @@ ApplyDamage (DamageLists& dl, unsigned dmg,
  * to zero and is now dead.
  */
 void
-DealDamage (FighterTable& fighters, DamageLists& dl, xaya::Random& rnd,
+DealDamage (FighterTable& fighters, TargetFinder& targets,
+            DamageLists& dl, xaya::Random& rnd,
             Fighter f, std::vector<proto::TargetId>& dead)
 {
-  Fighter tf = fighters.GetForTarget (f.GetTarget ());
-  const auto dist = HexCoord::DistanceL1 (f.GetPosition (), tf.GetPosition ());
   const auto& cd = f.GetCombatData ();
+  const auto& pos = f.GetPosition ();
 
-  unsigned dmg = 0;
+  /* First, apply all non-area attacks to the selected target.  */
+  {
+    Fighter tf = fighters.GetForTarget (f.GetTarget ());
+    const auto dist = HexCoord::DistanceL1 (pos, tf.GetPosition ());
+    unsigned dmg = 0;
+    for (const auto& attack : cd.attacks ())
+      {
+        if (attack.area ())
+          continue;
+        if (dist > static_cast<int> (attack.range ()))
+          continue;
+
+        dmg += RollAttackDamage (attack, rnd);
+      }
+    ApplyDamage (dl, dmg, f, std::move (tf), dead);
+  }
+
+  /* Second, apply all area attacks to matching targets.  */
   for (const auto& attack : cd.attacks ())
     {
-      if (dist > static_cast<int> (attack.range ()))
+      if (!attack.area ())
         continue;
 
-      CHECK_LE (attack.min_damage (), attack.max_damage ());
-      const auto n = attack.max_damage () - attack.min_damage () + 1;
-      dmg += attack.min_damage () + rnd.NextInt (n);
-    }
+      const unsigned dmg = RollAttackDamage (attack, rnd);
 
-  ApplyDamage (dl, dmg, f, std::move (tf), dead);
+      targets.ProcessL1Targets (pos, attack.range (), f.GetFaction (),
+        [&] (const HexCoord& c, const proto::TargetId& id)
+        {
+          ApplyDamage (dl, dmg, f, fighters.GetForTarget (id), dead);
+        });
+    }
 }
 
 } // anonymous namespace
@@ -181,11 +211,12 @@ DealCombatDamage (Database& db, DamageLists& dl, xaya::Random& rnd)
 {
   CharacterTable characters(db);
   FighterTable fighters(characters);
+  TargetFinder targets(db);
 
   std::vector<proto::TargetId> dead;
   fighters.ProcessWithTarget ([&] (Fighter f)
     {
-      DealDamage (fighters, dl, rnd, std::move (f), dead);
+      DealDamage (fighters, targets, dl, rnd, std::move (f), dead);
     });
 
   return dead;
