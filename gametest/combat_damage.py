@@ -22,9 +22,6 @@ Tests dealing damage, regenerating the shield and killing characters.
 
 from pxtest import PXTest, offsetCoord
 
-# Owner of the target character.
-TARGET = "target"
-
 
 class CombatDamageTest (PXTest):
 
@@ -36,10 +33,10 @@ class CombatDamageTest (PXTest):
 
     chars = self.getCharacters ()
 
-    if TARGET not in chars:
+    if "target" not in chars:
       return None, None
 
-    hp = chars[TARGET].data["combat"]["hp"]
+    hp = chars["target"].data["combat"]["hp"]
     return hp["current"], hp["max"]
 
   def run (self):
@@ -48,8 +45,8 @@ class CombatDamageTest (PXTest):
     numAttackers = 5
 
     self.mainLogger.info ("Creating test characters...")
-    self.initAccount (TARGET, "b")
-    self.createCharacters (TARGET)
+    self.initAccount ("target", "b")
+    self.createCharacters ("target")
     self.initAccount ("attacker", "r")
     self.createCharacters ("attacker", 2)
     self.generate (1)
@@ -65,8 +62,8 @@ class CombatDamageTest (PXTest):
     self.getTargetHP ()
 
     self.mainLogger.info ("Taking some damage...")
-    self.moveCharactersTo ({TARGET: self.inRange})
-    self.setCharactersHP ({TARGET: {"ma": 1000, "a": 1000, "s": 2}})
+    self.moveCharactersTo ({"target": self.inRange})
+    self.setCharactersHP ({"target": {"ma": 1000, "a": 1000, "s": 2}})
     self.generate (3)
     hp, maxHP = self.getTargetHP ()
     assert (hp is not None) and (maxHP is not None)
@@ -76,7 +73,7 @@ class CombatDamageTest (PXTest):
     self.restoreBlock = self.rpc.xaya.getbestblockhash ()
 
     self.mainLogger.info ("Regenerating shield...")
-    self.moveCharactersTo ({TARGET: outOfRange})
+    self.moveCharactersTo ({"target": outOfRange})
     self.generate (60)
     hp, maxHP = self.getTargetHP ()
     assert (hp is not None) and (maxHP is not None)
@@ -84,8 +81,8 @@ class CombatDamageTest (PXTest):
     self.assertEqual (hp["shield"], maxHP["shield"])
 
     self.mainLogger.info ("Killing character...")
-    self.moveCharactersTo ({TARGET: self.inRange})
-    self.setCharactersHP ({TARGET: {"a": 1, "s": 0}})
+    self.moveCharactersTo ({"target": self.inRange})
+    self.setCharactersHP ({"target": {"a": 1, "s": 0}})
     self.generate (5)
     hp, maxHP = self.getTargetHP ()
     assert (hp is None) and (maxHP is None)
@@ -104,8 +101,8 @@ class CombatDamageTest (PXTest):
 
     self.rpc.xaya.invalidateblock (self.restoreBlock)
 
-    self.moveCharactersTo ({TARGET: self.inRange})
-    self.setCharactersHP ({TARGET: {"a": 1, "s": 0}})
+    self.moveCharactersTo ({"target": self.inRange})
+    self.setCharactersHP ({"target": {"a": 1, "s": 0}})
     self.generate (5)
     hp, maxHP = self.getTargetHP ()
     assert (hp is None) and (maxHP is None)
