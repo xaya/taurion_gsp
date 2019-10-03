@@ -49,7 +49,13 @@ message Character
   /** Active movement of the character, if any.  */
   optional Movement movement = 1;
 
-  /** The attacked target (if any).  */
+  /**
+   * The attacked target (if any).  The presence of this field also tells us
+   * that there are enemies in range, which is important for area attacks.
+   * So even if e.g. a character has just area attacks, we need to select
+   * one target for them nevertheless, as we later on only process attacks
+   * of characters with a selected target.
+   */
   optional TargetId target = 2;
 
   /**

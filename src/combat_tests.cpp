@@ -177,6 +177,31 @@ TEST_F (TargetSelectionTests, MultipleAttacks)
   EXPECT_FALSE (characters.GetById (id2)->GetProto ().has_target ());
 }
 
+TEST_F (TargetSelectionTests, OnlyAreaAttacks)
+{
+  auto c = characters.CreateNew ("red", Faction::RED);
+  const auto id1 = c->GetId ();
+  c->SetPosition (HexCoord (0, 0));
+  AddAttackWithRange (c->MutableProto (), 7).set_area (true);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto id2 = c->GetId ();
+  c->SetPosition (HexCoord (7, 0));
+  AddAttackWithRange (c->MutableProto (), 6).set_area (true);
+  c.reset ();
+
+  FindCombatTargets (db, rnd);
+
+  c = characters.GetById (id1);
+  const auto& pb = c->GetProto ();
+  ASSERT_TRUE (pb.has_target ());
+  EXPECT_EQ (pb.target ().type (), proto::TargetId::TYPE_CHARACTER);
+  EXPECT_EQ (pb.target ().id (), id2);
+
+  EXPECT_FALSE (characters.GetById (id2)->GetProto ().has_target ());
+}
+
 TEST_F (TargetSelectionTests, Randomisation)
 {
   constexpr unsigned nTargets = 5;
@@ -230,15 +255,17 @@ class DealDamageTests : public CombatTests
 protected:
 
   /**
-   * Adds an attack with the given range and damage.
+   * Adds an attack with the given range and damage.  Returns a reference
+   * to the added Attack proto so it can be further tweaked.
    */
-  static void
+  static proto::Attack&
   AddAttack (proto::Character& pb, const HexCoord::IntT range,
              const unsigned minDmg, const unsigned maxDmg)
   {
     auto& attack = AddAttackWithRange (pb, range);
     attack.set_min_damage (minDmg);
     attack.set_max_damage (maxDmg);
+    return attack;
   }
 
   /**
@@ -286,6 +313,79 @@ TEST_F (DealDamageTests, OnlyAttacksInRange)
 
   FindTargetsAndDamage ();
   EXPECT_EQ (characters.GetById (idTarget)->GetHP ().armour (), 8);
+}
+
+TEST_F (DealDamageTests, AreaAttacks)
+{
+  auto c = characters.CreateNew ("red", Faction::RED);
+  AddAttack (c->MutableProto (), 10, 1, 2).set_area (true);
+  c.reset ();
+
+  std::vector<Database::IdT> idTargets;
+  for (unsigned i = 0; i < 10; ++i)
+    {
+      c = characters.CreateNew ("green", Faction::GREEN);
+      idTargets.push_back (c->GetId ());
+      NoAttacks (c->MutableProto ());
+      c->MutableHP ().set_armour (1000);
+      c.reset ();
+    }
+
+  /* The single attack should do randomised but per-turn consistent damage
+     to all of the targets.  */
+
+  unsigned cnt[] = {0, 0, 0};
+  constexpr unsigned trials = 100;
+  for (unsigned i = 0; i < trials; ++i)
+    {
+      const auto oldHP = characters.GetById (idTargets[0])->GetHP ().armour ();
+      FindTargetsAndDamage ();
+
+      const auto newHP = characters.GetById (idTargets[0])->GetHP ().armour ();
+      for (const auto id : idTargets)
+        ASSERT_EQ (characters.GetById (id)->GetHP ().armour (), newHP);
+
+      ++cnt[oldHP - newHP];
+    }
+
+  EXPECT_EQ (cnt[1] + cnt[2], trials);
+  EXPECT_GT (cnt[1], 0);
+  EXPECT_GT (cnt[2], 0);
+}
+
+TEST_F (DealDamageTests, MixedAttacks)
+{
+  auto c = characters.CreateNew ("red", Faction::RED);
+  AddAttack (c->MutableProto (), 5, 1, 1).set_area (true);
+  AddAttack (c->MutableProto (), 10, 1, 1);
+  AddAttack (c->MutableProto (), 10, 1, 1).set_area (true);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idTargetNear = c->GetId ();
+  c->SetPosition (HexCoord (5, 0));
+  NoAttacks (c->MutableProto ());
+  c->MutableHP ().set_armour (10);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idTargetFar = c->GetId ();
+  c->SetPosition (HexCoord (10, 0));
+  NoAttacks (c->MutableProto ());
+  c->MutableHP ().set_armour (10);
+  c.reset ();
+
+  /* Near and far take respective damage from the area attacks (near two
+     and far one point), and one of them (randomly) takes damage also from
+     the non-area attack.  */
+  FindTargetsAndDamage ();
+  const auto hpNear = characters.GetById (idTargetNear)->GetHP ().armour ();
+  const auto hpFar = characters.GetById (idTargetFar)->GetHP ().armour ();
+  EXPECT_EQ (hpNear + hpFar, 2 * 10 - 2 - 1 - 1);
+  EXPECT_GE (hpNear, 7);
+  EXPECT_LE (hpNear, 8);
+  EXPECT_GE (hpFar, 8);
+  EXPECT_LE (hpFar, 9);
 }
 
 TEST_F (DealDamageTests, DamageLists)

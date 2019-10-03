@@ -59,10 +59,16 @@ message Attack
   /** The range of the attack (as L1 distance on our hex grid).  */
   optional uint32 range = 1;
 
+  /**
+   * If true, then the attack applies to all enemies in range (rather than
+   * just the single selected target).
+   */
+  optional bool area = 2;
+
   /* Maximum and minimum damage of the attack.  The actual damage will be
      chosen uniformly from the both-inclusive range.  */
-  optional uint32 min_damage = 2;
-  optional uint32 max_damage = 3;
+  optional uint32 min_damage = 3;
+  optional uint32 max_damage = 4;
 
 }
 
