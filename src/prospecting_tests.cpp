@@ -156,12 +156,12 @@ TEST_F (ProspectingTests, Prizes)
     }
 
   /* We should have found all gold prizes (since there are only a few),
-     no bronze ones (since there are none) and roughly the expected number
+     the one bronze prize and roughly the expected number
      of silver prizes by probability.  */
   EXPECT_EQ (foundMap["gold"], 3);
   EXPECT_GE (foundMap["silver"], 50);
   EXPECT_LE (foundMap["silver"], 150);
-  EXPECT_EQ (foundMap["bronze"], 0);
+  EXPECT_EQ (foundMap["bronze"], 1);
 }
 
 TEST_F (ProspectingTests, NoPrizesAfterEnd)

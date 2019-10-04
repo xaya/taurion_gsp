@@ -310,7 +310,7 @@ class ProspectingTest (PXTest):
     for nm, val in self.getRpc ("getprizestats").iteritems ():
       self.assertEqual (prizesInRegions[nm], val["found"])
     self.log.info ("Found prizes:\n%s" % prizesInRegions)
-    self.assertEqual (prizesInRegions["bronze"], 0)
+    self.assertEqual (prizesInRegions["bronze"], 1)
     assert prizesInRegions["silver"] > 0
 
   def testReorg (self):
