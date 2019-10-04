@@ -44,8 +44,8 @@ void InitialisePrizes (Database& db, const Params& params);
  */
 void FinishProspecting (Character& c, Database& db, RegionsTable& regions,
                         xaya::Random& rnd,
-                        int64_t timestamp, const Params& params,
-                        const BaseMap& map);
+                        unsigned blockHeight, int64_t timestamp,
+                        const Params& params, const BaseMap& map);
 
 } // namespace pxd
 

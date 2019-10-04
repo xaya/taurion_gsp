@@ -41,8 +41,8 @@ InitialisePrizes (Database& db, const Params& params)
 void
 FinishProspecting (Character& c, Database& db, RegionsTable& regions,
                    xaya::Random& rnd,
-                   const int64_t timestamp, const Params& params,
-                   const BaseMap& map)
+                   const unsigned blockHeight, const int64_t timestamp,
+                   const Params& params, const BaseMap& map)
 {
   const auto& pos = c.GetPosition ();
   const auto regionId = map.Regions ().GetRegionId (pos);
@@ -64,6 +64,7 @@ FinishProspecting (Character& c, Database& db, RegionsTable& regions,
   CHECK (!mpb.has_prospection ());
   auto* prosp = mpb.mutable_prospection ();
   prosp->set_name (c.GetOwner ());
+  prosp->set_height (blockHeight);
 
   if (timestamp > params.CompetitionEndTime ())
     {

@@ -33,10 +33,7 @@ class BasicProspectingTest (PXTest):
     """
 
     region = self.getRegionAt (pos)
-    data = region.data["prospection"]
-    if "prize" in data:
-      del data["prize"]
-    self.assertEqual (data, {"name": name})
+    self.assertEqual (region.data["prospection"]["name"], name)
 
   def run (self):
     self.collectPremine ()
@@ -97,7 +94,10 @@ class BasicProspectingTest (PXTest):
     c = self.getCharacters ()["target"]
     self.assertEqual (c.getPosition (), pos)
     self.assertEqual (c.getBusy (), None)
-    self.expectProspectedBy (pos, "target")
+    region = self.getRegionAt (pos)
+    self.assertEqual (region.data["prospection"]["name"], "target")
+    self.assertEqual (region.data["prospection"]["height"],
+                      self.rpc.xaya.getblockcount ())
 
     # Move towards attackers and prospect there, but have the character
     # killed before it is done.

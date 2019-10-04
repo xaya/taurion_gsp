@@ -86,7 +86,7 @@ protected:
    */
   RegionMap::IdT
   Prospect (CharacterTable::Handle c, const HexCoord& pos,
-            const int64_t timestamp)
+            const unsigned height, const int64_t timestamp)
   {
     const auto id = c->GetId ();
     c->SetPosition (pos);
@@ -98,7 +98,7 @@ protected:
     regions.GetById (region)->MutableProto ().set_prospecting_character (id);
 
     FinishProspecting (*characters.GetById (id), db, regions, rnd,
-                       timestamp, params, map);
+                       height, timestamp, params, map);
     return region;
   }
 
@@ -107,7 +107,7 @@ protected:
 TEST_F (ProspectingTests, Basic)
 {
   const auto region = Prospect (GetTest (), HexCoord (10, -20),
-                                TIME_IN_COMPETITION);
+                                10, TIME_IN_COMPETITION);
 
   auto c = GetTest ();
   EXPECT_EQ (c->GetBusy (), 0);
@@ -116,6 +116,7 @@ TEST_F (ProspectingTests, Basic)
   auto r = regions.GetById (region);
   EXPECT_FALSE (r->GetProto ().has_prospecting_character ());
   EXPECT_EQ (r->GetProto ().prospection ().name (), "domob");
+  EXPECT_EQ (r->GetProto ().prospection ().height (), 10);
 }
 
 TEST_F (ProspectingTests, Prizes)
@@ -132,7 +133,7 @@ TEST_F (ProspectingTests, Prizes)
           const HexCoord pos(x, 20 * j);
           auto c = characters.CreateNew ("domob", Faction::RED);
           const auto region = Prospect (std::move (c), pos,
-                                        TIME_IN_COMPETITION);
+                                        10, TIME_IN_COMPETITION);
           const auto res = regionIds.insert (region);
           ASSERT_TRUE (res.second);
         }
@@ -176,7 +177,7 @@ TEST_F (ProspectingTests, NoPrizesAfterEnd)
         {
           const HexCoord pos(x, 20 * j);
           auto c = characters.CreateNew ("domob", Faction::RED);
-          Prospect (std::move (c), pos, TIME_AFTER_COMPETITION);
+          Prospect (std::move (c), pos, 10, TIME_AFTER_COMPETITION);
         }
     }
 

@@ -582,6 +582,7 @@ TEST_F (RegionJsonTests, Prospection)
   auto r = tbl.GetById (30);
   auto* prosp = r->MutableProto ().mutable_prospection ();
   prosp->set_name ("bar");
+  prosp->set_height (107);
   prosp->set_prize ("gold");
   r.reset ();
 
@@ -590,7 +591,15 @@ TEST_F (RegionJsonTests, Prospection)
       [
         {"id": 10, "prospection": {"name": "foo", "prize": null}},
         {"id": 20, "prospection": {"inprogress": 42}},
-        {"id": 30, "prospection": {"name": "bar", "prize": "gold"}}
+        {
+          "id": 30,
+          "prospection":
+            {
+              "name": "bar",
+              "height": 107,
+              "prize": "gold"
+            }
+        }
       ]
   })");
 }

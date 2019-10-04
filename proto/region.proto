@@ -23,14 +23,20 @@ package pxd.proto;
 /**
  * Data about the prospecting outcome of a region.
  */
-message ProspectionOutcome
+message ProspectionData
 {
 
-  /** The Xaya name of the user who prospected the region.  */
+  /**
+   * The Xaya name of the user who prospected the region.  This has no impact
+   * on the game play, but can be useful for display purposes.
+   */
   optional string name = 1;
 
   /** The prize won, if any.  */
   optional string prize = 2;
+
+  /** The block height at which the region was prospected.  */
+  optional uint32 height = 3;
 
 }
 
@@ -44,6 +50,6 @@ message RegionData
   optional uint64 prospecting_character = 1;
 
   /** If already prospected, the outcome.  */
-  optional ProspectionOutcome prospection = 2;
+  optional ProspectionData prospection = 2;
 
 }
