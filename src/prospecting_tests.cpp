@@ -28,6 +28,7 @@
 #include <gtest/gtest.h>
 
 #include <set>
+#include <map>
 
 namespace pxd
 {
@@ -117,6 +118,35 @@ TEST_F (ProspectingTests, Basic)
   EXPECT_FALSE (r->GetProto ().has_prospecting_character ());
   EXPECT_EQ (r->GetProto ().prospection ().name (), "domob");
   EXPECT_EQ (r->GetProto ().prospection ().height (), 10);
+}
+
+TEST_F (ProspectingTests, Resources)
+{
+  std::map<std::string, unsigned> regionsForResource =
+    {
+      {"sand", 0},
+      {"cryptonite", 0},
+    };
+
+  for (unsigned i = 0; i < 100; ++i)
+    {
+      const HexCoord pos(0, 20 * i);
+      auto c = characters.CreateNew ("domob", Faction::RED);
+      const auto id = Prospect (std::move (c), pos, 10, TIME_IN_COMPETITION);
+
+      auto r = regions.GetById (id);
+      EXPECT_GT (r->GetResourceLeft (), 0);
+      ++regionsForResource[r->GetProto ().prospection ().resource ()];
+    }
+
+  for (const auto& entry : regionsForResource)
+    LOG (INFO)
+        << "Found resource " << entry.first
+        << " in " << entry.second << " regions";
+
+  ASSERT_EQ (regionsForResource.size (), 2);
+  EXPECT_GT (regionsForResource["sand"], regionsForResource["cryptonite"]);
+  EXPECT_GT (regionsForResource["cryptonite"], 0);
 }
 
 TEST_F (ProspectingTests, Prizes)

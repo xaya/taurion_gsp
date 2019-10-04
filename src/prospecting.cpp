@@ -66,6 +66,13 @@ FinishProspecting (Character& c, Database& db, RegionsTable& regions,
   prosp->set_name (c.GetOwner ());
   prosp->set_height (blockHeight);
 
+  /* Determine the mine-able resource here.  */
+  std::string type;
+  Inventory::QuantityT amount;
+  params.DetectResource (pos, rnd, type, amount);
+  prosp->set_resource (type);
+  r->SetResourceLeft (amount);
+
   if (timestamp > params.CompetitionEndTime ())
     {
       LOG (INFO) << "Competition is over, no prizes can be found";
