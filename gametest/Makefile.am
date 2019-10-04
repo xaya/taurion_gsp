@@ -16,7 +16,8 @@ REGTESTS = \
   multiupdate.py \
   nullstate.py \
   pending.py \
-  prospecting.py \
+  prospecting_basic.py \
+  prospecting_prizes.py \
   splitstaterpcs.py
 
 EXTRA_DIST = $(REGTESTS) $(TEST_LIBRARY)
