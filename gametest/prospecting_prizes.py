@@ -33,6 +33,27 @@ COMPETITION_OVER = 1600000000
 
 class ProspectingPrizesTest (PXTest):
 
+  def getCharacterPrizes (self, char):
+    """
+    Returns the prizes (if any) the character with the given "string name"
+    has won so far as a dictionary.
+    """
+
+    items = self.getCharacters ()[char].getFungibleInventory ()
+    res = {}
+    for item, amount in items.iteritems ():
+      suffix = " prize"
+      if not item.endswith (suffix):
+        continue
+
+      prize = item[:-len (suffix)]
+      if prize in res:
+        res[prize] += amount
+      else:
+        res[prize] = amount
+
+    return res
+
   def run (self):
     # Mine a couple of blocks to get a meaningful median time
     # that is before the times we'll use in testing.
@@ -62,10 +83,11 @@ class ProspectingPrizesTest (PXTest):
 
       prosp = self.getRegionAt (pos).data["prospection"]
       self.assertEqual (prosp["name"], "prize trier")
-      if (not "prize" in prosp) or prosp["prize"] != "silver":
-        stillNeedNoSilver = False
-      elif prosp["prize"] == "silver":
+
+      if "silver" in self.getCharacterPrizes ("prize trier"):
         stillNeedSilver = False
+      else:
+        stillNeedNoSilver = False
 
       self.rpc.xaya.invalidateblock (blk)
 
@@ -91,7 +113,7 @@ class ProspectingPrizesTest (PXTest):
 
       prosp = self.getRegionAt (pos).data["prospection"]
       self.assertEqual (prosp["name"], "prize trier")
-      assert "prize" not in prosp
+      self.assertEqual (self.getCharacterPrizes ("prize trier"), {})
 
       self.rpc.xaya.invalidateblock (blk)
 
@@ -103,7 +125,7 @@ class ProspectingPrizesTest (PXTest):
 
       prosp = self.getRegionAt (pos).data["prospection"]
       self.assertEqual (prosp["name"], "prize trier")
-      if "prize" in prosp:
+      if self.getCharacterPrizes ("prize trier"):
         stillNeedPrize = False
 
       self.rpc.xaya.invalidateblock (blk)
@@ -144,9 +166,11 @@ class ProspectingPrizesTest (PXTest):
       "silver": 0,
       "bronze": 0,
     }
-    for r in self.getRpc ("getregions"):
-      if ("prospection" in r) and "prize" in r["prospection"]:
-        prizesInRegions[r["prospection"]["prize"]] += 1
+    for nm in self.getCharacters ():
+      thisPrizes = self.getCharacterPrizes (nm)
+      for prize, num in thisPrizes.iteritems ():
+        prizesInRegions[prize] += num
+
     for nm, val in self.getRpc ("getprizestats").iteritems ():
       self.assertEqual (prizesInRegions[nm], val["found"])
     self.log.info ("Found prizes:\n%s" % prizesInRegions)

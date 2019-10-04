@@ -302,8 +302,6 @@ template <>
     {
       prospection["name"] = pb.prospection ().name ();
       prospection["height"] = pb.prospection ().height ();
-      if (pb.prospection ().has_prize ())
-        prospection["prize"] = pb.prospection ().prize ();
     }
 
   if (!prospection.empty ())

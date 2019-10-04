@@ -14,6 +14,24 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+# Items corresponding to competition prizes that can be found.  They all
+# have zero cargo space.
+fungible_items:
+  {
+    key: "gold prize"
+    value: { space: 0 }
+  }
+fungible_items:
+  {
+    key: "silver prize"
+    value: { space: 0 }
+  }
+fungible_items:
+  {
+    key: "bronze prize"
+    value: { space: 0 }
+  }
+
 # The following items are used only for tests.  They are defined also
 # in the real game, but since they are never generated (except through
 # god-mode or direct intervention in tests), that has no effect.

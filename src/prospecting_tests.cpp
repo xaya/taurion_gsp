@@ -140,13 +140,25 @@ TEST_F (ProspectingTests, Prizes)
     }
 
   ASSERT_EQ (regionIds.size (), trials);
-  std::map<std::string, unsigned> foundMap;
   for (const auto id : regionIds)
     {
       auto r = regions.GetById (id);
       ASSERT_TRUE (r->GetProto ().has_prospection ());
-      if (r->GetProto ().prospection ().has_prize ())
-        ++foundMap[r->GetProto ().prospection ().prize ()];
+    }
+
+  std::map<std::string, unsigned> foundMap;
+  auto res = characters.QueryAll ();
+  while (res.Step ())
+    {
+      auto c = characters.GetFromResult (res);
+      for (const auto& item : c->GetInventory ().GetFungible ())
+        {
+          constexpr const char* suffix = " prize";
+          const auto ind = item.first.find (suffix);
+          if (ind == std::string::npos)
+            continue;
+          foundMap[item.first.substr (0, ind)] += item.second;
+        }
     }
 
   Prizes prizeTable(db);

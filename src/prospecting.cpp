@@ -73,7 +73,6 @@ FinishProspecting (Character& c, Database& db, RegionsTable& regions,
     }
 
   /* Check the prizes in order to see if we won any.  */
-  CHECK (!prosp->has_prize ());
   Prizes prizeTable(db);
   for (const auto& p : params.ProspectingPrizes ())
     {
@@ -90,7 +89,7 @@ FinishProspecting (Character& c, Database& db, RegionsTable& regions,
         << " found a prize of tier " << p.name
         << " prospecting region " << regionId;
       prizeTable.IncrementFound (p.name);
-      prosp->set_prize (p.name);
+      c.GetInventory ().AddFungibleCount (p.name + " prize", 1);
       break;
     }
 }

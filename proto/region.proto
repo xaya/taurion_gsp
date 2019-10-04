@@ -32,11 +32,8 @@ message ProspectionData
    */
   optional string name = 1;
 
-  /** The prize won, if any.  */
-  optional string prize = 2;
-
   /** The block height at which the region was prospected.  */
-  optional uint32 height = 3;
+  optional uint32 height = 2;
 
 }
 

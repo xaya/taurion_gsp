@@ -577,29 +577,25 @@ TEST_F (RegionJsonTests, Empty)
 TEST_F (RegionJsonTests, Prospection)
 {
   tbl.GetById (20)->MutableProto ().set_prospecting_character (42);
-  tbl.GetById (10)->MutableProto ().mutable_prospection ()->set_name ("foo");
 
-  auto r = tbl.GetById (30);
+  auto r = tbl.GetById (10);
   auto* prosp = r->MutableProto ().mutable_prospection ();
   prosp->set_name ("bar");
   prosp->set_height (107);
-  prosp->set_prize ("gold");
   r.reset ();
 
   ExpectStateJson (R"({
     "regions":
       [
-        {"id": 10, "prospection": {"name": "foo", "prize": null}},
-        {"id": 20, "prospection": {"inprogress": 42}},
         {
-          "id": 30,
+          "id": 10,
           "prospection":
             {
               "name": "bar",
-              "height": 107,
-              "prize": "gold"
+              "height": 107
             }
-        }
+        },
+        {"id": 20, "prospection": {"inprogress": 42}}
       ]
   })");
 }
