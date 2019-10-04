@@ -81,8 +81,7 @@ FinishProspecting (Character& c, Database& db, RegionsTable& regions,
       if (found == p.number)
         continue;
 
-      const auto pick = rnd.NextInt (p.probability);
-      if (pick != 0)
+      if (!rnd.ProbabilityRoll (1, p.probability))
         continue;
 
       LOG (INFO)
