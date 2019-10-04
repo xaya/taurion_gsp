@@ -266,12 +266,9 @@ ProcessKills (Database& db, DamageLists& dl, GroundLootTable& loot,
               auto& groundInv = ground->GetInventory ();
               for (const auto& entry : inv.GetFungible ())
                 {
-                  auto amount = groundInv.GetFungibleCount (entry.first);
                   VLOG (1)
-                      << "Dropping " << entry.second << " of " << entry.first
-                      << " in addition to existing " << amount;
-                  amount += entry.second;
-                  groundInv.SetFungibleCount (entry.first, amount);
+                      << "Dropping " << entry.second << " of " << entry.first;
+                  groundInv.AddFungibleCount (entry.first, entry.second);
                 }
             }
 

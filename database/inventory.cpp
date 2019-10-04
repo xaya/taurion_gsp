@@ -78,6 +78,21 @@ Inventory::SetFungibleCount (const std::string& type, const QuantityT count)
     fungible[type] = count;
 }
 
+void
+Inventory::AddFungibleCount (const std::string& type, const QuantityT count)
+{
+  CHECK_GE (count, -MAX_ITEM_QUANTITY);
+  CHECK_LE (count, MAX_ITEM_QUANTITY);
+
+  /* Instead of getting and then setting the value using the existing methods,
+     we could just query the map once and update directly.  But doing so would
+     require us to duplicate some of the logic (or refactor the code), so it
+     seems not worth it unless this becomes an actual bottleneck.  */
+
+  const auto previous = GetFungibleCount (type);
+  SetFungibleCount (type, previous + count);
+}
+
 int64_t
 Inventory::Product (const QuantityT amount, const int64_t dual)
 {

@@ -97,12 +97,14 @@ TEST_F (InventoryTests, Modification)
   EXPECT_FALSE (inv.IsEmpty ());
   EXPECT_TRUE (inv.IsDirty ());
 
-  inv.SetFungibleCount ("foo", 0);
-  ExpectFungibleElements ({{"bar", 5}});
-  EXPECT_FALSE (inv.IsEmpty ());
-  EXPECT_TRUE (inv.IsDirty ());
+  inv.AddFungibleCount ("bar", 3);
+  ExpectFungibleElements ({{"foo", 10}, {"bar", 8}});
 
-  inv.SetFungibleCount ("bar", 0);
+  inv.SetFungibleCount ("foo", 0);
+  ExpectFungibleElements ({{"bar", 8}});
+  EXPECT_FALSE (inv.IsEmpty ());
+
+  inv.AddFungibleCount ("bar", -8);
   EXPECT_TRUE (inv.IsEmpty ());
   EXPECT_TRUE (inv.IsDirty ());
 }

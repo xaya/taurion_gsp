@@ -115,6 +115,12 @@ public:
   void SetFungibleCount (const std::string& type, QuantityT count);
 
   /**
+   * Updates the number of fungible items with the given key by adding
+   * the given (positive or negative) amount.
+   */
+  void AddFungibleCount (const std::string& type, QuantityT count);
+
+  /**
    * Returns true if the inventory data has been modified (and thus needs to
    * be saved back to the database).
    */

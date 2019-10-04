@@ -596,12 +596,10 @@ MoveFungibleBetweenInventories (const FungibleAmountMap& items,
       CHECK_LE (cnt, available);
       from.SetFungibleCount (entry.first, available - cnt);
 
-      const auto already = to.GetFungibleCount (entry.first);
       VLOG (1)
           << "Moved " << cnt << " of " << entry.first
-          << " in addition to " << already
           << " from " << fromName << " to " << toName;
-      to.SetFungibleCount (entry.first, already + cnt);
+      to.AddFungibleCount (entry.first, cnt);
     }
 }
 
@@ -805,12 +803,10 @@ MaybeGodDropLoot (GroundLootTable& tbl, const Json::Value& cmd)
       auto h = tbl.GetByCoord (pos);
       for (const auto& entry : quantities)
         {
-          const auto before = h->GetInventory ().GetFungibleCount (entry.first);
           LOG (INFO)
               << "God-mode dropping " << entry.second << " of " << entry.first
-              << " at " << pos << " in addition to existing " << before;
-          h->GetInventory ().SetFungibleCount (entry.first,
-                                               before + entry.second);
+              << " at " << pos;
+          h->GetInventory ().AddFungibleCount (entry.first, entry.second);
         }
     }
 }
