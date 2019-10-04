@@ -48,16 +48,34 @@ TEST_F (RegionTests, DefaultData)
   EXPECT_FALSE (r->GetProto ().has_prospecting_character ());
 }
 
-TEST_F (RegionTests, Update)
+TEST_F (RegionTests, UpdateWithProto)
 {
-  tbl.GetById (42)->MutableProto ().set_prospecting_character (100);
-
   auto r = tbl.GetById (42);
-  EXPECT_EQ (r->GetProto ().prospecting_character (), 100);
+  r->MutableProto ().mutable_prospection ()->set_resource ("foo");
+  r->SetResourceLeft (100);
+  r.reset ();
+
+  r = tbl.GetById (42);
+  EXPECT_EQ (r->GetProto ().prospection ().resource (), "foo");
+  EXPECT_EQ (r->GetResourceLeft (), 100);
 
   r = tbl.GetById (100);
   EXPECT_EQ (r->GetId (), 100);
   EXPECT_FALSE (r->GetProto ().has_prospecting_character ());
+}
+
+TEST_F (RegionTests, UpdateOnlyFields)
+{
+  auto r = tbl.GetById (42);
+  r->MutableProto ().mutable_prospection ()->set_resource ("foo");
+  r->SetResourceLeft (100);
+  r.reset ();
+
+  tbl.GetById (42)->SetResourceLeft (80);
+
+  r = tbl.GetById (42);
+  EXPECT_EQ (r->GetProto ().prospection ().resource (), "foo");
+  EXPECT_EQ (r->GetResourceLeft (), 80);
 }
 
 TEST_F (RegionTests, IdZero)

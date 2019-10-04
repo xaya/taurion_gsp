@@ -22,16 +22,17 @@ namespace pxd
 {
 
 Region::Region (Database& d, const RegionMap::IdT i)
-  : db(d), id(i)
+  : db(d), id(i), resourceLeft(0), dirtyFields(false)
 {
   VLOG (1) << "Created instance for empty region with ID " << id;
   data.SetToDefault ();
 }
 
 Region::Region (Database& d, const Database::Result<RegionResult>& res)
-  : db(d)
+  : db(d), dirtyFields(false)
 {
   id = res.Get<RegionResult::id> ();
+  resourceLeft = res.Get<RegionResult::resourceleft> ();
   data = res.GetProto<RegionResult::proto> ();
 
   VLOG (1) << "Created region data for ID " << id << " from database result";
@@ -39,22 +40,59 @@ Region::Region (Database& d, const Database::Result<RegionResult>& res)
 
 Region::~Region ()
 {
-  if (!data.IsDirty ())
+  if (data.IsDirty ())
     {
-      VLOG (1) << "Region " << id << " is not dirty, no update";
+      VLOG (1) << "Updating dirty region " << id << " including proto data";
+
+      auto stmt = db.Prepare (R"(
+        INSERT OR REPLACE INTO `regions`
+          (`id`, `resourceleft`, `proto`)
+          VALUES (?1, ?2, ?3)
+      )");
+
+      stmt.Bind (1, id);
+      stmt.Bind (2, resourceLeft);
+      stmt.BindProto (3, data);
+      stmt.Execute ();
+
       return;
     }
 
-  VLOG (1) << "Updating dirty region " << id << " in the database";
-  auto stmt = db.Prepare (R"(
-    INSERT OR REPLACE INTO `regions`
-      (`id`, `proto`)
-      VALUES (?1, ?2)
-  )");
+  if (dirtyFields)
+    {
+      VLOG (1) << "Updating dirty region " << id << " only in non-proto fields";
 
-  stmt.Bind (1, id);
-  stmt.BindProto (2, data);
-  stmt.Execute ();
+      auto stmt = db.Prepare (R"(
+        UPDATE `regions`
+          SET `resourceleft` = ?2
+          WHERE `id` = ?1
+      )");
+
+      stmt.Bind (1, id);
+      stmt.Bind (2, resourceLeft);
+      stmt.Execute ();
+
+      return;
+    }
+
+  VLOG (1) << "Region " << id << " is not dirty, no update";
+}
+
+Inventory::QuantityT
+Region::GetResourceLeft () const
+{
+  CHECK (GetProto ().has_prospection ())
+      << "Region " << id << " has not been prospected yet";
+  return resourceLeft;
+}
+
+void
+Region::SetResourceLeft (const Inventory::QuantityT value)
+{
+  CHECK (GetProto ().has_prospection ())
+      << "Region " << id << " has not been prospected yet";
+  resourceLeft = value;
+  dirtyFields = true;
 }
 
 RegionsTable::Handle

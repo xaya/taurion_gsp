@@ -35,6 +35,17 @@ message ProspectionData
   /** The block height at which the region was prospected.  */
   optional uint32 height = 2;
 
+  /**
+   * The type of resources that can be mined on the current region.  The amount
+   * left is stored directly in a DB column (because it may be updated
+   * frequently while the region is being mined).
+   *
+   * Every prospected region has some type of resource assigned, although
+   * there may be very little of it minable (or all might already have
+   * been taken).
+   */
+  optional string resource = 3;
+
 }
 
 /**

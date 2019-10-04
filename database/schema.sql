@@ -158,6 +158,15 @@ CREATE TABLE IF NOT EXISTS `regions` (
   -- all values are real regions.
   `id` INTEGER PRIMARY KEY,
 
+  -- The amount of resources left to be mined.  The type of resource is
+  -- defined in the region proto.  The value is undefined for regions that
+  -- have not been prospected yet.
+  --
+  -- This is not stored in the proto, because it may be changed frequently
+  -- (on every turn) while the region is being mined actively.  Thus we avoid
+  -- frequent updates of the proto by keeping it directly in the DB.
+  `resourceleft` INTEGER NOT NULL,
+
   -- Additional data encoded as a RegionData protocol buffer.
   `proto` BLOB NOT NULL
 
