@@ -307,6 +307,15 @@ template <>
   if (!prospection.empty ())
     res["prospection"] = prospection;
 
+  if (pb.has_prospection ())
+    {
+      Json::Value resource(Json::objectValue);
+      resource["type"] = pb.prospection ().resource ();
+      resource["amount"] = IntToJson (r.GetResourceLeft ());
+
+      res["resource"] = resource;
+    }
+
   return res;
 }
 

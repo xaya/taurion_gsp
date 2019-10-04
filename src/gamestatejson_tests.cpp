@@ -569,7 +569,11 @@ TEST_F (RegionJsonTests, Empty)
   ExpectStateJson (R"({
     "regions":
       [
-        {"id": 20}
+        {
+          "id": 20,
+          "prospection": null,
+          "resource": null
+        }
       ]
   })");
 }
@@ -596,6 +600,28 @@ TEST_F (RegionJsonTests, Prospection)
             }
         },
         {"id": 20, "prospection": {"inprogress": 42}}
+      ]
+  })");
+}
+
+TEST_F (RegionJsonTests, MiningResource)
+{
+  auto r = tbl.GetById (10);
+  r->MutableProto ().mutable_prospection ()->set_resource ("sand");
+  r->SetResourceLeft (150);
+  r.reset ();
+
+  ExpectStateJson (R"({
+    "regions":
+      [
+        {
+          "id": 10,
+          "resource":
+            {
+              "type": "sand",
+              "amount": 150
+            }
+        }
       ]
   })");
 }
