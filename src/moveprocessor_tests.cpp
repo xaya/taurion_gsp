@@ -1126,7 +1126,7 @@ TEST_F (ProspectingMoveTests, Invalid)
   EXPECT_FALSE (r->GetProto ().has_prospection ());
 }
 
-TEST_F (ProspectingMoveTests, RegionAlreadyProspected)
+TEST_F (ProspectingMoveTests, CannotProspectRegion)
 {
   auto r = regions.GetById (region);
   r->MutableProto ().mutable_prospection ()->set_name ("foo");

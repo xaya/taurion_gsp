@@ -40,7 +40,57 @@ constexpr int64_t TIME_IN_COMPETITION = 1571148000;
 /** Timestamp after the competition end.  */
 constexpr int64_t TIME_AFTER_COMPETITION = TIME_IN_COMPETITION + 1;
 
-class ProspectingTests : public DBTestWithSchema
+/* ************************************************************************** */
+
+class CanProspectRegionTests : public DBTestWithSchema
+{
+
+protected:
+
+  CharacterTable characters;
+  RegionsTable regions;
+
+  const BaseMap map;
+
+  const HexCoord pos;
+  const RegionMap::IdT region;
+
+  CanProspectRegionTests ()
+    : characters(db), regions(db),
+      pos(-10, 42), region(map.Regions ().GetRegionId (pos))
+  {}
+
+};
+
+TEST_F (CanProspectRegionTests, ProspectionInProgress)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  auto r = regions.GetById (region);
+  r->MutableProto ().set_prospecting_character (10);
+
+  EXPECT_FALSE (CanProspectRegion (*c, *r));
+}
+
+TEST_F (CanProspectRegionTests, AlreadyProspected)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  auto r = regions.GetById (region);
+  r->MutableProto ().mutable_prospection ()->set_name ("foo");
+
+  EXPECT_FALSE (CanProspectRegion (*c, *r));
+}
+
+TEST_F (CanProspectRegionTests, EmptyRegion)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  auto r = regions.GetById (region);
+
+  EXPECT_TRUE (CanProspectRegion (*c, *r));
+}
+
+/* ************************************************************************** */
+
+class FinishProspectingTests : public DBTestWithSchema
 {
 
 protected:
@@ -60,7 +110,7 @@ protected:
   /** Basemap instance for testing.  */
   const BaseMap map;
 
-  ProspectingTests ()
+  FinishProspectingTests ()
     : characters(db), regions(db), params(xaya::Chain::REGTEST)
   {
     InitialisePrizes (db, params);
@@ -105,7 +155,7 @@ protected:
 
 };
 
-TEST_F (ProspectingTests, Basic)
+TEST_F (FinishProspectingTests, Basic)
 {
   const auto region = Prospect (GetTest (), HexCoord (10, -20),
                                 10, TIME_IN_COMPETITION);
@@ -120,7 +170,7 @@ TEST_F (ProspectingTests, Basic)
   EXPECT_EQ (r->GetProto ().prospection ().height (), 10);
 }
 
-TEST_F (ProspectingTests, Resources)
+TEST_F (FinishProspectingTests, Resources)
 {
   std::map<std::string, unsigned> regionsForResource =
     {
@@ -149,7 +199,7 @@ TEST_F (ProspectingTests, Resources)
   EXPECT_GT (regionsForResource["cryptonite"], 0);
 }
 
-TEST_F (ProspectingTests, Prizes)
+TEST_F (FinishProspectingTests, Prizes)
 {
   constexpr unsigned trials = 1000;
   constexpr unsigned perRow = 10;
@@ -207,7 +257,7 @@ TEST_F (ProspectingTests, Prizes)
   EXPECT_EQ (foundMap["bronze"], 1);
 }
 
-TEST_F (ProspectingTests, NoPrizesAfterEnd)
+TEST_F (FinishProspectingTests, NoPrizesAfterEnd)
 {
   constexpr unsigned trials = 1000;
   constexpr unsigned perRow = 10;
@@ -227,6 +277,8 @@ TEST_F (ProspectingTests, NoPrizesAfterEnd)
   for (const auto& p : params.ProspectingPrizes ())
     EXPECT_EQ (prizeTable.GetFound (p.name), 0);
 }
+
+/* ************************************************************************** */
 
 } // anonymous namespace
 } // namespace pxd

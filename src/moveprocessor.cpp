@@ -20,6 +20,7 @@
 
 #include "jsonutils.hpp"
 #include "movement.hpp"
+#include "prospecting.hpp"
 #include "protoutils.hpp"
 #include "spawn.hpp"
 
@@ -255,26 +256,7 @@ BaseMoveProcessor::ParseCharacterProspecting (const Character& c,
       << "Character " << c.GetId ()
       << " is trying to prospect region " << regionId;
 
-  auto r = regions.GetById (regionId);
-  const auto& rpb = r->GetProto ();
-  if (rpb.has_prospecting_character ())
-    {
-      LOG (WARNING)
-          << "Region " << regionId
-          << " is already being prospected by character "
-          << rpb.prospecting_character ()
-          << ", can't be prospected by " << c.GetId ();
-      return false;
-    }
-  if (rpb.has_prospection ())
-    {
-      LOG (WARNING)
-          << "Region " << regionId
-          << " is already prospected, can't be prospected by " << c.GetId ();
-      return false;
-    }
-
-  return true;
+  return CanProspectRegion (c, *regions.GetById (regionId));
 }
 
 /* ************************************************************************** */

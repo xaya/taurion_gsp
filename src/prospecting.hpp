@@ -38,6 +38,12 @@ namespace pxd
 void InitialisePrizes (Database& db, const Params& params);
 
 /**
+ * Checks if the given region can be prospected by the given character
+ * at the moment.
+ */
+bool CanProspectRegion (const Character& c, const Region& r);
+
+/**
  * Finishes a done prospecting operation by the given character.  If the
  * competition is still active (not yet past the end time), then also
  * prizes can be won.

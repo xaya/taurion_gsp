@@ -38,6 +38,32 @@ InitialisePrizes (Database& db, const Params& params)
     }
 }
 
+bool
+CanProspectRegion (const Character& c, const Region& r)
+{
+  const auto& rpb = r.GetProto ();
+
+  if (rpb.has_prospecting_character ())
+    {
+      LOG (WARNING)
+          << "Region " << r.GetId ()
+          << " is already being prospected by character "
+          << rpb.prospecting_character ()
+          << ", can't be prospected by " << c.GetId ();
+      return false;
+    }
+
+  if (rpb.has_prospection ())
+    {
+      LOG (WARNING)
+          << "Region " << r.GetId ()
+          << " is already prospected, can't be prospected by " << c.GetId ();
+      return false;
+    }
+
+  return true;
+}
+
 void
 FinishProspecting (Character& c, Database& db, RegionsTable& regions,
                    xaya::Random& rnd,
