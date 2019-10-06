@@ -256,7 +256,7 @@ BaseMoveProcessor::ParseCharacterProspecting (const Character& c,
       << "Character " << c.GetId ()
       << " is trying to prospect region " << regionId;
 
-  return CanProspectRegion (c, *regions.GetById (regionId));
+  return CanProspectRegion (c, *regions.GetById (regionId), height);
 }
 
 /* ************************************************************************** */

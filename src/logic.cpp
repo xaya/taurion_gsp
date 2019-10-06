@@ -119,7 +119,7 @@ PXLogic::UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
   ProcessBusy (db, rnd, blockHeight, timestamp, params, map);
 
   DynObstacles dyn(db);
-  MoveProcessor mvProc(db, dyn, rnd, params, map);
+  MoveProcessor mvProc(db, dyn, rnd, params, map, blockHeight);
   mvProc.ProcessAdmin (blockData["admin"]);
   mvProc.ProcessAll (blockData["moves"]);
 

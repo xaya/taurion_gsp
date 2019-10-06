@@ -39,7 +39,7 @@ InitialisePrizes (Database& db, const Params& params)
 }
 
 bool
-CanProspectRegion (const Character& c, const Region& r)
+CanProspectRegion (const Character& c, const Region& r, const unsigned height)
 {
   const auto& rpb = r.GetProto ();
 

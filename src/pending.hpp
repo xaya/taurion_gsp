@@ -172,9 +172,15 @@ protected:
 
 public:
 
+  /**
+   * Constructs the updater for the given context.  The block height h should
+   * be the height of the next block, i.e. the current confirmed height plus
+   * one.  It is the height at which we assume the moves will be confirmed.
+   */
   explicit PendingStateUpdater (Database& d, PendingState& s,
-                                const Params& p, const BaseMap& m)
-    : BaseMoveProcessor(d, p, m), state(s)
+                                const Params& p, const BaseMap& m,
+                                const unsigned h)
+    : BaseMoveProcessor(d, p, m, h), state(s)
   {}
 
   /**
