@@ -1,0 +1,48 @@
+/*
+    GSP for the Taurion blockchain game
+    Copyright (C) 2019  Autonomous Worlds Ltd
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
+syntax = "proto2";
+
+package pxd.proto;
+
+/**
+ * Hardcoded data defining a type of fungible item.
+ */
+message ItemData
+{
+
+  /** The cargo space it uses per unit.  */
+  optional uint32 space = 1;
+
+}
+
+/**
+ * The hardcoded "configuration data" for Taurion.  This includes all data
+ * that describes read-only aspects of the game, like known item or vehicle
+ * types and stats for them.
+ *
+ * An instance of this proto is populated from text format encoded in
+ * roconfig.pb.text and made available to all parts of the code.
+ */
+message ConfigData
+{
+
+  /** Known types of fungible items.  */
+  map<string, ItemData> fungible_items = 1;
+
+}
