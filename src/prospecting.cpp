@@ -39,7 +39,8 @@ InitialisePrizes (Database& db, const Params& params)
 }
 
 bool
-CanProspectRegion (const Character& c, const Region& r, const unsigned height)
+CanProspectRegion (const Character& c, const Region& r,
+                   const Params& params, const unsigned height)
 {
   const auto& rpb = r.GetProto ();
 
@@ -53,13 +54,19 @@ CanProspectRegion (const Character& c, const Region& r, const unsigned height)
       return false;
     }
 
-  if (rpb.has_prospection ())
+  if (!rpb.has_prospection ())
+    return true;
+
+  if (height < rpb.prospection ().height () + params.ProspectionExpiryBlocks ())
     {
       LOG (WARNING)
-          << "Region " << r.GetId ()
-          << " is already prospected, can't be prospected by " << c.GetId ();
+          << "It is too early to reprospect region " << r.GetId ()
+          << " by " << c.GetId ();
       return false;
     }
+
+  /* FIXME: Also check for remaining resources and only allow re-prospecting
+     if there are none.  */
 
   return true;
 }

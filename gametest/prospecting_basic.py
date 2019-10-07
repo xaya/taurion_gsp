@@ -23,6 +23,8 @@ that with movement and combat.
 
 from pxtest import PXTest, offsetCoord
 
+from pending import sleepSome
+
 
 class BasicProspectingTest (PXTest):
 
@@ -53,7 +55,7 @@ class BasicProspectingTest (PXTest):
     self.offset = {"x": -1050, "y": 1272}
     self.moveCharactersTo ({
       "target": offsetCoord ({"x": 20, "y": 0}, self.offset, False),
-      "attacker 1": offsetCoord ({"x": 0, "y": 0}, self.offset, False),
+      "attacker 1": offsetCoord ({"x": 0, "y": 1}, self.offset, False),
       "attacker 2": offsetCoord ({"x": -1, "y": 0}, self.offset, False),
     })
 
@@ -163,14 +165,66 @@ class BasicProspectingTest (PXTest):
                       None)
     self.expectProspectedBy (self.offset, self.prospectors[0])
 
-    # Now that the region is already prospected, further attempts should
-    # just be ignored.
+    # Now that the region is already prospected, further (immediate) attempts
+    # should just be ignored.
     self.mainLogger.info ("Trying in already prospected region...")
     self.getCharacters ()[self.prospectors[1]].sendMove ({"prospect": {}})
     self.generate (1)
     self.assertEqual (self.getCharacters ()[self.prospectors[1]].getBusy (),
                       None)
     self.expectProspectedBy (self.offset, self.prospectors[0])
+
+    # Start prospecting after the expiry, but kill the prospector.  This should
+    # effectively "unprospect" the region completely.
+    self.mainLogger.info ("Attempting re-prospecting...")
+    self.generate (94)
+    self.createCharacters ("target", 1)
+    self.generate (1)
+    self.moveCharactersTo ({
+      "target": self.offset,
+    })
+    self.setCharactersHP ({
+      "target": {"a": 1000, "s": 0},
+    })
+    r = self.getRegionAt (self.offset)
+    self.assertEqual (self.rpc.xaya.getblockcount (),
+                      r.data["prospection"]["height"] + 98)
+
+    self.getCharacters ()["target"].sendMove ({"prospect": {}})
+    sleepSome ()
+    self.assertEqual (self.getPendingState ()["characters"], [])
+    self.generate (1)
+    c = self.getCharacters ()["target"]
+    self.assertEqual (c.getBusy (), None)
+    c.sendMove ({"prospect": {}})
+    self.assertEqual (self.getPendingState ()["characters"], [
+      {"id": c.getId (), "prospecting": r.getId ()},
+    ])
+    self.generate (1)
+    self.assertEqual (self.getCharacters ()["target"].getBusy ()["operation"],
+                      "prospecting")
+
+    self.setCharactersHP ({
+      "target": {"a": 1, "s": 0},
+    })
+    self.generate (1)
+    assert "target" not in self.getCharacters ()
+    r = self.getRegionAt (self.offset)
+    assert "prospection" not  in r.data
+    self.assertEqual (r.getResource (), None)
+
+    # Actually re-prospect the region.
+    self.mainLogger.info ("Finish reprospecting...")
+    self.initAccount ("reprospector", "g")
+    self.createCharacters ("reprospector", 1)
+    self.generate (1)
+    self.moveCharactersTo ({
+      "reprospector": self.offset,
+    })
+    self.getCharacters ()["reprospector"].sendMove ({"prospect": {}})
+    self.generate (15)
+    self.expectProspectedBy (self.offset, "reprospector")
+    assert self.getRegionAt (self.offset).getResource () is not None
 
     self.testReorg ()
 

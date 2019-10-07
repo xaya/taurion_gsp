@@ -72,6 +72,21 @@ Params::ProspectingBlocks () const
   return 10;
 }
 
+unsigned
+Params::ProspectionExpiryBlocks () const
+{
+  switch (chain)
+    {
+    case xaya::Chain::MAIN:
+    case xaya::Chain::TEST:
+      return 5'000;
+    case xaya::Chain::REGTEST:
+      return 100;
+    default:
+      LOG (FATAL) << "Invalid chain value: " << static_cast<int> (chain);
+    }
+}
+
 int64_t
 Params::CompetitionEndTime () const
 {

@@ -41,7 +41,8 @@ void InitialisePrizes (Database& db, const Params& params);
  * Checks if the given region can be prospected by the given character
  * at the moment.
  */
-bool CanProspectRegion (const Character& c, const Region& r, unsigned height);
+bool CanProspectRegion (const Character& c, const Region& r,
+                        const Params& params, unsigned height);
 
 /**
  * Finishes a done prospecting operation by the given character.  If the

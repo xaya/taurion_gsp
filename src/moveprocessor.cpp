@@ -256,7 +256,7 @@ BaseMoveProcessor::ParseCharacterProspecting (const Character& c,
       << "Character " << c.GetId ()
       << " is trying to prospect region " << regionId;
 
-  return CanProspectRegion (c, *regions.GetById (regionId), height);
+  return CanProspectRegion (c, *regions.GetById (regionId), params, height);
 }
 
 /* ************************************************************************** */
@@ -481,6 +481,10 @@ MoveProcessor::MaybeStartProspecting (Character& c, const Json::Value& upd)
 
   auto r = regions.GetById (regionId);
   r->MutableProto ().set_prospecting_character (c.GetId ());
+
+  /* If the region was already prospected and is now being reprospected,
+     remove the old result.  */
+  r->MutableProto ().clear_prospection ();
 
   StopCharacter (c);
   c.SetBusy (params.ProspectingBlocks ());

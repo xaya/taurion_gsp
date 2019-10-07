@@ -115,6 +115,12 @@ public:
   unsigned ProspectingBlocks () const;
 
   /**
+   * Returns the number of blocks after which a region can be reprospected
+   * (if there are no other factors preventing it).
+   */
+  unsigned ProspectionExpiryBlocks () const;
+
+  /**
    * UNIX timestamp of the end time when prospecting prizes are given out.
    */
   int64_t CompetitionEndTime () const;

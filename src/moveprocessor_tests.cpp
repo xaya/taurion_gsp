@@ -374,8 +374,8 @@ protected:
    * All CharacterUpdateTests will start with a test character already created.
    * We also ensure that it has the ID 1.
    */
-  CharacterUpdateTests ()
-    : tbl(db)
+  CharacterUpdateTests (const xaya::Chain c = xaya::Chain::MAIN)
+    : MoveProcessorTests(c), tbl(db)
   {
     SetupCharacter (1, "domob");
   }
@@ -1073,7 +1073,8 @@ protected:
   const RegionMap::IdT region;
 
   ProspectingMoveTests ()
-    : regions(db), pos(-10, 42), region(map.Regions ().GetRegionId (pos))
+    : CharacterUpdateTests(xaya::Chain::REGTEST),
+      regions(db), pos(-10, 42), region(map.Regions ().GetRegionId (pos))
   {
     GetTest ()->SetPosition (pos);
   }
@@ -1104,6 +1105,27 @@ TEST_F (ProspectingMoveTests, Success)
   EXPECT_FALSE (h->GetProto ().has_movement ());
 
   auto r = regions.GetById (region);
+  EXPECT_EQ (r->GetProto ().prospecting_character (), 1);
+  EXPECT_FALSE (r->GetProto ().has_prospection ());
+}
+
+TEST_F (ProspectingMoveTests, Reprospecting)
+{
+  auto r = regions.GetById (region);
+  r->MutableProto ().mutable_prospection ()->set_height (10);
+  r.reset ();
+
+  SetHeight (110);
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {
+        "prospect": {}
+      }}}
+    }
+  ])");
+
+  r = regions.GetById (region);
   EXPECT_EQ (r->GetProto ().prospecting_character (), 1);
   EXPECT_FALSE (r->GetProto ().has_prospection ());
 }

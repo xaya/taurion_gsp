@@ -134,6 +134,9 @@ class Region (object):
     the current region.
     """
 
+    if "resource" not in self.data:
+      return None
+
     return self.data["resource"]["type"], self.data["resource"]["amount"]
 
 

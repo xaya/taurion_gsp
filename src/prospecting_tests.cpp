@@ -50,6 +50,7 @@ protected:
   CharacterTable characters;
   RegionsTable regions;
 
+  const Params params;
   const BaseMap map;
 
   const HexCoord pos;
@@ -57,6 +58,7 @@ protected:
 
   CanProspectRegionTests ()
     : characters(db), regions(db),
+      params(xaya::Chain::REGTEST),
       pos(-10, 42), region(map.Regions ().GetRegionId (pos))
   {}
 
@@ -68,16 +70,7 @@ TEST_F (CanProspectRegionTests, ProspectionInProgress)
   auto r = regions.GetById (region);
   r->MutableProto ().set_prospecting_character (10);
 
-  EXPECT_FALSE (CanProspectRegion (*c, *r, 10));
-}
-
-TEST_F (CanProspectRegionTests, AlreadyProspected)
-{
-  auto c = characters.CreateNew ("domob", Faction::RED);
-  auto r = regions.GetById (region);
-  r->MutableProto ().mutable_prospection ()->set_name ("foo");
-
-  EXPECT_FALSE (CanProspectRegion (*c, *r, 10));
+  EXPECT_FALSE (CanProspectRegion (*c, *r, params, 10));
 }
 
 TEST_F (CanProspectRegionTests, EmptyRegion)
@@ -85,7 +78,17 @@ TEST_F (CanProspectRegionTests, EmptyRegion)
   auto c = characters.CreateNew ("domob", Faction::RED);
   auto r = regions.GetById (region);
 
-  EXPECT_TRUE (CanProspectRegion (*c, *r, 10));
+  EXPECT_TRUE (CanProspectRegion (*c, *r, params, 10));
+}
+
+TEST_F (CanProspectRegionTests, ReprospectingExpiration)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  auto r = regions.GetById (region);
+  r->MutableProto ().mutable_prospection ()->set_height (1);
+
+  EXPECT_FALSE (CanProspectRegion (*c, *r, params, 100));
+  EXPECT_TRUE (CanProspectRegion (*c, *r, params, 101));
 }
 
 /* ************************************************************************** */
