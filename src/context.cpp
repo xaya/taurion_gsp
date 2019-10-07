@@ -16,39 +16,23 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef PXD_FAME_TESTS_HPP
-#define PXD_FAME_TESTS_HPP
-
-#include "fame.hpp"
-
 #include "context.hpp"
 
-#include "database/damagelists.hpp"
-#include "database/database.hpp"
-
-#include <gmock/gmock.h>
+#include <glog/logging.h>
 
 namespace pxd
 {
 
-/**
- * Mock instance of the FameUpdater, which can be used to make sure in tests
- * that the update function is called correctly.
- */
-class MockFameUpdater : public FameUpdater
+Context::Context (const xaya::Chain c, const BaseMap& m,
+                  const unsigned h, const int64_t ts)
+  : map(m), chain(c), params(new pxd::Params (chain)), height(h), timestamp(ts)
+{}
+
+int64_t
+Context::Timestamp () const
 {
-
-public:
-
-  explicit MockFameUpdater (Database& db, const Context& ctx);
-
-  MOCK_METHOD2 (UpdateForKill, void (Database::IdT victim,
-                                     const DamageLists::Attackers& attackers));
-
-  using FameUpdater::UpdateForKill;
-
-};
+  CHECK_NE (timestamp, NO_TIMESTAMP);
+  return timestamp;
+}
 
 } // namespace pxd
-
-#endif // PXD_FAME_TESTS_HPP

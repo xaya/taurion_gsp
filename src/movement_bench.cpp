@@ -18,8 +18,8 @@
 
 #include "movement.hpp"
 
-#include "params.hpp"
 #include "protoutils.hpp"
+#include "testutils.hpp"
 
 #include "database/account.hpp"
 #include "database/character.hpp"
@@ -28,7 +28,6 @@
 #include "database/schema.hpp"
 #include "hexagonal/coord.hpp"
 #include "hexagonal/pathfinder.hpp"
-#include "mapdata/basemap.hpp"
 
 #include <benchmark/benchmark.h>
 
@@ -85,8 +84,7 @@ MovementOneSegment (benchmark::State& state)
   TestDatabase db;
   SetupDatabaseSchema (db.GetHandle ());
 
-  const Params params(xaya::Chain::MAIN);
-  const BaseMap map;
+  ContextForTesting ctx;
 
   const HexCoord::IntT numTiles = state.range (0);
   const unsigned numMoving = state.range (1);
@@ -116,7 +114,7 @@ MovementOneSegment (benchmark::State& state)
       state.ResumeTiming ();
 
       for (int i = 0; i < numTiles; ++i)
-        ProcessAllMovement (db, dyn, params, map);
+        ProcessAllMovement (db, dyn, ctx);
 
       /* Make sure that we moved exactly the first part of the path.  This
          verifies that the benchmark is actually set up correctly, and ensures
@@ -155,8 +153,7 @@ MovementLongHaul (benchmark::State& state)
   TestDatabase db;
   SetupDatabaseSchema (db.GetHandle ());
 
-  const Params params(xaya::Chain::MAIN);
-  const BaseMap map;
+  ContextForTesting ctx;
 
   const HexCoord::IntT wpDist = state.range (0);
   const HexCoord::IntT total = state.range (1);
@@ -201,7 +198,7 @@ MovementLongHaul (benchmark::State& state)
 
       do
         {
-          ProcessAllMovement (db, dyn, params, map);
+          ProcessAllMovement (db, dyn, ctx);
         }
       while (tbl.GetById (id)->GetProto ().has_movement ());
 

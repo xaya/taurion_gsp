@@ -58,19 +58,19 @@ class PXLogicTests : public DBTestWithSchema
 private:
 
   TestRandom rnd;
-  const Params params;
 
 protected:
 
-  const BaseMap map;
+  ContextForTesting ctx;
+
   AccountsTable accounts;
   CharacterTable characters;
   RegionsTable regions;
 
   PXLogicTests ()
-    : params(xaya::Chain::MAIN), accounts(db), characters(db), regions(db)
+    : accounts(db), characters(db), regions(db)
   {
-    InitialisePrizes (db, params);
+    InitialisePrizes (db, ctx.Params ());
   }
 
   /**
@@ -129,7 +129,7 @@ protected:
   void
   UpdateStateWithData (const Json::Value& blockData)
   {
-    PXLogic::UpdateState (db, rnd, params, map, blockData);
+    PXLogic::UpdateState (db, rnd, ctx.Chain (), ctx.Map (), blockData);
   }
 
   /**
@@ -140,7 +140,7 @@ protected:
   UpdateStateWithFame (FameUpdater& fame, const std::string& moveStr)
   {
     const auto blockData = BuildBlockData (moveStr);
-    PXLogic::UpdateState (db, fame, rnd, params, map, blockData);
+    PXLogic::UpdateState (db, fame, rnd, ctx, blockData);
   }
 
   /**
@@ -428,7 +428,7 @@ TEST_F (PXLogicTests, FameUpdate)
       c->MutableHP ().set_shield (1);
     }
 
-  MockFameUpdater fame(db, 0);
+  MockFameUpdater fame(db, ctx);
 
   EXPECT_CALL (fame, UpdateForKill (ids[0], DamageLists::Attackers ({ids[1]})));
   EXPECT_CALL (fame, UpdateForKill (ids[1], DamageLists::Attackers ({ids[0]})));
@@ -454,9 +454,9 @@ TEST_F (PXLogicTests, ProspectingBeforeMovement)
   for (HexCoord::IntT x = 0; ; ++x)
     {
       pos1 = HexCoord (x, 0);
-      region1 = map.Regions ().GetRegionId (pos1);
+      region1 = ctx.Map ().Regions ().GetRegionId (pos1);
       pos2 = HexCoord (x + 1, 0);
-      region2 = map.Regions ().GetRegionId (pos2);
+      region2 = ctx.Map ().Regions ().GetRegionId (pos2);
       if (region1 != region2)
         break;
     }
@@ -496,7 +496,7 @@ TEST_F (PXLogicTests, ProspectingBeforeMovement)
 TEST_F (PXLogicTests, ProspectingUserKilled)
 {
   const HexCoord pos(5, 5);
-  const auto region = map.Regions ().GetRegionId (pos);
+  const auto region = ctx.Map ().Regions ().GetRegionId (pos);
 
   /* Set up characters such that one is killing the other on the next round.  */
   auto c = CreateCharacter ("domob", Faction::RED);
@@ -559,7 +559,7 @@ TEST_F (PXLogicTests, ProspectingUserKilled)
 TEST_F (PXLogicTests, FinishingProspecting)
 {
   const HexCoord pos(5, 5);
-  const auto region = map.Regions ().GetRegionId (pos);
+  const auto region = ctx.Map ().Regions ().GetRegionId (pos);
 
   auto c = CreateCharacter ("domob", Faction::RED);
   ASSERT_EQ (c->GetId (), 1);

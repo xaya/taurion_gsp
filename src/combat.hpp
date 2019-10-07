@@ -19,6 +19,7 @@
 #ifndef PXD_COMBAT_HPP
 #define PXD_COMBAT_HPP
 
+#include "context.hpp"
 #include "fame.hpp"
 
 #include "database/damagelists.hpp"
@@ -52,7 +53,7 @@ std::vector<proto::TargetId> DealCombatDamage (Database& db, DamageLists& dl,
  */
 void ProcessKills (Database& db, DamageLists& dl, GroundLootTable& loot,
                    const std::vector<proto::TargetId>& dead,
-                   const BaseMap& map);
+                   const Context& ctx);
 
 /**
  * Handles HP regeneration.
@@ -64,7 +65,7 @@ void RegenerateHP (Database& db);
  * a block:  Dealing damage, handling kills and regenerating.
  */
 void AllHpUpdates (Database& db, FameUpdater& fame, xaya::Random& rnd,
-                   const BaseMap& map);
+                   const Context& ctx);
 
 } // namespace pxd
 

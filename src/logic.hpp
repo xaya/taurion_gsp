@@ -19,6 +19,7 @@
 #ifndef PXD_LOGIC_HPP
 #define PXD_LOGIC_HPP
 
+#include "context.hpp"
 #include "fame.hpp"
 #include "gamestatejson.hpp"
 #include "params.hpp"
@@ -91,7 +92,7 @@ private:
    * independently of SQLiteGame.
    */
   static void UpdateState (Database& db, xaya::Random& rnd,
-                           const Params& params, const BaseMap& map,
+                           xaya::Chain chain, const BaseMap& map,
                            const Json::Value& blockData);
 
   /**
@@ -99,8 +100,7 @@ private:
    * the instance in tests.
    */
   static void UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
-                           const Params& params, const BaseMap& map,
-                           const Json::Value& blockData);
+                           const Context& ctx, const Json::Value& blockData);
 
   /**
    * Performs (potentially slow) validations on the current database state.

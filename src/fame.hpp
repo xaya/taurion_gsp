@@ -19,6 +19,8 @@
 #ifndef PXD_FAME_HPP
 #define PXD_FAME_HPP
 
+#include "context.hpp"
+
 #include "database/account.hpp"
 #include "database/character.hpp"
 #include "database/damagelists.hpp"
@@ -83,8 +85,8 @@ protected:
 
 public:
 
-  explicit FameUpdater (Database& db, const unsigned height)
-    : dl(db, height), characters(db), accounts(db)
+  explicit FameUpdater (Database& db, const Context& ctx)
+    : dl(db, ctx.Height ()), characters(db), accounts(db)
   {}
 
   virtual ~FameUpdater ();

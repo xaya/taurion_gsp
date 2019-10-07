@@ -18,7 +18,6 @@
 
 #include "prospecting.hpp"
 
-#include "params.hpp"
 #include "testutils.hpp"
 
 #include "database/dbtest.hpp"
@@ -50,17 +49,17 @@ protected:
   CharacterTable characters;
   RegionsTable regions;
 
-  const Params params;
-  const BaseMap map;
+  ContextForTesting ctx;
 
   const HexCoord pos;
   const RegionMap::IdT region;
 
   CanProspectRegionTests ()
     : characters(db), regions(db),
-      params(xaya::Chain::REGTEST),
-      pos(-10, 42), region(map.Regions ().GetRegionId (pos))
-  {}
+      pos(-10, 42), region(ctx.Map ().Regions ().GetRegionId (pos))
+  {
+    ctx.SetChain (xaya::Chain::REGTEST);
+  }
 
 };
 
@@ -70,7 +69,7 @@ TEST_F (CanProspectRegionTests, ProspectionInProgress)
   auto r = regions.GetById (region);
   r->MutableProto ().set_prospecting_character (10);
 
-  EXPECT_FALSE (CanProspectRegion (*c, *r, params, 10));
+  EXPECT_FALSE (CanProspectRegion (*c, *r, ctx));
 }
 
 TEST_F (CanProspectRegionTests, EmptyRegion)
@@ -78,7 +77,7 @@ TEST_F (CanProspectRegionTests, EmptyRegion)
   auto c = characters.CreateNew ("domob", Faction::RED);
   auto r = regions.GetById (region);
 
-  EXPECT_TRUE (CanProspectRegion (*c, *r, params, 10));
+  EXPECT_TRUE (CanProspectRegion (*c, *r, ctx));
 }
 
 TEST_F (CanProspectRegionTests, ReprospectingExpiration)
@@ -87,8 +86,11 @@ TEST_F (CanProspectRegionTests, ReprospectingExpiration)
   auto r = regions.GetById (region);
   r->MutableProto ().mutable_prospection ()->set_height (1);
 
-  EXPECT_FALSE (CanProspectRegion (*c, *r, params, 100));
-  EXPECT_TRUE (CanProspectRegion (*c, *r, params, 101));
+  ctx.SetHeight (100);
+  EXPECT_FALSE (CanProspectRegion (*c, *r, ctx));
+
+  ctx.SetHeight (101);
+  EXPECT_TRUE (CanProspectRegion (*c, *r, ctx));
 }
 
 /* ************************************************************************** */
@@ -98,25 +100,19 @@ class FinishProspectingTests : public DBTestWithSchema
 
 protected:
 
-  /** Character table used for interacting with the test database.  */
   CharacterTable characters;
-
-  /** Regions table for the test.  */
   RegionsTable regions;
 
-  /** Random instance for prospecting prize tests.  */
   TestRandom rnd;
 
-  /** Params instance.  Set to regtest, so we use the regtest prizes.  */
-  const Params params;
-
-  /** Basemap instance for testing.  */
-  const BaseMap map;
+  ContextForTesting ctx;
 
   FinishProspectingTests ()
-    : characters(db), regions(db), params(xaya::Chain::REGTEST)
+    : characters(db), regions(db)
   {
-    InitialisePrizes (db, params);
+    ctx.SetTimestamp (TIME_IN_COMPETITION);
+    ctx.SetChain (xaya::Chain::REGTEST);
+    InitialisePrizes (db, ctx.Params ());
 
     const auto h = characters.CreateNew ("domob", Faction::RED);
     CHECK_EQ (h->GetId (), 1);
@@ -139,8 +135,7 @@ protected:
    * Returns the region ID prospected.
    */
   RegionMap::IdT
-  Prospect (CharacterTable::Handle c, const HexCoord& pos,
-            const unsigned height, const int64_t timestamp)
+  Prospect (CharacterTable::Handle c, const HexCoord& pos)
   {
     const auto id = c->GetId ();
     c->SetPosition (pos);
@@ -148,11 +143,10 @@ protected:
     c->MutableProto ().mutable_prospection ();
     c.reset ();
 
-    const auto region = map.Regions ().GetRegionId (pos);
+    const auto region = ctx.Map ().Regions ().GetRegionId (pos);
     regions.GetById (region)->MutableProto ().set_prospecting_character (id);
 
-    FinishProspecting (*characters.GetById (id), db, regions, rnd,
-                       height, timestamp, params, map);
+    FinishProspecting (*characters.GetById (id), db, regions, rnd, ctx);
     return region;
   }
 
@@ -160,8 +154,8 @@ protected:
 
 TEST_F (FinishProspectingTests, Basic)
 {
-  const auto region = Prospect (GetTest (), HexCoord (10, -20),
-                                10, TIME_IN_COMPETITION);
+  ctx.SetHeight (10);
+  const auto region = Prospect (GetTest (), HexCoord (10, -20));
 
   auto c = GetTest ();
   EXPECT_EQ (c->GetBusy (), 0);
@@ -185,7 +179,7 @@ TEST_F (FinishProspectingTests, Resources)
     {
       const HexCoord pos(0, 20 * i);
       auto c = characters.CreateNew ("domob", Faction::RED);
-      const auto id = Prospect (std::move (c), pos, 10, TIME_IN_COMPETITION);
+      const auto id = Prospect (std::move (c), pos);
 
       auto r = regions.GetById (id);
       EXPECT_GT (r->GetResourceLeft (), 0);
@@ -215,8 +209,7 @@ TEST_F (FinishProspectingTests, Prizes)
         {
           const HexCoord pos(x, 20 * j);
           auto c = characters.CreateNew ("domob", Faction::RED);
-          const auto region = Prospect (std::move (c), pos,
-                                        10, TIME_IN_COMPETITION);
+          const auto region = Prospect (std::move (c), pos);
           const auto res = regionIds.insert (region);
           ASSERT_TRUE (res.second);
         }
@@ -245,7 +238,7 @@ TEST_F (FinishProspectingTests, Prizes)
     }
 
   Prizes prizeTable(db);
-  for (const auto& p : params.ProspectingPrizes ())
+  for (const auto& p : ctx.Params ().ProspectingPrizes ())
     {
       LOG (INFO) << "Found for prize " << p.name << ": " << foundMap[p.name];
       EXPECT_EQ (prizeTable.GetFound (p.name), foundMap[p.name]);
@@ -265,6 +258,8 @@ TEST_F (FinishProspectingTests, NoPrizesAfterEnd)
   constexpr unsigned trials = 1000;
   constexpr unsigned perRow = 10;
 
+  ctx.SetTimestamp (TIME_AFTER_COMPETITION);
+
   for (unsigned i = 0; i < trials; i += perRow)
     {
       const HexCoord::IntT x = 2 * i;
@@ -272,12 +267,12 @@ TEST_F (FinishProspectingTests, NoPrizesAfterEnd)
         {
           const HexCoord pos(x, 20 * j);
           auto c = characters.CreateNew ("domob", Faction::RED);
-          Prospect (std::move (c), pos, 10, TIME_AFTER_COMPETITION);
+          Prospect (std::move (c), pos);
         }
     }
 
   Prizes prizeTable(db);
-  for (const auto& p : params.ProspectingPrizes ())
+  for (const auto& p : ctx.Params ().ProspectingPrizes ())
     EXPECT_EQ (prizeTable.GetFound (p.name), 0);
 }
 

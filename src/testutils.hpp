@@ -19,6 +19,11 @@
 #ifndef PXD_TESTUTILS_HPP
 #define PXD_TESTUTILS_HPP
 
+#include "context.hpp"
+
+#include "mapdata/basemap.hpp"
+
+#include <xayagame/gamelogic.hpp>
 #include <xayautil/random.hpp>
 
 #include <json/json.h>
@@ -35,6 +40,33 @@ class TestRandom : public xaya::Random
 public:
 
   TestRandom ();
+
+};
+
+/**
+ * Context instance that can modify certain fields (like the block height).
+ */
+class ContextForTesting : public Context
+{
+
+private:
+
+  /** The BaseMap instance used.  */
+  BaseMap map;
+
+public:
+
+  ContextForTesting ()
+    : Context(xaya::Chain::MAIN, map, 0, NO_TIMESTAMP)
+  {
+    /* Note that map will be constructed only after the superclass
+       constructor, which stores a reference to it.  That is fine, though,
+       as it won't be accessed then.  */
+  }
+
+  void SetChain (xaya::Chain c);
+  void SetHeight (const unsigned h);
+  void SetTimestamp (const int64_t ts);
 
 };
 

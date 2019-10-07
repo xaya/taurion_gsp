@@ -20,8 +20,8 @@
 #define PXD_MOVEPROCESSOR_HPP
 
 #include "amount.hpp"
+#include "context.hpp"
 #include "dynobstacles.hpp"
-#include "params.hpp"
 
 #include "database/account.hpp"
 #include "database/character.hpp"
@@ -55,17 +55,8 @@ class BaseMoveProcessor
 
 protected:
 
-  /** Parameters for the current situation.  */
-  const Params& params;
-
-  /** BaseMap instance that can be used.  */
-  const BaseMap& map;
-
-  /**
-   * Block height for which the moves are parsed.  If this is used for pending
-   * moves, then it is the assumed next block height (i.e. current plus one).
-   */
-  const unsigned height;
+  /** Processing context data.  */
+  const Context& ctx;
 
   /**
    * The Database handle we use for making any changes (and looking up the
@@ -85,9 +76,8 @@ protected:
   /** Access to the regions table.  */
   RegionsTable regions;
 
-  explicit BaseMoveProcessor (Database& d, const Params& p, const BaseMap& m,
-                              const unsigned h)
-    : params(p), map(m), height(h), db(d),
+  explicit BaseMoveProcessor (Database& d, const Context& c)
+    : ctx(c), db(d),
       accounts(db), characters(db), groundLoot(db), regions(db)
   {}
 
@@ -239,8 +229,8 @@ protected:
 public:
 
   explicit MoveProcessor (Database& d, DynObstacles& dyo, xaya::Random& r,
-                          const Params& p, const BaseMap& m, const unsigned h)
-    : BaseMoveProcessor(d, p, m, h),
+                          const Context& c)
+    : BaseMoveProcessor(d, c),
       dyn(dyo), rnd(r)
   {}
 

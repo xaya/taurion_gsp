@@ -27,7 +27,6 @@
 
 #include <gtest/gtest.h>
 
-#include <memory>
 #include <sstream>
 
 namespace pxd
@@ -250,32 +249,17 @@ class PendingStateUpdaterTests : public PendingStateTests
 
 protected:
 
-  const Params params;
-  const BaseMap map;
+  ContextForTesting ctx;
 
 private:
 
-  std::unique_ptr<PendingStateUpdater> updater;
+  PendingStateUpdater updater;
 
 protected:
 
   PendingStateUpdaterTests ()
-    : params(xaya::Chain::MAIN)
-  {
-    /* Setting the height also recreates the updater instance.  */
-    SetHeight (0);
-  }
-
-  /**
-   * Sets the height at which moves will be processed.  This corresponds to
-   * the current confirmed height plus one, i.e. is the height at which the
-   * moves would be confirmed in the future.
-   */
-  void
-  SetHeight (const unsigned h)
-  {
-    updater = std::make_unique<PendingStateUpdater> (db, state, params, map, h);
-  }
+    : updater(db, state, ctx)
+  {}
 
   /**
    * Processes a move for the given name and with the given move data, parsed
@@ -290,12 +274,13 @@ protected:
     moveObj["name"] = name;
 
     if (paidToDev != 0)
-      moveObj["out"][params.DeveloperAddress ()] = AmountToJson (paidToDev);
+      moveObj["out"][ctx.Params ().DeveloperAddress ()]
+          = AmountToJson (paidToDev);
 
     std::istringstream in(mvStr);
     in >> moveObj["move"];
 
-    updater->ProcessMove (moveObj);
+    updater.ProcessMove (moveObj);
   }
 
   /**
@@ -312,7 +297,7 @@ protected:
 
 TEST_F (PendingStateUpdaterTests, AccountNotInitialised)
 {
-  ProcessWithDevPayment ("domob", params.CharacterCost (), R"({
+  ProcessWithDevPayment ("domob", ctx.Params ().CharacterCost (), R"({
     "nc": [{}]
   })");
 
@@ -327,7 +312,7 @@ TEST_F (PendingStateUpdaterTests, InvalidCreation)
 {
   accounts.CreateNew ("domob", Faction::RED);
 
-  ProcessWithDevPayment ("domob", params.CharacterCost (), R"(
+  ProcessWithDevPayment ("domob", ctx.Params ().CharacterCost (), R"(
     {
       "nc": [{"faction": "r"}]
     }
@@ -350,10 +335,10 @@ TEST_F (PendingStateUpdaterTests, ValidCreations)
   accounts.CreateNew ("domob", Faction::RED);
   accounts.CreateNew ("andy", Faction::GREEN);
 
-  ProcessWithDevPayment ("domob", 2 * params.CharacterCost (), R"({
+  ProcessWithDevPayment ("domob", 2 * ctx.Params ().CharacterCost (), R"({
     "nc": [{}, {}, {}]
   })");
-  ProcessWithDevPayment ("andy", params.CharacterCost (), R"({
+  ProcessWithDevPayment ("andy", ctx.Params ().CharacterCost (), R"({
     "nc": [{}]
   })");
 
@@ -489,7 +474,7 @@ TEST_F (PendingStateUpdaterTests, CreationAndUpdateTogether)
 
   CHECK_EQ (characters.CreateNew ("domob", Faction::RED)->GetId (), 1);
 
-  ProcessWithDevPayment ("domob", params.CharacterCost (), R"({
+  ProcessWithDevPayment ("domob", ctx.Params ().CharacterCost (), R"({
     "nc": [{}],
     "c": {"1": {"wp": []}}
   })");

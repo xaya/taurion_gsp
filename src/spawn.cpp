@@ -74,11 +74,10 @@ RandomSpawnLocation (const HexCoord& centre, const HexCoord::IntT radius,
  */
 HexCoord
 ChooseSpawnLocation (const Faction f, xaya::Random& rnd,
-                     const BaseMap& map, const DynObstacles& dyn,
-                     const Params& params)
+                     const DynObstacles& dyn, const Context& ctx)
 {
   HexCoord::IntT radius;
-  const HexCoord spawnCentre = params.SpawnArea (f, radius);
+  const HexCoord spawnCentre = ctx.Params ().SpawnArea (f, radius);
 
   const HexCoord ringCentre = RandomSpawnLocation (spawnCentre, radius, rnd);
 
@@ -91,11 +90,11 @@ ChooseSpawnLocation (const Faction f, xaya::Random& rnd,
       bool foundOnMap = false;
       for (const auto& pos : ring)
         {
-          if (!map.IsOnMap (pos))
+          if (!ctx.Map ().IsOnMap (pos))
             continue;
           foundOnMap = true;
 
-          if (map.IsPassable (pos) && dyn.IsPassable (pos, f))
+          if (ctx.Map ().IsPassable (pos) && dyn.IsPassable (pos, f))
             return pos;
         }
 
@@ -112,13 +111,13 @@ ChooseSpawnLocation (const Faction f, xaya::Random& rnd,
 CharacterTable::Handle
 SpawnCharacter (const std::string& owner, const Faction f,
                 CharacterTable& tbl, DynObstacles& dyn, xaya::Random& rnd,
-                const BaseMap& map, const Params& params)
+                const Context& ctx)
 {
   VLOG (1)
       << "Spawning new character for " << owner
       << " in faction " << FactionToString (f) << "...";
 
-  const HexCoord pos = ChooseSpawnLocation (f, rnd, map, dyn, params);
+  const HexCoord pos = ChooseSpawnLocation (f, rnd, dyn, ctx);
 
   auto c = tbl.CreateNew (owner, f);
   c->SetPosition (pos);
@@ -126,7 +125,7 @@ SpawnCharacter (const std::string& owner, const Faction f,
 
   auto& regen = c->MutableRegenData ();
   auto& pb = c->MutableProto ();
-  params.InitCharacterStats (regen, pb);
+  ctx.Params ().InitCharacterStats (regen, pb);
   c->MutableHP () = regen.max_hp ();
 
   return c;

@@ -252,11 +252,10 @@ PendingMoves::AddPendingMove (const Json::Value& mv)
   PXLogic& rules = dynamic_cast<PXLogic&> (GetSQLiteGame ());
   SQLiteGameDatabase dbObj(rules);
 
-  const Params params(GetChain ());
-  const unsigned height = GetConfirmedHeight () + 1;
+  const Context ctx(GetChain (), rules.GetBaseMap (),
+                    GetConfirmedHeight () + 1, Context::NO_TIMESTAMP);
 
-  PendingStateUpdater updater(dbObj, state,
-                              params, rules.GetBaseMap (), height);
+  PendingStateUpdater updater(dbObj, state, ctx);
   updater.ProcessMove (mv);
 }
 

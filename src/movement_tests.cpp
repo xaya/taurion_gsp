@@ -18,7 +18,7 @@
 
 #include "movement.hpp"
 
-#include "params.hpp"
+#include "testutils.hpp"
 #include "protoutils.hpp"
 
 #include "database/character.hpp"
@@ -48,7 +48,6 @@ class StopCharacterTests : public DBTestWithSchema
 
 protected:
 
-  /** Character table for the test.  */
   CharacterTable tbl;
 
   StopCharacterTests ()
@@ -127,7 +126,6 @@ class MovementEdgeWeightTests : public DBTestWithSchema
 
 protected:
 
-  /** Test instance for dynamic obstacles.  */
   DynObstacles dyn;
 
   MovementEdgeWeightTests ()
@@ -172,14 +170,12 @@ class MovementTests : public DBTestWithSchema
 
 protected:
 
-  /** Params instance, set to mainnet.  */
-  const Params params;
+  ContextForTesting ctx;
 
-  /** Character table used for interacting with the test database.  */
   CharacterTable tbl;
 
   MovementTests ()
-    : params(xaya::Chain::MAIN), tbl(db)
+    : tbl(db)
   {
     const auto h = tbl.CreateNew ("domob", Faction::RED);
     CHECK_EQ (h->GetId (), 1);
@@ -227,7 +223,7 @@ protected:
     for (unsigned i = 0; i < n; ++i)
       {
         ASSERT_TRUE (IsMoving ());
-        ProcessCharacterMovement (*GetTest (), params, edges);
+        ProcessCharacterMovement (*GetTest (), ctx, edges);
       }
   }
 
@@ -420,10 +416,6 @@ TEST_F (MovementTests, CharacterInObstacle)
 class AllMovementTests : public MovementTests
 {
 
-private:
-
-  const BaseMap map;
-
 protected:
 
   /**
@@ -434,7 +426,7 @@ protected:
   StepAll ()
   {
     DynObstacles dyn(db);
-    ProcessAllMovement (db, dyn, params, map);
+    ProcessAllMovement (db, dyn, ctx);
   }
 
 };

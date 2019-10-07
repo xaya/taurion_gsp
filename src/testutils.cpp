@@ -32,6 +32,27 @@ TestRandom::TestRandom ()
   Seed (seed.Finalise ());
 }
 
+void
+ContextForTesting::SetChain (const xaya::Chain c)
+{
+  LOG (INFO) << "Setting context chain to " << xaya::ChainToString (c);
+  params = std::make_unique<pxd::Params> (c);
+}
+
+void
+ContextForTesting::SetHeight (const unsigned h)
+{
+  LOG (INFO) << "Setting context height to " << h;
+  height = h;
+}
+
+void
+ContextForTesting::SetTimestamp (const int64_t ts)
+{
+  LOG (INFO) << "Setting context timestamp to " << ts;
+  timestamp = ts;
+}
+
 bool
 PartialJsonEqual (const Json::Value& actual, const Json::Value& expected)
 {

@@ -18,6 +18,8 @@
 
 #include "combat.hpp"
 
+#include "testutils.hpp"
+
 #include "database/character.hpp"
 #include "database/damagelists.hpp"
 #include "database/dbtest.hpp"
@@ -48,7 +50,8 @@ class CombatTests : public DBTestWithSchema
 
 protected:
 
-  const BaseMap map;
+  ContextForTesting ctx;
+
   CharacterTable characters;
   DamageLists dl;
   xaya::Random rnd;
@@ -570,14 +573,14 @@ TEST_F (ProcessKillsTests, DeletesCharacters)
   const auto id1 = characters.CreateNew ("domob", Faction::RED)->GetId ();
   const auto id2 = characters.CreateNew ("domob", Faction::RED)->GetId ();
 
-  ProcessKills (db, dl, loot, {}, map);
+  ProcessKills (db, dl, loot, {}, ctx);
   EXPECT_TRUE (characters.GetById (id1) != nullptr);
   EXPECT_TRUE (characters.GetById (id2) != nullptr);
 
   proto::TargetId targetId;
   targetId.set_type (proto::TargetId::TYPE_CHARACTER);
   targetId.set_id (id2);
-  ProcessKills (db, dl, loot, {targetId}, map);
+  ProcessKills (db, dl, loot, {targetId}, ctx);
 
   EXPECT_TRUE (characters.GetById (id1) != nullptr);
   EXPECT_TRUE (characters.GetById (id2) == nullptr);
@@ -597,7 +600,7 @@ TEST_F (ProcessKillsTests, RemovesFromDamageLists)
   proto::TargetId targetId2;
   targetId2.set_type (proto::TargetId::TYPE_CHARACTER);
   targetId2.set_id (id2);
-  ProcessKills (db, dl, loot, {targetId2}, map);
+  ProcessKills (db, dl, loot, {targetId2}, ctx);
 
   EXPECT_EQ (dl.GetAttackers (id1), DamageLists::Attackers ({id3}));
   EXPECT_EQ (dl.GetAttackers (id2), DamageLists::Attackers ({}));
@@ -606,7 +609,7 @@ TEST_F (ProcessKillsTests, RemovesFromDamageLists)
 TEST_F (ProcessKillsTests, CancelsProspection)
 {
   const HexCoord pos(-42, 100);
-  const auto regionId = map.Regions ().GetRegionId (pos);
+  const auto regionId = ctx.Map ().Regions ().GetRegionId (pos);
 
   auto c = characters.CreateNew ("domob", Faction::RED);
   const auto id = c->GetId ();
@@ -623,7 +626,7 @@ TEST_F (ProcessKillsTests, CancelsProspection)
   proto::TargetId targetId;
   targetId.set_type (proto::TargetId::TYPE_CHARACTER);
   targetId.set_id (id);
-  ProcessKills (db, dl, loot, {targetId}, map);
+  ProcessKills (db, dl, loot, {targetId}, ctx);
 
   EXPECT_TRUE (characters.GetById (id) == nullptr);
   r = regions.GetById (regionId);
@@ -646,7 +649,7 @@ TEST_F (ProcessKillsTests, DropsInventory)
   proto::TargetId targetId;
   targetId.set_type (proto::TargetId::TYPE_CHARACTER);
   targetId.set_id (id);
-  ProcessKills (db, dl, loot, {targetId}, map);
+  ProcessKills (db, dl, loot, {targetId}, ctx);
 
   EXPECT_TRUE (characters.GetById (id) == nullptr);
   auto ground = loot.GetByCoord (pos);

@@ -18,6 +18,7 @@ libtaurion_la_LIBADD = \
   $(XAYAGAME_LIBS) $(JSON_LIBS) $(GLOG_LIBS) $(PROTOBUF_LIBS)
 libtaurion_la_SOURCES = \
   combat.cpp \
+  context.cpp \
   dynobstacles.cpp \
   fame.cpp \
   gamestatejson.cpp \
@@ -33,6 +34,7 @@ libtaurion_la_SOURCES = \
 libtaurionheaders = \
   amount.hpp \
   combat.hpp \
+  context.hpp \
   dynobstacles.hpp dynobstacles.tpp \
   fame.hpp \
   gamestatejson.hpp \
@@ -67,8 +69,20 @@ tauriondheaders = \
 
 noinst_HEADERS = $(libtaurionheaders) $(tauriondheaders)
 
+check_LTLIBRARIES = libtestutils.la
 check_PROGRAMS = tests benchmarks
 TESTS = tests benchmarks
+
+libtestutils_la_CXXFLAGS = \
+  -I$(top_srcdir) \
+  $(XAYAGAME_CFLAGS) $(JSON_CFLAGS)
+libtestutils_la_LIBADD = \
+  $(builddir)/libtaurion.la \
+  $(top_builddir)/mapdata/libmapdata.la \
+  $(top_builddir)/hexagonal/libhexagonal.la \
+  $(XAYAGAME_LIBS) $(JSON_LIBS)
+libtestutils_la_SOURCES = \
+  testutils.cpp
 
 tests_CXXFLAGS = \
   -I$(top_srcdir) \
@@ -76,6 +90,7 @@ tests_CXXFLAGS = \
   $(JSON_CFLAGS) $(GTEST_CFLAGS) $(GLOG_CFLAGS) $(PROTOBUF_CFLAGS)
 tests_LDADD = \
   $(builddir)/libtaurion.la \
+  $(builddir)/libtestutils.la \
   $(top_builddir)/database/libdbtest.la \
   $(top_builddir)/database/libdatabase.la \
   $(top_builddir)/hexagonal/libhexagonal.la \
@@ -96,9 +111,7 @@ tests_SOURCES = \
   prospecting_tests.cpp \
   protoutils_tests.cpp \
   spawn_tests.cpp \
-  testutils_tests.cpp \
-  \
-  testutils.cpp
+  testutils_tests.cpp
 check_HEADERS = \
   fame_tests.hpp \
   \
@@ -109,6 +122,7 @@ benchmarks_CXXFLAGS = \
   $(JSON_CFLAGS) $(GLOG_CFLAGS) $(PROTOBUF_CFLAGS) $(BENCHMARK_CFLAGS)
 benchmarks_LDADD = \
   $(builddir)/libtaurion.la \
+  $(builddir)/libtestutils.la \
   $(top_builddir)/database/libdbtest.la \
   $(top_builddir)/database/libdatabase.la \
   $(top_builddir)/hexagonal/libbenchmain.la \

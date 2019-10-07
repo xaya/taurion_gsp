@@ -57,8 +57,9 @@ BaseMoveProcessor::ExtractMoveBasics (const Json::Value& moveObj,
 
   paidToDev = 0;
   const auto& outVal = moveObj["out"];
-  if (outVal.isObject () && outVal.isMember (params.DeveloperAddress ()))
-    CHECK (AmountFromJson (outVal[params.DeveloperAddress ()], paidToDev));
+  if (outVal.isObject () && outVal.isMember (ctx.Params ().DeveloperAddress ()))
+    CHECK (AmountFromJson (outVal[ctx.Params ().DeveloperAddress ()],
+                           paidToDev));
 
   return true;
 }
@@ -97,7 +98,7 @@ BaseMoveProcessor::TryCharacterCreation (const std::string& name,
         }
 
       VLOG (1) << "Trying to create character, amount paid left: " << paidToDev;
-      if (paidToDev < params.CharacterCost ())
+      if (paidToDev < ctx.Params ().CharacterCost ())
         {
           /* In this case, we can return rather than continue with the next
              iteration.  If all money paid is "used up" already, then it won't
@@ -109,7 +110,7 @@ BaseMoveProcessor::TryCharacterCreation (const std::string& name,
         }
 
       PerformCharacterCreation (name, faction);
-      paidToDev -= params.CharacterCost ();
+      paidToDev -= ctx.Params ().CharacterCost ();
       VLOG (1) << "After character creation, paid to dev left: " << paidToDev;
     }
 }
@@ -251,12 +252,12 @@ BaseMoveProcessor::ParseCharacterProspecting (const Character& c,
     }
 
   const auto& pos = c.GetPosition ();
-  regionId = map.Regions ().GetRegionId (pos);
+  regionId = ctx.Map ().Regions ().GetRegionId (pos);
   VLOG (1)
       << "Character " << c.GetId ()
       << " is trying to prospect region " << regionId;
 
-  return CanProspectRegion (c, *regions.GetById (regionId), params, height);
+  return CanProspectRegion (c, *regions.GetById (regionId), ctx);
 }
 
 /* ************************************************************************** */
@@ -332,7 +333,7 @@ void
 MoveProcessor::PerformCharacterCreation (const std::string& name,
                                          const Faction f)
 {
-  SpawnCharacter (name, f, characters, dyn, rnd, map, params);
+  SpawnCharacter (name, f, characters, dyn, rnd, ctx);
 }
 
 namespace
@@ -487,7 +488,7 @@ MoveProcessor::MaybeStartProspecting (Character& c, const Json::Value& upd)
   r->MutableProto ().clear_prospection ();
 
   StopCharacter (c);
-  c.SetBusy (params.ProspectingBlocks ());
+  c.SetBusy (ctx.Params ().ProspectingBlocks ());
   c.MutableProto ().mutable_prospection ();
 }
 
@@ -805,7 +806,7 @@ MoveProcessor::HandleGodMode (const Json::Value& cmd)
   if (!cmd.isObject ())
     return;
 
-  if (!params.GodModeEnabled ())
+  if (!ctx.Params ().GodModeEnabled ())
     {
       LOG (WARNING) << "God mode command ignored: " << cmd;
       return;

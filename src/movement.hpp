@@ -19,8 +19,8 @@
 #ifndef PXD_MOVEMENT_HPP
 #define PXD_MOVEMENT_HPP
 
+#include "context.hpp"
 #include "dynobstacles.hpp"
-#include "params.hpp"
 
 #include "database/character.hpp"
 #include "database/database.hpp"
@@ -44,8 +44,7 @@ void StopCharacter (Character& c);
  * makes sure to update the dynamic obstacles, and "adds" them on top of
  * the given edge weights.
  */
-void ProcessAllMovement (Database& db, DynObstacles& dyn,
-                         const Params& params, const BaseMap& map);
+void ProcessAllMovement (Database& db, DynObstacles& dyn, const Context& ctx);
 
 namespace test
 {
@@ -67,7 +66,7 @@ PathFinder::DistanceT MovementEdgeWeight (
 /**
  * Processes movement (if any) for the given character handle and edge weights.
  */
-void ProcessCharacterMovement (Character& c, const Params& params,
+void ProcessCharacterMovement (Character& c, const Context& ctx,
                                const EdgeWeightFcn& edges);
 
 } // namespace test

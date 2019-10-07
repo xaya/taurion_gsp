@@ -52,9 +52,7 @@ namespace
  * their operation finished.
  */
 void
-ProcessBusy (Database& db, xaya::Random& rnd,
-             const unsigned blockHeight, const int64_t timestamp,
-             const Params& params, const BaseMap& map)
+ProcessBusy (Database& db, xaya::Random& rnd, const Context& ctx)
 {
   CharacterTable characters(db);
   RegionsTable regions(db);
@@ -67,8 +65,7 @@ ProcessBusy (Database& db, xaya::Random& rnd,
       switch (c->GetProto ().busy_case ())
         {
         case proto::Character::kProspection:
-          FinishProspecting (*c, db, regions, rnd,
-                             blockHeight, timestamp, params, map);
+          FinishProspecting (*c, db, regions, rnd, ctx);
           break;
 
         default:
@@ -86,7 +83,7 @@ ProcessBusy (Database& db, xaya::Random& rnd,
 
 void
 PXLogic::UpdateState (Database& db, xaya::Random& rnd,
-                      const Params& params, const BaseMap& map,
+                      const xaya::Chain chain, const BaseMap& map,
                       const Json::Value& blockData)
 {
   const auto& blockMeta = blockData["block"];
@@ -94,36 +91,31 @@ PXLogic::UpdateState (Database& db, xaya::Random& rnd,
   const auto& heightVal = blockMeta["height"];
   CHECK (heightVal.isUInt64 ());
   const unsigned height = heightVal.asUInt64 ();
+  const auto& timestampVal = blockMeta["timestamp"];
+  CHECK (timestampVal.isInt64 ());
+  const int64_t timestamp = timestampVal.asInt64 ();
 
-  FameUpdater fame(db, height);
-  UpdateState (db, fame, rnd, params, map, blockData);
+  Context ctx(chain, map, height, timestamp);
+
+  FameUpdater fame(db, ctx);
+  UpdateState (db, fame, rnd, ctx, blockData);
 }
 
 void
 PXLogic::UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
-                      const Params& params, const BaseMap& map,
-                      const Json::Value& blockData)
+                      const Context& ctx, const Json::Value& blockData)
 {
-  const auto& block = blockData["block"];
-  CHECK (block.isObject ());
-  const auto& timestampVal = block["timestamp"];
-  CHECK (timestampVal.isInt64 ());
-  const int64_t timestamp = timestampVal.asInt64 ();
-  const auto& heightVal = block["height"];
-  CHECK (heightVal.isUInt64 ());
-  const unsigned blockHeight = heightVal.asUInt64 ();
+  fame.GetDamageLists ().RemoveOld (ctx.Params ().DamageListBlocks ());
 
-  fame.GetDamageLists ().RemoveOld (params.DamageListBlocks ());
-
-  AllHpUpdates (db, fame, rnd, map);
-  ProcessBusy (db, rnd, blockHeight, timestamp, params, map);
+  AllHpUpdates (db, fame, rnd, ctx);
+  ProcessBusy (db, rnd, ctx);
 
   DynObstacles dyn(db);
-  MoveProcessor mvProc(db, dyn, rnd, params, map, blockHeight);
+  MoveProcessor mvProc(db, dyn, rnd, ctx);
   mvProc.ProcessAdmin (blockData["admin"]);
   mvProc.ProcessAll (blockData["moves"]);
 
-  ProcessAllMovement (db, dyn, params, map);
+  ProcessAllMovement (db, dyn, ctx);
   FindCombatTargets (db, rnd);
 
 #ifdef ENABLE_SLOW_ASSERTS
@@ -180,9 +172,7 @@ void
 PXLogic::UpdateState (sqlite3* db, const Json::Value& blockData)
 {
   SQLiteGameDatabase dbObj(*this);
-  const Params params(GetChain ());
-
-  UpdateState (dbObj, GetContext ().GetRandom (), params, map, blockData);
+  UpdateState (dbObj, GetContext ().GetRandom (), GetChain (), map, blockData);
 }
 
 Json::Value

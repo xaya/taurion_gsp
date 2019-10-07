@@ -18,6 +18,8 @@
 
 #include "fame_tests.hpp"
 
+#include "testutils.hpp"
+
 #include "database/dbtest.hpp"
 #include "proto/combat.pb.h"
 
@@ -30,8 +32,8 @@ namespace pxd
 
 using testing::_;
 
-MockFameUpdater::MockFameUpdater (Database& db, const unsigned height)
-  : FameUpdater(db, height)
+MockFameUpdater::MockFameUpdater (Database& db, const Context& ctx)
+  : FameUpdater(db, ctx)
 {
   /* By default, expect no calls.  Tests should explicitly set the expectations
      themselves as needed.  */
@@ -86,6 +88,13 @@ private:
   /** Counter variable to create unique account names.  */
   unsigned cnt = 0;
 
+  ContextForTesting ctx;
+
+  /**
+   * The FameUpdater instance we use.  It is a pointer rather than direct
+   * instance so we can destruct it (flushing computed deltas) whenever
+   * we need to.
+   */
   std::unique_ptr<FameUpdater> fame;
 
 protected:
@@ -130,7 +139,7 @@ protected:
                  const DamageLists::Attackers& attackers)
   {
     if (fame == nullptr)
-      fame = std::make_unique<FameUpdater> (db, 0);
+      fame = std::make_unique<FameUpdater> (db, ctx);
     fame->UpdateForKill (victim, attackers);
   }
 
@@ -337,7 +346,8 @@ using FameFrameworkTests = DBTestWithSchema;
 
 TEST_F (FameFrameworkTests, UpdateForKill)
 {
-  MockFameUpdater fame(db, 0);
+  ContextForTesting ctx;
+  MockFameUpdater fame(db, ctx);
 
   fame.GetDamageLists ().AddEntry (1, 2);
   fame.GetDamageLists ().AddEntry (1, 3);

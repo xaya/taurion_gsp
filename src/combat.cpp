@@ -225,7 +225,7 @@ DealCombatDamage (Database& db, DamageLists& dl, xaya::Random& rnd)
 void
 ProcessKills (Database& db, DamageLists& dl, GroundLootTable& loot,
               const std::vector<proto::TargetId>& dead,
-              const BaseMap& map)
+              const Context& ctx)
 {
   CharacterTable characters(db);
   RegionsTable regions(db);
@@ -242,7 +242,7 @@ ProcessKills (Database& db, DamageLists& dl, GroundLootTable& loot,
              operation and mark the region as not being prospected.  */
           if (c->GetProto ().has_prospection ())
             {
-              const auto regionId = map.Regions ().GetRegionId (pos);
+              const auto regionId = ctx.Map ().Regions ().GetRegionId (pos);
               LOG (INFO)
                   << "Killed character " << id.id ()
                   << " was prospecting region " << regionId
@@ -337,7 +337,7 @@ RegenerateHP (Database& db)
 
 void
 AllHpUpdates (Database& db, FameUpdater& fame, xaya::Random& rnd,
-              const BaseMap& map)
+              const Context& ctx)
 {
   const auto dead = DealCombatDamage (db, fame.GetDamageLists (), rnd);
 
@@ -345,7 +345,7 @@ AllHpUpdates (Database& db, FameUpdater& fame, xaya::Random& rnd,
     fame.UpdateForKill (id);
 
   GroundLootTable loot(db);
-  ProcessKills (db, fame.GetDamageLists (), loot, dead, map);
+  ProcessKills (db, fame.GetDamageLists (), loot, dead, ctx);
 
   RegenerateHP (db);
 }

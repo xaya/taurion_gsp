@@ -39,8 +39,7 @@ InitialisePrizes (Database& db, const Params& params)
 }
 
 bool
-CanProspectRegion (const Character& c, const Region& r,
-                   const Params& params, const unsigned height)
+CanProspectRegion (const Character& c, const Region& r, const Context& ctx)
 {
   const auto& rpb = r.GetProto ();
 
@@ -57,7 +56,8 @@ CanProspectRegion (const Character& c, const Region& r,
   if (!rpb.has_prospection ())
     return true;
 
-  if (height < rpb.prospection ().height () + params.ProspectionExpiryBlocks ())
+  if (ctx.Height () < rpb.prospection ().height ()
+                        + ctx.Params ().ProspectionExpiryBlocks ())
     {
       LOG (WARNING)
           << "It is too early to reprospect region " << r.GetId ()
@@ -73,12 +73,10 @@ CanProspectRegion (const Character& c, const Region& r,
 
 void
 FinishProspecting (Character& c, Database& db, RegionsTable& regions,
-                   xaya::Random& rnd,
-                   const unsigned blockHeight, const int64_t timestamp,
-                   const Params& params, const BaseMap& map)
+                   xaya::Random& rnd, const Context& ctx)
 {
   const auto& pos = c.GetPosition ();
-  const auto regionId = map.Regions ().GetRegionId (pos);
+  const auto regionId = ctx.Map ().Regions ().GetRegionId (pos);
   LOG (INFO)
       << "Character " << c.GetId ()
       << " finished prospecting region " << regionId;
@@ -97,16 +95,16 @@ FinishProspecting (Character& c, Database& db, RegionsTable& regions,
   CHECK (!mpb.has_prospection ());
   auto* prosp = mpb.mutable_prospection ();
   prosp->set_name (c.GetOwner ());
-  prosp->set_height (blockHeight);
+  prosp->set_height (ctx.Height ());
 
   /* Determine the mine-able resource here.  */
   std::string type;
   Inventory::QuantityT amount;
-  params.DetectResource (pos, rnd, type, amount);
+  ctx.Params ().DetectResource (pos, rnd, type, amount);
   prosp->set_resource (type);
   r->SetResourceLeft (amount);
 
-  if (timestamp > params.CompetitionEndTime ())
+  if (ctx.Timestamp () > ctx.Params ().CompetitionEndTime ())
     {
       LOG (INFO) << "Competition is over, no prizes can be found";
       return;
@@ -114,7 +112,7 @@ FinishProspecting (Character& c, Database& db, RegionsTable& regions,
 
   /* Check the prizes in order to see if we won any.  */
   Prizes prizeTable(db);
-  for (const auto& p : params.ProspectingPrizes ())
+  for (const auto& p : ctx.Params ().ProspectingPrizes ())
     {
       const unsigned found = prizeTable.GetFound (p.name);
       CHECK_LE (found, p.number);

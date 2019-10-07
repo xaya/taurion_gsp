@@ -18,6 +18,9 @@
 
 #include "combat.hpp"
 
+#include "context.hpp"
+#include "testutils.hpp"
+
 #include "database/account.hpp"
 #include "database/character.hpp"
 #include "database/damagelists.hpp"
@@ -93,13 +96,13 @@ InsertCharacters (Database& db, const unsigned numIdle,
  * also in the real state-update function.
  */
 void
-UpdateHP (Database& db, xaya::Random& rnd, const BaseMap& map)
+UpdateHP (Database& db, xaya::Random& rnd, const Context& ctx)
 {
   DamageLists dl(db, 0);
   GroundLootTable loot(db);
 
   const auto dead = DealCombatDamage (db, dl, rnd);
-  ProcessKills (db, dl, loot, dead, map);
+  ProcessKills (db, dl, loot, dead, ctx);
   RegenerateHP (db);
 }
 
@@ -115,7 +118,7 @@ UpdateHP (Database& db, xaya::Random& rnd, const BaseMap& map)
 void
 CombatHpUpdate (benchmark::State& state)
 {
-  const BaseMap map;
+  ContextForTesting ctx;
 
   TestDatabase db;
   SetupDatabaseSchema (db.GetHandle ());
@@ -134,7 +137,7 @@ CombatHpUpdate (benchmark::State& state)
   for (auto _ : state)
     {
       TemporaryDatabaseChanges checkpoint(db, state);
-      UpdateHP (db, rnd, map);
+      UpdateHP (db, rnd, ctx);
     }
 }
 BENCHMARK (CombatHpUpdate)
@@ -158,7 +161,7 @@ BENCHMARK (CombatHpUpdate)
 void
 CombatKills (benchmark::State& state)
 {
-  const BaseMap map;
+  ContextForTesting ctx;
 
   TestDatabase db;
   SetupDatabaseSchema (db.GetHandle ());
@@ -177,7 +180,7 @@ CombatKills (benchmark::State& state)
   for (auto _ : state)
     {
       TemporaryDatabaseChanges checkpoint(db, state);
-      UpdateHP (db, rnd, map);
+      UpdateHP (db, rnd, ctx);
     }
 }
 BENCHMARK (CombatKills)

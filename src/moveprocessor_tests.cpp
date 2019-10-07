@@ -19,7 +19,6 @@
 #include "moveprocessor.hpp"
 
 #include "jsonutils.hpp"
-#include "params.hpp"
 #include "protoutils.hpp"
 #include "testutils.hpp"
 
@@ -29,7 +28,6 @@
 
 #include <json/json.h>
 
-#include <memory>
 #include <sstream>
 #include <string>
 
@@ -43,40 +41,21 @@ class MoveProcessorTests : public DBTestWithSchema
 
 protected:
 
-  const Params params;
-  const BaseMap map;
-
+  ContextForTesting ctx;
   DynObstacles dyn;
 
 private:
 
   TestRandom rnd;
-
-  /**
-   * MoveProcessor instance for use in the test.  This is a std::unique_ptr
-   * so that we can recreate it in case we want to modify the parameters.
-   */
-  std::unique_ptr<MoveProcessor> mvProc;
+  MoveProcessor mvProc;
 
 protected:
 
   AccountsTable accounts;
 
-  explicit MoveProcessorTests (const xaya::Chain c = xaya::Chain::MAIN)
-    : params(c), dyn(db), accounts(db)
-  {
-    /* This (re)creates the mvProc instance as well.  */
-    SetHeight (0);
-  }
-
-  /**
-   * Sets the block height at which we will be processing moves.
-   */
-  void
-  SetHeight (const unsigned h)
-  {
-    mvProc = std::make_unique<MoveProcessor> (db, dyn, rnd, params, map, h);
-  }
+  explicit MoveProcessorTests ()
+    : dyn(db), mvProc(db, dyn, rnd, ctx), accounts(db)
+  {}
 
   /**
    * Processes an array of admin commands given as JSON string.
@@ -88,7 +67,7 @@ protected:
     std::istringstream in(str);
     in >> cmd;
 
-    mvProc->ProcessAdmin (cmd);
+    mvProc.ProcessAdmin (cmd);
   }
 
   /**
@@ -102,7 +81,7 @@ protected:
     std::istringstream in(str);
     in >> val;
 
-    mvProc->ProcessAll (val);
+    mvProc.ProcessAll (val);
   }
 
   /**
@@ -118,9 +97,9 @@ protected:
     in >> val;
 
     for (auto& entry : val)
-      entry["out"][params.DeveloperAddress ()] = AmountToJson (amount);
+      entry["out"][ctx.Params ().DeveloperAddress ()] = AmountToJson (amount);
 
-    mvProc->ProcessAll (val);
+    mvProc.ProcessAll (val);
   }
 
 };
@@ -144,7 +123,7 @@ TEST_F (MoveProcessorTests, InvalidDataFromXaya)
 
   EXPECT_DEATH (Process (R"([{
     "name": "domob", "move": {},
-    "out": {")" + params.DeveloperAddress () + R"(": false}
+    "out": {")" + ctx.Params ().DeveloperAddress () + R"(": false}
   }])"), "JSON value for amount is not double");
 }
 
@@ -236,7 +215,7 @@ TEST_F (AccountUpdateTests, InitialisationAndCharacterCreation)
         "nc": [{}]
       }
     }
-  ])", params.CharacterCost ());
+  ])", ctx.Params ().CharacterCost ());
 
   CharacterTable characters(db);
   auto c = characters.GetById (1);
@@ -269,7 +248,7 @@ TEST_F (CharacterCreationTests, InvalidCommands)
     {"name": "domob", "move": {}},
     {"name": "domob", "move": {"nc": 42}},
     {"name": "domob", "move": {"nc": [{"faction": "r"}]}}
-  ])", params.CharacterCost ());
+  ])", ctx.Params ().CharacterCost ());
 
   auto res = tbl.QueryAll ();
   EXPECT_FALSE (res.Step ());
@@ -279,7 +258,7 @@ TEST_F (CharacterCreationTests, AccountNotInitialised)
 {
   ProcessWithDevPayment (R"([
     {"name": "domob", "move": {"nc": [{}]}}
-  ])", params.CharacterCost ());
+  ])", ctx.Params ().CharacterCost ());
 
   auto res = tbl.QueryAll ();
   EXPECT_FALSE (res.Step ());
@@ -294,7 +273,7 @@ TEST_F (CharacterCreationTests, ValidCreation)
     {"name": "domob", "move": {"nc": []}},
     {"name": "domob", "move": {"nc": [{}]}},
     {"name": "andy", "move": {"nc": [{}]}}
-  ])", params.CharacterCost ());
+  ])", ctx.Params ().CharacterCost ());
 
   auto res = tbl.QueryAll ();
 
@@ -321,10 +300,10 @@ TEST_F (CharacterCreationTests, DevPayment)
   ])");
   ProcessWithDevPayment (R"([
     {"name": "domob", "move": {"nc": [{}]}}
-  ])", params.CharacterCost () - 1);
+  ])", ctx.Params ().CharacterCost () - 1);
   ProcessWithDevPayment (R"([
     {"name": "andy", "move": {"nc": [{}]}}
-  ])", params.CharacterCost () + 1);
+  ])", ctx.Params ().CharacterCost () + 1);
 
   auto res = tbl.QueryAll ();
   ASSERT_TRUE (res.Step ());
@@ -346,7 +325,7 @@ TEST_F (CharacterCreationTests, Multiple)
           "nc": [{}, {}, {}]
         }
     }
-  ])", 2 * params.CharacterCost ());
+  ])", 2 * ctx.Params ().CharacterCost ());
 
   auto res = tbl.QueryAll ();
 
@@ -374,8 +353,8 @@ protected:
    * All CharacterUpdateTests will start with a test character already created.
    * We also ensure that it has the ID 1.
    */
-  CharacterUpdateTests (const xaya::Chain c = xaya::Chain::MAIN)
-    : MoveProcessorTests(c), tbl(db)
+  CharacterUpdateTests ()
+    : tbl(db)
   {
     SetupCharacter (1, "domob");
   }
@@ -443,7 +422,7 @@ TEST_F (CharacterUpdateTests, CreationAndUpdate)
         "nc": [{}],
         "c": {"1": {"send": "daniel"}, "2": {"send": "andy"}}
       }
-  }])", params.CharacterCost ());
+  }])", ctx.Params ().CharacterCost ());
 
   /* Transfer and creation should work fine together for two different
      characters (but in the same move).  The character created in the same
@@ -466,7 +445,7 @@ TEST_F (CharacterUpdateTests, AccountNotInitialised)
       {
         "c": {"10": {"send": "domob"}}
       }
-  }])", params.CharacterCost ());
+  }])", ctx.Params ().CharacterCost ());
 
   ExpectCharacterOwners ({{10, "unknown account"}});
 }
@@ -1073,9 +1052,9 @@ protected:
   const RegionMap::IdT region;
 
   ProspectingMoveTests ()
-    : CharacterUpdateTests(xaya::Chain::REGTEST),
-      regions(db), pos(-10, 42), region(map.Regions ().GetRegionId (pos))
+    : regions(db), pos(-10, 42), region(ctx.Map ().Regions ().GetRegionId (pos))
   {
+    ctx.SetChain (xaya::Chain::REGTEST);
     GetTest ()->SetPosition (pos);
   }
 
@@ -1115,7 +1094,7 @@ TEST_F (ProspectingMoveTests, Reprospecting)
   r->MutableProto ().mutable_prospection ()->set_height (10);
   r.reset ();
 
-  SetHeight (110);
+  ctx.SetHeight (110);
   Process (R"([
     {
       "name": "domob",
@@ -1249,8 +1228,10 @@ protected:
   GroundLootTable loot;
 
   GodModeTests ()
-    : MoveProcessorTests (xaya::Chain::REGTEST), tbl(db), loot(db)
-  {}
+    : tbl(db), loot(db)
+  {
+    ctx.SetChain (xaya::Chain::REGTEST);
+  }
 
 };
 

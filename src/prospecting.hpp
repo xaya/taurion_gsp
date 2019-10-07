@@ -19,6 +19,7 @@
 #ifndef PXD_PROSPECTING_HPP
 #define PXD_PROSPECTING_HPP
 
+#include "context.hpp"
 #include "params.hpp"
 
 #include "database/character.hpp"
@@ -42,7 +43,7 @@ void InitialisePrizes (Database& db, const Params& params);
  * at the moment.
  */
 bool CanProspectRegion (const Character& c, const Region& r,
-                        const Params& params, unsigned height);
+                        const Context& ctx);
 
 /**
  * Finishes a done prospecting operation by the given character.  If the
@@ -50,9 +51,7 @@ bool CanProspectRegion (const Character& c, const Region& r,
  * prizes can be won.
  */
 void FinishProspecting (Character& c, Database& db, RegionsTable& regions,
-                        xaya::Random& rnd,
-                        unsigned blockHeight, int64_t timestamp,
-                        const Params& params, const BaseMap& map);
+                        xaya::Random& rnd, const Context& ctx);
 
 } // namespace pxd
 

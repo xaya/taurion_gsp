@@ -23,7 +23,6 @@
 #include "database/dbtest.hpp"
 #include "hexagonal/coord.hpp"
 #include "hexagonal/ring.hpp"
-#include "mapdata/basemap.hpp"
 
 #include <gtest/gtest.h>
 
@@ -39,25 +38,17 @@ class SpawnTests : public DBTestWithSchema
 
 private:
 
-  /** Test random instance.  */
   TestRandom rnd;
 
 protected:
 
-  /** Params instance for testing.  */
-  const Params params;
+  ContextForTesting ctx;
 
-  /** Basemap instance for testing.  */
-  const BaseMap map;
-
-  /** Dynamic obstacle instance for testing.  */
   DynObstacles dyn;
-
-  /** Character table for tests.  */
   CharacterTable tbl;
 
   SpawnTests ()
-    : params(xaya::Chain::MAIN), dyn(db), tbl(db)
+    : dyn(db), tbl(db)
   {}
 
   /**
@@ -66,7 +57,7 @@ protected:
   CharacterTable::Handle
   Spawn (const std::string& owner, const Faction f)
   {
-    return SpawnCharacter (owner, f, tbl, dyn, rnd, map, params);
+    return SpawnCharacter (owner, f, tbl, dyn, rnd, ctx);
   }
 
 };
@@ -139,13 +130,13 @@ TEST_F (SpawnLocationTests, NoObstaclesInSpawns)
   for (const Faction f : {Faction::RED, Faction::GREEN, Faction::BLUE})
     {
       HexCoord::IntT spawnRadius;
-      const auto spawnCentre = params.SpawnArea (f, spawnRadius);
+      const auto spawnCentre = ctx.Params ().SpawnArea (f, spawnRadius);
 
       for (HexCoord::IntT r = 0; r <= spawnRadius; ++r)
         {
           const L1Ring ring(spawnCentre, r);
           for (const auto& pos : ring)
-            ASSERT_TRUE (map.IsPassable (pos))
+            ASSERT_TRUE (ctx.Map ().IsPassable (pos))
                 << "Tile " << pos << " for faction " << FactionToString (f)
                 << " is not passable";
         }
@@ -157,7 +148,7 @@ TEST_F (SpawnLocationTests, SpawnLocation)
   constexpr Faction f = Faction::RED;
 
   HexCoord::IntT spawnRadius;
-  const HexCoord spawnCentre = params.SpawnArea (f, spawnRadius);
+  const HexCoord spawnCentre = ctx.Params ().SpawnArea (f, spawnRadius);
 
   /* In this test, we randomly spawn (and then remove again) many characters
      on the map.  We expect that all are within the spawn radius of the centre
@@ -192,7 +183,7 @@ TEST_F (SpawnLocationTests, DynObstacles)
   constexpr Faction f = Faction::RED;
 
   HexCoord::IntT spawnRadius;
-  const HexCoord spawnCentre = params.SpawnArea (f, spawnRadius);
+  const HexCoord spawnCentre = ctx.Params ().SpawnArea (f, spawnRadius);
 
   /* The 50x50 spawn area has less than 10k tiles.  So if we create 10k
      characters, some will be displaced out of the spawn area.  It should

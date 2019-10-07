@@ -45,7 +45,7 @@ constexpr bool CONTINUE_PROCESSING = false;
  */
 template <typename Fcn>
   bool
-  StepAlongPrecomputed (Character& c, const Params& params, Fcn edges)
+  StepAlongPrecomputed (Character& c, const Context& ctx, Fcn edges)
 {
   VLOG (1) << "We have a precomputed path, trying to step it...";
 
@@ -98,7 +98,7 @@ template <typename Fcn>
       VLOG (1)
           << "Incremented blocked turns counter to " << volMv.blocked_turns ();
 
-      if (volMv.blocked_turns () > params.BlockedStepRetries ())
+      if (volMv.blocked_turns () > ctx.Params ().BlockedStepRetries ())
         {
           VLOG (1)
               << "Too many blocked turns, stopping character " << c.GetId ();
@@ -158,7 +158,7 @@ template <typename Fcn>
  */
 template <typename Fcn>
   bool
-  PrecomputeNextSegment (Character& c, const Params& params, Fcn edges)
+  PrecomputeNextSegment (Character& c, const Context& ctx, Fcn edges)
 {
   VLOG (1) << "Trying to precompute path to the next waypoint...";
 
@@ -195,7 +195,7 @@ template <typename Fcn>
 
   PathFinder finder(wp);
   const auto dist = finder.Compute (edges, pos,
-                                    params.MaximumWaypointL1Distance ());
+                                    ctx.Params ().MaximumWaypointL1Distance ());
   VLOG (1) << "Shortest path has length " << dist;
 
   if (dist == PathFinder::NO_CONNECTION)
@@ -246,7 +246,7 @@ template <typename Fcn>
 
 template <typename Fcn>
   void
-  CharacterMovement (Character& c, const Params& params, Fcn edges)
+  CharacterMovement (Character& c, const Context& ctx, Fcn edges)
 {
   const auto& pb = c.GetProto ();
   CHECK (pb.has_movement ())
@@ -280,13 +280,13 @@ template <typename Fcn>
       /* If we have a precomputed path, try to do one step along it.  */
       if (mv.steps_size () > 0)
         {
-          if (StepAlongPrecomputed (c, params, edges) == PROCESSING_DONE)
+          if (StepAlongPrecomputed (c, ctx, edges) == PROCESSING_DONE)
             break;
           continue;
         }
 
       /* Else, we need to precompute the next segment of the path.  */
-      if (PrecomputeNextSegment (c, params, edges) == PROCESSING_DONE)
+      if (PrecomputeNextSegment (c, ctx, edges) == PROCESSING_DONE)
         break;
     }
 }
@@ -336,8 +336,7 @@ public:
 } // anonymous namespace
 
 void
-ProcessAllMovement (Database& db, DynObstacles& dyn,
-                    const Params& params, const BaseMap& map)
+ProcessAllMovement (Database& db, DynObstacles& dyn, const Context& ctx)
 {
   CharacterTable tbl(db);
   auto res = tbl.QueryMoving ();
@@ -346,9 +345,9 @@ ProcessAllMovement (Database& db, DynObstacles& dyn,
       const auto c = tbl.GetFromResult (res);
       MoveInDynObstacles dynMover(*c, dyn);
 
-      const auto baseEdges = [&map] (const HexCoord& from, const HexCoord& to)
+      const auto baseEdges = [&ctx] (const HexCoord& from, const HexCoord& to)
         {
-          return map.GetEdgeWeight (from, to);
+          return ctx.Map ().GetEdgeWeight (from, to);
         };
       const Faction f = c->GetFaction ();
       const auto edges = [&baseEdges, &dyn, f] (const HexCoord& from,
@@ -357,7 +356,7 @@ ProcessAllMovement (Database& db, DynObstacles& dyn,
           return EdgeWeight (from, to, baseEdges, dyn, f);
         };
 
-      CharacterMovement (*c, params, edges);
+      CharacterMovement (*c, ctx, edges);
     }
 }
 
@@ -373,10 +372,10 @@ MovementEdgeWeight (const HexCoord& from, const HexCoord& to,
 }
 
 void
-ProcessCharacterMovement (Character& c, const Params& params,
+ProcessCharacterMovement (Character& c, const Context& ctx,
                           const EdgeWeightFcn& edges)
 {
-  return CharacterMovement (c, params, edges);
+  return CharacterMovement (c, ctx, edges);
 }
 
 } // namespace test

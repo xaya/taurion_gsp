@@ -19,8 +19,8 @@
 #ifndef PXD_SPAWN_HPP
 #define PXD_SPAWN_HPP
 
+#include "context.hpp"
 #include "dynobstacles.hpp"
-#include "params.hpp"
 
 #include "database/character.hpp"
 #include "database/faction.hpp"
@@ -42,9 +42,7 @@ namespace pxd
  */
 CharacterTable::Handle SpawnCharacter (const std::string& owner, Faction f,
                                        CharacterTable& tbl, DynObstacles& dyn,
-                                       xaya::Random& rnd,
-                                       const BaseMap& map,
-                                       const Params& params);
+                                       xaya::Random& rnd, const Context& ctx);
 
 } // namespace pxd
 
