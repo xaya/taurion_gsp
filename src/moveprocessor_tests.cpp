@@ -29,6 +29,7 @@
 
 #include <json/json.h>
 
+#include <memory>
 #include <sstream>
 #include <string>
 
@@ -42,30 +43,40 @@ class MoveProcessorTests : public DBTestWithSchema
 
 protected:
 
-  /** Params instance that is used.  Set to mainnet.  */
   const Params params;
-
-  /** Basemap instance for use in tests.  */
   const BaseMap map;
 
-  /** DynObstacles instance for the test.  */
   DynObstacles dyn;
 
 private:
 
-  /** Random instance for testing.  */
   TestRandom rnd;
 
-  /** MoveProcessor instance for use in the test.  */
-  MoveProcessor mvProc;
+  /**
+   * MoveProcessor instance for use in the test.  This is a std::unique_ptr
+   * so that we can recreate it in case we want to modify the parameters.
+   */
+  std::unique_ptr<MoveProcessor> mvProc;
 
 protected:
 
   AccountsTable accounts;
 
   explicit MoveProcessorTests (const xaya::Chain c = xaya::Chain::MAIN)
-    : params(c), dyn(db), mvProc(db, dyn, rnd, params, map), accounts(db)
-  {}
+    : params(c), dyn(db), accounts(db)
+  {
+    /* This (re)creates the mvProc instance as well.  */
+    SetHeight (0);
+  }
+
+  /**
+   * Sets the block height at which we will be processing moves.
+   */
+  void
+  SetHeight (const unsigned h)
+  {
+    mvProc = std::make_unique<MoveProcessor> (db, dyn, rnd, params, map, h);
+  }
 
   /**
    * Processes an array of admin commands given as JSON string.
@@ -77,7 +88,7 @@ protected:
     std::istringstream in(str);
     in >> cmd;
 
-    mvProc.ProcessAdmin (cmd);
+    mvProc->ProcessAdmin (cmd);
   }
 
   /**
@@ -91,7 +102,7 @@ protected:
     std::istringstream in(str);
     in >> val;
 
-    mvProc.ProcessAll (val);
+    mvProc->ProcessAll (val);
   }
 
   /**
@@ -109,7 +120,7 @@ protected:
     for (auto& entry : val)
       entry["out"][params.DeveloperAddress ()] = AmountToJson (amount);
 
-    mvProc.ProcessAll (val);
+    mvProc->ProcessAll (val);
   }
 
 };
@@ -363,8 +374,8 @@ protected:
    * All CharacterUpdateTests will start with a test character already created.
    * We also ensure that it has the ID 1.
    */
-  CharacterUpdateTests ()
-    : tbl(db)
+  CharacterUpdateTests (const xaya::Chain c = xaya::Chain::MAIN)
+    : MoveProcessorTests(c), tbl(db)
   {
     SetupCharacter (1, "domob");
   }
@@ -1062,7 +1073,8 @@ protected:
   const RegionMap::IdT region;
 
   ProspectingMoveTests ()
-    : regions(db), pos(-10, 42), region(map.Regions ().GetRegionId (pos))
+    : CharacterUpdateTests(xaya::Chain::REGTEST),
+      regions(db), pos(-10, 42), region(map.Regions ().GetRegionId (pos))
   {
     GetTest ()->SetPosition (pos);
   }
@@ -1097,6 +1109,27 @@ TEST_F (ProspectingMoveTests, Success)
   EXPECT_FALSE (r->GetProto ().has_prospection ());
 }
 
+TEST_F (ProspectingMoveTests, Reprospecting)
+{
+  auto r = regions.GetById (region);
+  r->MutableProto ().mutable_prospection ()->set_height (10);
+  r.reset ();
+
+  SetHeight (110);
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {
+        "prospect": {}
+      }}}
+    }
+  ])");
+
+  r = regions.GetById (region);
+  EXPECT_EQ (r->GetProto ().prospecting_character (), 1);
+  EXPECT_FALSE (r->GetProto ().has_prospection ());
+}
+
 TEST_F (ProspectingMoveTests, Invalid)
 {
   GetTest ()->MutableProto ().mutable_movement ()->add_waypoints ();
@@ -1126,7 +1159,7 @@ TEST_F (ProspectingMoveTests, Invalid)
   EXPECT_FALSE (r->GetProto ().has_prospection ());
 }
 
-TEST_F (ProspectingMoveTests, RegionAlreadyProspected)
+TEST_F (ProspectingMoveTests, CannotProspectRegion)
 {
   auto r = regions.GetById (region);
   r->MutableProto ().mutable_prospection ()->set_name ("foo");

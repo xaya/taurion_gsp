@@ -23,9 +23,11 @@
 
 #include "hexagonal/coord.hpp"
 #include "database/faction.hpp"
+#include "database/inventory.hpp"
 #include "proto/character.pb.h"
 
 #include <xayagame/gamelogic.hpp>
+#include <xayautil/random.hpp>
 
 #include <string>
 #include <vector>
@@ -113,6 +115,12 @@ public:
   unsigned ProspectingBlocks () const;
 
   /**
+   * Returns the number of blocks after which a region can be reprospected
+   * (if there are no other factors preventing it).
+   */
+  unsigned ProspectionExpiryBlocks () const;
+
+  /**
    * UNIX timestamp of the end time when prospecting prizes are given out.
    */
   int64_t CompetitionEndTime () const;
@@ -122,6 +130,13 @@ public:
    * demo competition.
    */
   const std::vector<PrizeData>& ProspectingPrizes () const;
+
+  /**
+   * Determines the type and initial amount of resource mine-able that should
+   * be found by prospecting in the given coordinate.
+   */
+  void DetectResource (const HexCoord& pos, xaya::Random& rnd,
+                       std::string& type, Inventory::QuantityT& amount) const;
 
   /**
    * Returns the spawn centre and radius for the given faction.

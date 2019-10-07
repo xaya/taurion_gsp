@@ -23,14 +23,28 @@ package pxd.proto;
 /**
  * Data about the prospecting outcome of a region.
  */
-message ProspectionOutcome
+message ProspectionData
 {
 
-  /** The Xaya name of the user who prospected the region.  */
+  /**
+   * The Xaya name of the user who prospected the region.  This has no impact
+   * on the game play, but can be useful for display purposes.
+   */
   optional string name = 1;
 
-  /** The prize won, if any.  */
-  optional string prize = 2;
+  /** The block height at which the region was prospected.  */
+  optional uint32 height = 2;
+
+  /**
+   * The type of resources that can be mined on the current region.  The amount
+   * left is stored directly in a DB column (because it may be updated
+   * frequently while the region is being mined).
+   *
+   * Every prospected region has some type of resource assigned, although
+   * there may be very little of it minable (or all might already have
+   * been taken).
+   */
+  optional string resource = 3;
 
 }
 
@@ -44,6 +58,6 @@ message RegionData
   optional uint64 prospecting_character = 1;
 
   /** If already prospected, the outcome.  */
-  optional ProspectionOutcome prospection = 2;
+  optional ProspectionData prospection = 2;
 
 }

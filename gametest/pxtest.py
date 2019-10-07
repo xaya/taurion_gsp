@@ -128,6 +128,17 @@ class Region (object):
   def getId (self):
     return self.data["id"]
 
+  def getResource (self):
+    """
+    Returns the type and remaining amount of mine-able resource at
+    the current region.
+    """
+
+    if "resource" not in self.data:
+      return None
+
+    return self.data["resource"]["type"], self.data["resource"]["amount"]
+
 
 class PXTest (XayaGameTest):
   """

@@ -38,11 +38,44 @@ InitialisePrizes (Database& db, const Params& params)
     }
 }
 
+bool
+CanProspectRegion (const Character& c, const Region& r,
+                   const Params& params, const unsigned height)
+{
+  const auto& rpb = r.GetProto ();
+
+  if (rpb.has_prospecting_character ())
+    {
+      LOG (WARNING)
+          << "Region " << r.GetId ()
+          << " is already being prospected by character "
+          << rpb.prospecting_character ()
+          << ", can't be prospected by " << c.GetId ();
+      return false;
+    }
+
+  if (!rpb.has_prospection ())
+    return true;
+
+  if (height < rpb.prospection ().height () + params.ProspectionExpiryBlocks ())
+    {
+      LOG (WARNING)
+          << "It is too early to reprospect region " << r.GetId ()
+          << " by " << c.GetId ();
+      return false;
+    }
+
+  /* FIXME: Also check for remaining resources and only allow re-prospecting
+     if there are none.  */
+
+  return true;
+}
+
 void
 FinishProspecting (Character& c, Database& db, RegionsTable& regions,
                    xaya::Random& rnd,
-                   const int64_t timestamp, const Params& params,
-                   const BaseMap& map)
+                   const unsigned blockHeight, const int64_t timestamp,
+                   const Params& params, const BaseMap& map)
 {
   const auto& pos = c.GetPosition ();
   const auto regionId = map.Regions ().GetRegionId (pos);
@@ -64,6 +97,14 @@ FinishProspecting (Character& c, Database& db, RegionsTable& regions,
   CHECK (!mpb.has_prospection ());
   auto* prosp = mpb.mutable_prospection ();
   prosp->set_name (c.GetOwner ());
+  prosp->set_height (blockHeight);
+
+  /* Determine the mine-able resource here.  */
+  std::string type;
+  Inventory::QuantityT amount;
+  params.DetectResource (pos, rnd, type, amount);
+  prosp->set_resource (type);
+  r->SetResourceLeft (amount);
 
   if (timestamp > params.CompetitionEndTime ())
     {
@@ -72,7 +113,6 @@ FinishProspecting (Character& c, Database& db, RegionsTable& regions,
     }
 
   /* Check the prizes in order to see if we won any.  */
-  CHECK (!prosp->has_prize ());
   Prizes prizeTable(db);
   for (const auto& p : params.ProspectingPrizes ())
     {
@@ -89,7 +129,7 @@ FinishProspecting (Character& c, Database& db, RegionsTable& regions,
         << " found a prize of tier " << p.name
         << " prospecting region " << regionId;
       prizeTable.IncrementFound (p.name);
-      prosp->set_prize (p.name);
+      c.GetInventory ().AddFungibleCount (p.name + " prize", 1);
       break;
     }
 }

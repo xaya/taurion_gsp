@@ -253,8 +253,10 @@ PendingMoves::AddPendingMove (const Json::Value& mv)
   SQLiteGameDatabase dbObj(rules);
 
   const Params params(GetChain ());
+  const unsigned height = GetConfirmedHeight () + 1;
 
-  PendingStateUpdater updater(dbObj, state, params, rules.GetBaseMap ());
+  PendingStateUpdater updater(dbObj, state,
+                              params, rules.GetBaseMap (), height);
   updater.ProcessMove (mv);
 }
 

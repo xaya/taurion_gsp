@@ -14,30 +14,54 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+# Resource types in the game.
+# FIXME: For now these are just dummy values used in tests of the basic
+# prospecting / mining logic.  Add in real ones once determined together
+# with their proper cargo space.
+fungible_items:
+  {
+    key: "sand"
+    value: { space: 50 }
+  }
+fungible_items:
+  {
+    key: "cryptonite"
+    value: { space: 1 }
+  }
+
+# Items corresponding to competition prizes that can be found.  They all
+# have zero cargo space.
+fungible_items:
+  {
+    key: "gold prize"
+    value: { space: 0 }
+  }
+fungible_items:
+  {
+    key: "silver prize"
+    value: { space: 0 }
+  }
+fungible_items:
+  {
+    key: "bronze prize"
+    value: { space: 0 }
+  }
+
 # The following items are used only for tests.  They are defined also
 # in the real game, but since they are never generated (except through
 # god-mode or direct intervention in tests), that has no effect.
 fungible_items:
   {
     key: "foo"
-    value:
-      {
-        space: 10
-      }
+    value: { space: 10 }
   }
 fungible_items:
   {
     key: "bar"
-    value:
-      {
-        space: 20
-      }
+    value: { space: 20 }
   }
 fungible_items:
   {
     key: "zerospace"
-    value:
-      {
-        space: 0
-      }
+    value: { space: 0 }
   }

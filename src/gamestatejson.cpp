@@ -301,12 +301,20 @@ template <>
   if (pb.has_prospection ())
     {
       prospection["name"] = pb.prospection ().name ();
-      if (pb.prospection ().has_prize ())
-        prospection["prize"] = pb.prospection ().prize ();
+      prospection["height"] = pb.prospection ().height ();
     }
 
   if (!prospection.empty ())
     res["prospection"] = prospection;
+
+  if (pb.has_prospection ())
+    {
+      Json::Value resource(Json::objectValue);
+      resource["type"] = pb.prospection ().resource ();
+      resource["amount"] = IntToJson (r.GetResourceLeft ());
+
+      res["resource"] = resource;
+    }
 
   return res;
 }

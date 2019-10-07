@@ -28,6 +28,7 @@
 #include <gtest/gtest.h>
 
 #include <set>
+#include <map>
 
 namespace pxd
 {
@@ -39,7 +40,60 @@ constexpr int64_t TIME_IN_COMPETITION = 1571148000;
 /** Timestamp after the competition end.  */
 constexpr int64_t TIME_AFTER_COMPETITION = TIME_IN_COMPETITION + 1;
 
-class ProspectingTests : public DBTestWithSchema
+/* ************************************************************************** */
+
+class CanProspectRegionTests : public DBTestWithSchema
+{
+
+protected:
+
+  CharacterTable characters;
+  RegionsTable regions;
+
+  const Params params;
+  const BaseMap map;
+
+  const HexCoord pos;
+  const RegionMap::IdT region;
+
+  CanProspectRegionTests ()
+    : characters(db), regions(db),
+      params(xaya::Chain::REGTEST),
+      pos(-10, 42), region(map.Regions ().GetRegionId (pos))
+  {}
+
+};
+
+TEST_F (CanProspectRegionTests, ProspectionInProgress)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  auto r = regions.GetById (region);
+  r->MutableProto ().set_prospecting_character (10);
+
+  EXPECT_FALSE (CanProspectRegion (*c, *r, params, 10));
+}
+
+TEST_F (CanProspectRegionTests, EmptyRegion)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  auto r = regions.GetById (region);
+
+  EXPECT_TRUE (CanProspectRegion (*c, *r, params, 10));
+}
+
+TEST_F (CanProspectRegionTests, ReprospectingExpiration)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  auto r = regions.GetById (region);
+  r->MutableProto ().mutable_prospection ()->set_height (1);
+
+  EXPECT_FALSE (CanProspectRegion (*c, *r, params, 100));
+  EXPECT_TRUE (CanProspectRegion (*c, *r, params, 101));
+}
+
+/* ************************************************************************** */
+
+class FinishProspectingTests : public DBTestWithSchema
 {
 
 protected:
@@ -59,7 +113,7 @@ protected:
   /** Basemap instance for testing.  */
   const BaseMap map;
 
-  ProspectingTests ()
+  FinishProspectingTests ()
     : characters(db), regions(db), params(xaya::Chain::REGTEST)
   {
     InitialisePrizes (db, params);
@@ -86,7 +140,7 @@ protected:
    */
   RegionMap::IdT
   Prospect (CharacterTable::Handle c, const HexCoord& pos,
-            const int64_t timestamp)
+            const unsigned height, const int64_t timestamp)
   {
     const auto id = c->GetId ();
     c->SetPosition (pos);
@@ -98,16 +152,16 @@ protected:
     regions.GetById (region)->MutableProto ().set_prospecting_character (id);
 
     FinishProspecting (*characters.GetById (id), db, regions, rnd,
-                       timestamp, params, map);
+                       height, timestamp, params, map);
     return region;
   }
 
 };
 
-TEST_F (ProspectingTests, Basic)
+TEST_F (FinishProspectingTests, Basic)
 {
   const auto region = Prospect (GetTest (), HexCoord (10, -20),
-                                TIME_IN_COMPETITION);
+                                10, TIME_IN_COMPETITION);
 
   auto c = GetTest ();
   EXPECT_EQ (c->GetBusy (), 0);
@@ -116,9 +170,39 @@ TEST_F (ProspectingTests, Basic)
   auto r = regions.GetById (region);
   EXPECT_FALSE (r->GetProto ().has_prospecting_character ());
   EXPECT_EQ (r->GetProto ().prospection ().name (), "domob");
+  EXPECT_EQ (r->GetProto ().prospection ().height (), 10);
 }
 
-TEST_F (ProspectingTests, Prizes)
+TEST_F (FinishProspectingTests, Resources)
+{
+  std::map<std::string, unsigned> regionsForResource =
+    {
+      {"sand", 0},
+      {"cryptonite", 0},
+    };
+
+  for (unsigned i = 0; i < 100; ++i)
+    {
+      const HexCoord pos(0, 20 * i);
+      auto c = characters.CreateNew ("domob", Faction::RED);
+      const auto id = Prospect (std::move (c), pos, 10, TIME_IN_COMPETITION);
+
+      auto r = regions.GetById (id);
+      EXPECT_GT (r->GetResourceLeft (), 0);
+      ++regionsForResource[r->GetProto ().prospection ().resource ()];
+    }
+
+  for (const auto& entry : regionsForResource)
+    LOG (INFO)
+        << "Found resource " << entry.first
+        << " in " << entry.second << " regions";
+
+  ASSERT_EQ (regionsForResource.size (), 2);
+  EXPECT_GT (regionsForResource["sand"], regionsForResource["cryptonite"]);
+  EXPECT_GT (regionsForResource["cryptonite"], 0);
+}
+
+TEST_F (FinishProspectingTests, Prizes)
 {
   constexpr unsigned trials = 1000;
   constexpr unsigned perRow = 10;
@@ -132,20 +216,32 @@ TEST_F (ProspectingTests, Prizes)
           const HexCoord pos(x, 20 * j);
           auto c = characters.CreateNew ("domob", Faction::RED);
           const auto region = Prospect (std::move (c), pos,
-                                        TIME_IN_COMPETITION);
+                                        10, TIME_IN_COMPETITION);
           const auto res = regionIds.insert (region);
           ASSERT_TRUE (res.second);
         }
     }
 
   ASSERT_EQ (regionIds.size (), trials);
-  std::map<std::string, unsigned> foundMap;
   for (const auto id : regionIds)
     {
       auto r = regions.GetById (id);
       ASSERT_TRUE (r->GetProto ().has_prospection ());
-      if (r->GetProto ().prospection ().has_prize ())
-        ++foundMap[r->GetProto ().prospection ().prize ()];
+    }
+
+  std::map<std::string, unsigned> foundMap;
+  auto res = characters.QueryAll ();
+  while (res.Step ())
+    {
+      auto c = characters.GetFromResult (res);
+      for (const auto& item : c->GetInventory ().GetFungible ())
+        {
+          constexpr const char* suffix = " prize";
+          const auto ind = item.first.find (suffix);
+          if (ind == std::string::npos)
+            continue;
+          foundMap[item.first.substr (0, ind)] += item.second;
+        }
     }
 
   Prizes prizeTable(db);
@@ -156,15 +252,15 @@ TEST_F (ProspectingTests, Prizes)
     }
 
   /* We should have found all gold prizes (since there are only a few),
-     no bronze ones (since there are none) and roughly the expected number
+     the one bronze prize and roughly the expected number
      of silver prizes by probability.  */
   EXPECT_EQ (foundMap["gold"], 3);
   EXPECT_GE (foundMap["silver"], 50);
   EXPECT_LE (foundMap["silver"], 150);
-  EXPECT_EQ (foundMap["bronze"], 0);
+  EXPECT_EQ (foundMap["bronze"], 1);
 }
 
-TEST_F (ProspectingTests, NoPrizesAfterEnd)
+TEST_F (FinishProspectingTests, NoPrizesAfterEnd)
 {
   constexpr unsigned trials = 1000;
   constexpr unsigned perRow = 10;
@@ -176,7 +272,7 @@ TEST_F (ProspectingTests, NoPrizesAfterEnd)
         {
           const HexCoord pos(x, 20 * j);
           auto c = characters.CreateNew ("domob", Faction::RED);
-          Prospect (std::move (c), pos, TIME_AFTER_COMPETITION);
+          Prospect (std::move (c), pos, 10, TIME_AFTER_COMPETITION);
         }
     }
 
@@ -184,6 +280,8 @@ TEST_F (ProspectingTests, NoPrizesAfterEnd)
   for (const auto& p : params.ProspectingPrizes ())
     EXPECT_EQ (prizeTable.GetFound (p.name), 0);
 }
+
+/* ************************************************************************** */
 
 } // anonymous namespace
 } // namespace pxd

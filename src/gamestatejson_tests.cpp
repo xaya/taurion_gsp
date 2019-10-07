@@ -569,7 +569,11 @@ TEST_F (RegionJsonTests, Empty)
   ExpectStateJson (R"({
     "regions":
       [
-        {"id": 20}
+        {
+          "id": 20,
+          "prospection": null,
+          "resource": null
+        }
       ]
   })");
 }
@@ -577,20 +581,47 @@ TEST_F (RegionJsonTests, Empty)
 TEST_F (RegionJsonTests, Prospection)
 {
   tbl.GetById (20)->MutableProto ().set_prospecting_character (42);
-  tbl.GetById (10)->MutableProto ().mutable_prospection ()->set_name ("foo");
 
-  auto r = tbl.GetById (30);
+  auto r = tbl.GetById (10);
   auto* prosp = r->MutableProto ().mutable_prospection ();
   prosp->set_name ("bar");
-  prosp->set_prize ("gold");
+  prosp->set_height (107);
   r.reset ();
 
   ExpectStateJson (R"({
     "regions":
       [
-        {"id": 10, "prospection": {"name": "foo", "prize": null}},
-        {"id": 20, "prospection": {"inprogress": 42}},
-        {"id": 30, "prospection": {"name": "bar", "prize": "gold"}}
+        {
+          "id": 10,
+          "prospection":
+            {
+              "name": "bar",
+              "height": 107
+            }
+        },
+        {"id": 20, "prospection": {"inprogress": 42}}
+      ]
+  })");
+}
+
+TEST_F (RegionJsonTests, MiningResource)
+{
+  auto r = tbl.GetById (10);
+  r->MutableProto ().mutable_prospection ()->set_resource ("sand");
+  r->SetResourceLeft (150);
+  r.reset ();
+
+  ExpectStateJson (R"({
+    "regions":
+      [
+        {
+          "id": 10,
+          "resource":
+            {
+              "type": "sand",
+              "amount": 150
+            }
+        }
       ]
   })");
 }

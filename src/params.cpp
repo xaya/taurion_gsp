@@ -72,6 +72,21 @@ Params::ProspectingBlocks () const
   return 10;
 }
 
+unsigned
+Params::ProspectionExpiryBlocks () const
+{
+  switch (chain)
+    {
+    case xaya::Chain::MAIN:
+    case xaya::Chain::TEST:
+      return 5'000;
+    case xaya::Chain::REGTEST:
+      return 100;
+    default:
+      LOG (FATAL) << "Invalid chain value: " << static_cast<int> (chain);
+    }
+}
+
 int64_t
 Params::CompetitionEndTime () const
 {
@@ -88,22 +103,6 @@ const std::vector<Params::PrizeData> PRIZES =
     {"gold", 5, 150000},
     {"silver", 50, 4000},
     {"bronze", 2000, 100},
-
-    /* The odds for the extra pizes are chosen so that we expect a 90%
-       probability to find all of them with 150k trials.  This can be computed
-       with the script in contrib/competition/findOdds.m.  */
-    {"shr", 60, 2139},
-    {"spirit clash", 730, 196},
-    {"dio", 50, 2532},
-    {"1up", 20, 5791},
-    {"battle racers", 3, 28184},
-    {"divi", 20, 5791},
-    {"dft", 50, 2532},
-    {"9la necklace", 30, 4033},
-    {"9la miner", 10, 10559},
-    {"9la yellow", 10, 10559},
-    {"9la horned", 10, 10559},
-    {"snails", 20, 5791},
   };
 
 /** Prospecting prizes for regtest (easier to find / exhaust).  */
@@ -111,7 +110,7 @@ const std::vector<Params::PrizeData> PRIZES_REGTEST =
   {
     {"gold", 3, 100},
     {"silver", 1000, 10},
-    {"bronze", 0, 1},
+    {"bronze", 1, 1},
   };
 
 } // anonymous namespace
@@ -129,6 +128,21 @@ Params::ProspectingPrizes () const
     default:
       LOG (FATAL) << "Invalid chain value: " << static_cast<int> (chain);
     }
+}
+
+void
+Params::DetectResource (const HexCoord& pos, xaya::Random& rnd,
+                        std::string& type, Inventory::QuantityT& amount) const
+{
+  /* FIXME: This is just some arbitrary logic for now so we can test the
+     general prospecting and mining logic.  We need to replace this with
+     a proper implementation based on how we want to distribute resources.  */
+
+  const std::vector<std::string> types = {"sand", "cryptonite"};
+  const auto ind = rnd.SelectByWeight ({10, 1});
+
+  type = types[ind];
+  amount = 1 + rnd.NextInt (100);
 }
 
 HexCoord

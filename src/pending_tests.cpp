@@ -27,6 +27,7 @@
 
 #include <gtest/gtest.h>
 
+#include <memory>
 #include <sstream>
 
 namespace pxd
@@ -254,13 +255,27 @@ protected:
 
 private:
 
-  PendingStateUpdater updater;
+  std::unique_ptr<PendingStateUpdater> updater;
 
 protected:
 
   PendingStateUpdaterTests ()
-    : params(xaya::Chain::MAIN), updater(db, state, params, map)
-  {}
+    : params(xaya::Chain::MAIN)
+  {
+    /* Setting the height also recreates the updater instance.  */
+    SetHeight (0);
+  }
+
+  /**
+   * Sets the height at which moves will be processed.  This corresponds to
+   * the current confirmed height plus one, i.e. is the height at which the
+   * moves would be confirmed in the future.
+   */
+  void
+  SetHeight (const unsigned h)
+  {
+    updater = std::make_unique<PendingStateUpdater> (db, state, params, map, h);
+  }
 
   /**
    * Processes a move for the given name and with the given move data, parsed
@@ -280,7 +295,7 @@ protected:
     std::istringstream in(mvStr);
     in >> moveObj["move"];
 
-    updater.ProcessMove (moveObj);
+    updater->ProcessMove (moveObj);
   }
 
   /**

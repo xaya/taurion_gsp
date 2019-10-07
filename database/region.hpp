@@ -20,6 +20,7 @@
 #define DATABASE_REGION_HPP
 
 #include "database.hpp"
+#include "inventory.hpp"
 #include "lazyproto.hpp"
 
 #include "mapdata/regionmap.hpp"
@@ -34,7 +35,8 @@ namespace pxd
 struct RegionResult : public Database::ResultType
 {
   RESULT_COLUMN (int64_t, id, 1);
-  RESULT_COLUMN (pxd::proto::RegionData, proto, 2);
+  RESULT_COLUMN (int64_t, resourceleft, 2);
+  RESULT_COLUMN (pxd::proto::RegionData, proto, 3);
 };
 
 /**
@@ -54,8 +56,14 @@ private:
   /** The ID of the region.  */
   RegionMap::IdT id;
 
+  /** The amount of mine-able resources left.  */
+  Inventory::QuantityT resourceLeft;
+
   /** Generic data stored in the proto BLOB.  */
   LazyProto<proto::RegionData> data;
+
+  /** Whether or not just the non-proto fields have been updated.  */
+  bool dirtyFields;
 
   /**
    * Constructs an instance with "default / empty" data for the given ID.
@@ -101,6 +109,19 @@ public:
   {
     return data.Mutable ();
   }
+
+  /**
+   * Returns the amount of mine-able resource left in this region.  This must
+   * only be called when the region has been prospected already.  The type of
+   * resource can be found in the proto data.
+   */
+  Inventory::QuantityT GetResourceLeft () const;
+
+  /**
+   * Sets the amount of mine-able resource left.  This must only be called
+   * when the region has been prospected.
+   */
+  void SetResourceLeft (Inventory::QuantityT value);
 
 };
 
