@@ -36,7 +36,8 @@ void
 ContextForTesting::SetChain (const xaya::Chain c)
 {
   LOG (INFO) << "Setting context chain to " << xaya::ChainToString (c);
-  params = std::make_unique<pxd::Params> (c);
+  chain = c;
+  params = std::make_unique<pxd::Params> (chain);
 }
 
 void

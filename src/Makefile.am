@@ -24,6 +24,7 @@ libtaurion_la_SOURCES = \
   gamestatejson.cpp \
   jsonutils.cpp \
   logic.cpp \
+  mining.cpp \
   movement.cpp \
   moveprocessor.cpp \
   params.cpp \
@@ -40,6 +41,7 @@ libtaurionheaders = \
   gamestatejson.hpp \
   jsonutils.hpp \
   logic.hpp \
+  mining.hpp \
   movement.hpp \
   moveprocessor.hpp \
   params.hpp \
@@ -105,6 +107,7 @@ tests_SOURCES = \
   gamestatejson_tests.cpp \
   jsonutils_tests.cpp \
   logic_tests.cpp \
+  mining_tests.cpp \
   movement_tests.cpp \
   moveprocessor_tests.cpp \
   pending_tests.cpp \

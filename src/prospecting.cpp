@@ -60,8 +60,11 @@ CanProspectRegion (const Character& c, const Region& r, const Context& ctx)
                         + ctx.Params ().ProspectionExpiryBlocks ())
     {
       LOG (WARNING)
-          << "It is too early to reprospect region " << r.GetId ()
-          << " by " << c.GetId ();
+          << "Height " << ctx.Height ()
+          << " is too early to reprospect region " << r.GetId ()
+          << " by " << c.GetId ()
+          << "; the region was prospected last at height "
+          << rpb.prospection ().height ();
       return false;
     }
 

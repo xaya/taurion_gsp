@@ -44,7 +44,7 @@ private:
   const BaseMap& map;
 
   /** The chain we are on.  */
-  const xaya::Chain chain;
+  xaya::Chain chain;
 
   /**
    * Basic parameters dependant on the chain.  This is a pointer so that we

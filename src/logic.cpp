@@ -20,6 +20,7 @@
 
 #include "combat.hpp"
 #include "dynobstacles.hpp"
+#include "mining.hpp"
 #include "movement.hpp"
 #include "moveprocessor.hpp"
 #include "prospecting.hpp"
@@ -115,7 +116,9 @@ PXLogic::UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
   mvProc.ProcessAdmin (blockData["admin"]);
   mvProc.ProcessAll (blockData["moves"]);
 
+  ProcessAllMining (db, ctx);
   ProcessAllMovement (db, dyn, ctx);
+
   FindCombatTargets (db, rnd);
 
 #ifdef ENABLE_SLOW_ASSERTS
