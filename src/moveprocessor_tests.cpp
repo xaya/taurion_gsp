@@ -1037,12 +1037,11 @@ TEST_F (DropPickupMoveTests, OrderOfItems)
 
 /* ************************************************************************** */
 
-class ProspectingMoveTests : public CharacterUpdateTests
+class MoveTestsWithRegion : public CharacterUpdateTests
 {
 
 protected:
 
-  /** Regions table instance for testing.  */
   RegionsTable regions;
 
   /** Position for the test character.  */
@@ -1051,14 +1050,15 @@ protected:
   /** Region of the test position.  */
   const RegionMap::IdT region;
 
-  ProspectingMoveTests ()
+  MoveTestsWithRegion ()
     : regions(db), pos(-10, 42), region(ctx.Map ().Regions ().GetRegionId (pos))
   {
-    ctx.SetChain (xaya::Chain::REGTEST);
     GetTest ()->SetPosition (pos);
   }
 
 };
+
+using ProspectingMoveTests = MoveTestsWithRegion;
 
 TEST_F (ProspectingMoveTests, Success)
 {
@@ -1090,6 +1090,8 @@ TEST_F (ProspectingMoveTests, Success)
 
 TEST_F (ProspectingMoveTests, Reprospecting)
 {
+  ctx.SetChain (xaya::Chain::REGTEST);
+
   auto r = regions.GetById (region);
   r->MutableProto ().mutable_prospection ()->set_height (10);
   r.reset ();
@@ -1215,6 +1217,156 @@ TEST_F (ProspectingMoveTests, OrderOfCharactersInAMove)
   EXPECT_FALSE (h->GetProto ().has_prospection ());
 
   EXPECT_EQ (regions.GetById (region)->GetProto ().prospecting_character (), 9);
+}
+
+/* ************************************************************************** */
+
+class MiningMoveTests : public MoveTestsWithRegion
+{
+
+protected:
+
+  MiningMoveTests ()
+  {
+    /* By default, we set up the conditions so that the character can mine
+       at its current position.  Tests that want to make mining impossible can
+       then selectively undo some of these.  */
+
+    GetTest ()->MutableProto ().mutable_mining ()->set_rate (10);
+    GetTest ()->MutableProto ().set_speed (1000);
+
+    auto r = regions.GetById (region);
+    r->MutableProto ().mutable_prospection ()->set_resource ("foo");
+    r->SetResourceLeft (42);
+  }
+
+  /**
+   * Sends a valid move to start mining with the test character.
+   */
+  void
+  AttemptMining ()
+  {
+    Process (R"([
+      {
+        "name": "domob",
+        "move": {"c": {
+          "1": {"mine": {}}
+        }}
+      }
+    ])");
+  }
+
+};
+
+TEST_F (MiningMoveTests, WaypointsStopMining)
+{
+  GetTest ()->MutableProto ().mutable_mining ()->set_active (true);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {
+        "1": {"wp": []}
+      }}
+    }
+  ])");
+
+  EXPECT_TRUE (GetTest ()->GetProto ().has_mining ());
+  EXPECT_FALSE (GetTest ()->GetProto ().mining ().has_active ());
+  EXPECT_FALSE (GetTest ()->GetProto ().mining ().active ());
+}
+
+TEST_F (MiningMoveTests, WaypointsNoMiningData)
+{
+  GetTest ()->MutableProto ().clear_mining ();
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {
+        "1": {"wp": []}
+      }}
+    }
+  ])");
+
+  EXPECT_FALSE (GetTest ()->GetProto ().has_mining ());
+  EXPECT_FALSE (GetTest ()->GetProto ().mining ().active ());
+}
+
+TEST_F (MiningMoveTests, InvalidMoveJson)
+{
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {
+        "1": {"mine": 123}
+      }}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {
+        "1": {"mine": {"x": 5}}
+      }}
+    }
+  ])");
+
+  EXPECT_FALSE (GetTest ()->GetProto ().mining ().active ());
+}
+
+TEST_F (MiningMoveTests, CannotMine)
+{
+  GetTest ()->MutableProto ().clear_mining ();
+  AttemptMining ();
+  EXPECT_FALSE (GetTest ()->GetProto ().has_mining ());
+  EXPECT_FALSE (GetTest ()->GetProto ().mining ().active ());
+}
+
+TEST_F (MiningMoveTests, CharacterIsMoving)
+{
+  GetTest ()->MutableProto ().mutable_movement ()->add_waypoints ();
+  AttemptMining ();
+  EXPECT_FALSE (GetTest ()->GetProto ().mining ().active ());
+}
+
+TEST_F (MiningMoveTests, RegionNotProspected)
+{
+  regions.GetById (region)->MutableProto ().clear_prospection ();
+  AttemptMining ();
+  EXPECT_FALSE (GetTest ()->GetProto ().mining ().active ());
+}
+
+TEST_F (MiningMoveTests, NoResourceLeft)
+{
+  regions.GetById (region)->SetResourceLeft (0);
+  AttemptMining ();
+  EXPECT_FALSE (GetTest ()->GetProto ().mining ().active ());
+}
+
+TEST_F (MiningMoveTests, Success)
+{
+  AttemptMining ();
+  EXPECT_TRUE (GetTest ()->GetProto ().mining ().active ());
+}
+
+TEST_F (MiningMoveTests, AlreadyMining)
+{
+  AttemptMining ();
+  AttemptMining ();
+  EXPECT_TRUE (GetTest ()->GetProto ().mining ().active ());
+}
+
+TEST_F (MiningMoveTests, MiningAndWaypointsInSameMove)
+{
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {
+        "1": {"wp": [{"x": 5, "y": 10}], "mine": {}}
+      }}
+    }
+  ])");
+
+  EXPECT_FALSE (GetTest ()->GetProto ().mining ().active ());
 }
 
 /* ************************************************************************** */

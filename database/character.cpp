@@ -170,6 +170,9 @@ Character::Validate () const
 
   CHECK_LE (UsedCargoSpace (), pb.cargo_space ());
 
+  CHECK (!pb.mining ().active () || !pb.has_movement ())
+      << "Character " << id << " is moving and mining at the same time";
+
 #endif // ENABLE_SLOW_ASSERTS
 }
 
