@@ -387,6 +387,11 @@ public:
   Database::Result<CharacterResult> QueryMoving ();
 
   /**
+   * Queries for all characters that are currently mining.
+   */
+  Database::Result<CharacterResult> QueryMining ();
+
+  /**
    * Queries for all characters with attacks.
    */
   Database::Result<CharacterResult> QueryWithAttacks ();

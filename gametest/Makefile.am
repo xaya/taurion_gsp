@@ -12,6 +12,7 @@ REGTESTS = \
   getregionat.py \
   godmode.py \
   loot.py \
+  mining.py \
   movement.py \
   multiupdate.py \
   nullstate.py \

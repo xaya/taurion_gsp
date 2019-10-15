@@ -285,6 +285,19 @@ TEST_F (CharacterTableTests, QueryMoving)
   ASSERT_FALSE (res.Step ());
 }
 
+TEST_F (CharacterTableTests, QueryMining)
+{
+  tbl.CreateNew ("domob", Faction::RED)
+    ->MutableProto ().mutable_mining ()->set_rate (10);
+  tbl.CreateNew ("andy", Faction::RED)
+    ->MutableProto ().mutable_mining ()->set_active (true);
+
+  auto res = tbl.QueryMining ();
+  ASSERT_TRUE (res.Step ());
+  EXPECT_EQ (tbl.GetFromResult (res)->GetOwner (), "andy");
+  ASSERT_FALSE (res.Step ());
+}
+
 TEST_F (CharacterTableTests, QueryWithAttacks)
 {
   tbl.CreateNew ("domob", Faction::RED);

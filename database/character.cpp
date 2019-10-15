@@ -83,7 +83,7 @@ Character::~Character ()
            `volatilemv`, `hp`,
            `busy`,
            `faction`,
-           `ismoving`, `attackrange`, `canregen`, `hastarget`,
+           `ismoving`, `ismining`, `attackrange`, `canregen`, `hastarget`,
            `regendata`, `inventory`, `proto`)
           VALUES
           (?1,
@@ -91,19 +91,20 @@ Character::~Character ()
            ?5, ?6,
            ?7,
            ?101,
-           ?102, ?103, ?104, ?105,
-           ?106, ?107, ?108)
+           ?102, ?103, ?104, ?105, ?106,
+           ?107, ?108, ?109)
       )");
 
       BindFieldValues (stmt);
       BindFactionParameter (stmt, 101, faction);
       stmt.Bind (102, data.Get ().has_movement ());
-      stmt.Bind (103, FindAttackRange (data.Get ().combat_data ()));
-      stmt.Bind (104, canRegen);
-      stmt.Bind (105, data.Get ().has_target ());
-      stmt.BindProto (106, regenData);
-      stmt.BindProto (107, inv.GetProtoForBinding ());
-      stmt.BindProto (108, data);
+      stmt.Bind (103, data.Get ().mining ().active ());
+      stmt.Bind (104, FindAttackRange (data.Get ().combat_data ()));
+      stmt.Bind (105, canRegen);
+      stmt.Bind (106, data.Get ().has_target ());
+      stmt.BindProto (107, regenData);
+      stmt.BindProto (108, inv.GetProtoForBinding ());
+      stmt.BindProto (109, data);
       stmt.Execute ();
 
       return;
@@ -169,6 +170,9 @@ Character::Validate () const
     CHECK_EQ (oldCanRegen, ComputeCanRegen ());
 
   CHECK_LE (UsedCargoSpace (), pb.cargo_space ());
+
+  CHECK (!pb.mining ().active () || !pb.has_movement ())
+      << "Character " << id << " is moving and mining at the same time";
 
 #endif // ENABLE_SLOW_ASSERTS
 }
@@ -276,6 +280,15 @@ CharacterTable::QueryMoving ()
 {
   auto stmt = db.Prepare (R"(
     SELECT * FROM `characters` WHERE `ismoving` ORDER BY `id`
+  )");
+  return stmt.Query<CharacterResult> ();
+}
+
+Database::Result<CharacterResult>
+CharacterTable::QueryMining ()
+{
+  auto stmt = db.Prepare (R"(
+    SELECT * FROM `characters` WHERE `ismining` ORDER BY `id`
   )");
   return stmt.Query<CharacterResult> ();
 }

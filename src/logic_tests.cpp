@@ -606,6 +606,143 @@ TEST_F (PXLogicTests, FinishingProspecting)
   EXPECT_EQ (r->GetProto ().prospection ().name (), "domob");
 }
 
+TEST_F (PXLogicTests, MiningRightAfterProspecting)
+{
+  const HexCoord pos(5, 5);
+  const auto region = ctx.Map ().Regions ().GetRegionId (pos);
+
+  auto c = CreateCharacter ("domob", Faction::RED);
+  ASSERT_EQ (c->GetId (), 1);
+  c->SetPosition (pos);
+  c->MutableProto ().mutable_combat_data ();
+  c->MutableProto ().mutable_mining ()->set_rate (1);
+  c->MutableProto ().set_cargo_space (100);
+  c.reset ();
+
+  /* Prospect the region with the character.  */
+  UpdateState (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"prospect": {}}}}
+    }
+  ])");
+  for (unsigned i = 0; i < 9; ++i)
+    UpdateState ("[]");
+  EXPECT_EQ (characters.GetById (1)->GetBusy (), 1);
+
+  /* In the next block, prospecting will be finished.  We can already start
+     mining the now-prospected region immediately.  */
+  UpdateState (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"mine": {}}}}
+    }
+  ])");
+
+  auto r = regions.GetById (region);
+  const std::string type = r->GetProto ().prospection ().resource ();
+  LOG (INFO) << "Resource found: " << type;
+
+  c = characters.GetById (1);
+  EXPECT_EQ (c->GetBusy (), 0);
+  EXPECT_TRUE (c->GetProto ().mining ().active ());
+  EXPECT_EQ (c->GetInventory ().GetFungibleCount (type), 1);
+}
+
+TEST_F (PXLogicTests, MiningAndDropping)
+{
+  const HexCoord pos(5, 5);
+  const auto region = ctx.Map ().Regions ().GetRegionId (pos);
+
+  auto c = CreateCharacter ("domob", Faction::RED);
+  ASSERT_EQ (c->GetId (), 1);
+  c->SetPosition (pos);
+  c->MutableProto ().mutable_combat_data ();
+  c->MutableProto ().mutable_mining ()->set_rate (10);
+  c->MutableProto ().mutable_mining ()->set_active (true);
+  c->MutableProto ().set_cargo_space (1000);
+  c->GetInventory ().SetFungibleCount ("foo", 95);
+  c.reset ();
+
+  auto r = regions.GetById (region);
+  r->MutableProto ().mutable_prospection ()->set_resource ("foo");
+  r->SetResourceLeft (1000);
+  r.reset ();
+
+  /* Processing one block will mine some more, filling up the inventory.  */
+  UpdateState ("[]");
+  c = characters.GetById (1);
+  EXPECT_TRUE (c->GetProto ().mining ().active ());
+  EXPECT_EQ (c->GetInventory ().GetFungibleCount ("foo"), 100);
+  c.reset ();
+  EXPECT_EQ (regions.GetById (region)->GetResourceLeft (), 995);
+
+  /* In the next block, drop loot.  This should take effect before mining,
+     so that we will be able to mine some more afterwards.  */
+  UpdateState (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"drop": {"f": {"foo": 3}}}}}
+    }
+  ])");
+  c = characters.GetById (1);
+  EXPECT_TRUE (c->GetProto ().mining ().active ());
+  EXPECT_EQ (c->GetInventory ().GetFungibleCount ("foo"), 100);
+  c.reset ();
+  EXPECT_EQ (regions.GetById (region)->GetResourceLeft (), 992);
+
+  /* One more block where we won't pick up anything, so we will stop mining.  */
+  UpdateState ("[]");
+  c = characters.GetById (1);
+  EXPECT_FALSE (c->GetProto ().mining ().active ());
+  EXPECT_EQ (c->GetInventory ().GetFungibleCount ("foo"), 100);
+  c.reset ();
+  EXPECT_EQ (regions.GetById (region)->GetResourceLeft (), 992);
+}
+
+TEST_F (PXLogicTests, MiningWhenReprospected)
+{
+  ctx.SetChain (xaya::Chain::REGTEST);
+
+  const HexCoord pos(5, 5);
+  const auto region = ctx.Map ().Regions ().GetRegionId (pos);
+
+  auto c = CreateCharacter ("domob", Faction::RED);
+  ASSERT_EQ (c->GetId (), 1);
+  c->SetPosition (pos);
+  c->MutableProto ().mutable_combat_data ();
+  c->MutableProto ().mutable_mining ()->set_rate (1);
+  c->MutableProto ().mutable_mining ()->set_active (true);
+  c->MutableProto ().set_cargo_space (1000);
+  c.reset ();
+
+  auto r = regions.GetById (region);
+  r->MutableProto ().mutable_prospection ()->set_height (1);
+  r->MutableProto ().mutable_prospection ()->set_resource ("foo");
+  r->SetResourceLeft (1);
+  r.reset ();
+
+  /* When we reprospect the region while still mining, this should just stop
+     mining gracefully.  */
+  /* FIXME: Once https://github.com/xaya/taurion_gsp/issues/54 is implemented,
+     this will fail and need to be updated to reprospect only after another
+     turn when the resource has been used up.  */
+  auto data = BuildBlockData (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"prospect": {}}}}
+    }
+  ])");
+  data["block"]["height"] = 200;
+  UpdateStateWithData (data);
+
+  c = characters.GetById (1);
+  EXPECT_EQ (c->GetBusy (), 10);
+  EXPECT_FALSE (c->GetProto ().mining ().active ());
+  c.reset ();
+  EXPECT_FALSE (regions.GetById (region)->GetProto ().has_prospection ());
+}
+
 /* ************************************************************************** */
 
 using ValidateStateTests = PXLogicTests;

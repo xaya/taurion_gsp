@@ -39,6 +39,20 @@ message OngoingProspection
 }
 
 /**
+ * Data about the mining state of a character.
+ */
+message MiningData
+{
+
+  /** The mining speed, in units per block.  */
+  optional uint64 rate = 1;
+
+  /** Set to true if the character is currently mining.  */
+  optional bool active = 2;
+
+}
+
+/**
  * The state of one character in the game.  Note that this does not include
  * data fields that are stored directly in database columns, namely those on
  * which the database keeps indices.
@@ -75,11 +89,14 @@ message Character
     OngoingProspection prospection = 4;
   }
 
+  /** The character's mining data, if it can mine.  */
+  optional MiningData mining = 5;
+
   /** Movement speed of the character.  */
-  optional uint32 speed = 5;
+  optional uint32 speed = 6;
 
   /** Total cargo space the character has.  */
-  optional uint64 cargo_space = 6;
+  optional uint64 cargo_space = 7;
 
   /* Fields that are stored directly in the database and thus not part of the
      encoded protocol buffer:
@@ -92,6 +109,7 @@ message Character
      - current HP proto
      - HP regeneration data proto
      - number of blocks the character is still "busy"
+     - inventory proto
   */
 
 }

@@ -200,6 +200,11 @@ private:
   void MaybeStartProspecting (Character& c, const Json::Value& upd);
 
   /**
+   * Processes a command to start mining at the current location.
+   */
+  void MaybeStartMining (Character& c, const Json::Value& upd);
+
+  /**
    * Processes a command to drop loot from the character's inventory
    * onto the ground.
    */

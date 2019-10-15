@@ -384,6 +384,52 @@ TEST_F (CharacterJsonTests, CargoSpace)
   })");
 }
 
+TEST_F (CharacterJsonTests, Mining)
+{
+  const HexCoord pos(10, -5);
+  ASSERT_EQ (map.Regions ().GetRegionId (pos), 350146);
+
+  tbl.CreateNew ("without mining", Faction::RED);
+
+  auto h = tbl.CreateNew ("inactive mining", Faction::RED);
+  h->MutableProto ().mutable_mining ()->set_rate (12);
+  h.reset ();
+
+  h = tbl.CreateNew ("active mining", Faction::RED);
+  h->SetPosition (pos);
+  h->MutableProto ().mutable_mining ()->set_rate (1);
+  h->MutableProto ().mutable_mining ()->set_active (true);
+  h.reset ();
+
+  ExpectStateJson (R"({
+    "characters":
+      [
+        {
+          "owner": "without mining",
+          "mining": null
+        },
+        {
+          "owner": "inactive mining",
+          "mining":
+            {
+              "rate": 12,
+              "active": false,
+              "region": null
+            }
+        },
+        {
+          "owner": "active mining",
+          "mining":
+            {
+              "rate": 1,
+              "active": true,
+              "region": 350146
+            }
+        }
+      ]
+  })");
+}
+
 TEST_F (CharacterJsonTests, DamageLists)
 {
   const auto id1 = tbl.CreateNew ("domob", Faction::RED)->GetId ();

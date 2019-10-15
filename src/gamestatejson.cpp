@@ -221,6 +221,25 @@ GetCargoSpaceJsonObject (const Character& c)
   return res;
 }
 
+/**
+ * Constructs the JSON representation of the mining data of a character.
+ */
+Json::Value
+GetMiningJsonObject (const BaseMap& map, const Character& c)
+{
+  if (!c.GetProto ().has_mining ())
+    return Json::Value ();
+  const auto& pb = c.GetProto ().mining ();
+
+  Json::Value res(Json::objectValue);
+  res["rate"] = IntToJson (pb.rate ());
+  res["active"] = pb.active ();
+  if (pb.active ())
+    res["region"] = IntToJson (map.Regions ().GetRegionId (c.GetPosition ()));
+
+  return res;
+}
+
 } // anonymous namespace
 
 template <>
@@ -258,6 +277,10 @@ template <>
   const Json::Value busy = GetBusyJsonObject (map, c);
   if (!busy.isNull ())
     res["busy"] = busy;
+
+  const Json::Value mining = GetMiningJsonObject (map, c);
+  if (!mining.isNull ())
+    res["mining"] = mining;
 
   return res;
 }

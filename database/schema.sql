@@ -64,6 +64,11 @@ CREATE TABLE IF NOT EXISTS `characters` (
   -- moving when we do move updates.
   `ismoving` INTEGER NOT NULL,
 
+  -- Flag indicating if the character is currently mining.  This is set
+  -- based on the protocol buffer, but also has an index so that we can
+  -- efficiently retrieve only characters that are mining.
+  `ismining` INTEGER NOT NULL,
+
   -- The range of the longest attack this character has or NULL if there
   -- is no attack at all.  This is used to speed up target finding without
   -- the need to look through the character's attacks (and parse the
@@ -93,6 +98,7 @@ CREATE INDEX IF NOT EXISTS `characters_owner` ON `characters` (`owner`);
 CREATE INDEX IF NOT EXISTS `characters_pos` ON `characters` (`x`, `y`);
 CREATE INDEX IF NOT EXISTS `characters_busy` ON `characters` (`busy`);
 CREATE INDEX IF NOT EXISTS `characters_ismoving` ON `characters` (`ismoving`);
+CREATE INDEX IF NOT EXISTS `characters_ismining` ON `characters` (`ismining`);
 CREATE INDEX IF NOT EXISTS `characters_attackrange`
   ON `characters` (`attackrange`);
 CREATE INDEX IF NOT EXISTS `characters_canregen` ON `characters` (`canregen`);

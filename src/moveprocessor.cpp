@@ -455,6 +455,13 @@ MoveProcessor::MaybeSetCharacterWaypoints (Character& c, const Json::Value& upd)
       << " from waypoints: " << upd["wp"];
 
   StopCharacter (c);
+  if (c.GetProto ().has_mining ())
+    {
+      VLOG_IF (1, c.GetProto ().mining ().active ())
+          << "Stopping mining with character " << c.GetId ()
+          << " because of waypoints command";
+      c.MutableProto ().mutable_mining ()->clear_active ();
+    }
 
   if (wp.empty ())
     return;
@@ -490,6 +497,68 @@ MoveProcessor::MaybeStartProspecting (Character& c, const Json::Value& upd)
   StopCharacter (c);
   c.SetBusy (ctx.Params ().ProspectingBlocks ());
   c.MutableProto ().mutable_prospection ();
+}
+
+void
+MoveProcessor::MaybeStartMining (Character& c, const Json::Value& upd)
+{
+  CHECK (upd.isObject ());
+  const auto& cmd = upd["mine"];
+  if (!cmd.isObject ())
+    return;
+
+  if (!cmd.empty ())
+    {
+      LOG (WARNING)
+          << "Invalid mining command for character " << c.GetId ()
+          << ": " << cmd;
+      return;
+    }
+
+  const auto& pos = c.GetPosition ();
+  const auto regionId = ctx.Map ().Regions ().GetRegionId (pos);
+  VLOG (1)
+      << "Character " << c.GetId ()
+      << " wants to start mining region " << regionId;
+
+  if (!c.GetProto ().has_mining ())
+    {
+      LOG (WARNING) << "Character " << c.GetId () << " can't mine";
+      return;
+    }
+
+  if (c.GetProto ().has_movement ())
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId () << " can't mine while it is moving";
+      return;
+    }
+
+  auto r = regions.GetById (regionId);
+  const auto& pbRegion = r->GetProto ();
+  if (!pbRegion.has_prospection ())
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId ()
+          << " can't mine in region " << regionId << " which is not prospected";
+      return;
+    }
+
+  const auto left = r->GetResourceLeft ();
+  if (left == 0)
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId ()
+          << " can't mine in region " << regionId
+          << " which has no resource left";
+      return;
+    }
+  CHECK_GT (left, 0);
+
+  VLOG (1)
+      << "Starting to mine " << pbRegion.prospection ().resource ()
+      << " with character " << c.GetId ();
+  c.MutableProto ().mutable_mining ()->set_active (true);
 }
 
 namespace
@@ -642,6 +711,11 @@ MoveProcessor::PerformCharacterUpdate (Character& c, const Json::Value& upd)
 {
   MaybeTransferCharacter (c, upd);
   MaybeStartProspecting (c, upd);
+
+  /* Mining should be started before setting waypoints.  This ensures that if
+     a move does both, we do not end up moving and mining at the same time
+     (which is not allowed).  */
+  MaybeStartMining (c, upd);
 
   /* We need to process speed updates after the waypoints, because a speed
      update is only valid if there is active movement.  That way, we can set
