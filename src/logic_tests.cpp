@@ -723,10 +723,9 @@ TEST_F (PXLogicTests, MiningWhenReprospected)
   r.reset ();
 
   /* When we reprospect the region while still mining, this should just stop
-     mining gracefully.  */
-  /* FIXME: Once https://github.com/xaya/taurion_gsp/issues/54 is implemented,
-     this will fail and need to be updated to reprospect only after another
-     turn when the resource has been used up.  */
+     mining gracefully.  We can only reprospect after using up the resources,
+     which means that we need to mine for one turn before.  */
+  UpdateState ("[]");
   auto data = BuildBlockData (R"([
     {
       "name": "domob",

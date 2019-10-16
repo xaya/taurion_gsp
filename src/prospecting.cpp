@@ -68,8 +68,15 @@ CanProspectRegion (const Character& c, const Region& r, const Context& ctx)
       return false;
     }
 
-  /* FIXME: Also check for remaining resources and only allow re-prospecting
-     if there are none.  */
+  if (r.GetResourceLeft () > 0)
+    {
+      LOG (WARNING)
+          << "Region " << r.GetId ()
+          << " has " << r.GetResourceLeft ()
+          << " of " << rpb.prospection ().resource ()
+          << " left to be mined, can't be reprospected";
+      return false;
+    }
 
   return true;
 }

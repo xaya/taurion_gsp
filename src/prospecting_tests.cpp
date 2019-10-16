@@ -93,6 +93,22 @@ TEST_F (CanProspectRegionTests, ReprospectingExpiration)
   EXPECT_TRUE (CanProspectRegion (*c, *r, ctx));
 }
 
+TEST_F (CanProspectRegionTests, ReprospectingResources)
+{
+  ctx.SetHeight (1000);
+
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  auto r = regions.GetById (region);
+  r->MutableProto ().mutable_prospection ()->set_height (1);
+  r->MutableProto ().mutable_prospection ()->set_resource ("foo");
+
+  r->SetResourceLeft (1);
+  EXPECT_FALSE (CanProspectRegion (*c, *r, ctx));
+
+  r->SetResourceLeft (0);
+  EXPECT_TRUE (CanProspectRegion (*c, *r, ctx));
+}
+
 /* ************************************************************************** */
 
 class FinishProspectingTests : public DBTestWithSchema

@@ -169,15 +169,31 @@ class BasicProspectingTest (PXTest):
     # should just be ignored.
     self.mainLogger.info ("Trying in already prospected region...")
     self.getCharacters ()[self.prospectors[1]].sendMove ({"prospect": {}})
+    sleepSome ()
+    self.assertEqual (self.getPendingState ()["characters"], [])
     self.generate (1)
     self.assertEqual (self.getCharacters ()[self.prospectors[1]].getBusy (),
                       None)
     self.expectProspectedBy (self.offset, self.prospectors[0])
 
+    # Mine all the resources (and drop them), so that we can reprospect
+    # the region in the next step.
+    self.mainLogger.info ("Mining all resources...")
+    miner = self.prospectors[1]
+    while True:
+      typ, remaining = self.getRegionAt (self.offset).getResource ()
+      if remaining == 0:
+        break
+      self.getCharacters ()[miner].sendMove ({
+        "drop": {"f": {typ: 1000}},
+        "mine": {},
+      })
+      self.generate (50)
+
     # Start prospecting after the expiry, but kill the prospector.  This should
     # effectively "unprospect" the region completely.
     self.mainLogger.info ("Attempting re-prospecting...")
-    self.generate (94)
+    self.generate (100)
     self.createCharacters ("target", 1)
     self.generate (1)
     self.moveCharactersTo ({
@@ -187,15 +203,7 @@ class BasicProspectingTest (PXTest):
       "target": {"a": 1000, "s": 0},
     })
     r = self.getRegionAt (self.offset)
-    self.assertEqual (self.rpc.xaya.getblockcount (),
-                      r.data["prospection"]["height"] + 98)
-
-    self.getCharacters ()["target"].sendMove ({"prospect": {}})
-    sleepSome ()
-    self.assertEqual (self.getPendingState ()["characters"], [])
-    self.generate (1)
     c = self.getCharacters ()["target"]
-    self.assertEqual (c.getBusy (), None)
     c.sendMove ({"prospect": {}})
     self.assertEqual (self.getPendingState ()["characters"], [
       {"id": c.getId (), "prospecting": r.getId ()},
