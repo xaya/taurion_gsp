@@ -27,7 +27,7 @@ namespace pxd
 {
 
 void
-ProcessAllMining (Database& db, const Context& ctx)
+ProcessAllMining (Database& db, xaya::Random& rnd, const Context& ctx)
 {
   CharacterTable characters(db);
   RegionsTable regions(db);
@@ -64,9 +64,17 @@ ProcessAllMining (Database& db, const Context& ctx)
         }
 
       const auto& type = r->GetProto ().prospection ().resource ();
-      Inventory::QuantityT mined = pb.mining ().rate ();
-      CHECK_GT (mined, 0);
+      const auto& rate = pb.mining ().rate ();
+      Inventory::QuantityT mined
+          = rate.min () + rnd.NextInt (rate.max () - rate.min () + 1);
+      CHECK_GE (mined, 0);
       VLOG (1) << "Trying to mine " << mined << " of " << type;
+
+      /* If we rolled to not mine anything, just continue processing the
+         next character right away.  In this case, we do not want the
+         "stop logic" below to execute at all.  */
+      if (mined == 0)
+        continue;
 
       /* Restrict the quantity by what is left in the region.  */
       Inventory::QuantityT left = r->GetResourceLeft ();

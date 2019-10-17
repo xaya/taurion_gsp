@@ -615,7 +615,8 @@ TEST_F (PXLogicTests, MiningRightAfterProspecting)
   ASSERT_EQ (c->GetId (), 1);
   c->SetPosition (pos);
   c->MutableProto ().mutable_combat_data ();
-  c->MutableProto ().mutable_mining ()->set_rate (1);
+  c->MutableProto ().mutable_mining ()->mutable_rate ()->set_min (1);
+  c->MutableProto ().mutable_mining ()->mutable_rate ()->set_max (1);
   c->MutableProto ().set_cargo_space (100);
   c.reset ();
 
@@ -658,7 +659,8 @@ TEST_F (PXLogicTests, MiningAndDropping)
   ASSERT_EQ (c->GetId (), 1);
   c->SetPosition (pos);
   c->MutableProto ().mutable_combat_data ();
-  c->MutableProto ().mutable_mining ()->set_rate (10);
+  c->MutableProto ().mutable_mining ()->mutable_rate ()->set_min (10);
+  c->MutableProto ().mutable_mining ()->mutable_rate ()->set_max (10);
   c->MutableProto ().mutable_mining ()->set_active (true);
   c->MutableProto ().set_cargo_space (1000);
   c->GetInventory ().SetFungibleCount ("foo", 95);
@@ -711,7 +713,8 @@ TEST_F (PXLogicTests, MiningWhenReprospected)
   ASSERT_EQ (c->GetId (), 1);
   c->SetPosition (pos);
   c->MutableProto ().mutable_combat_data ();
-  c->MutableProto ().mutable_mining ()->set_rate (1);
+  c->MutableProto ().mutable_mining ()->mutable_rate ()->set_min (1);
+  c->MutableProto ().mutable_mining ()->mutable_rate ()->set_max (1);
   c->MutableProto ().mutable_mining ()->set_active (true);
   c->MutableProto ().set_cargo_space (1000);
   c.reset ();

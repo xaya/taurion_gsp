@@ -231,8 +231,12 @@ GetMiningJsonObject (const BaseMap& map, const Character& c)
     return Json::Value ();
   const auto& pb = c.GetProto ().mining ();
 
+  Json::Value rate(Json::objectValue);
+  rate["min"] = IntToJson (pb.rate ().min ());
+  rate["max"] = IntToJson (pb.rate ().max ());
+
   Json::Value res(Json::objectValue);
-  res["rate"] = IntToJson (pb.rate ());
+  res["rate"] = rate;
   res["active"] = pb.active ();
   if (pb.active ())
     res["region"] = IntToJson (map.Regions ().GetRegionId (c.GetPosition ()));

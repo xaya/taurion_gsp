@@ -172,7 +172,9 @@ Params::InitCharacterStats (proto::RegenData& regen, proto::Character& pb) const
   pb.set_speed (3000);
   pb.set_cargo_space (20);
 
-  pb.mutable_mining ()->set_rate (1);
+  auto* miningRate = pb.mutable_mining ()->mutable_rate ();
+  miningRate->set_min (0);
+  miningRate->set_max (5);
 
   auto* cd = pb.mutable_combat_data ();
   auto* attack = cd->add_attacks ();

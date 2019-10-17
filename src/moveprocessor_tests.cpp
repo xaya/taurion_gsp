@@ -1232,12 +1232,17 @@ protected:
        at its current position.  Tests that want to make mining impossible can
        then selectively undo some of these.  */
 
-    GetTest ()->MutableProto ().mutable_mining ()->set_rate (10);
-    GetTest ()->MutableProto ().set_speed (1000);
+    auto c = GetTest ();
+    auto& pb = c->MutableProto ();
+    pb.mutable_mining ()->mutable_rate ()->set_min (10);
+    pb.mutable_mining ()->mutable_rate ()->set_max (10);
+    pb.set_speed (1000);
+    c.reset ();
 
     auto r = regions.GetById (region);
     r->MutableProto ().mutable_prospection ()->set_resource ("foo");
     r->SetResourceLeft (42);
+    r.reset ();
   }
 
   /**

@@ -45,10 +45,24 @@ class MiningTest (PXTest):
       "domob 2": self.pos[1],
     })
     self.getCharacters ()["domob"].sendMove ({"prospect": {}})
-    self.generate (15)
+    self.generate (10)
+    self.assertEqual (self.getCharacters ()["domob"].getBusy ()["blocks"], 1)
 
-    typ, self.amount = self.getRegionAt (self.pos[0]).getResource ()
-    self.log.info ("Found %d of %s at the region" % (self.amount, typ))
+    # We need at least 15 of the resource in the region in order to allow
+    # the remaining parts of the test to work as expected.  Thus we try
+    # to re-roll prospection as needed in order to achieve that.
+    while True:
+      self.generate (1)
+      typ, self.amount = self.getRegionAt (self.pos[0]).getResource ()
+      self.log.info ("Found %d of %s at the region" % (self.amount, typ))
+
+      if self.amount > 15:
+        break
+
+      self.log.warning ("Too little resources, retrying...")
+      self.rpc.xaya.invalidateblock (self.rpc.xaya.getbestblockhash ())
+
+    self.generate (1)
     self.reorgBlock = self.rpc.xaya.getbestblockhash ()
 
     self.mainLogger.info ("Starting to mine...")

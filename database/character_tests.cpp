@@ -288,7 +288,7 @@ TEST_F (CharacterTableTests, QueryMoving)
 TEST_F (CharacterTableTests, QueryMining)
 {
   tbl.CreateNew ("domob", Faction::RED)
-    ->MutableProto ().mutable_mining ()->set_rate (10);
+    ->MutableProto ().mutable_mining ()->mutable_rate ();
   tbl.CreateNew ("andy", Faction::RED)
     ->MutableProto ().mutable_mining ()->set_active (true);
 
