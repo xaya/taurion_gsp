@@ -14,18 +14,50 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-# Resource types in the game.
-# FIXME: For now these are just dummy values used in tests of the basic
-# prospecting / mining logic.  Add in real ones once determined together
-# with their proper cargo space.
+# Raw resources in the game.
 fungible_items:
   {
-    key: "sand"
-    value: { space: 50 }
+    key: "raw a"
+    value: { space: 1 }
   }
 fungible_items:
   {
-    key: "cryptonite"
+    key: "raw b"
+    value: { space: 1 }
+  }
+fungible_items:
+  {
+    key: "raw c"
+    value: { space: 1 }
+  }
+fungible_items:
+  {
+    key: "raw d"
+    value: { space: 1 }
+  }
+fungible_items:
+  {
+    key: "raw e"
+    value: { space: 1 }
+  }
+fungible_items:
+  {
+    key: "raw f"
+    value: { space: 1 }
+  }
+fungible_items:
+  {
+    key: "raw g"
+    value: { space: 1 }
+  }
+fungible_items:
+  {
+    key: "raw h"
+    value: { space: 1 }
+  }
+fungible_items:
+  {
+    key: "raw i"
     value: { space: 1 }
   }
 

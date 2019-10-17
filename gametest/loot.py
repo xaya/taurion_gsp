@@ -30,22 +30,22 @@ class LootTest (PXTest):
     self.collectPremine ()
 
     self.mainLogger.info ("Dropping loot in god mode...")
-    self.dropLoot ({"x": 1, "y": 2}, {"foo": 5, "bar": 10})
-    self.dropLoot ({"x": 1, "y": 2}, {"foo": 5})
-    self.dropLoot ({"x": -1, "y": 20}, {"foo": 5})
+    self.dropLoot ({"x": 1, "y": 2}, {"zerospace": 5, "bar": 10})
+    self.dropLoot ({"x": 1, "y": 2}, {"zerospace": 5})
+    self.dropLoot ({"x": -1, "y": 20}, {"zerospace": 5})
     self.assertEqual (self.getRpc ("getgroundloot"), [
       {
         "position": {"x": -1, "y": 20},
         "inventory":
           {
-            "fungible": {"foo": 5},
+            "fungible": {"zerospace": 5},
           },
       },
       {
         "position": {"x": 1, "y": 2},
         "inventory":
           {
-            "fungible": {"bar": 10, "foo": 10},
+            "fungible": {"bar": 10, "zerospace": 10},
           },
       },
     ])
@@ -56,17 +56,17 @@ class LootTest (PXTest):
     self.generate (1)
     self.moveCharactersTo ({"red": {"x": 1, "y": 2}})
     self.generate (1)
-    self.getCharacters ()["red"].sendMove ({"pu": {"f": {"foo": 1000}}})
+    self.getCharacters ()["red"].sendMove ({"pu": {"f": {"zerospace": 1000}}})
     self.generate (1)
     self.assertEqual (self.getCharacters ()["red"].getFungibleInventory (), {
-      "foo": 10,
+      "zerospace": 10,
     })
     self.assertEqual (self.getRpc ("getgroundloot"), [
       {
         "position": {"x": -1, "y": 20},
         "inventory":
           {
-            "fungible": {"foo": 5},
+            "fungible": {"zerospace": 5},
           },
       },
       {
@@ -80,17 +80,17 @@ class LootTest (PXTest):
 
     self.mainLogger.info ("Dropping loot with a character...")
     self.moveCharactersTo ({"red": {"x": -1, "y": 20}})
-    self.getCharacters ()["red"].sendMove ({"drop": {"f": {"foo": 1}}})
+    self.getCharacters ()["red"].sendMove ({"drop": {"f": {"zerospace": 1}}})
     self.generate (1)
     self.assertEqual (self.getCharacters ()["red"].getFungibleInventory (), {
-      "foo": 9,
+      "zerospace": 9,
     })
     self.assertEqual (self.getRpc ("getgroundloot"), [
       {
         "position": {"x": -1, "y": 20},
         "inventory":
           {
-            "fungible": {"foo": 6},
+            "fungible": {"zerospace": 6},
           },
       },
       {
@@ -104,26 +104,22 @@ class LootTest (PXTest):
 
     self.mainLogger.info ("Cargo limit for picking loot up...")
     self.initAccount ("cargo", "r")
-    self.dropLoot ({"x": 0, "y": 0}, {"foo": 95})
+    self.dropLoot ({"x": 0, "y": 0}, {"foo": 10})
     self.createCharacters ("cargo", 1)
     self.generate (1)
     self.moveCharactersTo ({"cargo": {"x": 0, "y": 0}})
     self.getCharacters ()["cargo"].sendMove ({"pu": {"f": {"foo": 100}}})
     self.generate (1)
-    self.moveCharactersTo ({"cargo": {"x": 1, "y": 2}})
-    self.getCharacters ()["cargo"].sendMove ({"pu": {"f": {"bar": 100}}})
-    self.generate (1)
     c = self.getCharacters ()["cargo"]
     self.assertEqual (c.getFungibleInventory (), {
-      "foo": 95,
-      "bar": 2,
+      "foo": 2,
     })
     c.expectPartial ({
       "cargospace":
         {
-          "total": 1000,
-          "used": 990,
-          "free": 10,
+          "total": 20,
+          "used": 20,
+          "free": 0,
         },
     })
     self.assertEqual (self.getRpc ("getgroundloot"), [
@@ -131,14 +127,21 @@ class LootTest (PXTest):
         "position": {"x": -1, "y": 20},
         "inventory":
           {
-            "fungible": {"foo": 6},
+            "fungible": {"zerospace": 6},
+          },
+      },
+      {
+        "position": {"x": 0, "y": 0},
+        "inventory":
+          {
+            "fungible": {"foo": 8},
           },
       },
       {
         "position": {"x": 1, "y": 2},
         "inventory":
           {
-            "fungible": {"bar": 8},
+            "fungible": {"bar": 10},
           },
       },
     ])
@@ -155,35 +158,42 @@ class LootTest (PXTest):
       "red": {"a": 1, "s": 0},
     })
     self.assertEqual (self.getCharacters ()["red"].getFungibleInventory (), {
-      "foo": 9,
+      "zerospace": 9,
     })
-    self.getCharacters ()["green"].sendMove ({"pu": {"f": {"foo": 5}}})
+    self.getCharacters ()["green"].sendMove ({"pu": {"f": {"zerospace": 5}}})
     self.generate (1)
     chars = self.getCharacters ()
     assert "red" not in chars
     self.assertEqual (chars["green"].getFungibleInventory (), {
-      "foo": 5,
+      "zerospace": 5,
     })
     self.assertEqual (self.getRpc ("getgroundloot"), [
       {
         "position": {"x": -1, "y": 20},
         "inventory":
           {
-            "fungible": {"foo": 6},
+            "fungible": {"zerospace": 6},
+          },
+      },
+      {
+        "position": {"x": 0, "y": 0},
+        "inventory":
+          {
+            "fungible": {"foo": 8},
           },
       },
       {
         "position": {"x": 1, "y": 2},
         "inventory":
           {
-            "fungible": {"bar": 8},
+            "fungible": {"bar": 10},
           },
       },
       {
         "position": {"x": 100, "y": 100},
         "inventory":
           {
-            "fungible": {"foo": 4},
+            "fungible": {"zerospace": 4},
           },
       },
     ])
