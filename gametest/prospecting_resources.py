@@ -39,7 +39,7 @@ class ProspectingResourcesTest (PXTest):
     r = self.getRegionAt (pos)
     self.assertEqual (r.data["prospection"]["name"], "domob")
     typ, amount = r.getResource ()
-    assert typ in ["sand", "cryptonite"]
+    assert typ in ["raw a", "raw b"]
     assert amount > 0
 
     # FIXME: For now, this test is super limited.  We should extend it

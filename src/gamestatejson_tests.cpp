@@ -392,12 +392,14 @@ TEST_F (CharacterJsonTests, Mining)
   tbl.CreateNew ("without mining", Faction::RED);
 
   auto h = tbl.CreateNew ("inactive mining", Faction::RED);
-  h->MutableProto ().mutable_mining ()->set_rate (12);
+  h->MutableProto ().mutable_mining ()->mutable_rate ()->set_min (0);
+  h->MutableProto ().mutable_mining ()->mutable_rate ()->set_max (5);
   h.reset ();
 
   h = tbl.CreateNew ("active mining", Faction::RED);
   h->SetPosition (pos);
-  h->MutableProto ().mutable_mining ()->set_rate (1);
+  h->MutableProto ().mutable_mining ()->mutable_rate ()->set_min (10);
+  h->MutableProto ().mutable_mining ()->mutable_rate ()->set_max (11);
   h->MutableProto ().mutable_mining ()->set_active (true);
   h.reset ();
 
@@ -412,7 +414,11 @@ TEST_F (CharacterJsonTests, Mining)
           "owner": "inactive mining",
           "mining":
             {
-              "rate": 12,
+              "rate":
+                {
+                  "min": 0,
+                  "max": 5
+                },
               "active": false,
               "region": null
             }
@@ -421,7 +427,11 @@ TEST_F (CharacterJsonTests, Mining)
           "owner": "active mining",
           "mining":
             {
-              "rate": 1,
+              "rate":
+                {
+                  "min": 10,
+                  "max": 11
+                },
               "active": true,
               "region": 350146
             }

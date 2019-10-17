@@ -44,8 +44,23 @@ message OngoingProspection
 message MiningData
 {
 
-  /** The mining speed, in units per block.  */
-  optional uint64 rate = 1;
+  /**
+   * Stats about the speed for mining (which is random based on a distribution
+   * from these parameters).
+   */
+  message Speed
+  {
+
+    /** The minimum units per block.  */
+    optional uint64 min = 1;
+
+    /** The maximum units per block.  */
+    optional uint64 max = 2;
+
+  }
+
+  /** The mining speed parameters.  */
+  optional Speed rate = 1;
 
   /** Set to true if the character is currently mining.  */
   optional bool active = 2;

@@ -116,7 +116,7 @@ PXLogic::UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
   mvProc.ProcessAdmin (blockData["admin"]);
   mvProc.ProcessAll (blockData["moves"]);
 
-  ProcessAllMining (db, ctx);
+  ProcessAllMining (db, rnd, ctx);
   ProcessAllMovement (db, dyn, ctx);
 
   FindCombatTargets (db, rnd);

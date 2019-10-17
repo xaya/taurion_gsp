@@ -187,8 +187,8 @@ TEST_F (FinishProspectingTests, Resources)
 {
   std::map<std::string, unsigned> regionsForResource =
     {
-      {"sand", 0},
-      {"cryptonite", 0},
+      {"raw a", 0},
+      {"raw b", 0},
     };
 
   for (unsigned i = 0; i < 100; ++i)
@@ -208,8 +208,8 @@ TEST_F (FinishProspectingTests, Resources)
         << " in " << entry.second << " regions";
 
   ASSERT_EQ (regionsForResource.size (), 2);
-  EXPECT_GT (regionsForResource["sand"], regionsForResource["cryptonite"]);
-  EXPECT_GT (regionsForResource["cryptonite"], 0);
+  EXPECT_GT (regionsForResource["raw a"], regionsForResource["raw b"]);
+  EXPECT_GT (regionsForResource["raw b"], 0);
 }
 
 TEST_F (FinishProspectingTests, Prizes)

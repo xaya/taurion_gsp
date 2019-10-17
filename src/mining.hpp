@@ -23,13 +23,15 @@
 
 #include "database/database.hpp"
 
+#include <xayautil/random.hpp>
+
 namespace pxd
 {
 
 /**
  * Processes all mining of characters in the current turn.
  */
-void ProcessAllMining (Database& db, const Context& ctx);
+void ProcessAllMining (Database& db, xaya::Random& rnd, const Context& ctx);
 
 } // namespace pxd
 

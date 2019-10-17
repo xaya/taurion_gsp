@@ -138,7 +138,7 @@ Params::DetectResource (const HexCoord& pos, xaya::Random& rnd,
      general prospecting and mining logic.  We need to replace this with
      a proper implementation based on how we want to distribute resources.  */
 
-  const std::vector<std::string> types = {"sand", "cryptonite"};
+  const std::vector<std::string> types = {"raw a", "raw b"};
   const auto ind = rnd.SelectByWeight ({10, 1});
 
   type = types[ind];
@@ -170,9 +170,11 @@ void
 Params::InitCharacterStats (proto::RegenData& regen, proto::Character& pb) const
 {
   pb.set_speed (3000);
-  pb.set_cargo_space (1000);
+  pb.set_cargo_space (20);
 
-  pb.mutable_mining ()->set_rate (1);
+  auto* miningRate = pb.mutable_mining ()->mutable_rate ();
+  miningRate->set_min (0);
+  miningRate->set_max (5);
 
   auto* cd = pb.mutable_combat_data ();
   auto* attack = cd->add_attacks ();
