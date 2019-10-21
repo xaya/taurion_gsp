@@ -1,5 +1,8 @@
 noinst_LTLIBRARIES = libpxproto.la
 
+ROCONFIG_TEXT_PROTOS = \
+  roconfig/items.pb.text
+
 PROTOS = \
   character.proto \
   combat.proto \
@@ -8,7 +11,9 @@ PROTOS = \
   inventory.proto \
   movement.proto \
   region.proto
-EXTRA_DIST = $(PROTOS) roconfig.pb.text roconfig_head.cpp roconfig_tail.cpp
+EXTRA_DIST = \
+  $(PROTOS) $(ROCONFIG_TEXT_PROTOS) \
+  roconfig_head.cpp roconfig_tail.cpp
 
 BUILT_SOURCES = $(PROTOS:.proto=.pb.h)
 CLEANFILES = $(PROTOS:.proto=.pb.h) $(PROTOS:.proto=.pb.cc) roconfig.cpp
@@ -41,5 +46,5 @@ tests_SOURCES = \
 %.pb.h %.pb.cc: $(srcdir)/%.proto
 	protoc -I$(srcdir) --cpp_out=. "$<"
 
-roconfig.cpp: roconfig_head.cpp roconfig.pb.text roconfig_tail.cpp
+roconfig.cpp: roconfig_head.cpp $(ROCONFIG_TEXT_PROTOS) roconfig_tail.cpp
 	cat $^ >$@
