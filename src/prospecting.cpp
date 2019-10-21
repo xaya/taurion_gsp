@@ -18,6 +18,8 @@
 
 #include "prospecting.hpp"
 
+#include "resourcedist.hpp"
+
 #include "database/prizes.hpp"
 
 namespace pxd
@@ -110,7 +112,7 @@ FinishProspecting (Character& c, Database& db, RegionsTable& regions,
   /* Determine the mine-able resource here.  */
   std::string type;
   Inventory::QuantityT amount;
-  ctx.Params ().DetectResource (pos, rnd, type, amount);
+  DetectResource (pos, rnd, type, amount);
   prosp->set_resource (type);
   r->SetResourceLeft (amount);
 
