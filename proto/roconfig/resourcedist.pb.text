@@ -1,0 +1,537 @@
+#   GSP for the Taurion blockchain game
+#   Copyright (C) 2019  Autonomous Worlds Ltd
+#
+#   This program is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation, either version 3 of the License, or
+#   (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+resource_dist:
+{
+
+base_amounts:
+  {
+    key: "raw a"
+    value: 700
+  }
+base_amounts:
+  {
+    key: "raw b"
+    value: 40
+  }
+base_amounts:
+  {
+    key: "raw c"
+    value: 14
+  }
+base_amounts:
+  {
+    key: "raw d"
+    value: 13
+  }
+base_amounts:
+  {
+    key: "raw e"
+    value: 12
+  }
+base_amounts:
+  {
+    key: "raw f"
+    value: 8
+  }
+base_amounts:
+  {
+    key: "raw g"
+    value: 5
+  }
+base_amounts:
+  {
+    key: "raw h"
+    value: 2
+  }
+base_amounts:
+  {
+    key: "raw i"
+    value: 1
+  }
+
+areas:
+  {
+    centre: { x: 3945 y: -3185 }
+    resources: "raw i"
+    resources: "raw h"
+  }
+areas:
+  {
+    centre: { x: 3935 y: 55 }
+    resources: "raw e"
+  }
+areas:
+  {
+    centre: { x: 3905 y: 965 }
+    resources: "raw b"
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: 3835 y: 2225 }
+    resources: "raw e"
+  }
+areas:
+  {
+    centre: { x: 3695 y: 3215 }
+    resources: "raw b"
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: 3615 y: -585 }
+    resources: "raw b"
+  }
+areas:
+  {
+    centre: { x: 3495 y: -3175 }
+    resources: "raw h"
+    resources: "raw g"
+  }
+areas:
+  {
+    centre: { x: 3265 y: 1015 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: 3135 y: 2045 }
+    resources: "raw b"
+  }
+areas:
+  {
+    centre: { x: 3115 y: -3595 }
+    resources: "raw i"
+    resources: "raw h"
+  }
+areas:
+  {
+    centre: { x: 3115 y: 145 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: 3055 y: 3735 }
+    resources: "raw g"
+    resources: "raw f"
+  }
+areas:
+  {
+    centre: { x: 2675 y: 655 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: 2445 y: -315 }
+    resources: "raw b"
+  }
+areas:
+  {
+    centre: { x: 2415 y: -3315 }
+    resources: "raw h"
+    resources: "raw g"
+  }
+areas:
+  {
+    centre: { x: 2355 y: -755 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: 2345 y: 2015 }
+    resources: "raw e"
+  }
+areas:
+  {
+    centre: { x: 2305 y: 1285 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: 2185 y: 3865 }
+    resources: "raw i"
+    resources: "raw h"
+  }
+areas:
+  {
+    centre: { x: 2115 y: 425 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: 1855 y: -755 }
+    resources: "raw e"
+  }
+areas:
+  {
+    centre: { x: 1655 y: -2705 }
+    resources: "raw g"
+    resources: "raw f"
+  }
+areas:
+  {
+    centre: { x: 1505 y: 1065 }
+    resources: "raw b"
+  }
+areas:
+  {
+    centre: { x: 1425 y: -115 }
+    resources: "raw b"
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: 1405 y: 3195 }
+    resources: "raw i"
+    resources: "raw h"
+  }
+areas:
+  {
+    centre: { x: 1215 y: 975 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: 1195 y: 395 }
+    resources: "raw e"
+  }
+areas:
+  {
+    centre: { x: 1075 y: -895 }
+    resources: "raw b"
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: 1045 y: 2725 }
+    resources: "raw h"
+    resources: "raw g"
+  }
+areas:
+  {
+    centre: { x: 1045 y: 3825 }
+    resources: "raw h"
+    resources: "raw g"
+  }
+areas:
+  {
+    centre: { x: 1015 y: -1755 }
+    resources: "raw f"
+  }
+areas:
+  {
+    centre: { x: 635 y: -1495 }
+    resources: "raw h"
+    resources: "raw g"
+  }
+areas:
+  {
+    centre: { x: 615 y: 2095 }
+    resources: "raw h"
+    resources: "raw g"
+  }
+areas:
+  {
+    centre: { x: 525 y: -3155 }
+    resources: "raw f"
+  }
+areas:
+  {
+    centre: { x: 485 y: 2525 }
+    resources: "raw i"
+    resources: "raw h"
+  }
+areas:
+  {
+    centre: { x: 335 y: -1025 }
+    resources: "raw f"
+  }
+areas:
+  {
+    centre: { x: 285 y: 1715 }
+    resources: "raw g"
+    resources: "raw f"
+  }
+areas:
+  {
+    centre: { x: 215 y: -3845 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: 155 y: -2585 }
+    resources: "raw b"
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: 95 y: 2985 }
+    resources: "raw g"
+    resources: "raw f"
+  }
+areas:
+  {
+    centre: { x: 55 y: -165 }
+    resources: "raw e"
+  }
+areas:
+  {
+    centre: { x: -235 y: -1995 }
+    resources: "raw d"
+  }
+areas:
+  {
+    centre: { x: -295 y: -335 }
+    resources: "raw d"
+  }
+areas:
+  {
+    centre: { x: -365 y: -2925 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: -365 y: 125 }
+    resources: "raw c"
+  }
+areas:
+  {
+    centre: { x: -375 y: 1035 }
+    resources: "raw f"
+  }
+areas:
+  {
+    centre: { x: -505 y: -3295 }
+    resources: "raw d"
+  }
+areas:
+  {
+    centre: { x: -665 y: 3625 }
+    resources: "raw g"
+    resources: "raw f"
+  }
+areas:
+  {
+    centre: { x: -705 y: -2625 }
+    resources: "raw b"
+  }
+areas:
+  {
+    centre: { x: -705 y: -345 }
+    resources: "raw h"
+    resources: "raw g"
+  }
+areas:
+  {
+    centre: { x: -1005 y: -3975 }
+    resources: "raw d"
+  }
+areas:
+  {
+    centre: { x: -1195 y: -1595 }
+    resources: "raw b"
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: -1245 y: -2305 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: -1285 y: 25 }
+    resources: "raw f"
+  }
+areas:
+  {
+    centre: { x: -1405 y: -905 }
+    resources: "raw d"
+  }
+areas:
+  {
+    centre: { x: -1595 y: -3515 }
+    resources: "raw b"
+  }
+areas:
+  {
+    centre: { x: -1695 y: 2225 }
+    resources: "raw b"
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: -1705 y: 625 }
+    resources: "raw c"
+  }
+areas:
+  {
+    centre: { x: -1715 y: -2985 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: -1785 y: 3135 }
+    resources: "raw c"
+  }
+areas:
+  {
+    centre: { x: -1835 y: -1835 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: -1875 y: 1165 }
+    resources: "raw b"
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: -1945 y: -2445 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: -1965 y: 3945 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: -2095 y: 1755 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: -2145 y: -1115 }
+    resources: "raw b"
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: -2175 y: -455 }
+    resources: "raw f"
+  }
+areas:
+  {
+    centre: { x: -2275 y: -3175 }
+    resources: "raw d"
+  }
+areas:
+  {
+    centre: { x: -2355 y: 2785 }
+    resources: "raw b"
+  }
+areas:
+  {
+    centre: { x: -2355 y: 3205 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: -2555 y: 1105 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: -2625 y: -3755 }
+    resources: "raw f"
+  }
+areas:
+  {
+    centre: { x: -2625 y: 1755 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: -2645 y: -985 }
+    resources: "raw g"
+    resources: "raw f"
+  }
+areas:
+  {
+    centre: { x: -2665 y: 435 }
+    resources: "raw c"
+  }
+areas:
+  {
+    centre: { x: -2805 y: -205 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: -3025 y: 3145 }
+    resources: "raw c"
+  }
+areas:
+  {
+    centre: { x: -3165 y: 2345 }
+    resources: "raw b"
+  }
+areas:
+  {
+    centre: { x: -3195 y: 915 }
+    resources: "raw b"
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: -3285 y: 1735 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: -3425 y: -3815 }
+    resources: "raw b"
+  }
+areas:
+  {
+    centre: { x: -3605 y: 345 }
+    resources: "raw c"
+  }
+areas:
+  {
+    centre: { x: -3795 y: 2775 }
+    resources: "raw c"
+  }
+areas:
+  {
+    centre: { x: -3795 y: 3795 }
+    resources: "raw f"
+  }
+areas:
+  {
+    centre: { x: -3815 y: -2995 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: -3845 y: -2525 }
+    resources: "raw h"
+    resources: "raw g"
+  }
+areas:
+  {
+    centre: { x: -3865 y: -1185 }
+    resources: "raw f"
+  }
+areas:
+  {
+    centre: { x: -3885 y: -2115 }
+    resources: "raw g"
+    resources: "raw f"
+  }
+
+}  # resource_dist

@@ -115,6 +115,7 @@ tests_SOURCES = \
   pending_tests.cpp \
   prospecting_tests.cpp \
   protoutils_tests.cpp \
+  resourcedist_tests.cpp \
   spawn_tests.cpp \
   testutils_tests.cpp
 check_HEADERS = \

@@ -21,6 +21,7 @@
 #include "resourcedist.hpp"
 
 #include "database/prizes.hpp"
+#include "proto/roconfig.hpp"
 
 namespace pxd
 {
@@ -112,7 +113,7 @@ FinishProspecting (Character& c, Database& db, RegionsTable& regions,
   /* Determine the mine-able resource here.  */
   std::string type;
   Inventory::QuantityT amount;
-  DetectResource (pos, rnd, type, amount);
+  DetectResource (pos, RoConfigData ().resource_dist (), rnd, type, amount);
   prosp->set_resource (type);
   r->SetResourceLeft (amount);
 

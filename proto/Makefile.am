@@ -1,7 +1,8 @@
 noinst_LTLIBRARIES = libpxproto.la
 
 ROCONFIG_TEXT_PROTOS = \
-  roconfig/items.pb.text
+  roconfig/items.pb.text \
+  roconfig/resourcedist.pb.text
 
 PROTOS = \
   character.proto \

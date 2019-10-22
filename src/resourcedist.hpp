@@ -19,10 +19,13 @@
 #ifndef PXD_RESOURCEDIST_HPP
 #define PXD_RESOURCEDIST_HPP
 
-#include "hexagonal/coord.hpp"
 #include "database/inventory.hpp"
+#include "hexagonal/coord.hpp"
+#include "proto/config.pb.h"
 
 #include <xayautil/random.hpp>
+
+#include <cstdint>
 
 namespace pxd
 {
@@ -31,8 +34,23 @@ namespace pxd
  * Determines the type and initial amount of resource mine-able that should
  * be found by prospecting in the given coordinate.
  */
-void DetectResource (const HexCoord& pos, xaya::Random& rnd,
+void DetectResource (const HexCoord& pos, const proto::ResourceDistribution& rd,
+                     xaya::Random& rnd,
                      std::string& type, Inventory::QuantityT& amount);
+
+namespace internal
+{
+
+/**
+ * Computes the "fall off" of a given number between the core and outer
+ * radii.  If dist is larger than the outer radius, this returns zero.
+ * If it is less or equal to the core radius, it returns val.  Otherwise,
+ * it returns a linear interpolation between val and zero according to where
+ * dist is between core and outer radius.
+ */
+uint32_t FallOff (uint32_t dist, uint32_t val);
+
+} // namespace internal
 
 } // namespace pxd
 
