@@ -18,6 +18,8 @@
 
 syntax = "proto2";
 
+import "geometry.proto";
+
 package pxd.proto;
 
 /**
@@ -28,6 +30,49 @@ message ItemData
 
   /** The cargo space it uses per unit.  */
   optional uint32 space = 1;
+
+}
+
+/**
+ * Data for the resource distribution on the map (when prospecting).
+ * This is based on multiple "areas" where one or two resources occur.
+ * Each area has a central x/y coordinate.  Then within a core L1 radius
+ * around this area, those resources appear with "full chance".  Towards
+ * an outer radius, the chance falls off to zero linearly.  If multiple
+ * areas overlap (or there are two resources in one), then we pick between
+ * them based on their chances as weights.
+ *
+ * The radii themselves are just constants in the source code.  The proto
+ * data in this message holds the more complex things, like the list of
+ * areas and the amounts per resource type.
+ */
+message ResourceDistribution
+{
+
+  /**
+   * The "base amount" of resource to be found for each resource type in
+   * a region.  These numbers fall off to zero (with a minimum of one unit)
+   * as with the chance.  If we denote the resulting number by X, then the
+   * actual amount found will be uniformly chosen from [X, 2X].
+   */
+  map<string, uint32> base_amounts = 1;
+
+  /**
+   * One area where resources can be found.
+   */
+  message Area
+  {
+
+    /** The centre coordinate of the area.  */
+    optional HexCoord centre = 1;
+
+    /** The type(s) of resources to be found here.  */
+    repeated string resources = 2;
+
+  }
+
+  /** Resource areas.  */
+  repeated Area areas = 2;
 
 }
 
@@ -44,5 +89,8 @@ message ConfigData
 
   /** Known types of fungible items.  */
   map<string, ItemData> fungible_items = 1;
+
+  /** Distribution of resources for prospecting.  */
+  optional ResourceDistribution resource_dist = 2;
 
 }

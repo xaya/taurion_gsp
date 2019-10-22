@@ -185,31 +185,26 @@ TEST_F (FinishProspectingTests, Basic)
 
 TEST_F (FinishProspectingTests, Resources)
 {
-  std::map<std::string, unsigned> regionsForResource =
-    {
-      {"raw a", 0},
-      {"raw b", 0},
-    };
+  std::map<std::string, unsigned> regionsForResource;
+  for (int i = -20; i < 20; ++i)
+    for (int j = -20; j < 20; ++j)
+      {
+        const HexCoord pos(100 * i, 100 * j);
+        auto c = characters.CreateNew ("domob", Faction::RED);
+        const auto id = Prospect (std::move (c), pos);
 
-  for (unsigned i = 0; i < 100; ++i)
-    {
-      const HexCoord pos(0, 20 * i);
-      auto c = characters.CreateNew ("domob", Faction::RED);
-      const auto id = Prospect (std::move (c), pos);
-
-      auto r = regions.GetById (id);
-      EXPECT_GT (r->GetResourceLeft (), 0);
-      ++regionsForResource[r->GetProto ().prospection ().resource ()];
-    }
+        auto r = regions.GetById (id);
+        EXPECT_GT (r->GetResourceLeft (), 0);
+        ++regionsForResource[r->GetProto ().prospection ().resource ()];
+      }
 
   for (const auto& entry : regionsForResource)
     LOG (INFO)
         << "Found resource " << entry.first
         << " in " << entry.second << " regions";
 
-  ASSERT_EQ (regionsForResource.size (), 2);
-  EXPECT_GT (regionsForResource["raw a"], regionsForResource["raw b"]);
-  EXPECT_GT (regionsForResource["raw b"], 0);
+  ASSERT_EQ (regionsForResource.size (), 9);
+  EXPECT_GT (regionsForResource["raw a"], regionsForResource["raw i"]);
 }
 
 TEST_F (FinishProspectingTests, Prizes)

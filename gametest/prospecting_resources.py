@@ -17,13 +17,39 @@
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 """
-Tests prospecting with detection of resources.
+Tests prospecting with detection of resources.  This only tests some basic
+properties.  Detailed tests of the resource distribution logic are already
+in the unit tests.
 """
 
 from pxtest import PXTest
 
+# Coordinate where there is no available resource.
+NOTHING = {"x": 1657, "y": -4064}
+
+# Coordinates with just one type of resource.
+ONLY_A = {"x": -2864, "y": -2174}
+ONLY_F = {"x": 1216, "y": -4064}
+
+# Coordinate with "raw i" at max chance and "raw h" as well.
+I_AND_H = {"x": 2182, "y": 3477}
+
 
 class ProspectingResourcesTest (PXTest):
+
+  def prospectAt (self, pos):
+    """
+    Prospects the region at the given coordinate and returns the found
+    resource type and amount.
+    """
+
+    self.moveCharactersTo ({"domob": pos})
+    self.getCharacters ()["domob"].sendMove ({"prospect": {}})
+    self.generate (11)
+
+    r = self.getRegionAt (pos)
+    self.assertEqual (r.data["prospection"]["name"], "domob")
+    return r.getResource ()
 
   def run (self):
     self.collectPremine ()
@@ -31,20 +57,40 @@ class ProspectingResourcesTest (PXTest):
     self.initAccount ("domob", "r")
     c = self.createCharacters ("domob")
     self.generate (1)
-    pos = {"x": -1000, "y": 1000}
-    self.moveCharactersTo ({"domob": pos})
-    self.getCharacters ()["domob"].sendMove ({"prospect": {}})
-    self.generate (11)
 
-    r = self.getRegionAt (pos)
-    self.assertEqual (r.data["prospection"]["name"], "domob")
-    typ, amount = r.getResource ()
-    assert typ in ["raw a", "raw b"]
+    self.mainLogger.info ("Nothing to be found...")
+    typ, amount = self.prospectAt (NOTHING)
+    self.assertEqual ((typ, amount), ("raw a", 0))
+
+    self.mainLogger.info ("Only type a to be found...")
+    typ, amount = self.prospectAt (ONLY_A)
+    self.assertEqual (typ, "raw a")
     assert amount > 0
 
-    # FIXME: For now, this test is super limited.  We should extend it
-    # and maybe test that different places on the map give different resources
-    # (at least in a simple form).
+    self.mainLogger.info ("Only type f to be found...")
+    typ, amount = self.prospectAt (ONLY_F)
+    self.assertEqual (typ, "raw f")
+    assert amount > 0
+
+    self.mainLogger.info ("Two types...")
+    typ, amount = self.prospectAt (I_AND_H)
+    found = {"raw h": False, "raw i": False}
+    while True:
+      assert amount > 0
+      assert typ in found
+      found[typ] = True
+
+      if found["raw h"] and found["raw i"]:
+        break
+
+      blk = self.rpc.xaya.getbestblockhash ()
+      self.rpc.xaya.invalidateblock (blk)
+      self.generate (1)
+
+      r = self.getRegionAt (I_AND_H)
+      self.assertEqual (r.data["prospection"]["name"], "domob")
+      typ, amount = r.getResource ()
+      assert amount > 0
 
 
 if __name__ == "__main__":

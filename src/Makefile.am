@@ -31,6 +31,7 @@ libtaurion_la_SOURCES = \
   pending.cpp \
   prospecting.cpp \
   protoutils.cpp \
+  resourcedist.cpp \
   spawn.cpp
 libtaurionheaders = \
   amount.hpp \
@@ -48,6 +49,7 @@ libtaurionheaders = \
   pending.hpp \
   prospecting.hpp \
   protoutils.hpp \
+  resourcedist.hpp \
   spawn.hpp
 
 tauriond_CXXFLAGS = \
@@ -113,6 +115,7 @@ tests_SOURCES = \
   pending_tests.cpp \
   prospecting_tests.cpp \
   protoutils_tests.cpp \
+  resourcedist_tests.cpp \
   spawn_tests.cpp \
   testutils_tests.cpp
 check_HEADERS = \

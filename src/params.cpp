@@ -130,21 +130,6 @@ Params::ProspectingPrizes () const
     }
 }
 
-void
-Params::DetectResource (const HexCoord& pos, xaya::Random& rnd,
-                        std::string& type, Inventory::QuantityT& amount) const
-{
-  /* FIXME: This is just some arbitrary logic for now so we can test the
-     general prospecting and mining logic.  We need to replace this with
-     a proper implementation based on how we want to distribute resources.  */
-
-  const std::vector<std::string> types = {"raw a", "raw b"};
-  const auto ind = rnd.SelectByWeight ({10, 1});
-
-  type = types[ind];
-  amount = 1 + rnd.NextInt (100);
-}
-
 HexCoord
 Params::SpawnArea (const Faction f, HexCoord::IntT& radius) const
 {
