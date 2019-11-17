@@ -185,11 +185,16 @@ TEST_F (FinishProspectingTests, Basic)
 
 TEST_F (FinishProspectingTests, Resources)
 {
+  BaseMap map;
+
   std::map<std::string, unsigned> regionsForResource;
-  for (int i = -20; i < 20; ++i)
-    for (int j = -20; j < 20; ++j)
+  for (int i = -30; i < 30; ++i)
+    for (int j = -30; j < 30; ++j)
       {
         const HexCoord pos(100 * i, 100 * j);
+        if (!map.IsOnMap (pos) || !map.IsPassable (pos))
+          continue;
+
         auto c = characters.CreateNew ("domob", Faction::RED);
         const auto id = Prospect (std::move (c), pos);
 

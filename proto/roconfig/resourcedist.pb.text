@@ -65,473 +65,478 @@ base_amounts:
 
 areas:
   {
-    centre: { x: 3945 y: -3185 }
+    centre: { x: 2963 y: 1965 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: 4958 y: -2185 }
     resources: "raw i"
     resources: "raw h"
   }
 areas:
   {
-    centre: { x: 3935 y: 55 }
-    resources: "raw e"
-  }
-areas:
-  {
-    centre: { x: 3905 y: 965 }
-    resources: "raw b"
-    resources: "raw a"
-  }
-areas:
-  {
-    centre: { x: 3835 y: 2225 }
-    resources: "raw e"
-  }
-areas:
-  {
-    centre: { x: 3695 y: 3215 }
-    resources: "raw b"
-    resources: "raw a"
-  }
-areas:
-  {
-    centre: { x: 3615 y: -585 }
-    resources: "raw b"
-  }
-areas:
-  {
-    centre: { x: 3495 y: -3175 }
+    centre: { x: 4348 y: -1045 }
     resources: "raw h"
     resources: "raw g"
   }
 areas:
   {
-    centre: { x: 3265 y: 1015 }
-    resources: "raw a"
+    centre: { x: 1898 y: 3795 }
+    resources: "raw f"
   }
 areas:
   {
-    centre: { x: 3135 y: 2045 }
+    centre: { x: 5263 y: -3055 }
+    resources: "raw g"
+    resources: "raw f"
+  }
+areas:
+  {
+    centre: { x: 3293 y: 665 }
+    resources: "raw g"
+    resources: "raw f"
+  }
+areas:
+  {
+    centre: { x: 5063 y: -3695 }
     resources: "raw b"
   }
 areas:
   {
-    centre: { x: 3115 y: -3595 }
+    centre: { x: 2028 y: 2355 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: 3898 y: -1405 }
     resources: "raw i"
     resources: "raw h"
   }
 areas:
   {
-    centre: { x: 3115 y: 145 }
-    resources: "raw a"
+    centre: { x: 1633 y: 3025 }
+    resources: "raw c"
   }
 areas:
   {
-    centre: { x: 3055 y: 3735 }
+    centre: { x: 2243 y: 1785 }
+    resources: "raw c"
+  }
+areas:
+  {
+    centre: { x: 3033 y: -95 }
     resources: "raw g"
     resources: "raw f"
   }
 areas:
   {
-    centre: { x: 2675 y: 655 }
+    centre: { x: 1608 y: 2355 }
+    resources: "raw b"
     resources: "raw a"
   }
 areas:
   {
-    centre: { x: 2445 y: -315 }
-    resources: "raw b"
+    centre: { x: 878 y: 3795 }
+    resources: "raw c"
   }
 areas:
   {
-    centre: { x: 2415 y: -3315 }
+    centre: { x: 3248 y: -1045 }
     resources: "raw h"
     resources: "raw g"
   }
 areas:
   {
-    centre: { x: 2355 y: -755 }
-    resources: "raw a"
-  }
-areas:
-  {
-    centre: { x: 2345 y: 2015 }
-    resources: "raw e"
-  }
-areas:
-  {
-    centre: { x: 2305 y: 1285 }
-    resources: "raw a"
-  }
-areas:
-  {
-    centre: { x: 2185 y: 3865 }
+    centre: { x: 2768 y: -485 }
     resources: "raw i"
     resources: "raw h"
   }
 areas:
   {
-    centre: { x: 2115 y: 425 }
-    resources: "raw a"
+    centre: { x: 763 y: 3165 }
+    resources: "raw b"
   }
 areas:
   {
-    centre: { x: 1855 y: -755 }
+    centre: { x: 4143 y: -3835 }
     resources: "raw e"
   }
 areas:
   {
-    centre: { x: 1655 y: -2705 }
+    centre: { x: 1378 y: 1695 }
+    resources: "raw b"
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: 2403 y: -615 }
+    resources: "raw h"
+    resources: "raw g"
+  }
+areas:
+  {
+    centre: { x: 3613 y: -3135 }
+    resources: "raw b"
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: 3188 y: -2345 }
+    resources: "raw e"
+  }
+areas:
+  {
+    centre: { x: 708 y: 2095 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: 443 y: 2625 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: 93 y: 3285 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: 1858 y: -285 }
     resources: "raw g"
     resources: "raw f"
   }
 areas:
   {
-    centre: { x: 1505 y: 1065 }
-    resources: "raw b"
+    centre: { x: 2438 y: -2305 }
+    resources: "raw a"
   }
 areas:
   {
-    centre: { x: 1425 y: -115 }
+    centre: { x: 228 y: 1875 }
     resources: "raw b"
     resources: "raw a"
   }
 areas:
   {
-    centre: { x: 1405 y: 3195 }
+    centre: { x: -172 y: 2555 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: 1818 y: -1505 }
+    resources: "raw b"
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: 848 y: 375 }
+    resources: "raw f"
+  }
+areas:
+  {
+    centre: { x: 2648 y: -3265 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: 1583 y: -1215 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: 2918 y: -3905 }
+    resources: "raw b"
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: -682 y: 3195 }
+    resources: "raw b"
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: 1993 y: -2675 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: -227 y: 1705 }
+    resources: "raw c"
+  }
+areas:
+  {
+    centre: { x: -897 y: 2665 }
+    resources: "raw c"
+  }
+areas:
+  {
+    centre: { x: 1483 y: -2115 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: 993 y: -1195 }
+    resources: "raw e"
+  }
+areas:
+  {
+    centre: { x: -1457 y: 3605 }
+    resources: "raw c"
+  }
+areas:
+  {
+    centre: { x: 1703 y: -3115 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: -57 y: 365 }
+    resources: "raw c"
+  }
+areas:
+  {
+    centre: { x: 2023 y: -3935 }
+    resources: "raw e"
+  }
+areas:
+  {
+    centre: { x: -617 y: 1285 }
+    resources: "raw f"
+  }
+areas:
+  {
+    centre: { x: 598 y: -1425 }
+    resources: "raw b"
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: -137 y: -55 }
+    resources: "raw e"
+  }
+areas:
+  {
+    centre: { x: -1607 y: 2805 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: 908 y: -2445 }
+    resources: "raw b"
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: -482 y: 295 }
+    resources: "raw d"
+  }
+areas:
+  {
+    centre: { x: -697 y: 705 }
+    resources: "raw h"
+    resources: "raw g"
+  }
+areas:
+  {
+    centre: { x: -1542 y: 2175 }
+    resources: "raw f"
+  }
+areas:
+  {
+    centre: { x: 1223 y: -3615 }
+    resources: "raw b"
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: 423 y: -2355 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: 173 y: -1855 }
+    resources: "raw e"
+  }
+areas:
+  {
+    centre: { x: -357 y: -1075 }
+    resources: "raw b"
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: -1607 y: 1405 }
+    resources: "raw d"
+  }
+areas:
+  {
+    centre: { x: -2307 y: 2645 }
+    resources: "raw g"
+    resources: "raw f"
+  }
+areas:
+  {
+    centre: { x: -857 y: -335 }
+    resources: "raw f"
+  }
+areas:
+  {
+    centre: { x: -2187 y: 2145 }
+    resources: "raw b"
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: -3117 y: 3865 }
+    resources: "raw f"
+  }
+areas:
+  {
+    centre: { x: -1177 y: -635 }
+    resources: "raw h"
+    resources: "raw g"
+  }
+areas:
+  {
+    centre: { x: -2192 y: 1195 }
+    resources: "raw b"
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: -1247 y: -1015 }
+    resources: "raw f"
+  }
+areas:
+  {
+    centre: { x: -2752 y: 1835 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: -2112 y: 235 }
+    resources: "raw d"
+  }
+areas:
+  {
+    centre: { x: -4057 y: 3885 }
+    resources: "raw g"
+    resources: "raw f"
+  }
+areas:
+  {
+    centre: { x: -2927 y: 1245 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: -3417 y: 1945 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: -4447 y: 3845 }
+    resources: "raw h"
+    resources: "raw g"
+  }
+areas:
+  {
+    centre: { x: -2507 y: -155 }
+    resources: "raw b"
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: -2977 y: 705 }
+    resources: "raw b"
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: -1877 y: -1655 }
+    resources: "raw g"
+    resources: "raw f"
+  }
+areas:
+  {
+    centre: { x: -3107 y: 365 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: -3842 y: 1715 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: -4902 y: 3815 }
+    resources: "raw a"
+  }
+areas:
+  {
+    centre: { x: -2892 y: -525 }
+    resources: "raw f"
+  }
+areas:
+  {
+    centre: { x: -1427 y: -3495 }
+    resources: "raw h"
+    resources: "raw g"
+  }
+areas:
+  {
+    centre: { x: -4312 y: 2275 }
+    resources: "raw d"
+  }
+areas:
+  {
+    centre: { x: -1212 y: -3945 }
     resources: "raw i"
     resources: "raw h"
   }
 areas:
   {
-    centre: { x: 1215 y: 975 }
-    resources: "raw a"
+    centre: { x: -3547 y: 505 }
+    resources: "raw d"
   }
 areas:
   {
-    centre: { x: 1195 y: 395 }
-    resources: "raw e"
+    centre: { x: -2107 y: -2415 }
+    resources: "raw h"
   }
 areas:
   {
-    centre: { x: 1075 y: -895 }
+    centre: { x: -4312 y: 1595 }
     resources: "raw b"
-    resources: "raw a"
   }
 areas:
   {
-    centre: { x: 1045 y: 2725 }
-    resources: "raw h"
-    resources: "raw g"
-  }
-areas:
-  {
-    centre: { x: 1045 y: 3825 }
-    resources: "raw h"
-    resources: "raw g"
-  }
-areas:
-  {
-    centre: { x: 1015 y: -1755 }
-    resources: "raw f"
-  }
-areas:
-  {
-    centre: { x: 635 y: -1495 }
-    resources: "raw h"
-    resources: "raw g"
-  }
-areas:
-  {
-    centre: { x: 615 y: 2095 }
-    resources: "raw h"
-    resources: "raw g"
-  }
-areas:
-  {
-    centre: { x: 525 y: -3155 }
-    resources: "raw f"
-  }
-areas:
-  {
-    centre: { x: 485 y: 2525 }
+    centre: { x: -2037 y: -3115 }
     resources: "raw i"
     resources: "raw h"
   }
 areas:
   {
-    centre: { x: 335 y: -1025 }
+    centre: { x: -5067 y: 2625 }
     resources: "raw f"
   }
 areas:
   {
-    centre: { x: 285 y: 1715 }
-    resources: "raw g"
-    resources: "raw f"
-  }
-areas:
-  {
-    centre: { x: 215 y: -3845 }
-    resources: "raw a"
-  }
-areas:
-  {
-    centre: { x: 155 y: -2585 }
+    centre: { x: -5527 y: 3425 }
     resources: "raw b"
     resources: "raw a"
   }
 areas:
   {
-    centre: { x: 95 y: 2985 }
-    resources: "raw g"
-    resources: "raw f"
+    centre: { x: -3737 y: -215 }
+    resources: "raw a"
   }
 areas:
   {
-    centre: { x: 55 y: -165 }
-    resources: "raw e"
-  }
-areas:
-  {
-    centre: { x: -235 y: -1995 }
+    centre: { x: -4477 y: 1005 }
     resources: "raw d"
-  }
-areas:
-  {
-    centre: { x: -295 y: -335 }
-    resources: "raw d"
-  }
-areas:
-  {
-    centre: { x: -365 y: -2925 }
-    resources: "raw a"
-  }
-areas:
-  {
-    centre: { x: -365 y: 125 }
-    resources: "raw c"
-  }
-areas:
-  {
-    centre: { x: -375 y: 1035 }
-    resources: "raw f"
-  }
-areas:
-  {
-    centre: { x: -505 y: -3295 }
-    resources: "raw d"
-  }
-areas:
-  {
-    centre: { x: -665 y: 3625 }
-    resources: "raw g"
-    resources: "raw f"
-  }
-areas:
-  {
-    centre: { x: -705 y: -2625 }
-    resources: "raw b"
-  }
-areas:
-  {
-    centre: { x: -705 y: -345 }
-    resources: "raw h"
-    resources: "raw g"
-  }
-areas:
-  {
-    centre: { x: -1005 y: -3975 }
-    resources: "raw d"
-  }
-areas:
-  {
-    centre: { x: -1195 y: -1595 }
-    resources: "raw b"
-    resources: "raw a"
-  }
-areas:
-  {
-    centre: { x: -1245 y: -2305 }
-    resources: "raw a"
-  }
-areas:
-  {
-    centre: { x: -1285 y: 25 }
-    resources: "raw f"
-  }
-areas:
-  {
-    centre: { x: -1405 y: -905 }
-    resources: "raw d"
-  }
-areas:
-  {
-    centre: { x: -1595 y: -3515 }
-    resources: "raw b"
-  }
-areas:
-  {
-    centre: { x: -1695 y: 2225 }
-    resources: "raw b"
-    resources: "raw a"
-  }
-areas:
-  {
-    centre: { x: -1705 y: 625 }
-    resources: "raw c"
-  }
-areas:
-  {
-    centre: { x: -1715 y: -2985 }
-    resources: "raw a"
-  }
-areas:
-  {
-    centre: { x: -1785 y: 3135 }
-    resources: "raw c"
-  }
-areas:
-  {
-    centre: { x: -1835 y: -1835 }
-    resources: "raw a"
-  }
-areas:
-  {
-    centre: { x: -1875 y: 1165 }
-    resources: "raw b"
-    resources: "raw a"
-  }
-areas:
-  {
-    centre: { x: -1945 y: -2445 }
-    resources: "raw a"
-  }
-areas:
-  {
-    centre: { x: -1965 y: 3945 }
-    resources: "raw a"
-  }
-areas:
-  {
-    centre: { x: -2095 y: 1755 }
-    resources: "raw a"
-  }
-areas:
-  {
-    centre: { x: -2145 y: -1115 }
-    resources: "raw b"
-    resources: "raw a"
-  }
-areas:
-  {
-    centre: { x: -2175 y: -455 }
-    resources: "raw f"
-  }
-areas:
-  {
-    centre: { x: -2275 y: -3175 }
-    resources: "raw d"
-  }
-areas:
-  {
-    centre: { x: -2355 y: 2785 }
-    resources: "raw b"
-  }
-areas:
-  {
-    centre: { x: -2355 y: 3205 }
-    resources: "raw a"
-  }
-areas:
-  {
-    centre: { x: -2555 y: 1105 }
-    resources: "raw a"
-  }
-areas:
-  {
-    centre: { x: -2625 y: -3755 }
-    resources: "raw f"
-  }
-areas:
-  {
-    centre: { x: -2625 y: 1755 }
-    resources: "raw a"
-  }
-areas:
-  {
-    centre: { x: -2645 y: -985 }
-    resources: "raw g"
-    resources: "raw f"
-  }
-areas:
-  {
-    centre: { x: -2665 y: 435 }
-    resources: "raw c"
-  }
-areas:
-  {
-    centre: { x: -2805 y: -205 }
-    resources: "raw a"
-  }
-areas:
-  {
-    centre: { x: -3025 y: 3145 }
-    resources: "raw c"
-  }
-areas:
-  {
-    centre: { x: -3165 y: 2345 }
-    resources: "raw b"
-  }
-areas:
-  {
-    centre: { x: -3195 y: 915 }
-    resources: "raw b"
-    resources: "raw a"
-  }
-areas:
-  {
-    centre: { x: -3285 y: 1735 }
-    resources: "raw a"
-  }
-areas:
-  {
-    centre: { x: -3425 y: -3815 }
-    resources: "raw b"
-  }
-areas:
-  {
-    centre: { x: -3605 y: 345 }
-    resources: "raw c"
-  }
-areas:
-  {
-    centre: { x: -3795 y: 2775 }
-    resources: "raw c"
-  }
-areas:
-  {
-    centre: { x: -3795 y: 3795 }
-    resources: "raw f"
-  }
-areas:
-  {
-    centre: { x: -3815 y: -2995 }
-    resources: "raw a"
-  }
-areas:
-  {
-    centre: { x: -3845 y: -2525 }
-    resources: "raw h"
-    resources: "raw g"
-  }
-areas:
-  {
-    centre: { x: -3865 y: -1185 }
-    resources: "raw f"
-  }
-areas:
-  {
-    centre: { x: -3885 y: -2115 }
-    resources: "raw g"
-    resources: "raw f"
   }
 
 }  # resource_dist

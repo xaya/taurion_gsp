@@ -25,14 +25,14 @@ in the unit tests.
 from pxtest import PXTest
 
 # Coordinate where there is no available resource.
-NOTHING = {"x": 1657, "y": -4064}
+NOTHING = {"x": -211, "y": -4064}
 
 # Coordinates with just one type of resource.
-ONLY_A = {"x": -2864, "y": -2174}
-ONLY_F = {"x": 1216, "y": -4064}
+ONLY_A = {"x": -3456, "y": -1215}
+ONLY_F = {"x": -876, "y": -2015}
 
 # Coordinate with "raw i" at max chance and "raw h" as well.
-I_AND_H = {"x": 2182, "y": 3477}
+I_AND_H = {"x": -2428, "y": -3124}
 
 
 class ProspectingResourcesTest (PXTest):
