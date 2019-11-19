@@ -312,12 +312,21 @@ TEST_F (PendingStateUpdaterTests, InvalidCreation)
 {
   accounts.CreateNew ("domob", Faction::RED);
 
+  accounts.CreateNew ("at limit", Faction::BLUE);
+  for (unsigned i = 0; i < ctx.Params ().CharacterLimit (); ++i)
+    characters.CreateNew ("at limit", Faction::BLUE);
+
   ProcessWithDevPayment ("domob", ctx.Params ().CharacterCost (), R"(
     {
       "nc": [{"faction": "r"}]
     }
   )");
   Process ("domob", R"(
+    {
+      "nc": [{}]
+    }
+  )");
+  ProcessWithDevPayment ("at limit", ctx.Params ().CharacterCost (), R"(
     {
       "nc": [{}]
     }

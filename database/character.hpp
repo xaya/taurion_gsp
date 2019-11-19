@@ -435,6 +435,11 @@ public:
    */
   void DecrementBusy ();
 
+  /**
+   * Returns the number of characters owned by the given account.
+   */
+  unsigned CountForOwner (const std::string& owner);
+
 };
 
 } // namespace pxd

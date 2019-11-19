@@ -122,7 +122,7 @@ PXLogic::UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
   FindCombatTargets (db, rnd);
 
 #ifdef ENABLE_SLOW_ASSERTS
-  ValidateStateSlow (db);
+  ValidateStateSlow (db, ctx);
 #endif // ENABLE_SLOW_ASSERTS
 }
 
@@ -239,13 +239,34 @@ ValidateCharacterFactions (Database& db)
     }
 }
 
+/**
+ * Verifies that each account has at most the maximum allowed number of
+ * characters in the database.
+ */
+void
+ValidateCharacterLimit (Database& db, const Context& ctx)
+{
+  CharacterTable characters(db);
+  AccountsTable accounts(db);
+
+  auto res = accounts.QueryInitialised ();
+  while (res.Step ())
+    {
+      auto a = accounts.GetFromResult (res);
+      CHECK_LE (characters.CountForOwner (a->GetName ()),
+                ctx.Params ().CharacterLimit ())
+          << "Account " << a->GetName () << " has too many characters";
+    }
+}
+
 } // anonymous namespace
 
 void
-PXLogic::ValidateStateSlow (Database& db)
+PXLogic::ValidateStateSlow (Database& db, const Context& ctx)
 {
   LOG (INFO) << "Performing slow validation of the game-state database...";
   ValidateCharacterFactions (db);
+  ValidateCharacterLimit (db, ctx);
 }
 
 } // namespace pxd

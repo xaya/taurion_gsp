@@ -149,7 +149,7 @@ protected:
   void
   ValidateState ()
   {
-    PXLogic::ValidateStateSlow (db);
+    PXLogic::ValidateStateSlow (db, ctx);
   }
 
 };
@@ -762,6 +762,22 @@ TEST_F (ValidateStateTests, CharacterFactions)
   accounts.CreateNew ("andy", Faction::RED);
   characters.GetById (id)->SetOwner ("andy");
   ValidateState ();
+}
+
+TEST_F (ValidateStateTests, CharacterLimit)
+{
+  accounts.CreateNew ("domob", Faction::RED);
+  accounts.CreateNew ("andy", Faction::GREEN);
+  for (unsigned i = 0; i < ctx.Params ().CharacterLimit (); ++i)
+    {
+      characters.CreateNew ("domob", Faction::RED);
+      characters.CreateNew ("andy", Faction::GREEN);
+    }
+
+  ValidateState ();
+
+  characters.CreateNew ("domob", Faction::RED);
+  EXPECT_DEATH (ValidateState (), "Account domob has too many");
 }
 
 /* ************************************************************************** */

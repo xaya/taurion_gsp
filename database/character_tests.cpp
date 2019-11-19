@@ -459,6 +459,21 @@ TEST_F (CharacterTableTests, DecrementBusy)
   EXPECT_EQ (tbl.GetById (id2)->GetBusy (), 9);
 }
 
+TEST_F (CharacterTableTests, CountForOwner)
+{
+  tbl.CreateNew ("domob", Faction::RED);
+  const auto id = tbl.CreateNew ("andy", Faction::RED)->GetId ();
+  tbl.CreateNew ("domob", Faction::RED);
+
+  EXPECT_EQ (tbl.CountForOwner ("domob"), 2);
+  EXPECT_EQ (tbl.CountForOwner ("andy"), 1);
+  EXPECT_EQ (tbl.CountForOwner ("foo"), 0);
+
+  tbl.DeleteById (id);
+  EXPECT_EQ (tbl.CountForOwner ("domob"), 2);
+  EXPECT_EQ (tbl.CountForOwner ("andy"), 0);
+}
+
 /* ************************************************************************** */
 
 } // anonymous namespace

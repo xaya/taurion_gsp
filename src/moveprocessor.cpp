@@ -109,6 +109,14 @@ BaseMoveProcessor::TryCharacterCreation (const std::string& name,
           return;
         }
 
+      if (characters.CountForOwner (name) >= ctx.Params ().CharacterLimit ())
+        {
+          LOG (WARNING)
+              << "Account " << name << " has the maximum number of characters"
+              << " already, can't create another one";
+          return;
+        }
+
       PerformCharacterCreation (name, faction);
       paidToDev -= ctx.Params ().CharacterCost ();
       VLOG (1) << "After character creation, paid to dev left: " << paidToDev;
@@ -420,6 +428,14 @@ MoveProcessor::MaybeTransferCharacter (Character& c, const Json::Value& upd)
   if (!sendToVal.isString ())
     return;
   const std::string sendTo = sendToVal.asString ();
+
+  if (characters.CountForOwner (sendTo) >= ctx.Params ().CharacterLimit ())
+    {
+      LOG (WARNING)
+          << "Account " << sendTo << " already has the maximum number of"
+          << " characters, can't receive character " << c.GetId ();
+      return;
+    }
 
   const auto a = accounts.GetByName (sendTo);
   if (a == nullptr)

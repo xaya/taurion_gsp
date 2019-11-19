@@ -109,7 +109,7 @@ private:
    * because it may really slow down syncing.  If an error is detected, then
    * this CHECK-fails the binary.
    */
-  static void ValidateStateSlow (Database& db);
+  static void ValidateStateSlow (Database& db, const Context& ctx);
 
   friend class PXLogicTests;
   friend class PXRpcServer;

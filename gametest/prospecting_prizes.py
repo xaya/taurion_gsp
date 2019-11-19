@@ -140,7 +140,7 @@ class ProspectingPrizesTest (PXTest):
 
     sendTo = {}
     regionIds = set ()
-    nextInd = 2
+    nextInd = 1
     for i in range (2):
       for j in range (10):
         pos = {"x": 20 * i, "y": 20 * j}
@@ -149,11 +149,12 @@ class ProspectingPrizesTest (PXTest):
         assert region.getId () not in regionIds
         regionIds.add (region.getId ())
 
-        self.createCharacters ("prize trier")
-        nm = "prize trier %d" % nextInd
-        nextInd += 1
+        nm = "prize numbers %d" % nextInd
+        self.initAccount (nm, "r")
+        self.createCharacters (nm)
+        self.generate (1)
         sendTo[nm] = pos
-    self.generate (1)
+        nextInd += 1
     self.moveCharactersTo (sendTo)
 
     chars = self.getCharacters ()

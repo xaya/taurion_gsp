@@ -340,6 +340,27 @@ TEST_F (CharacterCreationTests, Multiple)
   EXPECT_FALSE (res.Step ());
 }
 
+TEST_F (CharacterCreationTests, CharacterLimit)
+{
+  accounts.CreateNew ("domob", Faction::RED);
+  for (unsigned i = 0; i < ctx.Params ().CharacterLimit () - 1; ++i)
+    tbl.CreateNew ("domob", Faction::RED);
+
+  EXPECT_EQ (tbl.CountForOwner ("domob"), ctx.Params ().CharacterLimit () - 1);
+
+  ProcessWithDevPayment (R"([
+    {
+      "name": "domob",
+      "move":
+        {
+          "nc": [{}, {}]
+        }
+    }
+  ])", 2 * ctx.Params ().CharacterCost ());
+
+  EXPECT_EQ (tbl.CountForOwner ("domob"), ctx.Params ().CharacterLimit ());
+}
+
 /* ************************************************************************** */
 
 class CharacterUpdateTests : public MoveProcessorTests
@@ -522,6 +543,10 @@ TEST_F (CharacterUpdateTests, ValidTransfer)
 
 TEST_F (CharacterUpdateTests, InvalidTransfer)
 {
+  accounts.CreateNew ("at limit", Faction::RED);
+  for (unsigned i = 0; i < ctx.Params ().CharacterLimit (); ++i)
+    tbl.CreateNew ("at limit", Faction::RED);
+
   accounts.CreateNew ("wrong faction", Faction::GREEN);
 
   Process (R"([
@@ -536,6 +561,10 @@ TEST_F (CharacterUpdateTests, InvalidTransfer)
     {
       "name": "domob",
       "move": {"c": {"1": {"send": "wrong faction"}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"send": "at limit"}}}
     }
   ])");
 

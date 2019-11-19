@@ -402,4 +402,23 @@ CharacterTable::DecrementBusy ()
   stmt.Execute ();
 }
 
+unsigned
+CharacterTable::CountForOwner (const std::string& owner)
+{
+  auto stmt = db.Prepare (R"(
+    SELECT COUNT(*) AS `cnt`
+      FROM `characters`
+      WHERE `owner` = ?1
+      ORDER BY `id`
+  )");
+  stmt.Bind (1, owner);
+
+  auto res = stmt.Query<CountResult> ();
+  CHECK (res.Step ());
+  const unsigned count = res.Get<CountResult::cnt> ();
+  CHECK (!res.Step ());
+
+  return count;
+}
+
 } // namespace pxd

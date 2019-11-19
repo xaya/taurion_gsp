@@ -66,6 +66,9 @@ class Character (object):
 
     return "%d" % self.getId ()
 
+  def getOwner (self):
+    return self.data["owner"]
+
   def getPosition (self):
     return self.data["position"]
 
