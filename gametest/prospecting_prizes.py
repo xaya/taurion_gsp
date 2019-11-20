@@ -33,13 +33,17 @@ COMPETITION_OVER = 1600000000
 
 class ProspectingPrizesTest (PXTest):
 
-  def getCharacterPrizes (self, char):
+  def getPrizes (self, nm):
     """
-    Returns the prizes (if any) the character with the given "string name"
-    has won so far as a dictionary.
+    Returns the prizes (if any) the account with the given name as well as
+    its "first character" has won so far (based on what they have banked
+    and what the character has in its inventory).
     """
 
-    items = self.getCharacters ()[char].getFungibleInventory ()
+    char = self.getCharacters ()[nm].getFungibleInventory ()
+    acc = self.getAccounts ()[nm].getFungibleBanked ()
+    items = char + acc
+
     res = {}
     for item, amount in items.iteritems ():
       suffix = " prize"
@@ -84,7 +88,7 @@ class ProspectingPrizesTest (PXTest):
       prosp = self.getRegionAt (pos).data["prospection"]
       self.assertEqual (prosp["name"], "prize trier")
 
-      if "silver" in self.getCharacterPrizes ("prize trier"):
+      if "silver" in self.getPrizes ("prize trier"):
         stillNeedSilver = False
       else:
         stillNeedNoSilver = False
@@ -113,7 +117,7 @@ class ProspectingPrizesTest (PXTest):
 
       prosp = self.getRegionAt (pos).data["prospection"]
       self.assertEqual (prosp["name"], "prize trier")
-      self.assertEqual (self.getCharacterPrizes ("prize trier"), {})
+      self.assertEqual (self.getPrizes ("prize trier"), {})
 
       self.rpc.xaya.invalidateblock (blk)
 
@@ -125,7 +129,7 @@ class ProspectingPrizesTest (PXTest):
 
       prosp = self.getRegionAt (pos).data["prospection"]
       self.assertEqual (prosp["name"], "prize trier")
-      if self.getCharacterPrizes ("prize trier"):
+      if self.getPrizes ("prize trier"):
         stillNeedPrize = False
 
       self.rpc.xaya.invalidateblock (blk)
@@ -167,8 +171,8 @@ class ProspectingPrizesTest (PXTest):
       "silver": 0,
       "bronze": 0,
     }
-    for nm in self.getCharacters ():
-      thisPrizes = self.getCharacterPrizes (nm)
+    for nm in self.getAccounts ():
+      thisPrizes = self.getPrizes (nm)
       for prize, num in thisPrizes.iteritems ():
         prizesInRegions[prize] += num
 
