@@ -18,6 +18,7 @@
 
 #include "logic.hpp"
 
+#include "banking.hpp"
 #include "combat.hpp"
 #include "dynobstacles.hpp"
 #include "mining.hpp"
@@ -118,6 +119,8 @@ PXLogic::UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
 
   ProcessAllMining (db, rnd, ctx);
   ProcessAllMovement (db, dyn, ctx);
+
+  ProcessBanking (db, ctx);
 
   FindCombatTargets (db, rnd);
 
