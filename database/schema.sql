@@ -148,7 +148,13 @@ CREATE TABLE IF NOT EXISTS `accounts` (
   `kills` INTEGER NOT NULL,
 
   -- The fame of this account.
-  `fame` INTEGER NOT NULL
+  `fame` INTEGER NOT NULL,
+
+  -- Inventory of banked items (as serialised proto).
+  `banked` BLOB NOT NULL,
+
+  -- "Points" from banking complete sets of resources.
+  `banking_points` INTEGER NOT NULL
 
 );
 
