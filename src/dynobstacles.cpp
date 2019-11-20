@@ -27,7 +27,8 @@ DynObstacles::DynObstacles (Database& db)
   : red(false), green(false), blue(false)
 {
   CharacterTable tbl(db);
-  tbl.ProcessAllPositions ([this] (const HexCoord& pos, const Faction f)
+  tbl.ProcessAllPositions ([this] (const Database::IdT id, const HexCoord& pos,
+                                   const Faction f)
     {
       AddVehicle (pos, f);
     });

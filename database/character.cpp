@@ -336,7 +336,9 @@ namespace
 {
 
 struct PositionResult : public ResultWithFaction, public ResultWithCoord
-{};
+{
+  RESULT_COLUMN (int64_t, id, 1);
+};
 
 } // anonymous namespace
 
@@ -344,7 +346,7 @@ void
 CharacterTable::ProcessAllPositions (const PositionFcn& cb)
 {
   auto stmt = db.Prepare (R"(
-    SELECT `x`, `y`, `faction`
+    SELECT `id`, `x`, `y`, `faction`
       FROM `characters`
       ORDER BY `id`
   )");
@@ -352,9 +354,10 @@ CharacterTable::ProcessAllPositions (const PositionFcn& cb)
   auto res = stmt.Query<PositionResult> ();
   while (res.Step ())
     {
+      const Database::IdT id = res.Get<PositionResult::id> ();
       const HexCoord pos = GetCoordFromColumn (res);
       const Faction f = GetFactionFromColumn (res);
-      cb (pos, f);
+      cb (id, pos, f);
     }
 }
 

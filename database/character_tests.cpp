@@ -418,16 +418,38 @@ TEST_F (CharacterTableTests, ProcessAllPositions)
   tbl.CreateNew ("red", Faction::RED)->SetPosition (HexCoord (-1, -5));
   tbl.CreateNew ("blue", Faction::BLUE)->SetPosition (HexCoord (0, 0));
 
-  using Entry = std::pair<Faction, HexCoord>;
-  std::vector<Entry> entries;
-  tbl.ProcessAllPositions ([&entries] (const HexCoord& pos, const Faction f)
+  struct Entry
+  {
+
+    Database::IdT id;
+    Faction fact;
+    HexCoord pos;
+
+    Entry () = default;
+    Entry (const Entry&) = default;
+
+    Entry (const Database::IdT i, const Faction f, const HexCoord& p)
+      : id(i), fact(f), pos(p)
+    {}
+
+    bool
+    operator== (const Entry& o) const
     {
-      entries.emplace_back (f, pos);
+      return id == o.id && fact == o.fact && pos == o.pos;
+    }
+
+  };
+
+  std::vector<Entry> entries;
+  tbl.ProcessAllPositions ([&entries] (const Database::IdT id,
+                                       const HexCoord& pos, const Faction f)
+    {
+      entries.emplace_back (id, f, pos);
     });
 
-  EXPECT_THAT (entries, ElementsAre (Entry (Faction::RED, HexCoord (1, 5)),
-                                     Entry (Faction::RED, HexCoord (-1, -5)),
-                                     Entry (Faction::BLUE, HexCoord (0, 0))));
+  EXPECT_THAT (entries, ElementsAre (Entry (1, Faction::RED, HexCoord (1, 5)),
+                                     Entry (2, Faction::RED, HexCoord (-1, -5)),
+                                     Entry (3, Faction::BLUE, HexCoord (0, 0))));
 }
 
 TEST_F (CharacterTableTests, DeleteById)
