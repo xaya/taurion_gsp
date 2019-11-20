@@ -532,6 +532,31 @@ TEST_F (AccountJsonTests, KillsAndFame)
   })");
 }
 
+TEST_F (AccountJsonTests, BankingData)
+{
+  auto a = tbl.CreateNew ("foo", Faction::RED);
+  a->AddBankingPoints (42);
+  a->GetBanked ().AddFungibleCount ("raw i", 5);
+  a.reset ();
+
+  ExpectStateJson (R"({
+    "accounts":
+      [
+        {
+          "name": "foo",
+          "bankingpoints": 42,
+          "banked":
+            {
+              "fungible":
+                {
+                  "raw i": 5
+                }
+            }
+        }
+      ]
+  })");
+}
+
 /* ************************************************************************** */
 
 class GroundLootJsonTests : public GameStateJsonTests

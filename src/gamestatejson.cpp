@@ -298,6 +298,8 @@ template <>
   res["faction"] = FactionToString (a.GetFaction ());
   res["kills"] = IntToJson (a.GetKills ());
   res["fame"] = IntToJson (a.GetFame ());
+  res["banked"] = Convert (a.GetBanked ());
+  res["bankingpoints"] = IntToJson (a.GetBankingPoints ());
 
   return res;
 }
