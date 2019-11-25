@@ -56,6 +56,18 @@ class GodModeTest (PXTest):
     hp = self.getCharacters ()["domob"].data["combat"]["hp"]
     self.assertEqual (hp["current"], {"armour": 32, "shield": 15})
     self.assertEqual (hp["max"], {"armour": 100, "shield": 90})
+
+    self.mainLogger.info ("Testing drop loot...")
+    self.dropLoot ({"x": 1, "y": 2}, {"foo": 1, "bar": 2})
+    self.assertEqual (self.getRpc ("getgroundloot"), [
+      {
+        "position": {"x": 1, "y": 2},
+        "inventory":
+          {
+            "fungible": {"bar": 2, "foo": 1},
+          },
+      },
+    ])
     
 
 if __name__ == "__main__":
