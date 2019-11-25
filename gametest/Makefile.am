@@ -3,6 +3,7 @@ TEST_LIBRARY = \
 
 REGTESTS = \
   accounts.py \
+  banking.py \
   character_limit.py \
   characters.py \
   combat_damage.py \
