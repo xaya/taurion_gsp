@@ -62,9 +62,9 @@ class FameTest (PXTest):
     self.generate (1)
     self.moveCharactersTo ({
       "blue": {"x": 0, "y": 0},
-      "red": {"x": 10, "y": 0},
-      "red 2": {"x": 0, "y": 10},
-      "green": {"x": -10, "y": 0},
+      "red": {"x": 5, "y": 0},
+      "red 2": {"x": 0, "y": 5},
+      "green": {"x": -5, "y": 0},
     })
     self.setCharactersHP ({
       "blue": {"a": 1, "s": 0},
