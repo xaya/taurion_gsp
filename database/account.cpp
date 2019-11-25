@@ -23,7 +23,7 @@ namespace pxd
 
 Account::Account (Database& d, const std::string& n, const Faction f)
   : db(d), name(n), faction(f),
-    kills(0), fame(100),
+    kills(0), fame(100), bankingPoints(0),
     dirty(true)
 {
   VLOG (1) << "Created instance for newly initialised account " << name;
@@ -36,13 +36,15 @@ Account::Account (Database& d, const Database::Result<AccountResult>& res)
   faction = GetFactionFromColumn (res);
   kills = res.Get<AccountResult::kills> ();
   fame = res.Get<AccountResult::fame> ();
+  banked = res.GetProto<AccountResult::banked> ();
+  bankingPoints = res.Get<AccountResult::banking_points> ();
 
   VLOG (1) << "Created account instance for " << name << " from database";
 }
 
 Account::~Account ()
 {
-  if (!dirty)
+  if (!dirty && !banked.IsDirty ())
     {
       VLOG (1) << "Account instance " << name << " is not dirty";
       return;
@@ -51,14 +53,16 @@ Account::~Account ()
   VLOG (1) << "Updating account " << name << " in the database";
   auto stmt = db.Prepare (R"(
     INSERT OR REPLACE INTO `accounts`
-      (`name`, `faction`, `kills`, `fame`)
-      VALUES (?1, ?2, ?3, ?4)
+      (`name`, `faction`, `kills`, `fame`, `banked`, `banking_points`)
+      VALUES (?1, ?2, ?3, ?4, ?5, ?6)
   )");
 
   stmt.Bind (1, name);
   BindFactionParameter (stmt, 2, faction);
   stmt.Bind (3, kills);
   stmt.Bind (4, fame);
+  stmt.BindProto (5, banked.GetProtoForBinding ());
+  stmt.Bind (6, bankingPoints);
 
   stmt.Execute ();
 }

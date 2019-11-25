@@ -342,7 +342,8 @@ public:
   using Handle = std::unique_ptr<Character>;
 
   /** Callback function for processing positions and factions of characters.  */
-  using PositionFcn = std::function<void (const HexCoord& pos, Faction f)>;
+  using PositionFcn
+      = std::function<void (Database::IdT id, const HexCoord& pos, Faction f)>;
 
   explicit CharacterTable (Database& d)
     : db(d)

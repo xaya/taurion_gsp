@@ -16,22 +16,22 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "dynobstacles.hpp"
+#ifndef PXD_BANKING_TESTS_HPP
+#define PXD_BANKING_TESTS_HPP
 
-#include "database/character.hpp"
+#include "banking.hpp"
+
+#include "hexagonal/coord.hpp"
 
 namespace pxd
 {
 
-DynObstacles::DynObstacles (Database& db)
-  : red(false), green(false), blue(false)
-{
-  CharacterTable tbl(db);
-  tbl.ProcessAllPositions ([this] (const Database::IdT id, const HexCoord& pos,
-                                   const Faction f)
-    {
-      AddVehicle (pos, f);
-    });
-}
+/** A coordinate that is a banking area.  */
+extern const HexCoord BANKING_POS;
+
+/** A coordinate next to it but not a banking area itself.  */
+extern const HexCoord NO_BANKING_POS;
 
 } // namespace pxd
+
+#endif // PXD_BANKING_TESTS_HPP

@@ -23,10 +23,12 @@
 
 #include "hexagonal/coord.hpp"
 #include "database/faction.hpp"
+#include "database/inventory.hpp"
 #include "proto/character.pb.h"
 
 #include <xayagame/gamelogic.hpp>
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -67,6 +69,12 @@ public:
     unsigned probability;
 
   };
+
+  /**
+   * Raw data representing the amounts of each resource needed to complete
+   * a "banking set".
+   */
+  using BankingSetData = std::unordered_map<std::string, Inventory::QuantityT>;
 
   /**
    * Constructs an instance based on the given situation.
@@ -133,6 +141,16 @@ public:
    * demo competition.
    */
   const std::vector<PrizeData>& ProspectingPrizes () const;
+
+  /**
+   * Returns true if the given location is a banking area.
+   */
+  bool IsBankingArea (const HexCoord& pos) const;
+
+  /**
+   * Returns the data about our banking set.
+   */
+  const BankingSetData& BankingSet () const;
 
   /**
    * Returns the spawn centre and radius for the given faction.

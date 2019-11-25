@@ -136,6 +136,43 @@ Params::ProspectingPrizes () const
     }
 }
 
+bool
+Params::IsBankingArea (const HexCoord& pos) const
+{
+  static const HexCoord centres[] =
+    {
+      HexCoord (-125, 810),
+      HexCoord (-1'301, 902),
+      HexCoord (-637, -291),
+    };
+  static constexpr HexCoord::IntT maxDist = 50;
+
+  for (const auto& c : centres)
+    if (HexCoord::DistanceL1 (pos, c) <= maxDist)
+      return true;
+
+  return false;
+}
+
+const Params::BankingSetData&
+Params::BankingSet () const
+{
+  static const BankingSetData data =
+    {
+      {"raw a", 200},
+      {"raw b", 200},
+      {"raw c", 200},
+      {"raw d", 200},
+      {"raw e", 200},
+      {"raw f", 200},
+      {"raw g", 200},
+      {"raw h", 200},
+      {"raw i", 200},
+    };
+
+  return data;
+}
+
 HexCoord
 Params::SpawnArea (const Faction f, HexCoord::IntT& radius) const
 {

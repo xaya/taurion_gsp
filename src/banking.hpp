@@ -16,22 +16,23 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "dynobstacles.hpp"
+#ifndef PXD_BANKING_HPP
+#define PXD_BANKING_HPP
 
-#include "database/character.hpp"
+#include "context.hpp"
+
+#include "database/database.hpp"
 
 namespace pxd
 {
 
-DynObstacles::DynObstacles (Database& db)
-  : red(false), green(false), blue(false)
-{
-  CharacterTable tbl(db);
-  tbl.ProcessAllPositions ([this] (const Database::IdT id, const HexCoord& pos,
-                                   const Faction f)
-    {
-      AddVehicle (pos, f);
-    });
-}
+/**
+ * Processes all updates due to banking.  In other words, bankings the inventory
+ * of all characters inside a banking area, and also updates their "points"
+ * for completed resource sets.
+ */
+void ProcessBanking (Database& db, const Context& ctx);
 
 } // namespace pxd
+
+#endif // PXD_BANKING_HPP

@@ -16,6 +16,7 @@
 
 from xayagametest.testcase import XayaGameTest
 
+import collections
 import os
 import os.path
 
@@ -84,7 +85,7 @@ class Character (object):
     return None
 
   def getFungibleInventory (self):
-    return self.data["inventory"]["fungible"]
+    return collections.Counter (self.data["inventory"]["fungible"])
 
   def sendMove (self, mv):
     """
@@ -118,6 +119,9 @@ class Account (object):
 
   def getFaction (self):
     return self.data["faction"]
+
+  def getFungibleBanked (self):
+    return collections.Counter (self.data["banked"]["fungible"])
 
 
 class Region (object):
