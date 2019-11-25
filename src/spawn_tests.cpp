@@ -97,7 +97,26 @@ TEST_F (SpawnTests, DataInitialised)
   ASSERT_EQ (c->GetOwner (), "domob");
 
   EXPECT_TRUE (c->GetProto ().has_combat_data ());
-  EXPECT_EQ (c->GetProto ().combat_data ().attacks_size (), 2);
+  EXPECT_FALSE (c->GetProto ().combat_data ().attacks ().empty ());
+}
+
+TEST_F (SpawnTests, PerFactionStats)
+{
+  const auto idRed = Spawn ("red", Faction::RED)->GetId ();
+  const auto idGreen = Spawn ("green", Faction::GREEN)->GetId ();
+  const auto idBlue = Spawn ("blue", Faction::BLUE)->GetId ();
+
+  auto c = tbl.GetById (idRed);
+  ASSERT_EQ (c->GetFaction (), Faction::RED);
+  EXPECT_EQ (c->GetProto ().speed (), 2'100);
+
+  c = tbl.GetById (idGreen);
+  ASSERT_EQ (c->GetFaction (), Faction::GREEN);
+  EXPECT_EQ (c->GetProto ().speed (), 2'000);
+
+  c = tbl.GetById (idBlue);
+  ASSERT_EQ (c->GetFaction (), Faction::BLUE);
+  EXPECT_EQ (c->GetProto ().speed (), 2'200);
 }
 
 class SpawnLocationTests : public SpawnTests
