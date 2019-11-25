@@ -95,7 +95,7 @@ class CombatTargetTest (PXTest):
     self.mainLogger.info ("Testing target selection when moving into range...")
     c = self.getCharacters ()["red"]
     self.moveCharactersTo ({
-      "red": offsetCoord ({"x": 13, "y": 0}, self.offset, False),
+      "red": offsetCoord ({"x": 12, "y": 0}, self.offset, False),
     })
     assert self.getTargetCharacter ("green") is None
     # Note that we can move a directly to the offset coordinate (where also

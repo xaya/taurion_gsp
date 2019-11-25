@@ -158,31 +158,64 @@ Params::SpawnArea (const Faction f, HexCoord::IntT& radius) const
 }
 
 void
-Params::InitCharacterStats (proto::RegenData& regen, proto::Character& pb) const
+Params::InitCharacterStats (const Faction f,
+                            proto::RegenData& regen, proto::Character& pb) const
 {
-  pb.set_speed (3000);
-  pb.set_cargo_space (20);
-
   auto* miningRate = pb.mutable_mining ()->mutable_rate ();
   miningRate->set_min (0);
   miningRate->set_max (5);
 
   auto* cd = pb.mutable_combat_data ();
-  auto* attack = cd->add_attacks ();
-  attack->set_range (10);
-  attack->set_min_damage (1);
-  attack->set_max_damage (20);
-
-  attack = cd->add_attacks ();
-  attack->set_range (1);
-  attack->set_area (true);
-  attack->set_min_damage (5);
-  attack->set_max_damage (30);
+  proto::Attack* attack;
 
   auto* maxHP = regen.mutable_max_hp ();
-  maxHP->set_armour (100);
   maxHP->set_shield (30);
-  regen.set_shield_regeneration_mhp (500);
+
+  switch (f)
+    {
+    case Faction::RED:
+      pb.set_speed (2'100);
+      pb.set_cargo_space (20);
+
+      maxHP->set_armour (75);
+      regen.set_shield_regeneration_mhp (500);
+
+      attack = cd->add_attacks ();
+      attack->set_range (7);
+      attack->set_area (true);
+      attack->set_min_damage (1);
+      attack->set_max_damage (20);
+      break;
+
+    case Faction::BLUE:
+      pb.set_speed (2'200);
+      pb.set_cargo_space (20);
+
+      maxHP->set_armour (50);
+      regen.set_shield_regeneration_mhp (1'000);
+
+      attack = cd->add_attacks ();
+      attack->set_range (10);
+      attack->set_min_damage (1);
+      attack->set_max_damage (12);
+      break;
+
+    case Faction::GREEN:
+      pb.set_speed (2'000);
+      pb.set_cargo_space (30);
+
+      maxHP->set_armour (150);
+      regen.set_shield_regeneration_mhp (200);
+
+      attack = cd->add_attacks ();
+      attack->set_range (10);
+      attack->set_min_damage (1);
+      attack->set_max_damage (20);
+      break;
+
+    default:
+      LOG (FATAL) << "Invalid faction: " << static_cast<int> (f);
+    }
 }
 
 bool

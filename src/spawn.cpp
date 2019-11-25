@@ -125,7 +125,7 @@ SpawnCharacter (const std::string& owner, const Faction f,
 
   auto& regen = c->MutableRegenData ();
   auto& pb = c->MutableProto ();
-  ctx.Params ().InitCharacterStats (regen, pb);
+  ctx.Params ().InitCharacterStats (f, regen, pb);
   c->MutableHP () = regen.max_hp ();
 
   return c;

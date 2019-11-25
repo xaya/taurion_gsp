@@ -95,7 +95,7 @@ class MovementTest (PXTest):
     self.collectPremine ()
 
     self.mainLogger.info ("Creating test character...")
-    self.initAccount ("domob", "r")
+    self.initAccount ("domob", "g")
     self.createCharacters ("domob")
     self.generate (1)
 
@@ -106,18 +106,18 @@ class MovementTest (PXTest):
 
     self.mainLogger.info ("Setting basic path for character...")
     wp = [
-      {"x": 12, "y": 0},
-      {"x": 3, "y": 3},
-      {"x": 3, "y": 3},
+      {"x": 6, "y": 0},
+      {"x": 2, "y": 2},
+      {"x": 2, "y": 2},
       {"x": 0, "y": 0},
-      {"x": -9, "y": -6},
-      {"x": -9, "y": -6},
+      {"x": -6, "y": -4},
+      {"x": -6, "y": -4},
     ]
     self.setWaypoints ("domob", wp)
     self.generate (1)
     pos, mv = self.getMovement ("domob")
     self.assertEqual (mv["partialstep"], 0)
-    self.assertEqual (pos, {"x": 3, "y": 0})
+    self.assertEqual (pos, {"x": 2, "y": 0})
     self.reorgBlock = self.rpc.xaya.getbestblockhash ()
 
     self.mainLogger.info ("Finishing the movement...")
@@ -165,13 +165,13 @@ class MovementTest (PXTest):
     self.assertEqual (pos, {"x": 10, "y": 0})
     self.assertEqual (mv["chosenspeed"], 1000)
 
-    # Adjust the speed to be higher than the natural speed of 3000,
+    # Adjust the speed to be higher than the natural speed of 2'000,
     # and expect movement with the natural speed.
     c = self.getCharacters ()["domob"]
     c.sendMove ({"speed": 10000})
     self.generate (10)
     pos, mv = self.getMovement ("domob")
-    self.assertEqual (pos, {"x": 40, "y": 0})
+    self.assertEqual (pos, {"x": 30, "y": 0})
     self.assertEqual (mv["chosenspeed"], 10000)
 
     # Sending another movement in-between without speed will revert it to
@@ -180,7 +180,7 @@ class MovementTest (PXTest):
     c.sendMove ({"wp": wp, "speed": 1000})
     self.generate (10)
     pos, _ = self.getMovement ("domob")
-    self.assertEqual (pos, {"x": 50, "y": 0})
+    self.assertEqual (pos, {"x": 40, "y": 0})
     self.setWaypoints ("domob", [{"x": 0, "y": 0}])
     self.generate (10)
     pos, mv = self.getMovement ("domob")
@@ -200,7 +200,7 @@ class MovementTest (PXTest):
     self.setWaypoints ("domob", [{"x": 0, "y": 0}])
     self.generate (10)
     pos, mv = self.getMovement ("domob")
-    self.assertEqual (pos, {"x": 70, "y": 0})
+    self.assertEqual (pos, {"x": 80, "y": 0})
     assert "chosenspeed" not in mv
 
     # Stop the character to avoid confusing later tests.
@@ -215,7 +215,7 @@ class MovementTest (PXTest):
 
     self.mainLogger.info ("Testing blocking the path...")
 
-    self.initAccount ("blocker", "r")
+    self.initAccount ("blocker", "g")
     self.createCharacters ("blocker")
     self.generate (1)
 
@@ -228,7 +228,7 @@ class MovementTest (PXTest):
     self.setWaypoints ("domob", [{"x": 0, "y": 0}])
     self.generate (3)
     self.setWaypoints ("blocker", [{"x": 50, "y": 0}])
-    self.generate (5)
+    self.generate (10)
 
     # The character should be blocked by the obstacle.
     pos, mv = self.getMovement ("domob")
