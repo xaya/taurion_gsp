@@ -158,7 +158,8 @@ Params::SpawnArea (const Faction f, HexCoord::IntT& radius) const
 }
 
 void
-Params::InitCharacterStats (proto::RegenData& regen, proto::Character& pb) const
+Params::InitCharacterStats (const Faction f,
+                            proto::RegenData& regen, proto::Character& pb) const
 {
   pb.set_speed (3000);
   pb.set_cargo_space (20);
