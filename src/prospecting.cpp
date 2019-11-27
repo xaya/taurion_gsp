@@ -117,12 +117,6 @@ FinishProspecting (Character& c, Database& db, RegionsTable& regions,
   prosp->set_resource (type);
   r->SetResourceLeft (amount);
 
-  if (ctx.Timestamp () > ctx.Params ().CompetitionEndTime ())
-    {
-      LOG (INFO) << "Competition is over, no prizes can be found";
-      return;
-    }
-
   if (!ctx.Params ().CanWinPrizesAt (pos))
     {
       LOG (INFO) << "No prizes can be won at " << pos;

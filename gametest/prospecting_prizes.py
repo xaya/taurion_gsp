@@ -22,14 +22,6 @@ Tests distribution of prizes for prospecting.
 
 from pxtest import PXTest
 
-# Timestamps when the competition is still active and when it is
-# already over.  Note that for some reason we cannot be exact to the
-# second here, since the mined block timestamps not always match the
-# mocktime exactly.  We verify the correct behaviour with respect to the
-# timestamp in unit tests, though.
-COMPETITION_RUNNING = 1500000000
-COMPETITION_OVER = 1600000000
-
 # Positions where prizes can be won and cannot be won.
 POS_WITH_PRIZES = {"x": 3000, "y": 0}
 POS_NO_PRIZES = {"x": 1000, "y": 500}
@@ -63,11 +55,6 @@ class ProspectingPrizesTest (PXTest):
     return res
 
   def run (self):
-    # Mine a couple of blocks to get a meaningful median time
-    # that is before the times we'll use in testing.
-    self.rpc.xaya.setmocktime (COMPETITION_RUNNING)
-    self.generate (10)
-
     self.collectPremine ()
 
     # First test:  Try and retry (with a reorg) prospecting in the
@@ -105,43 +92,8 @@ class ProspectingPrizesTest (PXTest):
     assert blk is not None
     blkOldTime = blk
 
-    # Test the impact of the block time onto received prizes.  After
-    # the competition is over, no prizes should be found anymore.  It
-    # is possible to have a "beyond" block and then an earlier block with
-    # prizes, though.  Thus we mine the block before prospecting ends
-    # always after the competition.
-    self.mainLogger.info ("Testing time and prizes...")
-
-    self.rpc.xaya.setmocktime (COMPETITION_OVER)
-    self.generate (1)
-
-    # There's a 12% chance that we will simply not find a silver prize
-    # (with 10% chance) in 20 trials even if we could, but we are fine
-    # with that.
-    for _ in range (20):
-      self.generate (1)
-      blk = self.rpc.xaya.getbestblockhash ()
-
-      prosp = self.getRegionAt (POS_WITH_PRIZES).data["prospection"]
-      self.assertEqual (prosp["name"], "prize trier")
-      self.assertEqual (self.getPrizes ("prize trier"), {})
-
-      self.rpc.xaya.invalidateblock (blk)
-
-    self.rpc.xaya.setmocktime (COMPETITION_RUNNING)
-    stillNeedPrize = True
-    while stillNeedPrize:
-      self.generate (1)
-      blk = self.rpc.xaya.getbestblockhash ()
-
-      prosp = self.getRegionAt (POS_WITH_PRIZES).data["prospection"]
-      self.assertEqual (prosp["name"], "prize trier")
-      if self.getPrizes ("prize trier"):
-        stillNeedPrize = False
-
-      self.rpc.xaya.invalidateblock (blk)
-
     self.mainLogger.info ("No prizes in centre...")
+    self.generate (1)
     for _ in range (20):
       self.generate (1)
       blk = self.rpc.xaya.getbestblockhash ()

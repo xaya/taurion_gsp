@@ -34,11 +34,6 @@ namespace pxd
 namespace
 {
 
-/** Timestamp before the competition end.  */
-constexpr int64_t TIME_IN_COMPETITION = 1571148000;
-/** Timestamp after the competition end.  */
-constexpr int64_t TIME_AFTER_COMPETITION = TIME_IN_COMPETITION + 1;
-
 /** Position where prizes can be won.  */
 const HexCoord POS_WITH_PRIZES(3'000, 0);
 /** Positions where prizes cannot be won.  */
@@ -131,7 +126,6 @@ protected:
   FinishProspectingTests ()
     : characters(db), regions(db)
   {
-    ctx.SetTimestamp (TIME_IN_COMPETITION);
     ctx.SetChain (xaya::Chain::REGTEST);
     InitialisePrizes (db, ctx.Params ());
 
@@ -270,21 +264,6 @@ TEST_F (FinishProspectingTests, Prizes)
   EXPECT_GE (foundMap["silver"], 50);
   EXPECT_LE (foundMap["silver"], 150);
   EXPECT_EQ (foundMap["bronze"], 1);
-}
-
-TEST_F (FinishProspectingTests, NoPrizesAfterEnd)
-{
-  constexpr unsigned trials = 1'000;
-
-  ctx.SetTimestamp (TIME_AFTER_COMPETITION);
-  const auto id = characters.CreateNew ("domob", Faction::RED)->GetId ();
-
-  for (unsigned i = 0; i < trials; ++i)
-    ProspectAndClear (characters.GetById (id), POS_WITH_PRIZES);
-
-  Prizes prizeTable(db);
-  for (const auto& p : ctx.Params ().ProspectingPrizes ())
-    EXPECT_EQ (prizeTable.GetFound (p.name), 0);
 }
 
 TEST_F (FinishProspectingTests, NoPrizesInCentre)

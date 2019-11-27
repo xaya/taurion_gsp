@@ -132,11 +132,6 @@ public:
   unsigned ProspectionExpiryBlocks () const;
 
   /**
-   * UNIX timestamp of the end time when prospecting prizes are given out.
-   */
-  int64_t CompetitionEndTime () const;
-
-  /**
    * Returns the ordered list of available prizes for prospecting in the
    * demo competition.
    */
