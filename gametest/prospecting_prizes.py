@@ -30,6 +30,10 @@ from pxtest import PXTest
 COMPETITION_RUNNING = 1500000000
 COMPETITION_OVER = 1600000000
 
+# Positions where prizes can be won and cannot be won.
+POS_WITH_PRIZES = {"x": 3000, "y": 0}
+POS_NO_PRIZES = {"x": 1000, "y": 500}
+
 
 class ProspectingPrizesTest (PXTest):
 
@@ -71,21 +75,24 @@ class ProspectingPrizesTest (PXTest):
     self.mainLogger.info ("Testing randomisation of prizes...")
 
     self.initAccount ("prize trier", "r")
-    c = self.createCharacters ("prize trier")
+    self.initAccount ("prize trier centre", "r")
+    self.createCharacters ("prize trier")
+    self.createCharacters ("prize trier centre")
     self.generate (1)
-    pos = {"x": -1000, "y": 1000}
-    self.moveCharactersTo ({"prize trier": pos})
+    self.moveCharactersTo ({"prize trier": POS_WITH_PRIZES})
+    self.moveCharactersTo ({"prize trier centre": POS_NO_PRIZES})
     stillNeedNoSilver = True
     stillNeedSilver = True
     blk = None
     self.getCharacters ()["prize trier"].sendMove ({"prospect": {}})
+    self.getCharacters ()["prize trier centre"].sendMove ({"prospect": {}})
     self.generate (9)
     while stillNeedNoSilver or stillNeedSilver:
       self.generate (1)
       blk = self.rpc.xaya.getbestblockhash ()
       self.generate (1)
 
-      prosp = self.getRegionAt (pos).data["prospection"]
+      prosp = self.getRegionAt (POS_WITH_PRIZES).data["prospection"]
       self.assertEqual (prosp["name"], "prize trier")
 
       if "silver" in self.getPrizes ("prize trier"):
@@ -115,7 +122,7 @@ class ProspectingPrizesTest (PXTest):
       self.generate (1)
       blk = self.rpc.xaya.getbestblockhash ()
 
-      prosp = self.getRegionAt (pos).data["prospection"]
+      prosp = self.getRegionAt (POS_WITH_PRIZES).data["prospection"]
       self.assertEqual (prosp["name"], "prize trier")
       self.assertEqual (self.getPrizes ("prize trier"), {})
 
@@ -127,10 +134,21 @@ class ProspectingPrizesTest (PXTest):
       self.generate (1)
       blk = self.rpc.xaya.getbestblockhash ()
 
-      prosp = self.getRegionAt (pos).data["prospection"]
+      prosp = self.getRegionAt (POS_WITH_PRIZES).data["prospection"]
       self.assertEqual (prosp["name"], "prize trier")
       if self.getPrizes ("prize trier"):
         stillNeedPrize = False
+
+      self.rpc.xaya.invalidateblock (blk)
+
+    self.mainLogger.info ("No prizes in centre...")
+    for _ in range (20):
+      self.generate (1)
+      blk = self.rpc.xaya.getbestblockhash ()
+
+      prosp = self.getRegionAt (POS_NO_PRIZES).data["prospection"]
+      self.assertEqual (prosp["name"], "prize trier centre")
+      self.assertEqual (self.getPrizes ("prize trier centre"), {})
 
       self.rpc.xaya.invalidateblock (blk)
 
@@ -147,7 +165,7 @@ class ProspectingPrizesTest (PXTest):
     nextInd = 1
     for i in range (2):
       for j in range (10):
-        pos = {"x": 20 * i, "y": 20 * j}
+        pos = {"x": (-1)**i * 2500, "y": 20 * j}
         region = self.getRegionAt (pos)
         assert "prospection" not in region.data
         assert region.getId () not in regionIds

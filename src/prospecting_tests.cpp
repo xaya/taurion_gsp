@@ -39,6 +39,11 @@ constexpr int64_t TIME_IN_COMPETITION = 1571148000;
 /** Timestamp after the competition end.  */
 constexpr int64_t TIME_AFTER_COMPETITION = TIME_IN_COMPETITION + 1;
 
+/** Position where prizes can be won.  */
+const HexCoord POS_WITH_PRIZES(3'000, 0);
+/** Positions where prizes cannot be won.  */
+const HexCoord POS_NO_PRIZES(1'000, 500);
+
 /* ************************************************************************** */
 
 class CanProspectRegionTests : public DBTestWithSchema
@@ -166,6 +171,21 @@ protected:
     return region;
   }
 
+  /**
+   * Prospects with the given character on the given location and afterwards
+   * clears the region prospection again.  This is useful for testing prizes
+   * (which will remain in the character inventory afterwards).
+   */
+  void
+  ProspectAndClear (CharacterTable::Handle c, const HexCoord& pos)
+  {
+    const auto regionId = Prospect (std::move (c), pos);
+
+    auto r = regions.GetById (regionId);
+    ASSERT_TRUE (r->GetProto ().has_prospection ());
+    r->MutableProto ().clear_prospection ();
+  }
+
 };
 
 TEST_F (FinishProspectingTests, Basic)
@@ -214,44 +234,27 @@ TEST_F (FinishProspectingTests, Resources)
 
 TEST_F (FinishProspectingTests, Prizes)
 {
-  constexpr unsigned trials = 1000;
-  constexpr unsigned perRow = 10;
+  constexpr unsigned trials = 1'000;
 
-  std::set<RegionMap::IdT> regionIds;
-  for (unsigned i = 0; i < trials; i += perRow)
-    {
-      const HexCoord::IntT x = 2 * i;
-      for (unsigned j = 0; j < perRow; ++j)
-        {
-          const HexCoord pos(x, 20 * j);
-          auto c = characters.CreateNew ("domob", Faction::RED);
-          const auto region = Prospect (std::move (c), pos);
-          const auto res = regionIds.insert (region);
-          ASSERT_TRUE (res.second);
-        }
-    }
+  ASSERT_TRUE (ctx.Params ().CanWinPrizesAt (POS_WITH_PRIZES));
+  ASSERT_TRUE (ctx.Map ().IsPassable (POS_WITH_PRIZES));
 
-  ASSERT_EQ (regionIds.size (), trials);
-  for (const auto id : regionIds)
-    {
-      auto r = regions.GetById (id);
-      ASSERT_TRUE (r->GetProto ().has_prospection ());
-    }
+  const auto id = characters.CreateNew ("domob", Faction::RED)->GetId ();
+
+  for (unsigned i = 0; i < trials; ++i)
+    ProspectAndClear (characters.GetById (id), POS_WITH_PRIZES);
 
   std::map<std::string, unsigned> foundMap;
-  auto res = characters.QueryAll ();
-  while (res.Step ())
+  auto c = characters.GetById (id);
+  for (const auto& item : c->GetInventory ().GetFungible ())
     {
-      auto c = characters.GetFromResult (res);
-      for (const auto& item : c->GetInventory ().GetFungible ())
-        {
-          constexpr const char* suffix = " prize";
-          const auto ind = item.first.find (suffix);
-          if (ind == std::string::npos)
-            continue;
-          foundMap[item.first.substr (0, ind)] += item.second;
-        }
+      constexpr const char* suffix = " prize";
+      const auto ind = item.first.find (suffix);
+      if (ind == std::string::npos)
+        continue;
+      foundMap[item.first.substr (0, ind)] += item.second;
     }
+  c.reset ();
 
   Prizes prizeTable(db);
   for (const auto& p : ctx.Params ().ProspectingPrizes ())
@@ -271,21 +274,30 @@ TEST_F (FinishProspectingTests, Prizes)
 
 TEST_F (FinishProspectingTests, NoPrizesAfterEnd)
 {
-  constexpr unsigned trials = 1000;
-  constexpr unsigned perRow = 10;
+  constexpr unsigned trials = 1'000;
 
   ctx.SetTimestamp (TIME_AFTER_COMPETITION);
+  const auto id = characters.CreateNew ("domob", Faction::RED)->GetId ();
 
-  for (unsigned i = 0; i < trials; i += perRow)
-    {
-      const HexCoord::IntT x = 2 * i;
-      for (unsigned j = 0; j < perRow; ++j)
-        {
-          const HexCoord pos(x, 20 * j);
-          auto c = characters.CreateNew ("domob", Faction::RED);
-          Prospect (std::move (c), pos);
-        }
-    }
+  for (unsigned i = 0; i < trials; ++i)
+    ProspectAndClear (characters.GetById (id), POS_WITH_PRIZES);
+
+  Prizes prizeTable(db);
+  for (const auto& p : ctx.Params ().ProspectingPrizes ())
+    EXPECT_EQ (prizeTable.GetFound (p.name), 0);
+}
+
+TEST_F (FinishProspectingTests, NoPrizesInCentre)
+{
+  constexpr unsigned trials = 1'000;
+
+  ASSERT_FALSE (ctx.Params ().CanWinPrizesAt (POS_NO_PRIZES));
+  ASSERT_TRUE (ctx.Map ().IsPassable (POS_NO_PRIZES));
+
+  const auto id = characters.CreateNew ("domob", Faction::RED)->GetId ();
+
+  for (unsigned i = 0; i < trials; ++i)
+    ProspectAndClear (characters.GetById (id), POS_NO_PRIZES);
 
   Prizes prizeTable(db);
   for (const auto& p : ctx.Params ().ProspectingPrizes ())

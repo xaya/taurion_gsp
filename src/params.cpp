@@ -137,6 +137,14 @@ Params::ProspectingPrizes () const
 }
 
 bool
+Params::CanWinPrizesAt (const HexCoord& pos) const
+{
+  const HexCoord noPrizeCentre(58, -256);
+  constexpr HexCoord::IntT noPrizeRadius = 2'100;
+  return HexCoord::DistanceL1 (pos, noPrizeCentre) > noPrizeRadius;
+}
+
+bool
 Params::IsBankingArea (const HexCoord& pos) const
 {
   static const HexCoord centres[] =

@@ -123,6 +123,12 @@ FinishProspecting (Character& c, Database& db, RegionsTable& regions,
       return;
     }
 
+  if (!ctx.Params ().CanWinPrizesAt (pos))
+    {
+      LOG (INFO) << "No prizes can be won at " << pos;
+      return;
+    }
+
   /* Check the prizes in order to see if we won any.  */
   Prizes prizeTable(db);
   for (const auto& p : ctx.Params ().ProspectingPrizes ())

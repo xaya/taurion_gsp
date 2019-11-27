@@ -143,6 +143,11 @@ public:
   const std::vector<PrizeData>& ProspectingPrizes () const;
 
   /**
+   * Returns true if prizes can be won at the given coordinate.
+   */
+  bool CanWinPrizesAt (const HexCoord& pos) const;
+
+  /**
    * Returns true if the given location is a banking area.
    */
   bool IsBankingArea (const HexCoord& pos) const;
