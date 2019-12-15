@@ -543,6 +543,13 @@ MoveProcessor::MaybeStartMining (Character& c, const Json::Value& upd)
       return;
     }
 
+  if (c.GetBusy () > 0)
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId () << " is busy, can't mine";
+      return;
+    }
+
   if (c.GetProto ().has_movement ())
     {
       LOG (WARNING)
