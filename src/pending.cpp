@@ -249,6 +249,9 @@ PendingStateUpdater::PerformCharacterUpdate (Character& c,
   if (ParseCharacterProspecting (c, upd, regionId))
     state.AddCharacterProspecting (c, regionId);
 
+  if (ParseCharacterMining (c, upd, regionId))
+    state.AddCharacterMining (c, regionId);
+
   std::vector<HexCoord> wp;
   if (ParseCharacterWaypoints (c, upd, wp))
     {

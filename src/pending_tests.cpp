@@ -24,6 +24,7 @@
 #include "database/account.hpp"
 #include "database/character.hpp"
 #include "database/dbtest.hpp"
+#include "database/region.hpp"
 
 #include <gtest/gtest.h>
 
@@ -45,9 +46,10 @@ protected:
 
   AccountsTable accounts;
   CharacterTable characters;
+  RegionsTable regions;
 
   PendingStateTests ()
-    : accounts(db), characters(db)
+    : accounts(db), characters(db), regions(db)
   {}
 
   /**
@@ -574,6 +576,45 @@ TEST_F (PendingStateUpdaterTests, Prospecting)
       "characters":
         [
           {"id": 1, "prospecting": 345820}
+        ]
+    }
+  )");
+}
+
+TEST_F (PendingStateUpdaterTests, Mining)
+{
+  accounts.CreateNew ("domob", Faction::RED);
+
+  const HexCoord pos(456, -789);
+  constexpr Database::IdT regionId = 345'820;
+  auto r = regions.GetById (regionId);
+  r->MutableProto ().mutable_prospection ();
+  r->SetResourceLeft (100);
+  r.reset ();
+
+  auto h = characters.CreateNew ("domob", Faction::RED);
+  ASSERT_EQ (h->GetId (), 1);
+  h->SetPosition (pos);
+  h->MutableProto ().mutable_mining ();
+  h.reset ();
+
+  h = characters.CreateNew ("domob", Faction::GREEN);
+  ASSERT_EQ (h->GetId (), 2);
+  h.reset ();
+
+  Process ("domob", R"({
+    "c":
+      {
+        "1": {"mine": {}},
+        "2": {"mine": {}}
+      }
+  })");
+
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {"id": 1, "mining": 345820}
         ]
     }
   )");
