@@ -210,6 +210,108 @@ TEST_F (PendingStateTests, ProspectingAndWaypoints)
   )");
 }
 
+TEST_F (PendingStateTests, Mining)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  ASSERT_EQ (c->GetId (), 1);
+
+  state.AddCharacterMining (*c, 12345);
+  state.AddCharacterMining (*c, 12345);
+  EXPECT_DEATH (state.AddCharacterMining (*c, 999), "another region");
+
+  c.reset ();
+
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {
+            "id": 1,
+            "mining": 12345
+          }
+        ]
+    }
+  )");
+}
+
+TEST_F (PendingStateTests, MiningNotPossible)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  ASSERT_EQ (c->GetId (), 1);
+
+  state.AddCharacterWaypoints (*c, {});
+  state.AddCharacterMining (*c, 12345);
+
+  c.reset ();
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {
+            "id": 1,
+            "mining": null
+          }
+        ]
+    }
+  )");
+
+  c = characters.GetById (1);
+
+  state.Clear ();
+  state.AddCharacterProspecting (*c, 12345);
+  state.AddCharacterMining (*c, 12345);
+
+  c.reset ();
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {
+            "id": 1,
+            "mining": null
+          }
+        ]
+    }
+  )");
+}
+
+TEST_F (PendingStateTests, MiningCancelledByWaypoints)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  ASSERT_EQ (c->GetId (), 1);
+
+  state.AddCharacterMining (*c, 12345);
+
+  c.reset ();
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {
+            "id": 1,
+            "mining": 12345
+          }
+        ]
+    }
+  )");
+
+  c = characters.GetById (1);
+  state.AddCharacterWaypoints (*c, {});
+
+  c.reset ();
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {
+            "id": 1,
+            "mining": null
+          }
+        ]
+    }
+  )");
+}
+
 TEST_F (PendingStateTests, CharacterCreation)
 {
   state.AddCharacterCreation ("foo", Faction::RED);

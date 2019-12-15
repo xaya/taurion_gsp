@@ -67,6 +67,17 @@ PendingState::AddCharacterWaypoints (const Character& ch,
       return;
     }
 
+  /* When setting waypoints, a potential minig operation is stopped.  Thus
+     assume that the character will not start mining if we set waypoints
+     (likely) after the mining move gets confirmed.  */
+  if (chState.miningRegionId != RegionMap::OUT_OF_MAP)
+    {
+      LOG (WARNING)
+          << "Character " << ch.GetId ()
+          << " is setting waypoints, we'll not start mining";
+      chState.miningRegionId = RegionMap::OUT_OF_MAP;
+    }
+
   chState.wp = std::make_unique<std::vector<HexCoord>> (wp);
 }
 
@@ -104,6 +115,42 @@ PendingState::AddCharacterProspecting (const Character& ch,
 }
 
 void
+PendingState::AddCharacterMining (const Character& ch,
+                                  const Database::IdT regionId)
+{
+  VLOG (1)
+      << "Character " << ch.GetId ()
+      << " is pending to start mining region " << regionId;
+
+  auto& chState = GetCharacterState (ch);
+
+  if (chState.prospectingRegionId != RegionMap::OUT_OF_MAP)
+    {
+      LOG (WARNING)
+          << "Character " << ch.GetId () << " will start prospecting,"
+             " can't start mining as well";
+      return;
+    }
+
+  if (chState.wp != nullptr)
+    {
+      LOG (WARNING)
+          << "Character " << ch.GetId () << " has pending waypoints,"
+             " can't start mining";
+      return;
+    }
+
+  /* If there is already a pending mining region, it has to be the same ID since
+     the character position can't change.  */
+  if (chState.miningRegionId != RegionMap::OUT_OF_MAP)
+    CHECK_EQ (chState.miningRegionId, regionId)
+        << "Character " << ch.GetId ()
+        << " is pending to mine another region";
+
+  chState.miningRegionId = regionId;
+}
+
+void
 PendingState::AddCharacterCreation (const std::string& name, const Faction f)
 {
   VLOG (1)
@@ -138,6 +185,8 @@ PendingState::CharacterState::ToJson () const
 
   if (prospectingRegionId != RegionMap::OUT_OF_MAP)
     res["prospecting"] = IntToJson (prospectingRegionId);
+  if (miningRegionId != RegionMap::OUT_OF_MAP)
+    res["mining"] = IntToJson (miningRegionId);
 
   return res;
 }
