@@ -109,6 +109,13 @@ protected:
                                   Database::IdT& regionId);
 
   /**
+   * Parses and verifies a potential command to start mining.  Returns true
+   * if the character will start mining, i.e. all looks valid.
+   */
+  bool ParseCharacterMining (const Character& c, const Json::Value& upd,
+                             Database::IdT& regionId);
+
+  /**
    * Parses and verifies a potential character creation as part of the
    * given move.  For all valid creations, PerformCharacterCreation
    * is called with the relevant data.

@@ -40,18 +40,26 @@ class PendingTest (PXTest):
     self.collectPremine ()
 
     # Some well-defined position that we use, which also reflects the
-    # region that will be prospected.
-    position = {"x": 0, "y": 0}
-    regionId = self.rpc.game.getregionat (coord=position)["id"]
+    # region that will be prospected.  We use a different position and
+    # region for mining.
+    positionProspect = {"x": 0, "y": 0}
+    regionProspect = self.rpc.game.getregionat (coord=positionProspect)["id"]
+    positionMining = {"x": 100, "y": -100}
+    regionMining = self.rpc.game.getregionat (coord=positionMining)["id"]
 
     self.mainLogger.info ("Creating test character...")
     self.initAccount ("andy", "b")
     self.initAccount ("domob", "r")
+    self.initAccount ("miner", "g")
     self.createCharacters ("domob")
+    self.createCharacters ("miner")
     self.generate (1)
     self.moveCharactersTo ({
-      "domob": position,
+      "domob": positionProspect,
+      "miner": positionMining,
     })
+    self.getCharacters ()["miner"].sendMove ({"prospect": {}})
+    self.generate (15)
     # getnullstate ensures that we sync up at least for the confirmed state
     # before we look at the pending state.
     self.getRpc ("getnullstate")
@@ -62,15 +70,15 @@ class PendingTest (PXTest):
 
     self.mainLogger.info ("Performing pending updates...")
     self.createCharacters ("domob")
-    c = self.getCharacters ()["domob"]
-    c.sendMove ({"wp": []})
+    c1 = self.getCharacters ()["domob"]
+    c1.sendMove ({"wp": []})
 
     sleepSome ()
     self.assertEqual (self.getPendingState (), {
       "characters":
         [
           {
-            "id": c.getId (),
+            "id": c1.getId (),
             "waypoints": [],
           }
         ],
@@ -82,14 +90,14 @@ class PendingTest (PXTest):
 
     self.createCharacters ("domob")
     self.createCharacters ("andy")
-    c.sendMove ({"wp": [{"x": 5, "y": -5}]})
+    c1.sendMove ({"wp": [{"x": 5, "y": -5}]})
 
     sleepSome ()
     self.assertEqual (self.getPendingState (), {
       "characters":
         [
           {
-            "id": c.getId (),
+            "id": c1.getId (),
             "waypoints": [{"x": 5, "y": -5}],
           }
         ],
@@ -100,16 +108,22 @@ class PendingTest (PXTest):
         ],
     })
 
-    c.sendMove ({"prospect": {}})
+    c1.sendMove ({"prospect": {}})
+    c2 = self.getCharacters ()["miner"]
+    c2.sendMove ({"mine": {}})
     sleepSome ()
     oldPending = self.getPendingState ()
     self.assertEqual (oldPending, {
       "characters":
         [
           {
-            "id": c.getId (),
-            "prospecting": regionId,
-          }
+            "id": c1.getId (),
+            "prospecting": regionProspect,
+          },
+          {
+            "id": c2.getId (),
+            "mining": regionMining,
+          },
         ],
       "newcharacters":
         [

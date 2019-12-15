@@ -70,6 +70,12 @@ private:
     Database::IdT prospectingRegionId = RegionMap::OUT_OF_MAP;
 
     /**
+     * The ID of the region this character will start mining in.  Set to
+     * RegionMap::OUT_OF_MAP if no mining is being started.
+     */
+    Database::IdT miningRegionId = RegionMap::OUT_OF_MAP;
+
+    /**
      * Returns the JSON representation of the pending state.
      */
     Json::Value ToJson () const;
@@ -126,7 +132,8 @@ public:
    * Updates the state for waypoints found for a character in a pending move.
    *
    * If the character is already pending to start prospecting, then this
-   * will do nothing as a prospecting character cannot move.
+   * will do nothing as a prospecting character cannot move.  If the character
+   * is poised to start mining, then mining will be stopped.
    */
   void AddCharacterWaypoints (const Character& ch,
                               const std::vector<HexCoord>& wp);
@@ -139,6 +146,14 @@ public:
    * waypoints for it (if any).
    */
   void AddCharacterProspecting (const Character& ch, Database::IdT regionId);
+
+  /**
+   * Updates the state of a character to start mining in a given region.
+   *
+   * If the character is moving or going to prospect, then the change
+   * is ignored.
+   */
+  void AddCharacterMining (const Character& ch, Database::IdT regionId);
 
   /**
    * Updates the state for a new pending character creation.

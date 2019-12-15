@@ -268,6 +268,74 @@ BaseMoveProcessor::ParseCharacterProspecting (const Character& c,
   return CanProspectRegion (c, *regions.GetById (regionId), ctx);
 }
 
+bool
+BaseMoveProcessor::ParseCharacterMining (const Character& c,
+                                         const Json::Value& upd,
+                                         Database::IdT& regionId)
+{
+  CHECK (upd.isObject ());
+  const auto& cmd = upd["mine"];
+  if (!cmd.isObject ())
+    return false;
+
+  if (!cmd.empty ())
+    {
+      LOG (WARNING)
+          << "Invalid mining command for character " << c.GetId ()
+          << ": " << cmd;
+      return false;
+    }
+
+  const auto& pos = c.GetPosition ();
+  regionId = ctx.Map ().Regions ().GetRegionId (pos);
+  VLOG (1)
+      << "Character " << c.GetId ()
+      << " wants to start mining region " << regionId;
+
+  if (!c.GetProto ().has_mining ())
+    {
+      LOG (WARNING) << "Character " << c.GetId () << " can't mine";
+      return false;
+    }
+
+  if (c.GetBusy () > 0)
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId () << " is busy, can't mine";
+      return false;
+    }
+
+  if (c.GetProto ().has_movement ())
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId () << " can't mine while it is moving";
+      return false;
+    }
+
+  auto r = regions.GetById (regionId);
+  const auto& pbRegion = r->GetProto ();
+  if (!pbRegion.has_prospection ())
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId ()
+          << " can't mine in region " << regionId << " which is not prospected";
+      return false;
+    }
+
+  const auto left = r->GetResourceLeft ();
+  if (left == 0)
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId ()
+          << " can't mine in region " << regionId
+          << " which has no resource left";
+      return false;
+    }
+  CHECK_GT (left, 0);
+
+  return true;
+}
+
 /* ************************************************************************** */
 
 void
@@ -518,62 +586,13 @@ MoveProcessor::MaybeStartProspecting (Character& c, const Json::Value& upd)
 void
 MoveProcessor::MaybeStartMining (Character& c, const Json::Value& upd)
 {
-  CHECK (upd.isObject ());
-  const auto& cmd = upd["mine"];
-  if (!cmd.isObject ())
+  Database::IdT regionId;
+  if (!ParseCharacterMining (c, upd, regionId))
     return;
 
-  if (!cmd.empty ())
-    {
-      LOG (WARNING)
-          << "Invalid mining command for character " << c.GetId ()
-          << ": " << cmd;
-      return;
-    }
-
-  const auto& pos = c.GetPosition ();
-  const auto regionId = ctx.Map ().Regions ().GetRegionId (pos);
   VLOG (1)
-      << "Character " << c.GetId ()
-      << " wants to start mining region " << regionId;
-
-  if (!c.GetProto ().has_mining ())
-    {
-      LOG (WARNING) << "Character " << c.GetId () << " can't mine";
-      return;
-    }
-
-  if (c.GetProto ().has_movement ())
-    {
-      LOG (WARNING)
-          << "Character " << c.GetId () << " can't mine while it is moving";
-      return;
-    }
-
-  auto r = regions.GetById (regionId);
-  const auto& pbRegion = r->GetProto ();
-  if (!pbRegion.has_prospection ())
-    {
-      LOG (WARNING)
-          << "Character " << c.GetId ()
-          << " can't mine in region " << regionId << " which is not prospected";
-      return;
-    }
-
-  const auto left = r->GetResourceLeft ();
-  if (left == 0)
-    {
-      LOG (WARNING)
-          << "Character " << c.GetId ()
-          << " can't mine in region " << regionId
-          << " which has no resource left";
-      return;
-    }
-  CHECK_GT (left, 0);
-
-  VLOG (1)
-      << "Starting to mine " << pbRegion.prospection ().resource ()
-      << " with character " << c.GetId ();
+      << "Starting to mine with character " << c.GetId ()
+      << " in region " << regionId;
   c.MutableProto ().mutable_mining ()->set_active (true);
 }
 

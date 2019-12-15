@@ -619,6 +619,7 @@ TEST_F (CharacterUpdateTests, WhenBusy)
   auto h = GetTest ();
   h->SetBusy (2);
   h->MutableProto ().mutable_prospection ();
+  h->MutableProto ().mutable_mining ();
   h.reset ();
 
   Process (R"([
@@ -629,6 +630,10 @@ TEST_F (CharacterUpdateTests, WhenBusy)
     {
       "name": "domob",
       "move": {"c": {"1": {"prospect": {}}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"mine": {}}}}
     }
   ])");
 
@@ -637,6 +642,7 @@ TEST_F (CharacterUpdateTests, WhenBusy)
      then busy would have been set to 10.  */
   EXPECT_EQ (h->GetBusy (), 2);
   EXPECT_FALSE (h->GetProto ().has_movement ());
+  EXPECT_FALSE (h->GetProto ().mining ().active ());
 }
 
 TEST_F (CharacterUpdateTests, BasicWaypoints)
