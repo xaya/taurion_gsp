@@ -234,6 +234,65 @@ BaseMoveProcessor::ParseCharacterWaypoints (const Character& c,
   return true;
 }
 
+namespace
+{
+
+/**
+ * Parses a JSON dictionary giving fungible items and their quantities
+ * into a std::map.  This will contain all item names and quantities
+ * for "valid" entries, i.e. entries with a uint64 value that is within
+ * the range [0, MAX_ITEM_QUANTITY].
+ */
+FungibleAmountMap
+ParseFungibleQuantities (const Json::Value& obj)
+{
+  CHECK (obj.isObject ());
+
+  FungibleAmountMap res;
+  for (auto it = obj.begin (); it != obj.end (); ++it)
+    {
+      const auto& keyVal = it.key ();
+      CHECK (keyVal.isString ());
+      const std::string key = keyVal.asString ();
+
+      if (!it->isUInt64 () || it->asUInt64 () > MAX_ITEM_QUANTITY)
+        {
+          LOG (WARNING)
+              << "Invalid fungible amount for item " << key << ": " << *it;
+          continue;
+        }
+      const Inventory::QuantityT cnt = it->asUInt64 ();
+
+      const auto ins = res.emplace (key, cnt);
+      CHECK (ins.second) << "Duplicate key: " << key;
+    }
+
+  return res;
+}
+
+} // anonymous namespace
+
+FungibleAmountMap
+BaseMoveProcessor::ParseDropPickupFungible (const Json::Value& cmd)
+{
+  if (!cmd.isObject ())
+    return {};
+
+  const auto& fungible = cmd["f"];
+  if (!fungible.isObject ())
+    {
+      LOG (WARNING) << "No fungible object entry in command: " << cmd;
+      return {};
+    }
+  if (cmd.size () != 1)
+    {
+      LOG (WARNING) << "Extra fields in command: " << cmd;
+      return {};
+    }
+
+  return ParseFungibleQuantities (fungible);
+}
+
 bool
 BaseMoveProcessor::ParseCharacterProspecting (const Character& c,
                                               const Json::Value& upd,
@@ -415,42 +474,6 @@ MoveProcessor::PerformCharacterCreation (const std::string& name,
 namespace
 {
 
-/** Amounts of fungible items.  */
-using FungibleAmountMap = std::map<std::string, Inventory::QuantityT>;
-
-/**
- * Parses a JSON dictionary giving fungible items and their quantities
- * into a std::map.  This will contain all item names and quantities
- * for "valid" entries, i.e. entries with a uint64 value that is within
- * the range [0, MAX_ITEM_QUANTITY].
- */
-FungibleAmountMap
-ParseFungibleQuantities (const Json::Value& obj)
-{
-  CHECK (obj.isObject ());
-
-  FungibleAmountMap res;
-  for (auto it = obj.begin (); it != obj.end (); ++it)
-    {
-      const auto& keyVal = it.key ();
-      CHECK (keyVal.isString ());
-      const std::string key = keyVal.asString ();
-
-      if (!it->isUInt64 () || it->asUInt64 () > MAX_ITEM_QUANTITY)
-        {
-          LOG (WARNING)
-              << "Invalid fungible amount for item " << key << ": " << *it;
-          continue;
-        }
-      const Inventory::QuantityT cnt = it->asUInt64 ();
-
-      const auto ins = res.emplace (key, cnt);
-      CHECK (ins.second) << "Duplicate key: " << key;
-    }
-
-  return res;
-}
-
 /**
  * Sets the character's chosen speed from the update, if there is a command
  * to do so in it.
@@ -598,31 +621,6 @@ MoveProcessor::MaybeStartMining (Character& c, const Json::Value& upd)
 
 namespace
 {
-
-/**
- * Parses and validates the content of a drop or pick-up character command.
- * Returns the fungible items and their quantities to drop or pick up.
- */
-FungibleAmountMap
-ParseDropPickupFungible (const Json::Value& cmd)
-{
-  if (!cmd.isObject ())
-    return {};
-
-  const auto& fungible = cmd["f"];
-  if (!fungible.isObject ())
-    {
-      LOG (WARNING) << "No fungible object entry in command: " << cmd;
-      return {};
-    }
-  if (cmd.size () != 1)
-    {
-      LOG (WARNING) << "Extra fields in command: " << cmd;
-      return {};
-    }
-
-  return ParseFungibleQuantities (fungible);
-}
 
 /**
  * Tries to move fungible items from one inventory (e.g. a character's)

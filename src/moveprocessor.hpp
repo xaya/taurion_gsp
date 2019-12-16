@@ -34,6 +34,9 @@
 
 #include <json/json.h>
 
+#include <map>
+#include <string>
+
 namespace pxd
 {
 
@@ -44,6 +47,9 @@ namespace pxd
  * large enough to not be a restriction in practice (1k tiles per block).
  */
 static constexpr unsigned MAX_CHOSEN_SPEED = 1'000'000;
+
+/** Amounts of fungible items.  */
+using FungibleAmountMap = std::map<std::string, Inventory::QuantityT>;
 
 /**
  * Base class for MoveProcessor (handling confirmed moves) and PendingProcessor
@@ -99,6 +105,12 @@ protected:
   static bool ParseCharacterWaypoints (const Character& c,
                                        const Json::Value& upd,
                                        std::vector<HexCoord>& wp);
+
+  /**
+   * Parses and validates the content of a drop or pick-up character command.
+   * Returns the fungible items and their quantities to drop or pick up.
+   */
+  static FungibleAmountMap ParseDropPickupFungible (const Json::Value& cmd);
 
   /**
    * Parses and verifies a potential prospecting command.  Returns true if the
