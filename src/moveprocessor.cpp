@@ -255,13 +255,21 @@ ParseFungibleQuantities (const Json::Value& obj)
       CHECK (keyVal.isString ());
       const std::string key = keyVal.asString ();
 
-      if (!it->isUInt64 () || it->asUInt64 () > MAX_ITEM_QUANTITY)
+      if (!it->isUInt64 ())
         {
           LOG (WARNING)
               << "Invalid fungible amount for item " << key << ": " << *it;
           continue;
         }
       const Inventory::QuantityT cnt = it->asUInt64 ();
+
+      CHECK_GE (cnt, 0);
+      if (cnt == 0 || cnt > MAX_ITEM_QUANTITY)
+        {
+          LOG (WARNING)
+              << "Invalid fungible amount for item " << key << ": " << cnt;
+          continue;
+        }
 
       const auto ins = res.emplace (key, cnt);
       CHECK (ins.second) << "Duplicate key: " << key;
