@@ -22,9 +22,8 @@ Tests distribution of prizes for prospecting.
 
 from pxtest import PXTest
 
-# Positions where prizes can be won and cannot be won.
-POS_WITH_PRIZES = {"x": 3000, "y": 0}
-POS_NO_PRIZES = {"x": 1000, "y": 500}
+# Positions where prizes can be won (with normal chance).
+POS = {"x": 3000, "y": 500}
 
 
 class ProspectingPrizesTest (PXTest):
@@ -62,24 +61,20 @@ class ProspectingPrizesTest (PXTest):
     self.mainLogger.info ("Testing randomisation of prizes...")
 
     self.initAccount ("prize trier", "r")
-    self.initAccount ("prize trier centre", "r")
     self.createCharacters ("prize trier")
-    self.createCharacters ("prize trier centre")
     self.generate (1)
-    self.moveCharactersTo ({"prize trier": POS_WITH_PRIZES})
-    self.moveCharactersTo ({"prize trier centre": POS_NO_PRIZES})
+    self.moveCharactersTo ({"prize trier": POS})
     stillNeedNoSilver = True
     stillNeedSilver = True
     blk = None
     self.getCharacters ()["prize trier"].sendMove ({"prospect": {}})
-    self.getCharacters ()["prize trier centre"].sendMove ({"prospect": {}})
     self.generate (9)
     while stillNeedNoSilver or stillNeedSilver:
       self.generate (1)
       blk = self.rpc.xaya.getbestblockhash ()
       self.generate (1)
 
-      prosp = self.getRegionAt (POS_WITH_PRIZES).data["prospection"]
+      prosp = self.getRegionAt (POS).data["prospection"]
       self.assertEqual (prosp["name"], "prize trier")
 
       if "silver" in self.getPrizes ("prize trier"):
@@ -91,18 +86,6 @@ class ProspectingPrizesTest (PXTest):
 
     assert blk is not None
     blkOldTime = blk
-
-    self.mainLogger.info ("No prizes in centre...")
-    self.generate (1)
-    for _ in range (20):
-      self.generate (1)
-      blk = self.rpc.xaya.getbestblockhash ()
-
-      prosp = self.getRegionAt (POS_NO_PRIZES).data["prospection"]
-      self.assertEqual (prosp["name"], "prize trier centre")
-      self.assertEqual (self.getPrizes ("prize trier centre"), {})
-
-      self.rpc.xaya.invalidateblock (blk)
 
     # Restore the last randomised attempt.  Else we might end up with
     # a long invalid chain, which can confuse the reorg test.

@@ -117,13 +117,8 @@ FinishProspecting (Character& c, Database& db, RegionsTable& regions,
   prosp->set_resource (type);
   r->SetResourceLeft (amount);
 
-  if (!ctx.Params ().CanWinPrizesAt (pos))
-    {
-      LOG (INFO) << "No prizes can be won at " << pos;
-      return;
-    }
-
   /* Check the prizes in order to see if we won any.  */
+  const bool lowChance = ctx.Params ().IsLowPrizeZone (pos);
   Prizes prizeTable(db);
   for (const auto& p : ctx.Params ().ProspectingPrizes ())
     {
@@ -132,7 +127,9 @@ FinishProspecting (Character& c, Database& db, RegionsTable& regions,
       if (found == p.number)
         continue;
 
-      if (!rnd.ProbabilityRoll (1, p.probability))
+      /* If we are in the "low prize" zone, reduce odds for finding the
+         specific prize by 45% (to 55% of what they were).  */
+      if (!rnd.ProbabilityRoll (lowChance ? 55 : 100, 100 * p.probability))
         continue;
 
       LOG (INFO)

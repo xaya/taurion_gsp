@@ -34,10 +34,10 @@ namespace pxd
 namespace
 {
 
-/** Position where prizes can be won.  */
-const HexCoord POS_WITH_PRIZES(3'000, 0);
-/** Positions where prizes cannot be won.  */
-const HexCoord POS_NO_PRIZES(1'000, 500);
+/** Position where prizes are won with normal chance.  */
+const HexCoord POS_NORMAL_PRIZES(4'000, 0);
+/** Position with low chance for prizes.  */
+const HexCoord POS_LOW_PRIZES(1'000, 500);
 
 /* ************************************************************************** */
 
@@ -228,15 +228,15 @@ TEST_F (FinishProspectingTests, Resources)
 
 TEST_F (FinishProspectingTests, Prizes)
 {
-  constexpr unsigned trials = 1'000;
+  constexpr unsigned trials = 10'000;
 
-  ASSERT_TRUE (ctx.Params ().CanWinPrizesAt (POS_WITH_PRIZES));
-  ASSERT_TRUE (ctx.Map ().IsPassable (POS_WITH_PRIZES));
+  ASSERT_FALSE (ctx.Params ().IsLowPrizeZone (POS_NORMAL_PRIZES));
+  ASSERT_TRUE (ctx.Map ().IsPassable (POS_NORMAL_PRIZES));
 
   const auto id = characters.CreateNew ("domob", Faction::RED)->GetId ();
 
   for (unsigned i = 0; i < trials; ++i)
-    ProspectAndClear (characters.GetById (id), POS_WITH_PRIZES);
+    ProspectAndClear (characters.GetById (id), POS_NORMAL_PRIZES);
 
   std::map<std::string, unsigned> foundMap;
   auto c = characters.GetById (id);
@@ -261,26 +261,30 @@ TEST_F (FinishProspectingTests, Prizes)
      the one bronze prize and roughly the expected number
      of silver prizes by probability.  */
   EXPECT_EQ (foundMap["gold"], 3);
-  EXPECT_GE (foundMap["silver"], 50);
-  EXPECT_LE (foundMap["silver"], 150);
   EXPECT_EQ (foundMap["bronze"], 1);
+  /* Expected value is 1000.  */
+  EXPECT_GE (foundMap["silver"], 950);
+  EXPECT_LE (foundMap["silver"], 1050);
 }
 
-TEST_F (FinishProspectingTests, NoPrizesInCentre)
+TEST_F (FinishProspectingTests, FewerPrizesInCentre)
 {
-  constexpr unsigned trials = 1'000;
+  constexpr unsigned trials = 10'000;
 
-  ASSERT_FALSE (ctx.Params ().CanWinPrizesAt (POS_NO_PRIZES));
-  ASSERT_TRUE (ctx.Map ().IsPassable (POS_NO_PRIZES));
+  ASSERT_TRUE (ctx.Params ().IsLowPrizeZone (POS_LOW_PRIZES));
+  ASSERT_TRUE (ctx.Map ().IsPassable (POS_LOW_PRIZES));
 
   const auto id = characters.CreateNew ("domob", Faction::RED)->GetId ();
 
   for (unsigned i = 0; i < trials; ++i)
-    ProspectAndClear (characters.GetById (id), POS_NO_PRIZES);
+    ProspectAndClear (characters.GetById (id), POS_LOW_PRIZES);
 
   Prizes prizeTable(db);
-  for (const auto& p : ctx.Params ().ProspectingPrizes ())
-    EXPECT_EQ (prizeTable.GetFound (p.name), 0);
+  const auto silver = prizeTable.GetFound ("silver");
+  LOG (INFO) << "Found silver prizes in low-chance area: " << silver;
+  /* Expected value is 550.  */
+  EXPECT_GE (silver, 500);
+  EXPECT_LE (silver, 600);
 }
 
 /* ************************************************************************** */

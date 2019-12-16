@@ -130,11 +130,11 @@ Params::ProspectingPrizes () const
 }
 
 bool
-Params::CanWinPrizesAt (const HexCoord& pos) const
+Params::IsLowPrizeZone (const HexCoord& pos) const
 {
   const HexCoord noPrizeCentre(58, -256);
-  constexpr HexCoord::IntT noPrizeRadius = 2'100;
-  return HexCoord::DistanceL1 (pos, noPrizeCentre) > noPrizeRadius;
+  constexpr HexCoord::IntT noPrizeRadius = 3'000;
+  return HexCoord::DistanceL1 (pos, noPrizeCentre) <= noPrizeRadius;
 }
 
 bool

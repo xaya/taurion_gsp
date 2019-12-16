@@ -138,9 +138,9 @@ public:
   const std::vector<PrizeData>& ProspectingPrizes () const;
 
   /**
-   * Returns true if prizes can be won at the given coordinate.
+   * Returns true if prizes should be won with lower probability.
    */
-  bool CanWinPrizesAt (const HexCoord& pos) const;
+  bool IsLowPrizeZone (const HexCoord& pos) const;
 
   /**
    * Returns true if the given location is a banking area.
