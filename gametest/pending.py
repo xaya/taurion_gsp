@@ -80,6 +80,8 @@ class PendingTest (PXTest):
           {
             "id": c1.getId (),
             "waypoints": [],
+            "drop": False,
+            "pickup": False,
           }
         ],
       "newcharacters":
@@ -91,6 +93,7 @@ class PendingTest (PXTest):
     self.createCharacters ("domob")
     self.createCharacters ("andy")
     c1.sendMove ({"wp": [{"x": 5, "y": -5}]})
+    c1.sendMove ({"pu": {"f": {"foo": 2}}})
 
     sleepSome ()
     self.assertEqual (self.getPendingState (), {
@@ -99,6 +102,8 @@ class PendingTest (PXTest):
           {
             "id": c1.getId (),
             "waypoints": [{"x": 5, "y": -5}],
+            "drop": False,
+            "pickup": True,
           }
         ],
       "newcharacters":
@@ -109,6 +114,7 @@ class PendingTest (PXTest):
     })
 
     c1.sendMove ({"prospect": {}})
+    c1.sendMove ({"drop": {"f": {"foo": 2}}})
     c2 = self.getCharacters ()["miner"]
     c2.sendMove ({"mine": {}})
     sleepSome ()
@@ -118,10 +124,14 @@ class PendingTest (PXTest):
         [
           {
             "id": c1.getId (),
+            "drop": True,
+            "pickup": True,
             "prospecting": regionProspect,
           },
           {
             "id": c2.getId (),
+            "drop": False,
+            "pickup": False,
             "mining": regionMining,
           },
         ],

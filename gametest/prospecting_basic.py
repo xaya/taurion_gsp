@@ -206,7 +206,12 @@ class BasicProspectingTest (PXTest):
     c = self.getCharacters ()["target"]
     c.sendMove ({"prospect": {}})
     self.assertEqual (self.getPendingState ()["characters"], [
-      {"id": c.getId (), "prospecting": r.getId ()},
+      {
+        "id": c.getId (),
+        "drop": False,
+        "pickup": False,
+        "prospecting": r.getId (),
+      },
     ])
     self.generate (1)
     self.assertEqual (self.getCharacters ()["target"].getBusy ()["operation"],

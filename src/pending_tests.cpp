@@ -87,6 +87,8 @@ TEST_F (PendingStateTests, Clear)
 
   auto h = characters.CreateNew ("domob", Faction::RED);
   state.AddCharacterWaypoints (*h, {});
+  state.AddCharacterDrop (*h);
+  state.AddCharacterPickup (*h);
   h.reset ();
 
   ExpectStateJson (R"(
@@ -139,6 +141,38 @@ TEST_F (PendingStateTests, Waypoints)
           {
             "id": 3,
             "waypoints": []
+          }
+        ]
+    }
+  )");
+}
+
+TEST_F (PendingStateTests, DropPickup)
+{
+  auto c1 = characters.CreateNew ("domob", Faction::RED);
+  auto c2 = characters.CreateNew ("domob", Faction::RED);
+  ASSERT_EQ (c1->GetId (), 1);
+  ASSERT_EQ (c2->GetId (), 2);
+
+  state.AddCharacterDrop (*c1);
+  state.AddCharacterPickup (*c2);
+
+  c1.reset ();
+  c2.reset ();
+
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {
+            "id": 1,
+            "drop": true,
+            "pickup": false
+          },
+          {
+            "id": 2,
+            "drop": false,
+            "pickup": true
           }
         ]
     }
@@ -542,6 +576,43 @@ TEST_F (PendingStateUpdaterTests, Waypoints)
         [
           {"id": 2, "waypoints": []},
           {"id": 3, "waypoints": [{"x": 1, "y": -2}]}
+        ]
+    }
+  )");
+}
+
+TEST_F (PendingStateUpdaterTests, DropPickup)
+{
+  accounts.CreateNew ("domob", Faction::RED);
+  CHECK_EQ (characters.CreateNew ("domob", Faction::RED)->GetId (), 1);
+  CHECK_EQ (characters.CreateNew ("domob", Faction::RED)->GetId (), 2);
+
+  /* Some invalid / empty commands.  */
+  Process ("domob", R"({
+    "c": {"1": {"drop": []}}
+  })");
+  Process ("domob", R"({
+    "c": {"2": {"pu": {"f": {}}}}
+  })");
+  Process ("domob", R"({
+    "c": {"1": {"drop": {"f": {"foo": 0}}}}
+  })");
+
+  /* Valid drop/pickup commands (character 1 will pickup, character 2 will
+     drop, but not the corresponding other command).  */
+  Process ("domob", R"({
+    "c": {"1": {"pu": {"f": {"foo": 1}}}}
+  })");
+  Process ("domob", R"({
+    "c": {"2": {"drop": {"f": {"bar": 10}}}}
+  })");
+
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {"id": 1, "drop": false, "pickup": true},
+          {"id": 2, "drop": true, "pickup": false}
         ]
     }
   )");

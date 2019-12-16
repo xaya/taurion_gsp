@@ -82,6 +82,20 @@ PendingState::AddCharacterWaypoints (const Character& ch,
 }
 
 void
+PendingState::AddCharacterDrop (const Character& ch)
+{
+  VLOG (1) << "Adding pending item drop for character " << ch.GetId ();
+  GetCharacterState (ch).drop = true;
+}
+
+void
+PendingState::AddCharacterPickup (const Character& ch)
+{
+  VLOG (1) << "Adding pending item pickup for character " << ch.GetId ();
+  GetCharacterState (ch).pickup = true;
+}
+
+void
 PendingState::AddCharacterProspecting (const Character& ch,
                                        const Database::IdT regionId)
 {
@@ -183,6 +197,9 @@ PendingState::CharacterState::ToJson () const
       res["waypoints"] = wpJson;
     }
 
+  res["drop"] = drop;
+  res["pickup"] = pickup;
+
   if (prospectingRegionId != RegionMap::OUT_OF_MAP)
     res["prospecting"] = IntToJson (prospectingRegionId);
   if (miningRegionId != RegionMap::OUT_OF_MAP)
@@ -251,6 +268,14 @@ PendingStateUpdater::PerformCharacterUpdate (Character& c,
 
   if (ParseCharacterMining (c, upd, regionId))
     state.AddCharacterMining (c, regionId);
+
+  FungibleAmountMap items;
+  items = ParseDropPickupFungible (upd["pu"]);
+  if (!items.empty ())
+    state.AddCharacterPickup (c);
+  items = ParseDropPickupFungible (upd["drop"]);
+  if (!items.empty ())
+    state.AddCharacterDrop (c);
 
   std::vector<HexCoord> wp;
   if (ParseCharacterWaypoints (c, upd, wp))
