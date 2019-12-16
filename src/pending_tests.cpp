@@ -87,6 +87,8 @@ TEST_F (PendingStateTests, Clear)
 
   auto h = characters.CreateNew ("domob", Faction::RED);
   state.AddCharacterWaypoints (*h, {});
+  state.AddCharacterDrop (*h);
+  state.AddCharacterPickup (*h);
   h.reset ();
 
   ExpectStateJson (R"(
@@ -139,6 +141,38 @@ TEST_F (PendingStateTests, Waypoints)
           {
             "id": 3,
             "waypoints": []
+          }
+        ]
+    }
+  )");
+}
+
+TEST_F (PendingStateTests, DropPickup)
+{
+  auto c1 = characters.CreateNew ("domob", Faction::RED);
+  auto c2 = characters.CreateNew ("domob", Faction::RED);
+  ASSERT_EQ (c1->GetId (), 1);
+  ASSERT_EQ (c2->GetId (), 2);
+
+  state.AddCharacterDrop (*c1);
+  state.AddCharacterPickup (*c2);
+
+  c1.reset ();
+  c2.reset ();
+
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {
+            "id": 1,
+            "drop": true,
+            "pickup": false
+          },
+          {
+            "id": 2,
+            "drop": false,
+            "pickup": true
           }
         ]
     }

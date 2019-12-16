@@ -80,6 +80,8 @@ class PendingTest (PXTest):
           {
             "id": c1.getId (),
             "waypoints": [],
+            "drop": False,
+            "pickup": False,
           }
         ],
       "newcharacters":
@@ -99,6 +101,8 @@ class PendingTest (PXTest):
           {
             "id": c1.getId (),
             "waypoints": [{"x": 5, "y": -5}],
+            "drop": False,
+            "pickup": False,
           }
         ],
       "newcharacters":
@@ -118,10 +122,14 @@ class PendingTest (PXTest):
         [
           {
             "id": c1.getId (),
+            "drop": False,
+            "pickup": False,
             "prospecting": regionProspect,
           },
           {
             "id": c2.getId (),
+            "drop": False,
+            "pickup": False,
             "mining": regionMining,
           },
         ],

@@ -63,6 +63,12 @@ private:
      */
     std::unique_ptr<std::vector<HexCoord>> wp;
 
+    /** Set to true if there is a pending pickup command.  */
+    bool pickup = false;
+
+    /** Set to true if there is a pending drop command.  */
+    bool drop = false;
+
     /**
      * The ID of the region this character is starting to prospect.  Set to
      * RegionMap::OUT_OF_MAP if no prospection is coming.
@@ -137,6 +143,16 @@ public:
    */
   void AddCharacterWaypoints (const Character& ch,
                               const std::vector<HexCoord>& wp);
+
+  /**
+   * Marks the character state as having a pending drop command.
+   */
+  void AddCharacterDrop (const Character& ch);
+
+  /**
+   * Marks the character state as having a pending pickup command.
+   */
+  void AddCharacterPickup (const Character& ch);
 
   /**
    * Updates the state of a character to include a pending prospecting

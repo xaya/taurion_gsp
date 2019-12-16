@@ -82,6 +82,20 @@ PendingState::AddCharacterWaypoints (const Character& ch,
 }
 
 void
+PendingState::AddCharacterDrop (const Character& ch)
+{
+  VLOG (1) << "Adding pending item drop for character " << ch.GetId ();
+  GetCharacterState (ch).drop = true;
+}
+
+void
+PendingState::AddCharacterPickup (const Character& ch)
+{
+  VLOG (1) << "Adding pending item pickup for character " << ch.GetId ();
+  GetCharacterState (ch).pickup = true;
+}
+
+void
 PendingState::AddCharacterProspecting (const Character& ch,
                                        const Database::IdT regionId)
 {
@@ -182,6 +196,9 @@ PendingState::CharacterState::ToJson () const
 
       res["waypoints"] = wpJson;
     }
+
+  res["drop"] = drop;
+  res["pickup"] = pickup;
 
   if (prospectingRegionId != RegionMap::OUT_OF_MAP)
     res["prospecting"] = IntToJson (prospectingRegionId);
