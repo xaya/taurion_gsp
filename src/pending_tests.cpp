@@ -581,6 +581,43 @@ TEST_F (PendingStateUpdaterTests, Waypoints)
   )");
 }
 
+TEST_F (PendingStateUpdaterTests, DropPickup)
+{
+  accounts.CreateNew ("domob", Faction::RED);
+  CHECK_EQ (characters.CreateNew ("domob", Faction::RED)->GetId (), 1);
+  CHECK_EQ (characters.CreateNew ("domob", Faction::RED)->GetId (), 2);
+
+  /* Some invalid / empty commands.  */
+  Process ("domob", R"({
+    "c": {"1": {"drop": []}}
+  })");
+  Process ("domob", R"({
+    "c": {"2": {"pu": {"f": {}}}}
+  })");
+  Process ("domob", R"({
+    "c": {"1": {"drop": {"f": {"foo": 0}}}}
+  })");
+
+  /* Valid drop/pickup commands (character 1 will pickup, character 2 will
+     drop, but not the corresponding other command).  */
+  Process ("domob", R"({
+    "c": {"1": {"pu": {"f": {"foo": 1}}}}
+  })");
+  Process ("domob", R"({
+    "c": {"2": {"drop": {"f": {"bar": 10}}}}
+  })");
+
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {"id": 1, "drop": false, "pickup": true},
+          {"id": 2, "drop": true, "pickup": false}
+        ]
+    }
+  )");
+}
+
 TEST_F (PendingStateUpdaterTests, Prospecting)
 {
   accounts.CreateNew ("domob", Faction::RED);

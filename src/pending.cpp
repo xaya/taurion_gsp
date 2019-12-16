@@ -269,6 +269,14 @@ PendingStateUpdater::PerformCharacterUpdate (Character& c,
   if (ParseCharacterMining (c, upd, regionId))
     state.AddCharacterMining (c, regionId);
 
+  FungibleAmountMap items;
+  items = ParseDropPickupFungible (upd["pu"]);
+  if (!items.empty ())
+    state.AddCharacterPickup (c);
+  items = ParseDropPickupFungible (upd["drop"]);
+  if (!items.empty ())
+    state.AddCharacterDrop (c);
+
   std::vector<HexCoord> wp;
   if (ParseCharacterWaypoints (c, upd, wp))
     {
