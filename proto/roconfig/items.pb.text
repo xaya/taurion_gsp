@@ -79,6 +79,53 @@ fungible_items:
     value: { space: 0 }
   }
 
+# Prize data from contrib/competition.2/items-roconfig.py.
+fungible_items: { key: "Broze crates" value: { space: 0 } }
+fungible_items: { key: "Mounted Boomas" value: { space: 0 } }
+fungible_items: { key: "200 DIO" value: { space: 0 } }
+fungible_items: { key: "Type 77 selective fire assault rifle" value: { space: 0 } }
+fungible_items: { key: "Scorpion prototype mag-rail technology gun" value: { space: 0 } }
+fungible_items: { key: "P1 Pistol, 7mm" value: { space: 0 } }
+fungible_items: { key: "Defender shotgun" value: { space: 0 } }
+fungible_items: { key: "Frag Grenade" value: { space: 0 } }
+fungible_items: { key: "Army Cow" value: { space: 0 } }
+fungible_items: { key: "Caramel Pony" value: { space: 0 } }
+fungible_items: { key: "Gecko Multiverse" value: { space: 0 } }
+fungible_items: { key: "Mustard Duck" value: { space: 0 } }
+fungible_items: { key: "Shrake" value: { space: 0 } }
+fungible_items: { key: "Snowflake" value: { space: 0 } }
+fungible_items: { key: "Snowball" value: { space: 0 } }
+fungible_items: { key: "Snowfall" value: { space: 0 } }
+fungible_items: { key: "Enjin Legend: Simon" value: { space: 0 } }
+fungible_items: { key: "Enjin Legend: Tassio" value: { space: 0 } }
+fungible_items: { key: "Enjin Legend: Bryana" value: { space: 0 } }
+fungible_items: { key: "Enjin Legend: Witek" value: { space: 0 } }
+fungible_items: { key: "Enjin Legend: Maxim" value: { space: 0 } }
+fungible_items: { key: "RC 9MM BTC skinned" value: { space: 0 } }
+fungible_items: { key: "30,000 SHR coins" value: { space: 0 } }
+fungible_items: { key: "1% shares in a soccer club" value: { space: 0 } }
+fungible_items: { key: "Warmongers" value: { space: 0 } }
+fungible_items: { key: "Limited Edition Varag Shamans" value: { space: 0 } }
+fungible_items: { key: "Holy Knights" value: { space: 0 } }
+fungible_items: { key: "500 Spirit Dust" value: { space: 0 } }
+fungible_items: { key: "Light vehicles" value: { space: 0 } }
+fungible_items: { key: "Light canons" value: { space: 0 } }
+fungible_items: { key: "Rare Portal Key Lv2" value: { space: 0 } }
+fungible_items: { key: "Rare Portal Key Lv3" value: { space: 0 } }
+fungible_items: { key: "Epic Portal Key Lv2" value: { space: 0 } }
+fungible_items: { key: "Uncommon Arena Crystals Lv1" value: { space: 0 } }
+fungible_items: { key: "Uncommon Arena Crystals Lv2" value: { space: 0 } }
+fungible_items: { key: "Epic Arena Crystal Lv2" value: { space: 0 } }
+fungible_items: { key: "1000 Uptennd Tokens" value: { space: 0 } }
+fungible_items: { key: "SUVs" value: { space: 0 } }
+fungible_items: { key: "War Trucks" value: { space: 0 } }
+fungible_items: { key: "APOCALYPSE Carbon M5 MAAWS" value: { space: 0 } }
+fungible_items: { key: "Gold Miniguns" value: { space: 0 } }
+fungible_items: { key: "LIGHTCAMO Carbon M2c Browning" value: { space: 0 } }
+fungible_items: { key: "Platinum M5 MAAWS" value: { space: 0 } }
+fungible_items: { key: "100 BZN (Benzene) tokens" value: { space: 0 } }
+fungible_items: { key: "500 ZNZ tokens" value: { space: 0 } }
+
 # The following items are used only for tests.  They are defined also
 # in the real game, but since they are never generated (except through
 # god-mode or direct intervention in tests), that has no effect.
