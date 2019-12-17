@@ -48,7 +48,7 @@ class MiningTest (PXTest):
     self.generate (10)
     self.assertEqual (self.getCharacters ()["domob"].getBusy ()["blocks"], 1)
 
-    # We need at least 15 of the resource in the region in order to allow
+    # We need at least some of the resource in the region in order to allow
     # the remaining parts of the test to work as expected.  Thus we try
     # to re-roll prospection as needed in order to achieve that.
     while True:
@@ -56,11 +56,15 @@ class MiningTest (PXTest):
       typ, self.amount = self.getRegionAt (self.pos[0]).getResource ()
       self.log.info ("Found %d of %s at the region" % (self.amount, typ))
 
-      if self.amount > 15:
+      if self.amount > 10:
         break
 
       self.log.warning ("Too little resources, retrying...")
       self.rpc.xaya.invalidateblock (self.rpc.xaya.getbestblockhash ())
+
+    # In case we found a prospecting prize, we need to remember this for
+    # the reorg test.
+    self.preReorgInv = self.getCharacters ()["domob"].getFungibleInventory ()
 
     self.generate (1)
     self.reorgBlock = self.rpc.xaya.getbestblockhash ()
@@ -86,6 +90,9 @@ class MiningTest (PXTest):
 
     self.mainLogger.info ("Using up all resources...")
     while True:
+      # Make sure we have at least a somewhat long chain, so it will
+      # be longer in the reorg test.
+      self.generate (50)
       _, remaining = self.getRegionAt (self.pos[0]).getResource ()
       if remaining == 0:
         break
@@ -94,7 +101,6 @@ class MiningTest (PXTest):
           "drop": {"f": {typ: 1000}},
           "mine": {},
         })
-      self.generate (50)
     for c in self.getCharacters ().values ():
       c.sendMove ({
         "drop": {"f": {typ: 1000}},
@@ -121,8 +127,9 @@ class MiningTest (PXTest):
 
     self.assertEqual (self.isMining ("domob"), False)
     self.assertEqual (self.isMining ("domob 2"), False)
-    for c in self.getCharacters ().values ():
-      self.assertEqual (c.getFungibleInventory (), {})
+    chars = self.getCharacters ()
+    self.assertEqual (chars["domob"].getFungibleInventory (), self.preReorgInv)
+    self.assertEqual (chars["domob 2"].getFungibleInventory (), {})
 
     _, remaining = self.getRegionAt (self.pos[0]).getResource ()
     self.assertEqual (remaining, self.amount)
