@@ -25,10 +25,6 @@ from pxtest import PXTest
 
 class BankingTest (PXTest):
 
-  def addArguments (self, parser):
-    parser.add_argument ("--bank_set", default=False, action="store_true",
-                         help="bank a full set of resources (slow)")
-
   def run (self):
     self.collectPremine ()
 
@@ -77,22 +73,21 @@ class BankingTest (PXTest):
       "silver prize": 2,
     })
 
-    if self.args.bank_set:
-      self.testResourceSets ()
+    self.testResourceSets ()
     self.testReorg ()
 
   def testResourceSets (self):
     self.mainLogger.info ("Banking resources for sets...")
     self.dropLoot (self.bankPos, {
-      "raw a": 205,
-      "raw b": 200,
-      "raw c": 200,
-      "raw d": 200,
-      "raw e": 200,
-      "raw f": 200,
-      "raw g": 200,
-      "raw h": 200,
-      "raw i": 200,
+      "raw a": 25,
+      "raw b": 20,
+      "raw c": 20,
+      "raw d": 20,
+      "raw e": 20,
+      "raw f": 20,
+      "raw g": 20,
+      "raw h": 20,
+      "raw i": 20,
     })
     self.generate (1)
 

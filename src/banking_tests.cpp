@@ -113,17 +113,17 @@ TEST_F (BankingTests, BankingPoints)
   auto c = characters.CreateNew ("domob", Faction::RED);
   c->SetPosition (BANKING_POS);
   c->MutableProto ().set_cargo_space (5'000);
-  c->GetInventory ().SetFungibleCount ("raw a", 456);
-  c->GetInventory ().SetFungibleCount ("raw i", 987);
+  c->GetInventory ().SetFungibleCount ("raw a", 45);
+  c->GetInventory ().SetFungibleCount ("raw i", 98);
   c.reset ();
 
   ProcessBanking (db, ctx);
 
   a = accounts.GetByName ("domob");
   EXPECT_EQ (a->GetBankingPoints (), 12);
-  EXPECT_EQ (a->GetBanked ().GetFungibleCount ("raw a"), 56);
-  EXPECT_EQ (a->GetBanked ().GetFungibleCount ("raw b"), 600);
-  EXPECT_EQ (a->GetBanked ().GetFungibleCount ("raw i"), 587);
+  EXPECT_EQ (a->GetBanked ().GetFungibleCount ("raw a"), 5);
+  EXPECT_EQ (a->GetBanked ().GetFungibleCount ("raw b"), 960);
+  EXPECT_EQ (a->GetBanked ().GetFungibleCount ("raw i"), 58);
 }
 
 } // anonymous namespace

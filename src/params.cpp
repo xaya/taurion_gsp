@@ -160,15 +160,15 @@ Params::BankingSet () const
 {
   static const BankingSetData data =
     {
-      {"raw a", 200},
-      {"raw b", 200},
-      {"raw c", 200},
-      {"raw d", 200},
-      {"raw e", 200},
-      {"raw f", 200},
-      {"raw g", 200},
-      {"raw h", 200},
-      {"raw i", 200},
+      {"raw a", 20},
+      {"raw b", 20},
+      {"raw c", 20},
+      {"raw d", 20},
+      {"raw e", 20},
+      {"raw f", 20},
+      {"raw g", 20},
+      {"raw h", 20},
+      {"raw i", 20},
     };
 
   return data;
