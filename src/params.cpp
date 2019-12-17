@@ -99,9 +99,9 @@ namespace
 /** Prospecting prizes for mainnet/testnet.  */
 const std::vector<Params::PrizeData> PRIZES =
   {
-    {"gold", 5, 150000},
-    {"silver", 50, 4000},
-    {"bronze", 2000, 100},
+    {"gold", 3, 200'000},
+    {"silver", 5, 100'000},
+    {"bronze", 10, 25'000},
 
     /* List of prizes for the second competition, created from a CSV export
        processed with contrib/competition.2/process-prizes.py.  */

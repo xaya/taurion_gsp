@@ -27,13 +27,25 @@ targetChance = 0.9;
 % Relevant numbers of prizes for which we need corresponding odds.
 nums = [1, 2, 3, 5, 10, 30, 40, 50, 2000];
 
-for i = nums
+% Computes the chance denominator we need to achieve a certain probability
+% of finding at least x prizes in n tries.
+function invChance = findInvChance (n, targetChance, x)
   % binocdf(x, n, p) gives the chance of having <= x prizes found
   % with n trials and probability p.  We want to get the chance of >= x,
   % so we need 1 - binocdf(x-1, n, p).
-  getChanceDiff = @(p) (1 - binocdf (i - 1, n, p)) - targetChance;
+  getChanceDiff = @(p) (1 - binocdf (x - 1, n, p)) - targetChance;
 
   p = fzero (getChanceDiff, [0, 1]);
   invChance = 1 / p;
-  printf ("%d: 1 / %.0f\n", i, invChance);
+endfunction
+
+for i = nums
+  printf ("%d: 1 / %.0f\n", i, findInvChance (n, targetChance, i));
 endfor
+
+% For the gold/silver/bronze prizes, we have other parameters.
+% Note that the odds computed here are just for reference, and the
+% actual values in the code have been chosen manually.
+printf ("Gold:   1 / %.0f\n", findInvChance (400e3, 0.15, 3));
+printf ("Silver: 1 / %.0f\n", findInvChance (400e3, 0.4, 5));
+printf ("Bronze: 1 / %.0f\n", findInvChance (400e3, 0.9, 10));
