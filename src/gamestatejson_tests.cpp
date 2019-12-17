@@ -733,24 +733,24 @@ TEST_F (PrizesJsonTests, Works)
       {
         "gold":
           {
-            "number": 5,
-            "probability": 150000,
+            "number": 3,
+            "probability": 200000,
             "found": 1,
-            "available": 4
+            "available": 2
           },
         "silver":
           {
-            "number": 50,
-            "probability": 4000,
+            "number": 5,
+            "probability": 100000,
             "found": 0,
-            "available": 50
+            "available": 5
           },
         "bronze":
           {
-            "number": 2000,
-            "probability": 100,
+            "number": 10,
+            "probability": 25000,
             "found": 10,
-            "available": 1990
+            "available": 0
           }
       }
   })");
