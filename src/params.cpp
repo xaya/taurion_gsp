@@ -45,7 +45,7 @@ Params::DeveloperAddress () const
 Amount
 Params::CharacterCost () const
 {
-  return 1 * COIN;
+  return 50 * COIN;
 }
 
 unsigned

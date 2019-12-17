@@ -23,7 +23,7 @@ import os.path
 
 GAMEID = "tn"
 DEVADDR = "dHNvNaqcD7XPDnoRjAoyfcMpHRi5upJD7p"
-CHARACTER_COST = 1
+CHARACTER_COST = 50
 
 
 def offsetCoord (c, offs, inverse):
