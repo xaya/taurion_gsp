@@ -49,7 +49,11 @@ class ProspectingResourcesTest (PXTest):
 
     r = self.getRegionAt (pos)
     self.assertEqual (r.data["prospection"]["name"], "domob")
-    return r.getResource ()
+
+    typ, amount = r.getResource ()
+    self.log.info ("Found %d of %s at (%d, %d)"
+                    % (amount, typ, pos["x"], pos["y"]))
+    return typ, amount
 
   def run (self):
     self.collectPremine ()
@@ -90,7 +94,6 @@ class ProspectingResourcesTest (PXTest):
       r = self.getRegionAt (I_AND_H)
       self.assertEqual (r.data["prospection"]["name"], "domob")
       typ, amount = r.getResource ()
-      assert amount > 0
 
 
 if __name__ == "__main__":

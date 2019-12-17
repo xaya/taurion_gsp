@@ -20,47 +20,47 @@ resource_dist:
 base_amounts:
   {
     key: "raw a"
-    value: 700
+    value: 7
   }
 base_amounts:
   {
     key: "raw b"
-    value: 40
+    value: 7
   }
 base_amounts:
   {
     key: "raw c"
-    value: 14
+    value: 7
   }
 base_amounts:
   {
     key: "raw d"
-    value: 13
+    value: 7
   }
 base_amounts:
   {
     key: "raw e"
-    value: 12
+    value: 7
   }
 base_amounts:
   {
     key: "raw f"
-    value: 8
+    value: 7
   }
 base_amounts:
   {
     key: "raw g"
-    value: 5
+    value: 7
   }
 base_amounts:
   {
     key: "raw h"
-    value: 2
+    value: 7
   }
 base_amounts:
   {
     key: "raw i"
-    value: 1
+    value: 7
   }
 
 areas:
