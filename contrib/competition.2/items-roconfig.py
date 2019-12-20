@@ -25,5 +25,5 @@ import sys
 reader = csv.reader (sys.stdin, delimiter=',')
 for row in reader:
   name = row[1]
-  sys.stdout.write ('fungible_items: { key: "%s" value: { space: 0 } }\n'
+  sys.stdout.write ('fungible_items: { key: "%s prize" value: { space: 0 } }\n'
                       % name)
