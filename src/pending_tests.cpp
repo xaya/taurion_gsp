@@ -597,6 +597,12 @@ TEST_F (PendingStateUpdaterTests, DropPickup)
   Process ("domob", R"({
     "c": {"1": {"drop": {"f": {"foo": 0}}}}
   })");
+  Process ("domob", R"({
+    "c": {"1": {"drop": {"f": {"invalid item": 1}}}}
+  })");
+  Process ("domob", R"({
+    "c": {"1": {"pu": {"f": {"invalid item": 1}}}}
+  })");
 
   /* Valid drop/pickup commands (character 1 will pickup, character 2 will
      drop, but not the corresponding other command).  */

@@ -247,6 +247,7 @@ FungibleAmountMap
 ParseFungibleQuantities (const Json::Value& obj)
 {
   CHECK (obj.isObject ());
+  const auto& itemData = RoConfigData ().fungible_items ();
 
   FungibleAmountMap res;
   for (auto it = obj.begin (); it != obj.end (); ++it)
@@ -254,6 +255,12 @@ ParseFungibleQuantities (const Json::Value& obj)
       const auto& keyVal = it.key ();
       CHECK (keyVal.isString ());
       const std::string key = keyVal.asString ();
+
+      if (itemData.find (key) == itemData.end ())
+        {
+          LOG (WARNING) << "Invalid fungible item: " << key;
+          continue;
+        }
 
       if (!it->isUInt64 ())
         {

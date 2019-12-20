@@ -876,6 +876,10 @@ TEST_F (DropPickupMoveTests, InvalidDrop)
     },
     {
       "name": "domob",
+      "move": {"c": {"1": {"drop": {"f": {"invalid item": 1}}}}}
+    },
+    {
+      "name": "domob",
       "move": {"c": {"1": {"drop": {"f": {"foo": 1000000001}}}}}
     }
   ])");
@@ -900,6 +904,10 @@ TEST_F (DropPickupMoveTests, InvalidPickUp)
     {
       "name": "domob",
       "move": {"c": {"1": {"pu": {"f": {"foo": 1}, "x": 2}}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"pu": {"f": {"invalid item": 1}}}}}
     },
     {
       "name": "domob",
