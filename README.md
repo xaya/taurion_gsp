@@ -37,6 +37,7 @@ Xayad needs to be run with this as an option or in xaya.conf
 
 ```
 zmqpubgameblocks=tcp://127.0.0.1:28332
+zmqpubgamepending=tcp://127.0.0.1:28332
 ```
 
 If you use the Electron Wallet on windows then this is already set.
