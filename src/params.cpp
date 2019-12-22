@@ -128,7 +128,7 @@ const std::vector<Params::PrizeData> PRIZES =
     {"Enjin Legend: Maxim", 1, 65145},
     {"RC 9MM BTC skinned", 10, 10559},
     {"30,000 SHR coins", 10, 10559},
-    {"1%% shares in a soccer club", 10, 10559},
+    {"1% shares in a soccer club", 10, 10559},
     {"Warmongers", 5, 18765},
     {"Limited Edition Varag Shamans", 30, 4033},
     {"Holy Knights", 30, 4033},

@@ -23,6 +23,7 @@
 #include "database/dbtest.hpp"
 #include "database/prizes.hpp"
 #include "hexagonal/coord.hpp"
+#include "proto/roconfig.hpp"
 
 #include <gtest/gtest.h>
 
@@ -285,6 +286,25 @@ TEST_F (FinishProspectingTests, FewerPrizesInCentre)
   /* Expected value is 550.  */
   EXPECT_GE (silver, 500);
   EXPECT_LE (silver, 600);
+}
+
+/* ************************************************************************** */
+
+TEST (PrizesTests, AllInItemConfig)
+{
+  const auto& itemData = RoConfigData ().fungible_items ();
+
+  for (const xaya::Chain c : {xaya::Chain::MAIN, xaya::Chain::TEST,
+                              xaya::Chain::REGTEST})
+    {
+      const Params params(c);
+      for (const auto& p : params.ProspectingPrizes ())
+        {
+          const auto mit = itemData.find (p.name + " prize");
+          ASSERT_FALSE (mit == itemData.end ())
+              << "Prize item not defined: " << p.name;
+        }
+    }
 }
 
 /* ************************************************************************** */
