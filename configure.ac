@@ -37,7 +37,10 @@ AS_IF([test "x$enable_slow_asserts" = "xyes"], [
 
 PKG_PROG_PKG_CONFIG
 
+# Taurion 0.2 (second competition) uses libxayagame commit
+# 826e79d7e000c3164e457df7601451ad01012478 as "official version".
 PKG_CHECK_MODULES([XAYAGAME], [libxayautil libxayagame])
+
 PKG_CHECK_MODULES([SQLITE3], [sqlite3])
 PKG_CHECK_MODULES([JSON], [jsoncpp])
 PKG_CHECK_MODULES([GLOG], [libglog])
