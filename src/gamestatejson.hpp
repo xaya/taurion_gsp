@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -90,9 +90,10 @@ public:
   Json::Value GroundLoot ();
 
   /**
-   * Returns the JSON data representing all regions in the game state.
+   * Returns the JSON data representing all regions in the game state which
+   * where modified after the given block height.
    */
-  Json::Value Regions ();
+  Json::Value Regions (unsigned h);
 
   /**
    * Returns the JSON data representing the available and found prizes

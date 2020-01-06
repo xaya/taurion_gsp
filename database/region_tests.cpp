@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -36,7 +36,7 @@ protected:
   RegionsTable tbl;
 
   RegionTests ()
-    : tbl(db)
+    : tbl(db, 1'042)
   {}
 
 };
@@ -94,6 +94,23 @@ TEST_F (RegionTests, DefaultNotWritten)
   EXPECT_FALSE (res.Step ());
 }
 
+TEST_F (RegionTests, ReadOnlyTable)
+{
+  RegionsTable ro(db, RegionsTable::HEIGHT_READONLY);
+
+  auto r = tbl.GetById (42);
+  r->MutableProto ().mutable_prospection ()->set_resource ("foo");
+  r->SetResourceLeft (10);
+  r.reset ();
+  EXPECT_EQ (ro.GetById (42)->GetResourceLeft (), 10);
+
+  tbl.GetById (42)->SetResourceLeft (1);
+  EXPECT_EQ (ro.GetById (42)->GetResourceLeft (), 1);
+
+  EXPECT_DEATH (ro.GetById (42)->SetResourceLeft (5), "readonly");
+  EXPECT_DEATH (ro.GetById (42)->MutableProto (), "readonly");
+}
+
 using RegionsTableTests = RegionTests;
 
 TEST_F (RegionsTableTests, QueryNonTrivial)
@@ -111,6 +128,41 @@ TEST_F (RegionsTableTests, QueryNonTrivial)
   ASSERT_TRUE (res.Step ());
   EXPECT_EQ (tbl.GetFromResult (res)->GetId (), 3);
 
+  ASSERT_FALSE (res.Step ());
+}
+
+TEST_F (RegionsTableTests, QueryModifiedSince)
+{
+  auto t = std::make_unique<RegionsTable> (db, 10);
+  t->GetById (1)->MutableProto ();
+
+  t = std::make_unique<RegionsTable> (db, 15);
+  t->GetById (2)->MutableProto ().mutable_prospection ()->set_resource ("foo");
+
+  auto res = tbl.QueryModifiedSince (15);
+  ASSERT_TRUE (res.Step ());
+  EXPECT_EQ (tbl.GetFromResult (res)->GetId (), 2);
+  ASSERT_FALSE (res.Step ());
+
+  t = std::make_unique<RegionsTable> (db, 20);
+  t->GetById (1)->MutableProto ();
+
+  res = tbl.QueryModifiedSince (20);
+  ASSERT_TRUE (res.Step ());
+  EXPECT_EQ (tbl.GetFromResult (res)->GetId (), 1);
+  ASSERT_FALSE (res.Step ());
+
+  t = std::make_unique<RegionsTable> (db, 30);
+  t->GetById (2)->SetResourceLeft (10);
+
+  res = tbl.QueryModifiedSince (20);
+  ASSERT_TRUE (res.Step ());
+  EXPECT_EQ (tbl.GetFromResult (res)->GetId (), 1);
+  ASSERT_TRUE (res.Step ());
+  EXPECT_EQ (tbl.GetFromResult (res)->GetId (), 2);
+  ASSERT_FALSE (res.Step ());
+
+  res = tbl.QueryModifiedSince (31);
   ASSERT_FALSE (res.Step ());
 }
 

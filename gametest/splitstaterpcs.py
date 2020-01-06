@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2019  Autonomous Worlds Ltd
+#   Copyright (C) 2019-2020  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -53,7 +53,7 @@ class SplitStateRpcsTest (PXTest):
     accounts = self.getRpc ("getaccounts")
     characters = self.getRpc ("getcharacters")
     loot = self.getRpc ("getgroundloot")
-    regions = self.getRpc ("getregions")
+    regions = self.getRpc ("getregions", fromheight=0)
     prizes = self.getRpc ("getprizestats")
     assert len (accounts) > 0
     assert len (characters) > 0
