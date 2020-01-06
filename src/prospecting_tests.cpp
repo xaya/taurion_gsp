@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -56,7 +56,7 @@ protected:
   const RegionMap::IdT region;
 
   CanProspectRegionTests ()
-    : characters(db), regions(db),
+    : characters(db), regions(db, 1'042),
       pos(-10, 42), region(ctx.Map ().Regions ().GetRegionId (pos))
   {
     ctx.SetChain (xaya::Chain::REGTEST);
@@ -125,7 +125,7 @@ protected:
   ContextForTesting ctx;
 
   FinishProspectingTests ()
-    : characters(db), regions(db)
+    : characters(db), regions(db, 1'042)
   {
     ctx.SetChain (xaya::Chain::REGTEST);
     InitialisePrizes (db, ctx.Params ());

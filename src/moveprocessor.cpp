@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -34,6 +34,11 @@ namespace pxd
 {
 
 /* ************************************************************************** */
+
+BaseMoveProcessor::BaseMoveProcessor (Database& d, const Context& c)
+  : ctx(c), db(d),
+    accounts(db), characters(db), groundLoot(db), regions(db, ctx.Height ())
+{}
 
 bool
 BaseMoveProcessor::ExtractMoveBasics (const Json::Value& moveObj,

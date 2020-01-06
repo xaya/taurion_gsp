@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -137,13 +137,30 @@ private:
   /** The Database reference for creating queries.  */
   Database& db;
 
+  /**
+   * Current block height.  This is used to set the "last changed height"
+   * for modified regions.
+   */
+  unsigned height;
+
 public:
+
+  /**
+   * Block height to pass if we just want a read-only view of regions and
+   * are not processing a block at the moment.
+   */
+  static constexpr unsigned HEIGHT_READONLY = 0;
 
   /** Movable handle to a region instance.  */
   using Handle = std::unique_ptr<Region>;
 
-  explicit RegionsTable (Database& d)
-    : db(d)
+  /**
+   * Constructs the table.  In order to make modifications, the current block
+   * height must be set.  If only data needs to be read, then it is possible
+   * to set the height to HEIGHT_READONLY.
+   */
+  explicit RegionsTable (Database& d, const unsigned h)
+    : db(d), height(h)
   {}
 
   RegionsTable () = delete;

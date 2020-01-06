@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -82,10 +82,7 @@ protected:
   /** Access to the regions table.  */
   RegionsTable regions;
 
-  explicit BaseMoveProcessor (Database& d, const Context& c)
-    : ctx(c), db(d),
-      accounts(db), characters(db), groundLoot(db), regions(db)
-  {}
+  explicit BaseMoveProcessor (Database& d, const Context& c);
 
   /**
    * Parses some basic stuff from a move JSON object.  This extracts the

@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,14 +47,13 @@ protected:
 private:
 
   TestRandom rnd;
-  MoveProcessor mvProc;
 
 protected:
 
   AccountsTable accounts;
 
   explicit MoveProcessorTests ()
-    : dyn(db), mvProc(db, dyn, rnd, ctx), accounts(db)
+    : dyn(db), accounts(db)
   {}
 
   /**
@@ -67,6 +66,7 @@ protected:
     std::istringstream in(str);
     in >> cmd;
 
+    MoveProcessor mvProc(db, dyn, rnd, ctx);
     mvProc.ProcessAdmin (cmd);
   }
 
@@ -81,6 +81,7 @@ protected:
     std::istringstream in(str);
     in >> val;
 
+    MoveProcessor mvProc(db, dyn, rnd, ctx);
     mvProc.ProcessAll (val);
   }
 
@@ -99,6 +100,7 @@ protected:
     for (auto& entry : val)
       entry["out"][ctx.Params ().DeveloperAddress ()] = AmountToJson (amount);
 
+    MoveProcessor mvProc(db, dyn, rnd, ctx);
     mvProc.ProcessAll (val);
   }
 
@@ -1094,8 +1096,10 @@ protected:
   const RegionMap::IdT region;
 
   MoveTestsWithRegion ()
-    : regions(db), pos(-10, 42), region(ctx.Map ().Regions ().GetRegionId (pos))
+    : regions(db, 1'042),
+      pos(-10, 42), region(ctx.Map ().Regions ().GetRegionId (pos))
   {
+    ctx.SetHeight (1'042);
     GetTest ()->SetPosition (pos);
   }
 

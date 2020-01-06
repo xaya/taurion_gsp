@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -49,7 +49,7 @@ protected:
   RegionsTable regions;
 
   PendingStateTests ()
-    : accounts(db), characters(db), regions(db)
+    : accounts(db), characters(db), regions(db, 1'042)
   {}
 
   /**
