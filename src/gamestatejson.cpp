@@ -409,10 +409,10 @@ GameStateJson::GroundLoot ()
 }
 
 Json::Value
-GameStateJson::Regions ()
+GameStateJson::Regions (const unsigned h)
 {
   RegionsTable tbl(db, RegionsTable::HEIGHT_READONLY);
-  return ResultsAsArray (tbl, tbl.QueryNonTrivial ());
+  return ResultsAsArray (tbl, tbl.QueryModifiedSince (h));
 }
 
 Json::Value
@@ -423,7 +423,7 @@ GameStateJson::FullState ()
   res["accounts"] = Accounts ();
   res["characters"] = Characters ();
   res["groundloot"] = GroundLoot ();
-  res["regions"] = Regions ();
+  res["regions"] = Regions (0);
   res["prizes"] = PrizeStats ();
 
   return res;

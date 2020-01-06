@@ -46,7 +46,9 @@
   },
   {
     "name": "getregions",
-    "params": {},
+    "params": {
+      "fromheight": 42
+    },
     "returns": {}
   },
   {

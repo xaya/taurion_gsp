@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -164,13 +164,13 @@ PXRpcServer::getgroundloot ()
 }
 
 Json::Value
-PXRpcServer::getregions ()
+PXRpcServer::getregions (const int fromHeight)
 {
-  LOG (INFO) << "RPC method called: getregions";
+  LOG (INFO) << "RPC method called: getregions " << fromHeight;
   return logic.GetCustomStateData (game,
-    [] (GameStateJson& gsj)
+    [fromHeight] (GameStateJson& gsj)
       {
-        return gsj.Regions ();
+        return gsj.Regions (fromHeight);
       });
 }
 

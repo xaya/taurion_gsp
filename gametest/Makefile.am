@@ -15,6 +15,7 @@ REGTESTS = \
   godmode.py \
   loot.py \
   mining.py \
+  modifiedregions.py \
   movement.py \
   multiupdate.py \
   nullstate.py \
