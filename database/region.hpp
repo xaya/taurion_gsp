@@ -35,8 +35,9 @@ namespace pxd
 struct RegionResult : public Database::ResultType
 {
   RESULT_COLUMN (int64_t, id, 1);
-  RESULT_COLUMN (int64_t, resourceleft, 2);
-  RESULT_COLUMN (pxd::proto::RegionData, proto, 3);
+  RESULT_COLUMN (int64_t, modifiedheight, 2);
+  RESULT_COLUMN (int64_t, resourceleft, 3);
+  RESULT_COLUMN (pxd::proto::RegionData, proto, 4);
 };
 
 /**
@@ -53,6 +54,12 @@ private:
   /** Database reference this belongs to.  */
   Database& db;
 
+  /**
+   * Current block height.  When the region is actually modified, we use this
+   * to set the last modified block height in the database.
+   */
+  unsigned currentHeight;
+
   /** The ID of the region.  */
   RegionMap::IdT id;
 
@@ -68,13 +75,14 @@ private:
   /**
    * Constructs an instance with "default / empty" data for the given ID.
    */
-  explicit Region (Database& d, RegionMap::IdT);
+  explicit Region (Database& d, unsigned h, RegionMap::IdT);
 
   /**
    * Constructs an instance based on the given DB result set.  The result
    * set should be constructed by a RegionsTable.
    */
-  explicit Region (Database& d, const Database::Result<RegionResult>& res);
+  explicit Region (Database& d, unsigned h,
+                   const Database::Result<RegionResult>& res);
 
   friend class RegionsTable;
 
@@ -183,6 +191,12 @@ public:
    * GetFromResult.
    */
   Database::Result<RegionResult> QueryNonTrivial ();
+
+  /**
+   * Queries the database for all regions that were modified later (or equal)
+   * to the given block height.
+   */
+  Database::Result<RegionResult> QueryModifiedSince (unsigned h);
 
 };
 
