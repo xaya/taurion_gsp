@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,8 +35,9 @@ namespace pxd
 struct RegionResult : public Database::ResultType
 {
   RESULT_COLUMN (int64_t, id, 1);
-  RESULT_COLUMN (int64_t, resourceleft, 2);
-  RESULT_COLUMN (pxd::proto::RegionData, proto, 3);
+  RESULT_COLUMN (int64_t, modifiedheight, 2);
+  RESULT_COLUMN (int64_t, resourceleft, 3);
+  RESULT_COLUMN (pxd::proto::RegionData, proto, 4);
 };
 
 /**
@@ -53,6 +54,12 @@ private:
   /** Database reference this belongs to.  */
   Database& db;
 
+  /**
+   * Current block height.  When the region is actually modified, we use this
+   * to set the last modified block height in the database.
+   */
+  unsigned currentHeight;
+
   /** The ID of the region.  */
   RegionMap::IdT id;
 
@@ -68,13 +75,14 @@ private:
   /**
    * Constructs an instance with "default / empty" data for the given ID.
    */
-  explicit Region (Database& d, RegionMap::IdT);
+  explicit Region (Database& d, unsigned h, RegionMap::IdT);
 
   /**
    * Constructs an instance based on the given DB result set.  The result
    * set should be constructed by a RegionsTable.
    */
-  explicit Region (Database& d, const Database::Result<RegionResult>& res);
+  explicit Region (Database& d, unsigned h,
+                   const Database::Result<RegionResult>& res);
 
   friend class RegionsTable;
 
@@ -137,13 +145,30 @@ private:
   /** The Database reference for creating queries.  */
   Database& db;
 
+  /**
+   * Current block height.  This is used to set the "last changed height"
+   * for modified regions.
+   */
+  unsigned height;
+
 public:
+
+  /**
+   * Block height to pass if we just want a read-only view of regions and
+   * are not processing a block at the moment.
+   */
+  static constexpr unsigned HEIGHT_READONLY = 0;
 
   /** Movable handle to a region instance.  */
   using Handle = std::unique_ptr<Region>;
 
-  explicit RegionsTable (Database& d)
-    : db(d)
+  /**
+   * Constructs the table.  In order to make modifications, the current block
+   * height must be set.  If only data needs to be read, then it is possible
+   * to set the height to HEIGHT_READONLY.
+   */
+  explicit RegionsTable (Database& d, const unsigned h)
+    : db(d), height(h)
   {}
 
   RegionsTable () = delete;
@@ -166,6 +191,12 @@ public:
    * GetFromResult.
    */
   Database::Result<RegionResult> QueryNonTrivial ();
+
+  /**
+   * Queries the database for all regions that were modified later (or equal)
+   * to the given block height.
+   */
+  Database::Result<RegionResult> QueryModifiedSince (unsigned h);
 
 };
 

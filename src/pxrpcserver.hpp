@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -64,7 +64,7 @@ public:
   Json::Value getaccounts () override;
   Json::Value getcharacters () override;
   Json::Value getgroundloot () override;
-  Json::Value getregions () override;
+  Json::Value getregions (int fromHeight) override;
   Json::Value getprizestats () override;
 
   Json::Value findpath (int l1range, const Json::Value& source,

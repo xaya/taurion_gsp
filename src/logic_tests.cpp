@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -61,6 +61,12 @@ private:
 
   TestRandom rnd;
 
+  /**
+   * Block height we use in tests.  This must be consistent between some things
+   * to not trigger assertion failures.
+   */
+  static constexpr unsigned HEIGHT = 42;
+
 protected:
 
   ContextForTesting ctx;
@@ -71,7 +77,7 @@ protected:
   RegionsTable regions;
 
   PXLogicTests ()
-    : accounts(db), characters(db), groundLoot(db), regions(db)
+    : accounts(db), characters(db), groundLoot(db), regions(db, HEIGHT)
   {
     InitialisePrizes (db, ctx.Params ());
   }
@@ -87,7 +93,7 @@ protected:
     blockData["admin"] = Json::Value (Json::arrayValue);
 
     Json::Value meta(Json::objectValue);
-    meta["height"] = 42;
+    meta["height"] = HEIGHT;
     meta["timestamp"] = 1500000000;
     blockData["block"] = meta;
 

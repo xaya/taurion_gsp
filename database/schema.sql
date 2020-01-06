@@ -1,5 +1,5 @@
 --  GSP for the Taurion blockchain game
---  Copyright (C) 2019  Autonomous Worlds Ltd
+--  Copyright (C) 2019-2020  Autonomous Worlds Ltd
 --
 --  This program is free software: you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -170,6 +170,10 @@ CREATE TABLE IF NOT EXISTS `regions` (
   -- all values are real regions.
   `id` INTEGER PRIMARY KEY,
 
+  -- Block height when it was last modified.  We have an index on this, so that
+  -- we can query only for regions modified recently from the frontend.
+  `modifiedheight` INTEGER NOT NULL,
+
   -- The amount of resources left to be mined.  The type of resource is
   -- defined in the region proto.  The value is undefined for regions that
   -- have not been prospected yet.
@@ -183,6 +187,9 @@ CREATE TABLE IF NOT EXISTS `regions` (
   `proto` BLOB NOT NULL
 
 );
+
+CREATE INDEX IF NOT EXISTS `regions_by_modifiedheight`
+  ON `regions` (`modifiedheight`);
 
 -- =============================================================================
 

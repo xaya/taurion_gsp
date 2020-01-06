@@ -1,5 +1,5 @@
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2019  Autonomous Worlds Ltd
+#   Copyright (C) 2019-2020  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -286,7 +286,7 @@ class PXTest (XayaGameTest):
     explicitly present.
     """
 
-    for r in self.getRpc ("getregions"):
+    for r in self.getRpc ("getregions", fromheight=0):
       if r["id"] == regionId:
         return Region (r)
 
