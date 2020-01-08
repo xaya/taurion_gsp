@@ -84,6 +84,95 @@ CheckIntBounds (const std::string& name, const int value,
 
 } // anonymous namespace
 
+Json::Value
+NonStateRpcServer::findpath (const int l1range, const Json::Value& source,
+                             const Json::Value& target, const int wpdist)
+{
+  LOG (INFO)
+      << "RPC method called: findpath\n"
+      << "  l1range=" << l1range << ", wpdist=" << wpdist << ",\n"
+      << "  source=" << source << ",\n"
+      << "  target=" << target;
+
+  HexCoord sourceCoord;
+  if (!CoordFromJson (source, sourceCoord))
+    ReturnError (ErrorCode::INVALID_ARGUMENT,
+                 "source is not a valid coordinate");
+
+  HexCoord targetCoord;
+  if (!CoordFromJson (target, targetCoord))
+    ReturnError (ErrorCode::INVALID_ARGUMENT,
+                 "target is not a valid coordinate");
+
+  const int maxInt = std::numeric_limits<HexCoord::IntT>::max ();
+  CheckIntBounds ("l1range", l1range, 0, maxInt);
+  CheckIntBounds ("wpdist", wpdist, 1, maxInt);
+
+  PathFinder finder(targetCoord);
+  const auto edges = [this] (const HexCoord& from, const HexCoord& to)
+    {
+      return map.GetEdgeWeight (from, to);
+    };
+  const PathFinder::DistanceT dist = finder.Compute (edges, sourceCoord,
+                                                     l1range);
+
+  if (dist == PathFinder::NO_CONNECTION)
+    ReturnError (ErrorCode::FINDPATH_NO_CONNECTION,
+                 "no connection between source and target"
+                 " within the given l1range");
+
+  Json::Value wp(Json::arrayValue);
+  PathFinder::Stepper path = finder.StepPath (sourceCoord);
+  HexCoord lastWp = path.GetPosition ();
+  wp.append (CoordToJson (lastWp));
+  for (; path.HasMore (); path.Next ())
+    {
+      if (HexCoord::DistanceL1 (lastWp, path.GetPosition ()) >= wpdist)
+        {
+          lastWp = path.GetPosition ();
+          wp.append (CoordToJson (lastWp));
+        }
+    }
+  if (lastWp != path.GetPosition ())
+    wp.append (CoordToJson (path.GetPosition ()));
+
+  Json::Value res(Json::objectValue);
+  res["dist"] = dist;
+  res["wp"] = wp;
+
+  return res;
+}
+
+Json::Value
+NonStateRpcServer::getregionat (const Json::Value& coord)
+{
+  LOG (INFO)
+      << "RPC method called: getregionat\n"
+      << "  coord=" << coord;
+
+  HexCoord c;
+  if (!CoordFromJson (coord, c))
+    ReturnError (ErrorCode::INVALID_ARGUMENT,
+                 "coord is not a valid coordinate");
+
+  if (!map.IsOnMap (c))
+    ReturnError (ErrorCode::REGIONAT_OUT_OF_MAP,
+                 "coord is outside the game map");
+
+  RegionMap::IdT id;
+  const auto tiles = map.Regions ().GetRegionShape (c, id);
+
+  Json::Value tilesArr(Json::arrayValue);
+  for (const auto& c : tiles)
+    tilesArr.append (CoordToJson (c));
+
+  Json::Value res(Json::objectValue);
+  res["id"] = id;
+  res["tiles"] = tilesArr;
+
+  return res;
+}
+
 void
 PXRpcServer::stop ()
 {
@@ -183,95 +272,6 @@ PXRpcServer::getprizestats ()
       {
         return gsj.PrizeStats ();
       });
-}
-
-Json::Value
-PXRpcServer::findpath (const int l1range, const Json::Value& source,
-                       const Json::Value& target, const int wpdist)
-{
-  LOG (INFO)
-      << "RPC method called: findpath\n"
-      << "  l1range=" << l1range << ", wpdist=" << wpdist << ",\n"
-      << "  source=" << source << ",\n"
-      << "  target=" << target;
-
-  HexCoord sourceCoord;
-  if (!CoordFromJson (source, sourceCoord))
-    ReturnError (ErrorCode::INVALID_ARGUMENT,
-                 "source is not a valid coordinate");
-
-  HexCoord targetCoord;
-  if (!CoordFromJson (target, targetCoord))
-    ReturnError (ErrorCode::INVALID_ARGUMENT,
-                 "target is not a valid coordinate");
-
-  const int maxInt = std::numeric_limits<HexCoord::IntT>::max ();
-  CheckIntBounds ("l1range", l1range, 0, maxInt);
-  CheckIntBounds ("wpdist", wpdist, 1, maxInt);
-
-  PathFinder finder(targetCoord);
-  const auto edges = [this] (const HexCoord& from, const HexCoord& to)
-    {
-      return logic.map.GetEdgeWeight (from, to);
-    };
-  const PathFinder::DistanceT dist = finder.Compute (edges, sourceCoord,
-                                                     l1range);
-
-  if (dist == PathFinder::NO_CONNECTION)
-    ReturnError (ErrorCode::FINDPATH_NO_CONNECTION,
-                 "no connection between source and target"
-                 " within the given l1range");
-
-  Json::Value wp(Json::arrayValue);
-  PathFinder::Stepper path = finder.StepPath (sourceCoord);
-  HexCoord lastWp = path.GetPosition ();
-  wp.append (CoordToJson (lastWp));
-  for (; path.HasMore (); path.Next ())
-    {
-      if (HexCoord::DistanceL1 (lastWp, path.GetPosition ()) >= wpdist)
-        {
-          lastWp = path.GetPosition ();
-          wp.append (CoordToJson (lastWp));
-        }
-    }
-  if (lastWp != path.GetPosition ())
-    wp.append (CoordToJson (path.GetPosition ()));
-
-  Json::Value res(Json::objectValue);
-  res["dist"] = dist;
-  res["wp"] = wp;
-
-  return res;
-}
-
-Json::Value
-PXRpcServer::getregionat (const Json::Value& coord)
-{
-  LOG (INFO)
-      << "RPC method called: getregionat\n"
-      << "  coord=" << coord;
-
-  HexCoord c;
-  if (!CoordFromJson (coord, c))
-    ReturnError (ErrorCode::INVALID_ARGUMENT,
-                 "coord is not a valid coordinate");
-
-  if (!logic.map.IsOnMap (c))
-    ReturnError (ErrorCode::REGIONAT_OUT_OF_MAP,
-                 "coord is outside the game map");
-
-  RegionMap::IdT id;
-  const auto tiles = logic.map.Regions ().GetRegionShape (c, id);
-
-  Json::Value tilesArr(Json::arrayValue);
-  for (const auto& c : tiles)
-    tilesArr.append (CoordToJson (c));
-
-  Json::Value res(Json::objectValue);
-  res["id"] = id;
-  res["tiles"] = tilesArr;
-
-  return res;
 }
 
 } // namespace pxd
