@@ -21,8 +21,11 @@
 
 #include "logic.hpp"
 
+#include <charon/client.hpp>
 #include <xayagame/defaultmain.hpp>
 #include <xayagame/game.hpp>
+
+#include <jsonrpccpp/server/abstractserverconnector.h>
 
 #include <memory>
 
@@ -30,11 +33,45 @@ namespace pxd
 {
 
 /**
+ * Abstract interface for a Charon client.  The actual implementation (which
+ * holds a real Charon client and a local RPC server) is an implementation
+ * detail.
+ */
+class CharonClient
+{
+
+protected:
+
+  CharonClient () = default;
+
+public:
+
+  virtual ~CharonClient () = default;
+
+  /**
+   * Sets up the JSON-RPC connector for the local server.
+   */
+  virtual void SetupLocalRpc (jsonrpc::AbstractServerConnector& conn) = 0;
+
+  /**
+   * Starts the client and local server, returning only when the server
+   * should be stopped.
+   */
+  virtual void Run () = 0;
+
+};
+
+/**
  * Checks if a Charon server should be run (according to the command-line flags)
  * and constructs one wrapped as a GameComponent.
  */
 std::unique_ptr<xaya::GameComponent> MaybeBuildCharonServer (
     xaya::Game& g, PXLogic& r);
+
+/**
+ * Checks if this should run as Charon client.  If so, returns a new instance.
+ */
+std::unique_ptr<CharonClient> MaybeBuildCharonClient ();
 
 } // namespace pxd
 
