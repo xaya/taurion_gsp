@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 
 #include "config.h"
 
+#include "charon.hpp"
 #include "logic.hpp"
 #include "pending.hpp"
 #include "pxrpcserver.hpp"
@@ -82,6 +83,18 @@ public:
     std::unique_ptr<xaya::RpcServerInterface> res;
     res.reset (new xaya::WrappedRpcServer<pxd::PXRpcServer> (game, rules,
                                                              conn));
+    return res;
+  }
+
+  std::vector<std::unique_ptr<xaya::GameComponent>>
+  BuildGameComponents (xaya::Game& game) override
+  {
+    std::vector<std::unique_ptr<xaya::GameComponent>> res;
+
+    auto charonSrv = MaybeBuildCharonServer (game, rules);
+    if (charonSrv != nullptr)
+      res.push_back (std::move (charonSrv));
+
     return res;
   }
 
