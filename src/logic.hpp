@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -132,6 +132,11 @@ public:
   /** Type for a callback that retrieves JSON data from the database.  */
   using JsonStateFromDatabase = std::function<Json::Value (GameStateJson& gsj)>;
 
+  /** Extended callback that expects also block hash and height.  */
+  using JsonStateFromDatabaseWithBlock
+    = std::function<Json::Value (GameStateJson& gsj,
+                                 const xaya::uint256& hash, unsigned height)>;
+
   PXLogic () = default;
 
   PXLogic (const PXLogic&) = delete;
@@ -151,6 +156,13 @@ public:
    * Returns custom game-state data as JSON.  The provided callback is invoked
    * with a GameStateJson instance to retrieve the "main" state data that is
    * returned in the JSON "data" field.
+   */
+  Json::Value GetCustomStateData (xaya::Game& game,
+                                  const JsonStateFromDatabaseWithBlock& cb);
+
+  /**
+   * Variant of the other overload that extracts data with a callback that does
+   * not need block hash or height.
    */
   Json::Value GetCustomStateData (xaya::Game& game,
                                   const JsonStateFromDatabase& cb);

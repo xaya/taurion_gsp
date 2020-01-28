@@ -192,17 +192,29 @@ PXLogic::GetStateAsJson (sqlite3* db)
 }
 
 Json::Value
-PXLogic::GetCustomStateData (xaya::Game& game, const JsonStateFromDatabase& cb)
+PXLogic::GetCustomStateData (xaya::Game& game,
+                             const JsonStateFromDatabaseWithBlock& cb)
 {
   return SQLiteGame::GetCustomStateData (game, "data",
-      [this, &cb] (sqlite3* db)
+      [this, &cb] (sqlite3* db, const xaya::uint256& hash,
+                   const unsigned height)
         {
           SQLiteGameDatabase dbObj(*this);
           const Params params(GetChain ());
           GameStateJson gsj(dbObj, params, map);
 
-          return cb (gsj);
+          return cb (gsj, hash, height);
         });
+}
+
+Json::Value
+PXLogic::GetCustomStateData (xaya::Game& game, const JsonStateFromDatabase& cb)
+{
+  return GetCustomStateData (game,
+    [&cb] (GameStateJson& gsj, const xaya::uint256& hash, const unsigned height)
+    {
+      return cb (gsj);
+    });
 }
 
 namespace
