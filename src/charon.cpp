@@ -181,12 +181,30 @@ CharonBackend::HandleMethod (const std::string& method,
 {
   const auto mit = CHARON_METHODS.find (method);
   if (mit == CHARON_METHODS.end ())
-    throw jsonrpc::JsonRpcException (
-        jsonrpc::Errors::ERROR_RPC_METHOD_NOT_FOUND);
+    throw Error (jsonrpc::Errors::ERROR_RPC_METHOD_NOT_FOUND);
 
-  Json::Value result;
-  (rpc.*(mit->second)) (params, result);
-  return result;
+  try
+    {
+      Json::Value result;
+      (rpc.*(mit->second)) (params, result);
+      return result;
+    }
+  catch (const Error& exc)
+    {
+      throw;
+    }
+  catch (const Json::LogicError& exc)
+    {
+      /* This case happens specifically if the request params are invalid,
+         because then the RPC server's "methodI" function will e.g. try to
+         access a missing object member or convert some value to an int
+         which isn't.  */
+      throw Error (jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS, exc.what ());
+    }
+  catch (...)
+    {
+      throw Error (jsonrpc::Errors::ERROR_RPC_INTERNAL_ERROR);
+    }
 }
 
 /* ************************************************************************** */

@@ -156,6 +156,12 @@ class CharonTest (PXTest):
       self.mainLogger.info ("Testing RPC through Charon...")
       self.assertEqual (client.rpc.getaccounts (), self.rpc.game.getaccounts ())
 
+      self.mainLogger.info ("Testing invalid Charon method call...")
+      self.expectError (-32602, ".*Invalid method parameters.*",
+                        client.rpc.getregions, 42)
+      self.expectError (-32602, ".*Invalid method parameters.*",
+                        client.rpc.getregions, fromheight="not an int")
+
       self.mainLogger.info ("Testing waitforchange...")
       w = Waiter (client.rpc.waitforchange, "")
       w.assertRunning ()
