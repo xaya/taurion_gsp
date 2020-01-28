@@ -1,0 +1,21 @@
+[
+  {
+    "name": "findpath",
+    "params":
+      {
+        "source": {},
+        "target": {},
+        "l1range": 100,
+        "wpdist": 10
+      },
+    "returns": {}
+  },
+  {
+    "name": "getregionat",
+    "params":
+      {
+        "coord": {}
+      },
+    "returns": {}
+  }
+]

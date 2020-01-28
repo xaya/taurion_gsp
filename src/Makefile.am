@@ -1,9 +1,12 @@
 noinst_LTLIBRARIES = libtaurion.la
 bin_PROGRAMS = tauriond
 
-EXTRA_DIST = rpc-stubs/pxd.json
+EXTRA_DIST = \
+  rpc-stubs/nonstate.json \
+  rpc-stubs/pxd.json
 
 RPC_STUBS = \
+  rpc-stubs/nonstaterpcserverstub.h \
   rpc-stubs/pxrpcserverstub.h
 BUILT_SOURCES = $(RPC_STUBS)
 CLEANFILES = $(RPC_STUBS)
@@ -56,21 +59,24 @@ libtaurionheaders = \
 
 tauriond_CXXFLAGS = \
   -I$(top_srcdir) \
-  $(XAYAGAME_CFLAGS) \
+  $(XAYAGAME_CFLAGS) $(CHARON_CFLAGS) \
   $(JSON_CFLAGS) \
   $(GLOG_CFLAGS) $(GFLAGS_CFLAGS) $(PROTOBUF_CFLAGS)
 tauriond_LDADD = \
   $(builddir)/libtaurion.la \
   $(top_builddir)/mapdata/libmapdata.la \
   $(top_builddir)/database/libdatabase.la \
-  $(XAYAGAME_LIBS) \
+  $(XAYAGAME_LIBS) $(CHARON_LIBS) \
   $(JSON_LIBS) \
   $(GLOG_LIBS) $(GFLAGS_LIBS) $(PROTOBUF_LIBS)
 tauriond_SOURCES = main.cpp \
+  charon.cpp \
   pxrpcserver.cpp
 tauriondheaders = \
+  charon.hpp \
   pxrpcserver.hpp \
   \
+  rpc-stubs/nonstaterpcserverstub.h \
   rpc-stubs/pxrpcserverstub.h
 
 noinst_HEADERS = $(libtaurionheaders) $(tauriondheaders)
@@ -145,5 +151,8 @@ benchmarks_SOURCES = \
   combat_target_bench.cpp \
   movement_bench.cpp
 
+rpc-stubs/nonstaterpcserverstub.h: $(srcdir)/rpc-stubs/nonstate.json
+	jsonrpcstub "$<" \
+          --cpp-server=NonStateRpcServerStub --cpp-server-file="$@"
 rpc-stubs/pxrpcserverstub.h: $(srcdir)/rpc-stubs/pxd.json
 	jsonrpcstub "$<" --cpp-server=PXRpcServerStub --cpp-server-file="$@"

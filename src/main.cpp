@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 
 #include "config.h"
 
+#include "charon.hpp"
 #include "logic.hpp"
 #include "pending.hpp"
 #include "pxrpcserver.hpp"
@@ -85,6 +86,18 @@ public:
     return res;
   }
 
+  std::vector<std::unique_ptr<xaya::GameComponent>>
+  BuildGameComponents (xaya::Game& game) override
+  {
+    std::vector<std::unique_ptr<xaya::GameComponent>> res;
+
+    auto charonSrv = MaybeBuildCharonServer (game, rules);
+    if (charonSrv != nullptr)
+      res.push_back (std::move (charonSrv));
+
+    return res;
+  }
+
 };
 
 } // anonymous namespace
@@ -99,6 +112,35 @@ main (int argc, char** argv)
   gflags::SetVersionString (PACKAGE_VERSION);
   gflags::ParseCommandLineFlags (&argc, &argv, true);
 
+#ifdef ENABLE_SLOW_ASSERTS
+  LOG (WARNING)
+      << "Slow assertions are enabled.  This is fine for testing, but will"
+         " slow down syncing";
+#endif // ENABLE_SLOW_ASSERTS
+
+  auto charonClient = pxd::MaybeBuildCharonClient ();
+  if (charonClient != nullptr)
+    {
+      std::unique_ptr<jsonrpc::HttpServer> srv;
+      if (FLAGS_game_rpc_port != 0)
+        {
+          srv = std::make_unique<jsonrpc::HttpServer> (FLAGS_game_rpc_port);
+          if (FLAGS_game_rpc_listen_locally)
+            srv->BindLocalhost ();
+          charonClient->SetupLocalRpc (*srv);
+          LOG (INFO)
+              << "Starting local RPC interface at port " << FLAGS_game_rpc_port;
+        }
+
+      charonClient->Run ();
+
+      /* We have to explicitly free the CharonClient instance here already
+         before its associated HttpServer goes out of scope.  */
+      charonClient.reset ();
+
+      return EXIT_SUCCESS;;
+    }
+
   if (FLAGS_xaya_rpc_url.empty ())
     {
       std::cerr << "Error: --xaya_rpc_url must be set" << std::endl;
@@ -109,12 +151,6 @@ main (int argc, char** argv)
       std::cerr << "Error: --datadir must be specified" << std::endl;
       return EXIT_FAILURE;
     }
-
-#ifdef ENABLE_SLOW_ASSERTS
-  LOG (WARNING)
-      << "Slow assertions are enabled.  This is fine for testing, but will"
-         " slow down syncing";
-#endif // ENABLE_SLOW_ASSERTS
 
   xaya::GameDaemonConfiguration config;
   config.XayaRpcUrl = FLAGS_xaya_rpc_url;
