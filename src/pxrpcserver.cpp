@@ -292,4 +292,15 @@ PXRpcServer::getprizestats ()
       });
 }
 
+Json::Value
+PXRpcServer::getbootstrapdata ()
+{
+  LOG (INFO) << "RPC method called: getbootstrapdata";
+  return logic.GetCustomStateData (game,
+    [] (GameStateJson& gsj)
+      {
+        return gsj.BootstrapData ();
+      });
+}
+
 } // namespace pxd

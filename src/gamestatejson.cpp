@@ -429,4 +429,13 @@ GameStateJson::FullState ()
   return res;
 }
 
+Json::Value
+GameStateJson::BootstrapData ()
+{
+  Json::Value res(Json::objectValue);
+  res["regions"] = Regions (0);
+
+  return res;
+}
+
 } // namespace pxd
