@@ -33,6 +33,7 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
+#include <chrono>
 #include <condition_variable>
 #include <map>
 #include <mutex>
@@ -55,6 +56,9 @@ DEFINE_int32 (charon_priority, 0, "Priority for the XMPP connection");
 
 DEFINE_string (charon_pubsub_service, "",
                "The pubsub service to use on the Charon server");
+DEFINE_int32 (charon_timeout_ms, 3000,
+              "Timeout in ms that the Charon client will wait"
+              " for a server response");
 
 /* ************************************************************************** */
 
@@ -336,6 +340,16 @@ public:
     LOG (INFO) << "Using " << serverJid << " as Charon server";
   }
 
+  /**
+   * Sets the timeout for the client.
+   */
+  template <typename Rep, typename Period>
+    void
+    SetTimeout (const std::chrono::duration<Rep, Period>& t)
+  {
+    client.SetTimeout (t);
+  }
+
   void SetupLocalRpc (jsonrpc::AbstractServerConnector& conn) override;
   void Run () override;
 
@@ -484,7 +498,10 @@ MaybeBuildCharonClient ()
       return nullptr;
     }
 
-  return std::make_unique<RealCharonClient> (FLAGS_charon_server_jid);
+  auto res = std::make_unique<RealCharonClient> (FLAGS_charon_server_jid);
+  res->SetTimeout (std::chrono::milliseconds (FLAGS_charon_timeout_ms));
+
+  return res;
 }
 
 } // namespace pxd
