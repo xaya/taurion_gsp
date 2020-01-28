@@ -130,6 +130,8 @@ public:
   Json::Value getregions (int fromHeight) override;
   Json::Value getprizestats () override;
 
+  Json::Value getbootstrapdata () override;
+
   Json::Value
   findpath (int l1range, const Json::Value& source,
             const Json::Value& target, int wpdist) override

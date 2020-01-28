@@ -161,6 +161,8 @@ class CharonTest (PXTest):
                         client.rpc.getregions, 42)
       self.expectError (-32602, ".*Invalid method parameters.*",
                         client.rpc.getregions, fromheight="not an int")
+      self.expectError (3, ".*too low for current block height.*",
+                        client.rpc.getregions, fromheight=-10000)
 
       self.mainLogger.info ("Testing waitforchange...")
       w = Waiter (client.rpc.waitforchange, "")

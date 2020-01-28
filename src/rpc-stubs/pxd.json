@@ -58,6 +58,12 @@
   },
 
   {
+    "name": "getbootstrapdata",
+    "params": {},
+    "returns": {}
+  },
+
+  {
     "name": "findpath",
     "params":
       {

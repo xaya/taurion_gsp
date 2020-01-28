@@ -66,6 +66,11 @@ class SplitStateRpcsTest (PXTest):
     self.assertEqual (regions, state["regions"])
     self.assertEqual (prizes, state["prizes"])
 
+    # Test the bootstrap data.
+    self.assertEqual (self.getRpc ("getbootstrapdata"), {
+      "regions": regions,
+    })
+
 
 if __name__ == "__main__":
   SplitStateRpcsTest ().main ()

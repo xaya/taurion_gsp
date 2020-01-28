@@ -108,6 +108,13 @@ public:
    */
   Json::Value FullState ();
 
+  /**
+   * Returns the bootstrap data that the frontend needs on startup (e.g.
+   * including all regions, not just recently-modified ones).  This is
+   * potentially an expensive operation and has a large result.
+   */
+  Json::Value BootstrapData ();
+
 };
 
 } // namespace pxd

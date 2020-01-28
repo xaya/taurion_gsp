@@ -70,6 +70,9 @@ class ModifiedRegionsTest (PXTest):
     self.assertEqual (self.queryRegions (h3), set ([r3]))
     self.assertEqual (self.queryRegions (1000), set ([]))
 
+    self.expectError (3, ".*too low for current block height.*",
+                      self.queryRegions, -10000)
+
 
 if __name__ == "__main__":
   ModifiedRegionsTest ().main ()

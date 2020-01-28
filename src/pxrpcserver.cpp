@@ -34,6 +34,9 @@ namespace pxd
 namespace
 {
 
+/** Maximum number of past blocks for which getregions can be called.  */
+constexpr int MAX_REGIONS_HEIGHT_DIFFERENCE = 2 * 60 * 24 * 3;
+
 /**
  * Error codes returned from the PX RPC server.  All values should have an
  * explicit integer number, because this also defines the RPC protocol
@@ -52,6 +55,9 @@ enum class ErrorCode
 
   /* Specific errors with getregionat.  */
   REGIONAT_OUT_OF_MAP = 2,
+
+  /* Specific errors with getregions.  */
+  GETREGIONS_FROM_TOO_LOW = 3,
 
 };
 
@@ -256,9 +262,21 @@ Json::Value
 PXRpcServer::getregions (const int fromHeight)
 {
   LOG (INFO) << "RPC method called: getregions " << fromHeight;
+
   return logic.GetCustomStateData (game,
-    [fromHeight] (GameStateJson& gsj)
+    [fromHeight] (GameStateJson& gsj, const xaya::uint256 hash,
+                  const int height)
       {
+        if (fromHeight + MAX_REGIONS_HEIGHT_DIFFERENCE < height)
+          {
+            std::ostringstream msg;
+            msg << "fromHeight " << fromHeight
+                << " is too low for current block height " << height
+                << ", needs to be at least "
+                << height - MAX_REGIONS_HEIGHT_DIFFERENCE;
+            ReturnError (ErrorCode::GETREGIONS_FROM_TOO_LOW, msg.str ());
+          }
+
         return gsj.Regions (fromHeight);
       });
 }
@@ -271,6 +289,17 @@ PXRpcServer::getprizestats ()
     [] (GameStateJson& gsj)
       {
         return gsj.PrizeStats ();
+      });
+}
+
+Json::Value
+PXRpcServer::getbootstrapdata ()
+{
+  LOG (INFO) << "RPC method called: getbootstrapdata";
+  return logic.GetCustomStateData (game,
+    [] (GameStateJson& gsj)
+      {
+        return gsj.BootstrapData ();
       });
 }
 
