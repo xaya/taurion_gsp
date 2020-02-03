@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,14 +21,14 @@
 
 #include "database.hpp"
 
+#include <xayagame/sqlitestorage.hpp>
+
 #include <gtest/gtest.h>
 
 #include <benchmark/benchmark.h>
 
 #include <sqlite3.h>
 
-#include <map>
-#include <memory>
 #include <string>
 
 namespace pxd
@@ -44,23 +44,19 @@ class TestDatabase : public Database
 
 private:
 
-  /** The SQLite database handle.  */
-  sqlite3* handle = nullptr;
-
-  /** List of cached prepared statements.  */
-  std::map<std::string, sqlite3_stmt*> stmtCache;
+  /** The SQLiteDatabase instance.  */
+  xaya::SQLiteDatabase db;
 
   /** The next ID to give out.  */
   IdT nextId = 1;
 
 protected:
 
-  sqlite3_stmt* PrepareStatement (const std::string& sql);
+  sqlite3_stmt* PrepareStatement (const std::string& sql) override;
 
 public:
 
   TestDatabase ();
-  ~TestDatabase ();
 
   TestDatabase (const TestDatabase&) = delete;
   void operator= (const TestDatabase&) = delete;
@@ -83,7 +79,7 @@ public:
   sqlite3*
   GetHandle ()
   {
-    return handle;
+    return *db;
   }
 
 };
