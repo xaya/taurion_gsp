@@ -29,6 +29,7 @@
 #include "proto/character.pb.h"
 
 #include <xayagame/sqlitegame.hpp>
+#include <xayagame/sqlitestorage.hpp>
 #include <xayautil/random.hpp>
 
 #include <json/json.h>
@@ -51,6 +52,9 @@ class SQLiteGameDatabase : public Database
 
 private:
 
+  /** The underlying SQLiteDatabase instance.  */
+  xaya::SQLiteDatabase& db;
+
   /** The underlying SQLiteGame instance.  */
   PXLogic& game;
 
@@ -60,8 +64,8 @@ protected:
 
 public:
 
-  explicit SQLiteGameDatabase (PXLogic& g)
-    : game(g)
+  explicit SQLiteGameDatabase (xaya::SQLiteDatabase& d, PXLogic& g)
+    : db(d), game(g)
   {}
 
   SQLiteGameDatabase () = delete;
@@ -117,15 +121,16 @@ private:
 
 protected:
 
-  void SetupSchema (sqlite3* db) override;
+  void SetupSchema (xaya::SQLiteDatabase& db) override;
 
   void GetInitialStateBlock (unsigned& height,
                              std::string& hashHex) const override;
-  void InitialiseState (sqlite3* db) override;
+  void InitialiseState (xaya::SQLiteDatabase& db) override;
 
-  void UpdateState (sqlite3* db, const Json::Value& blockData) override;
+  void UpdateState (xaya::SQLiteDatabase& db,
+                    const Json::Value& blockData) override;
 
-  Json::Value GetStateAsJson (sqlite3* db) override;
+  Json::Value GetStateAsJson (const xaya::SQLiteDatabase& db) override;
 
 public:
 

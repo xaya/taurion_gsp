@@ -37,7 +37,7 @@ namespace pxd
 sqlite3_stmt*
 SQLiteGameDatabase::PrepareStatement (const std::string& sql)
 {
-  return game.PrepareStatement (sql);
+  return db.Prepare (sql);
 }
 
 Database::IdT
@@ -130,9 +130,9 @@ PXLogic::UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
 }
 
 void
-PXLogic::SetupSchema (sqlite3* db)
+PXLogic::SetupSchema (xaya::SQLiteDatabase& db)
 {
-  SetupDatabaseSchema (db);
+  SetupDatabaseSchema (*db);
 }
 
 void
@@ -166,25 +166,25 @@ PXLogic::GetInitialStateBlock (unsigned& height,
 }
 
 void
-PXLogic::InitialiseState (sqlite3* db)
+PXLogic::InitialiseState (xaya::SQLiteDatabase& db)
 {
-  SQLiteGameDatabase dbObj(*this);
+  SQLiteGameDatabase dbObj(db, *this);
   const Params params(GetChain ());
 
   InitialisePrizes (dbObj, params);
 }
 
 void
-PXLogic::UpdateState (sqlite3* db, const Json::Value& blockData)
+PXLogic::UpdateState (xaya::SQLiteDatabase& db, const Json::Value& blockData)
 {
-  SQLiteGameDatabase dbObj(*this);
+  SQLiteGameDatabase dbObj(db, *this);
   UpdateState (dbObj, GetContext ().GetRandom (), GetChain (), map, blockData);
 }
 
 Json::Value
-PXLogic::GetStateAsJson (sqlite3* db)
+PXLogic::GetStateAsJson (const xaya::SQLiteDatabase& db)
 {
-  SQLiteGameDatabase dbObj(*this);
+  SQLiteGameDatabase dbObj(const_cast<xaya::SQLiteDatabase&> (db), *this);
   const Params params(GetChain ());
   GameStateJson gsj(dbObj, params, map);
 
@@ -195,9 +195,10 @@ Json::Value
 PXLogic::GetCustomStateData (xaya::Game& game, const JsonStateFromDatabase& cb)
 {
   return SQLiteGame::GetCustomStateData (game, "data",
-      [this, &cb] (sqlite3* db)
+      [this, &cb] (const xaya::SQLiteDatabase& db)
         {
-          SQLiteGameDatabase dbObj(*this);
+          SQLiteGameDatabase dbObj(const_cast<xaya::SQLiteDatabase&> (db),
+                                   *this);
           const Params params(GetChain ());
           GameStateJson gsj(dbObj, params, map);
 

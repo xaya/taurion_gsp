@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -325,9 +325,9 @@ PendingMoves::Clear ()
 void
 PendingMoves::AddPendingMove (const Json::Value& mv)
 {
-  AccessConfirmedState ();
+  auto& db = const_cast<xaya::SQLiteDatabase&> (AccessConfirmedState ());
   PXLogic& rules = dynamic_cast<PXLogic&> (GetSQLiteGame ());
-  SQLiteGameDatabase dbObj(rules);
+  SQLiteGameDatabase dbObj(db, rules);
 
   const Context ctx(GetChain (), rules.GetBaseMap (),
                     GetConfirmedHeight () + 1, Context::NO_TIMESTAMP);
