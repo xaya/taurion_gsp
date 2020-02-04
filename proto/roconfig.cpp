@@ -18,29 +18,44 @@
 
 #include "roconfig.hpp"
 
-#include <gtest/gtest.h>
+#include <glog/logging.h>
+
+extern "C"
+{
+
+/* Binary blob for the roconfig protocol buffer data.  */
+extern const unsigned char blob_roconfig_start;
+extern const unsigned char blob_roconfig_end;
+
+} // extern C
 
 namespace pxd
 {
+
 namespace
 {
 
-TEST (RoConfigTests, Parses)
-{
-  RoConfigData ();
-}
+/** Singleton instance of the proto.  */
+proto::ConfigData instance;
 
-TEST (RoConfigTests, IsSingleton)
-{
-  const auto* ptr1 = &RoConfigData ();
-  const auto* ptr2 = &RoConfigData ();
-  EXPECT_EQ (ptr1, ptr2);
-}
-
-TEST (RoConfigTests, HasData)
-{
-  EXPECT_GT (RoConfigData ().fungible_items ().size (), 0);
-}
+/** Whether or not the proto has been initialised from the blob yet.  */
+bool initialised = false;
 
 } // anonymous namespace
+
+const proto::ConfigData&
+RoConfigData ()
+{
+  if (!initialised)
+    {
+      LOG (INFO) << "Initialising hard-coded ConfigData proto instance...";
+      const auto* begin = &blob_roconfig_start;
+      const auto* end = &blob_roconfig_end;
+      CHECK (instance.ParseFromArray (begin, end - begin));
+      initialised = true;
+    }
+
+  return instance;
+}
+
 } // namespace pxd

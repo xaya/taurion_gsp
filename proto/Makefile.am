@@ -1,3 +1,4 @@
+noinst_PROGRAMS = roconfig_gen
 noinst_LTLIBRARIES = libpxproto.la
 
 ROCONFIG_TEXT_PROTOS = \
@@ -14,21 +15,31 @@ PROTOS = \
   region.proto
 EXTRA_DIST = \
   $(PROTOS) $(ROCONFIG_TEXT_PROTOS) \
-  roconfig_head.cpp roconfig_tail.cpp
+  roconfig_gen_head.cpp roconfig_gen_tail.cpp
 
-BUILT_SOURCES = $(PROTOS:.proto=.pb.h)
-CLEANFILES = $(PROTOS:.proto=.pb.h) $(PROTOS:.proto=.pb.cc) roconfig.cpp
+BUILT_SOURCES = $(PROTOS:.proto=.pb.h) roconfig.pb
+CLEANFILES = \
+  $(PROTOS:.proto=.pb.h) $(PROTOS:.proto=.pb.cc) \
+  roconfig_gen.cpp roconfig.pb
 
 libpxproto_la_CXXFLAGS = $(PROTOBUF_CFLAGS)
-libpxproto_la_LIBADD = $(PROTOBUF_LIBS)
+libpxproto_la_LBADD = $(PROTOBUF_LIBS)
 libpxproto_la_SOURCES = \
   roconfig.cpp \
   \
+  roconfig_blob.s \
   $(PROTOS:.proto=.pb.cc)
 noinst_HEADERS = \
   roconfig.hpp \
   \
   $(PROTOS:.proto=.pb.h)
+
+roconfig_gen_CXXFLAGS = $(GLOG_CFLAGS) $(GFLAGS_CFLAGS) $(PROTOBUF_CFLAGS)
+roconfig_gen_LDADD = $(GLOG_LIBS) $(GFLAGS_LIBS) $(PROTOBUF_LIBS)
+roconfig_gen_SOURCES = \
+  roconfig_gen.cpp \
+  \
+  $(PROTOS:.proto=.pb.cc)
 
 check_PROGRAMS = tests
 TESTS = tests
@@ -47,5 +58,9 @@ tests_SOURCES = \
 %.pb.h %.pb.cc: $(srcdir)/%.proto
 	protoc -I$(srcdir) --cpp_out=. "$<"
 
-roconfig.cpp: roconfig_head.cpp $(ROCONFIG_TEXT_PROTOS) roconfig_tail.cpp
+roconfig_gen.cpp: roconfig_gen_head.cpp $(ROCONFIG_TEXT_PROTOS) roconfig_gen_tail.cpp
 	cat $^ >$@
+
+roconfig.pb: $(builddir)/roconfig_gen
+	$(builddir)/roconfig_gen --output="$@"
+	touch $(srcdir)/roconfig_blob.s

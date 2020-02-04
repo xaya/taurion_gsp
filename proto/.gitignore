@@ -1,4 +1,6 @@
-roconfig.cpp
+roconfig_gen
+roconfig_gen.cpp
+roconfig.pb
 
 tests
 *.trs
