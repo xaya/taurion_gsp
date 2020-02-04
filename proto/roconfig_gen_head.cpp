@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,14 +16,18 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "roconfig.hpp"
+#include "config.h"
 
+#include "config.pb.h"
+
+#include <gflags/gflags.h>
+#include <glog/logging.h>
 #include <google/protobuf/text_format.h>
 
-#include <glog/logging.h>
+#include <cstdlib>
+#include <fstream>
+#include <iostream>
 
-namespace pxd
-{
 namespace
 {
 
