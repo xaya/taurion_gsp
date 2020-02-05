@@ -187,6 +187,7 @@ TEST_F (AccountUpdateTests, InvalidInitialisation)
   Process (R"([
     {"name": "domob", "move": {"a": {"init": {"x": 1, "faction": "b"}}}},
     {"name": "domob", "move": {"a": {"init": {"faction": "x"}}}},
+    {"name": "domob", "move": {"a": {"init": {"faction": "a"}}}},
     {"name": "domob", "move": {"a": {"init": {"y": 5}}}},
     {"name": "domob", "move": {"a": {"init": false}}},
     {"name": "domob", "move": {"a": 42}}

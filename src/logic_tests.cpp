@@ -828,6 +828,12 @@ TEST_F (PXLogicTests, BankingAndMovement)
 
 using ValidateStateTests = PXLogicTests;
 
+TEST_F (ValidateStateTests, AncientAccountFaction)
+{
+  accounts.CreateNew ("domob", Faction::ANCIENT);
+  EXPECT_DEATH (ValidateState (), "has invalid faction");
+}
+
 TEST_F (ValidateStateTests, CharacterFactions)
 {
   auto c = characters.CreateNew ("domob", Faction::RED);

@@ -235,7 +235,10 @@ ValidateCharacterFactions (Database& db)
     while (res.Step ())
       {
         auto a = accounts.GetFromResult (res);
-        auto insert = accountFactions.emplace (a->GetName (), a->GetFaction ());
+        const auto f = a->GetFaction ();
+        CHECK (f != Faction::INVALID && f != Faction::ANCIENT)
+            << "Account " << a->GetName () << " has invalid faction";
+        auto insert = accountFactions.emplace (a->GetName (), f);
         CHECK (insert.second) << "Duplicate account name " << a->GetName ();
       }
   }

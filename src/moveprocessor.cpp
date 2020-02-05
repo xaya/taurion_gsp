@@ -965,10 +965,18 @@ MoveProcessor::MaybeInitAccount (const std::string& name,
       return;
     }
   const Faction faction = FactionFromString (factionVal.asString ());
-  if (faction == Faction::INVALID)
+  switch (faction)
     {
+    case Faction::INVALID:
       LOG (WARNING) << "Invalid faction specified for account: " << init;
       return;
+
+    case Faction::ANCIENT:
+      LOG (WARNING) << "Account can't be ancient faction: " << init;
+      return;
+
+    default:
+      break;
     }
 
   if (init.size () != 1)
