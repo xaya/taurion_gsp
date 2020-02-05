@@ -26,6 +26,7 @@
 #include "testutils.hpp"
 
 #include "database/account.hpp"
+#include "database/building.hpp"
 #include "database/character.hpp"
 #include "database/damagelists.hpp"
 #include "database/dbtest.hpp"
@@ -72,12 +73,14 @@ protected:
   ContextForTesting ctx;
 
   AccountsTable accounts;
+  BuildingsTable buildings;
   CharacterTable characters;
   GroundLootTable groundLoot;
   RegionsTable regions;
 
   PXLogicTests ()
-    : accounts(db), characters(db), groundLoot(db), regions(db, HEIGHT)
+    : accounts(db), buildings(db), characters(db),
+      groundLoot(db), regions(db, HEIGHT)
   {
     InitialisePrizes (db, ctx.Params ());
   }
@@ -846,6 +849,23 @@ TEST_F (ValidateStateTests, CharacterFactions)
 
   accounts.CreateNew ("andy", Faction::RED);
   characters.GetById (id)->SetOwner ("andy");
+  ValidateState ();
+}
+
+TEST_F (ValidateStateTests, BuildingFactions)
+{
+  buildings.CreateNew ("refinery", "", Faction::ANCIENT);
+
+  auto h = buildings.CreateNew ("turret", "domob", Faction::RED);
+  const auto id = h->GetId ();
+  h.reset ();
+  EXPECT_DEATH (ValidateState (), "owned by uninitialised account");
+
+  accounts.CreateNew ("domob", Faction::GREEN);
+  EXPECT_DEATH (ValidateState (), "Faction mismatch");
+
+  accounts.CreateNew ("andy", Faction::RED);
+  buildings.GetById (id)->SetOwner ("andy");
   ValidateState ();
 }
 

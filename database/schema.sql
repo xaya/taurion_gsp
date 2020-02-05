@@ -106,6 +106,43 @@ CREATE INDEX IF NOT EXISTS `characters_hastarget` ON `characters` (`hastarget`);
 
 -- =============================================================================
 
+-- Base data for the buildings in the game.  This does not include
+-- more complex stuff like inventories in the building or trade orders
+-- placed for it.
+CREATE TABLE IF NOT EXISTS `buildings` (
+
+  -- The building ID, which is assigned based on libxayagame's AutoIds.
+  `id` INTEGER PRIMARY KEY,
+
+  -- Type of this building.
+  `type` TEXT NOT NULL,
+
+  -- The Xaya name that owns this building.  NULL for ancient buildings.
+  `owner` TEXT NULL,
+
+  -- The faction (as integer corresponding to the Faction enum in C++).
+  -- We need this for querying combat targets, which should be possible to
+  -- do without decoding the proto.  Note that this field is in theory
+  -- redundant with the owner account's faction, but we have it duplicated here
+  -- for easy access and because the faction is often needed for characters.
+  --
+  -- Unlike characters, buildings can also be of the "ancient" faction.
+  `faction` INTEGER NOT NULL,
+
+  -- Centre coordinate of the building on the map.  We need this in the table
+  -- so that we can look buildings up based on "being near" a given other
+  -- coordinate.  Coordinates are in the axial system (as everywhere else
+  -- in the backend).
+  `x` INTEGER NOT NULL,
+  `y` INTEGER NOT NULL,
+
+  -- Additional data encoded as a Building protocol buffer.
+  `proto` BLOB NOT NULL
+
+);
+
+-- =============================================================================
+
 -- Tracks the damage lists:  Who damaged some character in the last N blocks,
 -- so that we can award fame to them later.
 CREATE TABLE IF NOT EXISTS `damage_lists` (

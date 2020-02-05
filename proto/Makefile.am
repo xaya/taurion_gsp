@@ -6,6 +6,7 @@ ROCONFIG_TEXT_PROTOS = \
   roconfig/resourcedist.pb.text
 
 PROTOS = \
+  building.proto \
   character.proto \
   combat.proto \
   config.proto \
