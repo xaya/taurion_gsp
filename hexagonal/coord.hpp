@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -90,6 +90,12 @@ public:
    * Computes and returns the matching z coordinate in cubic hex coordinates.
    */
   IntT GetZ () const;
+
+  /**
+   * Rotates the coordinate clock-wise for n steps of 60 degrees around the
+   * origin.  (These are the "natural" rotations on a hex grid.)
+   */
+  HexCoord RotateCW (int steps) const;
 
   /**
    * Returns an "opaque" object that can be iterated over to yield the

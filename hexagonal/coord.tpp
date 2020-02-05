@@ -72,6 +72,41 @@ HexCoord::GetZ () const
   return -x - y;
 }
 
+inline HexCoord
+HexCoord::RotateCW (int steps) const
+{
+  steps %= 6;
+  if (steps < 0)
+    {
+      steps += 6;
+      steps %= 6;
+    }
+
+  switch (steps)
+    {
+    case 0:
+      return *this;
+
+    case 1:
+      return HexCoord (-GetZ (), -GetX ());
+
+    case 2:
+      return HexCoord (GetY (), GetZ ());
+
+    case 3:
+      return HexCoord (-GetX (), -GetY ());
+
+    case 4:
+      return HexCoord (GetZ (), GetX ());
+
+    case 5:
+      return HexCoord (-GetY (), -GetZ ());
+
+    default:
+      LOG (FATAL) << "Unexpected rotation steps: " << steps;
+    }
+}
+
 inline HexCoord::IntT
 HexCoord::DistanceL1 (const HexCoord& a, const HexCoord& b)
 {

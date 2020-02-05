@@ -67,6 +67,27 @@ TEST_F (CoordTests, Arithmetic)
   EXPECT_EQ (test, HexCoord (3, 0));
 }
 
+TEST_F (CoordTests, Rotation)
+{
+  EXPECT_EQ (HexCoord (1, 2).RotateCW (0), HexCoord (1, 2));
+  EXPECT_EQ (HexCoord (1, 2).RotateCW (1), HexCoord (3, -1));
+  EXPECT_EQ (HexCoord (1, 2).RotateCW (2), HexCoord (2, -3));
+  EXPECT_EQ (HexCoord (1, 2).RotateCW (3), HexCoord (-1, -2));
+  EXPECT_EQ (HexCoord (1, 2).RotateCW (4), HexCoord (-3, 1));
+  EXPECT_EQ (HexCoord (1, 2).RotateCW (5), HexCoord (-2, 3));
+
+  /* This is a chained rotation that will come out to zero, but
+     verifies various cases other than the basic rotations.  */
+  EXPECT_EQ (HexCoord (1, 2)
+                .RotateCW (20)
+                .RotateCW (-30)
+                .RotateCW (1)
+                .RotateCW (2)
+                .RotateCW (3)
+                .RotateCW (4),
+             HexCoord (1, 2));
+}
+
 TEST_F (CoordTests, DistanceL1)
 {
   const HexCoord a(-2, 1);
