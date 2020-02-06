@@ -37,7 +37,8 @@ namespace pxd
 
 BaseMoveProcessor::BaseMoveProcessor (Database& d, const Context& c)
   : ctx(c), db(d),
-    accounts(db), characters(db), groundLoot(db), regions(db, ctx.Height ())
+    accounts(db), buildings(db), characters(db),
+    groundLoot(db), regions(db, ctx.Height ())
 {}
 
 bool
@@ -874,6 +875,93 @@ MaybeGodSetHp (CharacterTable& tbl, const Json::Value& cmd)
 }
 
 /**
+ * Tries to parse and execute a god-mode command to create a building.
+ */
+void
+MaybeGodBuild (AccountsTable& accounts, BuildingsTable& tbl,
+               const Json::Value& cmd)
+{
+  if (!cmd.isArray ())
+    return;
+
+  const auto& buildingTypes = RoConfigData ().building_types ();
+
+  for (const auto& build : cmd)
+    {
+      if (!build.isObject () || build.size () != 4)
+        {
+          LOG (WARNING) << "Invalid god-build element: " << build;
+          continue;
+        }
+
+      auto val = build["t"];
+      if (!val.isString ())
+        {
+          LOG (WARNING) << "God-build element has invalid type: " << build;
+          continue;
+        }
+      const std::string type = val.asString ();
+      if (buildingTypes.find (type) == buildingTypes.end ())
+        {
+          LOG (WARNING) << "Invalid type for god build: " << type;
+          continue;
+        }
+
+      if (!build.isMember ("o"))
+        {
+          LOG (WARNING) << "God-build element has no owner field: " << build;
+          continue;
+        }
+      val = build["o"];
+      Faction f;
+      std::string owner;
+      if (val.isNull ())
+        f = Faction::ANCIENT;
+      else if (val.isString ())
+        {
+          owner = val.asString ();
+          auto h = accounts.GetByName (owner);
+          if (h == nullptr)
+            {
+              LOG (WARNING) << "Owner account does not exist: " << owner;
+              continue;
+            }
+          f = h->GetFaction ();
+        }
+      else
+        {
+          LOG (WARNING) << "God-build element has invalid owner: " << build;
+          continue;
+        }
+
+      HexCoord centre;
+      if (!CoordFromJson (build["c"], centre))
+        {
+          LOG (WARNING) << "God-build element has invalid centre: " << build;
+          continue;
+        }
+
+      val = build["rot"];
+      if (!val.isUInt () || val.asUInt () > 5)
+        {
+          LOG (WARNING) << "God-build element has invalid rotation: " << build;
+          continue;
+        }
+      const unsigned rot = val.asUInt ();
+
+      auto h = tbl.CreateNew (type, owner, f);
+      h->SetCentre (centre);
+      h->MutableProto ().mutable_shape_trafo ()->set_rotation_steps (rot);
+      LOG (INFO)
+          << "God building " << type
+          << " for " << owner << " of faction " << FactionToString (f) << ":\n"
+          << "  id: " << h->GetId () << "\n"
+          << "  centre: " << centre << "\n"
+          << "  rotation: " << rot;
+    }
+}
+
+/**
  * Tries to parse and execute a god-mode command that creates and drops
  * loot items on the ground.
  */
@@ -941,6 +1029,7 @@ MoveProcessor::HandleGodMode (const Json::Value& cmd)
 
   MaybeGodTeleport (characters, cmd["teleport"]);
   MaybeGodSetHp (characters, cmd["sethp"]);
+  MaybeGodBuild (accounts, buildings, cmd["build"]);
   MaybeGodDropLoot (groundLoot, cmd["drop"]);
 }
 
