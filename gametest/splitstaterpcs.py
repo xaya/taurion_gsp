@@ -30,11 +30,12 @@ class SplitStateRpcsTest (PXTest):
     self.collectPremine ()
 
     # Set up a non-trivial situation, where we have characters, prospected
-    # regions, kills/fame and ground loot.
+    # regions, kills/fame, buildings and ground loot.
     self.initAccount ("prospector", "r")
     self.initAccount ("killed", "g")
     self.dropLoot ({"x": 1, "y": 2}, {"foo": 5, "bar": 10})
     self.dropLoot ({"x": -1, "y": 20}, {"foo": 5})
+    self.build ("checkmark", None, {"x": -100, "y": 200}, rot=5)
     self.createCharacters ("prospector")
     self.createCharacters ("killed")
     self.generate (1)
@@ -51,16 +52,19 @@ class SplitStateRpcsTest (PXTest):
     # Test that the full game state corresponds to the split RPCs.
     state = self.getGameState ()
     accounts = self.getRpc ("getaccounts")
+    buildings = self.getRpc ("getbuildings")
     characters = self.getRpc ("getcharacters")
     loot = self.getRpc ("getgroundloot")
     regions = self.getRpc ("getregions", fromheight=0)
     prizes = self.getRpc ("getprizestats")
     assert len (accounts) > 0
+    assert len (buildings) > 0
     assert len (characters) > 0
     assert len (loot) > 0
     assert len (regions) > 0
     assert len (prizes) > 0
     self.assertEqual (accounts, state["accounts"])
+    self.assertEqual (buildings, state["buildings"])
     self.assertEqual (characters, state["characters"])
     self.assertEqual (loot, state["groundloot"])
     self.assertEqual (regions, state["regions"])

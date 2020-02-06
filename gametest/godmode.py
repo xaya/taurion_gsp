@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2019  Autonomous Worlds Ltd
+#   Copyright (C) 2019-2020  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -56,6 +56,41 @@ class GodModeTest (PXTest):
     hp = self.getCharacters ()["domob"].data["combat"]["hp"]
     self.assertEqual (hp["current"], {"armour": 32, "shield": 15})
     self.assertEqual (hp["max"], {"armour": 100, "shield": 90})
+
+    self.mainLogger.info ("Testing build...")
+    self.build ("checkmark", None, {"x": 100, "y": 150}, rot=2)
+    self.build ("checkmark", "domob", {"x": -100, "y": -150}, rot=0)
+    self.assertEqual (self.getRpc ("getbuildings"), [
+      {
+        "id": 2,
+        "type": "checkmark",
+        "faction": "a",
+        "centre": {"x": 100, "y": 150},
+        "rotationsteps": 2,
+        "tiles":
+          [
+            {"x": 100, "y": 149},
+            {"x": 100, "y": 150},
+            {"x": 101, "y": 149},
+            {"x": 102, "y": 148},
+          ],
+      },
+      {
+        "id": 3,
+        "type": "checkmark",
+        "faction": "r",
+        "owner": "domob",
+        "centre": {"x": -100, "y": -150},
+        "rotationsteps": 0,
+        "tiles":
+          [
+            {"x": -100, "y": -150},
+            {"x": -100, "y": -149},
+            {"x": -100, "y": -148},
+            {"x": -99, "y": -150},
+          ],
+      },
+    ])
 
     self.mainLogger.info ("Testing drop loot...")
     self.dropLoot ({"x": 1, "y": 2}, {"foo": 1, "bar": 2})
