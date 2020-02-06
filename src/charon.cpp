@@ -70,6 +70,7 @@ const std::map<std::string, PXRpcMethod> CHARON_METHODS = {
   {"getnullstate", &PXRpcServer::getnullstateI},
   {"getpendingstate", &PXRpcServer::getpendingstateI},
   {"getaccounts", &PXRpcServer::getaccountsI},
+  {"getbuildings", &PXRpcServer::getbuildingsI},
   {"getcharacters", &PXRpcServer::getcharactersI},
   {"getgroundloot", &PXRpcServer::getgroundlootI},
   {"getregions", &PXRpcServer::getregionsI},

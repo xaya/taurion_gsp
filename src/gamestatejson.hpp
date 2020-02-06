@@ -80,6 +80,11 @@ public:
   Json::Value Accounts ();
 
   /**
+   * Returns the JSON data representing all buildings in the game state.
+   */
+  Json::Value Buildings ();
+
+  /**
    * Returns the JSON data representing all characters in the game state.
    */
   Json::Value Characters ();

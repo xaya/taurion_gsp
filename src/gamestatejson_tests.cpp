@@ -23,6 +23,7 @@
 #include "testutils.hpp"
 
 #include "database/account.hpp"
+#include "database/building.hpp"
 #include "database/character.hpp"
 #include "database/dbtest.hpp"
 #include "database/inventory.hpp"
@@ -552,6 +553,64 @@ TEST_F (AccountJsonTests, BankingData)
                   "raw i": 5
                 }
             }
+        }
+      ]
+  })");
+}
+
+/* ************************************************************************** */
+
+class BuildingJsonTests : public GameStateJsonTests
+{
+
+protected:
+
+  BuildingsTable tbl;
+
+  BuildingJsonTests ()
+    : tbl(db)
+  {}
+
+};
+
+TEST_F (BuildingJsonTests, Basic)
+{
+  auto h = tbl.CreateNew ("checkmark", "foo", Faction::RED);
+  h->SetCentre (HexCoord (1, 2));
+  h.reset ();
+
+  ExpectStateJson (R"({
+    "buildings":
+      [
+        {
+          "id": 1,
+          "type": "checkmark",
+          "owner": "foo",
+          "faction": "r",
+          "centre": {"x": 1, "y": 2},
+          "rotationsteps": 0,
+          "tiles":
+            [
+              {"x": 1, "y": 2},
+              {"x": 2, "y": 2},
+              {"x": 1, "y": 3},
+              {"x": 1, "y": 4}
+            ]
+        }
+      ]
+  })");
+}
+
+TEST_F (BuildingJsonTests, Ancient)
+{
+  tbl.CreateNew ("checkmark", "", Faction::ANCIENT);
+
+  ExpectStateJson (R"({
+    "buildings":
+      [
+        {
+          "owner": null,
+          "faction": "a"
         }
       ]
   })");

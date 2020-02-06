@@ -125,6 +125,7 @@ public:
   Json::Value waitforpendingchange (int oldVersion) override;
 
   Json::Value getaccounts () override;
+  Json::Value getbuildings () override;
   Json::Value getcharacters () override;
   Json::Value getgroundloot () override;
   Json::Value getregions (int fromHeight) override;
