@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,14 +35,14 @@ DynObstacles::FactionVehicles (const Faction f)
     case Faction::BLUE:
       return blue;
     default:
-      LOG (FATAL) << "Unknown faction: " << static_cast<int> (f);
+      LOG (FATAL) << "Invalid vehicle faction: " << static_cast<int> (f);
     }
 }
 
 inline bool
 DynObstacles::IsPassable (const HexCoord& c, const Faction f) const
 {
-  return !FactionVehicles (f).Get (c);
+  return !buildings.Get (c) && !FactionVehicles (f).Get (c);
 }
 
 inline void

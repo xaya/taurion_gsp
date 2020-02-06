@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 #ifndef PXD_DYNOBSTACLES_HPP
 #define PXD_DYNOBSTACLES_HPP
 
+#include "database/building.hpp"
 #include "database/database.hpp"
 #include "database/faction.hpp"
 #include "hexagonal/coord.hpp"
@@ -45,6 +46,9 @@ private:
   DynTiles<bool> green;
   /** Vehicles of the blue faction on the map.  */
   DynTiles<bool> blue;
+
+  /** Buildings in general.  */
+  DynTiles<bool> buildings;
 
   /**
    * Returns the obstacle map responsible for the given faction.
@@ -84,6 +88,11 @@ public:
    * Removes a vehicle from the given position.
    */
   void RemoveVehicle (const HexCoord& c, Faction f);
+
+  /**
+   * Adds a new building.
+   */
+  void AddBuilding (const Building& b);
 
 };
 

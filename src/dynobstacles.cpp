@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,20 +18,42 @@
 
 #include "dynobstacles.hpp"
 
+#include "buildings.hpp"
+
 #include "database/character.hpp"
 
 namespace pxd
 {
 
 DynObstacles::DynObstacles (Database& db)
-  : red(false), green(false), blue(false)
+  : red(false), green(false), blue(false), buildings(false)
 {
-  CharacterTable tbl(db);
-  tbl.ProcessAllPositions ([this] (const Database::IdT id, const HexCoord& pos,
-                                   const Faction f)
+  {
+    CharacterTable tbl(db);
+    tbl.ProcessAllPositions ([this] (const Database::IdT id,
+                                     const HexCoord& pos, const Faction f)
+      {
+        AddVehicle (pos, f);
+      });
+  }
+
+  {
+    BuildingsTable tbl(db);
+    auto res = tbl.QueryAll ();
+    while (res.Step ())
+      AddBuilding (*tbl.GetFromResult (res));
+  }
+}
+
+void
+DynObstacles::AddBuilding (const Building& b)
+{
+  for (const auto& c : GetBuildingShape (b))
     {
-      AddVehicle (pos, f);
-    });
+      auto ref = buildings.Access (c);
+      CHECK (!ref);
+      ref = true;
+    }
 }
 
 } // namespace pxd
