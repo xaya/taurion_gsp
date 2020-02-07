@@ -38,21 +38,28 @@ class BuildingsBasicTest (PXTest):
     self.generate (3)
     reorgBlock = self.rpc.xaya.getbestblockhash ()
 
+    self.mainLogger.info ("Checking for ancient buildings...")
+    self.ancientBuildings = self.getBuildings ()
+    self.assertEqual (len (self.ancientBuildings), 3)
+    self.assertEqual (self.ancientBuildings[1].getType (), "obelisk1")
+    self.assertEqual (self.ancientBuildings[2].getType (), "obelisk2")
+    self.assertEqual (self.ancientBuildings[3].getType (), "obelisk3")
+
     self.mainLogger.info ("Placing a building...")
     self.build ("checkmark", None, {"x": 0, "y": 0}, rot=0)
     buildings = self.getBuildings ()
-    self.assertEqual (len (buildings), 1)
-    assert 2 in buildings
-    self.assertEqual (buildings[2].getId (), 2)
-    self.assertEqual (buildings[2].getType (), "checkmark")
-    self.assertEqual (buildings[2].getFaction (), "a")
-    self.assertEqual (buildings[2].getOwner (), None)
-    self.assertEqual (buildings[2].data["rotationsteps"], 0)
-    self.assertEqual (buildings[2].data["tiles"], [
+    self.assertEqual (len (buildings), 4)
+    assert 1002 in buildings
+    self.assertEqual (buildings[1002].getId (), 1002)
+    self.assertEqual (buildings[1002].getType (), "checkmark")
+    self.assertEqual (buildings[1002].getFaction (), "a")
+    self.assertEqual (buildings[1002].getOwner (), None)
+    self.assertEqual (buildings[1002].data["rotationsteps"], 0)
+    self.assertEqual (buildings[1002].data["tiles"], [
       {"x": 0, "y": 0},
+      {"x": 1, "y": 0},
       {"x": 0, "y": 1},
       {"x": 0, "y": 2},
-      {"x": 1, "y": 0},
     ])
 
     self.mainLogger.info ("Building will act as obstacle...")
@@ -70,7 +77,8 @@ class BuildingsBasicTest (PXTest):
     self.rpc.xaya.invalidateblock (blk)
 
     self.generate (20)
-    self.assertEqual (self.getBuildings (), {})
+    self.assertEqual ([b.data for b in self.getBuildings ().values ()],
+                      [b.data for b in self.ancientBuildings.values ()])
     self.assertEqual (self.getCharacters ()["domob"].getPosition (),
                       {"x": 10, "y": 0})
 

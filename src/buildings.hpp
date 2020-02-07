@@ -20,6 +20,7 @@
 #define PXD_BUILDINGS_HPP
 
 #include "database/building.hpp"
+#include "database/database.hpp"
 #include "hexagonal/coord.hpp"
 
 #include <vector>
@@ -32,6 +33,11 @@ namespace pxd
  * its shape trafo into account.
  */
 std::vector<HexCoord> GetBuildingShape (const Building& b);
+
+/**
+ * Places initial buildings (ancient and obelisks) onto the map.
+ */
+void InitialiseBuildings (Database& db);
 
 } // namespace pxd
 

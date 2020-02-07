@@ -19,6 +19,7 @@
 #include "logic.hpp"
 
 #include "banking.hpp"
+#include "buildings.hpp"
 #include "combat.hpp"
 #include "dynobstacles.hpp"
 #include "mining.hpp"
@@ -173,6 +174,13 @@ PXLogic::InitialiseState (xaya::SQLiteDatabase& db)
   const Params params(GetChain ());
 
   InitialisePrizes (dbObj, params);
+  InitialiseBuildings (dbObj);
+
+  /* The initialisation uses up some auto IDs, namely for placed buildings.
+     We start "regular" IDs at a later value to avoid shifting them always
+     when we tweak initialisation, and thus having to potentially update test
+     data and other stuff.  */
+  return Ids ("pxd").ReserveUpTo (1'000);
 }
 
 void

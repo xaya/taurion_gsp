@@ -52,4 +52,23 @@ GetBuildingShape (const Building& b)
   return res;
 }
 
+void
+InitialiseBuildings (Database& db)
+{
+  LOG (INFO) << "Adding initial ancient buildings to the map...";
+  BuildingsTable tbl(db);
+
+  auto h = tbl.CreateNew ("obelisk1", "", Faction::ANCIENT);
+  h->SetCentre (HexCoord (-125, 810));
+  h.reset ();
+
+  h = tbl.CreateNew ("obelisk2", "", Faction::ANCIENT);
+  h->SetCentre (HexCoord (-1'301, 902));
+  h.reset ();
+
+  h = tbl.CreateNew ("obelisk3", "", Faction::ANCIENT);
+  h->SetCentre (HexCoord (-637, -291));
+  h.reset ();
+}
+
 } // namespace pxd

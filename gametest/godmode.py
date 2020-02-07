@@ -60,37 +60,36 @@ class GodModeTest (PXTest):
     self.mainLogger.info ("Testing build...")
     self.build ("checkmark", None, {"x": 100, "y": 150}, rot=2)
     self.build ("checkmark", "domob", {"x": -100, "y": -150}, rot=0)
-    self.assertEqual (self.getRpc ("getbuildings"), [
-      {
-        "id": 2,
-        "type": "checkmark",
-        "faction": "a",
-        "centre": {"x": 100, "y": 150},
-        "rotationsteps": 2,
-        "tiles":
-          [
-            {"x": 100, "y": 149},
-            {"x": 100, "y": 150},
-            {"x": 101, "y": 149},
-            {"x": 102, "y": 148},
-          ],
-      },
-      {
-        "id": 3,
-        "type": "checkmark",
-        "faction": "r",
-        "owner": "domob",
-        "centre": {"x": -100, "y": -150},
-        "rotationsteps": 0,
-        "tiles":
-          [
-            {"x": -100, "y": -150},
-            {"x": -100, "y": -149},
-            {"x": -100, "y": -148},
-            {"x": -99, "y": -150},
-          ],
-      },
-    ])
+    buildings = self.getBuildings ()
+    self.assertEqual (buildings[1002].data, {
+      "id": 1002,
+      "type": "checkmark",
+      "faction": "a",
+      "centre": {"x": 100, "y": 150},
+      "rotationsteps": 2,
+      "tiles":
+        [
+          {"x": 100, "y": 150},
+          {"x": 100, "y": 149},
+          {"x": 101, "y": 149},
+          {"x": 102, "y": 148},
+        ],
+    })
+    self.assertEqual (buildings[1003].data, {
+      "id": 1003,
+      "type": "checkmark",
+      "faction": "r",
+      "owner": "domob",
+      "centre": {"x": -100, "y": -150},
+      "rotationsteps": 0,
+      "tiles":
+        [
+          {"x": -100, "y": -150},
+          {"x": -99, "y": -150},
+          {"x": -100, "y": -149},
+          {"x": -100, "y": -148},
+        ],
+    })
 
     self.mainLogger.info ("Testing drop loot...")
     self.dropLoot ({"x": 1, "y": 2}, {"foo": 1, "bar": 2})
