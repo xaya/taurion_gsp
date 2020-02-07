@@ -18,10 +18,12 @@
 
 #include "gamestatejson.hpp"
 
+#include "buildings.hpp"
 #include "jsonutils.hpp"
 #include "protoutils.hpp"
 
 #include "database/account.hpp"
+#include "database/building.hpp"
 #include "database/character.hpp"
 #include "database/faction.hpp"
 #include "database/inventory.hpp"
@@ -306,6 +308,29 @@ template <>
 
 template <>
   Json::Value
+  GameStateJson::Convert<Building> (const Building& b) const
+{
+  Json::Value res(Json::objectValue);
+  res["id"] = IntToJson (b.GetId ());
+  res["type"] = b.GetType ();
+  res["faction"] = FactionToString (b.GetFaction ());
+  if (b.GetFaction () != Faction::ANCIENT)
+    res["owner"] = b.GetOwner ();
+  res["centre"] = CoordToJson (b.GetCentre ());
+
+  const auto& pb = b.GetProto ();
+  res["rotationsteps"] = IntToJson (pb.shape_trafo ().rotation_steps ());
+
+  Json::Value tiles(Json::arrayValue);
+  for (const auto& c : GetBuildingShape (b))
+    tiles.append (CoordToJson (c));
+  res["tiles"] = tiles;
+
+  return res;
+}
+
+template <>
+  Json::Value
   GameStateJson::Convert<pxd::GroundLoot> (const pxd::GroundLoot& loot) const
 {
   Json::Value res(Json::objectValue);
@@ -395,6 +420,13 @@ GameStateJson::Accounts ()
 }
 
 Json::Value
+GameStateJson::Buildings ()
+{
+  BuildingsTable tbl(db);
+  return ResultsAsArray (tbl, tbl.QueryAll ());
+}
+
+Json::Value
 GameStateJson::Characters ()
 {
   CharacterTable tbl(db);
@@ -421,6 +453,7 @@ GameStateJson::FullState ()
   Json::Value res(Json::objectValue);
 
   res["accounts"] = Accounts ();
+  res["buildings"] = Buildings ();
   res["characters"] = Characters ();
   res["groundloot"] = GroundLoot ();
   res["regions"] = Regions (0);

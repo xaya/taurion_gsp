@@ -19,6 +19,7 @@
 #include "logic.hpp"
 
 #include "banking.hpp"
+#include "buildings.hpp"
 #include "combat.hpp"
 #include "dynobstacles.hpp"
 #include "mining.hpp"
@@ -27,6 +28,7 @@
 #include "prospecting.hpp"
 
 #include "database/account.hpp"
+#include "database/building.hpp"
 #include "database/schema.hpp"
 
 #include <glog/logging.h>
@@ -172,6 +174,13 @@ PXLogic::InitialiseState (xaya::SQLiteDatabase& db)
   const Params params(GetChain ());
 
   InitialisePrizes (dbObj, params);
+  InitialiseBuildings (dbObj);
+
+  /* The initialisation uses up some auto IDs, namely for placed buildings.
+     We start "regular" IDs at a later value to avoid shifting them always
+     when we tweak initialisation, and thus having to potentially update test
+     data and other stuff.  */
+  return Ids ("pxd").ReserveUpTo (1'000);
 }
 
 void
@@ -222,11 +231,11 @@ namespace
 {
 
 /**
- * Verifies that each character's faction in the database matches the
- * owner's faction.
+ * Verifies that each character's and building's faction in the database
+ * matches the owner's faction.
  */
 void
-ValidateCharacterFactions (Database& db)
+ValidateCharacterBuildingFactions (Database& db)
 {
   std::unordered_map<std::string, Faction> accountFactions;
   {
@@ -235,24 +244,47 @@ ValidateCharacterFactions (Database& db)
     while (res.Step ())
       {
         auto a = accounts.GetFromResult (res);
-        auto insert = accountFactions.emplace (a->GetName (), a->GetFaction ());
+        const auto f = a->GetFaction ();
+        CHECK (f != Faction::INVALID && f != Faction::ANCIENT)
+            << "Account " << a->GetName () << " has invalid faction";
+        auto insert = accountFactions.emplace (a->GetName (), f);
         CHECK (insert.second) << "Duplicate account name " << a->GetName ();
       }
   }
 
-  CharacterTable characters(db);
-  auto res = characters.QueryAll ();
-  while (res.Step ())
-    {
-      auto c = characters.GetFromResult (res);
-      const auto mit = accountFactions.find (c->GetOwner ());
-      CHECK (mit != accountFactions.end ())
-          << "Character " << c->GetId ()
-          << " owned by uninitialised account " << c->GetOwner ();
-      CHECK (c->GetFaction () == mit->second)
-          << "Faction mismatch between character " << c->GetId ()
-          << " and owner account " << c->GetOwner ();
-    }
+  {
+    CharacterTable characters(db);
+    auto res = characters.QueryAll ();
+    while (res.Step ())
+      {
+        auto h = characters.GetFromResult (res);
+        const auto mit = accountFactions.find (h->GetOwner ());
+        CHECK (mit != accountFactions.end ())
+            << "Character " << h->GetId ()
+            << " owned by uninitialised account " << h->GetOwner ();
+        CHECK (h->GetFaction () == mit->second)
+            << "Faction mismatch between character " << h->GetId ()
+            << " and owner account " << h->GetOwner ();
+      }
+  }
+
+  {
+    BuildingsTable buildings(db);
+    auto res = buildings.QueryAll ();
+    while (res.Step ())
+      {
+        auto h = buildings.GetFromResult (res);
+        if (h->GetFaction () == Faction::ANCIENT)
+          continue;
+        const auto mit = accountFactions.find (h->GetOwner ());
+        CHECK (mit != accountFactions.end ())
+            << "Building " << h->GetId ()
+            << " owned by uninitialised account " << h->GetOwner ();
+        CHECK (h->GetFaction () == mit->second)
+            << "Faction mismatch between building " << h->GetId ()
+            << " and owner account " << h->GetOwner ();
+      }
+  }
 }
 
 /**
@@ -281,7 +313,7 @@ void
 PXLogic::ValidateStateSlow (Database& db, const Context& ctx)
 {
   LOG (INFO) << "Performing slow validation of the game-state database...";
-  ValidateCharacterFactions (db);
+  ValidateCharacterBuildingFactions (db);
   ValidateCharacterLimit (db, ctx);
 }
 

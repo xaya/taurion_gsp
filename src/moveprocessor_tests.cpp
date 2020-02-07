@@ -187,6 +187,7 @@ TEST_F (AccountUpdateTests, InvalidInitialisation)
   Process (R"([
     {"name": "domob", "move": {"a": {"init": {"x": 1, "faction": "b"}}}},
     {"name": "domob", "move": {"a": {"init": {"faction": "x"}}}},
+    {"name": "domob", "move": {"a": {"init": {"faction": "a"}}}},
     {"name": "domob", "move": {"a": {"init": {"y": 5}}}},
     {"name": "domob", "move": {"a": {"init": false}}},
     {"name": "domob", "move": {"a": 42}}
@@ -1428,11 +1429,12 @@ class GodModeTests : public MoveProcessorTests
 
 protected:
 
+  BuildingsTable buildings;
   CharacterTable tbl;
   GroundLootTable loot;
 
   GodModeTests ()
-    : tbl(db), loot(db)
+    : buildings(db), tbl(db), loot(db)
   {
     ctx.SetChain (xaya::Chain::REGTEST);
   }
@@ -1532,6 +1534,62 @@ TEST_F (GodModeTests, SetHp)
   c.reset ();
 }
 
+TEST_F (GodModeTests, Build)
+{
+  accounts.CreateNew ("domob", Faction::RED);
+
+  /* This is entirely invalid (not even an array).  */
+  ProcessAdmin (R"([{"cmd": {"god": {"build": {"foo": "bar"}}}}])");
+
+  /* All are invalid except for the last two.  They should create a building
+     for domob and one ancient one.  */
+  ProcessAdmin (R"([{"cmd": {"god": {"build": [
+    42,
+    null,
+    {"t": "checkmark", "o": "domob", "c": {"x": 1, "y": 2}, "rot": 0, "x": 42},
+    {"t": "checkmark", "c": {"x": 1, "y": 2}, "rot": 0},
+
+    {"t": 42, "o": "domob", "c": {"x": 1, "y": 2}, "rot": 0},
+    {"t": "invalid", "o": "domob", "c": {"x": 1, "y": 2}, "rot": 0},
+
+    {"t": "checkmark", "o": 42, "c": {"x": 1, "y": 2}, "rot": 0},
+    {"t": "checkmark", "o": "invalid", "c": {"x": 1, "y": 2}, "rot": 0},
+
+    {"t": "checkmark", "o": "domob", "c": {"x": 1, "y": 2}, "rot": -1},
+    {"t": "checkmark", "o": "domob", "c": {"x": 1, "y": 2}, "rot": 6},
+    {"t": "checkmark", "o": "domob", "c": {"x": 1, "y": 2}, "rot": 1.5},
+
+    {"t": "checkmark", "o": "domob", "c": {"x": 1.5, "y": 2}, "rot": 0},
+
+    {"o": "domob", "c": {"x": 1, "y": 2}, "rot": 0, "x": 1},
+    {"t": "checkmark", "c": {"x": 1, "y": 2}, "rot": 0, "x": 1},
+    {"t": "checkmark", "o": "domob", "rot": 0, "x": 1},
+    {"t": "checkmark", "o": "domob", "c": {"x": 1, "y": 2}, "x": 1},
+
+    {"t": "checkmark", "o": "domob", "c": {"x": -100, "y": -200}, "rot": 0},
+    {"t": "checkmark", "o": null, "c": {"x": 100, "y": 200}, "rot": 5}
+  ]}}}])");
+
+  auto res = buildings.QueryAll ();
+  ASSERT_TRUE (res.Step ());
+  auto h = buildings.GetFromResult (res);
+  EXPECT_EQ (h->GetId (), 1);
+  EXPECT_EQ (h->GetType (), "checkmark");
+  EXPECT_EQ (h->GetFaction (), Faction::RED);
+  EXPECT_EQ (h->GetOwner (), "domob");
+  EXPECT_EQ (h->GetCentre (), HexCoord (-100, -200));
+  EXPECT_EQ (h->GetProto ().shape_trafo ().rotation_steps (), 0);
+
+  ASSERT_TRUE (res.Step ());
+  h = buildings.GetFromResult (res);
+  EXPECT_EQ (h->GetId (), 2);
+  EXPECT_EQ (h->GetType (), "checkmark");
+  EXPECT_EQ (h->GetFaction (), Faction::ANCIENT);
+  EXPECT_EQ (h->GetCentre (), HexCoord (100, 200));
+  EXPECT_EQ (h->GetProto ().shape_trafo ().rotation_steps (), 5);
+  EXPECT_FALSE (res.Step ());
+}
+
 TEST_F (GodModeTests, InvalidDropLoot)
 {
   const HexCoord pos(1, 2);
@@ -1613,7 +1671,6 @@ class GodModeDisabledTests : public MoveProcessorTests
 
 protected:
 
-  /** Character table for use in the test.  */
   CharacterTable tbl;
 
   GodModeDisabledTests ()

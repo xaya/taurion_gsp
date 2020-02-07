@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,27 +16,29 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-/* Template implementation code for faction.hpp.  */
+#ifndef PXD_BUILDINGS_HPP
+#define PXD_BUILDINGS_HPP
 
-#include <glog/logging.h>
+#include "database/building.hpp"
+#include "database/database.hpp"
+#include "hexagonal/coord.hpp"
 
-#include <type_traits>
+#include <vector>
 
 namespace pxd
 {
 
-template <typename T>
-  Faction
-  GetFactionFromColumn (const Database::Result<T>& res)
-{
-  static_assert (std::is_base_of<ResultWithFaction, T>::value,
-                 "GetFactionFromColumn needs a ResultWithFaction");
-  
-  const auto val = res.template Get<typename T::faction> ();
-  CHECK (val >= 1 && val <= 4)
-      << "Invalid faction value from database: " << val;
+/**
+ * Returns all shape tiles of a given building, taking the centre and
+ * its shape trafo into account.
+ */
+std::vector<HexCoord> GetBuildingShape (const Building& b);
 
-  return static_cast<Faction> (val);
-}
+/**
+ * Places initial buildings (ancient and obelisks) onto the map.
+ */
+void InitialiseBuildings (Database& db);
 
 } // namespace pxd
+
+#endif // PXD_BUILDINGS_HPP

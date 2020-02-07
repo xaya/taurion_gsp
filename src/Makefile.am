@@ -21,6 +21,7 @@ libtaurion_la_LIBADD = \
   $(XAYAGAME_LIBS) $(JSON_LIBS) $(GLOG_LIBS) $(PROTOBUF_LIBS)
 libtaurion_la_SOURCES = \
   banking.cpp \
+  buildings.cpp \
   combat.cpp \
   context.cpp \
   dynobstacles.cpp \
@@ -40,6 +41,7 @@ libtaurion_la_SOURCES = \
 libtaurionheaders = \
   amount.hpp \
   banking.hpp \
+  buildings.hpp \
   combat.hpp \
   context.hpp \
   dynobstacles.hpp dynobstacles.tpp \
@@ -112,6 +114,7 @@ tests_LDADD = \
   $(JSON_LIBS) $(GTEST_LIBS) $(GLOG_LIBS) $(PROTOBUF_LIBS)
 tests_SOURCES = \
   banking_tests.cpp \
+  buildings_tests.cpp \
   combat_tests.cpp \
   dynobstacles_tests.cpp \
   fame_tests.cpp \

@@ -3,9 +3,18 @@ noinst_LTLIBRARIES = libpxproto.la
 
 ROCONFIG_TEXT_PROTOS = \
   roconfig/items.pb.text \
-  roconfig/resourcedist.pb.text
+  roconfig/resourcedist.pb.text \
+  \
+  roconfig/buildings/checkmark.pb.text \
+  roconfig/buildings/ancient1.pb.text \
+  roconfig/buildings/ancient2.pb.text \
+  roconfig/buildings/ancient3.pb.text \
+  roconfig/buildings/obelisk1.pb.text \
+  roconfig/buildings/obelisk2.pb.text \
+  roconfig/buildings/obelisk3.pb.text
 
 PROTOS = \
+  building.proto \
   character.proto \
   combat.proto \
   config.proto \

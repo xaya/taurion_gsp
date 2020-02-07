@@ -106,6 +106,29 @@ class Character (object):
       self.test.assertEqual (self.data[key], val)
 
 
+class Building (object):
+  """
+  Basic handle for a building in the game state.
+  """
+
+  def __init__ (self, data):
+    self.data = data
+
+  def getId (self):
+    return self.data["id"]
+
+  def getType (self):
+    return self.data["type"]
+
+  def getFaction (self):
+    return self.data["faction"]
+
+  def getOwner (self):
+    if "owner" in self.data:
+      return self.data["owner"]
+    return None
+
+
 class Account (object):
   """
   Basic handle for an account (Xaya name) in the game state.
@@ -253,6 +276,20 @@ class PXTest (XayaGameTest):
     self.adminCommand ({"god": {"sethp": sethp}})
     self.generate (1)
 
+  def build (self, typ, owner, centre, rot):
+    """
+    Issues a god-mode command to place a building with the given data.
+    owner set to None places an ancients building.
+    """
+
+    self.adminCommand ({"god": {"build": [{
+      "t": typ,
+      "o": owner,
+      "c": centre,
+      "rot": rot,
+    }]}})
+    self.generate (1)
+
   def dropLoot (self, position, fungible):
     """
     Issues a god-mode command to drop loot on the ground.  fungible should be
@@ -276,6 +313,20 @@ class PXTest (XayaGameTest):
       nm = handle.getName ()
       assert nm not in res
       res[nm] = handle
+
+    return res
+
+  def getBuildings (self):
+    """
+    Returns all buildings in the game state.
+    """
+
+    res = {}
+    for b in self.getRpc ("getbuildings"):
+      handle = Building (b)
+      curId = handle.getId ()
+      assert curId not in res
+      res[curId] = handle
 
     return res
 

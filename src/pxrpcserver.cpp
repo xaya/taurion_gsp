@@ -237,6 +237,17 @@ PXRpcServer::getaccounts ()
 }
 
 Json::Value
+PXRpcServer::getbuildings ()
+{
+  LOG (INFO) << "RPC method called: getbuildings";
+  return logic.GetCustomStateData (game,
+    [] (GameStateJson& gsj)
+      {
+        return gsj.Buildings ();
+      });
+}
+
+Json::Value
 PXRpcServer::getcharacters ()
 {
   LOG (INFO) << "RPC method called: getcharacters";

@@ -14,6 +14,7 @@ libdatabase_la_LIBADD = \
   $(GLOG_LIBS) $(SQLITE3_LIBS) $(PROTOBUF_LIBS)
 libdatabase_la_SOURCES = \
   account.cpp \
+  building.cpp \
   character.cpp \
   coord.cpp \
   damagelists.cpp \
@@ -27,6 +28,7 @@ libdatabase_la_SOURCES = \
   target.cpp
 noinst_HEADERS = \
   account.hpp \
+  building.hpp \
   character.hpp \
   coord.hpp coord.tpp \
   damagelists.hpp \
@@ -70,6 +72,7 @@ tests_LDADD = \
   $(GTEST_LIBS) $(GLOG_LIBS)
 tests_SOURCES = \
   account_tests.cpp \
+  building_tests.cpp \
   character_tests.cpp \
   coord_tests.cpp \
   damagelists_tests.cpp \

@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,11 +33,11 @@ class DynObstaclesTests : public DBTestWithSchema
 
 protected:
 
-  /** Character table used for interacting with the test database.  */
+  BuildingsTable buildings;
   CharacterTable characters;
 
   DynObstaclesTests ()
-    : characters(db)
+    : buildings(db), characters(db)
   {}
 
 };
@@ -66,6 +66,21 @@ TEST_F (DynObstaclesTests, VehiclesFromDb)
   EXPECT_TRUE (dyn.IsPassable (c3, Faction::BLUE));
 }
 
+TEST_F (DynObstaclesTests, BuildingsFromDb)
+{
+  buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+
+  DynObstacles dyn(db);
+
+  EXPECT_FALSE (dyn.IsPassable (HexCoord (0, 2), Faction::RED));
+  EXPECT_FALSE (dyn.IsPassable (HexCoord (0, 2), Faction::GREEN));
+  EXPECT_FALSE (dyn.IsPassable (HexCoord (0, 2), Faction::BLUE));
+
+  EXPECT_TRUE (dyn.IsPassable (HexCoord (2, 0), Faction::RED));
+  EXPECT_TRUE (dyn.IsPassable (HexCoord (2, 0), Faction::GREEN));
+  EXPECT_TRUE (dyn.IsPassable (HexCoord (2, 0), Faction::BLUE));
+}
+
 TEST_F (DynObstaclesTests, Modifications)
 {
   const HexCoord c(42, 0);
@@ -80,6 +95,11 @@ TEST_F (DynObstaclesTests, Modifications)
   dyn.RemoveVehicle (c, Faction::RED);
   EXPECT_TRUE (dyn.IsPassable (c, Faction::RED));
   EXPECT_TRUE (dyn.IsPassable (c, Faction::BLUE));
+
+  auto b = buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+  EXPECT_TRUE (dyn.IsPassable (HexCoord (1, 0), Faction::RED));
+  dyn.AddBuilding (*b);
+  EXPECT_FALSE (dyn.IsPassable (HexCoord (1, 0), Faction::RED));
 }
 
 } // anonymous namespace

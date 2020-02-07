@@ -35,6 +35,11 @@
     "returns": {}
   },
   {
+    "name": "getbuildings",
+    "params": {},
+    "returns": {}
+  },
+  {
     "name": "getcharacters",
     "params": {},
     "returns": {}

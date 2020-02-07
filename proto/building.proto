@@ -1,0 +1,50 @@
+/*
+    GSP for the Taurion blockchain game
+    Copyright (C) 2020  Autonomous Worlds Ltd
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
+syntax = "proto2";
+
+package pxd.proto;
+
+/**
+ * A geometrical transformation applied to the building's shape (e.g.
+ * for rotating it on the map).  This does not include the shift of all
+ * tiles to the building's centre.
+ */
+message ShapeTransformation
+{
+
+  /**
+   * Number of clock-wise rotation steps about 60 degrees the base shape
+   * is rotated around the building centre.  This can go from 0 to 5.
+   */
+  optional uint32 rotation_steps = 1;
+
+}
+
+/**
+ * The state of one building on the map.  (There is additional data stored
+ * for it directly in the database, as well as extra data stored in other
+ * database tables like inventories or trade orders.)
+ */
+message Building
+{
+
+  /** The transformation applied to the building's base shape.  */
+  optional ShapeTransformation shape_trafo = 1;
+
+}

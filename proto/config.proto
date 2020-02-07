@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -30,6 +30,27 @@ message ItemData
 
   /** The cargo space it uses per unit.  */
   optional uint32 space = 1;
+
+}
+
+/**
+ * Hardcoded data defining a type of building.
+ */
+message BuildingData
+{
+
+  /**
+   * The enter/exit L1 radius of this building.  Characters can enter
+   * the building if they are within this L1 radius of the centre coordinate,
+   * and when exiting, they will appear on a random spot within that radius.
+   */
+  optional uint32 enter_radius = 1;
+
+  /**
+   * All tiles that make up the building's shape, in the basic, untransformed
+   * way.  The coordinates are relative to the building's centre.
+   */
+  repeated HexCoord shape_tiles = 2;
 
 }
 
@@ -82,7 +103,7 @@ message ResourceDistribution
  * types and stats for them.
  *
  * An instance of this proto is populated from text format encoded in
- * roconfig.pb.text and made available to all parts of the code.
+ * roconfig/<files>.pb.text and made available to all parts of the code.
  */
 message ConfigData
 {
@@ -90,7 +111,10 @@ message ConfigData
   /** Known types of fungible items.  */
   map<string, ItemData> fungible_items = 1;
 
+  /** Known types of buildings.  */
+  map<string, BuildingData> building_types = 2;
+
   /** Distribution of resources for prospecting.  */
-  optional ResourceDistribution resource_dist = 2;
+  optional ResourceDistribution resource_dist = 3;
 
 }

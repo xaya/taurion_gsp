@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -34,6 +34,8 @@ FactionToString (const Faction f)
       return "g";
     case Faction::BLUE:
       return "b";
+    case Faction::ANCIENT:
+      return "a";
     default:
       LOG (FATAL) << "Invalid faction: " << static_cast<int> (f);
     }
@@ -52,6 +54,9 @@ FactionFromString (const std::string& str)
   if (str == "b")
     return Faction::BLUE;
 
+  if (str == "a")
+    return Faction::ANCIENT;
+
   LOG (WARNING) << "String is not a valid faction: " << str;
   return Faction::INVALID;
 }
@@ -65,6 +70,7 @@ BindFactionParameter (Database::Statement& stmt, const unsigned ind,
     case Faction::RED:
     case Faction::GREEN:
     case Faction::BLUE:
+    case Faction::ANCIENT:
       stmt.Bind (ind, static_cast<int64_t> (f));
       return;
     default:

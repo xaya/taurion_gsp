@@ -24,6 +24,7 @@
 #include "dynobstacles.hpp"
 
 #include "database/account.hpp"
+#include "database/building.hpp"
 #include "database/character.hpp"
 #include "database/database.hpp"
 #include "database/inventory.hpp"
@@ -72,6 +73,9 @@ protected:
 
   /** Access handle for the accounts database table.  */
   AccountsTable accounts;
+
+  /** Access handle for the buildings database table.  */
+  BuildingsTable buildings;
 
   /** Access handle for the characters table in the DB.  */
   CharacterTable characters;

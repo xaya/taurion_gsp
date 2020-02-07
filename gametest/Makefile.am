@@ -4,6 +4,7 @@ TEST_LIBRARY = \
 REGTESTS = \
   accounts.py \
   banking.py \
+  buildings_basic.py \
   character_limit.py \
   characters.py \
   charon.py \
