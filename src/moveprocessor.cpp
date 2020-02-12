@@ -19,6 +19,7 @@
 #include "moveprocessor.hpp"
 
 #include "jsonutils.hpp"
+#include "mining.hpp"
 #include "movement.hpp"
 #include "prospecting.hpp"
 #include "protoutils.hpp"
@@ -669,13 +670,7 @@ MoveProcessor::MaybeSetCharacterWaypoints (Character& c, const Json::Value& upd)
       << " from waypoints: " << upd["wp"];
 
   StopCharacter (c);
-  if (c.GetProto ().has_mining ())
-    {
-      VLOG_IF (1, c.GetProto ().mining ().active ())
-          << "Stopping mining with character " << c.GetId ()
-          << " because of waypoints command";
-      c.MutableProto ().mutable_mining ()->clear_active ();
-    }
+  StopMining (c);
 
   if (wp.empty ())
     return;

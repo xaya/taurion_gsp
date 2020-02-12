@@ -18,13 +18,24 @@
 
 #include "mining.hpp"
 
-#include "database/character.hpp"
 #include "database/inventory.hpp"
 #include "database/region.hpp"
 #include "proto/roconfig.hpp"
 
 namespace pxd
 {
+
+void
+StopMining (Character& c)
+{
+  if (!c.GetProto ().has_mining ())
+    return;
+
+  VLOG_IF (1, c.GetProto ().mining ().active ())
+      << "Stopping mining with character " << c.GetId ();
+
+  c.MutableProto ().mutable_mining ()->clear_active ();
+}
 
 void
 ProcessAllMining (Database& db, xaya::Random& rnd, const Context& ctx)
