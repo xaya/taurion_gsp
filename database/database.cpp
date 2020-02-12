@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,6 +26,8 @@ namespace pxd
 {
 
 /* ************************************************************************** */
+
+constexpr Database::IdT Database::EMPTY_ID;
 
 Database::Statement
 Database::Prepare (const std::string& sql)

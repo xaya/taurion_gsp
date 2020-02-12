@@ -132,6 +132,26 @@ TEST_F (CharacterJsonTests, Basic)
   })");
 }
 
+TEST_F (CharacterJsonTests, EnterBuilding)
+{
+  tbl.CreateNew ("domob", Faction::RED);
+  tbl.CreateNew ("andy", Faction::BLUE)->SetEnterBuilding (5);
+
+  ExpectStateJson (R"({
+    "characters":
+      [
+        {
+          "id": 1, "owner": "domob", "faction": "r",
+          "enterbuilding": null
+        },
+        {
+          "id": 2, "owner": "andy", "faction": "b",
+          "enterbuilding": 5
+        }
+      ]
+  })");
+}
+
 TEST_F (CharacterJsonTests, ChosenSpeed)
 {
   auto c = tbl.CreateNew ("domob", Faction::RED);

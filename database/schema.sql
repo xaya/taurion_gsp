@@ -42,6 +42,10 @@ CREATE TABLE IF NOT EXISTS `characters` (
   -- outside, in which case their position is given by x/y.
   `inbuilding` INTEGER NULL,
 
+  -- If the character has indicated they want to enter a building (if it
+  -- is or becomes possible), then this holds the desired building's ID.
+  `enterbuilding` INTEGER NULL,
+
   -- Movement data for the character that changes frequently and is thus
   -- not part of the big main proto.
   `volatilemv` BLOB NOT NULL,
@@ -101,6 +105,8 @@ CREATE TABLE IF NOT EXISTS `characters` (
 CREATE INDEX IF NOT EXISTS `characters_owner` ON `characters` (`owner`);
 CREATE INDEX IF NOT EXISTS `characters_pos` ON `characters` (`x`, `y`);
 CREATE INDEX IF NOT EXISTS `characters_building` ON `characters` (`inbuilding`);
+CREATE INDEX IF NOT EXISTS `characters_enterbuilding`
+  ON `characters` (`enterbuilding`);
 CREATE INDEX IF NOT EXISTS `characters_busy` ON `characters` (`busy`);
 CREATE INDEX IF NOT EXISTS `characters_ismoving` ON `characters` (`ismoving`);
 CREATE INDEX IF NOT EXISTS `characters_ismining` ON `characters` (`ismining`);

@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -62,6 +62,14 @@ private:
      * that we are removing any movement.
      */
     std::unique_ptr<std::vector<HexCoord>> wp;
+
+    /** Whether or not an "enter building" command is pending.  */
+    bool hasEnterBuilding = false;
+    /**
+     * If there is an enter building command, then this is the ID of the
+     * building (or EMPTY_ID) that will be set on the character.
+     */
+    Database::IdT enterBuilding;
 
     /** Set to true if there is a pending pickup command.  */
     bool pickup = false;
@@ -143,6 +151,11 @@ public:
    */
   void AddCharacterWaypoints (const Character& ch,
                               const std::vector<HexCoord>& wp);
+
+  /**
+   * Updates the state, adding an "enter building" command.
+   */
+  void AddEnterBuilding (const Character& ch, Database::IdT buildingId);
 
   /**
    * Marks the character state as having a pending drop command.

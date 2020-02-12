@@ -248,6 +248,69 @@ BaseMoveProcessor::ParseCharacterWaypoints (const Character& c,
   return true;
 }
 
+bool
+BaseMoveProcessor::ParseEnterBuilding (const Character& c,
+                                       const Json::Value& upd,
+                                       Database::IdT& buildingId)
+{
+  CHECK (upd.isObject ());
+  if (!upd.isMember ("eb"))
+    return false;
+
+  if (c.IsInBuilding ())
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId ()
+          << " is in building, can't enter another one";
+      return false;
+    }
+
+  const auto& val = upd["eb"];
+
+  /* null value means to cancel any entering.  */
+  if (val.isNull ())
+    {
+      VLOG (1)
+          << "Character " << c.GetId ()
+          << " no longer wants to enter a building";
+      buildingId = Database::EMPTY_ID;
+      return true;
+    }
+
+  /* Otherwise, see if this is a valid building ID.  */
+  if (!val.isUInt64 ())
+    {
+      LOG (WARNING) << "Not a building ID: " << val;
+      return false;
+    }
+  buildingId = val.asUInt64 ();
+
+  auto b = buildings.GetById (buildingId);
+  if (b == nullptr)
+    {
+      LOG (WARNING) << "Building does not exist: " << val;
+      return false;
+    }
+
+  /* Everyone can enter ancient buildings, but otherwise characters can only
+     enter buildings of their own faction.  */
+  if (b->GetFaction () != Faction::ANCIENT
+        && b->GetFaction () != c.GetFaction ())
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId ()
+          << " can't enter building " << buildingId
+          << " of different faction";
+      return false;
+    }
+
+  VLOG (1)
+      << "Character " << c.GetId ()
+      << " wants to enter building " << buildingId;
+
+  return true;
+}
+
 namespace
 {
 
@@ -632,6 +695,16 @@ MoveProcessor::MaybeSetCharacterWaypoints (Character& c, const Json::Value& upd)
 }
 
 void
+MoveProcessor::MaybeEnterBuilding (Character& c, const Json::Value& upd)
+{
+  Database::IdT buildingId;
+  if (!ParseEnterBuilding (c, upd, buildingId))
+    return;
+
+  c.SetEnterBuilding (buildingId);
+}
+
+void
 MoveProcessor::MaybeStartProspecting (Character& c, const Json::Value& upd)
 {
   Database::IdT regionId;
@@ -817,6 +890,15 @@ MoveProcessor::PerformCharacterUpdate (Character& c, const Json::Value& upd)
      else in a single move.  */
   MaybeDropLoot (c, upd["drop"]);
   MaybePickupLoot (c, upd["pu"]);
+
+  /* Entering a building is independent of any other moves, as it just sets
+     a flag (but isn't by itself invalid e.g. if the character is busy).
+     Exiting however takes effect immediately.  But since that puts the
+     character on a random spot, it does not make much sense to combine
+     other moves with it if exiting is done first (thus we do it last).
+     In particular, this allows picking up stuff from inside the building
+     and exiting in one move.  */
+  MaybeEnterBuilding (c, upd);
 }
 
 namespace

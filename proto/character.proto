@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -120,6 +120,8 @@ message Character
      - string owner
      - int faction
      - position on the map
+     - building the character is in
+     - building the character wants to enter
      - volatile movement proto (partial step, blocked for counter)
      - current HP proto
      - HP regeneration data proto

@@ -29,7 +29,8 @@ namespace pxd
 
 Character::Character (Database& d, const std::string& o, const Faction f)
   : db(d), id(db.GetNextId ()), owner(o), faction(f),
-    pos(0, 0), inBuilding(Database::EMPTY_ID), busy(0),
+    pos(0, 0), inBuilding(Database::EMPTY_ID),
+    enterBuilding(Database::EMPTY_ID), busy(0),
     oldCanRegen(false), isNew(true), dirtyFields(true)
 {
   VLOG (1)
@@ -48,6 +49,7 @@ Character::Character (Database& d, const Database::Result<CharacterResult>& res)
   id = res.Get<CharacterResult::id> ();
   owner = res.Get<CharacterResult::owner> ();
   faction = GetFactionFromColumn (res);
+
   if (res.IsNull<CharacterResult::inbuilding> ())
     {
       inBuilding = Database::EMPTY_ID;
@@ -55,12 +57,19 @@ Character::Character (Database& d, const Database::Result<CharacterResult>& res)
     }
   else
     inBuilding = res.Get<CharacterResult::inbuilding> ();
+
+  if (res.IsNull<CharacterResult::enterbuilding> ())
+    enterBuilding = Database::EMPTY_ID;
+  else
+    enterBuilding = res.Get<CharacterResult::enterbuilding> ();
+
   volatileMv = res.GetProto<CharacterResult::volatilemv> ();
   hp = res.GetProto<CharacterResult::hp> ();
   regenData = res.GetProto<CharacterResult::regendata> ();
   busy = res.Get<CharacterResult::busy> ();
   inv = res.GetProto<CharacterResult::inventory> ();
   data = res.GetProto<CharacterResult::proto> ();
+
   attackRange = res.Get<CharacterResult::attackrange> ();
   oldCanRegen = res.Get<CharacterResult::canregen> ();
   hasTarget = res.Get<CharacterResult::hastarget> ();
@@ -85,7 +94,8 @@ Character::~Character ()
       auto stmt = db.Prepare (R"(
         INSERT OR REPLACE INTO `characters`
           (`id`,
-           `owner`, `x`, `y`, `inbuilding`,
+           `owner`, `x`, `y`,
+           `inbuilding`, `enterbuilding`,
            `volatilemv`, `hp`,
            `busy`,
            `faction`,
@@ -93,9 +103,10 @@ Character::~Character ()
            `regendata`, `inventory`, `proto`)
           VALUES
           (?1,
-           ?2, ?3, ?4, ?5,
-           ?6, ?7,
-           ?8,
+           ?2, ?3, ?4,
+           ?5, ?6,
+           ?7, ?8,
+           ?9,
            ?101,
            ?102, ?103, ?104, ?105, ?106,
            ?107, ?108, ?109)
@@ -127,9 +138,10 @@ Character::~Character ()
           SET `owner` = ?2,
               `x` = ?3, `y` = ?4,
               `inbuilding` = ?5,
-              `volatilemv` = ?6,
-              `hp` = ?7,
-              `busy` = ?8,
+              `enterbuilding` = ?6,
+              `volatilemv` = ?7,
+              `hp` = ?8,
+              `busy` = ?9,
               `canregen` = ?101
           WHERE `id` = ?1
       )");
@@ -200,9 +212,13 @@ Character::BindFieldValues (Database::Statement& stmt) const
       BindCoordParameter (stmt, 3, 4, pos);
       stmt.BindNull (5);
     }
-  stmt.BindProto (6, volatileMv);
-  stmt.BindProto (7, hp);
-  stmt.Bind (8, busy);
+  if (enterBuilding == Database::EMPTY_ID)
+    stmt.BindNull (6);
+  else
+    stmt.Bind (6, enterBuilding);
+  stmt.BindProto (7, volatileMv);
+  stmt.BindProto (8, hp);
+  stmt.Bind (9, busy);
 }
 
 const HexCoord&

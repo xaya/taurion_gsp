@@ -68,8 +68,9 @@ TEST_F (CharacterTests, Creation)
   const HexCoord pos(5, -2);
 
   auto c = tbl.CreateNew  ("domob", Faction::RED);
-  c->SetPosition (pos);
   const auto id1 = c->GetId ();
+  c->SetPosition (pos);
+  c->SetEnterBuilding (10);
   c->MutableHP ().set_armour (10);
   c->MutableRegenData ().set_shield_regeneration_mhp (1234);
   SetBusy (*c, 42);
@@ -90,6 +91,7 @@ TEST_F (CharacterTests, Creation)
   EXPECT_EQ (c->GetFaction (), Faction::RED);
   ASSERT_FALSE (c->IsInBuilding ());
   EXPECT_EQ (c->GetPosition (), pos);
+  EXPECT_EQ (c->GetEnterBuilding (), 10);
   EXPECT_EQ (c->GetHP ().armour (), 10);
   EXPECT_EQ (c->GetRegenData ().shield_regeneration_mhp (), 1234);
   EXPECT_EQ (c->GetBusy (), 42);
@@ -102,6 +104,7 @@ TEST_F (CharacterTests, Creation)
   EXPECT_EQ (c->GetFaction (), Faction::GREEN);
   ASSERT_TRUE (c->IsInBuilding ());
   EXPECT_EQ (c->GetBuildingId (), 100);
+  EXPECT_EQ (c->GetEnterBuilding (), Database::EMPTY_ID);
   EXPECT_FALSE (c->GetRegenData ().has_shield_regeneration_mhp ());
   EXPECT_EQ (c->GetBusy (), 0);
   EXPECT_TRUE (c->GetProto ().has_movement ());
@@ -167,6 +170,7 @@ TEST_F (CharacterTests, ModificationFieldsOnly)
   ASSERT_TRUE (c != nullptr);
   c->SetOwner ("andy");
   c->SetPosition (pos);
+  c->SetEnterBuilding (42);
   c->MutableVolatileMv ().set_partial_step (24);
   c->MutableHP ().set_shield (5);
   c->SetBusy (42);
@@ -178,6 +182,7 @@ TEST_F (CharacterTests, ModificationFieldsOnly)
   EXPECT_EQ (c->GetFaction (), Faction::RED);
   ASSERT_FALSE (c->IsInBuilding ());
   EXPECT_EQ (c->GetPosition (), pos);
+  EXPECT_EQ (c->GetEnterBuilding (), 42);
   EXPECT_EQ (c->GetVolatileMv ().partial_step (), 24);
   EXPECT_EQ (c->GetHP ().shield (), 5);
   EXPECT_EQ (c->GetBusy (), 42);

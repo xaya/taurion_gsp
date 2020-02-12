@@ -82,6 +82,17 @@ PendingState::AddCharacterWaypoints (const Character& ch,
 }
 
 void
+PendingState::AddEnterBuilding (const Character& ch,
+                                const Database::IdT buildingId)
+{
+  VLOG (1) << "Adding enter-building command for character " << ch.GetId ();
+  auto& chState = GetCharacterState (ch);
+
+  chState.hasEnterBuilding = true;
+  chState.enterBuilding = buildingId;
+}
+
+void
 PendingState::AddCharacterDrop (const Character& ch)
 {
   VLOG (1) << "Adding pending item drop for character " << ch.GetId ();
@@ -197,6 +208,14 @@ PendingState::CharacterState::ToJson () const
       res["waypoints"] = wpJson;
     }
 
+  if (hasEnterBuilding)
+    {
+      if (enterBuilding == Database::EMPTY_ID)
+        res["enterbuilding"] = Json::Value ();
+      else
+        res["enterbuilding"] = IntToJson (enterBuilding);
+    }
+
   res["drop"] = drop;
   res["pickup"] = pickup;
 
@@ -285,6 +304,10 @@ PendingStateUpdater::PerformCharacterUpdate (Character& c,
           << ": " << upd["wp"];
       state.AddCharacterWaypoints (c, wp);
     }
+
+  Database::IdT buildingId;
+  if (ParseEnterBuilding (c, upd, buildingId))
+    state.AddEnterBuilding (c, buildingId);
 }
 
 void

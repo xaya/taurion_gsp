@@ -838,6 +838,160 @@ TEST_F (CharacterUpdateTests, ChosenSpeedInvalid)
 
 /* ************************************************************************** */
 
+class EnterBuildingMoveTests : public CharacterUpdateTests
+{
+
+protected:
+
+  BuildingsTable buildings;
+
+  EnterBuildingMoveTests ()
+    : buildings(db)
+  {}
+
+};
+
+TEST_F (EnterBuildingMoveTests, InvalidSet)
+{
+  db.SetNextId (100);
+  auto b = buildings.CreateNew ("checkmark", "andy", Faction::GREEN);
+  ASSERT_EQ (b->GetId (), 100);
+  b.reset ();
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"eb": {}}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"eb": "foo"}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"eb": -10}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"eb": 0}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"eb": 42}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"eb": 100}}}
+    }
+  ])");
+  EXPECT_EQ (GetTest ()->GetEnterBuilding (), Database::EMPTY_ID);
+}
+
+TEST_F (EnterBuildingMoveTests, InvalidClear)
+{
+  GetTest ()->SetEnterBuilding (50);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"eb": {}}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"eb": "foo"}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"eb": 0}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"eb": 42}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {}}}
+    }
+  ])");
+  EXPECT_EQ (GetTest ()->GetEnterBuilding (), 50);
+}
+
+TEST_F (EnterBuildingMoveTests, ValidEnter)
+{
+  db.SetNextId (100);
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  ASSERT_EQ (b->GetId (), 100);
+  b = buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+  ASSERT_EQ (b->GetId (), 101);
+  b.reset ();
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"eb": 100}}}
+    }
+  ])");
+  EXPECT_EQ (GetTest ()->GetEnterBuilding (), 100);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"eb": 101}}}
+    }
+  ])");
+  EXPECT_EQ (GetTest ()->GetEnterBuilding (), 101);
+}
+
+TEST_F (EnterBuildingMoveTests, ValidClear)
+{
+  GetTest ()->SetEnterBuilding (50);
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"eb": null}}}
+    }
+  ])");
+  EXPECT_EQ (GetTest ()->GetEnterBuilding (), Database::EMPTY_ID);
+}
+
+TEST_F (EnterBuildingMoveTests, BusyIsFine)
+{
+  db.SetNextId (100);
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  ASSERT_EQ (b->GetId (), 100);
+  b.reset ();
+
+  GetTest ()->SetBusy (10);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"eb": 100}}}
+    }
+  ])");
+  EXPECT_EQ (GetTest ()->GetEnterBuilding (), 100);
+}
+
+TEST_F (EnterBuildingMoveTests, AlreadyInBuilding)
+{
+  db.SetNextId (100);
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  ASSERT_EQ (b->GetId (), 100);
+  b.reset ();
+
+  GetTest ()->SetBuildingId (42);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"eb": 100}}}
+    }
+  ])");
+  EXPECT_EQ (GetTest ()->GetEnterBuilding (), Database::EMPTY_ID);
+}
+
+/* ************************************************************************** */
+
 class DropPickupMoveTests : public CharacterUpdateTests
 {
 
