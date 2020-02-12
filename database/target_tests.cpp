@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -36,15 +36,10 @@ namespace
 class TargetFinderTests : public DBTestWithSchema
 {
 
-private:
+protected:
 
   /** Character table instance for inserting test characters.  */
   CharacterTable characters;
-
-  /** Counter to generate unique names for test characters.  */
-  unsigned characterCnt = 0;
-
-protected:
 
   /** TargetFinder instance for use in the tests.  */
   TargetFinder finder;
@@ -99,6 +94,13 @@ TEST_F (TargetFinderTests, CharacterFactions)
   EXPECT_EQ (found[1].first, HexCoord (0, 0));
   EXPECT_EQ (found[1].second.type (), proto::TargetId::TYPE_CHARACTER);
   EXPECT_EQ (found[1].second.id (), idEnemy2);
+}
+
+TEST_F (TargetFinderTests, InBuilding)
+{
+  characters.CreateNew ("domob", Faction::GREEN)->SetBuildingId (100);
+  finder.ProcessL1Targets (HexCoord (0, 0), 1, Faction::RED, cb);
+  EXPECT_TRUE (found.empty ());
 }
 
 TEST_F (TargetFinderTests, CharacterRange)

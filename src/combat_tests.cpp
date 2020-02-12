@@ -154,6 +154,31 @@ TEST_F (TargetSelectionTests, ClosestTarget)
     }
 }
 
+TEST_F (TargetSelectionTests, InsideBuildings)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  const auto id1 = c->GetId ();
+  c->SetPosition (HexCoord (0, 0));
+  c->MutableProto ().mutable_target ();
+  AddAttackWithRange (c->MutableProto (), 10);
+  c.reset ();
+
+  c = characters.CreateNew ("domob",Faction::GREEN);
+  const auto id2 = c->GetId ();
+  c->SetBuildingId (100);
+  /* This character will not be processed for target finding, so an existing
+     target will not actually be cleared.  (But a new one should also not be
+     added to it.)  We clear the target when the character enters a
+     building.  */
+  AddAttackWithRange (c->MutableProto (), 10);
+  c.reset ();
+
+  FindCombatTargets (db, rnd);
+
+  EXPECT_FALSE (characters.GetById (id1)->GetProto ().has_target ());
+  EXPECT_FALSE (characters.GetById (id2)->GetProto ().has_target ());
+}
+
 TEST_F (TargetSelectionTests, MultipleAttacks)
 {
   auto c = characters.CreateNew ("domob", Faction::RED);
@@ -704,6 +729,23 @@ TEST_F (RegenerateHpTests, Works)
       EXPECT_EQ (c->GetHP ().shield (), t.shieldAfter);
       EXPECT_EQ (c->GetHP ().shield_mhp (), t.mhpShieldAfter);
     }
+}
+
+TEST_F (RegenerateHpTests, InsideBuilding)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  const auto id = c->GetId ();
+  c->SetBuildingId (100);
+  c->MutableHP ().set_shield (10);
+  auto* regen = &c->MutableRegenData ();
+  regen->mutable_max_hp ()->set_shield (100);
+  regen->set_shield_regeneration_mhp (1000);
+  c.reset ();
+
+  RegenerateHP (db);
+
+  c = characters.GetById (id);
+  EXPECT_EQ (c->GetHP ().shield (), 11);
 }
 
 /* ************************************************************************** */

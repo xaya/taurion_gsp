@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@ namespace pxd
 
 Character::Character (Database& d, const std::string& o, const Faction f)
   : db(d), id(db.GetNextId ()), owner(o), faction(f),
-    pos(0, 0), busy(0),
+    pos(0, 0), inBuilding(Database::EMPTY_ID), busy(0),
     oldCanRegen(false), isNew(true), dirtyFields(true)
 {
   VLOG (1)
@@ -48,7 +48,13 @@ Character::Character (Database& d, const Database::Result<CharacterResult>& res)
   id = res.Get<CharacterResult::id> ();
   owner = res.Get<CharacterResult::owner> ();
   faction = GetFactionFromColumn (res);
-  pos = GetCoordFromColumn (res);
+  if (res.IsNull<CharacterResult::inbuilding> ())
+    {
+      inBuilding = Database::EMPTY_ID;
+      pos = GetCoordFromColumn (res);
+    }
+  else
+    inBuilding = res.Get<CharacterResult::inbuilding> ();
   volatileMv = res.GetProto<CharacterResult::volatilemv> ();
   hp = res.GetProto<CharacterResult::hp> ();
   regenData = res.GetProto<CharacterResult::regendata> ();
@@ -79,7 +85,7 @@ Character::~Character ()
       auto stmt = db.Prepare (R"(
         INSERT OR REPLACE INTO `characters`
           (`id`,
-           `owner`, `x`, `y`,
+           `owner`, `x`, `y`, `inbuilding`,
            `volatilemv`, `hp`,
            `busy`,
            `faction`,
@@ -87,9 +93,9 @@ Character::~Character ()
            `regendata`, `inventory`, `proto`)
           VALUES
           (?1,
-           ?2, ?3, ?4,
-           ?5, ?6,
-           ?7,
+           ?2, ?3, ?4, ?5,
+           ?6, ?7,
+           ?8,
            ?101,
            ?102, ?103, ?104, ?105, ?106,
            ?107, ?108, ?109)
@@ -120,9 +126,10 @@ Character::~Character ()
         UPDATE `characters`
           SET `owner` = ?2,
               `x` = ?3, `y` = ?4,
-              `volatilemv` = ?5,
-              `hp` = ?6,
-              `busy` = ?7,
+              `inbuilding` = ?5,
+              `volatilemv` = ?6,
+              `hp` = ?7,
+              `busy` = ?8,
               `canregen` = ?101
           WHERE `id` = ?1
       )");
@@ -182,10 +189,34 @@ Character::BindFieldValues (Database::Statement& stmt) const
 {
   stmt.Bind (1, id);
   stmt.Bind (2, owner);
-  BindCoordParameter (stmt, 3, 4, pos);
-  stmt.BindProto (5, volatileMv);
-  stmt.BindProto (6, hp);
-  stmt.Bind (7, busy);
+  if (IsInBuilding ())
+    {
+      stmt.BindNull (3);
+      stmt.BindNull (4);
+      stmt.Bind (5, inBuilding);
+    }
+  else
+    {
+      BindCoordParameter (stmt, 3, 4, pos);
+      stmt.BindNull (5);
+    }
+  stmt.BindProto (6, volatileMv);
+  stmt.BindProto (7, hp);
+  stmt.Bind (8, busy);
+}
+
+const HexCoord&
+Character::GetPosition () const
+{
+  CHECK (!IsInBuilding ());
+  return pos;
+}
+
+Database::IdT
+Character::GetBuildingId () const
+{
+  CHECK (IsInBuilding ());
+  return inBuilding;
 }
 
 bool
@@ -299,7 +330,7 @@ CharacterTable::QueryWithAttacks ()
   auto stmt = db.Prepare (R"(
     SELECT *
       FROM `characters`
-      WHERE `attackrange` > 0
+      WHERE `attackrange` > 0 AND `inBuilding` IS NULL
       ORDER BY `id`
   )");
   return stmt.Query<CharacterResult> ();
@@ -348,6 +379,7 @@ CharacterTable::ProcessAllPositions (const PositionFcn& cb)
   auto stmt = db.Prepare (R"(
     SELECT `id`, `x`, `y`, `faction`
       FROM `characters`
+      WHERE `inbuilding` IS NULL
       ORDER BY `id`
   )");
 

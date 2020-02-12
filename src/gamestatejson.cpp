@@ -270,7 +270,10 @@ template <>
   res["id"] = IntToJson (c.GetId ());
   res["owner"] = c.GetOwner ();
   res["faction"] = FactionToString (c.GetFaction ());
-  res["position"] = CoordToJson (c.GetPosition ());
+  if (c.IsInBuilding ())
+    res["inbuilding"] = IntToJson (c.GetBuildingId ());
+  else
+    res["position"] = CoordToJson (c.GetPosition ());
   res["combat"] = GetCombatJsonObject (c, dl);
   res["speed"] = c.GetProto ().speed ();
   res["inventory"] = Convert (c.GetInventory ());

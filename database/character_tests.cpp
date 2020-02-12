@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -77,6 +77,7 @@ TEST_F (CharacterTests, Creation)
 
   c = tbl.CreateNew ("domob", Faction::GREEN);
   const auto id2 = c->GetId ();
+  c->SetBuildingId (100);
   c->MutableProto ().mutable_movement ();
   c.reset ();
 
@@ -87,6 +88,7 @@ TEST_F (CharacterTests, Creation)
   ASSERT_EQ (c->GetId (), id1);
   EXPECT_EQ (c->GetOwner (), "domob");
   EXPECT_EQ (c->GetFaction (), Faction::RED);
+  ASSERT_FALSE (c->IsInBuilding ());
   EXPECT_EQ (c->GetPosition (), pos);
   EXPECT_EQ (c->GetHP ().armour (), 10);
   EXPECT_EQ (c->GetRegenData ().shield_regeneration_mhp (), 1234);
@@ -98,6 +100,8 @@ TEST_F (CharacterTests, Creation)
   ASSERT_EQ (c->GetId (), id2);
   EXPECT_EQ (c->GetOwner (), "domob");
   EXPECT_EQ (c->GetFaction (), Faction::GREEN);
+  ASSERT_TRUE (c->IsInBuilding ());
+  EXPECT_EQ (c->GetBuildingId (), 100);
   EXPECT_FALSE (c->GetRegenData ().has_shield_regeneration_mhp ());
   EXPECT_EQ (c->GetBusy (), 0);
   EXPECT_TRUE (c->GetProto ().has_movement ());
@@ -155,6 +159,7 @@ TEST_F (CharacterTests, ModificationFieldsOnly)
      and later modify just the value.  */
   auto c = tbl.CreateNew ("domob", Faction::RED);
   const auto id = c->GetId ();
+  c->SetBuildingId (100);
   SetBusy (*c, 100);
   c.reset ();
 
@@ -171,10 +176,19 @@ TEST_F (CharacterTests, ModificationFieldsOnly)
   ASSERT_TRUE (c != nullptr);
   EXPECT_EQ (c->GetOwner (), "andy");
   EXPECT_EQ (c->GetFaction (), Faction::RED);
+  ASSERT_FALSE (c->IsInBuilding ());
   EXPECT_EQ (c->GetPosition (), pos);
   EXPECT_EQ (c->GetVolatileMv ().partial_step (), 24);
   EXPECT_EQ (c->GetHP ().shield (), 5);
   EXPECT_EQ (c->GetBusy (), 42);
+
+  c->SetBuildingId (101);
+  c.reset ();
+
+  c = tbl.GetById (id);
+  ASSERT_TRUE (c != nullptr);
+  ASSERT_TRUE (c->IsInBuilding ());
+  EXPECT_EQ (c->GetBuildingId (), 101);
 }
 
 TEST_F (CharacterTests, Inventory)
@@ -303,6 +317,10 @@ TEST_F (CharacterTableTests, QueryWithAttacks)
   tbl.CreateNew ("domob", Faction::RED);
   tbl.CreateNew ("andy", Faction::RED)
     ->MutableProto ().mutable_combat_data ()->add_attacks ()->set_range (1);
+  auto h = tbl.CreateNew ("inbuilding", Faction::RED);
+  h->SetBuildingId (100);
+  h->MutableProto ().mutable_combat_data ()->add_attacks ()->set_range (1);
+  h.reset ();
 
   auto res = tbl.QueryWithAttacks ();
   ASSERT_TRUE (res.Step ());
@@ -417,6 +435,7 @@ TEST_F (CharacterTableTests, ProcessAllPositions)
   tbl.CreateNew ("red", Faction::RED)->SetPosition (HexCoord (1, 5));
   tbl.CreateNew ("red", Faction::RED)->SetPosition (HexCoord (-1, -5));
   tbl.CreateNew ("blue", Faction::BLUE)->SetPosition (HexCoord (0, 0));
+  tbl.CreateNew ("green", Faction::GREEN)->SetBuildingId (100);
 
   struct Entry
   {

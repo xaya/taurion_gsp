@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -44,16 +44,17 @@ namespace pxd
 struct CharacterResult : public ResultWithFaction, public ResultWithCoord
 {
   RESULT_COLUMN (int64_t, id, 1);
-  RESULT_COLUMN (std::string, owner, 2);
-  RESULT_COLUMN (pxd::proto::VolatileMovement, volatilemv, 3);
-  RESULT_COLUMN (pxd::proto::HP, hp, 4);
-  RESULT_COLUMN (pxd::proto::RegenData, regendata, 5);
-  RESULT_COLUMN (int64_t, busy, 6);
-  RESULT_COLUMN (pxd::proto::Inventory, inventory, 7);
-  RESULT_COLUMN (pxd::proto::Character, proto, 8);
-  RESULT_COLUMN (int64_t, attackrange, 9);
-  RESULT_COLUMN (bool, canregen, 10);
-  RESULT_COLUMN (bool, hastarget, 11);
+  RESULT_COLUMN (int64_t, inbuilding, 2);
+  RESULT_COLUMN (std::string, owner, 3);
+  RESULT_COLUMN (pxd::proto::VolatileMovement, volatilemv, 4);
+  RESULT_COLUMN (pxd::proto::HP, hp, 5);
+  RESULT_COLUMN (pxd::proto::RegenData, regendata, 6);
+  RESULT_COLUMN (int64_t, busy, 7);
+  RESULT_COLUMN (pxd::proto::Inventory, inventory, 8);
+  RESULT_COLUMN (pxd::proto::Character, proto, 9);
+  RESULT_COLUMN (int64_t, attackrange, 10);
+  RESULT_COLUMN (bool, canregen, 11);
+  RESULT_COLUMN (bool, hastarget, 12);
 };
 
 /**
@@ -85,6 +86,9 @@ private:
 
   /** The current position.  */
   HexCoord pos;
+
+  /** The building the character is in, or EMPTY_ID if outside.  */
+  Database::IdT inBuilding;
 
   /** Volatile movement proto.  */
   LazyProto<proto::VolatileMovement> volatileMv;
@@ -213,17 +217,36 @@ public:
     return faction;
   }
 
-  const HexCoord&
-  GetPosition () const
+  bool
+  IsInBuilding () const
   {
-    return pos;
+    return inBuilding != Database::EMPTY_ID;
   }
+
+  /**
+   * Returns the on-map position.  Must not be called if in building.
+   */
+  const HexCoord& GetPosition () const;
 
   void
   SetPosition (const HexCoord& c)
   {
     dirtyFields = true;
+    inBuilding = Database::EMPTY_ID;
     pos = c;
+  }
+
+  /**
+   * Returns the building ID the character is in.  Must only be called if
+   * it actually is in a building.
+   */
+  Database::IdT GetBuildingId () const;
+
+  void
+  SetBuildingId (const Database::IdT id)
+  {
+    dirtyFields = true;
+    inBuilding = id;
   }
 
   const proto::VolatileMovement&
@@ -393,7 +416,8 @@ public:
   Database::Result<CharacterResult> QueryMining ();
 
   /**
-   * Queries for all characters with attacks.
+   * Queries for all characters with attacks.  This only includes characters
+   * on the map, as characters in buildings can't attack anyway.
    */
   Database::Result<CharacterResult> QueryWithAttacks ();
 
@@ -418,6 +442,7 @@ public:
    * Processes all positions of characters on the map.  This is used to
    * construct the dynamic obstacle map, avoiding the need to query all data
    * for each character and construct a full Character handle.
+   * Characters in buildings are ignored by this function.
    */
   void ProcessAllPositions (const PositionFcn& cb);
 

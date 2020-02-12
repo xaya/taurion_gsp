@@ -112,7 +112,7 @@ TEST_F (CharacterJsonTests, Basic)
   c->MutableProto ().set_speed (750);
   c.reset ();
 
-  tbl.CreateNew ("andy", Faction::GREEN);
+  tbl.CreateNew ("andy", Faction::GREEN)->SetBuildingId (100);
 
   ExpectStateJson (R"({
     "characters":
@@ -120,11 +120,13 @@ TEST_F (CharacterJsonTests, Basic)
         {
           "id": 1, "owner": "domob", "faction": "r",
           "speed": 750,
+          "inbuilding": null,
           "position": {"x": -5, "y": 2}
         },
         {
           "id": 2, "owner": "andy", "faction": "g",
-          "position": {"x": -0, "y": 0}
+          "inbuilding": 100,
+          "position": null
         }
       ]
   })");
