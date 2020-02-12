@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -51,6 +51,8 @@ protected:
 
 TEST_F (PartialJsonEqualTests, BasicValues)
 {
+  EXPECT_TRUE (PartialStrEqual ("null", "\"null\""));
+
   EXPECT_TRUE (PartialStrEqual ("42", "42"));
   EXPECT_TRUE (PartialStrEqual ("true", "true"));
   EXPECT_TRUE (PartialStrEqual ("-5.5", "-5.5"));

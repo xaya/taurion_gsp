@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -59,6 +59,13 @@ PartialJsonEqual (const Json::Value& actual, const Json::Value& expected)
 {
   if (!expected.isObject () && !expected.isArray ())
     {
+      /* If the expected value is the literal string "null", then we compare
+         it equal to a null value.  This allows us to test for explicit
+         null's even if we use null values as placeholder for "field should
+         be missing".  */
+      if (expected.isString () && expected.asString () == "null")
+        return actual.isNull ();
+
       /* Special case:  If both values are integers, then we compare them
          explicitly here.  This allows values of type "unsigned int" to be
          equal to values of type "int" (from golden data).  */
