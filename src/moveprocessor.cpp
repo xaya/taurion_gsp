@@ -224,6 +224,14 @@ BaseMoveProcessor::ParseCharacterWaypoints (const Character& c,
       return false;
     }
 
+  if (c.IsInBuilding ())
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId ()
+          << " is inside a building, can't set waypoints";
+      return false;
+    }
+
   for (const auto& entry : wpArr)
     {
       HexCoord coord;
@@ -339,6 +347,14 @@ BaseMoveProcessor::ParseCharacterProspecting (const Character& c,
       return false;
     }
 
+  if (c.IsInBuilding ())
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId ()
+          << " is inside a building, can't prospect";
+      return false;
+    }
+
   const auto& pos = c.GetPosition ();
   regionId = ctx.Map ().Regions ().GetRegionId (pos);
   VLOG (1)
@@ -366,12 +382,6 @@ BaseMoveProcessor::ParseCharacterMining (const Character& c,
       return false;
     }
 
-  const auto& pos = c.GetPosition ();
-  regionId = ctx.Map ().Regions ().GetRegionId (pos);
-  VLOG (1)
-      << "Character " << c.GetId ()
-      << " wants to start mining region " << regionId;
-
   if (!c.GetProto ().has_mining ())
     {
       LOG (WARNING) << "Character " << c.GetId () << " can't mine";
@@ -384,6 +394,19 @@ BaseMoveProcessor::ParseCharacterMining (const Character& c,
           << "Character " << c.GetId () << " is busy, can't mine";
       return false;
     }
+
+  if (c.IsInBuilding ())
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId () << " is inside a building, can't mine";
+      return false;
+    }
+
+  const auto& pos = c.GetPosition ();
+  regionId = ctx.Map ().Regions ().GetRegionId (pos);
+  VLOG (1)
+      << "Character " << c.GetId ()
+      << " wants to start mining region " << regionId;
 
   if (c.GetProto ().has_movement ())
     {
@@ -722,6 +745,12 @@ MoveProcessor::MaybeDropLoot (Character& c, const Json::Value& cmd)
   if (fungible.empty ())
     return;
 
+  if (c.IsInBuilding ())
+    {
+      LOG (WARNING) << "Drop/pickup inside building is ignored";
+      return;
+    }
+
   std::ostringstream fromName;
   fromName << "character " << c.GetId ();
   std::ostringstream toName;
@@ -740,6 +769,12 @@ MoveProcessor::MaybePickupLoot (Character& c, const Json::Value& cmd)
   const auto fungible = ParseDropPickupFungible (cmd);
   if (fungible.empty ())
     return;
+
+  if (c.IsInBuilding ())
+    {
+      LOG (WARNING) << "Drop/pickup inside building is ignored";
+      return;
+    }
 
   std::ostringstream fromName;
   fromName << "ground loot at " << c.GetPosition ();

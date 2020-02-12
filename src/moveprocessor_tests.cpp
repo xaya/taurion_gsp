@@ -648,6 +648,35 @@ TEST_F (CharacterUpdateTests, WhenBusy)
   EXPECT_FALSE (h->GetProto ().mining ().active ());
 }
 
+TEST_F (CharacterUpdateTests, InvalidWhenInsideBuilding)
+{
+  auto h = GetTest ();
+  h->SetBuildingId (10);
+  h->MutableProto ().mutable_prospection ();
+  h->MutableProto ().mutable_mining ();
+  h.reset ();
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"wp": [{"x": -3, "y": 4}]}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"prospect": {}}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"mine": {}}}}
+    }
+  ])");
+
+  h = GetTest ();
+  EXPECT_EQ (h->GetBusy (), 0);
+  EXPECT_FALSE (h->GetProto ().has_movement ());
+  EXPECT_FALSE (h->GetProto ().mining ().active ());
+}
+
 TEST_F (CharacterUpdateTests, BasicWaypoints)
 {
   /* Set up some stuff that will be cleared.  */
