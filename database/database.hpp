@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -277,6 +277,12 @@ public:
    * Tries to step to the next result.  Returns false if there is none.
    */
   bool Step ();
+
+  /**
+   * Checks if the given column is null.
+   */
+  template <typename Col>
+    bool IsNull () const;
 
   /**
    * Extracts the column of the given type.

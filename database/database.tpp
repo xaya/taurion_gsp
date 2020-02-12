@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -87,6 +87,15 @@ template <typename T>
 
   CHECK_EQ (rc, SQLITE_ROW);
   return true;
+}
+
+template <typename T>
+template <typename Col>
+  bool
+  Database::Result<T>::IsNull () const
+{
+  const int ind = ColumnIndex<Col> ();
+  return sqlite3_column_type (stmt, ind) == SQLITE_NULL;
 }
 
 namespace internal

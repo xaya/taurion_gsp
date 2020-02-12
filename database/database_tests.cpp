@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -39,6 +39,7 @@ struct RowData
 {
   int64_t id;
   bool flag;
+  bool nameNull;
   std::string name;
   int coordX;
   int coordY;
@@ -65,9 +66,9 @@ protected:
     auto stmt = db.Prepare (R"(
       CREATE TABLE `test` (
         `id` INTEGER PRIMARY KEY,
-        `flag` INTEGER,
-        `name` TEXT,
-        `proto` BLOB
+        `flag` INTEGER NULL,
+        `name` TEXT NULL,
+        `proto` BLOB NULL
       )
     )");
     stmt.Execute ();
@@ -90,7 +91,10 @@ protected:
         ASSERT_TRUE (res.Step ());
         EXPECT_EQ (res.Get<TestResult::id> (), val.id);
         EXPECT_EQ (res.Get<TestResult::flag> (), val.flag);
-        EXPECT_EQ (res.Get<TestResult::name> (), val.name);
+        if (res.IsNull<TestResult::name> ())
+          EXPECT_TRUE (val.nameNull);
+        else
+          EXPECT_EQ (res.Get<TestResult::name> (), val.name);
 
         LazyProto<proto::HexCoord> c = res.GetProto<TestResult::proto> ();
         EXPECT_EQ (c.Get ().x (), val.coordX);
@@ -122,7 +126,7 @@ TEST_F (DatabaseTests, BindingAndQuery)
   const auto largeInt = std::numeric_limits<int64_t>::max ();
   stmt.Bind (1, largeInt);
   stmt.BindNull (2);
-  stmt.Bind<std::string> (3, "foo");
+  stmt.BindNull (3);
   stmt.BindProto (4, coord1);
 
   stmt.Bind (5, 10);
@@ -133,8 +137,8 @@ TEST_F (DatabaseTests, BindingAndQuery)
   stmt.Execute ();
 
   ExpectData ({
-    {10, true, "bar", coord2.Get ().x (), coord2.Get ().y ()},
-    {largeInt, false, "foo", coord1.Get ().x (), coord1.Get ().y ()},
+    {10, true, false, "bar", coord2.Get ().x (), coord2.Get ().y ()},
+    {largeInt, false, true, "", coord1.Get ().x (), coord1.Get ().y ()},
   });
 }
 
