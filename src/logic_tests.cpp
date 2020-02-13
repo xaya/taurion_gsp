@@ -827,6 +827,103 @@ TEST_F (PXLogicTests, BankingAndMovement)
   EXPECT_EQ (a->GetBanked ().GetFungibleCount ("foo"), 1);
 }
 
+TEST_F (PXLogicTests, EnterBuildingAfterMovesAndMovement)
+{
+  auto b = buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+  ASSERT_EQ (b->GetId (), 1);
+  b->SetCentre (HexCoord (0, 0));
+  b.reset ();
+
+  auto c = CreateCharacter ("domob", Faction::RED);
+  ASSERT_EQ (c->GetId (), 2);
+  c->SetPosition (HexCoord (6, 0));
+  c->MutableProto ().set_speed (1'000);
+  auto* mv = c->MutableProto ().mutable_movement ();
+  *mv->add_waypoints () = CoordToProto (HexCoord (5, 0));
+  c.reset ();
+
+  /* Setting the "enter building" intent and moving into range both
+     happen in this very update.  */
+  UpdateState (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"2": {"eb": 1}}}
+    }
+  ])");
+
+  c = characters.GetById (2);
+  ASSERT_TRUE (c->IsInBuilding ());
+  EXPECT_EQ (c->GetBuildingId (), 1);
+}
+
+TEST_F (PXLogicTests, EnterBuildingDelayed)
+{
+  auto b = buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+  ASSERT_EQ (b->GetId (), 1);
+  b->SetCentre (HexCoord (0, 0));
+  b.reset ();
+
+  auto c = CreateCharacter ("domob", Faction::RED);
+  ASSERT_EQ (c->GetId (), 2);
+  c->SetPosition (HexCoord (10, 0));
+  c->SetEnterBuilding (1);
+  c->MutableProto ().set_speed (1'000);
+  auto* mv = c->MutableProto ().mutable_movement ();
+  *mv->add_waypoints () = CoordToProto (HexCoord (5, 0));
+  c.reset ();
+
+  /* We will be in range exactly after 5 updates.  */
+  for (unsigned i = 0; i < 5; ++i)
+    {
+      EXPECT_FALSE (characters.GetById (2)->IsInBuilding ());
+      UpdateState ("[]");
+    }
+
+  c = characters.GetById (2);
+  ASSERT_TRUE (c->IsInBuilding ());
+  EXPECT_EQ (c->GetBuildingId (), 1);
+}
+
+TEST_F (PXLogicTests, EnterBuildingAndTargetFinding)
+{
+  auto b = buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+  ASSERT_EQ (b->GetId (), 1);
+  b->SetCentre (HexCoord (0, 0));
+  b.reset ();
+
+  auto c = CreateCharacter ("domob", Faction::RED);
+  ASSERT_EQ (c->GetId (), 2);
+  c->MutableHP ().set_armour (100);
+  c->SetPosition (HexCoord (3, 0));
+  AddUnityAttack (*c, 10);
+  c.reset ();
+
+  c = CreateCharacter ("andy", Faction::BLUE);
+  ASSERT_EQ (c->GetId (), 3);
+  c->MutableHP ().set_armour (100);
+  c->SetPosition (HexCoord (0, 3));
+  AddUnityAttack (*c, 10);
+  c.reset ();
+
+  /* Both characters will target and attack each other.  */
+  UpdateState ("[]");
+
+  EXPECT_EQ (characters.GetById (2)->GetProto ().target ().id (), 3);
+  EXPECT_EQ (characters.GetById (3)->GetProto ().target ().id (), 2);
+
+  /* Now the "domob" character will enter the building, and neither will
+     target the other any more.  */
+  UpdateState (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"2": {"eb": 1}}}
+    }
+  ])");
+
+  EXPECT_FALSE (characters.GetById (2)->GetProto ().has_target ());
+  EXPECT_FALSE (characters.GetById (3)->GetProto ().has_target ());
+}
+
 /* ************************************************************************** */
 
 using ValidateStateTests = PXLogicTests;

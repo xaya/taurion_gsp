@@ -39,6 +39,12 @@ std::vector<HexCoord> GetBuildingShape (const Building& b);
  */
 void InitialiseBuildings (Database& db);
 
+/**
+ * Processes all characters that want to enter a building, and lets them in
+ * if it is possible for them.
+ */
+void ProcessEnterBuildings (Database& db);
+
 } // namespace pxd
 
 #endif // PXD_BUILDINGS_HPP

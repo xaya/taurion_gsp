@@ -18,6 +18,7 @@
 
 #include "buildings.hpp"
 
+#include "database/character.hpp"
 #include "database/dbtest.hpp"
 
 #include <gmock/gmock.h>
@@ -31,6 +32,8 @@ namespace
 {
 
 using testing::UnorderedElementsAre;
+
+/* ************************************************************************** */
 
 class BuildingsTests : public DBTestWithSchema
 {
@@ -62,6 +65,134 @@ TEST_F (BuildingsTests, GetBuildingShape)
                                      HexCoord (1, 3)));
   EXPECT_DEATH (GetBuildingShape (*tbl.GetById (id2)), "undefined type");
 }
+
+/* ************************************************************************** */
+
+class ProcessEnterBuildingsTests : public BuildingsTests
+{
+
+protected:
+
+  CharacterTable characters;
+
+  ProcessEnterBuildingsTests ()
+    : characters(db)
+  {
+    auto b = tbl.CreateNew ("checkmark", "", Faction::ANCIENT);
+    CHECK_EQ (b->GetId (), 1);
+    b->SetCentre (HexCoord (0, 0));
+    b.reset ();
+  }
+
+  /**
+   * Creates or looks up a test character with the given ID.
+   */
+  CharacterTable::Handle
+  GetCharacter (const Database::IdT id)
+  {
+    auto h = characters.GetById (id);
+    if (h == nullptr)
+      {
+        db.SetNextId (id);
+        h = characters.CreateNew ("domob", Faction::RED);
+      }
+
+    return h;
+  }
+
+};
+
+TEST_F (ProcessEnterBuildingsTests, BusyCharacter)
+{
+  auto c = GetCharacter (10);
+  c->SetPosition (HexCoord (5, 0));
+  c->SetEnterBuilding (1);
+  c->SetBusy (2);
+  c.reset ();
+
+  ProcessEnterBuildings (db);
+
+  c = GetCharacter (10);
+  ASSERT_FALSE (c->IsInBuilding ());
+  EXPECT_EQ (c->GetEnterBuilding (), 1);
+}
+
+TEST_F (ProcessEnterBuildingsTests, NonExistantBuilding)
+{
+  auto c = GetCharacter (10);
+  c->SetPosition (HexCoord (5, 0));
+  c->SetEnterBuilding (42);
+  c.reset ();
+
+  ProcessEnterBuildings (db);
+
+  c = GetCharacter (10);
+  ASSERT_FALSE (c->IsInBuilding ());
+  EXPECT_EQ (c->GetEnterBuilding (), Database::EMPTY_ID);
+}
+
+TEST_F (ProcessEnterBuildingsTests, TooFar)
+{
+  auto c = GetCharacter (10);
+  c->SetPosition (HexCoord (6, 0));
+  c->SetEnterBuilding (1);
+  c.reset ();
+
+  ProcessEnterBuildings (db);
+
+  c = GetCharacter (10);
+  ASSERT_FALSE (c->IsInBuilding ());
+  EXPECT_EQ (c->GetEnterBuilding (), 1);
+}
+
+TEST_F (ProcessEnterBuildingsTests, EnteringEffects)
+{
+  auto c = GetCharacter (10);
+  c->SetPosition (HexCoord (5, 0));
+  c->SetEnterBuilding (1);
+  c->MutableProto ().mutable_target ();
+  c->MutableProto ().mutable_movement ()->mutable_waypoints ();
+  c->MutableProto ().mutable_mining ()->set_active (true);
+  c.reset ();
+
+  ProcessEnterBuildings (db);
+
+  c = GetCharacter (10);
+  ASSERT_TRUE (c->IsInBuilding ());
+  EXPECT_EQ (c->GetBuildingId (), 1);
+  EXPECT_EQ (c->GetEnterBuilding (), Database::EMPTY_ID);
+  EXPECT_FALSE (c->GetProto ().has_target ());
+  EXPECT_FALSE (c->GetProto ().has_movement ());
+  EXPECT_FALSE (c->GetProto ().mining ().active ());
+}
+
+TEST_F (ProcessEnterBuildingsTests, MultipleCharacters)
+{
+  auto c = GetCharacter (10);
+  c->SetPosition (HexCoord (4, 0));
+
+  c = GetCharacter (11);
+  c->SetPosition (HexCoord (6, 0));
+  c->SetEnterBuilding (1);
+
+  c = GetCharacter (12);
+  c->SetPosition (HexCoord (5, 0));
+  c->SetEnterBuilding (1);
+
+  c = GetCharacter (13);
+  c->SetPosition (HexCoord (2, 0));
+  c->SetEnterBuilding (1);
+  c.reset ();
+
+  ProcessEnterBuildings (db);
+
+  EXPECT_FALSE (GetCharacter (10)->IsInBuilding ());
+  EXPECT_FALSE (GetCharacter (11)->IsInBuilding ());
+  EXPECT_TRUE (GetCharacter (12)->IsInBuilding ());
+  EXPECT_TRUE (GetCharacter (13)->IsInBuilding ());
+}
+
+/* ************************************************************************** */
 
 } // anonymous namespace
 } // namespace pxd

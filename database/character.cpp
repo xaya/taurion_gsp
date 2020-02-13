@@ -379,6 +379,17 @@ CharacterTable::QueryBusyDone ()
   return stmt.Query<CharacterResult> ();
 }
 
+Database::Result<CharacterResult>
+CharacterTable::QueryForEnterBuilding ()
+{
+  auto stmt = db.Prepare (R"(
+    SELECT * FROM `characters`
+      WHERE `enterbuilding` IS NOT NULL
+      ORDER BY `id`
+  )");
+  return stmt.Query<CharacterResult> ();
+}
+
 namespace
 {
 

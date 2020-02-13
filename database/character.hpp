@@ -456,6 +456,11 @@ public:
   Database::Result<CharacterResult> QueryBusyDone ();
 
   /**
+   * Queries all characters that want to enter a building.
+   */
+  Database::Result<CharacterResult> QueryForEnterBuilding ();
+
+  /**
    * Processes all positions of characters on the map.  This is used to
    * construct the dynamic obstacle map, avoiding the need to query all data
    * for each character and construct a full Character handle.

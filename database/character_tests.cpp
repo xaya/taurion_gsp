@@ -435,6 +435,20 @@ TEST_F (CharacterTableTests, QueryBusyDone)
   ASSERT_FALSE (res.Step ());
 }
 
+TEST_F (CharacterTableTests, QueryForEnterBuilding)
+{
+  tbl.CreateNew ("not entering", Faction::RED);
+  tbl.CreateNew ("entering 1", Faction::GREEN)->SetEnterBuilding (10);
+  tbl.CreateNew ("entering 2", Faction::GREEN)->SetEnterBuilding (1);
+
+  auto res = tbl.QueryForEnterBuilding ();
+  ASSERT_TRUE (res.Step ());
+  EXPECT_EQ (tbl.GetFromResult (res)->GetOwner (), "entering 1");
+  ASSERT_TRUE (res.Step ());
+  EXPECT_EQ (tbl.GetFromResult (res)->GetOwner (), "entering 2");
+  ASSERT_FALSE (res.Step ());
+}
+
 TEST_F (CharacterTableTests, ProcessAllPositions)
 {
   tbl.CreateNew ("red", Faction::RED)->SetPosition (HexCoord (1, 5));

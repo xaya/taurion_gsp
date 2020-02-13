@@ -18,8 +18,11 @@
 
 #include "buildings.hpp"
 
+#include "mining.hpp"
+#include "movement.hpp"
 #include "protoutils.hpp"
 
+#include "database/character.hpp"
 #include "proto/config.pb.h"
 #include "proto/roconfig.hpp"
 
@@ -69,6 +72,74 @@ InitialiseBuildings (Database& db)
   h = tbl.CreateNew ("obelisk3", "", Faction::ANCIENT);
   h->SetCentre (HexCoord (-637, -291));
   h.reset ();
+}
+
+void
+ProcessEnterBuildings (Database& db)
+{
+  const auto& buildingData = RoConfigData ().building_types ();
+
+  BuildingsTable buildings(db);
+  CharacterTable characters(db);
+  auto res = characters.QueryForEnterBuilding ();
+
+  unsigned processed = 0;
+  unsigned entered = 0;
+  while (res.Step ())
+    {
+      ++processed;
+      auto c = characters.GetFromResult (res);
+
+      if (c->GetBusy () > 0)
+        {
+          LOG (WARNING)
+              << "Busy character " << c->GetId () << " can't enter building";
+          continue;
+        }
+
+      const auto buildingId = c->GetEnterBuilding ();
+      CHECK_NE (buildingId, Database::EMPTY_ID);
+
+      auto b = buildings.GetById (buildingId);
+
+      /* The building might have been destroyed in the mean time.  In this case
+         we just cancel the intent.  */
+      if (b == nullptr)
+        {
+          LOG (WARNING)
+              << "Character " << c->GetId ()
+              << " wants to enter non-existing building " << buildingId;
+          c->SetEnterBuilding (Database::EMPTY_ID);
+          continue;
+        }
+
+      const auto mit = buildingData.find (b->GetType ());
+      CHECK (mit != buildingData.end ())
+          << "Unknown building type: " << b->GetType ();
+
+      const unsigned dist
+          = HexCoord::DistanceL1 (c->GetPosition (), b->GetCentre ());
+      if (dist > mit->second.enter_radius ())
+        {
+          /* This is probably the most common case, no log spam here.  */
+          continue;
+        }
+
+      LOG (INFO)
+          << "Character " << c->GetId () << " is entering " << buildingId;
+      ++entered;
+
+      c->SetBuildingId (buildingId);
+      c->MutableProto ().clear_target ();
+      c->SetEnterBuilding (Database::EMPTY_ID);
+      StopCharacter (*c);
+      StopMining (*c);
+    }
+
+  LOG (INFO)
+      << "Processed " << processed
+      << " characters with 'enter building' intent, "
+      << entered << " were able to enter";
 }
 
 } // namespace pxd

@@ -124,6 +124,12 @@ PXLogic::UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
 
   ProcessBanking (db, ctx);
 
+  /* Entering buildings should be after moves and movement, so that players
+     enter as soon as possible (perhaps in the same instant the move for it
+     gets confirmed).  It should be before combat targets, so that players
+     entering a building won't be attacked any more.  */
+  ProcessEnterBuildings (db);
+
   FindCombatTargets (db, rnd);
 
 #ifdef ENABLE_SLOW_ASSERTS
@@ -315,6 +321,8 @@ PXLogic::ValidateStateSlow (Database& db, const Context& ctx)
   LOG (INFO) << "Performing slow validation of the game-state database...";
   ValidateCharacterBuildingFactions (db);
   ValidateCharacterLimit (db, ctx);
+  /* FIXME: Validate that characters are only in buildings that match
+     their faction.  */
 }
 
 } // namespace pxd
