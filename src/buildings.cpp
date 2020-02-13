@@ -21,8 +21,8 @@
 #include "mining.hpp"
 #include "movement.hpp"
 #include "protoutils.hpp"
+#include "spawn.hpp"
 
-#include "database/character.hpp"
 #include "proto/config.pb.h"
 #include "proto/roconfig.hpp"
 
@@ -140,6 +140,29 @@ ProcessEnterBuildings (Database& db)
       << "Processed " << processed
       << " characters with 'enter building' intent, "
       << entered << " were able to enter";
+}
+
+void
+LeaveBuilding (BuildingsTable& buildings, Character& c,
+               xaya::Random& rnd, DynObstacles& dyn, const Context& ctx)
+{
+  CHECK (c.IsInBuilding ());
+  auto b = buildings.GetById (c.GetBuildingId ());
+  CHECK (b != nullptr);
+
+  const auto& data = RoConfigData ().building_types ();
+  const auto mit = data.find (b->GetType ());
+  CHECK (mit != data.end ()) << "Unknown building type: " << b->GetType ();
+
+  const auto pos
+      = ChooseSpawnLocation (b->GetCentre (), mit->second.enter_radius (),
+                             c.GetFaction (), rnd, dyn, ctx.Map ());
+
+  LOG (INFO)
+      << "Character " << c.GetId ()
+      << " is leaving building " << b->GetId ()
+      << " to location " << pos;
+  c.SetPosition (pos);
 }
 
 } // namespace pxd

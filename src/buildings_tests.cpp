@@ -18,8 +18,12 @@
 
 #include "buildings.hpp"
 
+#include "testutils.hpp"
+
 #include "database/character.hpp"
 #include "database/dbtest.hpp"
+#include "hexagonal/ring.hpp"
+#include "proto/roconfig.hpp"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -41,9 +45,10 @@ class BuildingsTests : public DBTestWithSchema
 protected:
 
   BuildingsTable tbl;
+  CharacterTable characters;
 
   BuildingsTests ()
-    : tbl(db)
+    : tbl(db), characters(db)
   {}
 
 };
@@ -73,10 +78,7 @@ class ProcessEnterBuildingsTests : public BuildingsTests
 
 protected:
 
-  CharacterTable characters;
-
   ProcessEnterBuildingsTests ()
-    : characters(db)
   {
     auto b = tbl.CreateNew ("checkmark", "", Faction::ANCIENT);
     CHECK_EQ (b->GetId (), 1);
@@ -190,6 +192,108 @@ TEST_F (ProcessEnterBuildingsTests, MultipleCharacters)
   EXPECT_FALSE (GetCharacter (11)->IsInBuilding ());
   EXPECT_TRUE (GetCharacter (12)->IsInBuilding ());
   EXPECT_TRUE (GetCharacter (13)->IsInBuilding ());
+}
+
+/* ************************************************************************** */
+
+class LeaveBuildingTests : public BuildingsTests
+{
+
+protected:
+
+  const HexCoord centre;
+  HexCoord::IntT radius;
+
+  TestRandom rnd;
+  DynObstacles dyn;
+  ContextForTesting ctx;
+
+  LeaveBuildingTests ()
+    : centre(10, 42), dyn(db)
+  {
+    const std::string type = "checkmark";
+    radius = RoConfigData ().building_types ().at (type).enter_radius ();
+
+    auto b = tbl.CreateNew (type, "", Faction::ANCIENT);
+    CHECK_EQ (b->GetId (), 1);
+    b->SetCentre (centre);
+    dyn.AddBuilding (*b);
+    b.reset ();
+
+    db.SetNextId (10);
+    auto c = characters.CreateNew ("domob", Faction::RED);
+    c->SetBuildingId (1);
+    c.reset ();
+  }
+
+  /**
+   * Calls LeaveBuilding on our test character with all our other context
+   * and returns the resulting position.
+   */
+  HexCoord
+  Leave ()
+  {
+    auto c = characters.GetById (10);
+    LeaveBuilding (tbl, *c, rnd, dyn, ctx);
+    CHECK (!c->IsInBuilding ());
+    return c->GetPosition ();
+  }
+
+};
+
+TEST_F (LeaveBuildingTests, Basic)
+{
+  const auto pos = Leave ();
+  EXPECT_TRUE (ctx.Map ().IsPassable (pos));
+  EXPECT_TRUE (dyn.IsPassable (pos, Faction::RED));
+  EXPECT_LE (HexCoord::DistanceL1 (pos, centre), radius);
+}
+
+TEST_F (LeaveBuildingTests, WhenAllBlocked)
+{
+  for (HexCoord::IntT r = 0; r <= radius; ++r)
+    for (const auto& c : L1Ring (centre, r))
+      dyn.AddVehicle (c, Faction::RED);
+
+  const auto pos = Leave ();
+  EXPECT_TRUE (ctx.Map ().IsPassable (pos));
+  EXPECT_TRUE (dyn.IsPassable (pos, Faction::RED));
+  EXPECT_GT (HexCoord::DistanceL1 (pos, centre), radius);
+}
+
+TEST_F (LeaveBuildingTests, PossibleLocations)
+{
+  constexpr unsigned trials = 1'000;
+
+  /* We use a map that contains all tiles within radius.  They count how
+     often a certain location is chosen as final position.  We set the
+     tiles that are unpassable (because the building is there) to -1
+     instead to signal this.  */
+  std::map<HexCoord, int> counts;
+  for (HexCoord::IntT r = 0; r <= radius; ++r)
+    for (const auto& c : L1Ring (centre, r))
+      counts.emplace (c, 0);
+  for (const auto& c : GetBuildingShape (*tbl.GetById (1)))
+    counts.at (c) = -1;
+
+  for (unsigned i = 0; i < trials; ++i)
+    {
+      const auto pos = Leave ();
+      characters.GetById (10)->SetBuildingId (1);
+
+      auto mit = counts.find (pos);
+      ASSERT_NE (mit, counts.end ()) << "Left to unexpected position: " << pos;
+      ASSERT_GE (mit->second, 0) << "Left to obstacle: " << pos;
+      ++mit->second;
+    }
+
+  for (const auto& entry : counts)
+    {
+      if (entry.second == -1)
+        continue;
+      LOG (INFO) << "Count at " << entry.first << ": " << entry.second;
+      EXPECT_GE (entry.second, 3);
+    }
 }
 
 /* ************************************************************************** */
