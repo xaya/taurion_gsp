@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,15 +33,14 @@ namespace pxd
 namespace
 {
 
+/* ************************************************************************** */
+
 class SpawnTests : public DBTestWithSchema
 {
 
-private:
-
-  TestRandom rnd;
-
 protected:
 
+  TestRandom rnd;
   ContextForTesting ctx;
 
   DynObstacles dyn;
@@ -119,27 +118,22 @@ TEST_F (SpawnTests, PerFactionStats)
   EXPECT_EQ (c->GetProto ().speed (), 2'200);
 }
 
+/* ************************************************************************** */
+
 class SpawnLocationTests : public SpawnTests
 {
 
 protected:
 
   /**
-   * Spawns a character and removes it again from the map.  This just
-   * returns the spawn location.
+   * Chooses a spawn location for the given centre and radius (and all
+   * other context from the test fixture).
    */
   HexCoord
-  SpawnLocation (const Faction f)
+  SpawnLocation (const HexCoord& centre, const HexCoord::IntT radius,
+                 const Faction f)
   {
-    auto c = Spawn ("domob", f);
-    const auto id = c->GetId ();
-    const HexCoord res = c->GetPosition ();
-    c.reset ();
-
-    dyn.RemoveVehicle (res, f);
-    tbl.DeleteById (id);
-
-    return res;
+    return ChooseSpawnLocation (centre, radius, f, rnd, dyn, ctx.Map ());
   }
 
 };
@@ -165,23 +159,23 @@ TEST_F (SpawnLocationTests, NoObstaclesInSpawns)
 TEST_F (SpawnLocationTests, SpawnLocation)
 {
   constexpr Faction f = Faction::RED;
+  constexpr HexCoord::IntT spawnRadius = 20;
+  const HexCoord spawnCentre = HexCoord (42, -10);
 
-  HexCoord::IntT spawnRadius;
-  const HexCoord spawnCentre = ctx.Params ().SpawnArea (f, spawnRadius);
-
-  /* In this test, we randomly spawn (and then remove again) many characters
-     on the map.  We expect that all are within the spawn radius of the centre
-     (since there are no obstacles on the ring boundary).  We also expect to
-     find at least some with the maximum distance, and some within some "small"
-     distance (as looking for the exact centre has a low probability).  */
+  /* In this test, we randomly choose spawn locations (without adding
+     actual characters there).  We expect that all are within the spawn radius
+     of the centre (since there are no obstacles on the ring boundary).
+     We also expect to find at least some with the maximum distance, and some
+     within some "small" distance (as looking for the exact centre has a low
+     probability).  */
   constexpr unsigned trials = 1000;
-  constexpr HexCoord::IntT smallDist = 10;
+  constexpr HexCoord::IntT smallDist = 5;
 
   unsigned foundOuter = 0;
   unsigned foundInner = 0;
   for (unsigned i = 0; i < trials; ++i)
     {
-      const auto pos = SpawnLocation (f);
+      const auto pos = SpawnLocation (spawnCentre, spawnRadius, f);
       const auto dist = HexCoord::DistanceL1 (pos, spawnCentre);
 
       ASSERT_LE (dist, spawnRadius);
@@ -208,7 +202,7 @@ TEST_F (SpawnLocationTests, DynObstacles)
      characters, some will be displaced out of the spawn area.  It should
      still work fine.  In the end, we should get all locations in the spawn
      area filled up, and we should not get any vehicle on top of another.  */
-  constexpr unsigned vehicles = 10000;
+  constexpr unsigned vehicles = 10'000;
 
   unsigned outside = 0;
   std::unordered_set<HexCoord> positions;
@@ -239,6 +233,8 @@ TEST_F (SpawnLocationTests, DynObstacles)
   LOG (INFO) << "Tiles inside spawn ring: " << tilesInside;
   EXPECT_EQ (tilesInside + outside, vehicles);
 }
+
+/* ************************************************************************** */
 
 } // anonymous namespace
 } // namespace pxd

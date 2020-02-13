@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -32,6 +32,16 @@
 
 namespace pxd
 {
+
+/**
+ * Chooses the actual spawn location for a new character of the given faction.
+ * This places them randomly within the given radius around the centre,
+ * displacing them as needed to find an accessible spot.  This function is
+ * also used for leaving buildings.
+ */
+HexCoord ChooseSpawnLocation (const HexCoord& centre, HexCoord::IntT radius,
+                              const Faction f, xaya::Random& rnd,
+                              const DynObstacles& dyn, const BaseMap& map);
 
 /**
  * Spawns a new character on the map.  This takes care of initialising the
