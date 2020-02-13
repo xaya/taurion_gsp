@@ -982,6 +982,34 @@ TEST_F (ValidateStateTests, CharacterLimit)
   EXPECT_DEATH (ValidateState (), "Account domob has too many");
 }
 
+TEST_F (ValidateStateTests, CharactersInBuildings)
+{
+  accounts.CreateNew ("domob", Faction::RED);
+  accounts.CreateNew ("andy", Faction::BLUE);
+
+  const auto idAncient
+      = buildings.CreateNew ("checkmark", "", Faction::ANCIENT)->GetId ();
+  const auto idOk
+      = buildings.CreateNew ("checkmark", "domob", Faction::RED)->GetId ();
+  const auto idWrong
+      = buildings.CreateNew ("checkmark", "andy", Faction::BLUE)->GetId ();
+
+  db.SetNextId (10);
+  ASSERT_EQ (characters.CreateNew ("domob", Faction::RED)->GetId (), 10);
+
+  characters.GetById (10)->SetBuildingId (idAncient);
+  ValidateState ();
+
+  characters.GetById (10)->SetBuildingId (idOk);
+  ValidateState ();
+
+  characters.GetById (10)->SetBuildingId (idWrong);
+  EXPECT_DEATH (ValidateState (), "of opposing faction");
+
+  characters.GetById (10)->SetBuildingId (12345);
+  EXPECT_DEATH (ValidateState (), "is in non-existant building");
+}
+
 /* ************************************************************************** */
 
 } // anonymous namespace
