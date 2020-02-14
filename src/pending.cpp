@@ -93,6 +93,13 @@ PendingState::AddEnterBuilding (const Character& ch,
 }
 
 void
+PendingState::AddExitBuilding (const Character& ch)
+{
+  VLOG (1) << "Adding exit-building command for character " << ch.GetId ();
+  GetCharacterState (ch).exitBuilding = ch.GetBuildingId ();
+}
+
+void
 PendingState::AddCharacterDrop (const Character& ch)
 {
   VLOG (1) << "Adding pending item drop for character " << ch.GetId ();
@@ -215,6 +222,12 @@ PendingState::CharacterState::ToJson () const
       else
         res["enterbuilding"] = IntToJson (enterBuilding);
     }
+  if (exitBuilding != Database::EMPTY_ID)
+    {
+      Json::Value exit(Json::objectValue);
+      exit["building"] = IntToJson (exitBuilding);
+      res["exitbuilding"] = exit;
+    }
 
   res["drop"] = drop;
   res["pickup"] = pickup;
@@ -308,6 +321,8 @@ PendingStateUpdater::PerformCharacterUpdate (Character& c,
   Database::IdT buildingId;
   if (ParseEnterBuilding (c, upd, buildingId))
     state.AddEnterBuilding (c, buildingId);
+  if (ParseExitBuilding (c, upd))
+    state.AddExitBuilding (c);
 }
 
 void

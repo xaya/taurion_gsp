@@ -924,6 +924,33 @@ TEST_F (PXLogicTests, EnterBuildingAndTargetFinding)
   EXPECT_FALSE (characters.GetById (3)->GetProto ().has_target ());
 }
 
+TEST_F (PXLogicTests, EnterAndExitBuildingWhenOutside)
+{
+  auto b = buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+  ASSERT_EQ (b->GetId (), 1);
+  b->SetCentre (HexCoord (0, 0));
+  b.reset ();
+
+  auto c = CreateCharacter ("domob", Faction::RED);
+  ASSERT_EQ (c->GetId (), 2);
+  c->SetPosition (HexCoord (5, 0));
+  c.reset ();
+
+  /* Entering and exiting a building in the same move will only enter,
+     as the exit is invalid until the enter intents are actually processed
+     (which is after processing moves).  */
+  UpdateState (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"2": {"eb": 1, "xb": {}}}}
+    }
+  ])");
+
+  c = characters.GetById (2);
+  ASSERT_TRUE (c->IsInBuilding ());
+  EXPECT_EQ (c->GetBuildingId (), 1);
+}
+
 /* ************************************************************************** */
 
 using ValidateStateTests = PXLogicTests;

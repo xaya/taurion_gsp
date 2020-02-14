@@ -181,6 +181,36 @@ TEST_F (PendingStateTests, EnterBuilding)
   )");
 }
 
+TEST_F (PendingStateTests, ExitBuilding)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  ASSERT_EQ (c->GetId (), 1);
+  c->SetBuildingId (42);
+  state.AddExitBuilding (*c);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", Faction::RED);
+  ASSERT_EQ (c->GetId (), 2);
+  state.AddCharacterMining (*c, 12345);
+  c.reset ();
+
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {
+            "id": 1,
+            "exitbuilding": {"building": 42}
+          },
+          {
+            "id": 2,
+            "exitbuilding": null
+          }
+        ]
+    }
+  )");
+}
+
 TEST_F (PendingStateTests, DropPickup)
 {
   auto c1 = characters.CreateNew ("domob", Faction::RED);
@@ -659,6 +689,51 @@ TEST_F (PendingStateUpdaterTests, EnterBuilding)
         [
           {"id": 2, "enterbuilding": 101},
           {"id": 3, "enterbuilding": "null"}
+        ]
+    }
+  )");
+}
+
+TEST_F (PendingStateUpdaterTests, ExitBuilding)
+{
+  accounts.CreateNew ("domob", Faction::RED);
+
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  ASSERT_EQ (c->GetId (), 1);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", Faction::RED);
+  ASSERT_EQ (c->GetId (), 2);
+  c->SetBuildingId (20);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", Faction::RED);
+  ASSERT_EQ (c->GetId (), 3);
+  c->SetBuildingId (20);
+  c.reset ();
+
+  /* Some invalid updates that will just not show up (i.e. IDs 1 and 2 will
+     have no pending updates later on).  */
+  Process ("domob", R"({
+    "c": {"1": {"xb": {}}}
+  })");
+  Process ("domob", R"({
+    "c": {"2": {"xb": 20}}
+  })");
+
+  /* Perform valid update.  */
+  Process ("domob", R"({
+    "c":
+      {
+        "3": {"xb": {}}
+      }
+  })");
+
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {"id": 3, "exitbuilding": {"building": 20}}
         ]
     }
   )");

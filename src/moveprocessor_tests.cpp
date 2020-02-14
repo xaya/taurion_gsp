@@ -990,6 +990,93 @@ TEST_F (EnterBuildingMoveTests, AlreadyInBuilding)
   EXPECT_EQ (GetTest ()->GetEnterBuilding (), Database::EMPTY_ID);
 }
 
+using ExitBuildingMoveTests = EnterBuildingMoveTests;
+
+TEST_F (ExitBuildingMoveTests, Invalid)
+{
+  GetTest ()->SetBuildingId (20);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"xb": {"a": 10}}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"xb": "foo"}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"xb": 20}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"xb": null}}}
+    }
+  ])");
+
+  ASSERT_TRUE (GetTest ()->IsInBuilding ());
+  EXPECT_EQ (GetTest ()->GetBuildingId (), 20);
+}
+
+TEST_F (ExitBuildingMoveTests, NotInBuilding)
+{
+  const HexCoord pos(10, 20);
+  GetTest ()->SetPosition (pos);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"xb": {}}}}
+    }
+  ])");
+
+  ASSERT_FALSE (GetTest ()->IsInBuilding ());
+  EXPECT_EQ (GetTest ()->GetPosition (), pos);
+}
+
+TEST_F (ExitBuildingMoveTests, Valid)
+{
+  const HexCoord pos(10, 20);
+
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  b->SetCentre (pos);
+  GetTest ()->SetBuildingId (b->GetId ());
+  b.reset ();
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"xb": {}}}}
+    }
+  ])");
+
+  ASSERT_FALSE (GetTest ()->IsInBuilding ());
+  EXPECT_LE (HexCoord::DistanceL1 (GetTest ()->GetPosition (), pos), 5);
+}
+
+TEST_F (ExitBuildingMoveTests, EnterAndExitWhenInside)
+{
+  db.SetNextId (100);
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  ASSERT_EQ (b->GetId (), 100);
+  GetTest ()->SetBuildingId (100);
+  b.reset ();
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"xb": {}, "eb": 100}}}
+    }
+  ])");
+
+  EXPECT_FALSE (GetTest ()->IsInBuilding ());
+  EXPECT_EQ (GetTest ()->GetEnterBuilding (), Database::EMPTY_ID);
+}
+
+/* FIXME: Once there are moves valid only inside a building (e.g. inventory),
+   add tests that performing those + an exit works.  */
+
 /* ************************************************************************** */
 
 class DropPickupMoveTests : public CharacterUpdateTests

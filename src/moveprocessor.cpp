@@ -18,6 +18,7 @@
 
 #include "moveprocessor.hpp"
 
+#include "buildings.hpp"
 #include "jsonutils.hpp"
 #include "mining.hpp"
 #include "movement.hpp"
@@ -308,6 +309,35 @@ BaseMoveProcessor::ParseEnterBuilding (const Character& c,
   VLOG (1)
       << "Character " << c.GetId ()
       << " wants to enter building " << buildingId;
+
+  return true;
+}
+
+bool
+BaseMoveProcessor::ParseExitBuilding (const Character& c,
+                                      const Json::Value& upd)
+{
+  CHECK (upd.isObject ());
+  const auto& val = upd["xb"];
+  if (!val.isObject ())
+    return false;
+
+  if (val.size () != 0)
+    {
+      LOG (WARNING) << "Invalid exit-building move: " << upd;
+      return false;
+    }
+
+  if (!c.IsInBuilding ())
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId () << " is not in building and can't exit";
+      return false;
+    }
+
+  VLOG (1)
+      << "Character " << c.GetId ()
+      << " will exit building " << c.GetBuildingId ();
 
   return true;
 }
@@ -700,6 +730,15 @@ MoveProcessor::MaybeEnterBuilding (Character& c, const Json::Value& upd)
 }
 
 void
+MoveProcessor::MaybeExitBuilding (Character& c, const Json::Value& upd)
+{
+  if (!ParseExitBuilding (c, upd))
+    return;
+
+  LeaveBuilding (buildings, c, rnd, dyn, ctx);
+}
+
+void
 MoveProcessor::MaybeStartProspecting (Character& c, const Json::Value& upd)
 {
   Database::IdT regionId;
@@ -892,8 +931,14 @@ MoveProcessor::PerformCharacterUpdate (Character& c, const Json::Value& upd)
      character on a random spot, it does not make much sense to combine
      other moves with it if exiting is done first (thus we do it last).
      In particular, this allows picking up stuff from inside the building
-     and exiting in one move.  */
+     and exiting in one move.
+
+     Also, by processing "enter" before "exit", it means that sending both
+     commands is equivalent to just enter (because we only set the flag and
+     thus the exit move will be invalid).  This is more straight-forward
+     than allowing to exit & enter again in the same move.  */
   MaybeEnterBuilding (c, upd);
+  MaybeExitBuilding (c, upd);
 }
 
 namespace
