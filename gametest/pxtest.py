@@ -70,6 +70,12 @@ class Character (object):
   def getOwner (self):
     return self.data["owner"]
 
+  def isInBuilding (self):
+    return "inbuilding" in self.data
+
+  def getBuildingId (self):
+    return self.data["inbuilding"]
+
   def getPosition (self):
     return self.data["position"]
 
