@@ -19,9 +19,15 @@
 #ifndef PXD_BUILDINGS_HPP
 #define PXD_BUILDINGS_HPP
 
+#include "context.hpp"
+#include "dynobstacles.hpp"
+
 #include "database/building.hpp"
+#include "database/character.hpp"
 #include "database/database.hpp"
 #include "hexagonal/coord.hpp"
+
+#include <xayautil/random.hpp>
 
 #include <vector>
 
@@ -38,6 +44,18 @@ std::vector<HexCoord> GetBuildingShape (const Building& b);
  * Places initial buildings (ancient and obelisks) onto the map.
  */
 void InitialiseBuildings (Database& db);
+
+/**
+ * Processes all characters that want to enter a building, and lets them in
+ * if it is possible for them.
+ */
+void ProcessEnterBuildings (Database& db);
+
+/**
+ * Makes the given character leave the building it is currently in.
+ */
+void LeaveBuilding (BuildingsTable& buildings, Character& c,
+                    xaya::Random& rnd, DynObstacles& dyn, const Context& ctx);
 
 } // namespace pxd
 

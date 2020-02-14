@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -69,17 +69,14 @@ RandomSpawnLocation (const HexCoord& centre, const HexCoord::IntT radius,
     }
 }
 
-/**
- * Chooses the actual spawn location for a new character of the given faction.
- */
-HexCoord
-ChooseSpawnLocation (const Faction f, xaya::Random& rnd,
-                     const DynObstacles& dyn, const Context& ctx)
-{
-  HexCoord::IntT radius;
-  const HexCoord spawnCentre = ctx.Params ().SpawnArea (f, radius);
+} // anonymous namespace
 
-  const HexCoord ringCentre = RandomSpawnLocation (spawnCentre, radius, rnd);
+HexCoord
+ChooseSpawnLocation (const HexCoord& centre, const HexCoord::IntT radius,
+                     const Faction f, xaya::Random& rnd,
+                     const DynObstacles& dyn, const BaseMap& map)
+{
+  const HexCoord ringCentre = RandomSpawnLocation (centre, radius, rnd);
 
   /* Starting from the ring centre, try L1 rings of increasing sizes (i.e.
      tiles with increasing L1 distance) until one is good for placement.  */
@@ -90,11 +87,11 @@ ChooseSpawnLocation (const Faction f, xaya::Random& rnd,
       bool foundOnMap = false;
       for (const auto& pos : ring)
         {
-          if (!ctx.Map ().IsOnMap (pos))
+          if (!map.IsOnMap (pos))
             continue;
           foundOnMap = true;
 
-          if (ctx.Map ().IsPassable (pos) && dyn.IsPassable (pos, f))
+          if (map.IsPassable (pos) && dyn.IsPassable (pos, f))
             return pos;
         }
 
@@ -106,8 +103,6 @@ ChooseSpawnLocation (const Faction f, xaya::Random& rnd,
     }
 }
 
-} // anonymous namespace
-
 CharacterTable::Handle
 SpawnCharacter (const std::string& owner, const Faction f,
                 CharacterTable& tbl, DynObstacles& dyn, xaya::Random& rnd,
@@ -117,7 +112,10 @@ SpawnCharacter (const std::string& owner, const Faction f,
       << "Spawning new character for " << owner
       << " in faction " << FactionToString (f) << "...";
 
-  const HexCoord pos = ChooseSpawnLocation (f, rnd, dyn, ctx);
+  HexCoord::IntT radius;
+  const HexCoord spawnCentre = ctx.Params ().SpawnArea (f, radius);
+  const HexCoord pos = ChooseSpawnLocation (spawnCentre, radius, f,
+                                            rnd, dyn, ctx.Map ());
 
   auto c = tbl.CreateNew (owner, f);
   c->SetPosition (pos);

@@ -18,7 +18,9 @@
 
 #include "moveprocessor.hpp"
 
+#include "buildings.hpp"
 #include "jsonutils.hpp"
+#include "mining.hpp"
 #include "movement.hpp"
 #include "prospecting.hpp"
 #include "protoutils.hpp"
@@ -224,6 +226,14 @@ BaseMoveProcessor::ParseCharacterWaypoints (const Character& c,
       return false;
     }
 
+  if (c.IsInBuilding ())
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId ()
+          << " is inside a building, can't set waypoints";
+      return false;
+    }
+
   for (const auto& entry : wpArr)
     {
       HexCoord coord;
@@ -236,6 +246,98 @@ BaseMoveProcessor::ParseCharacterWaypoints (const Character& c,
         }
       wp.push_back (coord);
     }
+
+  return true;
+}
+
+bool
+BaseMoveProcessor::ParseEnterBuilding (const Character& c,
+                                       const Json::Value& upd,
+                                       Database::IdT& buildingId)
+{
+  CHECK (upd.isObject ());
+  if (!upd.isMember ("eb"))
+    return false;
+
+  if (c.IsInBuilding ())
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId ()
+          << " is in building, can't enter another one";
+      return false;
+    }
+
+  const auto& val = upd["eb"];
+
+  /* null value means to cancel any entering.  */
+  if (val.isNull ())
+    {
+      VLOG (1)
+          << "Character " << c.GetId ()
+          << " no longer wants to enter a building";
+      buildingId = Database::EMPTY_ID;
+      return true;
+    }
+
+  /* Otherwise, see if this is a valid building ID.  */
+  if (!val.isUInt64 ())
+    {
+      LOG (WARNING) << "Not a building ID: " << val;
+      return false;
+    }
+  buildingId = val.asUInt64 ();
+
+  auto b = buildings.GetById (buildingId);
+  if (b == nullptr)
+    {
+      LOG (WARNING) << "Building does not exist: " << val;
+      return false;
+    }
+
+  /* Everyone can enter ancient buildings, but otherwise characters can only
+     enter buildings of their own faction.  */
+  if (b->GetFaction () != Faction::ANCIENT
+        && b->GetFaction () != c.GetFaction ())
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId ()
+          << " can't enter building " << buildingId
+          << " of different faction";
+      return false;
+    }
+
+  VLOG (1)
+      << "Character " << c.GetId ()
+      << " wants to enter building " << buildingId;
+
+  return true;
+}
+
+bool
+BaseMoveProcessor::ParseExitBuilding (const Character& c,
+                                      const Json::Value& upd)
+{
+  CHECK (upd.isObject ());
+  const auto& val = upd["xb"];
+  if (!val.isObject ())
+    return false;
+
+  if (val.size () != 0)
+    {
+      LOG (WARNING) << "Invalid exit-building move: " << upd;
+      return false;
+    }
+
+  if (!c.IsInBuilding ())
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId () << " is not in building and can't exit";
+      return false;
+    }
+
+  VLOG (1)
+      << "Character " << c.GetId ()
+      << " will exit building " << c.GetBuildingId ();
 
   return true;
 }
@@ -339,6 +441,14 @@ BaseMoveProcessor::ParseCharacterProspecting (const Character& c,
       return false;
     }
 
+  if (c.IsInBuilding ())
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId ()
+          << " is inside a building, can't prospect";
+      return false;
+    }
+
   const auto& pos = c.GetPosition ();
   regionId = ctx.Map ().Regions ().GetRegionId (pos);
   VLOG (1)
@@ -366,12 +476,6 @@ BaseMoveProcessor::ParseCharacterMining (const Character& c,
       return false;
     }
 
-  const auto& pos = c.GetPosition ();
-  regionId = ctx.Map ().Regions ().GetRegionId (pos);
-  VLOG (1)
-      << "Character " << c.GetId ()
-      << " wants to start mining region " << regionId;
-
   if (!c.GetProto ().has_mining ())
     {
       LOG (WARNING) << "Character " << c.GetId () << " can't mine";
@@ -384,6 +488,19 @@ BaseMoveProcessor::ParseCharacterMining (const Character& c,
           << "Character " << c.GetId () << " is busy, can't mine";
       return false;
     }
+
+  if (c.IsInBuilding ())
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId () << " is inside a building, can't mine";
+      return false;
+    }
+
+  const auto& pos = c.GetPosition ();
+  regionId = ctx.Map ().Regions ().GetRegionId (pos);
+  VLOG (1)
+      << "Character " << c.GetId ()
+      << " wants to start mining region " << regionId;
 
   if (c.GetProto ().has_movement ())
     {
@@ -583,13 +700,7 @@ MoveProcessor::MaybeSetCharacterWaypoints (Character& c, const Json::Value& upd)
       << " from waypoints: " << upd["wp"];
 
   StopCharacter (c);
-  if (c.GetProto ().has_mining ())
-    {
-      VLOG_IF (1, c.GetProto ().mining ().active ())
-          << "Stopping mining with character " << c.GetId ()
-          << " because of waypoints command";
-      c.MutableProto ().mutable_mining ()->clear_active ();
-    }
+  StopMining (c);
 
   if (wp.empty ())
     return;
@@ -606,6 +717,25 @@ MoveProcessor::MaybeSetCharacterWaypoints (Character& c, const Json::Value& upd)
 
   auto* mv = c.MutableProto ().mutable_movement ();
   SetRepeatedCoords (wp, *mv->mutable_waypoints ());
+}
+
+void
+MoveProcessor::MaybeEnterBuilding (Character& c, const Json::Value& upd)
+{
+  Database::IdT buildingId;
+  if (!ParseEnterBuilding (c, upd, buildingId))
+    return;
+
+  c.SetEnterBuilding (buildingId);
+}
+
+void
+MoveProcessor::MaybeExitBuilding (Character& c, const Json::Value& upd)
+{
+  if (!ParseExitBuilding (c, upd))
+    return;
+
+  LeaveBuilding (buildings, c, rnd, dyn, ctx);
 }
 
 void
@@ -722,6 +852,12 @@ MoveProcessor::MaybeDropLoot (Character& c, const Json::Value& cmd)
   if (fungible.empty ())
     return;
 
+  if (c.IsInBuilding ())
+    {
+      LOG (WARNING) << "Drop/pickup inside building is ignored";
+      return;
+    }
+
   std::ostringstream fromName;
   fromName << "character " << c.GetId ();
   std::ostringstream toName;
@@ -740,6 +876,12 @@ MoveProcessor::MaybePickupLoot (Character& c, const Json::Value& cmd)
   const auto fungible = ParseDropPickupFungible (cmd);
   if (fungible.empty ())
     return;
+
+  if (c.IsInBuilding ())
+    {
+      LOG (WARNING) << "Drop/pickup inside building is ignored";
+      return;
+    }
 
   std::ostringstream fromName;
   fromName << "ground loot at " << c.GetPosition ();
@@ -782,6 +924,21 @@ MoveProcessor::PerformCharacterUpdate (Character& c, const Json::Value& upd)
      else in a single move.  */
   MaybeDropLoot (c, upd["drop"]);
   MaybePickupLoot (c, upd["pu"]);
+
+  /* Entering a building is independent of any other moves, as it just sets
+     a flag (but isn't by itself invalid e.g. if the character is busy).
+     Exiting however takes effect immediately.  But since that puts the
+     character on a random spot, it does not make much sense to combine
+     other moves with it if exiting is done first (thus we do it last).
+     In particular, this allows picking up stuff from inside the building
+     and exiting in one move.
+
+     Also, by processing "enter" before "exit", it means that sending both
+     commands is equivalent to just enter (because we only set the flag and
+     thus the exit move will be invalid).  This is more straight-forward
+     than allowing to exit & enter again in the same move.  */
+  MaybeEnterBuilding (c, upd);
+  MaybeExitBuilding (c, upd);
 }
 
 namespace

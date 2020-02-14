@@ -5,6 +5,7 @@ REGTESTS = \
   accounts.py \
   banking.py \
   buildings_basic.py \
+  buildings_enterexit.py \
   character_limit.py \
   characters.py \
   charon.py \

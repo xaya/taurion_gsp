@@ -108,6 +108,20 @@ protected:
                                        std::vector<HexCoord>& wp);
 
   /**
+   * Parses and verifies a potential update to the character's
+   * "enter building" value.  On success, buildingId will be set
+   * to the ID of the building to enter, or EMPTY_ID if the move
+   * is to cancel any current enter command.
+   */
+  bool ParseEnterBuilding (const Character& c, const Json::Value& upd,
+                           Database::IdT& buildingId);
+
+  /**
+   * Parses and verifies a potential update to exit the current building.
+   */
+  static bool ParseExitBuilding (const Character& c, const Json::Value& upd);
+
+  /**
    * Parses and validates the content of a drop or pick-up character command.
    * Returns the fungible items and their quantities to drop or pick up.
    */
@@ -212,6 +226,16 @@ private:
    * is there.
    */
   static void MaybeSetCharacterWaypoints (Character& c, const Json::Value& upd);
+
+  /**
+   * Processes a command to set (or clear) a character's "enter building".
+   */
+  void MaybeEnterBuilding (Character& c, const Json::Value& upd);
+
+  /**
+   * Processes a command to exit a building the character is in.
+   */
+  void MaybeExitBuilding (Character& c, const Json::Value& upd);
 
   /**
    * Processes a command to start prospecting at the character's current

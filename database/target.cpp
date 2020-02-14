@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -39,7 +39,8 @@ TargetFinder::ProcessL1Targets (const HexCoord& centre,
                                 const Faction faction,
                                 const ProcessingFcn& cb)
 {
-
+  /* Note that the "between" statement is automatically false for NULL values,
+     hence characters in buildings are ignored (as they should).  */
   auto stmt = db.Prepare (R"(
     SELECT `x`, `y`, `id` FROM `characters`
       WHERE (`x` BETWEEN ?1 AND ?2) AND (`y` BETWEEN ?3 AND ?4)

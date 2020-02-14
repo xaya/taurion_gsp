@@ -34,9 +34,17 @@ CREATE TABLE IF NOT EXISTS `characters` (
   -- Current position of the character on the map.  We need this in the table
   -- so that we can look characters up based on "being near" a given other
   -- coordinate.  Coordinates are in the axial system (as everywhere else
-  -- in the backend).
-  `x` INTEGER NOT NULL,
-  `y` INTEGER NOT NULL,
+  -- in the backend).  May be NULL if the character is inside a building.
+  `x` INTEGER NULL,
+  `y` INTEGER NULL,
+
+  -- ID of the building the character is in, if any.  NULL indicates they are
+  -- outside, in which case their position is given by x/y.
+  `inbuilding` INTEGER NULL,
+
+  -- If the character has indicated they want to enter a building (if it
+  -- is or becomes possible), then this holds the desired building's ID.
+  `enterbuilding` INTEGER NULL,
 
   -- Movement data for the character that changes frequently and is thus
   -- not part of the big main proto.
@@ -96,6 +104,9 @@ CREATE TABLE IF NOT EXISTS `characters` (
 -- Non-unique indices for the characters table.
 CREATE INDEX IF NOT EXISTS `characters_owner` ON `characters` (`owner`);
 CREATE INDEX IF NOT EXISTS `characters_pos` ON `characters` (`x`, `y`);
+CREATE INDEX IF NOT EXISTS `characters_building` ON `characters` (`inbuilding`);
+CREATE INDEX IF NOT EXISTS `characters_enterbuilding`
+  ON `characters` (`enterbuilding`);
 CREATE INDEX IF NOT EXISTS `characters_busy` ON `characters` (`busy`);
 CREATE INDEX IF NOT EXISTS `characters_ismoving` ON `characters` (`ismoving`);
 CREATE INDEX IF NOT EXISTS `characters_ismining` ON `characters` (`ismining`);

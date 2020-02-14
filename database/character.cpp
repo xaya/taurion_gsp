@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,7 +29,8 @@ namespace pxd
 
 Character::Character (Database& d, const std::string& o, const Faction f)
   : db(d), id(db.GetNextId ()), owner(o), faction(f),
-    pos(0, 0), busy(0),
+    pos(0, 0), inBuilding(Database::EMPTY_ID),
+    enterBuilding(Database::EMPTY_ID), busy(0),
     oldCanRegen(false), isNew(true), dirtyFields(true)
 {
   VLOG (1)
@@ -48,13 +49,27 @@ Character::Character (Database& d, const Database::Result<CharacterResult>& res)
   id = res.Get<CharacterResult::id> ();
   owner = res.Get<CharacterResult::owner> ();
   faction = GetFactionFromColumn (res);
-  pos = GetCoordFromColumn (res);
+
+  if (res.IsNull<CharacterResult::inbuilding> ())
+    {
+      inBuilding = Database::EMPTY_ID;
+      pos = GetCoordFromColumn (res);
+    }
+  else
+    inBuilding = res.Get<CharacterResult::inbuilding> ();
+
+  if (res.IsNull<CharacterResult::enterbuilding> ())
+    enterBuilding = Database::EMPTY_ID;
+  else
+    enterBuilding = res.Get<CharacterResult::enterbuilding> ();
+
   volatileMv = res.GetProto<CharacterResult::volatilemv> ();
   hp = res.GetProto<CharacterResult::hp> ();
   regenData = res.GetProto<CharacterResult::regendata> ();
   busy = res.Get<CharacterResult::busy> ();
   inv = res.GetProto<CharacterResult::inventory> ();
   data = res.GetProto<CharacterResult::proto> ();
+
   attackRange = res.Get<CharacterResult::attackrange> ();
   oldCanRegen = res.Get<CharacterResult::canregen> ();
   hasTarget = res.Get<CharacterResult::hastarget> ();
@@ -80,6 +95,7 @@ Character::~Character ()
         INSERT OR REPLACE INTO `characters`
           (`id`,
            `owner`, `x`, `y`,
+           `inbuilding`, `enterbuilding`,
            `volatilemv`, `hp`,
            `busy`,
            `faction`,
@@ -89,7 +105,8 @@ Character::~Character ()
           (?1,
            ?2, ?3, ?4,
            ?5, ?6,
-           ?7,
+           ?7, ?8,
+           ?9,
            ?101,
            ?102, ?103, ?104, ?105, ?106,
            ?107, ?108, ?109)
@@ -120,9 +137,11 @@ Character::~Character ()
         UPDATE `characters`
           SET `owner` = ?2,
               `x` = ?3, `y` = ?4,
-              `volatilemv` = ?5,
-              `hp` = ?6,
-              `busy` = ?7,
+              `inbuilding` = ?5,
+              `enterbuilding` = ?6,
+              `volatilemv` = ?7,
+              `hp` = ?8,
+              `busy` = ?9,
               `canregen` = ?101
           WHERE `id` = ?1
       )");
@@ -182,10 +201,38 @@ Character::BindFieldValues (Database::Statement& stmt) const
 {
   stmt.Bind (1, id);
   stmt.Bind (2, owner);
-  BindCoordParameter (stmt, 3, 4, pos);
-  stmt.BindProto (5, volatileMv);
-  stmt.BindProto (6, hp);
-  stmt.Bind (7, busy);
+  if (IsInBuilding ())
+    {
+      stmt.BindNull (3);
+      stmt.BindNull (4);
+      stmt.Bind (5, inBuilding);
+    }
+  else
+    {
+      BindCoordParameter (stmt, 3, 4, pos);
+      stmt.BindNull (5);
+    }
+  if (enterBuilding == Database::EMPTY_ID)
+    stmt.BindNull (6);
+  else
+    stmt.Bind (6, enterBuilding);
+  stmt.BindProto (7, volatileMv);
+  stmt.BindProto (8, hp);
+  stmt.Bind (9, busy);
+}
+
+const HexCoord&
+Character::GetPosition () const
+{
+  CHECK (!IsInBuilding ());
+  return pos;
+}
+
+Database::IdT
+Character::GetBuildingId () const
+{
+  CHECK (IsInBuilding ());
+  return inBuilding;
 }
 
 bool
@@ -299,7 +346,7 @@ CharacterTable::QueryWithAttacks ()
   auto stmt = db.Prepare (R"(
     SELECT *
       FROM `characters`
-      WHERE `attackrange` > 0
+      WHERE `attackrange` > 0 AND `inBuilding` IS NULL
       ORDER BY `id`
   )");
   return stmt.Query<CharacterResult> ();
@@ -332,6 +379,17 @@ CharacterTable::QueryBusyDone ()
   return stmt.Query<CharacterResult> ();
 }
 
+Database::Result<CharacterResult>
+CharacterTable::QueryForEnterBuilding ()
+{
+  auto stmt = db.Prepare (R"(
+    SELECT * FROM `characters`
+      WHERE `enterbuilding` IS NOT NULL
+      ORDER BY `id`
+  )");
+  return stmt.Query<CharacterResult> ();
+}
+
 namespace
 {
 
@@ -348,6 +406,7 @@ CharacterTable::ProcessAllPositions (const PositionFcn& cb)
   auto stmt = db.Prepare (R"(
     SELECT `id`, `x`, `y`, `faction`
       FROM `characters`
+      WHERE `inbuilding` IS NULL
       ORDER BY `id`
   )");
 

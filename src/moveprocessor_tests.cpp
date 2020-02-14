@@ -648,6 +648,35 @@ TEST_F (CharacterUpdateTests, WhenBusy)
   EXPECT_FALSE (h->GetProto ().mining ().active ());
 }
 
+TEST_F (CharacterUpdateTests, InvalidWhenInsideBuilding)
+{
+  auto h = GetTest ();
+  h->SetBuildingId (10);
+  h->MutableProto ().mutable_prospection ();
+  h->MutableProto ().mutable_mining ();
+  h.reset ();
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"wp": [{"x": -3, "y": 4}]}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"prospect": {}}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"mine": {}}}}
+    }
+  ])");
+
+  h = GetTest ();
+  EXPECT_EQ (h->GetBusy (), 0);
+  EXPECT_FALSE (h->GetProto ().has_movement ());
+  EXPECT_FALSE (h->GetProto ().mining ().active ());
+}
+
 TEST_F (CharacterUpdateTests, BasicWaypoints)
 {
   /* Set up some stuff that will be cleared.  */
@@ -806,6 +835,247 @@ TEST_F (CharacterUpdateTests, ChosenSpeedInvalid)
   ])");
   EXPECT_EQ (GetTest ()->GetProto ().movement ().chosen_speed (), 1000);
 }
+
+/* ************************************************************************** */
+
+class EnterBuildingMoveTests : public CharacterUpdateTests
+{
+
+protected:
+
+  BuildingsTable buildings;
+
+  EnterBuildingMoveTests ()
+    : buildings(db)
+  {}
+
+};
+
+TEST_F (EnterBuildingMoveTests, InvalidSet)
+{
+  db.SetNextId (100);
+  auto b = buildings.CreateNew ("checkmark", "andy", Faction::GREEN);
+  ASSERT_EQ (b->GetId (), 100);
+  b.reset ();
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"eb": {}}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"eb": "foo"}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"eb": -10}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"eb": 0}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"eb": 42}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"eb": 100}}}
+    }
+  ])");
+  EXPECT_EQ (GetTest ()->GetEnterBuilding (), Database::EMPTY_ID);
+}
+
+TEST_F (EnterBuildingMoveTests, InvalidClear)
+{
+  GetTest ()->SetEnterBuilding (50);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"eb": {}}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"eb": "foo"}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"eb": 0}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"eb": 42}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {}}}
+    }
+  ])");
+  EXPECT_EQ (GetTest ()->GetEnterBuilding (), 50);
+}
+
+TEST_F (EnterBuildingMoveTests, ValidEnter)
+{
+  db.SetNextId (100);
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  ASSERT_EQ (b->GetId (), 100);
+  b = buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+  ASSERT_EQ (b->GetId (), 101);
+  b.reset ();
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"eb": 100}}}
+    }
+  ])");
+  EXPECT_EQ (GetTest ()->GetEnterBuilding (), 100);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"eb": 101}}}
+    }
+  ])");
+  EXPECT_EQ (GetTest ()->GetEnterBuilding (), 101);
+}
+
+TEST_F (EnterBuildingMoveTests, ValidClear)
+{
+  GetTest ()->SetEnterBuilding (50);
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"eb": null}}}
+    }
+  ])");
+  EXPECT_EQ (GetTest ()->GetEnterBuilding (), Database::EMPTY_ID);
+}
+
+TEST_F (EnterBuildingMoveTests, BusyIsFine)
+{
+  db.SetNextId (100);
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  ASSERT_EQ (b->GetId (), 100);
+  b.reset ();
+
+  GetTest ()->SetBusy (10);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"eb": 100}}}
+    }
+  ])");
+  EXPECT_EQ (GetTest ()->GetEnterBuilding (), 100);
+}
+
+TEST_F (EnterBuildingMoveTests, AlreadyInBuilding)
+{
+  db.SetNextId (100);
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  ASSERT_EQ (b->GetId (), 100);
+  b.reset ();
+
+  GetTest ()->SetBuildingId (42);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"eb": 100}}}
+    }
+  ])");
+  EXPECT_EQ (GetTest ()->GetEnterBuilding (), Database::EMPTY_ID);
+}
+
+using ExitBuildingMoveTests = EnterBuildingMoveTests;
+
+TEST_F (ExitBuildingMoveTests, Invalid)
+{
+  GetTest ()->SetBuildingId (20);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"xb": {"a": 10}}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"xb": "foo"}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"xb": 20}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"xb": null}}}
+    }
+  ])");
+
+  ASSERT_TRUE (GetTest ()->IsInBuilding ());
+  EXPECT_EQ (GetTest ()->GetBuildingId (), 20);
+}
+
+TEST_F (ExitBuildingMoveTests, NotInBuilding)
+{
+  const HexCoord pos(10, 20);
+  GetTest ()->SetPosition (pos);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"xb": {}}}}
+    }
+  ])");
+
+  ASSERT_FALSE (GetTest ()->IsInBuilding ());
+  EXPECT_EQ (GetTest ()->GetPosition (), pos);
+}
+
+TEST_F (ExitBuildingMoveTests, Valid)
+{
+  const HexCoord pos(10, 20);
+
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  b->SetCentre (pos);
+  GetTest ()->SetBuildingId (b->GetId ());
+  b.reset ();
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"xb": {}}}}
+    }
+  ])");
+
+  ASSERT_FALSE (GetTest ()->IsInBuilding ());
+  EXPECT_LE (HexCoord::DistanceL1 (GetTest ()->GetPosition (), pos), 5);
+}
+
+TEST_F (ExitBuildingMoveTests, EnterAndExitWhenInside)
+{
+  db.SetNextId (100);
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  ASSERT_EQ (b->GetId (), 100);
+  GetTest ()->SetBuildingId (100);
+  b.reset ();
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"xb": {}, "eb": 100}}}
+    }
+  ])");
+
+  EXPECT_FALSE (GetTest ()->IsInBuilding ());
+  EXPECT_EQ (GetTest ()->GetEnterBuilding (), Database::EMPTY_ID);
+}
+
+/* FIXME: Once there are moves valid only inside a building (e.g. inventory),
+   add tests that performing those + an exit works.  */
 
 /* ************************************************************************** */
 

@@ -124,6 +124,12 @@ PXLogic::UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
 
   ProcessBanking (db, ctx);
 
+  /* Entering buildings should be after moves and movement, so that players
+     enter as soon as possible (perhaps in the same instant the move for it
+     gets confirmed).  It should be before combat targets, so that players
+     entering a building won't be attacked any more.  */
+  ProcessEnterBuildings (db);
+
   FindCombatTargets (db, rnd);
 
 #ifdef ENABLE_SLOW_ASSERTS
@@ -307,6 +313,38 @@ ValidateCharacterLimit (Database& db, const Context& ctx)
     }
 }
 
+/**
+ * Verifies that characters are only inside buildings they can be in,
+ * i.e. ancient or matching their faction.
+ */
+void
+ValidateCharactersInBuildings (Database& db)
+{
+  BuildingsTable buildings(db);
+  CharacterTable characters(db);
+
+  auto res = characters.QueryAll ();
+  while (res.Step ())
+    {
+      auto c = characters.GetFromResult (res);
+      if (!c->IsInBuilding ())
+        continue;
+
+      const auto id = c->GetBuildingId ();
+      auto b = buildings.GetById (id);
+      CHECK (b != nullptr)
+          << "Character " << c->GetId ()
+          << " is in non-existant building " << id;
+
+      if (b->GetFaction () == Faction::ANCIENT)
+        continue;
+      CHECK (c->GetFaction () == b->GetFaction ())
+          << "Character " << c->GetId ()
+          << " is in building " << id
+          << " of opposing faction";
+    }
+}
+
 } // anonymous namespace
 
 void
@@ -315,6 +353,7 @@ PXLogic::ValidateStateSlow (Database& db, const Context& ctx)
   LOG (INFO) << "Performing slow validation of the game-state database...";
   ValidateCharacterBuildingFactions (db);
   ValidateCharacterLimit (db, ctx);
+  ValidateCharactersInBuildings (db);
 }
 
 } // namespace pxd

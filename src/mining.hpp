@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,12 +21,19 @@
 
 #include "context.hpp"
 
+#include "database/character.hpp"
 #include "database/database.hpp"
 
 #include <xayautil/random.hpp>
 
 namespace pxd
 {
+
+/**
+ * Stops mining with the given character, if it can mine (and is doing it
+ * at the moment).
+ */
+void StopMining (Character& c);
 
 /**
  * Processes all mining of characters in the current turn.

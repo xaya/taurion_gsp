@@ -22,6 +22,7 @@
 #include "testutils.hpp"
 
 #include "database/account.hpp"
+#include "database/building.hpp"
 #include "database/character.hpp"
 #include "database/dbtest.hpp"
 #include "database/region.hpp"
@@ -87,6 +88,7 @@ TEST_F (PendingStateTests, Clear)
 
   auto h = characters.CreateNew ("domob", Faction::RED);
   state.AddCharacterWaypoints (*h, {});
+  state.AddEnterBuilding (*h, 42);
   state.AddCharacterDrop (*h);
   state.AddCharacterPickup (*h);
   h.reset ();
@@ -141,6 +143,68 @@ TEST_F (PendingStateTests, Waypoints)
           {
             "id": 3,
             "waypoints": []
+          }
+        ]
+    }
+  )");
+}
+
+TEST_F (PendingStateTests, EnterBuilding)
+{
+  auto c1 = characters.CreateNew ("domob", Faction::RED);
+  auto c2 = characters.CreateNew ("domob", Faction::RED);
+
+  ASSERT_EQ (c1->GetId (), 1);
+  ASSERT_EQ (c2->GetId (), 2);
+
+  state.AddEnterBuilding (*c1, 42);
+  state.AddEnterBuilding (*c1, 45);
+  state.AddEnterBuilding (*c2, Database::EMPTY_ID);
+
+  c1.reset ();
+  c2.reset ();
+
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {
+            "id": 1,
+            "enterbuilding": 45
+          },
+          {
+            "id": 2,
+            "enterbuilding": "null"
+          }
+        ]
+    }
+  )");
+}
+
+TEST_F (PendingStateTests, ExitBuilding)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  ASSERT_EQ (c->GetId (), 1);
+  c->SetBuildingId (42);
+  state.AddExitBuilding (*c);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", Faction::RED);
+  ASSERT_EQ (c->GetId (), 2);
+  state.AddCharacterMining (*c, 12345);
+  c.reset ();
+
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {
+            "id": 1,
+            "exitbuilding": {"building": 42}
+          },
+          {
+            "id": 2,
+            "exitbuilding": null
           }
         ]
     }
@@ -395,8 +459,10 @@ private:
 
 protected:
 
+  BuildingsTable buildings;
+
   PendingStateUpdaterTests ()
-    : updater(db, state, ctx)
+    : updater(db, state, ctx), buildings(db)
   {}
 
   /**
@@ -576,6 +642,98 @@ TEST_F (PendingStateUpdaterTests, Waypoints)
         [
           {"id": 2, "waypoints": []},
           {"id": 3, "waypoints": [{"x": 1, "y": -2}]}
+        ]
+    }
+  )");
+}
+
+TEST_F (PendingStateUpdaterTests, EnterBuilding)
+{
+  accounts.CreateNew ("domob", Faction::RED);
+
+  CHECK_EQ (characters.CreateNew ("domob", Faction::RED)->GetId (), 1);
+  CHECK_EQ (characters.CreateNew ("domob", Faction::RED)->GetId (), 2);
+  CHECK_EQ (characters.CreateNew ("domob", Faction::RED)->GetId (), 3);
+
+  db.SetNextId (100);
+  buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  buildings.CreateNew ("checkmark", "domob", Faction::RED);
+
+  /* Some invalid updates that will just not show up (i.e. ID 1 will have no
+     pending updates later on).  */
+  Process ("domob", R"({
+    "c": {"1": {"eb": "foo"}}
+  })");
+  Process ("domob", R"({
+    "c": {"1": {"eb": 20}}
+  })");
+
+  /* Perform valid updates.  */
+  Process ("domob", R"({
+    "c":
+      {
+        "2": {"eb": 100},
+        "3": {"eb": null}
+      }
+  })");
+  Process ("domob", R"({
+    "c":
+      {
+        "2": {"eb": 101}
+      }
+  })");
+
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {"id": 2, "enterbuilding": 101},
+          {"id": 3, "enterbuilding": "null"}
+        ]
+    }
+  )");
+}
+
+TEST_F (PendingStateUpdaterTests, ExitBuilding)
+{
+  accounts.CreateNew ("domob", Faction::RED);
+
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  ASSERT_EQ (c->GetId (), 1);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", Faction::RED);
+  ASSERT_EQ (c->GetId (), 2);
+  c->SetBuildingId (20);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", Faction::RED);
+  ASSERT_EQ (c->GetId (), 3);
+  c->SetBuildingId (20);
+  c.reset ();
+
+  /* Some invalid updates that will just not show up (i.e. IDs 1 and 2 will
+     have no pending updates later on).  */
+  Process ("domob", R"({
+    "c": {"1": {"xb": {}}}
+  })");
+  Process ("domob", R"({
+    "c": {"2": {"xb": 20}}
+  })");
+
+  /* Perform valid update.  */
+  Process ("domob", R"({
+    "c":
+      {
+        "3": {"xb": {}}
+      }
+  })");
+
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {"id": 3, "exitbuilding": {"building": 20}}
         ]
     }
   )");

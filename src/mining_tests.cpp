@@ -94,6 +94,21 @@ protected:
 
 };
 
+TEST_F (MiningTests, StopMining)
+{
+  GetTest ()->MutableProto ().mutable_mining ()->set_active (true);
+  StopMining (*GetTest ());
+  EXPECT_TRUE (GetTest ()->GetProto ().has_mining ());
+  EXPECT_FALSE (GetTest ()->GetProto ().mining ().has_active ());
+  EXPECT_FALSE (GetTest ()->GetProto ().mining ().active ());
+
+  /* If there is no mining field in the proto at all, it will not be
+     added by StopMining.  */
+  GetTest ()->MutableProto ().clear_mining ();
+  StopMining (*GetTest ());
+  EXPECT_FALSE (GetTest ()->GetProto ().has_mining ());
+}
+
 TEST_F (MiningTests, Basic)
 {
   ProcessAllMining (db, rnd, ctx);
