@@ -23,6 +23,7 @@
 
 #include "database/damagelists.hpp"
 #include "database/database.hpp"
+#include "database/inventory.hpp"
 #include "mapdata/basemap.hpp"
 
 #include <json/json.h>
@@ -40,6 +41,13 @@ private:
 
   /** Database to read from.  */
   Database& db;
+
+  /**
+   * Database table to access building inventories.  This needs to be a
+   * member field so that the "convert" function for buildings can access
+   * it without needing any more arguments.
+   */
+  mutable BuildingInventoriesTable buildingInventories;
 
   /** Damage lists accessor (for adding the attackers to a character JSON).  */
   const DamageLists dl;
@@ -60,7 +68,7 @@ private:
 public:
 
   explicit GameStateJson (Database& d, const Params& p, const BaseMap& m)
-    : db(d), dl(db), params(p), map(m)
+    : db(d), buildingInventories(db), dl(db), params(p), map(m)
   {}
 
   GameStateJson () = delete;

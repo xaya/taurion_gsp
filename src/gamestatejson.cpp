@@ -26,7 +26,6 @@
 #include "database/building.hpp"
 #include "database/character.hpp"
 #include "database/faction.hpp"
-#include "database/inventory.hpp"
 #include "database/prizes.hpp"
 #include "database/region.hpp"
 #include "hexagonal/pathfinder.hpp"
@@ -333,6 +332,15 @@ template <>
   for (const auto& c : GetBuildingShape (b))
     tiles.append (CoordToJson (c));
   res["tiles"] = tiles;
+
+  auto invRes = buildingInventories.QueryForBuilding (b.GetId ());
+  Json::Value inv(Json::objectValue);
+  while (invRes.Step ())
+    {
+      auto h = buildingInventories.GetFromResult (invRes);
+      inv[h->GetAccount ()] = Convert (h->GetInventory ());
+    }
+  res["inventories"] = inv;
 
   return res;
 }
