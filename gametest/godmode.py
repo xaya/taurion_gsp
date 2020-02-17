@@ -74,6 +74,7 @@ class GodModeTest (PXTest):
           {"x": 101, "y": 149},
           {"x": 102, "y": 148},
         ],
+      "inventories": {},
     })
     self.assertEqual (buildings[1003].data, {
       "id": 1003,
@@ -89,6 +90,7 @@ class GodModeTest (PXTest):
           {"x": -100, "y": -149},
           {"x": -100, "y": -148},
         ],
+      "inventories": {},
     })
 
     self.mainLogger.info ("Testing drop loot...")

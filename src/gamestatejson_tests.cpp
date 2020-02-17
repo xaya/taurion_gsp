@@ -588,9 +588,10 @@ class BuildingJsonTests : public GameStateJsonTests
 protected:
 
   BuildingsTable tbl;
+  BuildingInventoriesTable inv;
 
   BuildingJsonTests ()
-    : tbl(db)
+    : tbl(db), inv(db)
   {}
 
 };
@@ -633,6 +634,44 @@ TEST_F (BuildingJsonTests, Ancient)
         {
           "owner": null,
           "faction": "a"
+        }
+      ]
+  })");
+}
+
+TEST_F (BuildingJsonTests, Inventories)
+{
+  ASSERT_EQ (tbl.CreateNew ("checkmark", "", Faction::ANCIENT)->GetId (), 1);
+
+  inv.Get (1, "domob")->GetInventory ().SetFungibleCount ("foo", 2);
+  inv.Get (42, "domob")->GetInventory ().SetFungibleCount ("foo", 100);
+  inv.Get (1, "andy")->GetInventory ().SetFungibleCount ("bar", 1);
+  ExpectStateJson (R"({
+    "buildings":
+      [
+        {
+          "id": 1,
+          "inventories":
+            {
+              "andy": {"fungible": {"bar": 1}},
+              "domob": {"fungible": {"foo": 2}}
+            }
+        }
+      ]
+  })");
+
+  inv.Get (1, "domob")->GetInventory ().SetFungibleCount ("foo", 0);
+  inv.Get (1, "andy")->GetInventory ().SetFungibleCount ("bar", 0);
+  ExpectStateJson (R"({
+    "buildings":
+      [
+        {
+          "id": 1,
+          "inventories":
+            {
+              "andy": null,
+              "domob": null
+            }
         }
       ]
   })");

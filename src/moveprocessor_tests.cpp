@@ -844,9 +844,11 @@ class EnterBuildingMoveTests : public CharacterUpdateTests
 protected:
 
   BuildingsTable buildings;
+  GroundLootTable loot;
+  BuildingInventoriesTable inv;
 
   EnterBuildingMoveTests ()
-    : buildings(db)
+    : buildings(db), loot(db), inv(db)
   {}
 
 };
@@ -1074,8 +1076,29 @@ TEST_F (ExitBuildingMoveTests, EnterAndExitWhenInside)
   EXPECT_EQ (GetTest ()->GetEnterBuilding (), Database::EMPTY_ID);
 }
 
-/* FIXME: Once there are moves valid only inside a building (e.g. inventory),
-   add tests that performing those + an exit works.  */
+TEST_F (ExitBuildingMoveTests, InventoryBeforeExit)
+{
+  db.SetNextId (100);
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  ASSERT_EQ (b->GetId (), 100);
+  GetTest ()->SetBuildingId (100);
+  b.reset ();
+
+  GetTest ()->GetInventory ().SetFungibleCount ("foo", 1);
+
+  /* The exit move will be processed last, so that the dropped items will
+     end up in the building inventory and not on the ground.  */
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"xb": {}, "drop": {"f": {"foo": 1}}}}}
+    }
+  ])");
+
+  EXPECT_FALSE (inv.Get (100, "domob")->GetInventory ().IsEmpty ());
+  const auto pos = GetTest ()->GetPosition ();
+  EXPECT_TRUE (loot.GetByCoord (pos)->GetInventory ().IsEmpty ());
+}
 
 /* ************************************************************************** */
 
@@ -1085,12 +1108,12 @@ class DropPickupMoveTests : public CharacterUpdateTests
 protected:
 
   GroundLootTable loot;
+  BuildingInventoriesTable inv;
 
-  /** Position we use for testing.  */
   const HexCoord pos;
 
   DropPickupMoveTests ()
-    : loot(db), pos(1, 2)
+    : loot(db), inv(db), pos(1, 2)
   {
     GetTest ()->MutableProto ().set_cargo_space (1000);
     GetTest ()->SetPosition (pos);
@@ -1348,6 +1371,55 @@ TEST_F (DropPickupMoveTests, OrderOfItems)
   ExpectInventoryItems (GetTest ()->GetInventory (), {
     {"bar", 5},
     {"foo", 1},
+  });
+}
+
+TEST_F (DropPickupMoveTests, InBuilding)
+{
+  GetTest ()->SetBuildingId (10);
+
+  SetInventoryItems (inv.Get (10, "andy")->GetInventory (), {
+    {"foo", 1},
+    {"bar", 2},
+  });
+  SetInventoryItems (inv.Get (20, "domob")->GetInventory (), {
+    {"foo", 1},
+    {"bar", 2},
+  });
+  SetInventoryItems (inv.Get (10, "domob")->GetInventory (), {
+    {"foo", 10},
+    {"bar", 20},
+  });
+  SetInventoryItems (GetTest ()->GetInventory (), {
+    {"foo", 30},
+  });
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {
+        "drop": {"f": {"foo": 5}},
+        "pu": {"f": {"bar": 3}}
+      }}}
+    }
+  ])");
+
+  ExpectInventoryItems (loot.GetByCoord (pos)->GetInventory (), {});
+  ExpectInventoryItems (inv.Get (10, "andy")->GetInventory (), {
+    {"bar", 2},
+    {"foo", 1},
+  });
+  ExpectInventoryItems (inv.Get (20, "domob")->GetInventory (), {
+    {"bar", 2},
+    {"foo", 1},
+  });
+  ExpectInventoryItems (inv.Get (10, "domob")->GetInventory (), {
+    {"bar", 17},
+    {"foo", 15},
+  });
+  ExpectInventoryItems (GetTest ()->GetInventory (), {
+    {"bar", 3},
+    {"foo", 25},
   });
 }
 
