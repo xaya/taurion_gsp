@@ -40,7 +40,7 @@ namespace pxd
 BaseMoveProcessor::BaseMoveProcessor (Database& d, const Context& c)
   : ctx(c), db(d),
     accounts(db), buildings(db), characters(db),
-    groundLoot(db), regions(db, ctx.Height ())
+    groundLoot(db), buildingInv(db), regions(db, ctx.Height ())
 {}
 
 bool
@@ -852,22 +852,28 @@ MoveProcessor::MaybeDropLoot (Character& c, const Json::Value& cmd)
   if (fungible.empty ())
     return;
 
-  if (c.IsInBuilding ())
-    {
-      LOG (WARNING) << "Drop/pickup inside building is ignored";
-      return;
-    }
-
   std::ostringstream fromName;
   fromName << "character " << c.GetId ();
   std::ostringstream toName;
-  toName << "ground loot at " << c.GetPosition ();
 
-  auto ground = groundLoot.GetByCoord (c.GetPosition ());
-  MoveFungibleBetweenInventories (fungible,
-                                  c.GetInventory (),
-                                  ground->GetInventory (),
-                                  fromName.str (), toName.str ());
+  if (c.IsInBuilding ())
+    {
+      toName << "building " << c.GetBuildingId ();
+      auto inv = buildingInv.Get (c.GetBuildingId (), c.GetOwner ());
+      MoveFungibleBetweenInventories (fungible,
+                                      c.GetInventory (),
+                                      inv->GetInventory (),
+                                      fromName.str (), toName.str ());
+    }
+  else
+    {
+      toName << "ground loot at " << c.GetPosition ();
+      auto ground = groundLoot.GetByCoord (c.GetPosition ());
+      MoveFungibleBetweenInventories (fungible,
+                                      c.GetInventory (),
+                                      ground->GetInventory (),
+                                      fromName.str (), toName.str ());
+    }
 }
 
 void
@@ -877,14 +883,7 @@ MoveProcessor::MaybePickupLoot (Character& c, const Json::Value& cmd)
   if (fungible.empty ())
     return;
 
-  if (c.IsInBuilding ())
-    {
-      LOG (WARNING) << "Drop/pickup inside building is ignored";
-      return;
-    }
-
   std::ostringstream fromName;
-  fromName << "ground loot at " << c.GetPosition ();
   std::ostringstream toName;
   toName << "character " << c.GetId ();
 
@@ -894,12 +893,26 @@ MoveProcessor::MaybePickupLoot (Character& c, const Json::Value& cmd)
       << "Character " << c.GetId () << " has " << freeCargo
       << " free cargo space before picking loot up with " << cmd;
 
-  auto ground = groundLoot.GetByCoord (c.GetPosition ());
-  MoveFungibleBetweenInventories (fungible,
-                                  ground->GetInventory (),
-                                  c.GetInventory (),
-                                  fromName.str (), toName.str (),
-                                  freeCargo);
+  if (c.IsInBuilding ())
+    {
+      fromName << "building " << c.GetBuildingId ();
+      auto inv = buildingInv.Get (c.GetBuildingId (), c.GetOwner ());
+      MoveFungibleBetweenInventories (fungible,
+                                      inv->GetInventory (),
+                                      c.GetInventory (),
+                                      fromName.str (), toName.str (),
+                                      freeCargo);
+    }
+  else
+    {
+      fromName << "ground loot at " << c.GetPosition ();
+      auto ground = groundLoot.GetByCoord (c.GetPosition ());
+      MoveFungibleBetweenInventories (fungible,
+                                      ground->GetInventory (),
+                                      c.GetInventory (),
+                                      fromName.str (), toName.str (),
+                                      freeCargo);
+    }
 }
 
 void

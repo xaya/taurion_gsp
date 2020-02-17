@@ -83,6 +83,9 @@ protected:
   /** Access handle for ground loot.  */
   GroundLootTable groundLoot;
 
+  /** Access handle for building inventories.  */
+  BuildingInventoriesTable buildingInv;
+
   /** Access to the regions table.  */
   RegionsTable regions;
 
