@@ -345,6 +345,28 @@ ValidateCharactersInBuildings (Database& db)
     }
 }
 
+/**
+ * Verifies that all "in building" inventories have an existing
+ * building and account association.
+ */
+void
+ValidateBuildingInventories (Database& db)
+{
+  BuildingInventoriesTable inv(db);
+  AccountsTable accounts(db);
+  BuildingsTable buildings(db);
+
+  auto res = inv.QueryAll ();
+  while (res.Step ())
+    {
+      auto h = inv.GetFromResult (res);
+      CHECK (buildings.GetById (h->GetBuildingId ()) != nullptr)
+          << "Inventory for non-existant building " << h->GetBuildingId ();
+      CHECK (accounts.GetByName (h->GetAccount ()) != nullptr)
+          << "Inventory for non-existant account " << h->GetAccount ();
+    }
+}
+
 } // anonymous namespace
 
 void
@@ -354,6 +376,7 @@ PXLogic::ValidateStateSlow (Database& db, const Context& ctx)
   ValidateCharacterBuildingFactions (db);
   ValidateCharacterLimit (db, ctx);
   ValidateCharactersInBuildings (db);
+  ValidateBuildingInventories (db);
 }
 
 } // namespace pxd

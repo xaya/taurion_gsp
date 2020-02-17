@@ -75,12 +75,13 @@ protected:
   AccountsTable accounts;
   BuildingsTable buildings;
   CharacterTable characters;
+  BuildingInventoriesTable inv;
   GroundLootTable groundLoot;
   RegionsTable regions;
 
   PXLogicTests ()
     : accounts(db), buildings(db), characters(db),
-      groundLoot(db), regions(db, HEIGHT)
+      inv(db), groundLoot(db), regions(db, HEIGHT)
   {
     InitialisePrizes (db, ctx.Params ());
   }
@@ -1035,6 +1036,23 @@ TEST_F (ValidateStateTests, CharactersInBuildings)
 
   characters.GetById (10)->SetBuildingId (12345);
   EXPECT_DEATH (ValidateState (), "is in non-existant building");
+}
+
+TEST_F (ValidateStateTests, BuildingInventories)
+{
+  db.SetNextId (10);
+  accounts.CreateNew ("domob", Faction::RED);
+  buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+
+  inv.Get (10, "andy")->GetInventory ().SetFungibleCount ("foo", 1);
+  EXPECT_DEATH (ValidateState (), "non-existant account");
+  accounts.CreateNew ("andy", Faction::GREEN);
+  ValidateState ();
+
+  inv.Get (11, "domob")->GetInventory ().SetFungibleCount ("foo", 1);
+  EXPECT_DEATH (ValidateState (), "non-existant building");
+  buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+  ValidateState ();
 }
 
 /* ************************************************************************** */
