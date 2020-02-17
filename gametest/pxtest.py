@@ -134,6 +134,12 @@ class Building (object):
       return self.data["owner"]
     return None
 
+  def getFungibleInventory (self, account):
+    inv = self.data["inventories"]
+    if account not in inv:
+      return collections.Counter ()
+    return collections.Counter (inv[account]["fungible"])
+
 
 class Account (object):
   """
@@ -335,6 +341,18 @@ class PXTest (XayaGameTest):
       res[curId] = handle
 
     return res
+
+  def getLoot (self, pos):
+    """
+    Returns the ground-loot inventory at a given location.
+    """
+
+    loot = self.getRpc ("getgroundloot")
+    for l in loot:
+      if l["position"] == pos:
+        return collections.Counter (l["inventory"]["fungible"])
+
+    return collections.Counter ()
 
   def getRegion (self, regionId):
     """
