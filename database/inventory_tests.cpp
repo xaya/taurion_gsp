@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -123,7 +123,35 @@ struct CountResult : public Database::ResultType
   RESULT_COLUMN (int64_t, cnt, 1);
 };
 
-class GroundLootTests : public DBTestWithSchema
+/**
+ * General test fixture with functionality for testing inventories, either
+ * on the ground or associated to a building/account.
+ */
+class InventoryRowTests : public DBTestWithSchema
+{
+
+protected:
+
+  /**
+   * Returns the number of entries in the inventory database table.
+   */
+  unsigned
+  CountEntries (const std::string& tbl)
+  {
+    auto stmt = db.Prepare (R"(
+      SELECT COUNT(*) AS `cnt`
+        FROM `)" + tbl + R"(`
+    )");
+    auto res = stmt.Query<CountResult> ();
+    CHECK (res.Step ());
+    const unsigned cnt = res.Get<CountResult::cnt> ();
+    CHECK (!res.Step ());
+    return cnt;
+  }
+
+};
+
+class GroundLootTests : public InventoryRowTests
 {
 
 protected:
@@ -134,18 +162,10 @@ protected:
     : tbl(db)
   {}
 
-  /**
-   * Returns the number of entries in the ground-loot table.
-   */
   unsigned
   CountEntries ()
   {
-    auto stmt = db.Prepare ("SELECT COUNT(*) AS `cnt` FROM `ground_loot`");
-    auto res = stmt.Query<CountResult> ();
-    CHECK (res.Step ());
-    const unsigned cnt = res.Get<CountResult::cnt> ();
-    CHECK (!res.Step ());
-    return cnt;
+    return InventoryRowTests::CountEntries ("ground_loot");
   }
 
 };
@@ -224,6 +244,124 @@ TEST_F (GroundLootTableTests, QueryNonEmpty)
   h = tbl.GetFromResult (res);
   EXPECT_EQ (h->GetPosition (), c3);
   EXPECT_EQ (h->GetInventory ().GetFungibleCount ("foo"), 3);
+
+  ASSERT_FALSE (res.Step ());
+}
+
+/* ************************************************************************** */
+
+class BuildingInventoryTests : public InventoryRowTests
+{
+
+protected:
+
+  BuildingInventoriesTable tbl;
+
+  BuildingInventoryTests ()
+    : tbl(db)
+  {}
+
+  unsigned
+  CountEntries ()
+  {
+    return InventoryRowTests::CountEntries ("building_inventories");
+  }
+
+};
+
+TEST_F (BuildingInventoryTests, DefaultData)
+{
+  auto h = tbl.Get (123, "domob");
+  EXPECT_EQ (h->GetBuildingId (), 123);
+  EXPECT_EQ (h->GetAccount (), "domob");
+  EXPECT_TRUE (h->GetInventory ().IsEmpty ());
+  h.reset ();
+
+  EXPECT_EQ (CountEntries (), 0);
+}
+
+TEST_F (BuildingInventoryTests, Update)
+{
+  tbl.Get (123, "domob")->GetInventory ().SetFungibleCount ("foo", 5);
+  tbl.Get (123, "andy")->GetInventory ().SetFungibleCount ("bar", 42);
+  tbl.Get (124, "domob")->GetInventory ().SetFungibleCount ("bar", 10);
+
+  auto h = tbl.Get (123, "domob");
+  EXPECT_EQ (h->GetInventory ().GetFungibleCount ("foo"), 5);
+  EXPECT_EQ (h->GetInventory ().GetFungibleCount ("bar"), 0);
+
+  h = tbl.Get (123, "andy");
+  EXPECT_EQ (h->GetInventory ().GetFungibleCount ("foo"), 0);
+  EXPECT_EQ (h->GetInventory ().GetFungibleCount ("bar"), 42);
+
+  h = tbl.Get (124, "domob");
+  EXPECT_EQ (h->GetInventory ().GetFungibleCount ("foo"), 0);
+  EXPECT_EQ (h->GetInventory ().GetFungibleCount ("bar"), 10);
+
+  EXPECT_EQ (CountEntries (), 3);
+}
+
+TEST_F (BuildingInventoryTests, Removal)
+{
+  tbl.Get (123, "domob")->GetInventory ().SetFungibleCount ("foo", 5);
+  EXPECT_EQ (CountEntries (), 1);
+
+  auto h = tbl.Get (123, "domob");
+  EXPECT_EQ (h->GetInventory ().GetFungibleCount ("foo"), 5);
+  h->GetInventory ().SetFungibleCount ("foo", 0);
+  h.reset ();
+  EXPECT_EQ (CountEntries (), 0);
+
+  h = tbl.Get (123, "domob");
+  EXPECT_EQ (h->GetInventory ().GetFungibleCount ("foo"), 0);
+  EXPECT_TRUE (h->GetInventory ().IsEmpty ());
+}
+
+using BuildingInventoriesTableTests = BuildingInventoryTests;
+
+TEST_F (BuildingInventoriesTableTests, QueryAll)
+{
+  tbl.Get (123, "domob")->GetInventory ().SetFungibleCount ("foo", 1);
+  tbl.Get (124, "andy")->GetInventory ().SetFungibleCount ("foo", 2);
+
+  auto res = tbl.QueryAll ();
+
+  ASSERT_TRUE (res.Step ());
+  auto h = tbl.GetFromResult (res);
+  EXPECT_EQ (h->GetBuildingId (), 123);
+  EXPECT_EQ (h->GetAccount (), "domob");
+  EXPECT_EQ (h->GetInventory ().GetFungibleCount ("foo"), 1);
+
+  ASSERT_TRUE (res.Step ());
+  h = tbl.GetFromResult (res);
+  EXPECT_EQ (h->GetBuildingId (), 124);
+  EXPECT_EQ (h->GetAccount (), "andy");
+  EXPECT_EQ (h->GetInventory ().GetFungibleCount ("foo"), 2);
+
+  ASSERT_FALSE (res.Step ());
+}
+
+TEST_F (BuildingInventoriesTableTests, QueryForBuilding)
+{
+  tbl.Get (123, "domob")->GetInventory ().SetFungibleCount ("foo", 1);
+  tbl.Get (124, "domob")->GetInventory ().SetFungibleCount ("foo", 2);
+  tbl.Get (123, "andy")->GetInventory ().SetFungibleCount ("foo", 3);
+
+  auto res = tbl.QueryForBuilding (125);
+  ASSERT_FALSE (res.Step ());
+  res = tbl.QueryForBuilding (123);
+
+  ASSERT_TRUE (res.Step ());
+  auto h = tbl.GetFromResult (res);
+  EXPECT_EQ (h->GetBuildingId (), 123);
+  EXPECT_EQ (h->GetAccount (), "andy");
+  EXPECT_EQ (h->GetInventory ().GetFungibleCount ("foo"), 3);
+
+  ASSERT_TRUE (res.Step ());
+  h = tbl.GetFromResult (res);
+  EXPECT_EQ (h->GetBuildingId (), 123);
+  EXPECT_EQ (h->GetAccount (), "domob");
+  EXPECT_EQ (h->GetInventory ().GetFungibleCount ("foo"), 1);
 
   ASSERT_FALSE (res.Step ());
 }

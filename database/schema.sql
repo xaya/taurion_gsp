@@ -258,6 +258,27 @@ CREATE TABLE IF NOT EXISTS `ground_loot` (
 
 -- =============================================================================
 
+-- Data for the inventories that accounts have in buildings.
+CREATE TABLE IF NOT EXISTS `building_inventories` (
+
+  -- The ID of the building this is for.
+  `building` INTEGER NOT NULL,
+
+  -- The account that owns the stuff.
+  `account` TEXT NOT NULL,
+
+  -- Serialised inventory proto.
+  `inventory` BLOB NOT NULL,
+
+  PRIMARY KEY (`building`, `account`)
+
+);
+
+CREATE INDEX IF NOT EXISTS `building_inventories_by_account`
+  ON `building_inventories` (`account`);
+
+-- =============================================================================
+
 -- Data about the still available prospecting prizes (so that we can
 -- ensure only a certain number can be found).
 CREATE TABLE IF NOT EXISTS `prizes` (

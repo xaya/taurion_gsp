@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -55,6 +55,8 @@ static constexpr int64_t MAX_ITEM_QUANTITY = 1'000'000'000;
  * can always be safely computed in 64 bits.
  */
 static constexpr int64_t MAX_ITEM_DUAL = 1'000'000'000;
+
+/* ************************************************************************** */
 
 /**
  * Wrapper class around the state of an inventory.  This is what game-logic
@@ -153,6 +155,8 @@ public:
   static int64_t Product (QuantityT amount, int64_t dual);
 
 };
+
+/* ************************************************************************** */
 
 /**
  * Database result type for rows from the ground_loot table.
@@ -269,6 +273,142 @@ public:
   Database::Result<GroundLootResult> QueryNonEmpty ();
 
 };
+
+/* ************************************************************************** */
+
+/**
+ * Database result type for rows from the building_inventories table.
+ */
+struct BuildingInventoryResult : public Database::ResultType
+{
+  RESULT_COLUMN (int64_t, building, 1);
+  RESULT_COLUMN (std::string, account, 2);
+  RESULT_COLUMN (proto::Inventory, inventory, 3);
+};
+
+/**
+ * Wrapper class around the database row for the inventory of one account
+ * in a given building.
+ */
+class BuildingInventory
+{
+
+private:
+
+  /** Database this belongs to.  */
+  Database& db;
+
+  /** The ID of the building.  */
+  Database::IdT building;
+
+  /** The account this is for.  */
+  std::string account;
+
+  /** The associated loot.  */
+  Inventory inventory;
+
+  /**
+   * Constructs an instance with empty inventory.
+   */
+  explicit BuildingInventory (Database& d, Database::IdT b,
+                              const std::string& a);
+
+  /**
+   * Constructs an instance based on an existing DB result.
+   */
+  explicit BuildingInventory (
+      Database& d, const Database::Result<BuildingInventoryResult>& res);
+
+  friend class BuildingInventoriesTable;
+
+public:
+
+  /**
+   * In the destructor, potential updates to the database are made if the
+   * data has been modified.
+   */
+  ~BuildingInventory ();
+
+  BuildingInventory () = delete;
+  BuildingInventory (const BuildingInventory&) = delete;
+  void operator= (const BuildingInventory&) = delete;
+
+  Database::IdT
+  GetBuildingId () const
+  {
+    return building;
+  }
+
+  const std::string&
+  GetAccount () const
+  {
+    return account;
+  }
+
+  const Inventory&
+  GetInventory () const
+  {
+    return inventory;
+  }
+
+  Inventory&
+  GetInventory ()
+  {
+    return inventory;
+  }
+
+};
+
+/**
+ * Utility class to query the building-inventories table and obtain
+ * BuildingInventory instances from it accordingly.
+ */
+class BuildingInventoriesTable
+{
+
+private:
+
+  /** The Database reference for this instance.  */
+  Database& db;
+
+public:
+
+  /** Movable handle to a building-inventory instance.  */
+  using Handle = std::unique_ptr<BuildingInventory>;
+
+  explicit BuildingInventoriesTable (Database& d)
+    : db(d)
+  {}
+
+  BuildingInventoriesTable () = delete;
+  BuildingInventoriesTable (const BuildingInventoriesTable&) = delete;
+  void operator= (const BuildingInventoriesTable&) = delete;
+
+  /**
+   * Returns a handle for the instance based on a Database::Result.
+   */
+  Handle GetFromResult (const Database::Result<BuildingInventoryResult>& res);
+
+  /**
+   * Returns a handle for the inventory of the given building and user
+   * account combination.  If there is not yet any loot, returns a handle for
+   * a "newly constructed" entry.
+   */
+  Handle Get (Database::IdT building, const std::string& account);
+
+  /**
+   * Queries the database for all inventories.
+   */
+  Database::Result<BuildingInventoryResult> QueryAll ();
+
+  /**
+   * Queries the database for all inventories in a given building.
+   */
+  Database::Result<BuildingInventoryResult> QueryForBuilding (Database::IdT b);
+
+};
+
+/* ************************************************************************** */
 
 } // namespace pxd
 

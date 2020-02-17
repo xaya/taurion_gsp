@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -73,7 +73,7 @@ Inventory::SetFungibleCount (const std::string& type, const QuantityT count)
   auto& fungible = *data.Mutable ().mutable_fungible ();
 
   if (count == 0)
-    fungible.erase (type); 
+    fungible.erase (type);
   else
     fungible[type] = count;
 }
@@ -157,8 +157,6 @@ GroundLoot::~GroundLoot ()
   stmt.Execute ();
 }
 
-/* ************************************************************************** */
-
 GroundLootTable::Handle
 GroundLootTable::GetFromResult (const Database::Result<GroundLootResult>& res)
 {
@@ -189,6 +187,124 @@ GroundLootTable::QueryNonEmpty ()
 {
   auto stmt = db.Prepare ("SELECT * FROM `ground_loot` ORDER BY `x`, `y`");
   return stmt.Query<GroundLootResult> ();
+}
+
+/* ************************************************************************** */
+
+BuildingInventory::BuildingInventory (Database& d, const Database::IdT b,
+                                      const std::string& a)
+  : db(d), building(b), account(a)
+{
+  VLOG (1)
+      << "Constructed an empty building inventory for building " << building
+      << " and account " << account;
+}
+
+BuildingInventory::BuildingInventory (
+    Database& d, const Database::Result<BuildingInventoryResult>& res)
+  : db(d)
+{
+  building = res.Get<BuildingInventoryResult::building> ();
+  account = res.Get<BuildingInventoryResult::account> ();
+  inventory = res.GetProto<BuildingInventoryResult::inventory> ();
+  VLOG (1)
+      << "Created building inventory for building " << building
+      << " and account " << account << " from database";
+}
+
+BuildingInventory::~BuildingInventory ()
+{
+  if (!inventory.IsDirty ())
+    {
+      VLOG (1)
+          << "Building inventory for " << building << " and "
+          << account << " is not dirty";
+      return;
+    }
+
+  if (inventory.IsEmpty ())
+    {
+      VLOG (1)
+          << "Building inventory for " << building
+          << " and " << account << " is now empty, updating DB";
+
+      auto stmt = db.Prepare (R"(
+        DELETE FROM `building_inventories`
+          WHERE `building` = ?1 AND `account` = ?2
+      )");
+
+      stmt.Bind (1, building);
+      stmt.Bind (2, account);
+      stmt.Execute ();
+      return;
+    }
+
+  VLOG (1)
+      << "Updating non-empty building inventory for " << building
+      << " and " << account;
+
+  auto stmt = db.Prepare (R"(
+    INSERT OR REPLACE INTO `building_inventories`
+      (`building`, `account`, `inventory`)
+      VALUES (?1, ?2, ?3)
+  )");
+
+  stmt.Bind (1, building);
+  stmt.Bind (2, account);
+  stmt.BindProto (3, inventory.GetProtoForBinding ());
+  stmt.Execute ();
+}
+
+BuildingInventoriesTable::Handle
+BuildingInventoriesTable::GetFromResult (
+    const Database::Result<BuildingInventoryResult>& res)
+{
+  return Handle (new BuildingInventory (db, res));
+}
+
+BuildingInventoriesTable::Handle
+BuildingInventoriesTable::Get (const Database::IdT b, const std::string& a)
+{
+  auto stmt = db.Prepare (R"(
+    SELECT *
+      FROM `building_inventories`
+      WHERE `building` = ?1 AND `account` = ?2
+  )");
+  stmt.Bind (1, b);
+  stmt.Bind (2, a);
+  auto res = stmt.Query<BuildingInventoryResult> ();
+
+  if (!res.Step ())
+    return Handle (new BuildingInventory (db, b, a));
+
+  auto r = GetFromResult (res);
+  CHECK (!res.Step ());
+  return r;
+}
+
+Database::Result<BuildingInventoryResult>
+BuildingInventoriesTable::QueryAll ()
+{
+  auto stmt = db.Prepare (R"(
+    SELECT *
+      FROM `building_inventories`
+      ORDER BY `building`, `account`
+  )");
+  return stmt.Query<BuildingInventoryResult> ();
+}
+
+Database::Result<BuildingInventoryResult>
+BuildingInventoriesTable::QueryForBuilding (const Database::IdT building)
+{
+  auto stmt = db.Prepare (R"(
+    SELECT *
+      FROM `building_inventories`
+      WHERE `building` = ?1
+      ORDER BY `account`
+  )");
+  stmt.Bind (1, building);
+
+  return stmt.Query<BuildingInventoryResult> ();
 }
 
 /* ************************************************************************** */
