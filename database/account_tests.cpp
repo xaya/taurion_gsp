@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,8 +47,6 @@ TEST_F (AccountTests, DefaultData)
   EXPECT_EQ (a->GetFaction (), Faction::BLUE);
   EXPECT_EQ (a->GetKills (), 0);
   EXPECT_EQ (a->GetFame (), 100);
-  EXPECT_TRUE (a->GetBanked ().IsEmpty ());
-  EXPECT_EQ (a->GetBankingPoints (), 0);
 }
 
 TEST_F (AccountTests, Update)
@@ -56,31 +54,12 @@ TEST_F (AccountTests, Update)
   auto a = tbl.CreateNew ("foobar", Faction::RED);
   a->SetKills (50);
   a->SetFame (200);
-  a->AddBankingPoints (10);
-  a->AddBankingPoints (10);
   a.reset ();
 
   a = tbl.GetByName ("foobar");
   EXPECT_EQ (a->GetName (), "foobar");
   EXPECT_EQ (a->GetKills (), 50);
   EXPECT_EQ (a->GetFame (), 200);
-  EXPECT_EQ (a->GetBankingPoints (), 20);
-}
-
-TEST_F (AccountTests, UpdateBanked)
-{
-  auto a = tbl.CreateNew ("foobar", Faction::RED);
-  a->GetBanked ().SetFungibleCount ("raw a", 5);
-  a.reset ();
-
-  a = tbl.GetByName ("foobar");
-  a->GetBanked ().AddFungibleCount ("raw a", 1);
-  a->GetBanked ().SetFungibleCount ("raw b", 1);
-  a.reset ();
-
-  a = tbl.GetByName ("foobar");
-  EXPECT_EQ (a->GetBanked ().GetFungibleCount ("raw a"), 6);
-  EXPECT_EQ (a->GetBanked ().GetFungibleCount ("raw b"), 1);
 }
 
 using AccountsTableTests = AccountTests;

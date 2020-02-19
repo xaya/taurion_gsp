@@ -18,7 +18,6 @@
 
 #include "logic.hpp"
 
-#include "banking.hpp"
 #include "buildings.hpp"
 #include "combat.hpp"
 #include "dynobstacles.hpp"
@@ -121,8 +120,6 @@ PXLogic::UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
 
   ProcessAllMining (db, rnd, ctx);
   ProcessAllMovement (db, dyn, ctx);
-
-  ProcessBanking (db, ctx);
 
   /* Entering buildings should be after moves and movement, so that players
      enter as soon as possible (perhaps in the same instant the move for it

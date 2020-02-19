@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2019  Autonomous Worlds Ltd
+#   Copyright (C) 2019-2020  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -31,13 +31,11 @@ class ProspectingPrizesTest (PXTest):
   def getPrizes (self, nm):
     """
     Returns the prizes (if any) the account with the given name as well as
-    its "first character" has won so far (based on what they have banked
-    and what the character has in its inventory).
+    its "first character" has won so far (based on what the character has in
+    its inventory).
     """
 
-    char = self.getCharacters ()[nm].getFungibleInventory ()
-    acc = self.getAccounts ()[nm].getFungibleBanked ()
-    items = char + acc
+    items = self.getCharacters ()[nm].getFungibleInventory ()
 
     res = {}
     for item, amount in items.iteritems ():

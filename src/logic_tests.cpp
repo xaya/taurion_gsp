@@ -18,7 +18,6 @@
 
 #include "logic.hpp"
 
-#include "banking_tests.hpp"
 #include "fame_tests.hpp"
 #include "params.hpp"
 #include "prospecting.hpp"
@@ -756,76 +755,6 @@ TEST_F (PXLogicTests, MiningWhenReprospected)
   EXPECT_FALSE (c->GetProto ().mining ().active ());
   c.reset ();
   EXPECT_FALSE (regions.GetById (region)->GetProto ().has_prospection ());
-}
-
-TEST_F (PXLogicTests, BankingFromPickupOrMining)
-{
-  const auto region = ctx.Map ().Regions ().GetRegionId (BANKING_POS);
-  auto r = regions.GetById (region);
-  r->MutableProto ().mutable_prospection ()->set_resource ("foo");
-  r->SetResourceLeft (1);
-  r.reset ();
-
-  auto c = CreateCharacter ("domob", Faction::RED);
-  ASSERT_EQ (c->GetId (), 1);
-  c->SetPosition (BANKING_POS);
-  c->MutableProto ().mutable_combat_data ();
-  c->MutableProto ().mutable_mining ()->mutable_rate ()->set_min (1);
-  c->MutableProto ().mutable_mining ()->mutable_rate ()->set_max (1);
-  c->MutableProto ().mutable_mining ()->set_active (true);
-  c->MutableProto ().set_cargo_space (100);
-  c.reset ();
-
-  auto l = groundLoot.GetByCoord (BANKING_POS);
-  l->GetInventory ().AddFungibleCount ("bar", 2);
-  l.reset ();
-
-  UpdateState (R"([
-    {
-      "name": "domob",
-      "move": {"c": {"1": {"pu": {"f": {"foo": 10, "bar": 10}}}}}
-    }
-  ])");
-
-  EXPECT_TRUE (characters.GetById (1)->GetInventory ().IsEmpty ());
-  EXPECT_EQ (regions.GetById (region)->GetResourceLeft (), 0);
-  EXPECT_TRUE (groundLoot.GetByCoord (BANKING_POS)->GetInventory ().IsEmpty ());
-
-  auto a = accounts.GetByName ("domob");
-  EXPECT_EQ (a->GetBanked ().GetFungibleCount ("foo"), 1);
-  EXPECT_EQ (a->GetBanked ().GetFungibleCount ("bar"), 2);
-}
-
-TEST_F (PXLogicTests, BankingAndMovement)
-{
-  auto c = CreateCharacter ("domob", Faction::RED);
-  ASSERT_EQ (c->GetId (), 1);
-  c->GetInventory ().AddFungibleCount ("foo", 1);
-  c->SetPosition (NO_BANKING_POS);
-  c->MutableProto ().mutable_combat_data ();
-  c->MutableProto ().set_cargo_space (100);
-  c->MutableProto ().set_speed (2'000);
-  auto* wp = c->MutableProto ().mutable_movement ()->mutable_waypoints ();
-  SetRepeatedCoords ({BANKING_POS, NO_BANKING_POS}, *wp);
-  c.reset ();
-
-  /* This update should move the character briefly through the banking area,
-     but without pausing there.  No banking will take place.  */
-  UpdateState ("[]");
-  EXPECT_FALSE (characters.GetById (1)->GetInventory ().IsEmpty ());
-  EXPECT_TRUE (accounts.GetByName ("domob")->GetBanked ().IsEmpty ());
-
-  c = characters.GetById (1);
-  wp = c->MutableProto ().mutable_movement ()->mutable_waypoints ();
-  SetRepeatedCoords ({BANKING_POS}, *wp);
-  c.reset ();
-
-  /* Now we move into the banking area and stay there.  This should bank
-     right after processing movement.  */
-  UpdateState ("[]");
-  EXPECT_TRUE (characters.GetById (1)->GetInventory ().IsEmpty ());
-  auto a = accounts.GetByName ("domob");
-  EXPECT_EQ (a->GetBanked ().GetFungibleCount ("foo"), 1);
 }
 
 TEST_F (PXLogicTests, EnterBuildingAfterMovesAndMovement)
