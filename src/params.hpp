@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -28,7 +28,6 @@
 
 #include <xayagame/gamelogic.hpp>
 
-#include <map>
 #include <string>
 #include <vector>
 
@@ -69,12 +68,6 @@ public:
     unsigned probability;
 
   };
-
-  /**
-   * Raw data representing the amounts of each resource needed to complete
-   * a "banking set".
-   */
-  using BankingSetData = std::unordered_map<std::string, Inventory::QuantityT>;
 
   /**
    * Constructs an instance based on the given situation.
@@ -141,16 +134,6 @@ public:
    * Returns true if prizes should be won with lower probability.
    */
   bool IsLowPrizeZone (const HexCoord& pos) const;
-
-  /**
-   * Returns true if the given location is a banking area.
-   */
-  bool IsBankingArea (const HexCoord& pos) const;
-
-  /**
-   * Returns the data about our banking set.
-   */
-  const BankingSetData& BankingSet () const;
 
   /**
    * Returns the spawn centre and radius for the given faction.

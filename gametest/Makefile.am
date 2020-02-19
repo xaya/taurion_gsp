@@ -3,7 +3,6 @@ TEST_LIBRARY = \
 
 REGTESTS = \
   accounts.py \
-  banking.py \
   buildings_basic.py \
   buildings_enterexit.py \
   buildings_inventory.py \

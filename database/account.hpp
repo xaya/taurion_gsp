@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,7 +21,6 @@
 
 #include "database.hpp"
 #include "faction.hpp"
-#include "inventory.hpp"
 
 #include <memory>
 #include <string>
@@ -37,8 +36,6 @@ struct AccountResult : public ResultWithFaction
   RESULT_COLUMN (std::string, name, 1);
   RESULT_COLUMN (int64_t, kills, 2);
   RESULT_COLUMN (int64_t, fame, 3);
-  RESULT_COLUMN (pxd::proto::Inventory, banked, 4);
-  RESULT_COLUMN (int64_t, banking_points, 5);
 };
 
 /**
@@ -64,12 +61,6 @@ private:
 
   /** The account's fame value.  */
   unsigned fame;
-
-  /** The account's banked stuff.  */
-  Inventory banked;
-
-  /** Banking points from complete sets of resources.  */
-  unsigned bankingPoints;
 
   /**
    * Set to true if any modification has been made and we need to write
@@ -141,31 +132,6 @@ public:
   {
     dirty = true;
     fame = val;
-  }
-
-  const Inventory&
-  GetBanked () const
-  {
-    return banked;
-  }
-
-  Inventory&
-  GetBanked ()
-  {
-    return banked;
-  }
-
-  unsigned
-  GetBankingPoints () const
-  {
-    return bankingPoints;
-  }
-
-  void
-  AddBankingPoints (const unsigned added)
-  {
-    dirty = true;
-    bankingPoints += added;
   }
 
 };

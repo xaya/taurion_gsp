@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -184,43 +184,6 @@ Params::IsLowPrizeZone (const HexCoord& pos) const
   const HexCoord noPrizeCentre(58, -256);
   constexpr HexCoord::IntT noPrizeRadius = 3'000;
   return HexCoord::DistanceL1 (pos, noPrizeCentre) <= noPrizeRadius;
-}
-
-bool
-Params::IsBankingArea (const HexCoord& pos) const
-{
-  static const HexCoord centres[] =
-    {
-      HexCoord (-125, 810),
-      HexCoord (-1'301, 902),
-      HexCoord (-637, -291),
-    };
-  static constexpr HexCoord::IntT maxDist = 50;
-
-  for (const auto& c : centres)
-    if (HexCoord::DistanceL1 (pos, c) <= maxDist)
-      return true;
-
-  return false;
-}
-
-const Params::BankingSetData&
-Params::BankingSet () const
-{
-  static const BankingSetData data =
-    {
-      {"raw a", 20},
-      {"raw b", 20},
-      {"raw c", 20},
-      {"raw d", 20},
-      {"raw e", 20},
-      {"raw f", 20},
-      {"raw g", 20},
-      {"raw h", 20},
-      {"raw i", 20},
-    };
-
-  return data;
 }
 
 HexCoord

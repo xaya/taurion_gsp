@@ -155,9 +155,6 @@ class Account (object):
   def getFaction (self):
     return self.data["faction"]
 
-  def getFungibleBanked (self):
-    return collections.Counter (self.data["banked"]["fungible"])
-
 
 class Region (object):
   """
