@@ -406,6 +406,12 @@ public:
    */
   Database::Result<BuildingInventoryResult> QueryForBuilding (Database::IdT b);
 
+  /**
+   * Removes all entries for inventories in the given building.  This is used
+   * to clean up data when a building is destroyed.
+   */
+  void RemoveBuilding (Database::IdT building);
+
 };
 
 /* ************************************************************************** */

@@ -292,6 +292,28 @@ TEST_F (CharacterTableTests, QueryForOwner)
   ASSERT_FALSE (res.Step ());
 }
 
+TEST_F (CharacterTableTests, QueryForBuilding)
+{
+  tbl.CreateNew ("domob", Faction::RED)->GetId ();
+  const auto id2 = tbl.CreateNew ("domob", Faction::RED)->GetId ();
+  const auto id3 = tbl.CreateNew ("domob", Faction::RED)->GetId ();
+  const auto id4 = tbl.CreateNew ("domob", Faction::RED)->GetId ();
+
+  tbl.GetById (id4)->SetBuildingId (10);
+  tbl.GetById (id2)->SetBuildingId (10);
+  tbl.GetById (id3)->SetBuildingId (42);
+
+  auto res = tbl.QueryForBuilding (10);
+  ASSERT_TRUE (res.Step ());
+  EXPECT_EQ (tbl.GetFromResult (res)->GetId (), id2);
+  ASSERT_TRUE (res.Step ());
+  EXPECT_EQ (tbl.GetFromResult (res)->GetId (), id4);
+  ASSERT_FALSE (res.Step ());
+
+  res = tbl.QueryForBuilding (12345);
+  ASSERT_FALSE (res.Step ());
+}
+
 TEST_F (CharacterTableTests, QueryMoving)
 {
   tbl.CreateNew ("domob", Faction::RED);

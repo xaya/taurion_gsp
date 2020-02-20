@@ -366,6 +366,23 @@ TEST_F (BuildingInventoriesTableTests, QueryForBuilding)
   ASSERT_FALSE (res.Step ());
 }
 
+TEST_F (BuildingInventoriesTableTests, RemoveBuilding)
+{
+  tbl.Get (123, "domob")->GetInventory ().SetFungibleCount ("foo", 1);
+  tbl.Get (124, "domob")->GetInventory ().SetFungibleCount ("foo", 2);
+  tbl.Get (123, "andy")->GetInventory ().SetFungibleCount ("foo", 3);
+
+  tbl.RemoveBuilding (123);
+
+  auto res = tbl.QueryAll ();
+  ASSERT_TRUE (res.Step ());
+  auto h = tbl.GetFromResult (res);
+  EXPECT_EQ (h->GetBuildingId (), 124);
+  EXPECT_EQ (h->GetAccount (), "domob");
+  EXPECT_EQ (h->GetInventory ().GetFungibleCount ("foo"), 2);
+  EXPECT_FALSE (res.Step ());
+}
+
 /* ************************************************************************** */
 
 } // anonymous namespace

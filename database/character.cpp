@@ -323,6 +323,19 @@ CharacterTable::QueryForOwner (const std::string& owner)
 }
 
 Database::Result<CharacterResult>
+CharacterTable::QueryForBuilding (const Database::IdT building)
+{
+  auto stmt = db.Prepare (R"(
+    SELECT *
+      FROM `characters`
+      WHERE `inbuilding` = ?1
+      ORDER BY `id`
+  )");
+  stmt.Bind (1, building);
+  return stmt.Query<CharacterResult> ();
+}
+
+Database::Result<CharacterResult>
 CharacterTable::QueryMoving ()
 {
   auto stmt = db.Prepare (R"(

@@ -214,6 +214,11 @@ public:
    */
   Database::Result<BuildingResult> QueryAll ();
 
+  /**
+   * Deletes the row for a given building ID.
+   */
+  void DeleteById (Database::IdT id);
+
 };
 
 } // namespace pxd

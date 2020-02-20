@@ -146,4 +146,17 @@ BuildingsTable::QueryAll ()
   return stmt.Query<BuildingResult> ();
 }
 
+void
+BuildingsTable::DeleteById (const Database::IdT id)
+{
+  VLOG (1) << "Deleting building with ID " << id;
+
+  auto stmt = db.Prepare (R"(
+    DELETE FROM `buildings`
+      WHERE `id` = ?1
+  )");
+  stmt.Bind (1, id);
+  stmt.Execute ();
+}
+
 } // namespace pxd

@@ -141,6 +141,20 @@ TEST_F (BuildingsTableTests, QueryAll)
   ASSERT_FALSE (res.Step ());
 }
 
+TEST_F (BuildingsTableTests, DeleteById)
+{
+  auto id1 = tbl.CreateNew ("turret", "domob", Faction::RED)->GetId ();
+  auto id2 = tbl.CreateNew ("turret", "andy", Faction::GREEN)->GetId ();
+
+  ASSERT_NE (tbl.GetById (id2), nullptr);
+  tbl.DeleteById (id2);
+  ASSERT_EQ (tbl.GetById (id2), nullptr);
+
+  auto h = tbl.GetById (id1);
+  ASSERT_NE (h, nullptr);
+  EXPECT_EQ (h->GetOwner (), "domob");
+}
+
 /* ************************************************************************** */
 
 } // anonymous namespace

@@ -307,6 +307,17 @@ BuildingInventoriesTable::QueryForBuilding (const Database::IdT building)
   return stmt.Query<BuildingInventoryResult> ();
 }
 
+void
+BuildingInventoriesTable::RemoveBuilding (const Database::IdT building)
+{
+  auto stmt = db.Prepare (R"(
+    DELETE FROM `building_inventories`
+      WHERE `building` = ?1
+  )");
+  stmt.Bind (1, building);
+  stmt.Execute ();
+}
+
 /* ************************************************************************** */
 
 } // namespace pxd

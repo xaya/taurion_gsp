@@ -422,6 +422,11 @@ public:
   Database::Result<CharacterResult> QueryForOwner (const std::string& owner);
 
   /**
+   * Queries all characters that are in a given building.
+   */
+  Database::Result<CharacterResult> QueryForBuilding (Database::IdT building);
+
+  /**
    * Queries for all characters that are currently moving (and thus may need
    * to be updated for move stepping).
    */
