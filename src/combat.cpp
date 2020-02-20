@@ -18,6 +18,7 @@
 
 #include "combat.hpp"
 
+#include "database/building.hpp"
 #include "database/character.hpp"
 #include "database/fighter.hpp"
 #include "database/region.hpp"
@@ -25,12 +26,19 @@
 #include "hexagonal/coord.hpp"
 
 #include <algorithm>
+#include <map>
 
 namespace pxd
 {
 
 namespace
 {
+
+/**
+ * Chance (in percent) that an inventory position inside a destroyed building
+ * will drop on the ground instead of being destroyed.
+ */
+constexpr const unsigned BUILDING_INVENTORY_DROP_PERCENT = 30;
 
 /**
  * Runs target selection for one fighter entity.
@@ -222,61 +230,189 @@ DealCombatDamage (Database& db, DamageLists& dl, xaya::Random& rnd)
   return dead;
 }
 
+namespace
+{
+
+/**
+ * Utility class that handles processing of killed characters and buildings.
+ */
+class KillProcessor
+{
+
+private:
+
+  xaya::Random& rnd;
+  const Context& ctx;
+
+  DamageLists& damageLists;
+  GroundLootTable& loot;
+
+  BuildingsTable buildings;
+  BuildingInventoriesTable inventories;
+  CharacterTable characters;
+  RegionsTable regions;
+
+  /**
+   * Deletes a character from the database in all tables.  Takes ownership
+   * of and destructs the handle to it.
+   */
+  void
+  DeleteCharacter (CharacterTable::Handle h)
+  {
+    const auto id = h->GetId ();
+    h.reset ();
+    damageLists.RemoveCharacter (id);
+    characters.DeleteById (id);
+  }
+
+public:
+
+  explicit KillProcessor (Database& db, DamageLists& dl, GroundLootTable& l,
+                          xaya::Random& r, const Context& c)
+    : rnd(r), ctx(c), damageLists(dl), loot(l),
+      buildings(db), inventories(db), characters(db), regions(db, ctx.Height ())
+  {}
+
+  KillProcessor () = delete;
+  KillProcessor (const KillProcessor&) = delete;
+  void operator= (const KillProcessor&) = delete;
+
+  /**
+   * Processes everything for a character killed in combat.
+   */
+  void ProcessCharacter (const Database::IdT id);
+
+  /**
+   * Processes everything for a building that has been destroyed.
+   */
+  void ProcessBuilding (const Database::IdT id);
+
+};
+
+void
+KillProcessor::ProcessCharacter (const Database::IdT id)
+{
+  auto c = characters.GetById (id);
+  const auto& pos = c->GetPosition ();
+
+  /* If the character was prospecting some region, cancel that
+     operation and mark the region as not being prospected.  */
+  if (c->GetProto ().has_prospection ())
+    {
+      const auto regionId = ctx.Map ().Regions ().GetRegionId (pos);
+      LOG (INFO)
+          << "Killed character " << id
+          << " was prospecting region " << regionId
+          << ", cancelling";
+
+      auto r = regions.GetById (regionId);
+      CHECK_EQ (r->GetProto ().prospecting_character (), id);
+      r->MutableProto ().clear_prospecting_character ();
+    }
+
+  /* If the character has an inventory, drop everything they had
+     on the ground. */
+  const auto& inv = c->GetInventory ();
+  if (!inv.IsEmpty ())
+    {
+      LOG (INFO)
+          << "Killed character " << id
+          << " has non-empty inventory, dropping loot at " << pos;
+
+      auto ground = loot.GetByCoord (pos);
+      auto& groundInv = ground->GetInventory ();
+      for (const auto& entry : inv.GetFungible ())
+        {
+          VLOG (1)
+              << "Dropping " << entry.second << " of " << entry.first;
+          groundInv.AddFungibleCount (entry.first, entry.second);
+        }
+    }
+
+  DeleteCharacter (std::move (c));
+}
+
+void
+KillProcessor::ProcessBuilding (const Database::IdT id)
+{
+  /* Some of the buildings inventory will be dropped on the floor, so we
+     need to compute a "combined inventory" of everything that is inside
+     the building (all account inventories in the building plus the
+     inventories of all characters inside).
+
+     In addition to that, we destroy all characters inside the building.  */
+
+  Inventory totalInv;
+
+  {
+    auto res = inventories.QueryForBuilding (id);
+    while (res.Step ())
+      totalInv += inventories.GetFromResult (res)->GetInventory ();
+  }
+
+  {
+    auto res = characters.QueryForBuilding (id);
+    while (res.Step ())
+      {
+        auto h = characters.GetFromResult (res);
+        totalInv += h->GetInventory ();
+        DeleteCharacter (std::move (h));
+      }
+  }
+
+  /* The underlying proto map does not have a well-defined order.  Since the
+     random rolls depend on the other, make sure to explicitly sort the
+     the list of inventory positions.  */
+  const auto& protoInvMap = totalInv.GetFungible ();
+  const std::map<std::string, Inventory::QuantityT> invItems (
+      protoInvMap.begin (), protoInvMap.end ());
+
+  auto b = buildings.GetById (id);
+  CHECK (b != nullptr) << "Killed non-existant building " << id;
+  auto lootHandle = loot.GetByCoord (b->GetCentre ());
+  b.reset ();
+
+  for (const auto& entry : invItems)
+    {
+      CHECK_GT (entry.second, 0);
+      if (!rnd.ProbabilityRoll (BUILDING_INVENTORY_DROP_PERCENT, 100))
+        {
+          VLOG (1)
+              << "Not dropping " << entry.second << " " << entry.first
+              << " from destroyed building " << id;
+          continue;
+        }
+
+      VLOG (1)
+          << "Dropping " << entry.second << " " << entry.first
+          << " from destroyed building " << id
+          << " at " << lootHandle->GetPosition ();
+      lootHandle->GetInventory ().AddFungibleCount (entry.first, entry.second);
+    }
+
+  inventories.RemoveBuilding (id);
+  buildings.DeleteById (id);
+}
+
+} // anonymous namespace
+
 void
 ProcessKills (Database& db, DamageLists& dl, GroundLootTable& loot,
               const std::vector<proto::TargetId>& dead,
-              const Context& ctx)
+              xaya::Random& rnd, const Context& ctx)
 {
-  CharacterTable characters(db);
-  RegionsTable regions(db, ctx.Height ());
+  KillProcessor proc(db, dl, loot, rnd, ctx);
 
   for (const auto& id : dead)
     switch (id.type ())
       {
       case proto::TargetId::TYPE_CHARACTER:
-        {
-          auto c = characters.GetById (id.id ());
-          const auto& pos = c->GetPosition ();
+        proc.ProcessCharacter (id.id ());
+        break;
 
-          /* If the character was prospecting some region, cancel that
-             operation and mark the region as not being prospected.  */
-          if (c->GetProto ().has_prospection ())
-            {
-              const auto regionId = ctx.Map ().Regions ().GetRegionId (pos);
-              LOG (INFO)
-                  << "Killed character " << id.id ()
-                  << " was prospecting region " << regionId
-                  << ", cancelling";
-
-              auto r = regions.GetById (regionId);
-              CHECK_EQ (r->GetProto ().prospecting_character (), id.id ());
-              r->MutableProto ().clear_prospecting_character ();
-            }
-
-          /* If the character has an inventory, drop everything they had
-             on the ground. */
-          const auto& inv = c->GetInventory ();
-          if (!inv.IsEmpty ())
-            {
-              LOG (INFO)
-                  << "Killed character " << id.id ()
-                  << " has non-empty inventory, dropping loot at " << pos;
-
-              auto ground = loot.GetByCoord (pos);
-              auto& groundInv = ground->GetInventory ();
-              for (const auto& entry : inv.GetFungible ())
-                {
-                  VLOG (1)
-                      << "Dropping " << entry.second << " of " << entry.first;
-                  groundInv.AddFungibleCount (entry.first, entry.second);
-                }
-            }
-
-          c.reset ();
-          dl.RemoveCharacter (id.id ());
-          characters.DeleteById (id.id ());
-          break;
-        }
+      case proto::TargetId::TYPE_BUILDING:
+        proc.ProcessBuilding (id.id ());
+        break;
 
       default:
         LOG (FATAL)
@@ -345,7 +481,7 @@ AllHpUpdates (Database& db, FameUpdater& fame, xaya::Random& rnd,
     fame.UpdateForKill (id);
 
   GroundLootTable loot(db);
-  ProcessKills (db, fame.GetDamageLists (), loot, dead, ctx);
+  ProcessKills (db, fame.GetDamageLists (), loot, dead, rnd, ctx);
 
   RegenerateHP (db);
 }

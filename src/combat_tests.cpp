@@ -20,6 +20,7 @@
 
 #include "testutils.hpp"
 
+#include "database/building.hpp"
 #include "database/character.hpp"
 #include "database/damagelists.hpp"
 #include "database/dbtest.hpp"
@@ -52,17 +53,16 @@ protected:
 
   ContextForTesting ctx;
 
+  BuildingsTable buildings;
+  BuildingInventoriesTable inventories;
+
   CharacterTable characters;
   DamageLists dl;
-  xaya::Random rnd;
+  TestRandom rnd;
 
   CombatTests ()
-    : characters(db), dl(db, 0)
-  {
-    xaya::SHA256 seed;
-    seed << "random seed";
-    rnd.Seed (seed.Finalise ());
-  }
+    : buildings(db), inventories(db), characters(db), dl(db, 0)
+  {}
 
   /**
    * Adds an attack with the given range to the character proto.
@@ -593,25 +593,38 @@ protected:
 
 };
 
-TEST_F (ProcessKillsTests, DeletesCharacters)
+class ProcessKillsCharacterTests : public ProcessKillsTests
+{
+
+protected:
+
+  void
+  KillCharacter (const Database::IdT id)
+  {
+    proto::TargetId targetId;
+    targetId.set_type (proto::TargetId::TYPE_CHARACTER);
+    targetId.set_id (id);
+    ProcessKills (db, dl, loot, {targetId}, rnd, ctx);
+  }
+
+};
+
+TEST_F (ProcessKillsCharacterTests, DeletesCharacters)
 {
   const auto id1 = characters.CreateNew ("domob", Faction::RED)->GetId ();
   const auto id2 = characters.CreateNew ("domob", Faction::RED)->GetId ();
 
-  ProcessKills (db, dl, loot, {}, ctx);
+  ProcessKills (db, dl, loot, {}, rnd, ctx);
   EXPECT_TRUE (characters.GetById (id1) != nullptr);
   EXPECT_TRUE (characters.GetById (id2) != nullptr);
 
-  proto::TargetId targetId;
-  targetId.set_type (proto::TargetId::TYPE_CHARACTER);
-  targetId.set_id (id2);
-  ProcessKills (db, dl, loot, {targetId}, ctx);
+  KillCharacter (id2);
 
   EXPECT_TRUE (characters.GetById (id1) != nullptr);
   EXPECT_TRUE (characters.GetById (id2) == nullptr);
 }
 
-TEST_F (ProcessKillsTests, RemovesFromDamageLists)
+TEST_F (ProcessKillsCharacterTests, RemovesFromDamageLists)
 {
   const auto id1 = characters.CreateNew ("domob", Faction::RED)->GetId ();
   const auto id2 = characters.CreateNew ("domob", Faction::RED)->GetId ();
@@ -622,16 +635,13 @@ TEST_F (ProcessKillsTests, RemovesFromDamageLists)
   dl.AddEntry (id1, id3);
   dl.AddEntry (id2, id1);
 
-  proto::TargetId targetId2;
-  targetId2.set_type (proto::TargetId::TYPE_CHARACTER);
-  targetId2.set_id (id2);
-  ProcessKills (db, dl, loot, {targetId2}, ctx);
+  KillCharacter (id2);
 
   EXPECT_EQ (dl.GetAttackers (id1), DamageLists::Attackers ({id3}));
   EXPECT_EQ (dl.GetAttackers (id2), DamageLists::Attackers ({}));
 }
 
-TEST_F (ProcessKillsTests, CancelsProspection)
+TEST_F (ProcessKillsCharacterTests, CancelsProspection)
 {
   const HexCoord pos(-42, 100);
   const auto regionId = ctx.Map ().Regions ().GetRegionId (pos);
@@ -649,17 +659,14 @@ TEST_F (ProcessKillsTests, CancelsProspection)
   r->MutableProto ().set_prospecting_character (id);
   r.reset ();
 
-  proto::TargetId targetId;
-  targetId.set_type (proto::TargetId::TYPE_CHARACTER);
-  targetId.set_id (id);
-  ProcessKills (db, dl, loot, {targetId}, ctx);
+  KillCharacter (id);
 
   EXPECT_TRUE (characters.GetById (id) == nullptr);
   r = regions.GetById (regionId);
   EXPECT_FALSE (r->GetProto ().has_prospecting_character ());
 }
 
-TEST_F (ProcessKillsTests, DropsInventory)
+TEST_F (ProcessKillsCharacterTests, DropsInventory)
 {
   const HexCoord pos(-42, 100);
   loot.GetByCoord (pos)->GetInventory ().SetFungibleCount ("foo", 5);
@@ -672,15 +679,206 @@ TEST_F (ProcessKillsTests, DropsInventory)
   c->GetInventory ().SetFungibleCount ("bar", 10);
   c.reset ();
 
-  proto::TargetId targetId;
-  targetId.set_type (proto::TargetId::TYPE_CHARACTER);
-  targetId.set_id (id);
-  ProcessKills (db, dl, loot, {targetId}, ctx);
+  KillCharacter (id);
 
   EXPECT_TRUE (characters.GetById (id) == nullptr);
   auto ground = loot.GetByCoord (pos);
   EXPECT_EQ (ground->GetInventory ().GetFungibleCount ("foo"), 7);
   EXPECT_EQ (ground->GetInventory ().GetFungibleCount ("bar"), 10);
+}
+
+class ProcessKillsBuildingTests : public ProcessKillsTests
+{
+
+protected:
+
+  void
+  KillBuilding (const Database::IdT id)
+  {
+    proto::TargetId targetId;
+    targetId.set_type (proto::TargetId::TYPE_BUILDING);
+    targetId.set_id (id);
+    ProcessKills (db, dl, loot, {targetId}, rnd, ctx);
+  }
+
+};
+
+TEST_F (ProcessKillsBuildingTests, RemovesBuildingAndInventories)
+{
+  const auto id1
+      = buildings.CreateNew ("checkmark", "", Faction::ANCIENT)->GetId ();
+  const auto id2
+      = buildings.CreateNew ("checkmark", "domob", Faction::RED)->GetId ();
+
+  inventories.Get (id1, "domob")->GetInventory ().AddFungibleCount ("foo", 10);
+  inventories.Get (id2, "domob")->GetInventory ().AddFungibleCount ("foo", 20);
+
+  KillBuilding (id2);
+
+  ASSERT_EQ (buildings.GetById (id2), nullptr);
+  auto b = buildings.GetById (id1);
+  ASSERT_NE (b, nullptr);
+  EXPECT_EQ (b->GetId (), id1);
+
+  auto res = inventories.QueryAll ();
+  ASSERT_TRUE (res.Step ());
+  auto i = inventories.GetFromResult (res);
+  EXPECT_EQ (i->GetBuildingId (), id1);
+  EXPECT_EQ (i->GetAccount (), "domob");
+  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("foo"), 10);
+  EXPECT_FALSE (res.Step ());
+}
+
+TEST_F (ProcessKillsBuildingTests, MayDropAnyInventoryItem)
+{
+  /* In this test, we verify that any inventory item inside the building
+     (both from account inventories and held by characters in the building)
+     may be dropped when the building is destroyed.  We do this by destroying
+     the building many times and building the "union" of dropped items.  For
+     enough trials, this will give us the full set of all items inside.
+
+     We also verify that if something is dropped, it will be the total
+     amount of this item inside the building (or otherwise nothing).  */
+
+  constexpr unsigned trials = 100;
+  const HexCoord pos(10, 20);
+
+  const std::map<std::string, Inventory::QuantityT> expectedAmounts =
+    {
+      {"foo", 5},
+      {"bar", 100},
+      {"zerospace", 1},
+    };
+
+  std::set<std::string> dropped;
+  for (unsigned i = 0; i < trials; ++i)
+    {
+      auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+      const auto id = b->GetId ();
+      b->SetCentre (pos);
+      b.reset ();
+
+      inventories.Get (id, "a")->GetInventory ().SetFungibleCount ("foo", 1);
+      inventories.Get (id, "b")->GetInventory ().SetFungibleCount ("foo", 2);
+      inventories.Get (id, "b")->GetInventory ().SetFungibleCount ("bar", 100);
+
+      auto c = characters.CreateNew ("domob", Faction::RED);
+      c->SetBuildingId (id);
+      c->GetInventory ().SetFungibleCount ("foo", 2);
+      c.reset ();
+
+      c = characters.CreateNew ("andy", Faction::RED);
+      c->SetBuildingId (id);
+      c->GetInventory ().SetFungibleCount ("zerospace", 1);
+      c.reset ();
+
+      KillBuilding (id);
+
+      auto l = loot.GetByCoord (pos);
+      for (const auto& entry : l->GetInventory ().GetFungible ())
+        {
+          EXPECT_EQ (entry.second, expectedAmounts.at (entry.first));
+          dropped.insert (entry.first);
+          l->GetInventory ().SetFungibleCount (entry.first, 0);
+        }
+    }
+
+  EXPECT_EQ (dropped.size (), expectedAmounts.size ());
+}
+
+TEST_F (ProcessKillsBuildingTests, ItemDropChance)
+{
+  /* This verifies that the chance for dropping an item from a destroyed
+     building is roughly what we expect it to be.  */
+
+  constexpr unsigned trials = 1'000;
+  constexpr unsigned expected = (trials * 30) / 100;
+  constexpr unsigned eps = (trials * 5) / 100;
+
+  const HexCoord pos(10, 20);
+  for (unsigned i = 0; i < trials; ++i)
+    {
+      auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+      const auto id = b->GetId ();
+      b->SetCentre (pos);
+      b.reset ();
+
+      inventories.Get (id, "x")->GetInventory ().SetFungibleCount ("foo", 1);
+      KillBuilding (id);
+    }
+
+  auto l = loot.GetByCoord (pos);
+  const auto cnt = l->GetInventory ().GetFungibleCount ("foo");
+  EXPECT_GE (cnt, expected - eps);
+  EXPECT_LE (cnt, expected + eps);
+}
+
+TEST_F (ProcessKillsBuildingTests, OrderOfItemRolls)
+{
+  /* This test verifies that the order in which random rolls for dropping
+     items are done matches the expected order (increasing item name
+     as a string).  For this, we just explicitly repeat the rolls in the
+     expected order, and check the outcome against that.  */
+
+  constexpr unsigned trials = 1'000;
+  const std::vector<std::string> items =
+    {
+      "raw a",
+      "raw b",
+      "raw c",
+      "raw d",
+      "raw e",
+      "raw f",
+      "raw g",
+      "raw h",
+      "raw i",
+    };
+  const HexCoord pos(10, 20);
+
+  for (unsigned i = 0; i < trials; ++i)
+    {
+      auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+      const auto id = b->GetId ();
+      b->SetCentre (pos);
+      b.reset ();
+
+      inventories.Get (id, "z")->GetInventory ().SetFungibleCount ("raw a", 1);
+      inventories.Get (id, "z")->GetInventory ().SetFungibleCount ("raw i", 1);
+      inventories.Get (id, "a")->GetInventory ().SetFungibleCount ("raw h", 1);
+      inventories.Get (id, "a")->GetInventory ().SetFungibleCount ("raw b", 1);
+
+      auto c = characters.CreateNew ("domob", Faction::RED);
+      c->SetBuildingId (id);
+      auto& inv = c->GetInventory ();
+      inv.SetFungibleCount ("raw c", 1);
+      inv.SetFungibleCount ("raw d", 1);
+      inv.SetFungibleCount ("raw e", 1);
+      inv.SetFungibleCount ("raw f", 1);
+      inv.SetFungibleCount ("raw g", 1);
+      c.reset ();
+
+      /* Use a custom seed for randomness so that we can replay the
+         exact same sequence.  */
+      std::ostringstream seedStr;
+      seedStr << "seed " << i;
+      const xaya::uint256 seed = xaya::SHA256::Hash (seedStr.str ());
+
+      rnd.Seed (seed);
+      KillBuilding (id);
+
+      auto l = loot.GetByCoord (pos);
+      auto& dropped = l->GetInventory ();
+
+      rnd.Seed (seed);
+      for (const auto& item : items)
+        if (rnd.ProbabilityRoll (30, 100))
+          {
+            ASSERT_EQ (dropped.GetFungibleCount (item), 1);
+            dropped.SetFungibleCount (item, 0);
+          }
+        else
+          ASSERT_EQ (dropped.GetFungibleCount (item), 0);
+    }
 }
 
 /* ************************************************************************** */
