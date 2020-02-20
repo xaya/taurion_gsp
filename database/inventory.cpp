@@ -93,6 +93,15 @@ Inventory::AddFungibleCount (const std::string& type, const QuantityT count)
   SetFungibleCount (type, previous + count);
 }
 
+Inventory&
+Inventory::operator+= (const Inventory& other)
+{
+  for (const auto& entry : other.GetFungible ())
+    AddFungibleCount (entry.first, entry.second);
+
+  return *this;
+}
+
 int64_t
 Inventory::Product (const QuantityT amount, const int64_t dual)
 {

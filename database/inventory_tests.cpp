@@ -109,6 +109,20 @@ TEST_F (InventoryTests, Modification)
   EXPECT_TRUE (inv.IsDirty ());
 }
 
+TEST_F (InventoryTests, AdditionOfOtherInventory)
+{
+  inv.SetFungibleCount ("foo", 10);
+
+  Inventory other;
+  other.SetFungibleCount ("foo", 2);
+  other.SetFungibleCount ("bar", 3);
+
+  inv += other;
+
+  EXPECT_EQ (inv.GetFungibleCount ("foo"), 12);
+  EXPECT_EQ (inv.GetFungibleCount ("bar"), 3);
+}
+
 TEST_F (InventoryTests, DualProduct)
 {
   const auto val = Inventory::Product (MAX_ITEM_QUANTITY, -MAX_ITEM_DUAL);

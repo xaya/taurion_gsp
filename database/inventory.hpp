@@ -123,6 +123,11 @@ public:
   void AddFungibleCount (const std::string& type, QuantityT count);
 
   /**
+   * Adds in all items from a given second inventory.
+   */
+  Inventory& operator+= (const Inventory& other);
+
+  /**
    * Returns true if the inventory data has been modified (and thus needs to
    * be saved back to the database).
    */
