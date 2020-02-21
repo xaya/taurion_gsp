@@ -96,29 +96,29 @@ TEST_F (TargetSelectionTests, NoTargets)
   auto c = characters.CreateNew ("domob", Faction::RED);
   const auto id1 = c->GetId ();
   c->SetPosition (HexCoord (-10, 0));
-  c->MutableProto ().mutable_target ();
+  c->MutableTarget ().set_id (42);
   AddAttackWithRange (c->MutableProto (), 10);
   c.reset ();
 
   c = characters.CreateNew ("domob",Faction::RED);
   const auto id2 = c->GetId ();
   c->SetPosition (HexCoord (-10, 1));
-  c->MutableProto ().mutable_target ();
+  c->MutableTarget ().set_id (42);
   AddAttackWithRange (c->MutableProto (), 10);
   c.reset ();
 
   c = characters.CreateNew ("domob", Faction::GREEN);
   const auto id3 = c->GetId ();
   c->SetPosition (HexCoord (10, 0));
-  c->MutableProto ().mutable_target ();
+  c->MutableTarget ().set_id (42);
   AddAttackWithRange (c->MutableProto (), 10);
   c.reset ();
 
   FindCombatTargets (db, rnd);
 
-  EXPECT_FALSE (characters.GetById (id1)->GetProto ().has_target ());
-  EXPECT_FALSE (characters.GetById (id2)->GetProto ().has_target ());
-  EXPECT_FALSE (characters.GetById (id3)->GetProto ().has_target ());
+  EXPECT_FALSE (characters.GetById (id1)->GetTarget ().has_id ());
+  EXPECT_FALSE (characters.GetById (id2)->GetTarget ().has_id ());
+  EXPECT_FALSE (characters.GetById (id3)->GetTarget ().has_id ());
 }
 
 TEST_F (TargetSelectionTests, ClosestTarget)
@@ -147,10 +147,10 @@ TEST_F (TargetSelectionTests, ClosestTarget)
       FindCombatTargets (db, rnd);
 
       c = characters.GetById (idFighter);
-      const auto& pb = c->GetProto ();
-      ASSERT_TRUE (pb.has_target ());
-      EXPECT_EQ (pb.target ().type (), proto::TargetId::TYPE_CHARACTER);
-      EXPECT_EQ (pb.target ().id (), idTarget);
+      const auto& t = c->GetTarget ();
+      ASSERT_TRUE (t.has_id ());
+      EXPECT_EQ (t.type (), proto::TargetId::TYPE_CHARACTER);
+      EXPECT_EQ (t.id (), idTarget);
     }
 }
 
@@ -159,7 +159,7 @@ TEST_F (TargetSelectionTests, InsideBuildings)
   auto c = characters.CreateNew ("domob", Faction::RED);
   const auto id1 = c->GetId ();
   c->SetPosition (HexCoord (0, 0));
-  c->MutableProto ().mutable_target ();
+  c->MutableTarget ().set_id (42);
   AddAttackWithRange (c->MutableProto (), 10);
   c.reset ();
 
@@ -175,8 +175,8 @@ TEST_F (TargetSelectionTests, InsideBuildings)
 
   FindCombatTargets (db, rnd);
 
-  EXPECT_FALSE (characters.GetById (id1)->GetProto ().has_target ());
-  EXPECT_FALSE (characters.GetById (id2)->GetProto ().has_target ());
+  EXPECT_FALSE (characters.GetById (id1)->GetTarget ().has_id ());
+  EXPECT_FALSE (characters.GetById (id2)->GetTarget ().has_id ());
 }
 
 TEST_F (TargetSelectionTests, MultipleAttacks)
@@ -197,12 +197,12 @@ TEST_F (TargetSelectionTests, MultipleAttacks)
   FindCombatTargets (db, rnd);
 
   c = characters.GetById (id1);
-  const auto& pb = c->GetProto ();
-  ASSERT_TRUE (pb.has_target ());
-  EXPECT_EQ (pb.target ().type (), proto::TargetId::TYPE_CHARACTER);
-  EXPECT_EQ (pb.target ().id (), id2);
+  const auto& t = c->GetTarget ();
+  ASSERT_TRUE (t.has_id ());
+  EXPECT_EQ (t.type (), proto::TargetId::TYPE_CHARACTER);
+  EXPECT_EQ (t.id (), id2);
 
-  EXPECT_FALSE (characters.GetById (id2)->GetProto ().has_target ());
+  EXPECT_FALSE (characters.GetById (id2)->GetTarget ().has_id ());
 }
 
 TEST_F (TargetSelectionTests, OnlyAreaAttacks)
@@ -222,12 +222,12 @@ TEST_F (TargetSelectionTests, OnlyAreaAttacks)
   FindCombatTargets (db, rnd);
 
   c = characters.GetById (id1);
-  const auto& pb = c->GetProto ();
-  ASSERT_TRUE (pb.has_target ());
-  EXPECT_EQ (pb.target ().type (), proto::TargetId::TYPE_CHARACTER);
-  EXPECT_EQ (pb.target ().id (), id2);
+  const auto& t = c->GetTarget ();
+  ASSERT_TRUE (t.has_id ());
+  EXPECT_EQ (t.type (), proto::TargetId::TYPE_CHARACTER);
+  EXPECT_EQ (t.id (), id2);
 
-  EXPECT_FALSE (characters.GetById (id2)->GetProto ().has_target ());
+  EXPECT_FALSE (characters.GetById (id2)->GetTarget ().has_id ());
 }
 
 TEST_F (TargetSelectionTests, Randomisation)
@@ -259,11 +259,11 @@ TEST_F (TargetSelectionTests, Randomisation)
       FindCombatTargets (db, rnd);
 
       c = characters.GetById (idFighter);
-      const auto& pb = c->GetProto ();
-      ASSERT_TRUE (pb.has_target ());
-      EXPECT_EQ (pb.target ().type (), proto::TargetId::TYPE_CHARACTER);
+      const auto& t = c->GetTarget ();
+      ASSERT_TRUE (t.has_id ());
+      EXPECT_EQ (t.type (), proto::TargetId::TYPE_CHARACTER);
 
-      const auto mit = targetMap.find (pb.target ().id ());
+      const auto mit = targetMap.find (t.id ());
       ASSERT_NE (mit, targetMap.end ());
       ++cnt[mit->second];
     }

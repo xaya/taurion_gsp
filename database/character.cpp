@@ -37,6 +37,7 @@ Character::Character (Database& d, const std::string& o, const Faction f)
   volatileMv.SetToDefault ();
   hp.SetToDefault ();
   regenData.SetToDefault ();
+  target.SetToDefault ();
   data.SetToDefault ();
   Validate ();
 }
@@ -64,13 +65,18 @@ Character::Character (Database& d, const Database::Result<CharacterResult>& res)
   volatileMv = res.GetProto<CharacterResult::volatilemv> ();
   hp = res.GetProto<CharacterResult::hp> ();
   regenData = res.GetProto<CharacterResult::regendata> ();
+
+  if (res.IsNull<CharacterResult::target> ())
+    target.SetToDefault ();
+  else
+    target = res.GetProto<CharacterResult::target> ();
+
   busy = res.Get<CharacterResult::busy> ();
   inv = res.GetProto<CharacterResult::inventory> ();
   data = res.GetProto<CharacterResult::proto> ();
 
   attackRange = res.Get<CharacterResult::attackrange> ();
   oldCanRegen = res.Get<CharacterResult::canregen> ();
-  hasTarget = res.Get<CharacterResult::hastarget> ();
 
   VLOG (1) << "Fetched character with ID " << id << " from database result";
   Validate ();
@@ -84,7 +90,8 @@ Character::~Character ()
   if (hp.IsDirty () || regenData.IsDirty ())
     canRegen = ComputeCanRegen (hp.Get (), regenData.Get ());
 
-  if (isNew || regenData.IsDirty () || inv.IsDirty () || data.IsDirty ())
+  if (isNew || regenData.IsDirty () || target.IsDirty ()
+        || inv.IsDirty () || data.IsDirty ())
     {
       VLOG (1)
           << "Character " << id
@@ -97,8 +104,8 @@ Character::~Character ()
            `volatilemv`, `hp`,
            `busy`,
            `faction`,
-           `ismoving`, `ismining`, `attackrange`, `canregen`, `hastarget`,
-           `regendata`, `inventory`, `proto`)
+           `ismoving`, `ismining`, `attackrange`, `canregen`,
+           `regendata`, `target`, `inventory`, `proto`)
           VALUES
           (?1,
            ?2, ?3, ?4,
@@ -106,8 +113,8 @@ Character::~Character ()
            ?7, ?8,
            ?9,
            ?101,
-           ?102, ?103, ?104, ?105, ?106,
-           ?107, ?108, ?109)
+           ?102, ?103, ?104, ?105,
+           ?106, ?107, ?108, ?109)
       )");
 
       BindFieldValues (stmt);
@@ -116,8 +123,11 @@ Character::~Character ()
       stmt.Bind (103, data.Get ().mining ().active ());
       stmt.Bind (104, FindAttackRange (data.Get ().combat_data ()));
       stmt.Bind (105, canRegen);
-      stmt.Bind (106, data.Get ().has_target ());
-      stmt.BindProto (107, regenData);
+      stmt.BindProto (106, regenData);
+      if (target.Get ().has_id ())
+        stmt.BindProto (107, target);
+      else
+        stmt.BindNull (107);
       stmt.BindProto (108, inv.GetProtoForBinding ());
       stmt.BindProto (109, data);
       stmt.Execute ();
@@ -178,10 +188,7 @@ Character::Validate () const
     }
 
   if (!isNew && !data.IsDirty ())
-    {
-      CHECK_EQ (hasTarget, pb.has_target ());
-      CHECK_EQ (attackRange, FindAttackRange (pb.combat_data ()));
-    }
+    CHECK_EQ (attackRange, FindAttackRange (pb.combat_data ()));
 
   if (!regenData.IsDirty () && !hp.IsDirty ())
     CHECK_EQ (oldCanRegen, ComputeCanRegen ());
@@ -239,14 +246,6 @@ Character::GetAttackRange () const
   CHECK (!isNew);
   CHECK (!data.IsDirty ());
   return attackRange;
-}
-
-bool
-Character::HasTarget () const
-{
-  CHECK (!isNew);
-  CHECK (!data.IsDirty ());
-  return hasTarget;
 }
 
 uint64_t
@@ -365,7 +364,10 @@ Database::Result<CharacterResult>
 CharacterTable::QueryWithTarget ()
 {
   auto stmt = db.Prepare (R"(
-    SELECT * FROM `characters` WHERE `hastarget` ORDER BY `id`
+    SELECT *
+      FROM `characters`
+      WHERE `target` IS NOT NULL
+      ORDER BY `id`
   )");
   return stmt.Query<CharacterResult> ();
 }

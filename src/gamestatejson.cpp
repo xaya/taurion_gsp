@@ -38,11 +38,15 @@ namespace
 {
 
 /**
- * Converts a TargetId proto to its JSON gamestate form.
+ * Converts a TargetId proto to its JSON gamestate form.  It may be a null
+ * JSON if the target is "empty".
  */
 Json::Value
 TargetIdToJson (const proto::TargetId& target)
 {
+  if (!target.has_id ())
+    return Json::Value ();
+
   Json::Value res(Json::objectValue);
   res["id"] = IntToJson (target.id ());
 
@@ -144,10 +148,11 @@ GetCombatJsonObject (const Character& c, const DamageLists& dl)
 {
   Json::Value res(Json::objectValue);
 
-  const auto& pb = c.GetProto ();
-  if (pb.has_target ())
-    res["target"] = TargetIdToJson (pb.target ());
+  const auto targetJson = TargetIdToJson (c.GetTarget ());
+  if (!targetJson.isNull ())
+    res["target"] = targetJson;
 
+  const auto& pb = c.GetProto ();
   Json::Value attacks(Json::arrayValue);
   for (const auto& attack : pb.combat_data ().attacks ())
     {

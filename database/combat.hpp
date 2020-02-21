@@ -35,9 +35,10 @@ namespace pxd
 struct ResultWithCombat : public Database::ResultType
 {
   RESULT_COLUMN (pxd::proto::HP, hp, 53);
-  RESULT_COLUMN (int64_t, attackrange, 54);
-  RESULT_COLUMN (bool, canregen, 55);
-  RESULT_COLUMN (bool, hastarget, 56);
+  RESULT_COLUMN (pxd::proto::RegenData, regendata, 54);
+  RESULT_COLUMN (pxd::proto::TargetId, target, 55);
+  RESULT_COLUMN (int64_t, attackrange, 56);
+  RESULT_COLUMN (bool, canregen, 57);
 };
 
 /**

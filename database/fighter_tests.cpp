@@ -60,7 +60,7 @@ TEST_F (FighterTests, Characters)
 
   c = characters.CreateNew ("domob", Faction::GREEN);
   const auto id2 = c->GetId ();
-  c->MutableProto ().mutable_target ()->set_id (42);
+  c->MutableTarget ().set_id (42);
   c->MutableProto ().mutable_combat_data ()->add_attacks ()->set_range (10);
   c.reset ();
 
@@ -109,11 +109,11 @@ TEST_F (FighterTests, Characters)
   EXPECT_EQ (cnt, 2);
 
   c = characters.GetById (id1);
-  EXPECT_EQ (c->GetProto ().target ().id (), 5);
+  EXPECT_EQ (c->GetTarget ().id (), 5);
   EXPECT_EQ (c->GetHP ().armour (), 5);
   c.reset ();
 
-  EXPECT_FALSE (characters.GetById (id2)->GetProto ().has_target ());
+  EXPECT_FALSE (characters.GetById (id2)->GetTarget ().has_id ());
 }
 
 TEST_F (FighterTests, GetForTarget)
@@ -143,7 +143,7 @@ TEST_F (FighterTests, GetForTarget)
 TEST_F (FighterTests, ProcessWithTarget)
 {
   auto c = characters.CreateNew ("domob", Faction::RED);
-  c->MutableProto ().mutable_target ()->set_id (5);
+  c->MutableTarget ().set_id (5);
   c.reset ();
 
   characters.CreateNew ("domob", Faction::GREEN);

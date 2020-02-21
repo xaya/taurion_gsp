@@ -152,7 +152,7 @@ TEST_F (ProcessEnterBuildingsTests, EnteringEffects)
   auto c = GetCharacter (10);
   c->SetPosition (HexCoord (5, 0));
   c->SetEnterBuilding (1);
-  c->MutableProto ().mutable_target ();
+  c->MutableTarget ().set_id (42);
   c->MutableProto ().mutable_movement ()->mutable_waypoints ();
   c->MutableProto ().mutable_mining ()->set_active (true);
   c.reset ();
@@ -163,7 +163,7 @@ TEST_F (ProcessEnterBuildingsTests, EnteringEffects)
   ASSERT_TRUE (c->IsInBuilding ());
   EXPECT_EQ (c->GetBuildingId (), 1);
   EXPECT_EQ (c->GetEnterBuilding (), Database::EMPTY_ID);
-  EXPECT_FALSE (c->GetProto ().has_target ());
+  EXPECT_FALSE (c->GetTarget ().has_id ());
   EXPECT_FALSE (c->GetProto ().has_movement ());
   EXPECT_FALSE (c->GetProto ().mining ().active ());
 }

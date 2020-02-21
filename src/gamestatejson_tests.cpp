@@ -275,13 +275,13 @@ TEST_F (CharacterJsonTests, MultipleStep)
 TEST_F (CharacterJsonTests, Target)
 {
   auto c = tbl.CreateNew ("domob", Faction::RED);
-  auto* targetProto = c->MutableProto ().mutable_target ();
+  auto* targetProto = &c->MutableTarget ();
   targetProto->set_id (5);
   targetProto->set_type (proto::TargetId::TYPE_CHARACTER);
   c.reset ();
 
   c = tbl.CreateNew ("domob", Faction::GREEN);
-  targetProto = c->MutableProto ().mutable_target ();
+  targetProto = &c->MutableTarget ();
   targetProto->set_id (42);
   targetProto->set_type (proto::TargetId::TYPE_BUILDING);
   c.reset ();

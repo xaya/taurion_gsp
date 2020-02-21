@@ -50,10 +50,9 @@ struct CharacterResult : public ResultWithFaction, public ResultWithCoord,
   RESULT_COLUMN (int64_t, inbuilding, 3);
   RESULT_COLUMN (int64_t, enterbuilding, 4);
   RESULT_COLUMN (pxd::proto::VolatileMovement, volatilemv, 5);
-  RESULT_COLUMN (pxd::proto::RegenData, regendata, 6);
-  RESULT_COLUMN (int64_t, busy, 7);
-  RESULT_COLUMN (pxd::proto::Inventory, inventory, 8);
-  RESULT_COLUMN (pxd::proto::Character, proto, 9);
+  RESULT_COLUMN (int64_t, busy, 6);
+  RESULT_COLUMN (pxd::proto::Inventory, inventory, 7);
+  RESULT_COLUMN (pxd::proto::Character, proto, 8);
 };
 
 /**
@@ -105,6 +104,13 @@ private:
    */
   LazyProto<proto::RegenData> regenData;
 
+  /**
+   * The selected target as TargetId proto, if any.  If there is no target,
+   * then the underlying database column is NULL, and this proto will have
+   * no fields set.
+   */
+  LazyProto<proto::TargetId> target;
+
   /** The number of blocks (or zero) the character is still busy.  */
   int busy;
 
@@ -122,12 +128,6 @@ private:
    * the RegenData or HP have been modified.
    */
   bool oldCanRegen;
-
-  /**
-   * Stores the flag of whether or not the character had a combat target
-   * originally in the database.
-   */
-  bool hasTarget;
 
   /**
    * Set to true if this is a new character, so we know that we have to
@@ -294,6 +294,18 @@ public:
     return regenData.Mutable ();
   }
 
+  const proto::TargetId&
+  GetTarget () const
+  {
+    return target.Get ();
+  }
+
+  proto::TargetId&
+  MutableTarget ()
+  {
+    return target.Mutable ();
+  }
+
   unsigned
   GetBusy () const
   {
@@ -339,14 +351,6 @@ public:
    * column in the database directly.
    */
   HexCoord::IntT GetAttackRange () const;
-
-  /**
-   * Returns whether or not the character has a combat target.  This works
-   * without parsing the main proto, and can thus be used for efficient checks
-   * during target finding.  Note that the method must not be called if the
-   * character is new or if the main proto has been modified.
-   */
-  bool HasTarget () const;
 
   /**
    * Returns the used cargo space for the character's inventory.

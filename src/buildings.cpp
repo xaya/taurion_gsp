@@ -130,7 +130,7 @@ ProcessEnterBuildings (Database& db)
       ++entered;
 
       c->SetBuildingId (buildingId);
-      c->MutableProto ().clear_target ();
+      c->MutableTarget ().clear_id ();
       c->SetEnterBuilding (Database::EMPTY_ID);
       StopCharacter (*c);
       StopMining (*c);

@@ -82,29 +82,24 @@ const proto::TargetId&
 Fighter::GetTarget () const
 {
   CHECK (character != nullptr);
-  const auto& pb = character->GetProto ();
-  CHECK (pb.has_target ());
-  return pb.target ();
+  const auto& res = character->GetTarget ();
+  CHECK (res.has_id ());
+  return res;
 }
 
 void
 Fighter::SetTarget (const proto::TargetId& target)
 {
   CHECK (character != nullptr);
-  *character->MutableProto ().mutable_target () = target;
+  CHECK (target.has_id ());
+  character->MutableTarget () = target;
 }
 
 void
 Fighter::ClearTarget ()
 {
   CHECK (character != nullptr);
-
-  /* Make sure to mark the proto as dirty only if there was actually a target
-     before.  This avoids updating the proto in the database unnecessarily
-     for the common case where there was no target and there also is none
-     in the future.  */
-  if (character->HasTarget ())
-    character->MutableProto ().clear_target ();
+  character->MutableTarget ().clear_id ();
 }
 
 const proto::HP&
