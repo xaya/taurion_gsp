@@ -19,6 +19,7 @@
 #ifndef DATABASE_CHARACTER_HPP
 #define DATABASE_CHARACTER_HPP
 
+#include "combat.hpp"
 #include "coord.hpp"
 #include "database.hpp"
 #include "faction.hpp"
@@ -41,21 +42,18 @@ namespace pxd
 /**
  * Database result type for rows from the characters table.
  */
-struct CharacterResult : public ResultWithFaction, public ResultWithCoord
+struct CharacterResult : public ResultWithFaction, public ResultWithCoord,
+                         public ResultWithCombat
 {
   RESULT_COLUMN (int64_t, id, 1);
   RESULT_COLUMN (std::string, owner, 2);
   RESULT_COLUMN (int64_t, inbuilding, 3);
   RESULT_COLUMN (int64_t, enterbuilding, 4);
   RESULT_COLUMN (pxd::proto::VolatileMovement, volatilemv, 5);
-  RESULT_COLUMN (pxd::proto::HP, hp, 6);
-  RESULT_COLUMN (pxd::proto::RegenData, regendata, 7);
-  RESULT_COLUMN (int64_t, busy, 8);
-  RESULT_COLUMN (pxd::proto::Inventory, inventory, 9);
-  RESULT_COLUMN (pxd::proto::Character, proto, 10);
-  RESULT_COLUMN (int64_t, attackrange, 11);
-  RESULT_COLUMN (bool, canregen, 12);
-  RESULT_COLUMN (bool, hastarget, 13);
+  RESULT_COLUMN (pxd::proto::RegenData, regendata, 6);
+  RESULT_COLUMN (int64_t, busy, 7);
+  RESULT_COLUMN (pxd::proto::Inventory, inventory, 8);
+  RESULT_COLUMN (pxd::proto::Character, proto, 9);
 };
 
 /**
@@ -173,12 +171,6 @@ private:
    * is any mismatch in the fields.
    */
   void Validate () const;
-
-  /**
-   * Computes the "canregen" field based on our protos.  This forces parsing
-   * of the main data proto, so it should only be called when needed.
-   */
-  bool ComputeCanRegen () const;
 
   friend class CharacterTable;
 

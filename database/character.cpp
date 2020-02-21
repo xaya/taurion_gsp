@@ -18,8 +18,6 @@
 
 #include "character.hpp"
 
-#include "fighter.hpp"
-
 #include "proto/roconfig.hpp"
 
 #include <glog/logging.h>
@@ -84,7 +82,7 @@ Character::~Character ()
 
   bool canRegen = oldCanRegen;
   if (hp.IsDirty () || regenData.IsDirty ())
-    canRegen = ComputeCanRegen ();
+    canRegen = ComputeCanRegen (hp.Get (), regenData.Get ());
 
   if (isNew || regenData.IsDirty () || inv.IsDirty () || data.IsDirty ())
     {
@@ -233,17 +231,6 @@ Character::GetBuildingId () const
 {
   CHECK (IsInBuilding ());
   return inBuilding;
-}
-
-bool
-Character::ComputeCanRegen () const
-{
-  const auto& regenPb = regenData.Get ();
-
-  if (regenPb.shield_regeneration_mhp () == 0)
-    return false;
-
-  return hp.Get ().shield () < regenPb.max_hp ().shield ();
 }
 
 HexCoord::IntT

@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -168,19 +168,6 @@ FighterTable::ProcessWithTarget (const Callback& cb)
   auto res = characters.QueryWithTarget ();
   while (res.Step ())
     cb (Fighter (characters.GetFromResult (res)));
-}
-
-HexCoord::IntT
-FindAttackRange (const proto::CombatData& cd)
-{
-  HexCoord::IntT res = 0;
-  for (const auto& attack : cd.attacks ())
-    {
-      CHECK_GT (attack.range (), 0);
-      res = std::max<HexCoord::IntT> (res, attack.range ());
-    }
-
-  return res;
 }
 
 } // namespace pxd

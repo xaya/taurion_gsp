@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,14 +27,10 @@
 
 #include <gtest/gtest.h>
 
-#include <google/protobuf/text_format.h>
-
 namespace pxd
 {
 namespace
 {
-
-using google::protobuf::TextFormat;
 
 class FighterTests : public DBTestWithSchema
 {
@@ -159,39 +155,6 @@ TEST_F (FighterTests, ProcessWithTarget)
       EXPECT_EQ (f.GetFaction (), Faction::RED);
     });
   EXPECT_EQ (cnt, 1);
-}
-
-class FindAttackRangeTests : public testing::Test
-{
-
-protected:
-
-  /**
-   * Calls FindAttackRange based on the combat data given as text proto.
-   */
-  static HexCoord::IntT
-  FindRange (const std::string str)
-  {
-    proto::CombatData pb;
-    CHECK (TextFormat::ParseFromString (str, &pb));
-
-    return FindAttackRange (pb);
-  }
-
-};
-
-TEST_F (FindAttackRangeTests, NoAttacks)
-{
-  EXPECT_EQ (FindRange (""), 0);
-}
-
-TEST_F (FindAttackRangeTests, MaximumRange)
-{
-  EXPECT_EQ (FindRange (R"(
-    attacks: { range: 5 }
-    attacks: { range: 42 }
-    attacks: { range: 1 }
-  )"), 42);
 }
 
 } // anonymous namespace

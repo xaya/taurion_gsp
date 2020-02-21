@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -180,12 +180,6 @@ public:
   void ProcessWithTarget (const Callback& cb);
 
 };
-
-/**
- * Computes the attack range of a fighter with the given combat data.
- * Returns zero if there are no attacks at all.
- */
-HexCoord::IntT FindAttackRange (const proto::CombatData& cd);
 
 } // namespace pxd
 
