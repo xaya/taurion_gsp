@@ -24,12 +24,10 @@
 
 #include <google/protobuf/text_format.h>
 
+using google::protobuf::TextFormat;
+
 namespace pxd
 {
-namespace
-{
-
-using google::protobuf::TextFormat;
 
 class ComputeCanRegenTests : public testing::Test
 {
@@ -47,10 +45,13 @@ protected:
     proto::RegenData regen;
     CHECK (TextFormat::ParseFromString (regenStr, &regen));
 
-    return ComputeCanRegen (hp, regen);
+    return CombatEntity::ComputeCanRegen (hp, regen);
   }
 
 };
+
+namespace
+{
 
 TEST_F (ComputeCanRegenTests, CanRegenerate)
 {
@@ -92,6 +93,8 @@ TEST_F (ComputeCanRegenTests, FullShield)
   )"));
 }
 
+} // anonymous namespace
+
 class FindAttackRangeTests : public testing::Test
 {
 
@@ -106,10 +109,13 @@ protected:
     proto::CombatData pb;
     CHECK (TextFormat::ParseFromString (str, &pb));
 
-    return FindAttackRange (pb);
+    return CombatEntity::FindAttackRange (pb);
   }
 
 };
+
+namespace
+{
 
 TEST_F (FindAttackRangeTests, NoAttacks)
 {

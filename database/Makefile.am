@@ -31,7 +31,7 @@ noinst_HEADERS = \
   account.hpp \
   building.hpp \
   character.hpp \
-  combat.hpp \
+  combat.hpp combat.tpp \
   coord.hpp coord.tpp \
   damagelists.hpp \
   database.hpp database.tpp \

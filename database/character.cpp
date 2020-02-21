@@ -26,24 +26,21 @@ namespace pxd
 {
 
 Character::Character (Database& d, const std::string& o, const Faction f)
-  : db(d), id(db.GetNextId ()), owner(o), faction(f),
+  : CombatEntity(d), id(db.GetNextId ()), owner(o), faction(f),
     pos(0, 0), inBuilding(Database::EMPTY_ID),
     enterBuilding(Database::EMPTY_ID), busy(0),
-    oldCanRegen(false), isNew(true), dirtyFields(true)
+    dirtyFields(true)
 {
   VLOG (1)
       << "Created new character with ID " << id << ": "
       << "owner=" << owner;
   volatileMv.SetToDefault ();
-  hp.SetToDefault ();
-  regenData.SetToDefault ();
-  target.SetToDefault ();
   data.SetToDefault ();
   Validate ();
 }
 
 Character::Character (Database& d, const Database::Result<CharacterResult>& res)
-  : db(d), isNew(false), dirtyFields(false)
+  : CombatEntity(d, res), dirtyFields(false)
 {
   id = res.Get<CharacterResult::id> ();
   owner = res.Get<CharacterResult::owner> ();
@@ -63,20 +60,9 @@ Character::Character (Database& d, const Database::Result<CharacterResult>& res)
     enterBuilding = res.Get<CharacterResult::enterbuilding> ();
 
   volatileMv = res.GetProto<CharacterResult::volatilemv> ();
-  hp = res.GetProto<CharacterResult::hp> ();
-  regenData = res.GetProto<CharacterResult::regendata> ();
-
-  if (res.IsNull<CharacterResult::target> ())
-    target.SetToDefault ();
-  else
-    target = res.GetProto<CharacterResult::target> ();
-
   busy = res.Get<CharacterResult::busy> ();
   inv = res.GetProto<CharacterResult::inventory> ();
   data = res.GetProto<CharacterResult::proto> ();
-
-  attackRange = res.Get<CharacterResult::attackrange> ();
-  oldCanRegen = res.Get<CharacterResult::canregen> ();
 
   VLOG (1) << "Fetched character with ID " << id << " from database result";
   Validate ();
@@ -86,11 +72,7 @@ Character::~Character ()
 {
   Validate ();
 
-  bool canRegen = oldCanRegen;
-  if (hp.IsDirty () || regenData.IsDirty ())
-    canRegen = ComputeCanRegen (hp.Get (), regenData.Get ());
-
-  if (isNew || regenData.IsDirty () || target.IsDirty ()
+  if (isNew || CombatEntity::IsDirtyFull ()
         || inv.IsDirty () || data.IsDirty ())
     {
       VLOG (1)
@@ -102,40 +84,35 @@ Character::~Character ()
            `owner`, `x`, `y`,
            `inbuilding`, `enterbuilding`,
            `volatilemv`, `hp`,
-           `busy`,
+           `busy`, `canregen`,
            `faction`,
-           `ismoving`, `ismining`, `attackrange`, `canregen`,
+           `ismoving`, `ismining`, `attackrange`,
            `regendata`, `target`, `inventory`, `proto`)
           VALUES
           (?1,
            ?2, ?3, ?4,
            ?5, ?6,
            ?7, ?8,
-           ?9,
+           ?9, ?10,
            ?101,
-           ?102, ?103, ?104, ?105,
-           ?106, ?107, ?108, ?109)
+           ?102, ?103, ?104,
+           ?105, ?106, ?107, ?108)
       )");
 
       BindFieldValues (stmt);
+      CombatEntity::BindFullFields (stmt, 105, 106, 104);
+
       BindFactionParameter (stmt, 101, faction);
       stmt.Bind (102, data.Get ().has_movement ());
       stmt.Bind (103, data.Get ().mining ().active ());
-      stmt.Bind (104, FindAttackRange (data.Get ().combat_data ()));
-      stmt.Bind (105, canRegen);
-      stmt.BindProto (106, regenData);
-      if (target.Get ().has_id ())
-        stmt.BindProto (107, target);
-      else
-        stmt.BindNull (107);
-      stmt.BindProto (108, inv.GetProtoForBinding ());
-      stmt.BindProto (109, data);
+      stmt.BindProto (107, inv.GetProtoForBinding ());
+      stmt.BindProto (108, data);
       stmt.Execute ();
 
       return;
     }
 
-  if (dirtyFields || volatileMv.IsDirty () || hp.IsDirty ())
+  if (dirtyFields || volatileMv.IsDirty () || CombatEntity::IsDirtyFields ())
     {
       VLOG (1)
           << "Character " << id << " has been modified in the DB fields only,"
@@ -150,14 +127,12 @@ Character::~Character ()
               `volatilemv` = ?7,
               `hp` = ?8,
               `busy` = ?9,
-              `canregen` = ?101
+              `canregen` = ?10
           WHERE `id` = ?1
       )");
 
       BindFieldValues (stmt);
-      stmt.Bind (101, canRegen);
       stmt.Execute ();
-
       return;
     }
 
@@ -167,6 +142,8 @@ Character::~Character ()
 void
 Character::Validate () const
 {
+  CombatEntity::Validate ();
+
   CHECK_NE (id, Database::EMPTY_ID);
   CHECK_GE (busy, 0);
 
@@ -187,9 +164,6 @@ Character::Validate () const
       CHECK (!pb.has_movement ()) << "Busy character should not be moving";
     }
 
-  if (!isNew && !data.IsDirty ())
-    CHECK_EQ (attackRange, FindAttackRange (pb.combat_data ()));
-
   if (!regenData.IsDirty () && !hp.IsDirty ())
     CHECK_EQ (oldCanRegen, ComputeCanRegen ());
 
@@ -204,6 +178,8 @@ Character::Validate () const
 void
 Character::BindFieldValues (Database::Statement& stmt) const
 {
+  CombatEntity::BindFields (stmt, 8, 10);
+
   stmt.Bind (1, id);
   stmt.Bind (2, owner);
   if (IsInBuilding ())
@@ -222,7 +198,6 @@ Character::BindFieldValues (Database::Statement& stmt) const
   else
     stmt.Bind (6, enterBuilding);
   stmt.BindProto (7, volatileMv);
-  stmt.BindProto (8, hp);
   stmt.Bind (9, busy);
 }
 
@@ -238,14 +213,6 @@ Character::GetBuildingId () const
 {
   CHECK (IsInBuilding ());
   return inBuilding;
-}
-
-HexCoord::IntT
-Character::GetAttackRange () const
-{
-  CHECK (!isNew);
-  CHECK (!data.IsDirty ());
-  return attackRange;
 }
 
 uint64_t

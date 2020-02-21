@@ -65,13 +65,10 @@ struct CharacterResult : public ResultWithFaction, public ResultWithCoord,
  * methods from CharacterTable should be used.  Furthermore, variables should
  * be of type CharacterTable::Handle (or using auto) to get move semantics.
  */
-class Character
+class Character : public CombatEntity
 {
 
 private:
-
-  /** Database reference this belongs to.  */
-  Database& db;
 
   /** The underlying integer ID in the database.  */
   Database::IdT id;
@@ -94,23 +91,6 @@ private:
   /** Volatile movement proto.  */
   LazyProto<proto::VolatileMovement> volatileMv;
 
-  /** Current HP proto.  */
-  LazyProto<proto::HP> hp;
-
-  /**
-   * Data about HP regeneration.  This is accessed often but not updated
-   * frequently.  If modified, then we do a full update as per the proto
-   * update.  But parsing it should be cheap.
-   */
-  LazyProto<proto::RegenData> regenData;
-
-  /**
-   * The selected target as TargetId proto, if any.  If there is no target,
-   * then the underlying database column is NULL, and this proto will have
-   * no fields set.
-   */
-  LazyProto<proto::TargetId> target;
-
   /** The number of blocks (or zero) the character is still busy.  */
   int busy;
 
@@ -119,21 +99,6 @@ private:
 
   /** All other data in the protocol buffer.  */
   LazyProto<proto::Character> data;
-
-  /** The character's longest attack or zero if there are none.  */
-  HexCoord::IntT attackRange;
-
-  /**
-   * Stores the canregen flag from the database.  We only update it if
-   * the RegenData or HP have been modified.
-   */
-  bool oldCanRegen;
-
-  /**
-   * Set to true if this is a new character, so we know that we have to
-   * insert it into the database.
-   */
-  bool isNew;
 
   /**
    * Set to true if any modification to the non-proto columns was made that
@@ -166,13 +131,23 @@ private:
    */
   void BindFieldValues (Database::Statement& stmt) const;
 
-  /**
-   * Validates the character state for consistency.  CHECK-fails if there
-   * is any mismatch in the fields.
-   */
-  void Validate () const;
-
   friend class CharacterTable;
+
+protected:
+
+  void Validate () const override;
+
+  bool
+  IsDirtyCombatData () const override
+  {
+    return data.IsDirty ();
+  }
+
+  const proto::CombatData&
+  GetCombatData () const override
+  {
+    return data.Get ().combat_data ();
+  }
 
 public:
 
@@ -270,42 +245,6 @@ public:
     return volatileMv.Mutable ();
   }
 
-  const proto::HP&
-  GetHP () const
-  {
-    return hp.Get ();
-  }
-
-  proto::HP&
-  MutableHP ()
-  {
-    return hp.Mutable ();
-  }
-
-  const proto::RegenData&
-  GetRegenData () const
-  {
-    return regenData.Get ();
-  }
-
-  proto::RegenData&
-  MutableRegenData ()
-  {
-    return regenData.Mutable ();
-  }
-
-  const proto::TargetId&
-  GetTarget () const
-  {
-    return target.Get ();
-  }
-
-  proto::TargetId&
-  MutableTarget ()
-  {
-    return target.Mutable ();
-  }
-
   unsigned
   GetBusy () const
   {
@@ -342,15 +281,6 @@ public:
   {
     return data.Mutable ();
   }
-
-  /**
-   * Returns the character's attack range or zero if there are no attacks.
-   * Note that this method must only be called if the character has been
-   * read from the database (not newly constructed) and if its main proto
-   * has not been modified.  That allows us to use the cached attack-range
-   * column in the database directly.
-   */
-  HexCoord::IntT GetAttackRange () const;
 
   /**
    * Returns the used cargo space for the character's inventory.

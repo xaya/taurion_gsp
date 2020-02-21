@@ -18,11 +18,68 @@
 
 #include "combat.hpp"
 
+#include <glog/logging.h>
+
 namespace pxd
 {
 
+CombatEntity::CombatEntity (Database& d)
+  : db(d), isNew(true), oldCanRegen(false)
+{
+  hp.SetToDefault ();
+  regenData.SetToDefault ();
+  target.SetToDefault ();
+}
+
+void
+CombatEntity::BindFullFields (Database::Statement& stmt,
+                              const unsigned indRegenData,
+                              const unsigned indTarget,
+                              const unsigned indAttackRange) const
+{
+  stmt.BindProto (indRegenData, regenData);
+  stmt.Bind (indAttackRange, FindAttackRange (GetCombatData ()));
+
+  if (target.Get ().has_id ())
+    stmt.BindProto (indTarget, target);
+  else
+    stmt.BindNull (indTarget);
+}
+
+void
+CombatEntity::BindFields (Database::Statement& stmt, const unsigned indHp,
+                          const unsigned indCanRegen) const
+{
+  bool canRegen = oldCanRegen;
+  if (hp.IsDirty () || regenData.IsDirty ())
+    canRegen = ComputeCanRegen (hp.Get (), regenData.Get ());
+
+  stmt.BindProto (indHp, hp);
+  stmt.Bind (indCanRegen, canRegen);
+}
+
+void
+CombatEntity::Validate () const
+{
+#ifdef ENABLE_SLOW_ASSERTS
+
+  if (!isNew && !IsDirtyCombatData ())
+    CHECK_EQ (attackRange, FindAttackRange (pb.combat_data ()));
+
+#endif // ENABLE_SLOW_ASSERTS
+}
+
+HexCoord::IntT
+CombatEntity::GetAttackRange () const
+{
+  CHECK (!isNew);
+  CHECK (!IsDirtyCombatData ());
+  return oldAttackRange;
+}
+
 bool
-ComputeCanRegen (const proto::HP& hp, const proto::RegenData& regen)
+CombatEntity::ComputeCanRegen (const proto::HP& hp,
+                               const proto::RegenData& regen)
 {
   if (regen.shield_regeneration_mhp () == 0)
     return false;
@@ -31,7 +88,7 @@ ComputeCanRegen (const proto::HP& hp, const proto::RegenData& regen)
 }
 
 HexCoord::IntT
-FindAttackRange (const proto::CombatData& cd)
+CombatEntity::FindAttackRange (const proto::CombatData& cd)
 {
   HexCoord::IntT res = 0;
   for (const auto& attack : cd.attacks ())
