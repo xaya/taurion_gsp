@@ -74,6 +74,15 @@ class GodModeTest (PXTest):
           {"x": 101, "y": 149},
           {"x": 102, "y": 148},
         ],
+      "combat":
+        {
+          "hp":
+            {
+              "current": {"armour": 0, "shield": 0},
+              "max": {"armour": 0, "shield": 0},
+              "regeneration": 0.0,
+            },
+        },
       "inventories": {},
     })
     self.assertEqual (buildings[1003].data, {
@@ -90,6 +99,15 @@ class GodModeTest (PXTest):
           {"x": -100, "y": -149},
           {"x": -100, "y": -148},
         ],
+      "combat":
+        {
+          "hp":
+            {
+              "current": {"armour": 0, "shield": 0},
+              "max": {"armour": 0, "shield": 0},
+              "regeneration": 0.0,
+            },
+        },
       "inventories": {},
     })
 

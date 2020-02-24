@@ -97,12 +97,6 @@ protected:
     return data.IsDirty ();
   }
 
-  const proto::CombatData&
-  GetCombatData () const override
-  {
-    return data.Get ().combat_data ();
-  }
-
 public:
 
   /**
@@ -167,6 +161,12 @@ public:
   MutableProto ()
   {
     return data.Mutable ();
+  }
+
+  const proto::CombatData&
+  GetCombatData () const override
+  {
+    return data.Get ().combat_data ();
   }
 
 };

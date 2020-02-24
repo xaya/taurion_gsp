@@ -143,12 +143,6 @@ protected:
     return data.IsDirty ();
   }
 
-  const proto::CombatData&
-  GetCombatData () const override
-  {
-    return data.Get ().combat_data ();
-  }
-
 public:
 
   /**
@@ -286,6 +280,12 @@ public:
    * Returns the used cargo space for the character's inventory.
    */
   uint64_t UsedCargoSpace () const;
+
+  const proto::CombatData&
+  GetCombatData () const override
+  {
+    return data.Get ().combat_data ();
+  }
 
 };
 

@@ -167,11 +167,6 @@ protected:
    */
   virtual bool IsDirtyCombatData () const = 0;
 
-  /**
-   * Subclasses must implement this to return the combat data proto.
-   */
-  virtual const proto::CombatData& GetCombatData () const = 0;
-
 public:
 
   /**
@@ -224,6 +219,11 @@ public:
    * column in the database directly.
    */
   HexCoord::IntT GetAttackRange () const;
+
+  /**
+   * Subclasses must implement this to return the combat data proto.
+   */
+  virtual const proto::CombatData& GetCombatData () const = 0;
 
 };
 
