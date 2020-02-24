@@ -998,10 +998,13 @@ MaybeGodTeleport (CharacterTable& tbl, const Json::Value& cmd)
 }
 
 /**
- * Tries to parse and execute a god-mode command to set HP.
+ * Tries to parse and execute a god-mode command to set HP, either
+ * for characters or buildings (depending on which type of table
+ * is passed in).
  */
-void
-MaybeGodSetHp (CharacterTable& tbl, const Json::Value& cmd)
+template <typename T>
+  void
+  MaybeGodSetHp (T& tbl, const Json::Value& cmd)
 {
   if (!cmd.isObject ())
     return;
@@ -1042,6 +1045,20 @@ MaybeGodSetHp (CharacterTable& tbl, const Json::Value& cmd)
       if (val.isUInt64 ())
         maxHP.set_shield (val.asUInt64 ());
     }
+}
+
+/**
+ * Tries to parse and execute a full "set HP" command, which is expected
+ * to contain a list of buildings and/or characters to update.
+ */
+void
+MaybeGodAllSetHp (BuildingsTable& b, CharacterTable& c, const Json::Value& cmd)
+{
+  if (!cmd.isObject ())
+    return;
+
+  MaybeGodSetHp (b, cmd["b"]);
+  MaybeGodSetHp (c, cmd["c"]);
 }
 
 /**
@@ -1198,7 +1215,7 @@ MoveProcessor::HandleGodMode (const Json::Value& cmd)
     }
 
   MaybeGodTeleport (characters, cmd["teleport"]);
-  MaybeGodSetHp (characters, cmd["sethp"]);
+  MaybeGodAllSetHp (buildings, characters, cmd["sethp"]);
   MaybeGodBuild (accounts, buildings, cmd["build"]);
   MaybeGodDropLoot (groundLoot, cmd["drop"]);
 }
