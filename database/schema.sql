@@ -149,10 +149,34 @@ CREATE TABLE IF NOT EXISTS `buildings` (
   `x` INTEGER NOT NULL,
   `y` INTEGER NOT NULL,
 
+  -- Current HP data as an encoded HP proto.  This is stored directly in
+  -- the database rather than the "proto" BLOB since it is a field that
+  -- is changed frequently.
+  `hp` BLOB NULL NOT NULL,
+
+  -- Data about HP regeneration encoded as RegenData proto.
+  `regendata` BLOB NOT NULL,
+
+  -- The attacked target (if any), as a serialised TargetId proto.
+  `target` BLOB NULL,
+
+  -- The range of the longest attack this building has or NULL if there
+  -- is no attack at all.
+  `attackrange` INTEGER NULL,
+
+  -- Flag indicating whether a building may need HP regeneration.
+  `canregen` INTEGER NULL NOT NULL,
+
   -- Additional data encoded as a Building protocol buffer.
   `proto` BLOB NOT NULL
 
 );
+
+CREATE INDEX IF NOT EXISTS `buildings_pos` ON `buildings` (`x`, `y`);
+CREATE INDEX IF NOT EXISTS `buildings_attackrange`
+  ON `buildings` (`attackrange`);
+CREATE INDEX IF NOT EXISTS `buildings_canregen` ON `buildings` (`canregen`);
+CREATE INDEX IF NOT EXISTS `buildings_target` ON `buildings` (`target`);
 
 -- =============================================================================
 

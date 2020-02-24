@@ -25,8 +25,8 @@ namespace pxd
 
 Building::Building (Database& d, const std::string& t,
                     const std::string& o, const Faction f)
-  : db(d), id(db.GetNextId ()), type(t), owner(o), faction(f),
-    pos(0, 0), isNew(true), dirtyFields(true)
+  : CombatEntity(d), id(db.GetNextId ()), type(t), owner(o), faction(f),
+    pos(0, 0), dirtyFields(true)
 {
   VLOG (1)
       << "Created new building with ID " << id << ": "
@@ -38,7 +38,7 @@ Building::Building (Database& d, const std::string& t,
 }
 
 Building::Building (Database& d, const Database::Result<BuildingResult>& res)
-  : db(d), isNew(false), dirtyFields(false)
+  : CombatEntity(d, res), dirtyFields(false)
 {
   id = res.Get<BuildingResult::id> ();
   type = res.Get<BuildingResult::type> ();
@@ -57,7 +57,8 @@ Building::~Building ()
      not modified that often, so it seems not like a useful optimisation
      to specifically handle that case.  */
 
-  if (isNew || dirtyFields || data.IsDirty ())
+  if (isNew || CombatEntity::IsDirtyFull () || CombatEntity::IsDirtyFields ()
+        || dirtyFields || data.IsDirty ())
     {
       VLOG (1)
           << "Building " << id << " has been modified, updating DB";
@@ -66,11 +67,15 @@ Building::~Building ()
         INSERT OR REPLACE INTO `buildings`
           (`id`, `type`,
            `faction`, `owner`, `x`, `y`,
+           `hp`, `regendata`, `target`,
+           `attackrange`, `canregen`,
            `proto`)
           VALUES
           (?1, ?2,
            ?3, ?4, ?5, ?6,
-           ?7)
+           ?7, ?8, ?9,
+           ?10, ?11,
+           ?12)
       )");
 
       stmt.Bind (1, id);
@@ -81,7 +86,9 @@ Building::~Building ()
       else
         stmt.Bind (4, owner);
       BindCoordParameter (stmt, 5, 6, pos);
-      stmt.BindProto (7, data);
+      CombatEntity::BindFields (stmt, 7, 11);
+      CombatEntity::BindFullFields (stmt, 8, 9, 10);
+      stmt.BindProto (12, data);
       stmt.Execute ();
 
       return;
@@ -157,6 +164,42 @@ BuildingsTable::DeleteById (const Database::IdT id)
   )");
   stmt.Bind (1, id);
   stmt.Execute ();
+}
+
+Database::Result<BuildingResult>
+BuildingsTable::QueryWithAttacks ()
+{
+  auto stmt = db.Prepare (R"(
+    SELECT *
+      FROM `buildings`
+      WHERE `attackrange` > 0
+      ORDER BY `id`
+  )");
+  return stmt.Query<BuildingResult> ();
+}
+
+Database::Result<BuildingResult>
+BuildingsTable::QueryForRegen ()
+{
+  auto stmt = db.Prepare (R"(
+    SELECT *
+      FROM `buildings`
+      WHERE `canregen`
+      ORDER BY `id`
+  )");
+  return stmt.Query<BuildingResult> ();
+}
+
+Database::Result<BuildingResult>
+BuildingsTable::QueryWithTarget ()
+{
+  auto stmt = db.Prepare (R"(
+    SELECT *
+      FROM `buildings`
+      WHERE `target` IS NOT NULL
+      ORDER BY `id`
+  )");
+  return stmt.Query<BuildingResult> ();
 }
 
 } // namespace pxd

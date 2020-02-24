@@ -18,6 +18,8 @@
 
 syntax = "proto2";
 
+import "combat.proto";
+
 package pxd.proto;
 
 /**
@@ -46,5 +48,12 @@ message Building
 
   /** The transformation applied to the building's base shape.  */
   optional ShapeTransformation shape_trafo = 1;
+
+  /**
+   * Static combat data for this building (besides regeneration).  This is
+   * mostly based on the building type, but may change if the building is
+   * upgraded or the account gains skills.
+   */
+  optional CombatData combat_data = 2;
 
 }
