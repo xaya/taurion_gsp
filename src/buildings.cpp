@@ -63,15 +63,32 @@ InitialiseBuildings (Database& db)
 
   auto h = tbl.CreateNew ("obelisk1", "", Faction::ANCIENT);
   h->SetCentre (HexCoord (-125, 810));
+  UpdateBuildingStats (*h);
   h.reset ();
 
   h = tbl.CreateNew ("obelisk2", "", Faction::ANCIENT);
   h->SetCentre (HexCoord (-1'301, 902));
+  UpdateBuildingStats (*h);
   h.reset ();
 
   h = tbl.CreateNew ("obelisk3", "", Faction::ANCIENT);
   h->SetCentre (HexCoord (-637, -291));
+  UpdateBuildingStats (*h);
   h.reset ();
+}
+
+void
+UpdateBuildingStats (Building& b)
+{
+  const auto& buildingData = RoConfigData ().building_types ();
+  const auto mit = buildingData.find (b.GetType ());
+  CHECK (mit != buildingData.end ())
+      << "Unknown building type: " << b.GetType ();
+  const auto& roData = mit->second;
+
+  *b.MutableProto ().mutable_combat_data () = roData.combat_data ();
+  b.MutableRegenData () = roData.regen_data ();
+  b.MutableHP () = roData.regen_data ().max_hp ();
 }
 
 void

@@ -1139,6 +1139,7 @@ MaybeGodBuild (AccountsTable& accounts, BuildingsTable& tbl,
       auto h = tbl.CreateNew (type, owner, f);
       h->SetCentre (centre);
       h->MutableProto ().mutable_shape_trafo ()->set_rotation_steps (rot);
+      UpdateBuildingStats (*h);
       LOG (INFO)
           << "God building " << type
           << " for " << owner << " of faction " << FactionToString (f) << ":\n"

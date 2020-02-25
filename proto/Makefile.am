@@ -11,7 +11,8 @@ ROCONFIG_TEXT_PROTOS = \
   roconfig/buildings/ancient3.pb.text \
   roconfig/buildings/obelisk1.pb.text \
   roconfig/buildings/obelisk2.pb.text \
-  roconfig/buildings/obelisk3.pb.text
+  roconfig/buildings/obelisk3.pb.text \
+  roconfig/buildings/turrets.pb.text
 
 PROTOS = \
   building.proto \

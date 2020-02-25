@@ -71,6 +71,15 @@ TEST_F (BuildingsTests, GetBuildingShape)
   EXPECT_DEATH (GetBuildingShape (*tbl.GetById (id2)), "undefined type");
 }
 
+TEST_F (BuildingsTests, UpdateBuildingStats)
+{
+  auto h = tbl.CreateNew ("r_rt", "domob", Faction::RED);
+  UpdateBuildingStats (*h);
+  EXPECT_EQ (h->GetProto ().combat_data ().attacks_size (), 1);
+  EXPECT_GT (h->GetRegenData ().max_hp ().armour (), 0);
+  EXPECT_GT (h->GetHP ().armour (), 0);
+}
+
 /* ************************************************************************** */
 
 class ProcessEnterBuildingsTests : public BuildingsTests

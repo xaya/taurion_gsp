@@ -46,6 +46,12 @@ std::vector<HexCoord> GetBuildingShape (const Building& b);
 void InitialiseBuildings (Database& db);
 
 /**
+ * Computes and updates the stats of a building (e.g. combat data, HP) from
+ * its type and other attributes.
+ */
+void UpdateBuildingStats (Building& b);
+
+/**
  * Processes all characters that want to enter a building, and lets them in
  * if it is possible for them.
  */
