@@ -18,6 +18,7 @@
 
 #include "target.hpp"
 
+#include "building.hpp"
 #include "character.hpp"
 #include "dbtest.hpp"
 
@@ -38,10 +39,9 @@ class TargetFinderTests : public DBTestWithSchema
 
 protected:
 
-  /** Character table instance for inserting test characters.  */
+  BuildingsTable buildings;
   CharacterTable characters;
 
-  /** TargetFinder instance for use in the tests.  */
   TargetFinder finder;
 
   /**
@@ -54,12 +54,25 @@ protected:
   TargetFinder::ProcessingFcn cb;
 
   TargetFinderTests ()
-    : characters(db), finder(db)
+    : buildings(db), characters(db), finder(db)
   {
     cb = [this] (const HexCoord& c, const proto::TargetId& t)
       {
         found.emplace_back (c, t);
       };
+  }
+
+  /**
+   * Inserts a test building at the given centre and with the given faction.
+   * Returns the ID.
+   */
+  Database::IdT
+  InsertBuilding (const HexCoord& pos, const Faction faction)
+  {
+    auto h = buildings.CreateNew ("checkmark", "", faction);
+    h->SetCentre (pos);
+
+    return h->GetId ();
   }
 
   /**
@@ -130,6 +143,52 @@ TEST_F (TargetFinderTests, CharacterRange)
       EXPECT_EQ (found[i].second.type (), proto::TargetId::TYPE_CHARACTER);
       EXPECT_EQ (found[i].second.id (), expected[i].first);
     }
+}
+
+TEST_F (TargetFinderTests, BuildingFactions)
+{
+  const HexCoord pos(10, -15);
+
+  InsertBuilding (pos, Faction::ANCIENT);
+  InsertBuilding (pos, Faction::RED);
+  const auto idEnemy1 = InsertBuilding (pos, Faction::GREEN);
+  const auto idEnemy2 = InsertBuilding (pos, Faction::BLUE);
+
+  finder.ProcessL1Targets (pos, 1, Faction::RED, cb);
+
+  ASSERT_EQ (found.size (), 2);
+
+  EXPECT_EQ (found[0].first, pos);
+  EXPECT_EQ (found[0].second.type (), proto::TargetId::TYPE_BUILDING);
+  EXPECT_EQ (found[0].second.id (), idEnemy1);
+
+  EXPECT_EQ (found[1].first, pos);
+  EXPECT_EQ (found[1].second.type (), proto::TargetId::TYPE_BUILDING);
+  EXPECT_EQ (found[1].second.id (), idEnemy2);
+}
+
+TEST_F (TargetFinderTests, BuildingsAndCharacters)
+{
+  const HexCoord pos(10, -15);
+
+  const auto building1 = InsertBuilding (pos, Faction::GREEN);
+  const auto char1 = InsertCharacter (pos, Faction::BLUE);
+  const auto building2 = InsertBuilding (pos, Faction::GREEN);
+  const auto char2 = InsertCharacter (pos, Faction::BLUE);
+
+  finder.ProcessL1Targets (pos, 1, Faction::RED, cb);
+
+  ASSERT_EQ (found.size (), 4);
+
+  EXPECT_EQ (found[0].second.type (), proto::TargetId::TYPE_BUILDING);
+  EXPECT_EQ (found[0].second.id (), building1);
+  EXPECT_EQ (found[1].second.type (), proto::TargetId::TYPE_BUILDING);
+  EXPECT_EQ (found[1].second.id (), building2);
+
+  EXPECT_EQ (found[2].second.type (), proto::TargetId::TYPE_CHARACTER);
+  EXPECT_EQ (found[2].second.id (), char1);
+  EXPECT_EQ (found[3].second.type (), proto::TargetId::TYPE_CHARACTER);
+  EXPECT_EQ (found[3].second.id (), char2);
 }
 
 } // anonymous namespace

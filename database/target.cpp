@@ -26,9 +26,10 @@ namespace
 
 struct TargetResult : public Database::ResultType
 {
-  RESULT_COLUMN (int64_t, id, 1);
-  RESULT_COLUMN (int64_t, x, 2);
-  RESULT_COLUMN (int64_t, y, 3);
+  RESULT_COLUMN (std::string, type, 1);
+  RESULT_COLUMN (int64_t, id, 2);
+  RESULT_COLUMN (int64_t, x, 3);
+  RESULT_COLUMN (int64_t, y, 4);
 };
 
 } // anonymous namespace
@@ -42,10 +43,16 @@ TargetFinder::ProcessL1Targets (const HexCoord& centre,
   /* Note that the "between" statement is automatically false for NULL values,
      hence characters in buildings are ignored (as they should).  */
   auto stmt = db.Prepare (R"(
-    SELECT `x`, `y`, `id` FROM `characters`
+    SELECT `x`, `y`, `id`, 'character' AS `type`
+      FROM `characters`
       WHERE (`x` BETWEEN ?1 AND ?2) AND (`y` BETWEEN ?3 AND ?4)
               AND `faction` != ?5
-      ORDER BY `id`
+    UNION ALL
+    SELECT `x`, `y`, `id`, 'building' AS `type`
+      FROM `buildings`
+      WHERE (`x` BETWEEN ?1 AND ?2) AND (`y` BETWEEN ?3 AND ?4)
+              AND `faction` != ?5 AND `faction` != 4
+    ORDER BY `type`, `id`
   )");
 
   /* The query is actually about an L-infinity range, since that is easy
@@ -67,7 +74,14 @@ TargetFinder::ProcessL1Targets (const HexCoord& centre,
 
       proto::TargetId targetId;
       targetId.set_id (res.Get<TargetResult::id> ());
-      targetId.set_type (proto::TargetId::TYPE_CHARACTER);
+
+      const auto type = res.Get<TargetResult::type> ();
+      if (type == "building")
+        targetId.set_type (proto::TargetId::TYPE_BUILDING);
+      else if (type == "character")
+        targetId.set_type (proto::TargetId::TYPE_CHARACTER);
+      else
+        LOG (FATAL) << "Unexpected target type: " << type;
 
       cb (coord, targetId);
     }

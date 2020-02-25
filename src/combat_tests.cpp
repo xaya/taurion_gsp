@@ -65,12 +65,12 @@ protected:
   {}
 
   /**
-   * Adds an attack with the given range to the character proto.
+   * Adds an attack with the given range to the combat data.
    */
   static proto::Attack&
-  AddAttackWithRange (proto::Character& pb, const HexCoord::IntT range)
+  AddAttackWithRange (proto::CombatData& pb, const HexCoord::IntT range)
   {
-    auto* attack = pb.mutable_combat_data ()->add_attacks ();
+    auto* attack = pb.add_attacks ();
     attack->set_range (range);
     return *attack;
   }
@@ -97,21 +97,21 @@ TEST_F (TargetSelectionTests, NoTargets)
   const auto id1 = c->GetId ();
   c->SetPosition (HexCoord (-10, 0));
   c->MutableTarget ().set_id (42);
-  AddAttackWithRange (c->MutableProto (), 10);
+  AddAttackWithRange (*c->MutableProto ().mutable_combat_data (), 10);
   c.reset ();
 
   c = characters.CreateNew ("domob",Faction::RED);
   const auto id2 = c->GetId ();
   c->SetPosition (HexCoord (-10, 1));
   c->MutableTarget ().set_id (42);
-  AddAttackWithRange (c->MutableProto (), 10);
+  AddAttackWithRange (*c->MutableProto ().mutable_combat_data (), 10);
   c.reset ();
 
   c = characters.CreateNew ("domob", Faction::GREEN);
   const auto id3 = c->GetId ();
   c->SetPosition (HexCoord (10, 0));
   c->MutableTarget ().set_id (42);
-  AddAttackWithRange (c->MutableProto (), 10);
+  AddAttackWithRange (*c->MutableProto ().mutable_combat_data (), 10);
   c.reset ();
 
   FindCombatTargets (db, rnd);
@@ -126,18 +126,18 @@ TEST_F (TargetSelectionTests, ClosestTarget)
   auto c = characters.CreateNew ("domob", Faction::RED);
   const auto idFighter = c->GetId ();
   c->SetPosition (HexCoord (0, 0));
-  AddAttackWithRange (c->MutableProto (), 10);
+  AddAttackWithRange (*c->MutableProto ().mutable_combat_data (), 10);
   c.reset ();
 
   c = characters.CreateNew ("domob", Faction::GREEN);
   c->SetPosition (HexCoord (2, 2));
-  AddAttackWithRange (c->MutableProto (), 10);
+  AddAttackWithRange (*c->MutableProto ().mutable_combat_data (), 10);
   c.reset ();
 
   c = characters.CreateNew ("domob", Faction::GREEN);
   const auto idTarget = c->GetId ();
   c->SetPosition (HexCoord (1, 1));
-  AddAttackWithRange (c->MutableProto (), 10);
+  AddAttackWithRange (*c->MutableProto ().mutable_combat_data (), 10);
   c.reset ();
 
   /* Since target selection is randomised, run this multiple times to ensure
@@ -154,13 +154,54 @@ TEST_F (TargetSelectionTests, ClosestTarget)
     }
 }
 
+TEST_F (TargetSelectionTests, WithBuildings)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  const auto idChar = c->GetId ();
+  c->SetPosition (HexCoord (0, 0));
+  AddAttackWithRange (*c->MutableProto ().mutable_combat_data (), 10);
+  c.reset ();
+
+  auto b = buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+  b->SetCentre (HexCoord (0, 0));
+  b.reset ();
+
+  b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  b->SetCentre (HexCoord (0, -1));
+  b.reset ();
+
+  b = buildings.CreateNew ("checkmark", "domob", Faction::GREEN);
+  const auto idBuilding = b->GetId ();
+  b->SetCentre (HexCoord (0, 2));
+  AddAttackWithRange (*b->MutableProto ().mutable_combat_data (), 10);
+  b.reset ();
+
+  c = characters.CreateNew ("domob", Faction::GREEN);
+  c->SetPosition (HexCoord (0, 3));
+  c.reset ();
+
+  FindCombatTargets (db, rnd);
+
+  c = characters.GetById (idChar);
+  const auto* t = &c->GetTarget ();
+  ASSERT_TRUE (t->has_id ());
+  EXPECT_EQ (t->type (), proto::TargetId::TYPE_BUILDING);
+  EXPECT_EQ (t->id (), idBuilding);
+
+  b = buildings.GetById (idBuilding);
+  t = &b->GetTarget ();
+  ASSERT_TRUE (t->has_id ());
+  EXPECT_EQ (t->type (), proto::TargetId::TYPE_CHARACTER);
+  EXPECT_EQ (t->id (), idChar);
+}
+
 TEST_F (TargetSelectionTests, InsideBuildings)
 {
   auto c = characters.CreateNew ("domob", Faction::RED);
   const auto id1 = c->GetId ();
   c->SetPosition (HexCoord (0, 0));
   c->MutableTarget ().set_id (42);
-  AddAttackWithRange (c->MutableProto (), 10);
+  AddAttackWithRange (*c->MutableProto ().mutable_combat_data (), 10);
   c.reset ();
 
   c = characters.CreateNew ("domob",Faction::GREEN);
@@ -170,7 +211,7 @@ TEST_F (TargetSelectionTests, InsideBuildings)
      target will not actually be cleared.  (But a new one should also not be
      added to it.)  We clear the target when the character enters a
      building.  */
-  AddAttackWithRange (c->MutableProto (), 10);
+  AddAttackWithRange (*c->MutableProto ().mutable_combat_data (), 10);
   c.reset ();
 
   FindCombatTargets (db, rnd);
@@ -184,8 +225,8 @@ TEST_F (TargetSelectionTests, MultipleAttacks)
   auto c = characters.CreateNew ("domob", Faction::RED);
   const auto id1 = c->GetId ();
   c->SetPosition (HexCoord (0, 0));
-  AddAttackWithRange (c->MutableProto (), 1);
-  AddAttackWithRange (c->MutableProto (), 10);
+  AddAttackWithRange (*c->MutableProto ().mutable_combat_data (), 1);
+  AddAttackWithRange (*c->MutableProto ().mutable_combat_data (), 10);
   c.reset ();
 
   c = characters.CreateNew ("domob", Faction::GREEN);
@@ -210,13 +251,15 @@ TEST_F (TargetSelectionTests, OnlyAreaAttacks)
   auto c = characters.CreateNew ("red", Faction::RED);
   const auto id1 = c->GetId ();
   c->SetPosition (HexCoord (0, 0));
-  AddAttackWithRange (c->MutableProto (), 7).set_area (true);
+  AddAttackWithRange (*c->MutableProto ().mutable_combat_data (), 7)
+      .set_area (true);
   c.reset ();
 
   c = characters.CreateNew ("green", Faction::GREEN);
   const auto id2 = c->GetId ();
   c->SetPosition (HexCoord (7, 0));
-  AddAttackWithRange (c->MutableProto (), 6).set_area (true);
+  AddAttackWithRange (*c->MutableProto ().mutable_combat_data (), 6)
+      .set_area (true);
   c.reset ();
 
   FindCombatTargets (db, rnd);
@@ -239,7 +282,7 @@ TEST_F (TargetSelectionTests, Randomisation)
   auto c = characters.CreateNew ("domob", Faction::RED);
   const auto idFighter = c->GetId ();
   c->SetPosition (HexCoord (0, 0));
-  AddAttackWithRange (c->MutableProto (), 10);
+  AddAttackWithRange (*c->MutableProto ().mutable_combat_data (), 10);
   c.reset ();
 
   std::map<Database::IdT, unsigned> targetMap;
@@ -290,7 +333,7 @@ protected:
   AddAttack (proto::Character& pb, const HexCoord::IntT range,
              const unsigned minDmg, const unsigned maxDmg)
   {
-    auto& attack = AddAttackWithRange (pb, range);
+    auto& attack = AddAttackWithRange (*pb.mutable_combat_data (), range);
     attack.set_min_damage (minDmg);
     attack.set_max_damage (maxDmg);
     return attack;
@@ -927,6 +970,22 @@ TEST_F (RegenerateHpTests, Works)
       EXPECT_EQ (c->GetHP ().shield (), t.shieldAfter);
       EXPECT_EQ (c->GetHP ().shield_mhp (), t.mhpShieldAfter);
     }
+}
+
+TEST_F (RegenerateHpTests, BuildingsRegenerate)
+{
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  const auto id = b->GetId ();
+  b->MutableHP ().set_shield (10);
+  auto& regen = b->MutableRegenData ();
+  regen.mutable_max_hp ()->set_shield (100);
+  regen.set_shield_regeneration_mhp (1000);
+  b.reset ();
+
+  RegenerateHP (db);
+
+  b = buildings.GetById (id);
+  EXPECT_EQ (b->GetHP ().shield (), 11);
 }
 
 TEST_F (RegenerateHpTests, InsideBuilding)

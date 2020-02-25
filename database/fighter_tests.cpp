@@ -18,6 +18,7 @@
 
 #include "fighter.hpp"
 
+#include "building.hpp"
 #include "character.hpp"
 #include "dbtest.hpp"
 #include "faction.hpp"
@@ -37,14 +38,13 @@ class FighterTests : public DBTestWithSchema
 
 protected:
 
-  /** Character table instance used in testing.  */
+  BuildingsTable buildings;
   CharacterTable characters;
 
-  /** FighterTable used for testing.  */
   FighterTable tbl;
 
   FighterTests ()
-    : characters(db), tbl(characters)
+    : buildings(db), characters(db), tbl(buildings, characters)
   {}
 
 };
@@ -62,99 +62,256 @@ TEST_F (FighterTests, Characters)
   const auto id2 = c->GetId ();
   c->MutableTarget ().set_id (42);
   c->MutableProto ().mutable_combat_data ()->add_attacks ()->set_range (10);
+  c->MutableRegenData ().set_shield_regeneration_mhp (2);
   c.reset ();
 
-  /* This one has no attacks.  */
-  characters.CreateNew ("blue", Faction::BLUE);
+  proto::TargetId targetId;
+  targetId.set_type (proto::TargetId::TYPE_CHARACTER);
 
-  unsigned cnt = 0;
-  tbl.ProcessWithAttacks ([this, id1, &cnt] (Fighter f)
-    {
-      ++cnt;
+  /* Read and modify first character through Fighter interface.  */
+  targetId.set_id (id1);
+  auto f = tbl.GetForTarget (targetId);
 
-      switch (f.GetFaction ())
-        {
-        case Faction::RED:
-          {
-            EXPECT_EQ (f.GetPosition (), HexCoord (2, 5));
-            EXPECT_EQ (f.GetCombatData ().attacks_size (), 1);
-            EXPECT_EQ (f.GetAttackRange (), 5);
+  EXPECT_EQ (f.GetFaction (), Faction::RED);
+  EXPECT_EQ (f.GetPosition (), HexCoord (2, 5));
+  EXPECT_EQ (f.GetCombatData ().attacks_size (), 1);
+  EXPECT_EQ (f.GetAttackRange (), 5);
 
-            const auto id = f.GetId ();
-            EXPECT_EQ (id.type (), proto::TargetId::TYPE_CHARACTER);
-            EXPECT_EQ (id.id (), id1);
+  const auto id = f.GetId ();
+  EXPECT_EQ (id.type (), proto::TargetId::TYPE_CHARACTER);
+  EXPECT_EQ (id.id (), id1);
 
-            auto& hp = f.MutableHP ();
-            EXPECT_EQ (hp.armour (), 10);
-            hp.set_armour (5);
+  auto& hp = f.MutableHP ();
+  EXPECT_EQ (hp.armour (), 10);
+  hp.set_armour (5);
 
-            proto::TargetId t;
-            t.set_id (5);
-            f.SetTarget (t);
+  proto::TargetId t;
+  t.set_id (5);
+  f.SetTarget (t);
+  f.reset ();
 
-            break;
-          }
+  /* Read and modify second character through Fighter interface.  */
+  targetId.set_id (id2);
+  f = tbl.GetForTarget (targetId);
 
-        case Faction::GREEN:
-          EXPECT_EQ (f.GetTarget ().id (), 42);
-          EXPECT_EQ (f.GetAttackRange (), 10);
-          f.ClearTarget ();
-          break;
+  EXPECT_EQ (f.GetFaction (), Faction::GREEN);
+  EXPECT_EQ (f.GetTarget ().id (), 42);
+  EXPECT_EQ (f.GetAttackRange (), 10);
+  EXPECT_EQ (f.GetRegenData ().shield_regeneration_mhp (), 2);
+  f.ClearTarget ();
+  f.reset ();
 
-        default:
-          FAIL ()
-              << "Unexpected faction: " << static_cast<int> (f.GetFaction ());
-        }
-    });
-  EXPECT_EQ (cnt, 2);
-
+  /* Verify modifications through the CharacterTable.  */
   c = characters.GetById (id1);
   EXPECT_EQ (c->GetTarget ().id (), 5);
   EXPECT_EQ (c->GetHP ().armour (), 5);
-  c.reset ();
-
   EXPECT_FALSE (characters.GetById (id2)->GetTarget ().has_id ());
+}
+
+TEST_F (FighterTests, Buildings)
+{
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::BLUE);
+  const auto id = b->GetId ();
+  b->SetCentre (HexCoord (10, -12));
+  b->MutableProto ().mutable_combat_data ()->add_attacks ()->set_range (10);
+  b->MutableHP ().set_armour (10);
+  b->MutableRegenData ().set_shield_regeneration_mhp (2);
+  b.reset ();
+
+  proto::TargetId targetId;
+  targetId.set_type (proto::TargetId::TYPE_BUILDING);
+  targetId.set_id (id);
+
+  auto f = tbl.GetForTarget (targetId);
+  EXPECT_EQ (f.GetFaction (), Faction::BLUE);
+  EXPECT_EQ (f.GetPosition (), HexCoord (10, -12));
+  EXPECT_EQ (f.GetCombatData ().attacks_size (), 1);
+  EXPECT_EQ (f.GetAttackRange (), 10);
+  EXPECT_EQ (f.GetId ().type (), proto::TargetId::TYPE_BUILDING);
+  EXPECT_EQ (f.GetId ().id (), id);
+  EXPECT_EQ (f.GetRegenData ().shield_regeneration_mhp (), 2);
+
+  auto& hp = f.MutableHP ();
+  EXPECT_EQ (hp.armour (), 10);
+  hp.set_armour (5);
+
+  proto::TargetId t;
+  t.set_id (5);
+  f.SetTarget (t);
+  f.reset ();
+
+  f = tbl.GetForTarget (targetId);
+  EXPECT_EQ (f.GetTarget ().id (), 5);
+  EXPECT_EQ (f.GetHP ().armour (), 5);
+  f.ClearTarget ();
+  f.reset ();
+
+  b = buildings.GetById (id);
+  EXPECT_FALSE (b->GetTarget ().has_id ());
 }
 
 TEST_F (FighterTests, GetForTarget)
 {
   auto c = characters.CreateNew ("domob", Faction::RED);
-  const auto id = c->GetId ();
+  const auto idChar = c->GetId ();
   c->SetPosition (HexCoord (42, -35));
   c.reset ();
 
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  const auto idBuilding = b->GetId ();
+  b->SetCentre (HexCoord (100, -100));
+  b.reset ();
+
   proto::TargetId targetId;
   targetId.set_type (proto::TargetId::TYPE_CHARACTER);
-  targetId.set_id (id);
-
+  targetId.set_id (idChar);
   auto f = tbl.GetForTarget (targetId);
   EXPECT_EQ (f.GetPosition (), HexCoord (42, -35));
   f.MutableHP ().set_shield (42);
   f.reset ();
 
-  targetId.set_id (100);
+  targetId.set_type (proto::TargetId::TYPE_BUILDING);
+  targetId.set_id (idBuilding);
+  f = tbl.GetForTarget (targetId);
+  EXPECT_EQ (f.GetPosition (), HexCoord (100, -100));
+  f.MutableHP ().set_shield (80);
+  f.reset ();
+
+  targetId.set_type (proto::TargetId::TYPE_CHARACTER);
+  targetId.set_id (idBuilding);
   EXPECT_TRUE (tbl.GetForTarget (targetId).empty ());
 
-  c = characters.GetById (id);
+  targetId.set_type (proto::TargetId::TYPE_BUILDING);
+  targetId.set_id (idChar);
+  EXPECT_TRUE (tbl.GetForTarget (targetId).empty ());
+
+  c = characters.GetById (idChar);
   EXPECT_EQ (c->GetHP ().shield (), 42);
+  b = buildings.GetById (idBuilding);
+  EXPECT_EQ (b->GetHP ().shield (), 80);
+}
+
+TEST_F (FighterTests, ProcessWithAttacks)
+{
+  buildings.CreateNew ("checkmark", "domob", Faction::GREEN);
+  characters.CreateNew ("domob", Faction::GREEN);
+
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  const auto idChar = c->GetId ();
+  c->MutableProto ().mutable_combat_data ()->add_attacks ()->set_range (5);
   c.reset ();
+
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  const auto idBuilding = b->GetId ();
+  b->MutableProto ().mutable_combat_data ()->add_attacks ()->set_range (5);
+  b.reset ();
+
+  unsigned cnt = 0;
+  tbl.ProcessWithAttacks ([&] (Fighter f)
+    {
+      ++cnt;
+      switch (cnt)
+        {
+        case 1:
+          EXPECT_EQ (f.GetId ().type (), proto::TargetId::TYPE_BUILDING);
+          EXPECT_EQ (f.GetId ().id (), idBuilding);
+          break;
+
+        case 2:
+          EXPECT_EQ (f.GetId ().type (), proto::TargetId::TYPE_CHARACTER);
+          EXPECT_EQ (f.GetId ().id (), idChar);
+          break;
+
+        default:
+          FAIL () << "Too many regen-able fighters returned";
+          break;
+        }
+    });
+  EXPECT_EQ (cnt, 2);
+}
+
+TEST_F (FighterTests, ProcessForRegen)
+{
+  buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+  buildings.CreateNew ("checkmark", "domob", Faction::GREEN);
+  characters.CreateNew ("domob", Faction::GREEN);
+
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  const auto idChar = c->GetId ();
+  c->MutableHP ().set_shield (2);
+  c->MutableRegenData ().mutable_max_hp ()->set_shield (10);
+  c->MutableRegenData ().set_shield_regeneration_mhp (1);
+  c.reset ();
+
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  const auto idBuilding = b->GetId ();
+  b->MutableHP ().set_shield (2);
+  b->MutableRegenData ().mutable_max_hp ()->set_shield (10);
+  b->MutableRegenData ().set_shield_regeneration_mhp (1);
+  b.reset ();
+
+  unsigned cnt = 0;
+  tbl.ProcessForRegen ([&] (Fighter f)
+    {
+      ++cnt;
+      switch (cnt)
+        {
+        case 1:
+          EXPECT_EQ (f.GetId ().type (), proto::TargetId::TYPE_BUILDING);
+          EXPECT_EQ (f.GetId ().id (), idBuilding);
+          break;
+
+        case 2:
+          EXPECT_EQ (f.GetId ().type (), proto::TargetId::TYPE_CHARACTER);
+          EXPECT_EQ (f.GetId ().id (), idChar);
+          break;
+
+        default:
+          FAIL () << "Too many regen-able fighters returned";
+          break;
+        }
+    });
+  EXPECT_EQ (cnt, 2);
 }
 
 TEST_F (FighterTests, ProcessWithTarget)
 {
+  buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+  buildings.CreateNew ("checkmark", "domob", Faction::GREEN);
+  characters.CreateNew ("domob", Faction::GREEN);
+
   auto c = characters.CreateNew ("domob", Faction::RED);
+  const auto idChar = c->GetId ();
   c->MutableTarget ().set_id (5);
   c.reset ();
 
-  characters.CreateNew ("domob", Faction::GREEN);
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  const auto idBuilding = b->GetId ();
+  b->MutableTarget ().set_id (42);
+  b.reset ();
 
   unsigned cnt = 0;
-  tbl.ProcessWithTarget ([this, &cnt] (Fighter f)
+  tbl.ProcessWithTarget ([&] (Fighter f)
     {
       ++cnt;
-      EXPECT_EQ (f.GetFaction (), Faction::RED);
+      switch (cnt)
+        {
+        case 1:
+          EXPECT_EQ (f.GetId ().type (), proto::TargetId::TYPE_BUILDING);
+          EXPECT_EQ (f.GetId ().id (), idBuilding);
+          break;
+
+        case 2:
+          EXPECT_EQ (f.GetId ().type (), proto::TargetId::TYPE_CHARACTER);
+          EXPECT_EQ (f.GetId ().id (), idChar);
+          break;
+
+        default:
+          FAIL () << "Too many targets returned";
+          break;
+        }
     });
-  EXPECT_EQ (cnt, 1);
+  EXPECT_EQ (cnt, 2);
 }
 
 } // anonymous namespace

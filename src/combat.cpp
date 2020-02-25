@@ -98,8 +98,9 @@ SelectTarget (TargetFinder& targets, xaya::Random& rnd, Fighter f)
 void
 FindCombatTargets (Database& db, xaya::Random& rnd)
 {
+  BuildingsTable buildings(db);
   CharacterTable characters(db);
-  FighterTable fighters(characters);
+  FighterTable fighters(buildings, characters);
   TargetFinder targets(db);
 
   fighters.ProcessWithAttacks ([&] (Fighter f)
@@ -217,8 +218,9 @@ DealDamage (FighterTable& fighters, TargetFinder& targets,
 std::vector<proto::TargetId>
 DealCombatDamage (Database& db, DamageLists& dl, xaya::Random& rnd)
 {
+  BuildingsTable buildings(db);
   CharacterTable characters(db);
-  FighterTable fighters(characters);
+  FighterTable fighters(buildings, characters);
   TargetFinder targets(db);
 
   std::vector<proto::TargetId> dead;
@@ -462,8 +464,9 @@ RegenerateFighterHP (Fighter f)
 void
 RegenerateHP (Database& db)
 {
+  BuildingsTable buildings(db);
   CharacterTable characters(db);
-  FighterTable fighters(characters);
+  FighterTable fighters(buildings, characters);
 
   fighters.ProcessForRegen ([] (Fighter f)
     {
