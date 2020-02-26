@@ -134,6 +134,9 @@ class Building (object):
       return self.data["owner"]
     return None
 
+  def getCentre (self):
+    return self.data["centre"]
+
   def getFungibleInventory (self, account):
     inv = self.data["inventories"]
     if account not in inv:
