@@ -225,7 +225,7 @@ TEST_F (PXLogicTests, MovementBeforeTargeting)
   UpdateState ("[]");
 
   ASSERT_EQ (characters.GetById (id2)->GetPosition (), HexCoord (11, 0));
-  ASSERT_FALSE (characters.GetById (id1)->GetProto ().has_target ());
+  ASSERT_FALSE (characters.GetById (id1)->GetTarget ().has_id ());
 
   c = characters.GetById (id2);
   auto* wp = c->MutableProto ().mutable_movement ()->mutable_waypoints ();
@@ -237,8 +237,8 @@ TEST_F (PXLogicTests, MovementBeforeTargeting)
 
   ASSERT_EQ (characters.GetById (id2)->GetPosition (), HexCoord (10, 0));
   c = characters.GetById (id1);
-  ASSERT_TRUE (c->GetProto ().has_target ());
-  const auto& t = c->GetProto ().target ();
+  const auto& t = c->GetTarget ();
+  ASSERT_TRUE (t.has_id ());
   EXPECT_EQ (t.type (), proto::TargetId::TYPE_CHARACTER);
   EXPECT_EQ (t.id (), id2);
 }
@@ -269,8 +269,7 @@ TEST_F (PXLogicTests, KilledVehicleNoLongerBlocks)
   /* Process one block to allow targeting.  */
   UpdateState ("[]");
   ASSERT_NE (characters.GetById (idObstacle), nullptr);
-  ASSERT_EQ (characters.GetById (idAttacker)->GetProto ().target ().id (),
-             idObstacle);
+  ASSERT_EQ (characters.GetById (idAttacker)->GetTarget ().id (), idObstacle);
 
   /* Next block, the obstacle should be killed and the moving vehicle
      can be moved into its spot.  */
@@ -838,8 +837,8 @@ TEST_F (PXLogicTests, EnterBuildingAndTargetFinding)
   /* Both characters will target and attack each other.  */
   UpdateState ("[]");
 
-  EXPECT_EQ (characters.GetById (2)->GetProto ().target ().id (), 3);
-  EXPECT_EQ (characters.GetById (3)->GetProto ().target ().id (), 2);
+  EXPECT_EQ (characters.GetById (2)->GetTarget ().id (), 3);
+  EXPECT_EQ (characters.GetById (3)->GetTarget ().id (), 2);
 
   /* Now the "domob" character will enter the building, and neither will
      target the other any more.  */
@@ -850,8 +849,8 @@ TEST_F (PXLogicTests, EnterBuildingAndTargetFinding)
     }
   ])");
 
-  EXPECT_FALSE (characters.GetById (2)->GetProto ().has_target ());
-  EXPECT_FALSE (characters.GetById (3)->GetProto ().has_target ());
+  EXPECT_FALSE (characters.GetById (2)->GetTarget ().has_id ());
+  EXPECT_FALSE (characters.GetById (3)->GetTarget ().has_id ());
 }
 
 TEST_F (PXLogicTests, EnterAndExitBuildingWhenOutside)

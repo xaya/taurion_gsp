@@ -41,7 +41,10 @@ message TargetId
   /** The type of this target.  */
   optional Type type = 1;
 
-  /** The database ID of this target entity (based on its type).  */
+  /**
+   * The database ID of this target entity (based on its type).  Absence of
+   * this field means that the target is "empty" / null / there is no target.
+   */
   optional uint64 id = 2;
 
 }

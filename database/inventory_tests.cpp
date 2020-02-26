@@ -109,6 +109,20 @@ TEST_F (InventoryTests, Modification)
   EXPECT_TRUE (inv.IsDirty ());
 }
 
+TEST_F (InventoryTests, AdditionOfOtherInventory)
+{
+  inv.SetFungibleCount ("foo", 10);
+
+  Inventory other;
+  other.SetFungibleCount ("foo", 2);
+  other.SetFungibleCount ("bar", 3);
+
+  inv += other;
+
+  EXPECT_EQ (inv.GetFungibleCount ("foo"), 12);
+  EXPECT_EQ (inv.GetFungibleCount ("bar"), 3);
+}
+
 TEST_F (InventoryTests, DualProduct)
 {
   const auto val = Inventory::Product (MAX_ITEM_QUANTITY, -MAX_ITEM_DUAL);
@@ -364,6 +378,23 @@ TEST_F (BuildingInventoriesTableTests, QueryForBuilding)
   EXPECT_EQ (h->GetInventory ().GetFungibleCount ("foo"), 1);
 
   ASSERT_FALSE (res.Step ());
+}
+
+TEST_F (BuildingInventoriesTableTests, RemoveBuilding)
+{
+  tbl.Get (123, "domob")->GetInventory ().SetFungibleCount ("foo", 1);
+  tbl.Get (124, "domob")->GetInventory ().SetFungibleCount ("foo", 2);
+  tbl.Get (123, "andy")->GetInventory ().SetFungibleCount ("foo", 3);
+
+  tbl.RemoveBuilding (123);
+
+  auto res = tbl.QueryAll ();
+  ASSERT_TRUE (res.Step ());
+  auto h = tbl.GetFromResult (res);
+  EXPECT_EQ (h->GetBuildingId (), 124);
+  EXPECT_EQ (h->GetAccount (), "domob");
+  EXPECT_EQ (h->GetInventory ().GetFungibleCount ("foo"), 2);
+  EXPECT_FALSE (res.Step ());
 }
 
 /* ************************************************************************** */

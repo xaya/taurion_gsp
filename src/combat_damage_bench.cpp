@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -84,9 +84,9 @@ InsertCharacters (Database& db, const unsigned numIdle,
           attack->set_min_damage (1);
           attack->set_max_damage (1);
         }
-      auto* targetId = c->MutableProto ().mutable_target ();
-      targetId->set_type (proto::TargetId::TYPE_CHARACTER);
-      targetId->set_id (id);
+      auto& targetId = c->MutableTarget ();
+      targetId.set_type (proto::TargetId::TYPE_CHARACTER);
+      targetId.set_id (id);
       c.reset ();
     }
 }
@@ -102,7 +102,7 @@ UpdateHP (Database& db, xaya::Random& rnd, const Context& ctx)
   GroundLootTable loot(db);
 
   const auto dead = DealCombatDamage (db, dl, rnd);
-  ProcessKills (db, dl, loot, dead, ctx);
+  ProcessKills (db, dl, loot, dead, rnd, ctx);
   RegenerateHP (db);
 }
 

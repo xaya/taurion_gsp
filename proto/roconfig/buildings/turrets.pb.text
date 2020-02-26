@@ -1,0 +1,31 @@
+building_types:
+  {
+    key: "r_rt"
+    value:
+      {
+
+        enter_radius: 1
+        shape_tiles: { x: 0 y: 0 }
+
+        combat_data:
+          {
+            attacks:
+              {
+                range: 5
+                min_damage: 1
+                max_damage: 3
+              }
+          }
+
+        regen_data:
+          {
+            max_hp:
+              {
+                armour: 1000
+                shield: 200
+              }
+            shield_regeneration_mhp: 500
+          }
+
+      }
+  }

@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 #ifndef DATABASE_FIGHTER_HPP
 #define DATABASE_FIGHTER_HPP
 
+#include "building.hpp"
 #include "character.hpp"
 
 #include "hexagonal/coord.hpp"
@@ -39,8 +40,18 @@ class Fighter
 
 private:
 
+  /** The character handle if this is a building.  */
+  BuildingsTable::Handle building;
+
   /** The character handle if this is a character.  */
   CharacterTable::Handle character;
+
+  /**
+   * Construct a fighter based on a building handle.
+   */
+  explicit Fighter (BuildingsTable::Handle b)
+    : building(std::move (b))
+  {}
 
   /**
    * Construct a fighter based on a character handle.
@@ -138,6 +149,9 @@ class FighterTable
 
 private:
 
+  /** The BuildingsTable from which we retrieve building-based fighters.  */
+  BuildingsTable& buildings;
+
   /** The CharacterTable from which we retrieve character-based fighters.  */
   CharacterTable& characters;
 
@@ -147,10 +161,11 @@ public:
   using Callback = std::function<void (Fighter f)>;
 
   /**
-   * Constructs a fighter table drawing characters from the given table.
+   * Constructs a fighter table drawing buildings and characters from the given
+   * database table wrappers.
    */
-  explicit FighterTable (CharacterTable& c)
-    : characters(c)
+  explicit FighterTable (BuildingsTable& b, CharacterTable& c)
+    : buildings(b), characters(c)
   {}
 
   FighterTable () = delete;
@@ -180,12 +195,6 @@ public:
   void ProcessWithTarget (const Callback& cb);
 
 };
-
-/**
- * Computes the attack range of a fighter with the given combat data.
- * Returns zero if there are no attacks at all.
- */
-HexCoord::IntT FindAttackRange (const proto::CombatData& cd);
 
 } // namespace pxd
 

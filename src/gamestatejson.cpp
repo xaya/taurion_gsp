@@ -38,11 +38,15 @@ namespace
 {
 
 /**
- * Converts a TargetId proto to its JSON gamestate form.
+ * Converts a TargetId proto to its JSON gamestate form.  It may be a null
+ * JSON if the target is "empty".
  */
 Json::Value
 TargetIdToJson (const proto::TargetId& target)
 {
+  if (!target.has_id ())
+    return Json::Value ();
+
   Json::Value res(Json::objectValue);
   res["id"] = IntToJson (target.id ());
 
@@ -137,19 +141,20 @@ GetMovementJsonObject (const Character& c)
 }
 
 /**
- * Computes the "combat" sub-object for a Character's JSON state.
+ * Computes the basic "combat" sub-object for a Character or Building.
  */
 Json::Value
-GetCombatJsonObject (const Character& c, const DamageLists& dl)
+GetCombatJsonObject (const CombatEntity& h)
 {
   Json::Value res(Json::objectValue);
 
-  const auto& pb = c.GetProto ();
-  if (pb.has_target ())
-    res["target"] = TargetIdToJson (pb.target ());
+  const auto targetJson = TargetIdToJson (h.GetTarget ());
+  if (!targetJson.isNull ())
+    res["target"] = targetJson;
 
+  const auto& pb = h.GetCombatData ();
   Json::Value attacks(Json::arrayValue);
-  for (const auto& attack : pb.combat_data ().attacks ())
+  for (const auto& attack : pb.attacks ())
     {
       Json::Value obj(Json::objectValue);
       obj["range"] = IntToJson (attack.range ());
@@ -161,12 +166,24 @@ GetCombatJsonObject (const Character& c, const DamageLists& dl)
   if (!attacks.empty ())
     res["attacks"] = attacks;
 
-  const auto& regen = c.GetRegenData ();
+  const auto& regen = h.GetRegenData ();
   Json::Value hp(Json::objectValue);
   hp["max"] = HpProtoToJson (regen.max_hp ());
-  hp["current"] = HpProtoToJson (c.GetHP ());
+  hp["current"] = HpProtoToJson (h.GetHP ());
   hp["regeneration"] = regen.shield_regeneration_mhp () / 1000.0;
   res["hp"] = hp;
+
+  return res;
+}
+
+/**
+ * Computes the "combat" sub-object for a Character's JSON state
+ * (which includes the attackers data from DamageLists).
+ */
+Json::Value
+GetCombatJsonObject (const Character& c, const DamageLists& dl)
+{
+  Json::Value res = GetCombatJsonObject (c);
 
   Json::Value attackers(Json::arrayValue);
   for (const auto id : dl.GetAttackers (c.GetId ()))
@@ -330,6 +347,8 @@ template <>
   for (const auto& c : GetBuildingShape (b))
     tiles.append (CoordToJson (c));
   res["tiles"] = tiles;
+
+  res["combat"] = GetCombatJsonObject (b);
 
   auto invRes = buildingInventories.QueryForBuilding (b.GetId ());
   Json::Value inv(Json::objectValue);

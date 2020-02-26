@@ -53,7 +53,7 @@ std::vector<proto::TargetId> DealCombatDamage (Database& db, DamageLists& dl,
  */
 void ProcessKills (Database& db, DamageLists& dl, GroundLootTable& loot,
                    const std::vector<proto::TargetId>& dead,
-                   const Context& ctx);
+                   xaya::Random& rnd, const Context& ctx);
 
 /**
  * Handles HP regeneration.

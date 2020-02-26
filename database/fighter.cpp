@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,11 +26,19 @@ namespace pxd
 proto::TargetId
 Fighter::GetId () const
 {
-  CHECK (character != nullptr);
-
   proto::TargetId res;
-  res.set_type (proto::TargetId::TYPE_CHARACTER);
-  res.set_id (character->GetId ());
+
+  if (building != nullptr)
+    {
+      res.set_type (proto::TargetId::TYPE_BUILDING);
+      res.set_id (building->GetId ());
+    }
+  else
+    {
+      CHECK (character != nullptr);
+      res.set_type (proto::TargetId::TYPE_CHARACTER);
+      res.set_id (character->GetId ());
+    }
 
   return res;
 }
@@ -38,6 +46,9 @@ Fighter::GetId () const
 Faction
 Fighter::GetFaction () const
 {
+  if (building != nullptr)
+    return building->GetFaction ();
+
   CHECK (character != nullptr);
   return character->GetFaction ();
 }
@@ -45,6 +56,9 @@ Fighter::GetFaction () const
 const HexCoord&
 Fighter::GetPosition () const
 {
+  if (building != nullptr)
+    return building->GetCentre ();
+
   CHECK (character != nullptr);
   return character->GetPosition ();
 }
@@ -52,6 +66,9 @@ Fighter::GetPosition () const
 const proto::RegenData&
 Fighter::GetRegenData () const
 {
+  if (building != nullptr)
+    return building->GetRegenData ();
+
   CHECK (character != nullptr);
   return character->GetRegenData ();
 }
@@ -59,21 +76,31 @@ Fighter::GetRegenData () const
 const proto::CombatData&
 Fighter::GetCombatData () const
 {
+  if (building != nullptr)
+    {
+      const auto& pb = building->GetProto ();
+
+      /* Every fighter must have combat data to be valid.  This is set when
+         first created and then only updated.  Enforce this requirement here,
+         so that we do not accidentally work with an empty proto just because it
+         has not been initialised due to a bug.  */
+      CHECK (pb.has_combat_data ());
+
+      return pb.combat_data ();
+    }
+
   CHECK (character != nullptr);
   const auto& pb = character->GetProto ();
-
-  /* Every character must have combat data to be valid.  This is set when
-     first created and then only updated.  Enforce this requirement here,
-     so that we do not accidentally work with an empty proto just because it
-     has not been initialised due to a bug.  */
   CHECK (pb.has_combat_data ());
-
   return pb.combat_data ();
 }
 
 HexCoord::IntT
 Fighter::GetAttackRange () const
 {
+  if (building != nullptr)
+    return building->GetAttackRange ();
+
   CHECK (character != nullptr);
   return character->GetAttackRange ();
 }
@@ -81,35 +108,51 @@ Fighter::GetAttackRange () const
 const proto::TargetId&
 Fighter::GetTarget () const
 {
-  CHECK (character != nullptr);
-  const auto& pb = character->GetProto ();
-  CHECK (pb.has_target ());
-  return pb.target ();
+  const proto::TargetId* pb;
+  if (building != nullptr)
+    pb = &building->GetTarget ();
+  else
+    {
+      CHECK (character != nullptr);
+      pb = &character->GetTarget ();
+    }
+
+  CHECK (pb->has_id ());
+  return *pb;
 }
 
 void
 Fighter::SetTarget (const proto::TargetId& target)
 {
-  CHECK (character != nullptr);
-  *character->MutableProto ().mutable_target () = target;
+  CHECK (target.has_id ());
+
+  if (building != nullptr)
+    building->MutableTarget () = target;
+  else
+    {
+      CHECK (character != nullptr);
+      character->MutableTarget () = target;
+    }
 }
 
 void
 Fighter::ClearTarget ()
 {
-  CHECK (character != nullptr);
-
-  /* Make sure to mark the proto as dirty only if there was actually a target
-     before.  This avoids updating the proto in the database unnecessarily
-     for the common case where there was no target and there also is none
-     in the future.  */
-  if (character->HasTarget ())
-    character->MutableProto ().clear_target ();
+  if (building != nullptr)
+    building->MutableTarget ().clear_id ();
+  else
+    {
+      CHECK (character != nullptr);
+      character->MutableTarget ().clear_id ();
+    }
 }
 
 const proto::HP&
 Fighter::GetHP () const
 {
+  if (building != nullptr)
+    return building->GetHP ();
+
   CHECK (character != nullptr);
   return character->GetHP ();
 }
@@ -117,6 +160,9 @@ Fighter::GetHP () const
 proto::HP&
 Fighter::MutableHP ()
 {
+  if (building != nullptr)
+    return building->MutableHP ();
+
   CHECK (character != nullptr);
   return character->MutableHP ();
 }
@@ -124,13 +170,14 @@ Fighter::MutableHP ()
 void
 Fighter::reset ()
 {
+  building.reset ();
   character.reset ();
 }
 
 bool
 Fighter::empty () const
 {
-  return character == nullptr;
+  return building == nullptr && character == nullptr;
 }
 
 Fighter
@@ -138,6 +185,9 @@ FighterTable::GetForTarget (const proto::TargetId& id)
 {
   switch (id.type ())
     {
+    case proto::TargetId::TYPE_BUILDING:
+      return Fighter (buildings.GetById (id.id ()));
+
     case proto::TargetId::TYPE_CHARACTER:
       return Fighter (characters.GetById (id.id ()));
 
@@ -149,38 +199,49 @@ FighterTable::GetForTarget (const proto::TargetId& id)
 void
 FighterTable::ProcessWithAttacks (const Callback& cb)
 {
-  auto res = characters.QueryWithAttacks ();
-  while (res.Step ())
-    cb (Fighter (characters.GetFromResult (res)));
+  {
+    auto res = buildings.QueryWithAttacks ();
+    while (res.Step ())
+      cb (Fighter (buildings.GetFromResult (res)));
+  }
+
+  {
+    auto res = characters.QueryWithAttacks ();
+    while (res.Step ())
+      cb (Fighter (characters.GetFromResult (res)));
+  }
 }
 
 void
 FighterTable::ProcessForRegen (const Callback& cb)
 {
-  auto res = characters.QueryForRegen ();
-  while (res.Step ())
-    cb (Fighter (characters.GetFromResult (res)));
+  {
+    auto res = buildings.QueryForRegen ();
+    while (res.Step ())
+      cb (Fighter (buildings.GetFromResult (res)));
+  }
+
+  {
+    auto res = characters.QueryForRegen ();
+    while (res.Step ())
+      cb (Fighter (characters.GetFromResult (res)));
+  }
 }
 
 void
 FighterTable::ProcessWithTarget (const Callback& cb)
 {
-  auto res = characters.QueryWithTarget ();
-  while (res.Step ())
-    cb (Fighter (characters.GetFromResult (res)));
-}
+  {
+    auto res = buildings.QueryWithTarget ();
+    while (res.Step ())
+      cb (Fighter (buildings.GetFromResult (res)));
+  }
 
-HexCoord::IntT
-FindAttackRange (const proto::CombatData& cd)
-{
-  HexCoord::IntT res = 0;
-  for (const auto& attack : cd.attacks ())
-    {
-      CHECK_GT (attack.range (), 0);
-      res = std::max<HexCoord::IntT> (res, attack.range ());
-    }
-
-  return res;
+  {
+    auto res = characters.QueryWithTarget ();
+    while (res.Step ())
+      cb (Fighter (characters.GetFromResult (res)));
+  }
 }
 
 } // namespace pxd

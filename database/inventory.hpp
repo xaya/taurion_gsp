@@ -123,6 +123,11 @@ public:
   void AddFungibleCount (const std::string& type, QuantityT count);
 
   /**
+   * Adds in all items from a given second inventory.
+   */
+  Inventory& operator+= (const Inventory& other);
+
+  /**
    * Returns true if the inventory data has been modified (and thus needs to
    * be saved back to the database).
    */
@@ -405,6 +410,12 @@ public:
    * Queries the database for all inventories in a given building.
    */
   Database::Result<BuildingInventoryResult> QueryForBuilding (Database::IdT b);
+
+  /**
+   * Removes all entries for inventories in the given building.  This is used
+   * to clean up data when a building is destroyed.
+   */
+  void RemoveBuilding (Database::IdT building);
 
 };
 

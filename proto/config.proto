@@ -18,6 +18,7 @@
 
 syntax = "proto2";
 
+import "combat.proto";
 import "geometry.proto";
 
 package pxd.proto;
@@ -51,6 +52,17 @@ message BuildingData
    * way.  The coordinates are relative to the building's centre.
    */
   repeated HexCoord shape_tiles = 2;
+
+  /**
+   * Combat data (attacks) the building has in its base (unupgraded)
+   * form, if any.
+   */
+  optional CombatData combat_data = 3;
+
+  /**
+   * Maximum HP and regeneration data the building has in its base form.
+   */
+  optional RegenData regen_data = 4;
 
 }
 

@@ -33,34 +33,13 @@ class GodModeTest (PXTest):
     self.generate (1)
     c = self.getCharacters ()["domob"]
     pos = c.getPosition ()
-    idStr = c.getIdStr ()
-
-    self.mainLogger.info ("Testing teleport...")
-    target = {"x": 28, "y": 9}
-    assert pos != target
-    self.adminCommand ({"god": {"teleport": {idStr: target}}})
-    self.generate (1)
-    self.assertEqual (self.getCharacters ()["domob"].getPosition (), target)
-
-    self.mainLogger.info ("Testing sethp...")
-    self.adminCommand ({
-      "god":
-        {
-          "sethp":
-            {
-              idStr: {"a": 32, "s": 15, "ma": 100, "ms": 90},
-            },
-        },
-    })
-    self.generate (1)
-    hp = self.getCharacters ()["domob"].data["combat"]["hp"]
-    self.assertEqual (hp["current"], {"armour": 32, "shield": 15})
-    self.assertEqual (hp["max"], {"armour": 100, "shield": 90})
+    charIdStr = c.getIdStr ()
 
     self.mainLogger.info ("Testing build...")
     self.build ("checkmark", None, {"x": 100, "y": 150}, rot=2)
     self.build ("checkmark", "domob", {"x": -100, "y": -150}, rot=0)
     buildings = self.getBuildings ()
+    buildingId = buildings.values ()[0].getId ()
     self.assertEqual (buildings[1002].data, {
       "id": 1002,
       "type": "checkmark",
@@ -74,6 +53,15 @@ class GodModeTest (PXTest):
           {"x": 101, "y": 149},
           {"x": 102, "y": 148},
         ],
+      "combat":
+        {
+          "hp":
+            {
+              "current": {"armour": 0, "shield": 0},
+              "max": {"armour": 0, "shield": 0},
+              "regeneration": 0.0,
+            },
+        },
       "inventories": {},
     })
     self.assertEqual (buildings[1003].data, {
@@ -90,8 +78,60 @@ class GodModeTest (PXTest):
           {"x": -100, "y": -149},
           {"x": -100, "y": -148},
         ],
+      "combat":
+        {
+          "hp":
+            {
+              "current": {"armour": 0, "shield": 0},
+              "max": {"armour": 0, "shield": 0},
+              "regeneration": 0.0,
+            },
+        },
       "inventories": {},
     })
+
+    self.mainLogger.info ("Testing teleport...")
+    target = {"x": 28, "y": 9}
+    assert pos != target
+    self.adminCommand ({"god": {"teleport": {charIdStr: target}}})
+    self.generate (1)
+    self.assertEqual (self.getCharacters ()["domob"].getPosition (), target)
+
+    self.mainLogger.info ("Testing sethp for characters...")
+    self.adminCommand ({
+      "god":
+        {
+          "sethp":
+            {
+              "c":
+                {
+                  charIdStr: {"a": 32, "s": 15, "ma": 100, "ms": 90},
+                },
+            },
+        },
+    })
+    self.generate (1)
+    hp = self.getCharacters ()["domob"].data["combat"]["hp"]
+    self.assertEqual (hp["current"], {"armour": 32, "shield": 15})
+    self.assertEqual (hp["max"], {"armour": 100, "shield": 90})
+
+    self.mainLogger.info ("Testing sethp for buildings...")
+    self.adminCommand ({
+      "god":
+        {
+          "sethp":
+            {
+              "b":
+                {
+                  ("%s" % buildingId): {"a": 32, "s": 15},
+                },
+            },
+        },
+    })
+    self.generate (1)
+    hp = self.getBuildings ()[buildingId].data["combat"]["hp"]
+    self.assertEqual (hp["current"], {"armour": 32, "shield": 15})
+    self.assertEqual (hp["max"], {"armour": 0, "shield": 0})
 
     self.mainLogger.info ("Testing drop loot...")
     self.dropLoot ({"x": 1, "y": 2}, {"foo": 1, "bar": 2})

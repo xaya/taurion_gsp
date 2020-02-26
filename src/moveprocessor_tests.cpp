@@ -1840,13 +1840,26 @@ TEST_F (GodModeTests, SetHp)
   regen.mutable_max_hp ()->set_shield (20);
   c.reset ();
 
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  ASSERT_EQ (b->GetId (), 2);
+  b->MutableHP ().set_armour (50);
+  b->MutableHP ().set_shield (20);
+  b.reset ();
+
   ProcessAdmin (R"([{"cmd": {
     "god":
       {
         "sethp":
           {
-            "2": {"a": 5},
-            "1": {"a": 32, "s": 15, "ma": -5, "ms": false, "x": "y"}
+            "b":
+              {
+                "2": {"ma": 200, "a": 5}
+              },
+            "c":
+              {
+                "2": {"a": 5},
+                "1": {"a": 32, "s": 15, "ma": -5, "ms": false, "x": "y"}
+              }
           }
       }
   }}])");
@@ -1858,12 +1871,21 @@ TEST_F (GodModeTests, SetHp)
   EXPECT_EQ (c->GetRegenData ().max_hp ().shield (), 20);
   c.reset ();
 
+  b = buildings.GetById (2);
+  EXPECT_EQ (b->GetHP ().armour (), 5);
+  EXPECT_EQ (b->GetHP ().shield (), 20);
+  EXPECT_EQ (b->GetRegenData ().max_hp ().armour (), 200);
+  b.reset ();
+
   ProcessAdmin (R"([{"cmd": {
     "god":
       {
         "sethp":
           {
-            "1": {"a": 1.5, "s": -15, "ma": 100, "ms": 90}
+            "c":
+              {
+                "1": {"a": 1.5, "s": -15, "ma": 100, "ms": 90}
+              }
           }
       }
   }}])");

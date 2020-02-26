@@ -62,6 +62,13 @@ CREATE TABLE IF NOT EXISTS `characters` (
   -- performance reasons.  It is not updated often, mostly read.
   `regendata` BLOB NOT NULL,
 
+  -- The attacked target (if any), as a serialised TargetId proto.
+  -- The presence of this column also tells us that there are enemies in
+  -- range, which is important for area attacks.   So even if e.g. a character
+  -- has just area attacks, we need to select one target for them nevertheless,
+  -- as we later on only process attacks of characters with a selected target.
+  `target` BLOB NULL,
+
   -- If non-zero, then the number represents for how many more blocks the
   -- character is "locked" at being busy (e.g. prospecting).
   `busy` INTEGER NOT NULL,
@@ -88,11 +95,6 @@ CREATE TABLE IF NOT EXISTS `characters` (
   -- retrieve and process characters that need regeneration.
   `canregen` INTEGER NOT NULL,
 
-  -- Flag indicating whether or not the character has a combat target.
-  -- This is used so we can later efficiently retrieve only those characters
-  -- that need to be processed for combat damage.
-  `hastarget` INTEGER NOT NULL,
-
   -- The character's inventory encoded as Inventory proto.
   `inventory` BLOB NOT NULL,
 
@@ -113,7 +115,7 @@ CREATE INDEX IF NOT EXISTS `characters_ismining` ON `characters` (`ismining`);
 CREATE INDEX IF NOT EXISTS `characters_attackrange`
   ON `characters` (`attackrange`);
 CREATE INDEX IF NOT EXISTS `characters_canregen` ON `characters` (`canregen`);
-CREATE INDEX IF NOT EXISTS `characters_hastarget` ON `characters` (`hastarget`);
+CREATE INDEX IF NOT EXISTS `characters_target` ON `characters` (`target`);
 
 -- =============================================================================
 
@@ -147,10 +149,34 @@ CREATE TABLE IF NOT EXISTS `buildings` (
   `x` INTEGER NOT NULL,
   `y` INTEGER NOT NULL,
 
+  -- Current HP data as an encoded HP proto.  This is stored directly in
+  -- the database rather than the "proto" BLOB since it is a field that
+  -- is changed frequently.
+  `hp` BLOB NULL NOT NULL,
+
+  -- Data about HP regeneration encoded as RegenData proto.
+  `regendata` BLOB NOT NULL,
+
+  -- The attacked target (if any), as a serialised TargetId proto.
+  `target` BLOB NULL,
+
+  -- The range of the longest attack this building has or NULL if there
+  -- is no attack at all.
+  `attackrange` INTEGER NULL,
+
+  -- Flag indicating whether a building may need HP regeneration.
+  `canregen` INTEGER NULL NOT NULL,
+
   -- Additional data encoded as a Building protocol buffer.
   `proto` BLOB NOT NULL
 
 );
+
+CREATE INDEX IF NOT EXISTS `buildings_pos` ON `buildings` (`x`, `y`);
+CREATE INDEX IF NOT EXISTS `buildings_attackrange`
+  ON `buildings` (`attackrange`);
+CREATE INDEX IF NOT EXISTS `buildings_canregen` ON `buildings` (`canregen`);
+CREATE INDEX IF NOT EXISTS `buildings_target` ON `buildings` (`target`);
 
 -- =============================================================================
 

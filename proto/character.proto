@@ -79,21 +79,12 @@ message Character
   optional Movement movement = 1;
 
   /**
-   * The attacked target (if any).  The presence of this field also tells us
-   * that there are enemies in range, which is important for area attacks.
-   * So even if e.g. a character has just area attacks, we need to select
-   * one target for them nevertheless, as we later on only process attacks
-   * of characters with a selected target.
-   */
-  optional TargetId target = 2;
-
-  /**
    * Static combat data for thie character.  That data is derived from other
    * information (e.g. equipped weapons, current vehicle), but it is cached
    * here for easy computation of combat.  The data here changes only
    * through explicit actions done by the owner.
    */
-  optional CombatData combat_data = 3;
+  optional CombatData combat_data = 2;
 
   /**
    * If the character is currently busy, then this holds data about the
@@ -101,17 +92,17 @@ message Character
    */
   oneof busy
   {
-    OngoingProspection prospection = 4;
+    OngoingProspection prospection = 3;
   }
 
   /** The character's mining data, if it can mine.  */
-  optional MiningData mining = 5;
+  optional MiningData mining = 4;
 
   /** Movement speed of the character.  */
-  optional uint32 speed = 6;
+  optional uint32 speed = 5;
 
   /** Total cargo space the character has.  */
-  optional uint64 cargo_space = 7;
+  optional uint64 cargo_space = 6;
 
   /* Fields that are stored directly in the database and thus not part of the
      encoded protocol buffer:
@@ -125,6 +116,7 @@ message Character
      - volatile movement proto (partial step, blocked for counter)
      - current HP proto
      - HP regeneration data proto
+     - selected target as TargetId proto (if any)
      - number of blocks the character is still "busy"
      - inventory proto
   */

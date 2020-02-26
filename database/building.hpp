@@ -19,6 +19,7 @@
 #ifndef DATABASE_BUILDING_HPP
 #define DATABASE_BUILDING_HPP
 
+#include "combat.hpp"
 #include "coord.hpp"
 #include "database.hpp"
 #include "faction.hpp"
@@ -32,7 +33,8 @@ namespace pxd
 /**
  * Database result for a row from the buildings table.
  */
-struct BuildingResult : public ResultWithFaction, public ResultWithCoord
+struct BuildingResult : public ResultWithFaction, public ResultWithCoord,
+                        public ResultWithCombat
 {
   RESULT_COLUMN (int64_t, id, 1);
   RESULT_COLUMN (std::string, type, 2);
@@ -46,13 +48,10 @@ struct BuildingResult : public ResultWithFaction, public ResultWithCoord
  *
  * Instantiations of this class should be made through the BuildingsTable.
  */
-class Building
+class Building : public CombatEntity
 {
 
 private:
-
-  /** Database reference this belongs to.  */
-  Database& db;
 
   /** The ID of the building.  */
   Database::IdT id;
@@ -72,12 +71,6 @@ private:
   /** Generic data stored in the proto BLOB.  */
   LazyProto<proto::Building> data;
 
-  /**
-   * Whether or not this is a new building that needs to be inserted into
-   * the database in the destructor.
-   */
-  bool isNew;
-
   /** Whether or not non-proto fields have been modified.  */
   bool dirtyFields;
 
@@ -95,6 +88,14 @@ private:
   explicit Building (Database& d, const Database::Result<BuildingResult>& res);
 
   friend class BuildingsTable;
+
+protected:
+
+  bool
+  IsDirtyCombatData () const override
+  {
+    return data.IsDirty ();
+  }
 
 public:
 
@@ -162,6 +163,12 @@ public:
     return data.Mutable ();
   }
 
+  const proto::CombatData&
+  GetCombatData () const override
+  {
+    return data.Get ().combat_data ();
+  }
+
 };
 
 /**
@@ -213,6 +220,27 @@ public:
    * Queries the database for all buildings.
    */
   Database::Result<BuildingResult> QueryAll ();
+
+  /**
+   * Queries for all buildings with attacks.
+   */
+  Database::Result<BuildingResult> QueryWithAttacks ();
+
+  /**
+   * Queries for all buildings that may need to have HP regenerated.
+   */
+  Database::Result<BuildingResult> QueryForRegen ();
+
+  /**
+   * Queries for all buildings that have a combat target and thus need
+   * to be processed for damage.
+   */
+  Database::Result<BuildingResult> QueryWithTarget ();
+
+  /**
+   * Deletes the row for a given building ID.
+   */
+  void DeleteById (Database::IdT id);
 
 };
 

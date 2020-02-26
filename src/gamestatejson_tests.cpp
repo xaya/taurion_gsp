@@ -275,13 +275,13 @@ TEST_F (CharacterJsonTests, MultipleStep)
 TEST_F (CharacterJsonTests, Target)
 {
   auto c = tbl.CreateNew ("domob", Faction::RED);
-  auto* targetProto = c->MutableProto ().mutable_target ();
+  auto* targetProto = &c->MutableTarget ();
   targetProto->set_id (5);
   targetProto->set_type (proto::TargetId::TYPE_CHARACTER);
   c.reset ();
 
   c = tbl.CreateNew ("domob", Faction::GREEN);
-  targetProto = c->MutableProto ().mutable_target ();
+  targetProto = &c->MutableTarget ();
   targetProto->set_id (42);
   targetProto->set_type (proto::TargetId::TYPE_BUILDING);
   c.reset ();
@@ -646,6 +646,55 @@ TEST_F (BuildingJsonTests, Inventories)
             {
               "andy": null,
               "domob": null
+            }
+        }
+      ]
+  })");
+}
+
+TEST_F (BuildingJsonTests, CombatData)
+{
+  ASSERT_EQ (tbl.CreateNew ("checkmark", "", Faction::ANCIENT)->GetId (), 1);
+
+  auto h = tbl.CreateNew ("checkmark", "daniel", Faction::RED);
+  ASSERT_EQ (h->GetId (), 2);
+  auto* att = h->MutableProto ().mutable_combat_data ()->add_attacks ();
+  att->set_range (5);
+  att->set_min_damage (1);
+  att->set_max_damage (2);
+  h->MutableHP ().set_armour (42);
+  h->MutableHP ().set_shield_mhp (1);
+  auto& regen = h->MutableRegenData ();
+  regen.set_shield_regeneration_mhp (1'001);
+  regen.mutable_max_hp ()->set_armour (100);
+  regen.mutable_max_hp ()->set_shield (50);
+  auto& t = h->MutableTarget ();
+  t.set_id (10);
+  t.set_type (proto::TargetId::TYPE_CHARACTER);
+  h.reset ();
+
+  ExpectStateJson (R"({
+    "buildings":
+      [
+        {
+          "id": 1,
+          "combat": {"target": null}
+        },
+        {
+          "id": 2,
+          "combat":
+            {
+              "hp":
+                {
+                  "max": {"armour": 100, "shield": 50},
+                  "current": {"armour": 42, "shield": 0.001},
+                  "regeneration": 1.001
+                },
+              "attacks":
+                [
+                  {"range": 5, "area": false, "mindamage": 1, "maxdamage": 2}
+                ],
+              "target": { "id": 10 }
             }
         }
       ]

@@ -114,6 +114,37 @@ TEST_F (BuildingTests, ModificationOfFields)
   EXPECT_EQ (h->GetFaction (), Faction::RED);
 }
 
+TEST_F (BuildingTests, CombatFields)
+{
+  const auto id = tbl.CreateNew ("turret", "andy", Faction::RED)->GetId ();
+
+  auto h = tbl.GetById (id);
+  EXPECT_EQ (h->GetAttackRange (), 0);
+  auto* att = h->MutableProto ().mutable_combat_data ()->add_attacks ();
+  att->set_range (5);
+  h.reset ();
+
+  h = tbl.GetById (id);
+  EXPECT_EQ (h->GetProto ().combat_data ().attacks_size (), 1);
+  EXPECT_EQ (h->GetAttackRange (), 5);
+  h->MutableHP ().set_armour (10);
+  h.reset ();
+
+  h = tbl.GetById (id);
+  EXPECT_EQ (h->GetHP ().armour (), 10);
+  h->MutableRegenData ().set_shield_regeneration_mhp (42);
+  h.reset ();
+
+  h = tbl.GetById (id);
+  EXPECT_EQ (h->GetRegenData ().shield_regeneration_mhp (), 42);
+  h->MutableTarget ().set_id (50);
+  h.reset ();
+
+  h = tbl.GetById (id);
+  EXPECT_EQ (h->GetTarget ().id (), 50);
+  h.reset ();
+}
+
 /* ************************************************************************** */
 
 using BuildingsTableTests = BuildingTests;
@@ -139,6 +170,76 @@ TEST_F (BuildingsTableTests, QueryAll)
   ASSERT_TRUE (res.Step ());
   EXPECT_EQ (tbl.GetFromResult (res)->GetOwner (), "andy");
   ASSERT_FALSE (res.Step ());
+}
+
+TEST_F (BuildingsTableTests, QueryWithAttacks)
+{
+  tbl.CreateNew ("checkmark", "domob", Faction::RED);
+  tbl.CreateNew ("checkmark", "andy", Faction::RED)
+    ->MutableProto ().mutable_combat_data ()->add_attacks ()->set_range (1);
+
+  auto res = tbl.QueryWithAttacks ();
+  ASSERT_TRUE (res.Step ());
+  EXPECT_EQ (tbl.GetFromResult (res)->GetOwner (), "andy");
+  ASSERT_FALSE (res.Step ());
+}
+
+TEST_F (BuildingsTableTests, QueryForRegen)
+{
+  /* This test is much more basic than the one for CharacterTable,
+     because the underlying code is shared anyway.  We do not cover all
+     the different cases here, just check that the function works
+     in general (i.e. queries correctly in SQL).  */
+
+  tbl.CreateNew ("checkmark", "no regen", Faction::RED);
+
+  auto h = tbl.CreateNew ("checkmark", "can regen", Faction::RED);
+  h->MutableHP ().set_shield (10);
+  h->MutableRegenData ().mutable_max_hp ()->set_shield (100);
+  h->MutableRegenData ().set_shield_regeneration_mhp (1);
+  h.reset ();
+
+  auto res = tbl.QueryForRegen ();
+  ASSERT_TRUE (res.Step ());
+  EXPECT_EQ (tbl.GetFromResult (res)->GetOwner (), "can regen");
+  ASSERT_FALSE (res.Step ());
+}
+
+TEST_F (BuildingsTableTests, QueryWithTarget)
+{
+  auto h = tbl.CreateNew ("turret", "domob", Faction::RED);
+  const auto id1 = h->GetId ();
+  h->MutableTarget ().set_id (5);
+  h.reset ();
+
+  const auto id2 = tbl.CreateNew ("turret", "andy", Faction::GREEN)->GetId ();
+
+  auto res = tbl.QueryWithTarget ();
+  ASSERT_TRUE (res.Step ());
+  EXPECT_EQ (tbl.GetFromResult (res)->GetOwner (), "domob");
+  ASSERT_FALSE (res.Step ());
+
+  tbl.GetById (id1)->MutableTarget ().clear_id ();
+  tbl.GetById (id2)->MutableTarget ().set_id (42);
+
+  res = tbl.QueryWithTarget ();
+  ASSERT_TRUE (res.Step ());
+  EXPECT_EQ (tbl.GetFromResult (res)->GetOwner (), "andy");
+  ASSERT_FALSE (res.Step ());
+}
+
+TEST_F (BuildingsTableTests, DeleteById)
+{
+  auto id1 = tbl.CreateNew ("turret", "domob", Faction::RED)->GetId ();
+  auto id2 = tbl.CreateNew ("turret", "andy", Faction::GREEN)->GetId ();
+
+  ASSERT_NE (tbl.GetById (id2), nullptr);
+  tbl.DeleteById (id2);
+  ASSERT_EQ (tbl.GetById (id2), nullptr);
+
+  auto h = tbl.GetById (id1);
+  ASSERT_NE (h, nullptr);
+  EXPECT_EQ (h->GetOwner (), "domob");
 }
 
 /* ************************************************************************** */

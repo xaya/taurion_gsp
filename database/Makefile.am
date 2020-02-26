@@ -16,6 +16,7 @@ libdatabase_la_SOURCES = \
   account.cpp \
   building.cpp \
   character.cpp \
+  combat.cpp \
   coord.cpp \
   damagelists.cpp \
   database.cpp \
@@ -30,6 +31,7 @@ noinst_HEADERS = \
   account.hpp \
   building.hpp \
   character.hpp \
+  combat.hpp combat.tpp \
   coord.hpp coord.tpp \
   damagelists.hpp \
   database.hpp database.tpp \
@@ -74,6 +76,7 @@ tests_SOURCES = \
   account_tests.cpp \
   building_tests.cpp \
   character_tests.cpp \
+  combat_tests.cpp \
   coord_tests.cpp \
   damagelists_tests.cpp \
   database_tests.cpp \

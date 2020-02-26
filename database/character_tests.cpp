@@ -126,7 +126,6 @@ TEST_F (CharacterTests, ModificationWithProto)
   EXPECT_FALSE (c->GetVolatileMv ().has_partial_step ());
   EXPECT_FALSE (c->GetHP ().has_shield ());
   EXPECT_EQ (c->GetBusy (), 0);
-  EXPECT_FALSE (c->GetProto ().has_target ());
   ASSERT_FALSE (res.Step ());
 
   c->SetOwner ("andy");
@@ -135,7 +134,6 @@ TEST_F (CharacterTests, ModificationWithProto)
   c->MutableHP ().set_shield (5);
   c->MutableRegenData ().set_shield_regeneration_mhp (1234);
   SetBusy (*c, 42);
-  c->MutableProto ().mutable_target ();
   c.reset ();
 
   res = tbl.QueryAll ();
@@ -148,7 +146,6 @@ TEST_F (CharacterTests, ModificationWithProto)
   EXPECT_EQ (c->GetHP ().shield (), 5);
   EXPECT_EQ (c->GetRegenData ().shield_regeneration_mhp (), 1234);
   EXPECT_EQ (c->GetBusy (), 42);
-  EXPECT_TRUE (c->GetProto ().has_target ());
   ASSERT_FALSE (res.Step ());
 }
 
@@ -196,6 +193,27 @@ TEST_F (CharacterTests, ModificationFieldsOnly)
   EXPECT_EQ (c->GetBuildingId (), 101);
 }
 
+TEST_F (CharacterTests, Target)
+{
+  auto h = tbl.CreateNew ("domob", Faction::RED);
+  const auto id = h->GetId ();
+  h.reset ();
+
+  h = tbl.GetById (id);
+  EXPECT_FALSE (h->GetTarget ().has_id ());
+  h->MutableTarget ().set_id (42);
+  h.reset ();
+
+  h = tbl.GetById (id);
+  EXPECT_EQ (h->GetTarget ().id (), 42);
+  h->MutableTarget ().clear_id ();
+  h.reset ();
+
+  h = tbl.GetById (id);
+  EXPECT_FALSE (h->GetTarget ().has_id ());
+  h.reset ();
+}
+
 TEST_F (CharacterTests, Inventory)
 {
   auto h = tbl.CreateNew ("domob", Faction::RED);
@@ -212,25 +230,6 @@ TEST_F (CharacterTests, Inventory)
   h = tbl.GetById (id);
   EXPECT_TRUE (h->GetInventory ().IsEmpty ());
   h.reset ();
-}
-
-TEST_F (CharacterTests, HasTarget)
-{
-  auto c = tbl.CreateNew ("domob", Faction::RED);
-  const auto id = c->GetId ();
-  c.reset ();
-
-  c = tbl.GetById (id);
-  EXPECT_FALSE (c->HasTarget ());
-  c->MutableProto ().mutable_target ();
-  c.reset ();
-
-  c = tbl.GetById (id);
-  EXPECT_TRUE (c->HasTarget ());
-  c->MutableProto ().clear_target ();
-  c.reset ();
-
-  EXPECT_FALSE (tbl.GetById (id)->HasTarget ());
 }
 
 TEST_F (CharacterTests, AttackRange)
@@ -289,6 +288,28 @@ TEST_F (CharacterTableTests, QueryForOwner)
   ASSERT_FALSE (res.Step ());
 
   res = tbl.QueryForOwner ("not there");
+  ASSERT_FALSE (res.Step ());
+}
+
+TEST_F (CharacterTableTests, QueryForBuilding)
+{
+  tbl.CreateNew ("domob", Faction::RED)->GetId ();
+  const auto id2 = tbl.CreateNew ("domob", Faction::RED)->GetId ();
+  const auto id3 = tbl.CreateNew ("domob", Faction::RED)->GetId ();
+  const auto id4 = tbl.CreateNew ("domob", Faction::RED)->GetId ();
+
+  tbl.GetById (id4)->SetBuildingId (10);
+  tbl.GetById (id2)->SetBuildingId (10);
+  tbl.GetById (id3)->SetBuildingId (42);
+
+  auto res = tbl.QueryForBuilding (10);
+  ASSERT_TRUE (res.Step ());
+  EXPECT_EQ (tbl.GetFromResult (res)->GetId (), id2);
+  ASSERT_TRUE (res.Step ());
+  EXPECT_EQ (tbl.GetFromResult (res)->GetId (), id4);
+  ASSERT_FALSE (res.Step ());
+
+  res = tbl.QueryForBuilding (12345);
   ASSERT_FALSE (res.Step ());
 }
 
@@ -401,7 +422,7 @@ TEST_F (CharacterTableTests, QueryWithTarget)
 {
   auto c = tbl.CreateNew ("domob", Faction::RED);
   const auto id1 = c->GetId ();
-  c->MutableProto ().mutable_target ()->set_id (5);
+  c->MutableTarget ().set_id (5);
   c.reset ();
 
   const auto id2 = tbl.CreateNew ("andy", Faction::GREEN)->GetId ();
@@ -411,8 +432,8 @@ TEST_F (CharacterTableTests, QueryWithTarget)
   EXPECT_EQ (tbl.GetFromResult (res)->GetOwner (), "domob");
   ASSERT_FALSE (res.Step ());
 
-  tbl.GetById (id1)->MutableProto ().clear_target ();
-  tbl.GetById (id2)->MutableProto ().mutable_target ()->set_id (42);
+  tbl.GetById (id1)->MutableTarget ().clear_id ();
+  tbl.GetById (id2)->MutableTarget ().set_id (42);
 
   res = tbl.QueryWithTarget ();
   ASSERT_TRUE (res.Step ());

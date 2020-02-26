@@ -134,6 +134,9 @@ class Building (object):
       return self.data["owner"]
     return None
 
+  def getCentre (self):
+    return self.data["centre"]
+
   def getFungibleInventory (self, account):
     inv = self.data["inventories"]
     if account not in inv:
@@ -282,7 +285,7 @@ class PXTest (XayaGameTest):
       idStr = chars[nm].getIdStr ()
       sethp[idStr] = c
 
-    self.adminCommand ({"god": {"sethp": sethp}})
+    self.adminCommand ({"god": {"sethp": {"c": sethp}}})
     self.generate (1)
 
   def build (self, typ, owner, centre, rot):

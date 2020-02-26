@@ -93,6 +93,15 @@ Inventory::AddFungibleCount (const std::string& type, const QuantityT count)
   SetFungibleCount (type, previous + count);
 }
 
+Inventory&
+Inventory::operator+= (const Inventory& other)
+{
+  for (const auto& entry : other.GetFungible ())
+    AddFungibleCount (entry.first, entry.second);
+
+  return *this;
+}
+
 int64_t
 Inventory::Product (const QuantityT amount, const int64_t dual)
 {
@@ -305,6 +314,17 @@ BuildingInventoriesTable::QueryForBuilding (const Database::IdT building)
   stmt.Bind (1, building);
 
   return stmt.Query<BuildingInventoryResult> ();
+}
+
+void
+BuildingInventoriesTable::RemoveBuilding (const Database::IdT building)
+{
+  auto stmt = db.Prepare (R"(
+    DELETE FROM `building_inventories`
+      WHERE `building` = ?1
+  )");
+  stmt.Bind (1, building);
+  stmt.Execute ();
 }
 
 /* ************************************************************************** */
