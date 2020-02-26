@@ -96,29 +96,31 @@ TEST_F (TargetSelectionTests, NoTargets)
   auto c = characters.CreateNew ("domob", Faction::RED);
   const auto id1 = c->GetId ();
   c->SetPosition (HexCoord (-10, 0));
-  c->MutableTarget ().set_id (42);
+  proto::TargetId t;
+  t.set_id (42);
+  c->SetTarget (t);
   AddAttackWithRange (*c->MutableProto ().mutable_combat_data (), 10);
   c.reset ();
 
   c = characters.CreateNew ("domob",Faction::RED);
   const auto id2 = c->GetId ();
   c->SetPosition (HexCoord (-10, 1));
-  c->MutableTarget ().set_id (42);
+  c->SetTarget (t);
   AddAttackWithRange (*c->MutableProto ().mutable_combat_data (), 10);
   c.reset ();
 
   c = characters.CreateNew ("domob", Faction::GREEN);
   const auto id3 = c->GetId ();
   c->SetPosition (HexCoord (10, 0));
-  c->MutableTarget ().set_id (42);
+  c->SetTarget (t);
   AddAttackWithRange (*c->MutableProto ().mutable_combat_data (), 10);
   c.reset ();
 
   FindCombatTargets (db, rnd);
 
-  EXPECT_FALSE (characters.GetById (id1)->GetTarget ().has_id ());
-  EXPECT_FALSE (characters.GetById (id2)->GetTarget ().has_id ());
-  EXPECT_FALSE (characters.GetById (id3)->GetTarget ().has_id ());
+  EXPECT_FALSE (characters.GetById (id1)->HasTarget ());
+  EXPECT_FALSE (characters.GetById (id2)->HasTarget ());
+  EXPECT_FALSE (characters.GetById (id3)->HasTarget ());
 }
 
 TEST_F (TargetSelectionTests, ClosestTarget)
@@ -148,7 +150,6 @@ TEST_F (TargetSelectionTests, ClosestTarget)
 
       c = characters.GetById (idFighter);
       const auto& t = c->GetTarget ();
-      ASSERT_TRUE (t.has_id ());
       EXPECT_EQ (t.type (), proto::TargetId::TYPE_CHARACTER);
       EXPECT_EQ (t.id (), idTarget);
     }
@@ -184,13 +185,11 @@ TEST_F (TargetSelectionTests, WithBuildings)
 
   c = characters.GetById (idChar);
   const auto* t = &c->GetTarget ();
-  ASSERT_TRUE (t->has_id ());
   EXPECT_EQ (t->type (), proto::TargetId::TYPE_BUILDING);
   EXPECT_EQ (t->id (), idBuilding);
 
   b = buildings.GetById (idBuilding);
   t = &b->GetTarget ();
-  ASSERT_TRUE (t->has_id ());
   EXPECT_EQ (t->type (), proto::TargetId::TYPE_CHARACTER);
   EXPECT_EQ (t->id (), idChar);
 }
@@ -200,7 +199,9 @@ TEST_F (TargetSelectionTests, InsideBuildings)
   auto c = characters.CreateNew ("domob", Faction::RED);
   const auto id1 = c->GetId ();
   c->SetPosition (HexCoord (0, 0));
-  c->MutableTarget ().set_id (42);
+  proto::TargetId t;
+  t.set_id (42);
+  c->SetTarget (t);
   AddAttackWithRange (*c->MutableProto ().mutable_combat_data (), 10);
   c.reset ();
 
@@ -216,8 +217,8 @@ TEST_F (TargetSelectionTests, InsideBuildings)
 
   FindCombatTargets (db, rnd);
 
-  EXPECT_FALSE (characters.GetById (id1)->GetTarget ().has_id ());
-  EXPECT_FALSE (characters.GetById (id2)->GetTarget ().has_id ());
+  EXPECT_FALSE (characters.GetById (id1)->HasTarget ());
+  EXPECT_FALSE (characters.GetById (id2)->HasTarget ());
 }
 
 TEST_F (TargetSelectionTests, MultipleAttacks)
@@ -239,11 +240,10 @@ TEST_F (TargetSelectionTests, MultipleAttacks)
 
   c = characters.GetById (id1);
   const auto& t = c->GetTarget ();
-  ASSERT_TRUE (t.has_id ());
   EXPECT_EQ (t.type (), proto::TargetId::TYPE_CHARACTER);
   EXPECT_EQ (t.id (), id2);
 
-  EXPECT_FALSE (characters.GetById (id2)->GetTarget ().has_id ());
+  EXPECT_FALSE (characters.GetById (id2)->HasTarget ());
 }
 
 TEST_F (TargetSelectionTests, OnlyAreaAttacks)
@@ -266,11 +266,10 @@ TEST_F (TargetSelectionTests, OnlyAreaAttacks)
 
   c = characters.GetById (id1);
   const auto& t = c->GetTarget ();
-  ASSERT_TRUE (t.has_id ());
   EXPECT_EQ (t.type (), proto::TargetId::TYPE_CHARACTER);
   EXPECT_EQ (t.id (), id2);
 
-  EXPECT_FALSE (characters.GetById (id2)->GetTarget ().has_id ());
+  EXPECT_FALSE (characters.GetById (id2)->HasTarget ());
 }
 
 TEST_F (TargetSelectionTests, Randomisation)
@@ -303,7 +302,6 @@ TEST_F (TargetSelectionTests, Randomisation)
 
       c = characters.GetById (idFighter);
       const auto& t = c->GetTarget ();
-      ASSERT_TRUE (t.has_id ());
       EXPECT_EQ (t.type (), proto::TargetId::TYPE_CHARACTER);
 
       const auto mit = targetMap.find (t.id ());

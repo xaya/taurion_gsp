@@ -200,17 +200,16 @@ public:
     return regenData.Mutable ();
   }
 
-  const proto::TargetId&
-  GetTarget () const
+  bool
+  HasTarget () const
   {
-    return target.Get ();
+    return target.Get ().has_id ();
   }
 
-  proto::TargetId&
-  MutableTarget ()
-  {
-    return target.Mutable ();
-  }
+  const proto::TargetId& GetTarget () const;
+
+  void ClearTarget ();
+  void SetTarget (const proto::TargetId& t);
 
   /**
    * Returns the entity's attack range or zero if there are no attacks.

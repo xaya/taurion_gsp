@@ -225,7 +225,7 @@ TEST_F (PXLogicTests, MovementBeforeTargeting)
   UpdateState ("[]");
 
   ASSERT_EQ (characters.GetById (id2)->GetPosition (), HexCoord (11, 0));
-  ASSERT_FALSE (characters.GetById (id1)->GetTarget ().has_id ());
+  ASSERT_FALSE (characters.GetById (id1)->HasTarget ());
 
   c = characters.GetById (id2);
   auto* wp = c->MutableProto ().mutable_movement ()->mutable_waypoints ();
@@ -238,7 +238,6 @@ TEST_F (PXLogicTests, MovementBeforeTargeting)
   ASSERT_EQ (characters.GetById (id2)->GetPosition (), HexCoord (10, 0));
   c = characters.GetById (id1);
   const auto& t = c->GetTarget ();
-  ASSERT_TRUE (t.has_id ());
   EXPECT_EQ (t.type (), proto::TargetId::TYPE_CHARACTER);
   EXPECT_EQ (t.id (), id2);
 }
@@ -849,8 +848,8 @@ TEST_F (PXLogicTests, EnterBuildingAndTargetFinding)
     }
   ])");
 
-  EXPECT_FALSE (characters.GetById (2)->GetTarget ().has_id ());
-  EXPECT_FALSE (characters.GetById (3)->GetTarget ().has_id ());
+  EXPECT_FALSE (characters.GetById (2)->HasTarget ());
+  EXPECT_FALSE (characters.GetById (3)->HasTarget ());
 }
 
 TEST_F (PXLogicTests, EnterAndExitBuildingWhenOutside)

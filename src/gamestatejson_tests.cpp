@@ -275,15 +275,16 @@ TEST_F (CharacterJsonTests, MultipleStep)
 TEST_F (CharacterJsonTests, Target)
 {
   auto c = tbl.CreateNew ("domob", Faction::RED);
-  auto* targetProto = &c->MutableTarget ();
-  targetProto->set_id (5);
-  targetProto->set_type (proto::TargetId::TYPE_CHARACTER);
+  proto::TargetId t;
+  t.set_id (5);
+  t.set_type (proto::TargetId::TYPE_CHARACTER);
+  c->SetTarget (t);
   c.reset ();
 
   c = tbl.CreateNew ("domob", Faction::GREEN);
-  targetProto = &c->MutableTarget ();
-  targetProto->set_id (42);
-  targetProto->set_type (proto::TargetId::TYPE_BUILDING);
+  t.set_id (42);
+  t.set_type (proto::TargetId::TYPE_BUILDING);
+  c->SetTarget (t);
   c.reset ();
 
   tbl.CreateNew ("domob", Faction::BLUE);
@@ -668,9 +669,10 @@ TEST_F (BuildingJsonTests, CombatData)
   regen.set_shield_regeneration_mhp (1'001);
   regen.mutable_max_hp ()->set_armour (100);
   regen.mutable_max_hp ()->set_shield (50);
-  auto& t = h->MutableTarget ();
+  proto::TargetId t;
   t.set_id (10);
   t.set_type (proto::TargetId::TYPE_CHARACTER);
+  h->SetTarget (t);
   h.reset ();
 
   ExpectStateJson (R"({

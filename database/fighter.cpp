@@ -86,30 +86,22 @@ Fighter::GetAttackRange () const
 const proto::TargetId&
 Fighter::GetTarget () const
 {
-  const proto::TargetId* pb;
   if (building != nullptr)
-    pb = &building->GetTarget ();
-  else
-    {
-      CHECK (character != nullptr);
-      pb = &character->GetTarget ();
-    }
+    return building->GetTarget ();
 
-  CHECK (pb->has_id ());
-  return *pb;
+  CHECK (character != nullptr);
+  return character->GetTarget ();
 }
 
 void
 Fighter::SetTarget (const proto::TargetId& target)
 {
-  CHECK (target.has_id ());
-
   if (building != nullptr)
-    building->MutableTarget () = target;
+    building->SetTarget (target);
   else
     {
       CHECK (character != nullptr);
-      character->MutableTarget () = target;
+      character->SetTarget (target);
     }
 }
 
@@ -117,11 +109,11 @@ void
 Fighter::ClearTarget ()
 {
   if (building != nullptr)
-    building->MutableTarget ().clear_id ();
+    building->ClearTarget ();
   else
     {
       CHECK (character != nullptr);
-      character->MutableTarget ().clear_id ();
+      character->ClearTarget ();
     }
 }
 

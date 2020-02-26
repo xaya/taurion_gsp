@@ -40,7 +40,7 @@ CombatEntity::BindFullFields (Database::Statement& stmt,
   stmt.BindProto (indRegenData, regenData);
   stmt.Bind (indAttackRange, FindAttackRange (GetCombatData ()));
 
-  if (target.Get ().has_id ())
+  if (HasTarget ())
     stmt.BindProto (indTarget, target);
   else
     stmt.BindNull (indTarget);
@@ -67,6 +67,27 @@ CombatEntity::Validate () const
     CHECK_EQ (attackRange, FindAttackRange (pb.combat_data ()));
 
 #endif // ENABLE_SLOW_ASSERTS
+}
+
+const proto::TargetId&
+CombatEntity::GetTarget () const
+{
+  CHECK (HasTarget ());
+  return target.Get ();
+}
+
+void
+CombatEntity::ClearTarget ()
+{
+  if (HasTarget ())
+    target.Mutable ().Clear ();
+}
+
+void
+CombatEntity::SetTarget (const proto::TargetId& t)
+{
+  target.Mutable () = t;
+  CHECK (HasTarget ());
 }
 
 HexCoord::IntT

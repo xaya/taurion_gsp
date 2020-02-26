@@ -60,7 +60,9 @@ TEST_F (FighterTests, Characters)
 
   c = characters.CreateNew ("domob", Faction::GREEN);
   const auto id2 = c->GetId ();
-  c->MutableTarget ().set_id (42);
+  proto::TargetId t;
+  t.set_id (42);
+  c->SetTarget (t);
   c->MutableProto ().mutable_combat_data ()->add_attacks ()->set_range (10);
   c->MutableRegenData ().set_shield_regeneration_mhp (2);
   c.reset ();
@@ -85,7 +87,6 @@ TEST_F (FighterTests, Characters)
   EXPECT_EQ (hp.armour (), 10);
   hp.set_armour (5);
 
-  proto::TargetId t;
   t.set_id (5);
   f.SetTarget (t);
   f.reset ();
@@ -105,7 +106,7 @@ TEST_F (FighterTests, Characters)
   c = characters.GetById (id1);
   EXPECT_EQ (c->GetTarget ().id (), 5);
   EXPECT_EQ (c->GetHP ().armour (), 5);
-  EXPECT_FALSE (characters.GetById (id2)->GetTarget ().has_id ());
+  EXPECT_FALSE (characters.GetById (id2)->HasTarget ());
 }
 
 TEST_F (FighterTests, Buildings)
@@ -147,7 +148,7 @@ TEST_F (FighterTests, Buildings)
   f.reset ();
 
   b = buildings.GetById (id);
-  EXPECT_FALSE (b->GetTarget ().has_id ());
+  EXPECT_FALSE (b->HasTarget ());
 }
 
 TEST_F (FighterTests, GetForTarget)
@@ -282,12 +283,15 @@ TEST_F (FighterTests, ProcessWithTarget)
 
   auto c = characters.CreateNew ("domob", Faction::RED);
   const auto idChar = c->GetId ();
-  c->MutableTarget ().set_id (5);
+  proto::TargetId t;
+  t.set_id (5);
+  c->SetTarget (t);
   c.reset ();
 
   auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
   const auto idBuilding = b->GetId ();
-  b->MutableTarget ().set_id (42);
+  t.set_id (42);
+  b->SetTarget (t);
   b.reset ();
 
   unsigned cnt = 0;

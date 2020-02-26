@@ -137,12 +137,19 @@ TEST_F (BuildingTests, CombatFields)
 
   h = tbl.GetById (id);
   EXPECT_EQ (h->GetRegenData ().shield_regeneration_mhp (), 42);
-  h->MutableTarget ().set_id (50);
+  EXPECT_FALSE (h->HasTarget ());
+  proto::TargetId t;
+  t.set_id (50);
+  h->SetTarget (t);
   h.reset ();
 
   h = tbl.GetById (id);
+  ASSERT_TRUE (h->HasTarget ());
   EXPECT_EQ (h->GetTarget ().id (), 50);
+  h->ClearTarget ();
   h.reset ();
+
+  EXPECT_FALSE (tbl.GetById (id)->HasTarget ());
 }
 
 /* ************************************************************************** */
@@ -209,7 +216,9 @@ TEST_F (BuildingsTableTests, QueryWithTarget)
 {
   auto h = tbl.CreateNew ("turret", "domob", Faction::RED);
   const auto id1 = h->GetId ();
-  h->MutableTarget ().set_id (5);
+  proto::TargetId t;
+  t.set_id (5);
+  h->SetTarget (t);
   h.reset ();
 
   const auto id2 = tbl.CreateNew ("turret", "andy", Faction::GREEN)->GetId ();
@@ -219,8 +228,8 @@ TEST_F (BuildingsTableTests, QueryWithTarget)
   EXPECT_EQ (tbl.GetFromResult (res)->GetOwner (), "domob");
   ASSERT_FALSE (res.Step ());
 
-  tbl.GetById (id1)->MutableTarget ().clear_id ();
-  tbl.GetById (id2)->MutableTarget ().set_id (42);
+  tbl.GetById (id1)->ClearTarget ();
+  tbl.GetById (id2)->SetTarget (t);
 
   res = tbl.QueryWithTarget ();
   ASSERT_TRUE (res.Step ());
