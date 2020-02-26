@@ -232,6 +232,15 @@ Character::UsedCargoSpace () const
   return res;
 }
 
+proto::TargetId
+Character::GetIdAsTarget () const
+{
+  proto::TargetId res;
+  res.set_type (proto::TargetId::TYPE_CHARACTER);
+  res.set_id (id);
+  return res;
+}
+
 CharacterTable::Handle
 CharacterTable::CreateNew (const std::string& owner, const Faction faction)
 {

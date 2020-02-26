@@ -124,7 +124,7 @@ public:
   }
 
   Faction
-  GetFaction () const
+  GetFaction () const override
   {
     return faction;
   }
@@ -161,6 +161,14 @@ public:
   MutableProto ()
   {
     return data.Mutable ();
+  }
+
+  proto::TargetId GetIdAsTarget () const override;
+
+  const HexCoord&
+  GetCombatPosition () const override
+  {
+    return GetCentre ();
   }
 
   const proto::CombatData&

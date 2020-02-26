@@ -26,21 +26,11 @@ namespace pxd
 proto::TargetId
 Fighter::GetId () const
 {
-  proto::TargetId res;
-
   if (building != nullptr)
-    {
-      res.set_type (proto::TargetId::TYPE_BUILDING);
-      res.set_id (building->GetId ());
-    }
-  else
-    {
-      CHECK (character != nullptr);
-      res.set_type (proto::TargetId::TYPE_CHARACTER);
-      res.set_id (character->GetId ());
-    }
+    return building->GetIdAsTarget ();
 
-  return res;
+  CHECK (character != nullptr);
+  return character->GetIdAsTarget ();
 }
 
 Faction
@@ -57,10 +47,10 @@ const HexCoord&
 Fighter::GetPosition () const
 {
   if (building != nullptr)
-    return building->GetCentre ();
+    return building->GetCombatPosition ();
 
   CHECK (character != nullptr);
-  return character->GetPosition ();
+  return character->GetCombatPosition ();
 }
 
 const proto::RegenData&
@@ -77,22 +67,10 @@ const proto::CombatData&
 Fighter::GetCombatData () const
 {
   if (building != nullptr)
-    {
-      const auto& pb = building->GetProto ();
-
-      /* Every fighter must have combat data to be valid.  This is set when
-         first created and then only updated.  Enforce this requirement here,
-         so that we do not accidentally work with an empty proto just because it
-         has not been initialised due to a bug.  */
-      CHECK (pb.has_combat_data ());
-
-      return pb.combat_data ();
-    }
+    return building->GetCombatData ();
 
   CHECK (character != nullptr);
-  const auto& pb = character->GetProto ();
-  CHECK (pb.has_combat_data ());
-  return pb.combat_data ();
+  return character->GetCombatData ();
 }
 
 HexCoord::IntT

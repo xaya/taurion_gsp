@@ -119,6 +119,15 @@ Building::SetCentre (const HexCoord& c)
   pos = c;
 }
 
+proto::TargetId
+Building::GetIdAsTarget () const
+{
+  proto::TargetId res;
+  res.set_type (proto::TargetId::TYPE_BUILDING);
+  res.set_id (id);
+  return res;
+}
+
 BuildingsTable::Handle
 BuildingsTable::CreateNew (const std::string& type,
                            const std::string& owner, const Faction faction)

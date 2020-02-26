@@ -21,11 +21,13 @@
 
 #include "building.hpp"
 #include "character.hpp"
+#include "combat.hpp"
 
 #include "hexagonal/coord.hpp"
 #include "proto/combat.pb.h"
 
 #include <functional>
+#include <memory>
 
 namespace pxd
 {
@@ -40,11 +42,11 @@ class Fighter
 
 private:
 
-  /** The character handle if this is a building.  */
-  BuildingsTable::Handle building;
+  /** The handle if this is a building.  */
+  std::unique_ptr<CombatEntity> building;
 
-  /** The character handle if this is a character.  */
-  CharacterTable::Handle character;
+  /** The handle if this is a character.  */
+  std::unique_ptr<CombatEntity> character;
 
   /**
    * Construct a fighter based on a building handle.
