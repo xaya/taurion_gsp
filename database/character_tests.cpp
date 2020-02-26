@@ -200,18 +200,19 @@ TEST_F (CharacterTests, Target)
   h.reset ();
 
   h = tbl.GetById (id);
-  EXPECT_FALSE (h->GetTarget ().has_id ());
-  h->MutableTarget ().set_id (42);
+  EXPECT_FALSE (h->HasTarget ());
+  proto::TargetId t;
+  t.set_id(42);
+  h->SetTarget (t);
   h.reset ();
 
   h = tbl.GetById (id);
+  ASSERT_TRUE (h->HasTarget ());
   EXPECT_EQ (h->GetTarget ().id (), 42);
-  h->MutableTarget ().clear_id ();
+  h->ClearTarget ();
   h.reset ();
 
-  h = tbl.GetById (id);
-  EXPECT_FALSE (h->GetTarget ().has_id ());
-  h.reset ();
+  EXPECT_FALSE (tbl.GetById (id)->HasTarget ());
 }
 
 TEST_F (CharacterTests, Inventory)
@@ -422,7 +423,9 @@ TEST_F (CharacterTableTests, QueryWithTarget)
 {
   auto c = tbl.CreateNew ("domob", Faction::RED);
   const auto id1 = c->GetId ();
-  c->MutableTarget ().set_id (5);
+  proto::TargetId t;
+  t.set_id (5);
+  c->SetTarget (t);
   c.reset ();
 
   const auto id2 = tbl.CreateNew ("andy", Faction::GREEN)->GetId ();
@@ -432,8 +435,8 @@ TEST_F (CharacterTableTests, QueryWithTarget)
   EXPECT_EQ (tbl.GetFromResult (res)->GetOwner (), "domob");
   ASSERT_FALSE (res.Step ());
 
-  tbl.GetById (id1)->MutableTarget ().clear_id ();
-  tbl.GetById (id2)->MutableTarget ().set_id (42);
+  tbl.GetById (id1)->ClearTarget ();
+  tbl.GetById (id2)->SetTarget (t);
 
   res = tbl.QueryWithTarget ();
   ASSERT_TRUE (res.Step ());

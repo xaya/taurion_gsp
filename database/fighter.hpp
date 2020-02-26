@@ -21,128 +21,20 @@
 
 #include "building.hpp"
 #include "character.hpp"
+#include "combat.hpp"
 
 #include "hexagonal/coord.hpp"
 #include "proto/combat.pb.h"
 
 #include <functional>
+#include <memory>
 
 namespace pxd
 {
 
 /**
- * Database abstraction for a fighter (entity that can attack another or take
- * damage from another one's attack).  This can be either a character or a
- * building.  This class makes both look the same for the processing code.
- */
-class Fighter
-{
-
-private:
-
-  /** The character handle if this is a building.  */
-  BuildingsTable::Handle building;
-
-  /** The character handle if this is a character.  */
-  CharacterTable::Handle character;
-
-  /**
-   * Construct a fighter based on a building handle.
-   */
-  explicit Fighter (BuildingsTable::Handle b)
-    : building(std::move (b))
-  {}
-
-  /**
-   * Construct a fighter based on a character handle.
-   */
-  explicit Fighter (CharacterTable::Handle c)
-    : character(std::move (c))
-  {}
-
-  friend class FighterTable;
-
-public:
-
-  Fighter () = default;
-  Fighter (Fighter&&) = default;
-  Fighter& operator= (Fighter&&) = default;
-
-  Fighter (const Fighter&) = delete;
-  void operator= (const Fighter&) = delete;
-
-  /**
-   * Returns this fighter's type and ID.
-   */
-  proto::TargetId GetId () const;
-
-  /**
-   * Returns this fighter's faction association.  This is used to determine
-   * friendlyness towards potential targets.
-   */
-  Faction GetFaction () const;
-
-  /**
-   * Returns the figher's position.  Must not be called if this is an
-   * empty handle.
-   */
-  const HexCoord& GetPosition () const;
-
-  /**
-   * Returns the HP regeneration data for this fighter.
-   */
-  const proto::RegenData& GetRegenData () const;
-
-  /**
-   * Returns the combat data proto for this fighter.
-   */
-  const proto::CombatData& GetCombatData () const;
-
-  /**
-   * Returns the fighter's attack range or zero if there are no attacks.
-   */
-  HexCoord::IntT GetAttackRange () const;
-
-  /**
-   * Returns the target.  This must only be called if there is one.
-   */
-  const proto::TargetId& GetTarget () const;
-
-  /**
-   * Sets the target of this fighter to the given proto.
-   */
-  void SetTarget (const proto::TargetId& target);
-
-  /**
-   * Clears target selection (i.e. no target is selected).
-   */
-  void ClearTarget ();
-
-  /**
-   * Returns a read-only reference to the current HP.
-   */
-  const proto::HP& GetHP () const;
-
-  /**
-   * Returns a mutable reference to the current HP so that they can be modified
-   * (for dealing damage and for regenerating the shield).
-   */
-  proto::HP& MutableHP ();
-
-  /**
-   * Resets the handle to be empty.
-   */
-  void reset ();
-
-  /**
-   * Checks whether or not this is an "empty" pointer.
-   */
-  bool empty () const;
-
-};
-
-/**
- * Database interface for retrieving handles to all fighters.
+ * Database interface for retrieving handles to all fighters (i.e. entities
+ * that need to be processed for combat).
  */
 class FighterTable
 {
@@ -157,8 +49,11 @@ private:
 
 public:
 
+  /** Handle to a generic fighter entity.  */
+  using Handle = std::unique_ptr<CombatEntity>;
+
   /** Type for callbacks when querying for all fighters.  */
-  using Callback = std::function<void (Fighter f)>;
+  using Callback = std::function<void (Handle f)>;
 
   /**
    * Constructs a fighter table drawing buildings and characters from the given
@@ -175,7 +70,7 @@ public:
   /**
    * Retrieves the fighter handle for the given target ID.
    */
-  Fighter GetForTarget (const proto::TargetId& id);
+  Handle GetForTarget (const proto::TargetId& id);
 
   /**
    * Retrieves all fighters from the database that have an attack and runs

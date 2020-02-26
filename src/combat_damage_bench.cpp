@@ -84,9 +84,11 @@ InsertCharacters (Database& db, const unsigned numIdle,
           attack->set_min_damage (1);
           attack->set_max_damage (1);
         }
-      auto& targetId = c->MutableTarget ();
-      targetId.set_type (proto::TargetId::TYPE_CHARACTER);
-      targetId.set_id (id);
+
+      proto::TargetId t;
+      t.set_type (proto::TargetId::TYPE_CHARACTER);
+      t.set_id (id);
+      c->SetTarget (t);
       c.reset ();
     }
 }

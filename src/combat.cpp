@@ -44,11 +44,11 @@ constexpr const unsigned BUILDING_INVENTORY_DROP_PERCENT = 30;
  * Runs target selection for one fighter entity.
  */
 void
-SelectTarget (TargetFinder& targets, xaya::Random& rnd, Fighter f)
+SelectTarget (TargetFinder& targets, xaya::Random& rnd, FighterTable::Handle f)
 {
-  const HexCoord pos = f.GetPosition ();
+  const HexCoord pos = f->GetCombatPosition ();
 
-  const HexCoord::IntT range = f.GetAttackRange ();
+  const HexCoord::IntT range = f->GetAttackRange ();
   if (range == 0)
     {
       VLOG (1) << "Fighter at " << pos << " has no attacks";
@@ -59,7 +59,7 @@ SelectTarget (TargetFinder& targets, xaya::Random& rnd, Fighter f)
   HexCoord::IntT closestRange;
   std::vector<proto::TargetId> closestTargets;
 
-  targets.ProcessL1Targets (pos, range, f.GetFaction (),
+  targets.ProcessL1Targets (pos, range, f->GetFaction (),
     [&] (const HexCoord& c, const proto::TargetId& id)
     {
       const HexCoord::IntT curDist = HexCoord::DistanceL1 (pos, c);
@@ -85,12 +85,12 @@ SelectTarget (TargetFinder& targets, xaya::Random& rnd, Fighter f)
 
   if (closestTargets.empty ())
     {
-      f.ClearTarget ();
+      f->ClearTarget ();
       return;
     }
 
   const unsigned ind = rnd.NextInt (closestTargets.size ());
-  f.SetTarget (closestTargets[ind]);
+  f->SetTarget (closestTargets[ind]);
 }
 
 } // anonymous namespace
@@ -103,7 +103,7 @@ FindCombatTargets (Database& db, xaya::Random& rnd)
   FighterTable fighters(buildings, characters);
   TargetFinder targets(db);
 
-  fighters.ProcessWithAttacks ([&] (Fighter f)
+  fighters.ProcessWithAttacks ([&] (FighterTable::Handle f)
     {
       SelectTarget (targets, rnd, std::move (f));
     });
@@ -128,10 +128,10 @@ RollAttackDamage (const proto::Attack& attack, xaya::Random& rnd)
  */
 void
 ApplyDamage (DamageLists& dl, unsigned dmg,
-             const Fighter& attacker, Fighter target,
+             const CombatEntity& attacker, FighterTable::Handle target,
              std::vector<proto::TargetId>& dead)
 {
-  const auto targetId = target.GetId ();
+  const auto targetId = target->GetIdAsTarget ();
   if (dmg == 0)
     {
       VLOG (1) << "No damage done to target:\n" << targetId.DebugString ();
@@ -140,12 +140,12 @@ ApplyDamage (DamageLists& dl, unsigned dmg,
   VLOG (1)
       << "Dealing " << dmg << " damage to target:\n" << targetId.DebugString ();
 
-  const auto attackerId = attacker.GetId ();
+  const auto attackerId = attacker.GetIdAsTarget ();
   if (attackerId.type () == proto::TargetId::TYPE_CHARACTER
         && targetId.type () == proto::TargetId::TYPE_CHARACTER)
     dl.AddEntry (targetId.id (), attackerId.id ());
 
-  auto& hp = target.MutableHP ();
+  auto& hp = target->MutableHP ();
 
   const unsigned shieldDmg = std::min (dmg, hp.shield ());
   hp.set_shield (hp.shield () - shieldDmg);
@@ -175,15 +175,15 @@ ApplyDamage (DamageLists& dl, unsigned dmg,
 void
 DealDamage (FighterTable& fighters, TargetFinder& targets,
             DamageLists& dl, xaya::Random& rnd,
-            Fighter f, std::vector<proto::TargetId>& dead)
+            FighterTable::Handle f, std::vector<proto::TargetId>& dead)
 {
-  const auto& cd = f.GetCombatData ();
-  const auto& pos = f.GetPosition ();
+  const auto& cd = f->GetCombatData ();
+  const auto& pos = f->GetCombatPosition ();
 
   /* First, apply all non-area attacks to the selected target.  */
   {
-    Fighter tf = fighters.GetForTarget (f.GetTarget ());
-    const auto dist = HexCoord::DistanceL1 (pos, tf.GetPosition ());
+    auto tf = fighters.GetForTarget (f->GetTarget ());
+    const auto dist = HexCoord::DistanceL1 (pos, tf->GetCombatPosition ());
     unsigned dmg = 0;
     for (const auto& attack : cd.attacks ())
       {
@@ -194,7 +194,7 @@ DealDamage (FighterTable& fighters, TargetFinder& targets,
 
         dmg += RollAttackDamage (attack, rnd);
       }
-    ApplyDamage (dl, dmg, f, std::move (tf), dead);
+    ApplyDamage (dl, dmg, *f, std::move (tf), dead);
   }
 
   /* Second, apply all area attacks to matching targets.  */
@@ -205,10 +205,10 @@ DealDamage (FighterTable& fighters, TargetFinder& targets,
 
       const unsigned dmg = RollAttackDamage (attack, rnd);
 
-      targets.ProcessL1Targets (pos, attack.range (), f.GetFaction (),
+      targets.ProcessL1Targets (pos, attack.range (), f->GetFaction (),
         [&] (const HexCoord& c, const proto::TargetId& id)
         {
-          ApplyDamage (dl, dmg, f, fighters.GetForTarget (id), dead);
+          ApplyDamage (dl, dmg, *f, fighters.GetForTarget (id), dead);
         });
     }
 }
@@ -224,7 +224,7 @@ DealCombatDamage (Database& db, DamageLists& dl, xaya::Random& rnd)
   TargetFinder targets(db);
 
   std::vector<proto::TargetId> dead;
-  fighters.ProcessWithTarget ([&] (Fighter f)
+  fighters.ProcessWithTarget ([&] (FighterTable::Handle f)
     {
       DealDamage (fighters, targets, dl, rnd, std::move (f), dead);
     });
@@ -429,10 +429,10 @@ namespace
  * Applies HP regeneration (if any) to a given fighter.
  */
 void
-RegenerateFighterHP (Fighter f)
+RegenerateFighterHP (FighterTable::Handle f)
 {
-  const auto& regen = f.GetRegenData ();
-  const auto& hp = f.GetHP ();
+  const auto& regen = f->GetRegenData ();
+  const auto& hp = f->GetHP ();
 
   /* Make sure to return early if there is no regeneration at all.  This
      ensures that we are not doing unnecessary database updates triggered
@@ -454,7 +454,7 @@ RegenerateFighterHP (Fighter f)
       mhp = 0;
     }
 
-  auto& mutableHP = f.MutableHP ();
+  auto& mutableHP = f->MutableHP ();
   mutableHP.set_shield (shield);
   mutableHP.set_shield_mhp (mhp);
 }
@@ -468,7 +468,7 @@ RegenerateHP (Database& db)
   CharacterTable characters(db);
   FighterTable fighters(buildings, characters);
 
-  fighters.ProcessForRegen ([] (Fighter f)
+  fighters.ProcessForRegen ([] (FighterTable::Handle f)
     {
       RegenerateFighterHP (std::move (f));
     });

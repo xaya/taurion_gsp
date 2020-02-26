@@ -177,7 +177,7 @@ public:
   }
 
   Faction
-  GetFaction () const
+  GetFaction () const override
   {
     return faction;
   }
@@ -280,6 +280,14 @@ public:
    * Returns the used cargo space for the character's inventory.
    */
   uint64_t UsedCargoSpace () const;
+
+  proto::TargetId GetIdAsTarget () const override;
+
+  const HexCoord&
+  GetCombatPosition () const override
+  {
+    return GetPosition ();
+  }
 
   const proto::CombatData&
   GetCombatData () const override

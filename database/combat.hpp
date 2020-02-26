@@ -20,6 +20,7 @@
 #define DATABASE_COMBAT_HPP
 
 #include "database.hpp"
+#include "faction.hpp"
 #include "lazyproto.hpp"
 
 #include "hexagonal/coord.hpp"
@@ -199,17 +200,16 @@ public:
     return regenData.Mutable ();
   }
 
-  const proto::TargetId&
-  GetTarget () const
+  bool
+  HasTarget () const
   {
-    return target.Get ();
+    return target.Get ().has_id ();
   }
 
-  proto::TargetId&
-  MutableTarget ()
-  {
-    return target.Mutable ();
-  }
+  const proto::TargetId& GetTarget () const;
+
+  void ClearTarget ();
+  void SetTarget (const proto::TargetId& t);
 
   /**
    * Returns the entity's attack range or zero if there are no attacks.
@@ -221,7 +221,23 @@ public:
   HexCoord::IntT GetAttackRange () const;
 
   /**
-   * Subclasses must implement this to return the combat data proto.
+   * Returns this entity's target ID as a proto.
+   */
+  virtual proto::TargetId GetIdAsTarget () const = 0;
+
+  /**
+   * Returns the entity's faction (which is needed to determine friendliness).
+   */
+  virtual Faction GetFaction () const = 0;
+
+  /**
+   * Returns the position of this entity for attack targeting.
+   */
+  virtual const HexCoord& GetCombatPosition () const = 0;
+
+  /**
+   * Returns the CombatData proto for this entity, which is likely somewhere
+   * extracted from the (type-specific) main proto.
    */
   virtual const proto::CombatData& GetCombatData () const = 0;
 

@@ -44,9 +44,6 @@ namespace
 Json::Value
 TargetIdToJson (const proto::TargetId& target)
 {
-  if (!target.has_id ())
-    return Json::Value ();
-
   Json::Value res(Json::objectValue);
   res["id"] = IntToJson (target.id ());
 
@@ -148,9 +145,8 @@ GetCombatJsonObject (const CombatEntity& h)
 {
   Json::Value res(Json::objectValue);
 
-  const auto targetJson = TargetIdToJson (h.GetTarget ());
-  if (!targetJson.isNull ())
-    res["target"] = targetJson;
+  if (h.HasTarget ())
+    res["target"] = TargetIdToJson (h.GetTarget ());
 
   const auto& pb = h.GetCombatData ();
   Json::Value attacks(Json::arrayValue);
