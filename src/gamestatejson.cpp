@@ -318,6 +318,7 @@ template <>
   Json::Value res(Json::objectValue);
   res["name"] = a.GetName ();
   res["faction"] = FactionToString (a.GetFaction ());
+  res["balance"] = IntToJson (a.GetBalance ());
 
   const auto& pb = a.GetProto ();
   res["kills"] = IntToJson (pb.kills ());

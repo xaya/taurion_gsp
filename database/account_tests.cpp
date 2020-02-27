@@ -47,6 +47,7 @@ TEST_F (AccountTests, DefaultData)
   EXPECT_EQ (a->GetFaction (), Faction::BLUE);
   EXPECT_EQ (a->GetProto ().kills (), 0);
   EXPECT_EQ (a->GetProto ().fame (), 100);
+  EXPECT_EQ (a->GetBalance (), 0);
 }
 
 TEST_F (AccountTests, Update)
@@ -60,6 +61,20 @@ TEST_F (AccountTests, Update)
   EXPECT_EQ (a->GetName (), "foobar");
   EXPECT_EQ (a->GetProto ().kills (), 50);
   EXPECT_EQ (a->GetProto ().fame (), 200);
+}
+
+TEST_F (AccountTests, Balance)
+{
+  auto a = tbl.CreateNew ("foobar", Faction::RED);
+  a->AddBalance (10);
+  a->AddBalance (20);
+  a.reset ();
+
+  a = tbl.GetByName ("foobar");
+  EXPECT_EQ (a->GetBalance (), 30);
+  a->AddBalance (-30);
+  EXPECT_EQ (a->GetBalance (), 0);
+  a.reset ();
 }
 
 using AccountsTableTests = AccountTests;

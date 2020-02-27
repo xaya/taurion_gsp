@@ -556,6 +556,20 @@ TEST_F (AccountJsonTests, KillsAndFame)
   })");
 }
 
+TEST_F (AccountJsonTests, Balance)
+{
+  tbl.CreateNew ("foo", Faction::RED);
+  tbl.CreateNew ("bar", Faction::BLUE)->AddBalance (42);
+
+  ExpectStateJson (R"({
+    "accounts":
+      [
+        {"name": "bar", "faction": "b", "balance": 42},
+        {"name": "foo", "faction": "r", "balance": 0}
+      ]
+  })");
+}
+
 /* ************************************************************************** */
 
 class BuildingJsonTests : public GameStateJsonTests

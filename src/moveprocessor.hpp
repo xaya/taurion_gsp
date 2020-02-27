@@ -19,11 +19,11 @@
 #ifndef PXD_MOVEPROCESSOR_HPP
 #define PXD_MOVEPROCESSOR_HPP
 
-#include "amount.hpp"
 #include "context.hpp"
 #include "dynobstacles.hpp"
 
 #include "database/account.hpp"
+#include "database/amount.hpp"
 #include "database/building.hpp"
 #include "database/character.hpp"
 #include "database/database.hpp"

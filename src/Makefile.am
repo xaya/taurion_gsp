@@ -38,7 +38,6 @@ libtaurion_la_SOURCES = \
   resourcedist.cpp \
   spawn.cpp
 libtaurionheaders = \
-  amount.hpp \
   buildings.hpp \
   combat.hpp \
   context.hpp \

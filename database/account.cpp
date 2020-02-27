@@ -48,6 +48,8 @@ Account::~Account ()
     }
 
   VLOG (1) << "Updating account " << name << " in the database";
+  CHECK_GE (GetBalance (), 0);
+
   auto stmt = db.Prepare (R"(
     INSERT OR REPLACE INTO `accounts`
       (`name`, `faction`, `proto`)
@@ -59,6 +61,15 @@ Account::~Account ()
   stmt.BindProto (3, data);
 
   stmt.Execute ();
+}
+
+void
+Account::AddBalance (const Amount val)
+{
+  Amount balance = data.Get ().balance ();
+  balance += val;
+  CHECK_GE (balance, 0);
+  data.Mutable ().set_balance (balance);
 }
 
 AccountsTable::Handle

@@ -19,6 +19,7 @@
 #ifndef DATABASE_ACCOUNT_HPP
 #define DATABASE_ACCOUNT_HPP
 
+#include "amount.hpp"
 #include "database.hpp"
 #include "faction.hpp"
 #include "lazyproto.hpp"
@@ -90,8 +91,6 @@ public:
   Account (const Account&) = delete;
   void operator= (const Account&) = delete;
 
-  /* Accessor methods.  */
-
   const std::string&
   GetName () const
   {
@@ -114,6 +113,19 @@ public:
   MutableProto ()
   {
     return data.Mutable ();
+  }
+
+  /**
+   * Updates the account balance by the given (signed) amount.  This should
+   * be used instead of manually editing the proto, so that there is a single
+   * place that controls all balance updates.
+   */
+  void AddBalance (Amount val);
+
+  Amount
+  GetBalance () const
+  {
+    return data.Get ().balance ();
   }
 
 };

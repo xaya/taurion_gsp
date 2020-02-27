@@ -16,8 +16,8 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef PXD_AMOUNT_HPP
-#define PXD_AMOUNT_HPP
+#ifndef DATABASE_AMOUNT_HPP
+#define DATABASE_AMOUNT_HPP
 
 #include <cstdint>
 
@@ -38,4 +38,4 @@ constexpr Amount MAX_AMOUNT = 80'000'000 * COIN;
 
 } // namespace pxd
 
-#endif // PXD_AMOUNT_HPP
+#endif // DATABASE_AMOUNT_HPP
