@@ -209,6 +209,103 @@ BaseMoveProcessor::TryCharacterUpdates (const std::string& name,
     }
 }
 
+namespace
+{
+
+/**
+ * Extracts a vCHI amount from JSON, validating that it is non-negative
+ * and below MAX_COIN_AMOUNT.
+ */
+bool
+ExtractCoinAmount (const Json::Value& val, Amount& amount)
+{
+  if (!val.isInt64 ())
+    return false;
+
+  amount = val.asInt64 ();
+  return amount >= 0 && amount <= MAX_COIN_AMOUNT;
+}
+
+} // anonymous namespace
+
+bool
+BaseMoveProcessor::ParseCoinTransferBurn (const Account& a,
+                                          const Json::Value& moveObj,
+                                          CoinTransferBurn& op)
+{
+  CHECK (moveObj.isObject ());
+  const auto& cmd = moveObj["vc"];
+  if (!cmd.isObject ())
+    return false;
+
+  const Amount balance = a.GetBalance ();
+  Amount total = 0;
+
+  const auto& burn = cmd["b"];
+  if (ExtractCoinAmount (burn, op.burnt))
+    {
+      if (total + op.burnt <= balance)
+        total += op.burnt;
+      else
+        {
+          LOG (WARNING)
+              << a.GetName () << " has only a balance of " << balance
+              << ", can't burn " << op.burnt << " coins";
+          op.burnt = 0;
+        }
+    }
+  else
+    op.burnt = 0;
+
+  const auto& transfers = cmd["t"];
+  if (transfers.isObject ())
+    {
+      op.transfers.clear ();
+      for (auto it = transfers.begin (); it != transfers.end (); ++it)
+        {
+          CHECK (it.key ().isString ());
+          const std::string to = it.key ().asString ();
+
+          if (accounts.GetByName (to) == nullptr)
+            {
+              LOG (WARNING)
+                  << "Coin transfer recipient " << to
+                  << " is not an initialised account";
+              continue;
+            }
+
+          Amount amount;
+          if (!ExtractCoinAmount (*it, amount))
+            {
+              LOG (WARNING)
+                  << "Invalid coin transfer from " << a.GetName ()
+                  << " to " << to << ": " << *it;
+              continue;
+            }
+
+          if (total + amount > balance)
+            {
+              LOG (WARNING)
+                  << "Transfer of " << amount << " from " << a.GetName ()
+                  << " to " << to << " would exceed the balance";
+              continue;
+            }
+
+          /* Self transfers are a no-op, so we just ignore them (and do not
+             update the total sent, so the balance is still available for
+             future transfers).  */
+          if (to == a.GetName ())
+            continue;
+
+          total += amount;
+          CHECK (op.transfers.emplace (to, amount).second);
+        }
+    }
+
+  CHECK_LE (total, balance);
+  return total > 0;
+}
+
 bool
 BaseMoveProcessor::ParseCharacterWaypoints (const Character& c,
                                             const Json::Value& upd,
@@ -591,6 +688,11 @@ MoveProcessor::ProcessOne (const Json::Value& moveObj)
           << "Account " << name << " does not exist, ignoring move " << moveObj;
       return;
     }
+
+  /* Handle coin transfers before other game operations.  This ensures that
+     if funds run out, then the explicit transfers are done with priority
+     over the other operations that may require coins implicitly.  */
+  TryCoinOperation (name, mv);
 
   /* Note that the order between character update and character creation
      matters:  By having the update *before* the creation, we explicitly
@@ -1313,6 +1415,39 @@ MoveProcessor::TryAccountUpdate (const std::string& name,
     return;
 
   MaybeInitAccount (name, upd["init"]);
+}
+
+void
+MoveProcessor::TryCoinOperation (const std::string& name,
+                                 const Json::Value& mv)
+{
+  auto a = accounts.GetByName (name);
+  CHECK (a != nullptr);
+
+  CoinTransferBurn op;
+  if (!ParseCoinTransferBurn (*a, mv, op))
+    return;
+
+  if (op.burnt > 0)
+    {
+      LOG (INFO) << name << " is burning " << op.burnt << " coins";
+      a->AddBalance (-op.burnt);
+    }
+
+  for (const auto& entry : op.transfers)
+    {
+      /* Transfers to self are a no-op, but we have to explicitly handle
+         them here.  Else we would run into troubles by having a second
+         active Account handle for the same account.  */
+      if (entry.first == name)
+        continue;
+
+      LOG (INFO)
+          << name << " is sending " << entry.second
+          << " coins to " << entry.first;
+      a->AddBalance (-entry.second);
+      accounts.GetByName (entry.first)->AddBalance (entry.second);
+    }
 }
 
 /* ************************************************************************** */

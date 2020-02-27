@@ -49,8 +49,36 @@ namespace pxd
  */
 static constexpr unsigned MAX_CHOSEN_SPEED = 1'000'000;
 
+/**
+ * The maximum amount of vCHI in a move.  This is consensus relevant.  The
+ * value is chosen such that its square still does not overflow an int64,
+ * so that it can even be used for prices that are then multiplied by some
+ * quantity.
+ */
+static constexpr Amount MAX_COIN_AMOUNT = 1'000'000'000;
+
 /** Amounts of fungible items.  */
 using FungibleAmountMap = std::map<std::string, Inventory::QuantityT>;
+
+/**
+ * Raw data for a coin transfer and burn command.
+ */
+struct CoinTransferBurn
+{
+
+  /** Amount of coins transferred to each account.  */
+  std::map<std::string, Amount> transfers;
+
+  /** Amount of coins burnt.  */
+  Amount burnt = 0;
+
+  CoinTransferBurn () = default;
+  CoinTransferBurn (CoinTransferBurn&&) = default;
+  CoinTransferBurn (const CoinTransferBurn&) = default;
+
+  void operator= (const CoinTransferBurn&) = delete;
+
+};
 
 /**
  * Base class for MoveProcessor (handling confirmed moves) and PendingProcessor
@@ -100,6 +128,14 @@ protected:
   bool ExtractMoveBasics (const Json::Value& moveObj,
                           std::string& name, Json::Value& mv,
                           Amount& paidToDev) const;
+
+  /**
+   * Parses and validates a move to transfer and burn coins (vCHI).  Returns
+   * true if at least one part of the transfer/burn was parsed successfully
+   * and needs to be executed.
+   */
+  bool ParseCoinTransferBurn (const Account& a, const Json::Value& moveObj,
+                              CoinTransferBurn& op);
 
   /**
    * Parses and verifies a potential update to the character waypoints
@@ -272,6 +308,11 @@ private:
    * Tries to handle a move that updates an account.
    */
   void TryAccountUpdate (const std::string& name, const Json::Value& upd);
+
+  /**
+   * Tries to handle a coin (vCHI) transfer / burn operation.
+   */
+  void TryCoinOperation (const std::string& name, const Json::Value& mv);
 
 protected:
 
