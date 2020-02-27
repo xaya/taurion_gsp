@@ -544,8 +544,8 @@ protected:
 
 TEST_F (AccountJsonTests, KillsAndFame)
 {
-  tbl.CreateNew ("foo", Faction::RED)->SetKills (10);
-  tbl.CreateNew ("bar", Faction::BLUE)->SetFame (42);
+  tbl.CreateNew ("foo", Faction::RED)->MutableProto ().set_kills (10);
+  tbl.CreateNew ("bar", Faction::BLUE)->MutableProto ().set_fame (42);
 
   ExpectStateJson (R"({
     "accounts":

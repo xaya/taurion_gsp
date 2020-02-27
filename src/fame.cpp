@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -48,10 +48,10 @@ FameUpdater::~FameUpdater ()
 
       auto h = accounts.GetByName (entry.first);
       CHECK (h != nullptr);
-      int fame = h->GetFame ();
+      int fame = h->GetProto ().fame ();
       fame += entry.second;
       fame = std::min<int> (MAX_FAME, std::max (0, fame));
-      h->SetFame (fame);
+      h->MutableProto ().set_fame (fame);
     }
 }
 
@@ -73,7 +73,7 @@ FameUpdater::UpdateForKill (const Database::IdT victim,
   const std::string& victimOwner = victimCharacter->GetOwner ();
   auto victimAccount = accounts.GetByName (victimOwner);
   CHECK (victimAccount != nullptr);
-  const unsigned victimFame = victimAccount->GetFame ();
+  const unsigned victimFame = victimAccount->GetProto ().fame ();
   const int victimLevel = GetLevel (victimFame);
   VLOG (1)
       << "Victim fame: " << victimFame << " (level: " << victimLevel << ")";
@@ -96,9 +96,10 @@ FameUpdater::UpdateForKill (const Database::IdT victim,
       VLOG (1) << "Killing account: " << owner;
       auto a = accounts.GetByName (owner);
       CHECK (a != nullptr);
-      a->SetKills (a->GetKills () + 1);
+      auto& pb = a->MutableProto ();
+      pb.set_kills (pb.kills () + 1);
 
-      const unsigned fame = a->GetFame ();
+      const unsigned fame = pb.fame ();
       const int level = GetLevel (fame);
       VLOG (1) << "Killer fame: " << fame << " (level: " << level << ")";
 

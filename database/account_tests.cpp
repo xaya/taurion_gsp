@@ -45,21 +45,21 @@ TEST_F (AccountTests, DefaultData)
   auto a = tbl.CreateNew ("foobar", Faction::BLUE);
   EXPECT_EQ (a->GetName (), "foobar");
   EXPECT_EQ (a->GetFaction (), Faction::BLUE);
-  EXPECT_EQ (a->GetKills (), 0);
-  EXPECT_EQ (a->GetFame (), 100);
+  EXPECT_EQ (a->GetProto ().kills (), 0);
+  EXPECT_EQ (a->GetProto ().fame (), 100);
 }
 
 TEST_F (AccountTests, Update)
 {
   auto a = tbl.CreateNew ("foobar", Faction::RED);
-  a->SetKills (50);
-  a->SetFame (200);
+  a->MutableProto ().set_kills (50);
+  a->MutableProto ().set_fame (200);
   a.reset ();
 
   a = tbl.GetByName ("foobar");
   EXPECT_EQ (a->GetName (), "foobar");
-  EXPECT_EQ (a->GetKills (), 50);
-  EXPECT_EQ (a->GetFame (), 200);
+  EXPECT_EQ (a->GetProto ().kills (), 50);
+  EXPECT_EQ (a->GetProto ().fame (), 200);
 }
 
 using AccountsTableTests = AccountTests;
@@ -73,7 +73,7 @@ TEST_F (AccountsTableTests, CreateAlreadyExisting)
 TEST_F (AccountsTableTests, QueryInitialised)
 {
   tbl.CreateNew ("foo", Faction::RED);
-  tbl.CreateNew ("bar", Faction::GREEN)->SetFame (10);
+  tbl.CreateNew ("bar", Faction::GREEN)->MutableProto ().set_fame (10);
 
   auto res = tbl.QueryInitialised ();
 
@@ -81,15 +81,13 @@ TEST_F (AccountsTableTests, QueryInitialised)
   auto a = tbl.GetFromResult (res);
   EXPECT_EQ (a->GetName (), "bar");
   EXPECT_EQ (a->GetFaction (), Faction::GREEN);
-  EXPECT_EQ (a->GetKills (), 0);
-  EXPECT_EQ (a->GetFame (), 10);
+  EXPECT_EQ (a->GetProto ().fame (), 10);
 
   ASSERT_TRUE (res.Step ());
   a = tbl.GetFromResult (res);
   EXPECT_EQ (a->GetName (), "foo");
   EXPECT_EQ (a->GetFaction (), Faction::RED);
-  EXPECT_EQ (a->GetKills (), 0);
-  EXPECT_EQ (a->GetFame (), 100);
+  EXPECT_EQ (a->GetProto ().fame (), 100);
 
   ASSERT_FALSE (res.Step ());
 }

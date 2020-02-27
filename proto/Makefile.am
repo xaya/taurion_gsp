@@ -15,6 +15,7 @@ ROCONFIG_TEXT_PROTOS = \
   roconfig/buildings/turrets.pb.text
 
 PROTOS = \
+  account.proto \
   building.proto \
   character.proto \
   combat.proto \

@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -165,14 +165,14 @@ TEST_F (FameTests, TrackingKills)
   const auto id4 = CreateCharacter ("bar");
 
   /* Add initial data to make sure that's taken into account.  */
-  accounts.GetByName ("foo")->SetKills (10);
+  accounts.GetByName ("foo")->MutableProto ().set_kills (10);
 
   /* Multiple killers (including the character owner himself) as well as
      multiple killing characters of one owner.  */
   UpdateForKill (id4, {id1, id2, id3});
 
-  EXPECT_EQ (accounts.GetByName ("foo")->GetKills (), 11);
-  EXPECT_EQ (accounts.GetByName ("bar")->GetKills (), 1);
+  EXPECT_EQ (accounts.GetByName ("foo")->GetProto ().kills (), 11);
+  EXPECT_EQ (accounts.GetByName ("bar")->GetProto ().kills (), 1);
 }
 
 TEST_F (FameTests, BasicUpdates)
@@ -201,7 +201,9 @@ TEST_F (FameTests, BasicUpdates)
 
       const std::string victimName = UniqueName ();
       const auto victimId = CreateCharacter (victimName);
-      accounts.GetByName (victimName)->SetFame (t.oldVictimFame);
+
+      accounts.GetByName (victimName)
+          ->MutableProto ().set_fame (t.oldVictimFame);
 
       std::vector<std::string> killerNames;
       DamageLists::Attackers killerIds;
@@ -209,17 +211,19 @@ TEST_F (FameTests, BasicUpdates)
         {
           killerNames.push_back (UniqueName ());
           killerIds.insert (CreateCharacter (killerNames.back ()));
-          accounts.GetByName (killerNames.back ())->SetFame (f);
+          accounts.GetByName (killerNames.back ())
+              ->MutableProto ().set_fame (f);
         }
 
       UpdateForKill (victimId, killerIds);
       FlushDeltas ();
 
-      EXPECT_EQ (accounts.GetByName (victimName)->GetFame (), t.newVictimFame);
+      EXPECT_EQ (accounts.GetByName (victimName)->GetProto ().fame (),
+                 t.newVictimFame);
 
       std::vector<unsigned> newKillerFames;
       for (const auto& nm : killerNames)
-        newKillerFames.push_back (accounts.GetByName (nm)->GetFame ());
+        newKillerFames.push_back (accounts.GetByName (nm)->GetProto ().fame ());
       EXPECT_EQ (newKillerFames, t.newKillerFames);
     }
 }
@@ -251,11 +255,11 @@ TEST_F (FameTests, SelfKills)
       const auto id1 = CreateCharacter (name);
       const auto id2 = CreateCharacter (name);
 
-      accounts.GetByName (name)->SetFame (t.oldFame);
+      accounts.GetByName (name)->MutableProto ().set_fame (t.oldFame);
       UpdateForKill (id1, {id2});
       FlushDeltas ();
 
-      EXPECT_EQ (accounts.GetByName (name)->GetFame (), t.newFame);
+      EXPECT_EQ (accounts.GetByName (name)->GetProto ().fame (), t.newFame);
     }
 }
 
@@ -267,13 +271,13 @@ TEST_F (FameTests, AccountsWithMultipleCharacters)
   const auto id4 = CreateCharacter ("bar");
   const auto id5 = CreateCharacter ("baz");
 
-  accounts.GetByName ("baz")->SetFame (5000);
+  accounts.GetByName ("baz")->MutableProto ().set_fame (5000);
   UpdateForKill (id1, {id2, id3, id4, id5});
   FlushDeltas ();
 
-  EXPECT_EQ (accounts.GetByName ("foo")->GetFame (), 33);
-  EXPECT_EQ (accounts.GetByName ("bar")->GetFame (), 133);
-  EXPECT_EQ (accounts.GetByName ("baz")->GetFame (), 5000);
+  EXPECT_EQ (accounts.GetByName ("foo")->GetProto ().fame (), 33);
+  EXPECT_EQ (accounts.GetByName ("bar")->GetProto ().fame (), 133);
+  EXPECT_EQ (accounts.GetByName ("baz")->GetProto ().fame (), 5000);
 }
 
 TEST_F (FameTests, ZeroFloorForMultipleCharactersKilled)
@@ -287,9 +291,9 @@ TEST_F (FameTests, ZeroFloorForMultipleCharactersKilled)
   UpdateForKill (id2, {id4});
   FlushDeltas ();
 
-  EXPECT_EQ (accounts.GetByName ("foo")->GetFame (), 0);
-  EXPECT_EQ (accounts.GetByName ("bar")->GetFame (), 200);
-  EXPECT_EQ (accounts.GetByName ("baz")->GetFame (), 200);
+  EXPECT_EQ (accounts.GetByName ("foo")->GetProto ().fame (), 0);
+  EXPECT_EQ (accounts.GetByName ("bar")->GetProto ().fame (), 200);
+  EXPECT_EQ (accounts.GetByName ("baz")->GetProto ().fame (), 200);
 }
 
 TEST_F (FameTests, TemporarilyBeyondCap)
@@ -301,10 +305,10 @@ TEST_F (FameTests, TemporarilyBeyondCap)
   const auto id3 = CreateCharacter ("c");
   const auto id4 = CreateCharacter ("d");
 
-  accounts.GetByName ("a")->SetFame (9995);
-  accounts.GetByName ("b")->SetFame (9500);
-  accounts.GetByName ("c")->SetFame (10);
-  accounts.GetByName ("d")->SetFame (100);
+  accounts.GetByName ("a")->MutableProto ().set_fame (9995);
+  accounts.GetByName ("b")->MutableProto ().set_fame (9500);
+  accounts.GetByName ("c")->MutableProto ().set_fame (10);
+  accounts.GetByName ("d")->MutableProto ().set_fame (100);
 
   /* id1 will gain 50 and lose 100 fame, going beyond the cap in between.  */
   UpdateForKill (id2, {id1, id3});
@@ -316,8 +320,8 @@ TEST_F (FameTests, TemporarilyBeyondCap)
   UpdateForKill (id4, {id3});
 
   FlushDeltas ();
-  EXPECT_EQ (accounts.GetByName ("a")->GetFame (), 9945);
-  EXPECT_EQ (accounts.GetByName ("c")->GetFame (), 90);
+  EXPECT_EQ (accounts.GetByName ("a")->GetProto ().fame (), 9945);
+  EXPECT_EQ (accounts.GetByName ("c")->GetProto ().fame (), 90);
 }
 
 TEST_F (FameTests, BasedOnOriginalFame)
@@ -329,15 +333,15 @@ TEST_F (FameTests, BasedOnOriginalFame)
      as it gets more fame from a kill, it would be out of range.  Since all
      updates are based on the original fame level, though, it will be in
      range for all updates.  */
-  accounts.GetByName ("foo")->SetFame (4999);
-  accounts.GetByName ("bar")->SetFame (3000);
+  accounts.GetByName ("foo")->MutableProto ().set_fame (4999);
+  accounts.GetByName ("bar")->MutableProto ().set_fame (3000);
 
   UpdateForKill (id2, {id1});
   UpdateForKill (id2, {id1});
   FlushDeltas ();
 
-  EXPECT_EQ (accounts.GetByName ("foo")->GetFame (), 5199);
-  EXPECT_EQ (accounts.GetByName ("bar")->GetFame (), 2800);
+  EXPECT_EQ (accounts.GetByName ("foo")->GetProto ().fame (), 5199);
+  EXPECT_EQ (accounts.GetByName ("bar")->GetProto ().fame (), 2800);
 }
 
 /* ************************************************************************** */
