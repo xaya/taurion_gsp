@@ -20,7 +20,7 @@
 Tests the tracking of pending moves.
 """
 
-from pxtest import PXTest
+from pxtest import PXTest, offsetCoord
 
 import time
 
@@ -47,18 +47,31 @@ class PendingTest (PXTest):
     positionMining = {"x": 100, "y": -100}
     regionMining = self.rpc.game.getregionat (coord=positionMining)["id"]
 
-    self.mainLogger.info ("Creating test character...")
+    positionBuilding = {"x": 200, "y": -500}
+
+    self.mainLogger.info ("Creating test characters...")
     self.initAccount ("andy", "b")
     self.initAccount ("domob", "r")
     self.initAccount ("miner", "g")
+    self.initAccount ("inbuilding", "b");
     self.createCharacters ("domob")
     self.createCharacters ("miner")
+    self.createCharacters ("inbuilding", 2)
     self.generate (1)
+
     self.moveCharactersTo ({
       "domob": positionProspect,
       "miner": positionMining,
+      "inbuilding": offsetCoord (positionBuilding, {"x": 3, "y": 0}, False),
+      "inbuilding 2": offsetCoord (positionBuilding, {"x": -3, "y": 0}, False),
     })
+
+    self.build ("checkmark", None, positionBuilding, 0)
+    building = self.getBuildings ().keys ()[-1]
+    self.getCharacters ()["inbuilding"].sendMove ({"eb": building})
+
     self.getCharacters ()["miner"].sendMove ({"prospect": {}})
+
     self.generate (15)
     # getnullstate ensures that we sync up at least for the confirmed state
     # before we look at the pending state.
@@ -82,7 +95,7 @@ class PendingTest (PXTest):
             "waypoints": [],
             "drop": False,
             "pickup": False,
-          }
+          },
         ],
       "newcharacters":
         [
@@ -95,6 +108,11 @@ class PendingTest (PXTest):
     c1.sendMove ({"wp": [{"x": 5, "y": -5}]})
     c1.sendMove ({"pu": {"f": {"foo": 2}}})
 
+    cb1 = self.getCharacters ()["inbuilding"]
+    cb1.sendMove ({"xb": {}})
+    cb2 = self.getCharacters ()["inbuilding 2"]
+    cb2.sendMove ({"eb": building})
+
     sleepSome ()
     self.assertEqual (self.getPendingState (), {
       "characters":
@@ -104,7 +122,19 @@ class PendingTest (PXTest):
             "waypoints": [{"x": 5, "y": -5}],
             "drop": False,
             "pickup": True,
-          }
+          },
+          {
+            "id": cb1.getId (),
+            "exitbuilding": {"building": building},
+            "pickup": False,
+            "drop": False,
+          },
+          {
+            "id": cb2.getId (),
+            "enterbuilding": building,
+            "pickup": False,
+            "drop": False,
+          },
         ],
       "newcharacters":
         [
@@ -117,6 +147,7 @@ class PendingTest (PXTest):
     c1.sendMove ({"drop": {"f": {"foo": 2}}})
     c2 = self.getCharacters ()["miner"]
     c2.sendMove ({"mine": {}})
+    self.getCharacters ()["inbuilding 2"].sendMove ({"eb": None})
     sleepSome ()
     oldPending = self.getPendingState ()
     self.assertEqual (oldPending, {
@@ -133,6 +164,18 @@ class PendingTest (PXTest):
             "drop": False,
             "pickup": False,
             "mining": regionMining,
+          },
+          {
+            "id": cb1.getId (),
+            "exitbuilding": {"building": building},
+            "pickup": False,
+            "drop": False,
+          },
+          {
+            "id": cb2.getId (),
+            "enterbuilding": None,
+            "pickup": False,
+            "drop": False,
           },
         ],
       "newcharacters":
