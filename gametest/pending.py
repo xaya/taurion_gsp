@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2019  Autonomous Worlds Ltd
+#   Copyright (C) 2019-2020  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -59,6 +59,7 @@ class PendingTest (PXTest):
     self.createCharacters ("inbuilding", 2)
     self.generate (1)
 
+    self.giftCoins ({"domob": 100})
     self.moveCharactersTo ({
       "domob": positionProspect,
       "miner": positionMining,
@@ -79,6 +80,7 @@ class PendingTest (PXTest):
     self.assertEqual (self.getPendingState (), {
       "characters": [],
       "newcharacters": [],
+      "accounts": [],
     })
 
     self.mainLogger.info ("Performing pending updates...")
@@ -101,6 +103,7 @@ class PendingTest (PXTest):
         [
           {"name": "domob", "creations": [{"faction": "r"}]},
         ],
+      "accounts": [],
     })
 
     self.createCharacters ("domob")
@@ -141,6 +144,7 @@ class PendingTest (PXTest):
           {"name": "andy", "creations": [{"faction": "b"}]},
           {"name": "domob", "creations": [{"faction": "r"}] * 2},
         ],
+      "accounts": [],
     })
 
     c1.sendMove ({"prospect": {}})
@@ -148,6 +152,11 @@ class PendingTest (PXTest):
     c2 = self.getCharacters ()["miner"]
     c2.sendMove ({"mine": {}})
     self.getCharacters ()["inbuilding 2"].sendMove ({"eb": None})
+
+    self.sendMove ("domob", {
+      "vc": {"b": 10, "t": {"miner": 20}},
+    })
+
     sleepSome ()
     oldPending = self.getPendingState ()
     self.assertEqual (oldPending, {
@@ -183,6 +192,13 @@ class PendingTest (PXTest):
           {"name": "andy", "creations": [{"faction": "b"}]},
           {"name": "domob", "creations": [{"faction": "r"}, {"faction": "r"}]},
         ],
+      "accounts":
+        [
+          {
+            "name": "domob",
+            "coinops": {"burnt": 10, "transfers": {"miner": 20}},
+          },
+        ],
     })
 
     self.mainLogger.info ("Confirming the moves...")
@@ -191,6 +207,7 @@ class PendingTest (PXTest):
     self.assertEqual (self.getPendingState (), {
       "characters": [],
       "newcharacters": [],
+      "accounts": [],
     })
 
     self.mainLogger.info ("Unconfirming the moves...")

@@ -180,6 +180,7 @@ class CharonTest (PXTest):
           [
             {"name": "domob", "creations": [{"faction": "r"}]},
           ],
+        "accounts": [],
       })
 
 

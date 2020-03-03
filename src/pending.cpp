@@ -31,6 +31,7 @@ PendingState::Clear ()
 {
   characters.clear ();
   newCharacters.clear ();
+  accounts.clear ();
 }
 
 PendingState::CharacterState&
@@ -49,6 +50,25 @@ PendingState::GetCharacterState (const Character& c)
     }
 
   VLOG (1) << "Character " << id << " is already pending, updating entry";
+  return mit->second;
+}
+
+PendingState::AccountState&
+PendingState::GetAccountState (const Account& a)
+{
+  const auto& name = a.GetName ();
+
+  const auto mit = accounts.find (name);
+  if (mit == accounts.end ())
+    {
+      const auto ins = accounts.emplace (name, AccountState ());
+      CHECK (ins.second);
+      VLOG (1)
+          << "Account " << name << " was not yet pending, adding pending entry";
+      return ins.first->second;
+    }
+
+  VLOG (1) << "Account " << name << " is already pending, updating entry";
   return mit->second;
 }
 
@@ -201,6 +221,24 @@ PendingState::AddCharacterCreation (const std::string& name, const Faction f)
   mit->second.push_back (NewCharacter (f));
 }
 
+void
+PendingState::AddCoinTransferBurn (const Account& a, const CoinTransferBurn& op)
+{
+  VLOG (1) << "Adding pending coin operation for " << a.GetName ();
+
+  auto& aState = GetAccountState (a);
+
+  if (aState.coinOps == nullptr)
+    {
+      aState.coinOps = std::make_unique<CoinTransferBurn> (op);
+      return;
+    }
+
+  aState.coinOps->burnt += op.burnt;
+  for (const auto& entry : op.transfers)
+    aState.coinOps->transfers[entry.first] += entry.second;
+}
+
 Json::Value
 PendingState::CharacterState::ToJson () const
 {
@@ -250,6 +288,27 @@ PendingState::NewCharacter::ToJson () const
 }
 
 Json::Value
+PendingState::AccountState::ToJson () const
+{
+  Json::Value res(Json::objectValue);
+
+  if (coinOps != nullptr)
+    {
+      Json::Value coin(Json::objectValue);
+      coin["burnt"] = IntToJson (coinOps->burnt);
+
+      Json::Value transfers(Json::objectValue);
+      for (const auto& entry : coinOps->transfers)
+        transfers[entry.first] = IntToJson (entry.second);
+      coin["transfers"] = transfers;
+
+      res["coinops"] = coin;
+    }
+
+  return res;
+}
+
+Json::Value
 PendingState::ToJson () const
 {
   Json::Value res(Json::objectValue);
@@ -277,6 +336,15 @@ PendingState::ToJson () const
       newCh.append (curName);
     }
   res["newcharacters"] = newCh;
+
+  Json::Value aJson(Json::arrayValue);
+  for (const auto& entry : accounts)
+    {
+      auto val = entry.second.ToJson ();
+      val["name"] = entry.first;
+      aJson.append (val);
+    }
+  res["accounts"] = aJson;
 
   return res;
 }
@@ -334,7 +402,8 @@ PendingStateUpdater::ProcessMove (const Json::Value& moveObj)
   if (!ExtractMoveBasics (moveObj, name, mv, paidToDev))
     return;
 
-  if (accounts.GetByName (name) == nullptr)
+  auto a = accounts.GetByName (name);
+  if (a == nullptr)
     {
       /* This is also triggered for moves actually registering an account,
          so it not something really "bad" we need to warn about.  */
@@ -343,6 +412,10 @@ PendingStateUpdater::ProcessMove (const Json::Value& moveObj)
           << " does not exist, ignoring pending move " << moveObj;
       return;
     }
+
+  CoinTransferBurn coinOps;
+  if (ParseCoinTransferBurn (*a, mv, coinOps))
+    state.AddCoinTransferBurn (*a, coinOps);
 
   TryCharacterUpdates (name, mv);
   TryCharacterCreation (name, mv, paidToDev);

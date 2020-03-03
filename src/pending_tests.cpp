@@ -77,13 +77,21 @@ TEST_F (PendingStateTests, Empty)
   ExpectStateJson (R"(
     {
       "characters": [],
-      "newcharacters": []
+      "newcharacters": [],
+      "accounts": []
     }
   )");
 }
 
 TEST_F (PendingStateTests, Clear)
 {
+  auto a = accounts.CreateNew ("domob", Faction::RED);
+  CoinTransferBurn coinOp;
+  coinOp.burnt = 10;
+  coinOp.transfers["andy"] = 20;
+  state.AddCoinTransferBurn (*a, coinOp);
+  a.reset ();
+
   state.AddCharacterCreation ("domob", Faction::RED);
 
   auto h = characters.CreateNew ("domob", Faction::RED);
@@ -96,7 +104,8 @@ TEST_F (PendingStateTests, Clear)
   ExpectStateJson (R"(
     {
       "characters": [{}],
-      "newcharacters": [{}]
+      "newcharacters": [{}],
+      "accounts": [{}]
     }
   )");
 
@@ -104,7 +113,8 @@ TEST_F (PendingStateTests, Clear)
   ExpectStateJson (R"(
     {
       "characters": [],
-      "newcharacters": []
+      "newcharacters": [],
+      "accounts": []
     }
   )");
 }
@@ -438,6 +448,43 @@ TEST_F (PendingStateTests, CharacterCreation)
                 {"faction": "r"},
                 {"faction": "r"}
               ]
+          }
+        ]
+    }
+  )");
+}
+
+TEST_F (PendingStateTests, CoinTransferBurn)
+{
+  auto a = accounts.CreateNew ("domob", Faction::RED);
+
+  CoinTransferBurn coinOp;
+  coinOp.burnt = 5;
+  coinOp.transfers["andy"] = 20;
+  state.AddCoinTransferBurn (*a, coinOp);
+
+  coinOp.burnt = 2;
+  coinOp.transfers["andy"] = 1;
+  coinOp.transfers["daniel"] = 10;
+  state.AddCoinTransferBurn (*a, coinOp);
+
+  a.reset ();
+
+  ExpectStateJson (R"(
+    {
+      "accounts":
+        [
+          {
+            "name": "domob",
+            "coinops":
+              {
+                "burnt": 7,
+                "transfers":
+                  {
+                    "andy": 21,
+                    "daniel": 10
+                  }
+              }
           }
         ]
     }
@@ -874,6 +921,54 @@ TEST_F (PendingStateUpdaterTests, CreationAndUpdateTogether)
           {
             "name": "domob",
             "creations": [{"faction": "r"}]
+          }
+        ]
+    }
+  )");
+}
+
+TEST_F (PendingStateUpdaterTests, CoinTransferBurn)
+{
+  accounts.CreateNew ("domob", Faction::RED)->AddBalance (100);
+  accounts.CreateNew ("andy", Faction::GREEN)->AddBalance (100);
+
+  Process ("domob", R"({
+    "abc": "foo",
+    "vc": {"x": 5, "b": 10}
+  })");
+  Process ("andy", R"({
+    "vc": {"b": -10, "t": {"domob": 5, "invalid": 2}}
+  })");
+  Process ("invalid", R"({
+    "vc": {"b": 1}
+  })");
+  Process ("domob", R"({
+    "abc": "foo",
+    "vc": {"b": 2, "t": {"domob": 1, "andy": 5}}
+  })");
+  Process ("andy", R"({
+    "vc": {"b": 101, "t": {"domob": 101}}
+  })");
+
+  ExpectStateJson (R"(
+    {
+      "accounts":
+        [
+          {
+            "name": "andy",
+            "coinops":
+              {
+                "burnt": 0,
+                "transfers": {"domob": 5}
+              }
+          },
+          {
+            "name": "domob",
+            "coinops":
+              {
+                "burnt": 12,
+                "transfers": {"andy": 5}
+              }
           }
         ]
     }

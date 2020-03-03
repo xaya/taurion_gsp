@@ -122,11 +122,30 @@ private:
 
   };
 
+  /**
+   * Pending state updates associated to an account.
+   */
+  struct AccountState
+  {
+
+    /** The combined coin transfer / burn for this account.  */
+    std::unique_ptr<CoinTransferBurn> coinOps;
+
+    /**
+     * Returns the JSON representation of the pending state.
+     */
+    Json::Value ToJson () const;
+
+  };
+
   /** Pending modifications to characters.  */
   std::map<Database::IdT, CharacterState> characters;
 
   /** Pending creations of new characters (by account name).  */
   std::map<std::string, std::vector<NewCharacter>> newCharacters;
+
+  /** Pending updates by account name.  */
+  std::map<std::string, AccountState> accounts;
 
   /**
    * Returns the pending character state for the given instance, creating one
@@ -134,6 +153,12 @@ private:
    * rules for "characters".
    */
   CharacterState& GetCharacterState (const Character& c);
+
+  /**
+   * Returns the pending state for the given account instance, creating a new
+   * (empty) one if there is not already one.
+   */
+  AccountState& GetAccountState (const Account& a);
 
 public:
 
@@ -199,6 +224,11 @@ public:
    * Updates the state for a new pending character creation.
    */
   void AddCharacterCreation (const std::string& name, Faction f);
+
+  /**
+   * Updates the state for a new coin transfer / burn.
+   */
+  void AddCoinTransferBurn (const Account& a, const CoinTransferBurn& op);
 
   /**
    * Returns the JSON representation of the pending state.
