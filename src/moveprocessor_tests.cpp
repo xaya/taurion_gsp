@@ -2026,6 +2026,48 @@ TEST_F (GodModeTests, ValidDropLoot)
   EXPECT_EQ (h->GetInventory ().GetFungibleCount ("bar"), MAX_ITEM_QUANTITY);
 }
 
+TEST_F (GodModeTests, GiftCoins)
+{
+  accounts.CreateNew ("andy", Faction::RED);
+  accounts.CreateNew ("domob", Faction::RED);
+
+  ProcessAdmin (R"([{"cmd": {
+    "god":
+      {
+        "x": "foo",
+        "giftcoins": "invalid"
+      }
+  }}])");
+
+  ProcessAdmin (R"([{"cmd": {
+    "god":
+      {
+        "x": "foo",
+        "giftcoins":
+          {
+            "invalid": 20,
+            "andy": 5.42,
+            "domob": 10
+          }
+      }
+  }}])");
+
+  ProcessAdmin (R"([{"cmd": {
+    "god":
+      {
+        "x": "foo",
+        "giftcoins":
+          {
+            "andy": 5,
+            "domob": 10
+          }
+      }
+  }}])");
+
+  EXPECT_EQ (accounts.GetByName ("andy")->GetBalance (), 5);
+  EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 20);
+}
+
 /**
  * Test fixture for god mode but set up on mainnet, so that god mode is
  * actually not allowed.

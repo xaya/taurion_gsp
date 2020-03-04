@@ -1201,6 +1201,42 @@ MaybeGodDropLoot (GroundLootTable& tbl, const Json::Value& cmd)
     }
 }
 
+/**
+ * Tries to parse and execute a god-mode command to add coins to account
+ * balances in the game.
+ */
+void
+MaybeGodGiftCoins (AccountsTable& tbl, const Json::Value& cmd)
+{
+  if (!cmd.isObject ())
+    return;
+
+  for (auto it = cmd.begin (); it != cmd.end (); ++it)
+    {
+      CHECK (it.key ().isString ());
+      const std::string name = it.key ().asString ();
+
+      auto a = tbl.GetByName (name);
+      if (a == nullptr)
+        {
+          LOG (WARNING)
+              << "God-mode gift to non-existing account " << name
+              << " is ignored";
+          continue;
+        }
+
+      Amount val;
+      if (!ExtractCoinAmount (*it, val))
+        {
+          LOG (WARNING) << "God-mode gift of invalid amount: " << *it;
+          continue;
+        }
+
+      LOG (INFO) << "Gifting " << val << " coins to " << name;
+      a->AddBalance (val);
+    }
+}
+
 } // anonymous namespace
 
 void
@@ -1219,6 +1255,7 @@ MoveProcessor::HandleGodMode (const Json::Value& cmd)
   MaybeGodAllSetHp (buildings, characters, cmd["sethp"]);
   MaybeGodBuild (accounts, buildings, cmd["build"]);
   MaybeGodDropLoot (groundLoot, cmd["drop"]);
+  MaybeGodGiftCoins (accounts, cmd["giftcoins"]);
 }
 
 void

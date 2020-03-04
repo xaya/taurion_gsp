@@ -158,6 +158,9 @@ class Account (object):
   def getFaction (self):
     return self.data["faction"]
 
+  def getBalance (self):
+    return self.data["balance"]
+
 
 class Region (object):
   """
@@ -312,6 +315,15 @@ class PXTest (XayaGameTest):
       "pos": position,
       "fungible": fungible,
     }]}})
+    self.generate (1)
+
+  def giftCoins (self, gifts):
+    """
+    Issues a gift-coins god-mode command, adding coins to the balance of the
+    accounts as per the dictionary.
+    """
+
+    self.adminCommand ({"god": {"giftcoins": gifts}})
     self.generate (1)
 
   def getAccounts (self):
