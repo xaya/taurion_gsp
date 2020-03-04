@@ -27,12 +27,7 @@ class BuildingsEnterExitTest (PXTest):
 
   def run (self):
     self.collectPremine ()
-
-    # Somehow we need to split the premine coin like this, or else the
-    # wallet will show empty balance in the reorg test.
-    for i in range (10):
-      self.rpc.xaya.sendtoaddress (self.rpc.xaya.getnewaddress (), 100)
-    self.generate (1)
+    self.splitPremine ()
 
     self.mainLogger.info ("Placing a building...")
     self.build ("checkmark", None, {"x": 0, "y": 0}, rot=0)
