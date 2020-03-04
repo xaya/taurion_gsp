@@ -19,9 +19,8 @@
 #ifndef PXD_PARAMS_HPP
 #define PXD_PARAMS_HPP
 
-#include "amount.hpp"
-
 #include "hexagonal/coord.hpp"
+#include "database/amount.hpp"
 #include "database/faction.hpp"
 #include "database/inventory.hpp"
 #include "proto/character.pb.h"

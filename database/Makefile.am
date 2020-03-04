@@ -28,6 +28,7 @@ libdatabase_la_SOURCES = \
   schema.cpp \
   target.cpp
 noinst_HEADERS = \
+  amount.hpp \
   account.hpp \
   building.hpp \
   character.hpp \

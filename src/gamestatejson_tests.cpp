@@ -544,14 +544,28 @@ protected:
 
 TEST_F (AccountJsonTests, KillsAndFame)
 {
-  tbl.CreateNew ("foo", Faction::RED)->SetKills (10);
-  tbl.CreateNew ("bar", Faction::BLUE)->SetFame (42);
+  tbl.CreateNew ("foo", Faction::RED)->MutableProto ().set_kills (10);
+  tbl.CreateNew ("bar", Faction::BLUE)->MutableProto ().set_fame (42);
 
   ExpectStateJson (R"({
     "accounts":
       [
         {"name": "bar", "faction": "b", "kills": 0, "fame": 42},
         {"name": "foo", "faction": "r", "kills": 10, "fame": 100}
+      ]
+  })");
+}
+
+TEST_F (AccountJsonTests, Balance)
+{
+  tbl.CreateNew ("foo", Faction::RED);
+  tbl.CreateNew ("bar", Faction::BLUE)->AddBalance (42);
+
+  ExpectStateJson (R"({
+    "accounts":
+      [
+        {"name": "bar", "faction": "b", "balance": 42},
+        {"name": "foo", "faction": "r", "balance": 0}
       ]
   })");
 }

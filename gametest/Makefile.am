@@ -10,6 +10,7 @@ REGTESTS = \
   character_limit.py \
   characters.py \
   charon.py \
+  coinops.py \
   combat_damage.py \
   combat_targets.py \
   damage_lists.py \

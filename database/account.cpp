@@ -22,45 +22,54 @@ namespace pxd
 {
 
 Account::Account (Database& d, const std::string& n, const Faction f)
-  : db(d), name(n), faction(f),
-    kills(0), fame(100),
-    dirty(true)
+  : db(d), name(n), faction(f), isNew(true)
 {
   VLOG (1) << "Created instance for newly initialised account " << name;
+  data.SetToDefault ();
+  data.Mutable ().set_fame (100);
 }
 
 Account::Account (Database& d, const Database::Result<AccountResult>& res)
-  : db(d), dirty(false)
+  : db(d), isNew(false)
 {
   name = res.Get<AccountResult::name> ();
   faction = GetFactionFromColumn (res);
-  kills = res.Get<AccountResult::kills> ();
-  fame = res.Get<AccountResult::fame> ();
+  data = res.GetProto<AccountResult::proto> ();
 
   VLOG (1) << "Created account instance for " << name << " from database";
 }
 
 Account::~Account ()
 {
-  if (!dirty)
+  if (!isNew && !data.IsDirty ())
     {
       VLOG (1) << "Account instance " << name << " is not dirty";
       return;
     }
 
   VLOG (1) << "Updating account " << name << " in the database";
+  CHECK_GE (GetBalance (), 0);
+
   auto stmt = db.Prepare (R"(
     INSERT OR REPLACE INTO `accounts`
-      (`name`, `faction`, `kills`, `fame`)
-      VALUES (?1, ?2, ?3, ?4)
+      (`name`, `faction`, `proto`)
+      VALUES (?1, ?2, ?3)
   )");
 
   stmt.Bind (1, name);
   BindFactionParameter (stmt, 2, faction);
-  stmt.Bind (3, kills);
-  stmt.Bind (4, fame);
+  stmt.BindProto (3, data);
 
   stmt.Execute ();
+}
+
+void
+Account::AddBalance (const Amount val)
+{
+  Amount balance = data.Get ().balance ();
+  balance += val;
+  CHECK_GE (balance, 0);
+  data.Mutable ().set_balance (balance);
 }
 
 AccountsTable::Handle

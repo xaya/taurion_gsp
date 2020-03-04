@@ -19,8 +19,12 @@
 #ifndef DATABASE_ACCOUNT_HPP
 #define DATABASE_ACCOUNT_HPP
 
+#include "amount.hpp"
 #include "database.hpp"
 #include "faction.hpp"
+#include "lazyproto.hpp"
+
+#include "proto/account.pb.h"
 
 #include <memory>
 #include <string>
@@ -34,8 +38,7 @@ namespace pxd
 struct AccountResult : public ResultWithFaction
 {
   RESULT_COLUMN (std::string, name, 1);
-  RESULT_COLUMN (int64_t, kills, 2);
-  RESULT_COLUMN (int64_t, fame, 3);
+  RESULT_COLUMN (pxd::proto::Account, proto, 2);
 };
 
 /**
@@ -56,17 +59,11 @@ private:
   /** The faction of this account.  */
   Faction faction;
 
-  /** The account's number of kills.  */
-  unsigned kills;
+  /** General proto data.  */
+  LazyProto<proto::Account> data;
 
-  /** The account's fame value.  */
-  unsigned fame;
-
-  /**
-   * Set to true if any modification has been made and we need to write
-   * the changes back to the database in the destructor.
-   */
-  bool dirty;
+  /** Whether or not this is a new account.  */
+  bool isNew;
 
   /**
    * Constructs an instance with "default / empty" data for the given name
@@ -94,8 +91,6 @@ public:
   Account (const Account&) = delete;
   void operator= (const Account&) = delete;
 
-  /* Accessor methods.  */
-
   const std::string&
   GetName () const
   {
@@ -108,30 +103,29 @@ public:
     return faction;
   }
 
-  unsigned
-  GetKills () const
+  const proto::Account&
+  GetProto () const
   {
-    return kills;
+    return data.Get ();
   }
 
-  void
-  SetKills (const unsigned val)
+  proto::Account&
+  MutableProto ()
   {
-    dirty = true;
-    kills = val;
+    return data.Mutable ();
   }
 
-  unsigned
-  GetFame () const
-  {
-    return fame;
-  }
+  /**
+   * Updates the account balance by the given (signed) amount.  This should
+   * be used instead of manually editing the proto, so that there is a single
+   * place that controls all balance updates.
+   */
+  void AddBalance (Amount val);
 
-  void
-  SetFame (const unsigned val)
+  Amount
+  GetBalance () const
   {
-    dirty = true;
-    fame = val;
+    return data.Get ().balance ();
   }
 
 };

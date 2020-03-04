@@ -229,6 +229,159 @@ TEST_F (AccountUpdateTests, InitialisationAndCharacterCreation)
 
 /* ************************************************************************** */
 
+class CoinOperationTests : public MoveProcessorTests
+{
+
+protected:
+
+  /**
+   * Expects that the balances of the given accounts are as stated.
+   */
+  void
+  ExpectBalances (const std::map<std::string, Amount>& expected)
+  {
+    for (const auto& entry : expected)
+      {
+        auto a = accounts.GetByName (entry.first);
+        ASSERT_NE (a, nullptr) << "Account does not exist: " << entry.first;
+        ASSERT_EQ (a->GetBalance (), entry.second);
+      }
+  }
+
+};
+
+TEST_F (CoinOperationTests, Invalid)
+{
+  accounts.CreateNew ("domob", Faction::RED)->AddBalance (100);
+  accounts.CreateNew ("other", Faction::RED);
+
+  Process (R"([
+    {"name": "domob", "move": {"vc": 42}},
+    {"name": "domob", "move": {"vc": []}},
+    {"name": "domob", "move": {"vc": {}}},
+    {"name": "domob", "move": {"vc": {"x": 10}}},
+    {"name": "domob", "move": {"vc": {"b": -1}}},
+    {"name": "domob", "move": {"vc": {"b": 1000000001}}},
+    {"name": "domob", "move": {"vc": {"b": 999999999999999999}}},
+    {"name": "domob", "move": {"vc": {"t": 42}}},
+    {"name": "domob", "move": {"vc": {"t": "other"}}},
+    {"name": "domob", "move": {"vc": {"t": {"invalid": 10}}}},
+    {"name": "domob", "move": {"vc": {"t": {"other": -1}}}},
+    {"name": "domob", "move": {"vc": {"t": {"other": 1000000001}}}},
+    {"name": "domob", "move": {"vc": {"t": {"other": 1.999999}}}},
+    {"name": "domob", "move": {"vc": {"t": {"other": 101}}}}
+  ])");
+
+  ExpectBalances ({{"domob", 100}, {"other", 0}});
+}
+
+TEST_F (CoinOperationTests, BurnAndTransfer)
+{
+  accounts.CreateNew ("domob", Faction::RED)->AddBalance (100);
+  accounts.CreateNew ("second", Faction::RED);
+  accounts.CreateNew ("third", Faction::RED);
+
+  /* Some of the burns and transfers are invalid.  They should just be ignored,
+     without affecting the rest of the operation (valid parts).  */
+  Process (R"([
+    {"name": "domob", "move": {"vc":
+      {
+        "b": 10,
+        "t": {"a": "invalid", "b": -5, "c": 1000, "second": 5, "third": 3}
+      }}
+    },
+    {"name": "domob", "move": {"vc":
+      {
+        "b": 1000,
+        "t": {"third": 2}
+      }}
+    }
+  ])");
+
+  ExpectBalances ({
+    {"domob", 80},
+    {"second", 5},
+    {"third", 5},
+  });
+}
+
+TEST_F (CoinOperationTests, BurnAll)
+{
+  accounts.CreateNew ("domob", Faction::RED)->AddBalance (100);
+  Process (R"([
+    {"name": "domob", "move": {"vc": {"b": 100}}}
+  ])");
+  ExpectBalances ({{"domob", 0}});
+}
+
+TEST_F (CoinOperationTests, TransferAll)
+{
+  accounts.CreateNew ("domob", Faction::RED)->AddBalance (100);
+  accounts.CreateNew ("other", Faction::RED);
+  Process (R"([
+    {"name": "domob", "move": {"vc": {"t": {"other": 100}}}}
+  ])");
+  ExpectBalances ({{"domob", 0}, {"other", 100}});
+}
+
+TEST_F (CoinOperationTests, SelfTransfer)
+{
+  accounts.CreateNew ("domob", Faction::RED)->AddBalance (100);
+  accounts.CreateNew ("other", Faction::GREEN);
+  Process (R"([
+    {"name": "domob", "move": {"vc": {"t": {"domob": 90, "other": 20}}}}
+  ])");
+  ExpectBalances ({{"domob", 80}, {"other", 20}});
+}
+
+TEST_F (CoinOperationTests, BurnBeforeTransfer)
+{
+  accounts.CreateNew ("domob", Faction::RED)->AddBalance (100);
+  accounts.CreateNew ("other", Faction::RED);
+
+  Process (R"([
+    {"name": "domob", "move": {"vc":
+      {
+        "b": 90,
+        "t": {"other": 20}
+      }}
+    }
+  ])");
+
+  ExpectBalances ({
+    {"domob", 10},
+    {"other", 0},
+  });
+}
+
+TEST_F (CoinOperationTests, TransferOrder)
+{
+  accounts.CreateNew ("domob", Faction::RED)->AddBalance (100);
+  accounts.CreateNew ("a", Faction::RED);
+  accounts.CreateNew ("middle", Faction::RED);
+  accounts.CreateNew ("z", Faction::RED);
+
+  Process (R"([
+    {"name": "domob", "move": {"vc":
+      {
+        "t": {"z": 10, "a": 101, "middle": 99}
+      }}
+    }
+  ])");
+
+  ExpectBalances ({
+    {"domob", 1},
+    {"a", 0},
+    {"middle", 99},
+    {"z", 0},
+  });
+}
+
+/* FIXME: Once there are game operations that cost coins, we should add a
+   test that verifies that burns/transfers take priority over them.  */
+
+/* ************************************************************************** */
+
 class CharacterCreationTests : public MoveProcessorTests
 {
 
@@ -2024,6 +2177,48 @@ TEST_F (GodModeTests, ValidDropLoot)
   auto h = loot.GetByCoord (pos);
   EXPECT_EQ (h->GetInventory ().GetFungibleCount ("foo"), 20);
   EXPECT_EQ (h->GetInventory ().GetFungibleCount ("bar"), MAX_ITEM_QUANTITY);
+}
+
+TEST_F (GodModeTests, GiftCoins)
+{
+  accounts.CreateNew ("andy", Faction::RED);
+  accounts.CreateNew ("domob", Faction::RED);
+
+  ProcessAdmin (R"([{"cmd": {
+    "god":
+      {
+        "x": "foo",
+        "giftcoins": "invalid"
+      }
+  }}])");
+
+  ProcessAdmin (R"([{"cmd": {
+    "god":
+      {
+        "x": "foo",
+        "giftcoins":
+          {
+            "invalid": 20,
+            "andy": 5.42,
+            "domob": 10
+          }
+      }
+  }}])");
+
+  ProcessAdmin (R"([{"cmd": {
+    "god":
+      {
+        "x": "foo",
+        "giftcoins":
+          {
+            "andy": 5,
+            "domob": 10
+          }
+      }
+  }}])");
+
+  EXPECT_EQ (accounts.GetByName ("andy")->GetBalance (), 5);
+  EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 20);
 }
 
 /**

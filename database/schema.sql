@@ -218,11 +218,8 @@ CREATE TABLE IF NOT EXISTS `accounts` (
   -- The faction (as integer corresponding to the Faction enum in C++).
   `faction` INTEGER NOT NULL,
 
-  -- The number of characters killed by the account in total.
-  `kills` INTEGER NOT NULL,
-
-  -- The fame of this account.
-  `fame` INTEGER NOT NULL
+  -- Additional data for the account as a serialised Account proto.
+  `proto` BLOB NOT NULL
 
 );
 

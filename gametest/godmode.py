@@ -29,6 +29,7 @@ class GodModeTest (PXTest):
     self.collectPremine ()
 
     self.initAccount ("domob", "r")
+    self.initAccount ("andy", "b")
     self.createCharacters ("domob")
     self.generate (1)
     c = self.getCharacters ()["domob"]
@@ -144,6 +145,13 @@ class GodModeTest (PXTest):
           },
       },
     ])
+
+    self.mainLogger.info ("Testing gift coins...")
+    self.giftCoins ({"domob": 20, "andy": 42})
+    self.giftCoins ({"domob": 30})
+    acc = self.getAccounts ()
+    self.assertEqual (acc["andy"].getBalance (), 42)
+    self.assertEqual (acc["domob"].getBalance (), 50)
     
 
 if __name__ == "__main__":
