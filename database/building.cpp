@@ -18,6 +18,8 @@
 
 #include "building.hpp"
 
+#include "proto/roconfig.hpp"
+
 #include <glog/logging.h>
 
 namespace pxd
@@ -126,6 +128,16 @@ Building::GetIdAsTarget () const
   res.set_type (proto::TargetId::TYPE_BUILDING);
   res.set_id (id);
   return res;
+}
+
+const proto::BuildingData&
+Building::RoConfigData () const
+{
+  const auto& buildings = pxd::RoConfigData ().building_types ();
+  const auto mit = buildings.find (GetType ());
+  CHECK (mit != buildings.end ())
+      << "Building " << GetId () << " has undefined type: " << GetType ();
+  return mit->second;
 }
 
 BuildingsTable::Handle

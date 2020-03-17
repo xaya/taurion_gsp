@@ -34,17 +34,14 @@ namespace pxd
 std::vector<HexCoord>
 GetBuildingShape (const Building& b)
 {
-  const auto& buildings = RoConfigData ().building_types ();
-  const auto mit = buildings.find (b.GetType ());
-  CHECK (mit != buildings.end ())
-      << "Building " << b.GetId () << " has undefined type: " << b.GetType ();
+  const auto& roData = b.RoConfigData ();
 
   const auto centre = b.GetCentre ();
   const auto& trafo = b.GetProto ().shape_trafo ();
 
   std::vector<HexCoord> res;
-  res.reserve (mit->second.shape_tiles ().size ());
-  for (const auto& pbTile : mit->second.shape_tiles ())
+  res.reserve (roData.shape_tiles ().size ());
+  for (const auto& pbTile : roData.shape_tiles ())
     {
       HexCoord c = CoordFromProto (pbTile);
       c = c.RotateCW (trafo.rotation_steps ()); 
@@ -80,11 +77,7 @@ InitialiseBuildings (Database& db)
 void
 UpdateBuildingStats (Building& b)
 {
-  const auto& buildingData = RoConfigData ().building_types ();
-  const auto mit = buildingData.find (b.GetType ());
-  CHECK (mit != buildingData.end ())
-      << "Unknown building type: " << b.GetType ();
-  const auto& roData = mit->second;
+  const auto& roData = b.RoConfigData ();
 
   *b.MutableProto ().mutable_combat_data () = roData.combat_data ();
   b.MutableRegenData () = roData.regen_data ();
@@ -94,8 +87,6 @@ UpdateBuildingStats (Building& b)
 void
 ProcessEnterBuildings (Database& db)
 {
-  const auto& buildingData = RoConfigData ().building_types ();
-
   BuildingsTable buildings(db);
   CharacterTable characters(db);
   auto res = characters.QueryForEnterBuilding ();
@@ -130,13 +121,9 @@ ProcessEnterBuildings (Database& db)
           continue;
         }
 
-      const auto mit = buildingData.find (b->GetType ());
-      CHECK (mit != buildingData.end ())
-          << "Unknown building type: " << b->GetType ();
-
       const unsigned dist
           = HexCoord::DistanceL1 (c->GetPosition (), b->GetCentre ());
-      if (dist > mit->second.enter_radius ())
+      if (dist > b->RoConfigData ().enter_radius ())
         {
           /* This is probably the most common case, no log spam here.  */
           continue;
@@ -167,12 +154,9 @@ LeaveBuilding (BuildingsTable& buildings, Character& c,
   auto b = buildings.GetById (c.GetBuildingId ());
   CHECK (b != nullptr);
 
-  const auto& data = RoConfigData ().building_types ();
-  const auto mit = data.find (b->GetType ());
-  CHECK (mit != data.end ()) << "Unknown building type: " << b->GetType ();
-
   const auto pos
-      = ChooseSpawnLocation (b->GetCentre (), mit->second.enter_radius (),
+      = ChooseSpawnLocation (b->GetCentre (),
+                             b->RoConfigData ().enter_radius (),
                              c.GetFaction (), rnd, dyn, ctx.Map ());
 
   LOG (INFO)

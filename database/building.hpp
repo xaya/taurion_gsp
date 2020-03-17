@@ -26,6 +26,7 @@
 #include "lazyproto.hpp"
 
 #include "proto/building.pb.h"
+#include "proto/config.pb.h"
 
 namespace pxd
 {
@@ -176,6 +177,11 @@ public:
   {
     return data.Get ().combat_data ();
   }
+
+  /**
+   * Returns the rodata for the building type.
+   */
+  const proto::BuildingData& RoConfigData () const;
 
 };
 
