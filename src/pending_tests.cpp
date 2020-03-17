@@ -29,8 +29,6 @@
 
 #include <gtest/gtest.h>
 
-#include <sstream>
-
 namespace pxd
 {
 namespace
@@ -61,13 +59,9 @@ protected:
   void
   ExpectStateJson (const std::string& expectedStr)
   {
-    Json::Value expected;
-    std::istringstream in(expectedStr);
-    in >> expected;
-
     const Json::Value actual = state.ToJson ();
     VLOG (1) << "Actual JSON for the pending state:\n" << actual;
-    ASSERT_TRUE (PartialJsonEqual (actual, expected));
+    ASSERT_TRUE (PartialJsonEqual (actual, ParseJson (expectedStr)));
   }
 
 };
@@ -523,13 +517,11 @@ protected:
   {
     Json::Value moveObj(Json::objectValue);
     moveObj["name"] = name;
+    moveObj["move"] = ParseJson (mvStr);
 
     if (paidToDev != 0)
       moveObj["out"][ctx.Params ().DeveloperAddress ()]
           = AmountToJson (paidToDev);
-
-    std::istringstream in(mvStr);
-    in >> moveObj["move"];
 
     updater.ProcessMove (moveObj);
   }

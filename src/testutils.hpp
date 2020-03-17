@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -69,6 +69,11 @@ public:
   void SetTimestamp (const int64_t ts);
 
 };
+
+/**
+ * Parses a string into JSON.
+ */
+Json::Value ParseJson (const std::string& str);
 
 /**
  * Checks for "partial equality" of the given JSON values.  This means that

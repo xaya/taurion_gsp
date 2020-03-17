@@ -40,7 +40,6 @@
 
 #include <json/json.h>
 
-#include <sstream>
 #include <string>
 #include <vector>
 
@@ -94,14 +93,12 @@ protected:
   {
     Json::Value blockData(Json::objectValue);
     blockData["admin"] = Json::Value (Json::arrayValue);
+    blockData["moves"] = ParseJson (movesStr);
 
     Json::Value meta(Json::objectValue);
     meta["height"] = HEIGHT;
     meta["timestamp"] = 1500000000;
     blockData["block"] = meta;
-
-    std::istringstream in(movesStr);
-    in >> blockData["moves"];
 
     return blockData;
   }

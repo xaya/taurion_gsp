@@ -28,7 +28,6 @@
 
 #include <json/json.h>
 
-#include <sstream>
 #include <string>
 
 namespace pxd
@@ -62,12 +61,8 @@ protected:
   void
   ProcessAdmin (const std::string& str)
   {
-    Json::Value cmd;
-    std::istringstream in(str);
-    in >> cmd;
-
     MoveProcessor mvProc(db, dyn, rnd, ctx);
-    mvProc.ProcessAdmin (cmd);
+    mvProc.ProcessAdmin (ParseJson (str));
   }
 
   /**
@@ -77,12 +72,8 @@ protected:
   void
   Process (const std::string& str)
   {
-    Json::Value val;
-    std::istringstream in(str);
-    in >> val;
-
     MoveProcessor mvProc(db, dyn, rnd, ctx);
-    mvProc.ProcessAll (val);
+    mvProc.ProcessAll (ParseJson (str));
   }
 
   /**
@@ -93,10 +84,7 @@ protected:
   void
   ProcessWithDevPayment (const std::string& str, const Amount amount)
   {
-    Json::Value val;
-    std::istringstream in(str);
-    in >> val;
-
+    Json::Value val = ParseJson (str);
     for (auto& entry : val)
       entry["out"][ctx.Params ().DeveloperAddress ()] = AmountToJson (amount);
 

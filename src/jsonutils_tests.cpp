@@ -18,13 +18,14 @@
 
 #include "jsonutils.hpp"
 
+#include "testutils.hpp"
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <glog/logging.h>
 
 #include <limits>
-#include <sstream>
 
 namespace pxd
 {
@@ -32,15 +33,6 @@ namespace
 {
 
 using testing::ElementsAre;
-
-const Json::Value
-ParseJson (const std::string& str)
-{
-  Json::Value val;
-  std::istringstream in(str);
-  in >> val;
-  return val;
-}
 
 using JsonCoordTests = testing::Test;
 

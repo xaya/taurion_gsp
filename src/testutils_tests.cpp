@@ -20,7 +20,6 @@
 
 #include <gtest/gtest.h>
 
-#include <sstream>
 #include <string>
 
 namespace pxd
@@ -34,17 +33,9 @@ class PartialJsonEqualTests : public testing::Test
 protected:
 
   bool
-  PartialStrEqual (const std::string& actualStr, const std::string& expectedStr)
+  PartialStrEqual (const std::string& actual, const std::string& expected)
   {
-    Json::Value actual;
-    std::istringstream in1(actualStr);
-    in1 >> actual;
-
-    Json::Value expected;
-    std::istringstream in2(expectedStr);
-    in2 >> expected;
-
-    return PartialJsonEqual (actual, expected);
+    return PartialJsonEqual (ParseJson (actual), ParseJson (expected));
   }
 
 };

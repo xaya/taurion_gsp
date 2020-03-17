@@ -36,7 +36,6 @@
 
 #include <json/json.h>
 
-#include <sstream>
 #include <string>
 
 namespace pxd
@@ -79,13 +78,9 @@ protected:
   void
   ExpectStateJson (const std::string& expectedStr)
   {
-    Json::Value expected;
-    std::istringstream in(expectedStr);
-    in >> expected;
-
     const Json::Value actual = converter.FullState ();
     VLOG (1) << "Actual JSON for the game state:\n" << actual;
-    ASSERT_TRUE (PartialJsonEqual (actual, expected));
+    ASSERT_TRUE (PartialJsonEqual (actual, ParseJson (expectedStr)));
   }
 
 };

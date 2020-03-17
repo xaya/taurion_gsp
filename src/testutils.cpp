@@ -22,6 +22,8 @@
 
 #include <glog/logging.h>
 
+#include <sstream>
+
 namespace pxd
 {
 
@@ -52,6 +54,15 @@ ContextForTesting::SetTimestamp (const int64_t ts)
 {
   LOG (INFO) << "Setting context timestamp to " << ts;
   timestamp = ts;
+}
+
+Json::Value
+ParseJson (const std::string& str)
+{
+  Json::Value val;
+  std::istringstream in(str);
+  in >> val;
+  return val;
 }
 
 bool
