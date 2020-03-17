@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -138,6 +138,31 @@ TEST_F (JsonAmountTests, InvalidAmountFromJson)
     {
       Amount a;
       EXPECT_FALSE (AmountFromJson (ParseJson (str), a));
+    }
+}
+
+using IdFromJsonTests = testing::Test;
+
+TEST_F (IdFromJsonTests, Valid)
+{
+  Database::IdT id;
+
+  ASSERT_TRUE (IdFromJson (ParseJson ("1"), id));
+  EXPECT_EQ (id, 1);
+
+  ASSERT_TRUE (IdFromJson (ParseJson ("42"), id));
+  EXPECT_EQ (id, 42);
+
+  ASSERT_TRUE (IdFromJson (ParseJson ("999999998"), id));
+  EXPECT_EQ (id, 999999998);
+}
+
+TEST_F (IdFromJsonTests, Invalid)
+{
+  for (const std::string str : {"{}", "0", "999999999", "-10", "1.5", "null"})
+    {
+      Database::IdT id;
+      EXPECT_FALSE (IdFromJson (ParseJson (str), id)) << str;
     }
 }
 

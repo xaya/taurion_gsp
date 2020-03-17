@@ -58,6 +58,11 @@ Json::Value AmountToJson (Amount amount);
 bool AmountFromJson (const Json::Value& val, Amount& amount);
 
 /**
+ * Parses an ID value encoded in JSON.  Returns true if one was found.
+ */
+bool IdFromJson (const Json::Value& val, Database::IdT& id);
+
+/**
  * Parses an ID value encoded as a string (e.g. for a dictionary key in JSON).
  * Returns true if the string represents exactly a valid unsigned integer and
  * false if something is wrong.

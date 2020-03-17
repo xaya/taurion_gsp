@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -139,6 +139,16 @@ AmountFromJson (const Json::Value& val, Amount& amount)
   CHECK_LE (amount, MAX_AMOUNT);
 
   return true;
+}
+
+bool
+IdFromJson (const Json::Value& val, Database::IdT& id)
+{
+  if (!val.isUInt64 ())
+    return false;
+
+  id = val.asUInt64 ();
+  return id > 0 && id < MAX_ID;
 }
 
 bool

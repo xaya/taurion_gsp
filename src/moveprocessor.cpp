@@ -377,12 +377,11 @@ BaseMoveProcessor::ParseEnterBuilding (const Character& c,
     }
 
   /* Otherwise, see if this is a valid building ID.  */
-  if (!val.isUInt64 ())
+  if (!IdFromJson (val, buildingId))
     {
       LOG (WARNING) << "Not a building ID: " << val;
       return false;
     }
-  buildingId = val.asUInt64 ();
 
   auto b = buildings.GetById (buildingId);
   if (b == nullptr)
