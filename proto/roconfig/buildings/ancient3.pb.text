@@ -4,6 +4,10 @@ building_types:
     value:
       {
         enter_radius: 50
+        offered_services:
+          {
+            refining: true
+          }
         shape_tiles: { x: -19 y: -1 }
         shape_tiles: { x: -21 y: 0 }
         shape_tiles: { x: -20 y: 1 }
