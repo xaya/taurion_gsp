@@ -76,6 +76,18 @@ protected:
     return true;
   }
 
+  /**
+   * Parses the given operation and returns its associated pending JSON.
+   */
+  Json::Value
+  GetPendingJson (const std::string& name, const std::string& dataStr)
+  {
+    auto a = accounts.GetByName (name);
+    auto op = ServiceOperation::Parse (*a, ParseJson (dataStr), buildings, inv);
+    CHECK (op != nullptr);
+    return op->ToPendingJson ();
+  }
+
 };
 
 TEST_F (ServicesTests, BasicOperation)
@@ -184,6 +196,19 @@ TEST_F (ServicesTests, InsufficientFunds)
   })"));
 }
 
+TEST_F (ServicesTests, PendingJson)
+{
+  EXPECT_TRUE (PartialJsonEqual (GetPendingJson ("domob", R"({
+    "t": "ref",
+    "b": 100,
+    "i": "foo",
+    "n": 6
+  })"), ParseJson (R"({
+    "building": 100,
+    "cost": 20
+  })")));
+}
+
 /* ************************************************************************** */
 
 using RefiningTests = ServicesTests;
@@ -286,6 +311,20 @@ TEST_F (RefiningTests, MultipleSteps)
   EXPECT_EQ (i->GetInventory ().GetFungibleCount ("foo"), 1);
   EXPECT_EQ (i->GetInventory ().GetFungibleCount ("bar"), 6);
   EXPECT_EQ (i->GetInventory ().GetFungibleCount ("zerospace"), 3);
+}
+
+TEST_F (RefiningTests, PendingJson)
+{
+  EXPECT_TRUE (PartialJsonEqual (GetPendingJson ("domob", R"({
+    "t": "ref",
+    "b": 100,
+    "i": "foo",
+    "n": 6
+  })"), ParseJson (R"({
+    "type": "refining",
+    "input": {"foo": 6},
+    "output": {"bar": 4, "zerospace": 2}
+  })")));
 }
 
 /* ************************************************************************** */

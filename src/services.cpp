@@ -79,6 +79,7 @@ protected:
   }
 
   bool IsValid () const override;
+  Json::Value SpecificToPendingJson () const override;
   void ExecuteSpecific () override;
 
 public:
@@ -160,6 +161,27 @@ RefiningOperation::IsValid () const
   return true;
 }
 
+Json::Value
+RefiningOperation::SpecificToPendingJson () const
+{
+  Json::Value res(Json::objectValue);
+  res["type"] = "refining";
+
+  Json::Value inp(Json::objectValue);
+  inp[type] = IntToJson (amount);
+
+  CHECK (refData != nullptr);
+  const unsigned steps = GetSteps ();
+  Json::Value outp(Json::objectValue);
+  for (const auto& out : refData->outputs ())
+    outp[out.first] = IntToJson (steps * out.second);
+
+  res["input"] = inp;
+  res["output"] = outp;
+
+  return res;
+}
+
 void
 RefiningOperation::ExecuteSpecific ()
 {
@@ -203,6 +225,18 @@ RefiningOperation::Parse (Account& acc, const Building& b,
 /* ************************************************************************** */
 
 } // anonymous namespace
+
+Json::Value
+ServiceOperation::ToPendingJson () const
+{
+  Json::Value res = SpecificToPendingJson ();
+  CHECK (res.isObject ());
+
+  res["building"] = IntToJson (building.GetId ());
+  res["cost"] = IntToJson (GetBaseCost ());
+
+  return res;
+}
 
 void
 ServiceOperation::Execute ()

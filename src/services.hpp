@@ -79,6 +79,13 @@ protected:
    */
   virtual void ExecuteSpecific () = 0;
 
+  /**
+   * Converts the subclass-specific data of this operation (not including
+   * e.g. building or cost) to JSON for the pending state.  Must return
+   * a JSON object.
+   */
+  virtual Json::Value SpecificToPendingJson () const = 0;
+
 public:
 
   virtual ~ServiceOperation () = default;
@@ -100,6 +107,11 @@ public:
   {
     return acc;
   }
+
+  /**
+   * Returns a JSON representation of this operation for pending moves.
+   */
+  Json::Value ToPendingJson () const;
 
   /**
    * Fully executes the update corresponding to this operation.
