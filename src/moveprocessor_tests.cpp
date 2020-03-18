@@ -365,9 +365,6 @@ TEST_F (CoinOperationTests, TransferOrder)
   });
 }
 
-/* FIXME: Once there are game operations that cost coins, we should add a
-   test that verifies that burns/transfers take priority over them.  */
-
 /* ************************************************************************** */
 
 class CharacterCreationTests : public MoveProcessorTests
@@ -1903,6 +1900,99 @@ TEST_F (MiningMoveTests, MiningAndWaypointsInSameMove)
   ])");
 
   EXPECT_FALSE (GetTest ()->GetProto ().mining ().active ());
+}
+
+/* ************************************************************************** */
+
+class ServicesMoveTests : public MoveProcessorTests
+{
+
+protected:
+
+  BuildingsTable buildings;
+  BuildingInventoriesTable inv;
+
+  ServicesMoveTests ()
+    : buildings(db), inv(db)
+  {
+    accounts.CreateNew ("domob", Faction::RED)->AddBalance (100);
+
+    db.SetNextId (100);
+    buildings.CreateNew ("ancient1", "", Faction::ANCIENT);
+    buildings.CreateNew ("ancient2", "", Faction::ANCIENT);
+
+    inv.Get (100, "domob")->GetInventory ().AddFungibleCount ("foo", 3);
+    inv.Get (101, "domob")->GetInventory ().AddFungibleCount ("foo", 6);
+  }
+
+};
+
+TEST_F (ServicesMoveTests, Works)
+{
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"s": [
+        {"x": "invalid"},
+        {"b": 100, "t": "ref", "i": "foo", "n": 3},
+        {"b": 101, "t": "ref", "i": "foo", "n": 6}
+      ]}
+    }
+  ])");
+
+  EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 70);
+  auto i = inv.Get (100, "domob");
+  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("foo"), 0);
+  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("bar"), 2);
+  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("zerospace"), 1);
+  i = inv.Get (101, "domob");
+  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("foo"), 0);
+  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("bar"), 4);
+  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("zerospace"), 2);
+}
+
+TEST_F (ServicesMoveTests, InvalidMoves)
+{
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"s": {"b": 100, "t": "ref", "i": "foo", "n": 3}}
+    },
+    {
+      "name": "domob",
+      "move": {"s": [
+        {"b": 100, "t": "ref", "i": "foo", "n": 1}
+      ]}
+    },
+    {
+      "name": "uninitialised account",
+      "move": {"s": [
+        {"b": 100, "t": "ref", "i": "foo", "n": 3}
+      ]}
+    }
+  ])");
+
+  EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 100);
+}
+
+TEST_F (ServicesMoveTests, ServicesAfterCoinOperations)
+{
+  Process (R"([
+    {
+      "name": "domob",
+      "move":
+        {
+          "s": [{"b": 100, "t": "ref", "i": "foo", "n": 3}],
+          "vc": {"b": 100}
+        }
+    }
+  ])");
+
+  EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 0);
+  auto i = inv.Get (100, "domob");
+  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("foo"), 3);
+  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("bar"), 0);
+  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("zerospace"), 0);
 }
 
 /* ************************************************************************** */

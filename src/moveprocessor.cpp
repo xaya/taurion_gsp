@@ -209,6 +209,25 @@ BaseMoveProcessor::TryCharacterUpdates (const std::string& name,
     }
 }
 
+void
+BaseMoveProcessor::TryServiceOperations (const std::string& name,
+                                         const Json::Value& mv)
+{
+  const auto& cmds = mv["s"];
+  if (!cmds.isArray ())
+    return;
+
+  const auto a = accounts.GetByName (name);
+  CHECK (a != nullptr);
+
+  for (const auto& op : cmds)
+    {
+      auto parsed = ServiceOperation::Parse (*a, op, buildings, buildingInv);
+      if (parsed != nullptr)
+        PerformServiceOperation (*parsed);
+    }
+}
+
 namespace
 {
 
@@ -701,6 +720,8 @@ MoveProcessor::ProcessOne (const Json::Value& moveObj)
      We want to exclude such trickery and thus do the update first.  */
   TryCharacterUpdates (name, mv);
   TryCharacterCreation (name, mv, paidToDev);
+
+  TryServiceOperations (name, mv);
 }
 
 void
@@ -1053,6 +1074,12 @@ MoveProcessor::PerformCharacterUpdate (Character& c, const Json::Value& upd)
      than allowing to exit & enter again in the same move.  */
   MaybeEnterBuilding (c, upd);
   MaybeExitBuilding (c, upd);
+}
+
+void
+MoveProcessor::PerformServiceOperation (ServiceOperation& op)
+{
+  op.Execute ();
 }
 
 namespace
