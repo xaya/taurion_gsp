@@ -2003,11 +2003,12 @@ class GodModeTests : public MoveProcessorTests
 protected:
 
   BuildingsTable buildings;
+  BuildingInventoriesTable buildingInv;
   CharacterTable tbl;
   GroundLootTable loot;
 
   GodModeTests ()
-    : buildings(db), tbl(db), loot(db)
+    : buildings(db), buildingInv(db), tbl(db), loot(db)
   {
     ctx.SetChain (xaya::Chain::REGTEST);
   }
@@ -2188,6 +2189,8 @@ TEST_F (GodModeTests, Build)
 TEST_F (GodModeTests, InvalidDropLoot)
 {
   const HexCoord pos(1, 2);
+  db.SetNextId (100);
+  buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
 
   ProcessAdmin (R"([{"cmd": {
     "god":
@@ -2216,23 +2219,41 @@ TEST_F (GodModeTests, InvalidDropLoot)
             },
             {
               "pos": {"x": 1, "y": 2},
-              "fungible": {"foo": 10},
-              "extra": "value"
+              "building": {"id": 100, "a": "domob"},
+              "fungible": {"foo": 10}
             },
             {
               "pos": {"x": 1, "y": 2},
               "fungible": {"foo": 1000000001}
+            },
+            {
+              "fungible": {"foo": 10}
+            },
+            {
+              "building": {"id": -5, "a": "domob"},
+              "fungible": {"foo": 10}
+            },
+            {
+              "building": {"id": 100, "a": false},
+              "fungible": {"foo": 10}
+            },
+            {
+              "building": {"id": 100, "a": "domob", "x": 5},
+              "fungible": {"foo": 10}
             }
           ]
       }
   }}])");
 
   EXPECT_TRUE (loot.GetByCoord (pos)->GetInventory ().IsEmpty ());
+  EXPECT_TRUE (buildingInv.Get (100, "domob")->GetInventory ().IsEmpty ());
 }
 
 TEST_F (GodModeTests, ValidDropLoot)
 {
   const HexCoord pos(1, 2);
+  db.SetNextId (100);
+  buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
 
   ProcessAdmin (R"([{"cmd": {
     "god":
@@ -2247,6 +2268,10 @@ TEST_F (GodModeTests, ValidDropLoot)
             {
               "pos": {"x": 1, "y": 2},
               "fungible": {"foo": 10, "bar": 1000000000}
+            },
+            {
+              "building": {"id": 100, "a": "domob"},
+              "fungible": {"foo": 42}
             }
           ]
       }
@@ -2255,6 +2280,8 @@ TEST_F (GodModeTests, ValidDropLoot)
   auto h = loot.GetByCoord (pos);
   EXPECT_EQ (h->GetInventory ().GetFungibleCount ("foo"), 20);
   EXPECT_EQ (h->GetInventory ().GetFungibleCount ("bar"), MAX_ITEM_QUANTITY);
+  auto i = buildingInv.Get (100, "domob");
+  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("foo"), 42);
 }
 
 TEST_F (GodModeTests, GiftCoins)

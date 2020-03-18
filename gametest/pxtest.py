@@ -328,6 +328,18 @@ class PXTest (XayaGameTest):
     }]}})
     self.generate (1)
 
+  def dropIntoBuilding (self, buildingId, account, fungible):
+    """
+    Issues a god-mode command to add loot into the inventory of a user
+    account inside some building.
+    """
+
+    self.adminCommand ({"god": {"drop": [{
+      "building": {"id": buildingId, "a": account},
+      "fungible": fungible,
+    }]}})
+    self.generate (1)
+
   def giftCoins (self, gifts):
     """
     Issues a gift-coins god-mode command, adding coins to the balance of the

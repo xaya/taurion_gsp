@@ -136,6 +136,7 @@ class GodModeTest (PXTest):
 
     self.mainLogger.info ("Testing drop loot...")
     self.dropLoot ({"x": 1, "y": 2}, {"foo": 1, "bar": 2})
+    self.dropIntoBuilding (buildingId, "domob", {"bar": 42})
     self.assertEqual (self.getRpc ("getgroundloot"), [
       {
         "position": {"x": 1, "y": 2},
@@ -145,6 +146,8 @@ class GodModeTest (PXTest):
           },
       },
     ])
+    b = self.getBuildings ()[buildingId]
+    self.assertEqual (b.getFungibleInventory ("domob"), {"bar": 42})
 
     self.mainLogger.info ("Testing gift coins...")
     self.giftCoins ({"domob": 20, "andy": 42})
