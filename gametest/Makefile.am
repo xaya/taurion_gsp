@@ -28,6 +28,7 @@ REGTESTS = \
   prospecting_basic.py \
   prospecting_prizes.py \
   prospecting_resources.py \
+  services_refining.py \
   splitstaterpcs.py
 
 EXTRA_DIST = $(REGTESTS) $(TEST_LIBRARY)
