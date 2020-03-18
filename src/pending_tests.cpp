@@ -44,11 +44,16 @@ protected:
   PendingState state;
 
   AccountsTable accounts;
+  BuildingsTable buildings;
+  BuildingInventoriesTable buildingInv;
   CharacterTable characters;
   RegionsTable regions;
 
   PendingStateTests ()
-    : accounts(db), characters(db), regions(db, 1'042)
+    : accounts(db),
+      buildings(db), buildingInv(db),
+      characters(db),
+      regions(db, 1'042)
   {}
 
   /**
@@ -485,6 +490,62 @@ TEST_F (PendingStateTests, CoinTransferBurn)
   )");
 }
 
+TEST_F (PendingStateTests, ServiceOperations)
+{
+  accounts.CreateNew ("domob", Faction::RED)->AddBalance (30);
+  accounts.CreateNew ("andy", Faction::GREEN)->AddBalance (30);
+
+  db.SetNextId (100);
+  buildings.CreateNew ("ancient1", "", Faction::ANCIENT);
+  buildings.CreateNew ("ancient2", "", Faction::ANCIENT);
+  buildings.CreateNew ("ancient3", "", Faction::ANCIENT);
+
+  buildingInv.Get (100, "domob")->GetInventory ().AddFungibleCount ("foo", 10);
+  buildingInv.Get (101, "andy")->GetInventory ().AddFungibleCount ("foo", 10);
+  buildingInv.Get (102, "domob")->GetInventory ().AddFungibleCount ("foo", 10);
+
+  state.AddServiceOperation (*ServiceOperation::Parse (
+      *accounts.GetByName ("domob"),
+      ParseJson (R"({
+        "b": 100,
+        "t": "ref",
+        "i": "foo",
+        "n": 3
+      })"), buildings, buildingInv));
+  state.AddServiceOperation (*ServiceOperation::Parse (
+      *accounts.GetByName ("andy"),
+      ParseJson (R"({
+        "b": 101,
+        "t": "ref",
+        "i": "foo",
+        "n": 6
+      })"), buildings, buildingInv));
+  state.AddServiceOperation (*ServiceOperation::Parse (
+      *accounts.GetByName ("domob"),
+      ParseJson (R"({
+        "b": 102,
+        "t": "ref",
+        "i": "foo",
+        "n": 9
+      })"), buildings, buildingInv));
+
+  ExpectStateJson (R"(
+    {
+      "accounts":
+        [
+          {
+            "name": "andy",
+            "serviceops": [{"building": 101}]
+          },
+          {
+            "name": "domob",
+            "serviceops": [{"building": 100}, {"building": 102}]
+          }
+        ]
+    }
+  )");
+}
+
 /* ************************************************************************** */
 
 class PendingStateUpdaterTests : public PendingStateTests
@@ -500,10 +561,8 @@ private:
 
 protected:
 
-  BuildingsTable buildings;
-
   PendingStateUpdaterTests ()
-    : updater(db, state, ctx), buildings(db)
+    : updater(db, state, ctx)
   {}
 
   /**
@@ -961,6 +1020,43 @@ TEST_F (PendingStateUpdaterTests, CoinTransferBurn)
                 "burnt": 12,
                 "transfers": {"andy": 5}
               }
+          }
+        ]
+    }
+  )");
+}
+
+TEST_F (PendingStateUpdaterTests, ServiceOperations)
+{
+  accounts.CreateNew ("domob", Faction::RED)->AddBalance (100);
+
+  db.SetNextId (100);
+  buildings.CreateNew ("ancient1", "", Faction::ANCIENT);
+  buildings.CreateNew ("ancient2", "", Faction::ANCIENT);
+
+  buildingInv.Get (100, "domob")->GetInventory ().AddFungibleCount ("foo", 7);
+
+  Process ("domob", R"({
+    "s":
+      [
+        {"b": 100, "t": "ref", "i": "foo", "n": 3},
+        {"x": "invalid"},
+        {"b": 101, "t": "ref", "i": "foo", "n": 3},
+        {"b": 100, "t": "ref", "i": "foo", "n": 6}
+      ]
+  })");
+
+  ExpectStateJson (R"(
+    {
+      "accounts":
+        [
+          {
+            "name": "domob",
+            "serviceops":
+              [
+                {"building": 100, "type": "refining", "input": {"foo": 3}},
+                {"building": 100, "type": "refining", "input": {"foo": 6}}
+              ]
           }
         ]
     }

@@ -32,6 +32,30 @@ message ItemData
   /** The cargo space it uses per unit.  */
   optional uint32 space = 1;
 
+  /**
+   * Data about the ability to refine items of this type to other item types
+   * (i.e. raw materials into refined resources).
+   */
+  message RefiningData
+  {
+
+    /** Number of instances going into one "refining unit".  */
+    optional uint32 input_units = 1;
+
+    /** Base cost (burnt) in vCHI for one refinement step.  */
+    optional uint32 cost = 2;
+
+    /**
+     * The outputs (as item type, amount) for one refining step (i.e.
+     * "input_units" input units).
+     */
+    map<string, uint32> outputs = 3;
+
+  }
+
+  /** If this type of item can be refined, then the stats for doing so.  */
+  optional RefiningData refines = 2;
+
 }
 
 /**
@@ -63,6 +87,19 @@ message BuildingData
    * Maximum HP and regeneration data the building has in its base form.
    */
   optional RegenData regen_data = 4;
+
+  /**
+   * The set of services offered by a building.  Since "false" is the default
+   * value for a boolean field, only those services that are offered need to
+   * be listed in the actual config data.
+   */
+  message Services
+  {
+    optional bool refining = 1;
+  }
+
+  /** Services this building type offers.  */
+  optional Services offered_services = 5;
 
 }
 

@@ -239,6 +239,18 @@ PendingState::AddCoinTransferBurn (const Account& a, const CoinTransferBurn& op)
     aState.coinOps->transfers[entry.first] += entry.second;
 }
 
+void
+PendingState::AddServiceOperation (const ServiceOperation& op)
+{
+  const auto val = op.ToPendingJson ();
+
+  VLOG (1)
+      << "Adding pending service operation for "
+      << op.GetAccount ().GetName () << ":\n" << val;
+
+  GetAccountState (op.GetAccount ()).serviceOps.push_back (val);
+}
+
 Json::Value
 PendingState::CharacterState::ToJson () const
 {
@@ -303,6 +315,14 @@ PendingState::AccountState::ToJson () const
       coin["transfers"] = transfers;
 
       res["coinops"] = coin;
+    }
+
+  if (!serviceOps.empty ())
+    {
+      Json::Value ops(Json::arrayValue);
+      for (const auto& o : serviceOps)
+        ops.append (o);
+      res["serviceops"] = ops;
     }
 
   return res;
@@ -394,6 +414,12 @@ PendingStateUpdater::PerformCharacterUpdate (Character& c,
 }
 
 void
+PendingStateUpdater::PerformServiceOperation (ServiceOperation& op)
+{
+  state.AddServiceOperation (op);
+}
+
+void
 PendingStateUpdater::ProcessMove (const Json::Value& moveObj)
 {
   std::string name;
@@ -419,6 +445,8 @@ PendingStateUpdater::ProcessMove (const Json::Value& moveObj)
 
   TryCharacterUpdates (name, mv);
   TryCharacterCreation (name, mv, paidToDev);
+
+  TryServiceOperations (name, mv);
 }
 
 /* ************************************************************************** */

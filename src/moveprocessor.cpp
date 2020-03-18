@@ -209,6 +209,25 @@ BaseMoveProcessor::TryCharacterUpdates (const std::string& name,
     }
 }
 
+void
+BaseMoveProcessor::TryServiceOperations (const std::string& name,
+                                         const Json::Value& mv)
+{
+  const auto& cmds = mv["s"];
+  if (!cmds.isArray ())
+    return;
+
+  const auto a = accounts.GetByName (name);
+  CHECK (a != nullptr);
+
+  for (const auto& op : cmds)
+    {
+      auto parsed = ServiceOperation::Parse (*a, op, buildings, buildingInv);
+      if (parsed != nullptr)
+        PerformServiceOperation (*parsed);
+    }
+}
+
 namespace
 {
 
@@ -701,6 +720,8 @@ MoveProcessor::ProcessOne (const Json::Value& moveObj)
      We want to exclude such trickery and thus do the update first.  */
   TryCharacterUpdates (name, mv);
   TryCharacterCreation (name, mv, paidToDev);
+
+  TryServiceOperations (name, mv);
 }
 
 void
@@ -1055,6 +1076,12 @@ MoveProcessor::PerformCharacterUpdate (Character& c, const Json::Value& upd)
   MaybeExitBuilding (c, upd);
 }
 
+void
+MoveProcessor::PerformServiceOperation (ServiceOperation& op)
+{
+  op.Execute ();
+}
+
 namespace
 {
 
@@ -1251,11 +1278,34 @@ MaybeGodBuild (AccountsTable& accounts, BuildingsTable& tbl,
 }
 
 /**
+ * Tries to parse a reference to a building inventory (building ID and
+ * account name) for drop-loot command.
+ */
+bool
+ParseBuildingInventory (const Json::Value& val,
+                        Database::IdT& buildingId, std::string& name)
+{
+  if (!val.isObject () || val.size () != 2)
+    return false;
+
+  if (!IdFromJson (val["id"], buildingId))
+    return false;
+
+  const auto& nameVal = val["a"];
+  if (!nameVal.isString ())
+    return false;
+  name = nameVal.asString ();
+
+  return true;
+}
+
+/**
  * Tries to parse and execute a god-mode command that creates and drops
  * loot items on the ground.
  */
 void
-MaybeGodDropLoot (GroundLootTable& tbl, const Json::Value& cmd)
+MaybeGodDropLoot (GroundLootTable& loot, BuildingInventoriesTable& buildingInv,
+                  const Json::Value& cmd)
 {
   if (!cmd.isArray ())
     return;
@@ -1268,14 +1318,6 @@ MaybeGodDropLoot (GroundLootTable& tbl, const Json::Value& cmd)
           continue;
         }
 
-      HexCoord pos;
-      if (!CoordFromJson (tile["pos"], pos))
-        {
-          LOG (WARNING)
-              << "Drop-loot element has invalid position: " << tile;
-          continue;
-        }
-
       const auto& fungible = tile["fungible"];
       if (!fungible.isObject ())
         {
@@ -1283,6 +1325,7 @@ MaybeGodDropLoot (GroundLootTable& tbl, const Json::Value& cmd)
               << "Drop-loot element has invalid fungible member: " << tile;
           continue;
         }
+      const auto quantities = ParseFungibleQuantities (fungible);
 
       if (tile.size () != 2)
         {
@@ -1290,14 +1333,43 @@ MaybeGodDropLoot (GroundLootTable& tbl, const Json::Value& cmd)
           continue;
         }
 
-      const auto quantities = ParseFungibleQuantities (fungible);
-      auto h = tbl.GetByCoord (pos);
+      Inventory* inv = nullptr;
+      std::ostringstream where;
+
+      /* See if this is dropping onto the ground.  */
+      GroundLootTable::Handle gl;
+      HexCoord pos;
+      if (CoordFromJson (tile["pos"], pos))
+        {
+          gl = loot.GetByCoord (pos);
+          inv = &gl->GetInventory ();
+          where << pos;
+        }
+
+      /* Try dropping into a building inventory.  */
+      BuildingInventoriesTable::Handle binv;
+      Database::IdT buildingId;
+      std::string name;
+      if (ParseBuildingInventory (tile["building"], buildingId, name))
+        {
+          binv = buildingInv.Get (buildingId, name);
+          inv = &binv->GetInventory ();
+          where << " building " << buildingId << " / account " << name;
+        }
+
+      if (inv == nullptr)
+        {
+          LOG (WARNING)
+              << "Drop-loot element has invalid/missing target: " << tile;
+          continue;
+        }
+
       for (const auto& entry : quantities)
         {
           LOG (INFO)
               << "God-mode dropping " << entry.second << " of " << entry.first
-              << " at " << pos;
-          h->GetInventory ().AddFungibleCount (entry.first, entry.second);
+              << " at " << where.str ();
+          inv->AddFungibleCount (entry.first, entry.second);
         }
     }
 }
@@ -1355,7 +1427,7 @@ MoveProcessor::HandleGodMode (const Json::Value& cmd)
   MaybeGodTeleport (characters, cmd["teleport"]);
   MaybeGodAllSetHp (buildings, characters, cmd["sethp"]);
   MaybeGodBuild (accounts, buildings, cmd["build"]);
-  MaybeGodDropLoot (groundLoot, cmd["drop"]);
+  MaybeGodDropLoot (groundLoot, buildingInv, cmd["drop"]);
   MaybeGodGiftCoins (accounts, cmd["giftcoins"]);
 }
 

@@ -21,6 +21,7 @@
 
 #include "context.hpp"
 #include "moveprocessor.hpp"
+#include "services.hpp"
 
 #include "database/character.hpp"
 #include "database/database.hpp"
@@ -131,6 +132,9 @@ private:
     /** The combined coin transfer / burn for this account.  */
     std::unique_ptr<CoinTransferBurn> coinOps;
 
+    /** Requested service operations (already as JSON).  */
+    std::vector<Json::Value> serviceOps;
+
     /**
      * Returns the JSON representation of the pending state.
      */
@@ -231,6 +235,11 @@ public:
   void AddCoinTransferBurn (const Account& a, const CoinTransferBurn& op);
 
   /**
+   * Updates the state for a given account, adding a new service operation.
+   */
+  void AddServiceOperation (const ServiceOperation& op);
+
+  /**
    * Returns the JSON representation of the pending state.
    */
   Json::Value ToJson () const;
@@ -254,6 +263,7 @@ protected:
 
   void PerformCharacterCreation (const std::string& name, Faction f) override;
   void PerformCharacterUpdate (Character& c, const Json::Value& upd) override;
+  void PerformServiceOperation (ServiceOperation& op) override;
 
 public:
 

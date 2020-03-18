@@ -132,7 +132,17 @@ fungible_items: { key: "500 ZNZ tokens prize" value: { space: 0 } }
 fungible_items:
   {
     key: "foo"
-    value: { space: 10 }
+    value:
+      {
+        space: 10
+        refines:
+          {
+            input_units: 3
+            cost: 10
+            outputs: { key: "bar" value: 2 }
+            outputs: { key: "zerospace" value: 1 }
+          }
+      }
   }
 fungible_items:
   {

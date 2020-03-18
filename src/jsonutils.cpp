@@ -56,7 +56,7 @@ CoordFromJson (const Json::Value& val, HexCoord& c)
 {
   if (!val.isObject ())
     {
-      LOG (ERROR)
+      VLOG (1)
           << "Invalid HexCoord: JSON value " << val << " is not an object";
       return false;
     }
@@ -66,7 +66,7 @@ CoordFromJson (const Json::Value& val, HexCoord& c)
 
   if (xMember == nullptr || yMember == nullptr)
     {
-      LOG (ERROR)
+      VLOG (1)
           << "Invalid HexCoord: JSON value " << val
           << " must have 'x' and 'y' members";
       return false;
@@ -74,7 +74,7 @@ CoordFromJson (const Json::Value& val, HexCoord& c)
 
   if (val.size () != 2)
     {
-      LOG (ERROR)
+      VLOG (1)
           << "Invalid HexCoord: JSON value " << val
           << " has extra members";
       return false;
@@ -82,7 +82,7 @@ CoordFromJson (const Json::Value& val, HexCoord& c)
 
   if (!xMember->isInt64 () || !yMember->isInt64 ())
     {
-      LOG (ERROR)
+      VLOG (1)
           << "Invalid HexCoord: JSON value " << val
           << " has non-int64 coordinates";
       return false;
@@ -94,13 +94,13 @@ CoordFromJson (const Json::Value& val, HexCoord& c)
   using intLimits = std::numeric_limits<HexCoord::IntT>;
   if (x < intLimits::min () || x > intLimits::max ())
     {
-      LOG (ERROR)
+      VLOG (1)
           << "Invalid HexCoord: x coordinate " << x << " is out of range";
       return false;
     }
   if (y < intLimits::min () || y > intLimits::max ())
     {
-      LOG (ERROR)
+      VLOG (1)
           << "Invalid HexCoord: y coordinate " << y << " is out of range";
       return false;
     }

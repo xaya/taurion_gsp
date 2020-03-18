@@ -60,15 +60,17 @@ class PendingTest (PXTest):
     self.generate (1)
 
     self.giftCoins ({"domob": 100})
+    self.giftCoins ({"andy": 100})
     self.moveCharactersTo ({
       "domob": positionProspect,
       "miner": positionMining,
-      "inbuilding": offsetCoord (positionBuilding, {"x": 3, "y": 0}, False),
-      "inbuilding 2": offsetCoord (positionBuilding, {"x": -3, "y": 0}, False),
+      "inbuilding": offsetCoord (positionBuilding, {"x": 30, "y": 0}, False),
+      "inbuilding 2": offsetCoord (positionBuilding, {"x": -30, "y": 0}, False),
     })
 
-    self.build ("checkmark", None, positionBuilding, 0)
+    self.build ("ancient1", None, positionBuilding, 0)
     building = self.getBuildings ().keys ()[-1]
+    self.dropIntoBuilding (building, "andy", {"foo": 100})
     self.getCharacters ()["inbuilding"].sendMove ({"eb": building})
 
     self.getCharacters ()["miner"].sendMove ({"prospect": {}})
@@ -156,6 +158,9 @@ class PendingTest (PXTest):
     self.sendMove ("domob", {
       "vc": {"b": 10, "t": {"miner": 20}},
     })
+    self.sendMove ("andy", {
+      "s": [{"b": building, "t": "ref", "i": "foo", "n": 9}],
+    })
 
     sleepSome ()
     oldPending = self.getPendingState ()
@@ -194,6 +199,19 @@ class PendingTest (PXTest):
         ],
       "accounts":
         [
+          {
+            "name": "andy",
+            "serviceops":
+              [
+                {
+                  "building": building,
+                  "type": "refining",
+                  "cost": 30,
+                  "input": {"foo": 9},
+                  "output": {"bar": 6, "zerospace": 3},
+                }
+              ],
+          },
           {
             "name": "domob",
             "coinops": {"burnt": 10, "transfers": {"miner": 20}},

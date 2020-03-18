@@ -21,6 +21,7 @@
 
 #include "context.hpp"
 #include "dynobstacles.hpp"
+#include "services.hpp"
 
 #include "database/account.hpp"
 #include "database/amount.hpp"
@@ -199,6 +200,13 @@ protected:
   void TryCharacterUpdates (const std::string& name, const Json::Value& mv);
 
   /**
+   * Parses and handles a potential move with requested service operations.
+   * Each valid operation will be passed to PerformServiceOperation for
+   * either execution or recording in the pending state.
+   */
+  void TryServiceOperations (const std::string& name, const Json::Value& mv);
+
+  /**
    * This function is called when TryCharacterCreation found a creation that
    * is valid and should be performed.
    */
@@ -212,6 +220,14 @@ protected:
    */
   virtual void
   PerformCharacterUpdate (Character& c, const Json::Value& upd)
+  {}
+
+  /**
+   * This function is called when TryServiceOperations found a valid
+   * service operation.
+   */
+  virtual void
+  PerformServiceOperation (ServiceOperation& op)
   {}
 
 public:
@@ -318,6 +334,7 @@ protected:
 
   void PerformCharacterCreation (const std::string& name, Faction f) override;
   void PerformCharacterUpdate (Character& c, const Json::Value& mv) override;
+  void PerformServiceOperation (ServiceOperation& op) override;
 
 public:
 
