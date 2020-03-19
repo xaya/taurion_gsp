@@ -443,6 +443,13 @@ BaseMoveProcessor::ParseExitBuilding (const Character& c,
       return false;
     }
 
+  if (c.GetBusy () > 0)
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId () << " is busy, can't exit building";
+      return false;
+    }
+
   if (!c.IsInBuilding ())
     {
       LOG (WARNING)

@@ -1159,6 +1159,25 @@ TEST_F (ExitBuildingMoveTests, Invalid)
   EXPECT_EQ (GetTest ()->GetBuildingId (), 20);
 }
 
+TEST_F (ExitBuildingMoveTests, WhenBusy)
+{
+  const auto buildingId
+      = buildings.CreateNew ("checkmark", "domob", Faction::RED)->GetId ();
+
+  GetTest ()->SetBuildingId (buildingId);
+  GetTest ()->SetBusy (1);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"xb": {}}}}
+    }
+  ])");
+
+  ASSERT_TRUE (GetTest ()->IsInBuilding ());
+  EXPECT_EQ (GetTest ()->GetBuildingId (), buildingId);
+}
+
 TEST_F (ExitBuildingMoveTests, NotInBuilding)
 {
   const HexCoord pos(10, 20);
