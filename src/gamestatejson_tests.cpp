@@ -522,6 +522,29 @@ TEST_F (CharacterJsonTests, Prospecting)
   })");
 }
 
+TEST_F (CharacterJsonTests, ArmourRepair)
+{
+  auto c = tbl.CreateNew ("domob", Faction::RED);
+  c->SetBuildingId (20);
+  c->SetBusy (42);
+  c->MutableProto ().mutable_armour_repair ();
+  c.reset ();
+
+  ExpectStateJson (R"({
+    "characters":
+      [
+        {
+          "owner": "domob",
+          "busy":
+            {
+              "blocks": 42,
+              "operation": "armourrepair"
+            }
+        }
+      ]
+  })");
+}
+
 /* ************************************************************************** */
 
 class AccountJsonTests : public GameStateJsonTests

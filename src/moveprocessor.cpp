@@ -222,7 +222,9 @@ BaseMoveProcessor::TryServiceOperations (const std::string& name,
 
   for (const auto& op : cmds)
     {
-      auto parsed = ServiceOperation::Parse (*a, op, buildings, buildingInv);
+      auto parsed = ServiceOperation::Parse (*a, op, ctx,
+                                             buildings, buildingInv,
+                                             characters);
       if (parsed != nullptr)
         PerformServiceOperation (*parsed);
     }
@@ -440,6 +442,13 @@ BaseMoveProcessor::ParseExitBuilding (const Character& c,
   if (val.size () != 0)
     {
       LOG (WARNING) << "Invalid exit-building move: " << upd;
+      return false;
+    }
+
+  if (c.GetBusy () > 0)
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId () << " is busy, can't exit building";
       return false;
     }
 

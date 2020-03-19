@@ -96,6 +96,7 @@ message BuildingData
   message Services
   {
     optional bool refining = 1;
+    optional bool armour_repair = 2;
   }
 
   /** Services this building type offers.  */

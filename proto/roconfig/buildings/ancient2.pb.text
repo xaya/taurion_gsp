@@ -7,6 +7,7 @@ building_types:
         offered_services:
           {
             refining: true
+            armour_repair: true
           }
         shape_tiles: { x: -15 y: -14 }
         shape_tiles: { x: -29 y: 14 }

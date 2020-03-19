@@ -186,6 +186,19 @@ Params::IsLowPrizeZone (const HexCoord& pos) const
   return HexCoord::DistanceL1 (pos, noPrizeCentre) <= noPrizeRadius;
 }
 
+unsigned
+Params::ArmourRepairHpPerBlock () const
+{
+  return 100;
+}
+
+Amount
+Params::ArmourRepairCostMillis () const
+{
+  /* The cost is 1 vCHI for 10 HP repair.  */
+  return 100;
+}
+
 HexCoord
 Params::SpawnArea (const Faction f, HexCoord::IntT& radius) const
 {
