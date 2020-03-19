@@ -43,6 +43,8 @@ protected:
 
   PendingState state;
 
+  ContextForTesting ctx;
+
   AccountsTable accounts;
   BuildingsTable buildings;
   BuildingInventoriesTable buildingInv;
@@ -511,7 +513,7 @@ TEST_F (PendingStateTests, ServiceOperations)
         "t": "ref",
         "i": "foo",
         "n": 3
-      })"), buildings, buildingInv));
+      })"), ctx, buildings, buildingInv, characters));
   state.AddServiceOperation (*ServiceOperation::Parse (
       *accounts.GetByName ("andy"),
       ParseJson (R"({
@@ -519,7 +521,7 @@ TEST_F (PendingStateTests, ServiceOperations)
         "t": "ref",
         "i": "foo",
         "n": 6
-      })"), buildings, buildingInv));
+      })"), ctx, buildings, buildingInv, characters));
   state.AddServiceOperation (*ServiceOperation::Parse (
       *accounts.GetByName ("domob"),
       ParseJson (R"({
@@ -527,7 +529,7 @@ TEST_F (PendingStateTests, ServiceOperations)
         "t": "ref",
         "i": "foo",
         "n": 9
-      })"), buildings, buildingInv));
+      })"), ctx, buildings, buildingInv, characters));
 
   ExpectStateJson (R"(
     {

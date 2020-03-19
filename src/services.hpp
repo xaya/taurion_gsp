@@ -19,9 +19,12 @@
 #ifndef PXD_SERVICES_HPP
 #define PXD_SERVICES_HPP
 
+#include "context.hpp"
+
 #include "database/account.hpp"
 #include "database/amount.hpp"
 #include "database/building.hpp"
+#include "database/character.hpp"
 #include "database/inventory.hpp"
 
 #include <json/json.h>
@@ -49,12 +52,16 @@ private:
 
 protected:
 
+  /** Context for parameters and such.  */
+  const Context& ctx;
+
   /** Database handle for upating building inventories (e.g. for refining).  */
   BuildingInventoriesTable& invTable;
 
   explicit ServiceOperation (Account& a, const Building& b,
+                             const Context& cx,
                              BuildingInventoriesTable& i)
-    : acc(a), building(b), invTable(i)
+    : acc(a), building(b), ctx(cx), invTable(i)
   {}
 
   /**
@@ -124,7 +131,9 @@ public:
    */
   static std::unique_ptr<ServiceOperation> Parse (
       Account& acc, const Json::Value& data,
-      BuildingsTable& buildings, BuildingInventoriesTable& inv);
+      const Context& ctx,
+      BuildingsTable& buildings, BuildingInventoriesTable& inv,
+      CharacterTable& characters);
 
 };
 

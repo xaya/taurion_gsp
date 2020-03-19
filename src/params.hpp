@@ -135,6 +135,16 @@ public:
   bool IsLowPrizeZone (const HexCoord& pos) const;
 
   /**
+   * Returns the maximum armour HP that can be repaired per block.
+   */
+  unsigned ArmourRepairHpPerBlock () const;
+
+  /**
+   * Returns the cost (in 1/1000 vCHI) for repairing one HP of armour.
+   */
+  Amount ArmourRepairCostMillis () const;
+
+  /**
    * Returns the spawn centre and radius for the given faction.
    */
   HexCoord SpawnArea (Faction f, HexCoord::IntT& radius) const;

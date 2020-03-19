@@ -876,26 +876,44 @@ TEST_F (PXLogicTests, EnterAndExitBuildingWhenOutside)
   EXPECT_EQ (c->GetBuildingId (), 1);
 }
 
-TEST_F (PXLogicTests, FinishingArmourRepair)
+TEST_F (PXLogicTests, ArmourRepair)
 {
+  accounts.CreateNew ("domob", Faction::RED)->AddBalance (100);
+
   auto c = CreateCharacter ("domob", Faction::RED);
   ASSERT_EQ (c->GetId (), 1);
-  c->SetBuildingId (20);
-  c->MutableRegenData ().mutable_max_hp ()->set_armour (100);
-  c->MutableHP ().set_armour (5);
-  c->MutableProto ().mutable_armour_repair ();
-  c->SetBusy (2);
+  c->SetBuildingId (100);
+  auto& regen = c->MutableRegenData ();
+  regen.mutable_max_hp ()->set_armour (1'000);
+  regen.mutable_max_hp ()->set_shield (100);
+  regen.set_shield_regeneration_mhp (1'000);
+  c->MutableHP ().set_armour (850);
+  c->MutableHP ().set_shield (0);
   c.reset ();
 
-  UpdateState ("[]");
-  c = characters.GetById (1);
-  EXPECT_EQ (c->GetBusy (), 1);
-  EXPECT_EQ (c->GetHP ().armour (), 5);
+  db.SetNextId (100);
+  buildings.CreateNew ("ancient1", "", Faction::ANCIENT);
+
+  UpdateState (R"([
+    {
+      "name": "domob",
+      "move": {"s": [{"t": "fix", "b": 100, "c": 1}]}
+    }
+  ])");
+  EXPECT_EQ (characters.GetById (1)->GetBusy (), 2);
+  EXPECT_EQ (characters.GetById (1)->GetHP ().armour (), 850);
+  EXPECT_EQ (characters.GetById (1)->GetHP ().shield (), 1);
+  EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 85);
 
   UpdateState ("[]");
-  c = characters.GetById (1);
-  EXPECT_EQ (c->GetBusy (), 0);
-  EXPECT_EQ (c->GetHP ().armour (), 100);
+  EXPECT_EQ (characters.GetById (1)->GetBusy (), 1);
+  EXPECT_EQ (characters.GetById (1)->GetHP ().armour (), 850);
+  EXPECT_EQ (characters.GetById (1)->GetHP ().shield (), 2);
+
+  UpdateState ("[]");
+  EXPECT_EQ (characters.GetById (1)->GetBusy (), 0);
+  EXPECT_EQ (characters.GetById (1)->GetHP ().armour (), 1'000);
+  EXPECT_EQ (characters.GetById (1)->GetHP ().shield (), 3);
 }
 
 /* ************************************************************************** */

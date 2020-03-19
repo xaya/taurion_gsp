@@ -34,6 +34,10 @@ namespace
 class ServicesTests : public DBTestWithSchema
 {
 
+private:
+
+  ContextForTesting ctx;
+
 protected:
 
   /** ID of an ancient building with all services.  */
@@ -42,9 +46,10 @@ protected:
   AccountsTable accounts;
   BuildingsTable buildings;
   BuildingInventoriesTable inv;
+  CharacterTable characters;
 
   ServicesTests ()
-    : accounts(db), buildings(db), inv(db)
+    : accounts(db), buildings(db), inv(db), characters(db)
   {
     accounts.CreateNew ("domob", Faction::RED)->AddBalance (100);
 
@@ -67,7 +72,8 @@ protected:
   Process (const std::string& name, const std::string& dataStr)
   {
     auto a = accounts.GetByName (name);
-    auto op = ServiceOperation::Parse (*a, ParseJson (dataStr), buildings, inv);
+    auto op = ServiceOperation::Parse (*a, ParseJson (dataStr),
+                                       ctx, buildings, inv, characters);
 
     if (op == nullptr)
       return false;
@@ -83,7 +89,8 @@ protected:
   GetPendingJson (const std::string& name, const std::string& dataStr)
   {
     auto a = accounts.GetByName (name);
-    auto op = ServiceOperation::Parse (*a, ParseJson (dataStr), buildings, inv);
+    auto op = ServiceOperation::Parse (*a, ParseJson (dataStr),
+                                       ctx, buildings, inv, characters);
     CHECK (op != nullptr);
     return op->ToPendingJson ();
   }
@@ -324,6 +331,162 @@ TEST_F (RefiningTests, PendingJson)
     "type": "refining",
     "input": {"foo": 6},
     "output": {"bar": 4, "zerospace": 2}
+  })")));
+}
+
+/* ************************************************************************** */
+
+class RepairTests : public ServicesTests
+{
+
+protected:
+
+  RepairTests ()
+  {
+    db.SetNextId (200);
+    auto c = characters.CreateNew ("domob", Faction::RED);
+    c->SetBuildingId (ANCIENT_BUILDING);
+    c->MutableRegenData ().mutable_max_hp ()->set_armour (1'000);
+    c->MutableHP ().set_armour (950);
+  }
+
+};
+
+TEST_F (RepairTests, InvalidFormat)
+{
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "fix",
+    "b": 100,
+    "c": 200,
+    "x": false
+  })"));
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "fix",
+    "b": 100,
+    "c": "foo"
+  })"));
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "fix",
+    "b": 100,
+    "c": -10
+  })"));
+}
+
+TEST_F (RepairTests, NonExistantCharacter)
+{
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "fix",
+    "b": 100,
+    "c": 12345
+  })"));
+}
+
+TEST_F (RepairTests, NonOwnedCharacter)
+{
+  accounts.CreateNew ("andy", Faction::RED)->AddBalance (100);
+  EXPECT_FALSE (Process ("andy", R"({
+    "t": "fix",
+    "b": 100,
+    "c": 200
+  })"));
+}
+
+TEST_F (RepairTests, NotInBuilding)
+{
+  characters.GetById (200)->SetPosition (HexCoord (1, 2));
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "fix",
+    "b": 100,
+    "c": 200
+  })"));
+
+  characters.GetById (200)->SetBuildingId (5);
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "fix",
+    "b": 100,
+    "c": 200
+  })"));
+}
+
+TEST_F (RepairTests, NoMissingHp)
+{
+  characters.GetById (200)->MutableHP ().set_armour (1'000);
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "fix",
+    "b": 100,
+    "c": 200
+  })"));
+}
+
+TEST_F (RepairTests, BasicExecution)
+{
+  ASSERT_TRUE (Process ("domob", R"({
+    "t": "fix",
+    "b": 100,
+    "c": 200
+  })"));
+
+  auto c = characters.GetById (200);
+  EXPECT_EQ (c->GetBusy (), 1);
+  EXPECT_TRUE (c->GetProto ().has_armour_repair ());
+  EXPECT_EQ (c->GetHP ().armour (), 950);
+  c.reset ();
+
+  EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 95);
+}
+
+TEST_F (RepairTests, SingleHpMissing)
+{
+  characters.GetById (200)->MutableHP ().set_armour (999);
+  ASSERT_TRUE (Process ("domob", R"({
+    "t": "fix",
+    "b": 100,
+    "c": 200
+  })"));
+
+  EXPECT_EQ (characters.GetById (200)->GetBusy (), 1);
+  EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 99);
+}
+
+TEST_F (RepairTests, MultipleBlocks)
+{
+  characters.GetById (200)->MutableHP ().set_armour (100);
+  ASSERT_TRUE (Process ("domob", R"({
+    "t": "fix",
+    "b": 100,
+    "c": 200
+  })"));
+
+  EXPECT_EQ (characters.GetById (200)->GetBusy (), 9);
+  EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 10);
+}
+
+TEST_F (RepairTests, AlreadyRepairing)
+{
+  ASSERT_TRUE (Process ("domob", R"({
+    "t": "fix",
+    "b": 100,
+    "c": 200
+  })"));
+
+  EXPECT_EQ (characters.GetById (200)->GetBusy (), 1);
+
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "fix",
+    "b": 100,
+    "c": 200
+  })"));
+}
+
+TEST_F (RepairTests, PendingJson)
+{
+  EXPECT_TRUE (PartialJsonEqual (GetPendingJson ("domob", R"({
+    "t": "fix",
+    "b": 100,
+    "c": 200
+  })"), ParseJson (R"({
+    "type": "armourrepair",
+    "character": 200
   })")));
 }
 

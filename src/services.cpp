@@ -87,6 +87,7 @@ public:
   explicit RefiningOperation (Account& a, const Building& b,
                               const std::string& t,
                               const Inventory::QuantityT am,
+                              const Context& cx,
                               BuildingInventoriesTable& i);
 
   /**
@@ -97,6 +98,7 @@ public:
   static std::unique_ptr<RefiningOperation> Parse (Account& acc,
                                                    const Building& b,
                                                    const Json::Value& data,
+                                                   const Context& cx,
                                                    BuildingInventoriesTable& i);
 
 };
@@ -104,8 +106,9 @@ public:
 RefiningOperation::RefiningOperation (Account& a, const Building& b,
                                       const std::string& t,
                                       const Inventory::QuantityT am,
+                                      const Context& cx,
                                       BuildingInventoriesTable& i)
-  : ServiceOperation(a, b, i),
+  : ServiceOperation(a, b, cx, i),
     type(t), amount(am)
 {
   const auto& itemData = RoConfigData ().fungible_items ();
@@ -204,6 +207,7 @@ RefiningOperation::ExecuteSpecific ()
 std::unique_ptr<RefiningOperation>
 RefiningOperation::Parse (Account& acc, const Building& b,
                           const Json::Value& data,
+                          const Context& cx,
                           BuildingInventoriesTable& inv)
 {
   CHECK (data.isObject ());
@@ -219,7 +223,171 @@ RefiningOperation::Parse (Account& acc, const Building& b,
     return nullptr;
 
   return std::make_unique<RefiningOperation> (acc, b, type.asString (),
-                                              amount.asUInt64 (), inv);
+                                              amount.asUInt64 (), cx, inv);
+}
+
+/* ************************************************************************** */
+
+/**
+ * An "armour repair" operation.
+ */
+class RepairOperation : public ServiceOperation
+{
+
+private:
+
+  /** The character repairing their armour.  */
+  CharacterTable::Handle ch;
+
+  /**
+   * Returns the (signed) difference in armour HP that needs to be repaired.
+   */
+  int
+  GetMissingHp () const
+  {
+    const int maxArmour = ch->GetRegenData ().max_hp ().armour ();
+    const int curArmour = ch->GetHP ().armour ();
+    return maxArmour - curArmour;
+  }
+
+protected:
+
+  bool
+  IsSupported (const Building& b) const override
+  {
+    return b.RoConfigData ().offered_services ().armour_repair ();
+  }
+
+  bool IsValid () const override;
+  Amount GetBaseCost () const override;
+  Json::Value SpecificToPendingJson () const override;
+  void ExecuteSpecific () override;
+
+public:
+
+  explicit RepairOperation (Account& a, const Building& b,
+                            CharacterTable::Handle c,
+                            const Context& cx,
+                            BuildingInventoriesTable& i);
+
+  /**
+   * Tries to parse a repair operation from the corresponding JSON move.
+   * Returns a possibly invalid RepairOperation instance or null if parsing
+   * fails.
+   */
+  static std::unique_ptr<RepairOperation> Parse (Account& acc,
+                                                 const Building& b,
+                                                 const Json::Value& data,
+                                                 const Context& cx,
+                                                 BuildingInventoriesTable& i,
+                                                 CharacterTable& characters);
+
+};
+
+RepairOperation::RepairOperation (Account& a, const Building& b,
+                                  CharacterTable::Handle c,
+                                  const Context& cx,
+                                  BuildingInventoriesTable& i)
+  : ServiceOperation(a, b, cx, i), ch(std::move (c))
+{}
+
+bool
+RepairOperation::IsValid () const
+{
+  if (ch == nullptr)
+    {
+      LOG (WARNING) << "Attempted armour repair for non-existant character";
+      return false;
+    }
+
+  if (ch->GetOwner () != GetAccount ().GetName ())
+    {
+      LOG (WARNING)
+          << GetAccount ().GetName () << " cannot repair armour of character "
+          << ch->GetId () << " owned by " << ch->GetOwner ();
+      return false;
+    }
+
+  if (!ch->IsInBuilding () || ch->GetBuildingId () != GetBuilding ().GetId ())
+    {
+      LOG (WARNING)
+          << "Can't repair armour of character " << ch->GetId ()
+          << " in building " << GetBuilding ().GetId ()
+          << ", as the character isn't inside";
+      return false;
+    }
+
+  if (ch->GetBusy () > 0)
+    {
+      LOG (WARNING)
+          << "Character " << ch->GetId () << " is busy, can't repair armour";
+      return false;
+    }
+
+  const int missingHp = GetMissingHp ();
+  if (GetMissingHp () == 0)
+    {
+      LOG (WARNING)
+          << "Character " << ch->GetId () << " has full armour, can't repair";
+      return false;
+    }
+  CHECK_GT (missingHp, 0);
+
+  return true;
+}
+
+Amount
+RepairOperation::GetBaseCost () const
+{
+  /* There is some configured cost per HP (possibly fractional), and we round
+     up the total cost.  */
+  const Amount costMillis
+      = GetMissingHp () * ctx.Params ().ArmourRepairCostMillis ();
+  const Amount res = (costMillis + 999) / 1'000;
+  CHECK_GT (res, 0);
+  return res;
+}
+
+Json::Value
+RepairOperation::SpecificToPendingJson () const
+{
+  Json::Value res(Json::objectValue);
+  res["type"] = "armourrepair";
+  res["character"] = IntToJson (ch->GetId ());
+
+  return res;
+}
+
+void
+RepairOperation::ExecuteSpecific ()
+{
+  LOG (INFO) << "Character " << ch->GetId () << " is repairing their armour";
+
+  const auto hpPerBlock = ctx.Params ().ArmourRepairHpPerBlock ();
+  const auto blocksBusy = (GetMissingHp () + (hpPerBlock - 1)) / hpPerBlock;
+  CHECK_GT (blocksBusy, 0);
+
+  ch->SetBusy (blocksBusy);
+  ch->MutableProto ().mutable_armour_repair ();
+}
+
+std::unique_ptr<RepairOperation>
+RepairOperation::Parse (Account& acc, const Building& b,
+                        const Json::Value& data,
+                        const Context& cx,
+                        BuildingInventoriesTable& inv,
+                        CharacterTable& characters)
+{
+  CHECK (data.isObject ());
+  if (data.size () != 3)
+    return nullptr;
+
+  Database::IdT charId;
+  if (!IdFromJson (data["c"], charId))
+    return nullptr;
+
+  return std::make_unique<RepairOperation> (acc, b, characters.GetById (charId),
+                                            cx, inv);
 }
 
 /* ************************************************************************** */
@@ -247,8 +415,10 @@ ServiceOperation::Execute ()
 
 std::unique_ptr<ServiceOperation>
 ServiceOperation::Parse (Account& acc, const Json::Value& data,
+                         const Context& ctx,
                          BuildingsTable& buildings,
-                         BuildingInventoriesTable& inv)
+                         BuildingInventoriesTable& inv,
+                         CharacterTable& characters)
 {
   if (!data.isObject ())
     {
@@ -282,7 +452,9 @@ ServiceOperation::Parse (Account& acc, const Json::Value& data,
 
   std::unique_ptr<ServiceOperation> op;
   if (type == "ref")
-    op = RefiningOperation::Parse (acc, *b, data, inv);
+    op = RefiningOperation::Parse (acc, *b, data, ctx, inv);
+  else if (type == "fix")
+    op = RepairOperation::Parse (acc, *b, data, ctx, inv, characters);
   else
     {
       LOG (WARNING) << "Unknown service operation: " << type;
