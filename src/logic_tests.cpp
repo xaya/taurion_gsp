@@ -876,6 +876,28 @@ TEST_F (PXLogicTests, EnterAndExitBuildingWhenOutside)
   EXPECT_EQ (c->GetBuildingId (), 1);
 }
 
+TEST_F (PXLogicTests, FinishingArmourRepair)
+{
+  auto c = CreateCharacter ("domob", Faction::RED);
+  ASSERT_EQ (c->GetId (), 1);
+  c->SetBuildingId (20);
+  c->MutableRegenData ().mutable_max_hp ()->set_armour (100);
+  c->MutableHP ().set_armour (5);
+  c->MutableProto ().mutable_armour_repair ();
+  c->SetBusy (2);
+  c.reset ();
+
+  UpdateState ("[]");
+  c = characters.GetById (1);
+  EXPECT_EQ (c->GetBusy (), 1);
+  EXPECT_EQ (c->GetHP ().armour (), 5);
+
+  UpdateState ("[]");
+  c = characters.GetById (1);
+  EXPECT_EQ (c->GetBusy (), 0);
+  EXPECT_EQ (c->GetHP ().armour (), 100);
+}
+
 /* ************************************************************************** */
 
 using ValidateStateTests = PXLogicTests;

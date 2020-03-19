@@ -71,6 +71,13 @@ ProcessBusy (Database& db, xaya::Random& rnd, const Context& ctx)
           FinishProspecting (*c, db, regions, rnd, ctx);
           break;
 
+        case proto::Character::kArmourRepair:
+          LOG (INFO) << "Finished armour repair of character " << c->GetId ();
+          c->MutableHP ().set_armour (c->GetRegenData ().max_hp ().armour ());
+          c->MutableProto ().clear_armour_repair ();
+          c->SetBusy (0);
+          break;
+
         default:
           LOG (FATAL)
               << "Unexpected busy case: " << c->GetProto ().busy_case ();

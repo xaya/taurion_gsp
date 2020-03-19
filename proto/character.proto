@@ -39,6 +39,17 @@ message OngoingProspection
 }
 
 /**
+ * Data representing an "armour repair" operation in progress.
+ */
+message ArmourRepair
+{
+
+  /* As with OngoingProspection, this is just a signal message for the
+     busy oneof, at least for the time being.  */
+
+}
+
+/**
  * Data about the mining state of a character.
  */
 message MiningData
@@ -93,16 +104,17 @@ message Character
   oneof busy
   {
     OngoingProspection prospection = 3;
+    ArmourRepair armour_repair = 4;
   }
 
   /** The character's mining data, if it can mine.  */
-  optional MiningData mining = 4;
+  optional MiningData mining = 5;
 
   /** Movement speed of the character.  */
-  optional uint32 speed = 5;
+  optional uint32 speed = 6;
 
   /** Total cargo space the character has.  */
-  optional uint64 cargo_space = 6;
+  optional uint64 cargo_space = 7;
 
   /* Fields that are stored directly in the database and thus not part of the
      encoded protocol buffer:

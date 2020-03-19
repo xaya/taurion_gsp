@@ -212,6 +212,10 @@ GetBusyJsonObject (const BaseMap& map, const Character& c)
       res["region"] = IntToJson (map.Regions ().GetRegionId (c.GetPosition ()));
       break;
 
+    case proto::Character::kArmourRepair:
+      res["operation"] = "armourrepair";
+      break;
+
     default:
       LOG (FATAL) << "Unexpected busy state for character: " << pb.busy_case ();
     }
