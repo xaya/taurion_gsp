@@ -685,6 +685,24 @@ TEST_F (BuildingJsonTests, Inventories)
   })");
 }
 
+TEST_F (BuildingJsonTests, ServiceFees)
+{
+  auto b = tbl.CreateNew ("checkmark", "daniel", Faction::RED);
+  ASSERT_EQ (b->GetId (), 1);
+  b->MutableProto ().set_service_fee_percent (42);
+  b.reset ();
+
+  ExpectStateJson (R"({
+    "buildings":
+      [
+        {
+          "id": 1,
+          "servicefee": 42
+        }
+      ]
+  })");
+}
+
 TEST_F (BuildingJsonTests, CombatData)
 {
   ASSERT_EQ (tbl.CreateNew ("checkmark", "", Faction::ANCIENT)->GetId (), 1);

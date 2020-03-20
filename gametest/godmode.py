@@ -47,6 +47,7 @@ class GodModeTest (PXTest):
       "faction": "a",
       "centre": {"x": 100, "y": 150},
       "rotationsteps": 2,
+      "servicefee": 0,
       "tiles":
         [
           {"x": 100, "y": 150},
@@ -72,6 +73,7 @@ class GodModeTest (PXTest):
       "owner": "domob",
       "centre": {"x": -100, "y": -150},
       "rotationsteps": 0,
+      "servicefee": 0,
       "tiles":
         [
           {"x": -100, "y": -150},
