@@ -117,7 +117,8 @@ class Building (object):
   Basic handle for a building in the game state.
   """
 
-  def __init__ (self, data):
+  def __init__ (self, test, data):
+    self.test = test
     self.data = data
 
   def getId (self):
@@ -142,6 +143,14 @@ class Building (object):
     if account not in inv:
       return collections.Counter ()
     return collections.Counter (inv[account]["fungible"])
+
+  def sendMove (self, mv):
+    """
+    Sends a move to update the given building with the given data.
+    """
+
+    idStr = "%s" % self.getId ()
+    return self.test.sendMove (self.data["owner"], {"b": {idStr: mv}})
 
 
 class Account (object):
@@ -370,7 +379,7 @@ class PXTest (XayaGameTest):
 
     res = {}
     for b in self.getRpc ("getbuildings"):
-      handle = Building (b)
+      handle = Building (self, b)
       curId = handle.getId ()
       assert curId not in res
       res[curId] = handle
