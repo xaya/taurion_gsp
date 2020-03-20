@@ -88,6 +88,7 @@ public:
                               const std::string& t,
                               const Inventory::QuantityT am,
                               const Context& cx,
+                              AccountsTable& at,
                               BuildingInventoriesTable& i);
 
   /**
@@ -99,6 +100,7 @@ public:
                                                    BuildingsTable::Handle b,
                                                    const Json::Value& data,
                                                    const Context& cx,
+                                                   AccountsTable& at,
                                                    BuildingInventoriesTable& i);
 
 };
@@ -107,8 +109,9 @@ RefiningOperation::RefiningOperation (Account& a, BuildingsTable::Handle b,
                                       const std::string& t,
                                       const Inventory::QuantityT am,
                                       const Context& cx,
+                                      AccountsTable& at,
                                       BuildingInventoriesTable& i)
-  : ServiceOperation(a, std::move (b), cx, i),
+  : ServiceOperation(a, std::move (b), cx, at, i),
     type(t), amount(am)
 {
   const auto& itemData = RoConfigData ().fungible_items ();
@@ -208,6 +211,7 @@ std::unique_ptr<RefiningOperation>
 RefiningOperation::Parse (Account& acc, BuildingsTable::Handle b,
                           const Json::Value& data,
                           const Context& cx,
+                          AccountsTable& at,
                           BuildingInventoriesTable& inv)
 {
   CHECK (data.isObject ());
@@ -225,7 +229,7 @@ RefiningOperation::Parse (Account& acc, BuildingsTable::Handle b,
   return std::make_unique<RefiningOperation> (acc, std::move (b),
                                               type.asString (),
                                               amount.asUInt64 (),
-                                              cx, inv);
+                                              cx, at, inv);
 }
 
 /* ************************************************************************** */
@@ -270,6 +274,7 @@ public:
   explicit RepairOperation (Account& a, BuildingsTable::Handle b,
                             CharacterTable::Handle c,
                             const Context& cx,
+                            AccountsTable& at,
                             BuildingInventoriesTable& i);
 
   /**
@@ -281,6 +286,7 @@ public:
                                                  BuildingsTable::Handle b,
                                                  const Json::Value& data,
                                                  const Context& cx,
+                                                 AccountsTable& at,
                                                  BuildingInventoriesTable& i,
                                                  CharacterTable& characters);
 
@@ -289,8 +295,9 @@ public:
 RepairOperation::RepairOperation (Account& a, BuildingsTable::Handle b,
                                   CharacterTable::Handle c,
                                   const Context& cx,
+                                  AccountsTable& at,
                                   BuildingInventoriesTable& i)
-  : ServiceOperation(a, std::move (b), cx, i), ch(std::move (c))
+  : ServiceOperation(a, std::move (b), cx, at, i), ch(std::move (c))
 {}
 
 bool
@@ -377,6 +384,7 @@ std::unique_ptr<RepairOperation>
 RepairOperation::Parse (Account& acc, BuildingsTable::Handle b,
                         const Json::Value& data,
                         const Context& cx,
+                        AccountsTable& at,
                         BuildingInventoriesTable& inv,
                         CharacterTable& characters)
 {
@@ -390,12 +398,35 @@ RepairOperation::Parse (Account& acc, BuildingsTable::Handle b,
 
   return std::make_unique<RepairOperation> (acc, std::move (b),
                                             characters.GetById (charId),
-                                            cx, inv);
+                                            cx, at, inv);
 }
 
 /* ************************************************************************** */
 
 } // anonymous namespace
+
+void
+ServiceOperation::GetCosts (Amount& base, Amount& fee) const
+{
+  base = GetBaseCost ();
+
+  /* Service is free if the building is an ancient one or if the owner is
+     using their own building.  Even though they would get the fee back in
+     the latter case, we still have to explicitly make it free so that they
+     can execute the operation with a "tight budget" (that wouldn't allow
+     temporarily paying the service fee).  */
+  if (building->GetFaction () == Faction::ANCIENT
+        || building->GetOwner () == acc.GetName ())
+    {
+      fee = 0;
+      return;
+    }
+
+  /* Otherwise the service fee is determined as a percentage of the base cost,
+     with the percentage given by the building configuration.  The result
+     is rounded up.  */
+  fee = (base * building->GetProto ().service_fee_percent () + 99) / 100;
+}
 
 Json::Value
 ServiceOperation::ToPendingJson () const
@@ -404,7 +435,14 @@ ServiceOperation::ToPendingJson () const
   CHECK (res.isObject ());
 
   res["building"] = IntToJson (building->GetId ());
-  res["cost"] = IntToJson (GetBaseCost ());
+
+  Amount base, fee;
+  GetCosts (base, fee);
+
+  Json::Value costs(Json::objectValue);
+  costs["base"] = IntToJson (base);
+  costs["fee"] = IntToJson (fee);
+  res["cost"] = costs;
 
   return res;
 }
@@ -412,13 +450,26 @@ ServiceOperation::ToPendingJson () const
 void
 ServiceOperation::Execute ()
 {
-  acc.AddBalance (-GetBaseCost ());
+  Amount base, fee;
+  GetCosts (base, fee);
+
+  acc.AddBalance (-base - fee);
+  CHECK_GE (fee, 0);
+  if (fee > 0)
+    {
+      auto owner = accounts.GetByName (building->GetOwner ());
+      CHECK (owner != nullptr);
+      CHECK_NE (owner->GetName (), acc.GetName ());
+      owner->AddBalance (fee);
+    }
+
   ExecuteSpecific ();
 }
 
 std::unique_ptr<ServiceOperation>
 ServiceOperation::Parse (Account& acc, const Json::Value& data,
                          const Context& ctx,
+                         AccountsTable& accounts,
                          BuildingsTable& buildings,
                          BuildingInventoriesTable& inv,
                          CharacterTable& characters)
@@ -456,10 +507,10 @@ ServiceOperation::Parse (Account& acc, const Json::Value& data,
   std::unique_ptr<ServiceOperation> op;
   if (type == "ref")
     op = RefiningOperation::Parse (acc, std::move (b), data,
-                                   ctx, inv);
+                                   ctx, accounts, inv);
   else if (type == "fix")
     op = RepairOperation::Parse (acc, std::move (b), data,
-                                 ctx, inv, characters);
+                                 ctx, accounts, inv, characters);
   else
     {
       LOG (WARNING) << "Unknown service operation: " << type;
@@ -480,11 +531,12 @@ ServiceOperation::Parse (Account& acc, const Json::Value& data,
       return nullptr;
     }
 
-  const Amount cost = op->GetBaseCost ();
-  if (cost > acc.GetBalance ())
+  Amount base, fee;
+  op->GetCosts (base, fee);
+  if (base + fee > acc.GetBalance ())
     {
       LOG (WARNING)
-          << "Service operation would cost " << cost
+          << "Service operation would cost " << (base + fee)
           << ", but " << acc.GetName () << " has only " << acc.GetBalance ()
           << ": " << data;
       return nullptr;

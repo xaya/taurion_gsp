@@ -223,6 +223,7 @@ BaseMoveProcessor::TryServiceOperations (const std::string& name,
   for (const auto& op : cmds)
     {
       auto parsed = ServiceOperation::Parse (*a, op, ctx,
+                                             accounts,
                                              buildings, buildingInv,
                                              characters);
       if (parsed != nullptr)

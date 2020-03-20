@@ -73,7 +73,8 @@ protected:
   {
     auto a = accounts.GetByName (name);
     auto op = ServiceOperation::Parse (*a, ParseJson (dataStr),
-                                       ctx, buildings, inv, characters);
+                                       ctx, accounts, buildings,
+                                       inv, characters);
 
     if (op == nullptr)
       return false;
@@ -90,7 +91,8 @@ protected:
   {
     auto a = accounts.GetByName (name);
     auto op = ServiceOperation::Parse (*a, ParseJson (dataStr),
-                                       ctx, buildings, inv, characters);
+                                       ctx, accounts, buildings,
+                                       inv, characters);
     CHECK (op != nullptr);
     return op->ToPendingJson ();
   }
@@ -205,15 +207,136 @@ TEST_F (ServicesTests, InsufficientFunds)
 
 TEST_F (ServicesTests, PendingJson)
 {
+  accounts.CreateNew ("andy", Faction::RED);
+
+  auto b = buildings.CreateNew ("ancient1", "andy", Faction::RED);
+  ASSERT_EQ (b->GetId (), 101);
+  b->MutableProto ().set_service_fee_percent (50);
+  b.reset ();
+
+  inv.Get (101, "domob")->GetInventory ().AddFungibleCount ("foo", 10);
+
   EXPECT_TRUE (PartialJsonEqual (GetPendingJson ("domob", R"({
     "t": "ref",
-    "b": 100,
+    "b": 101,
     "i": "foo",
     "n": 6
   })"), ParseJson (R"({
-    "building": 100,
-    "cost": 20
+    "building": 101,
+    "cost":
+      {
+        "base": 20,
+        "fee": 10
+      }
   })")));
+}
+
+/* ************************************************************************** */
+
+class ServicesFeeTests : public ServicesTests
+{
+
+protected:
+
+  ServicesFeeTests ()
+  {
+    /* For some fee tests, we need an account with just enough balance
+       for the base cost.  This will be "andy" (as opposed to "domob" who
+       has 100 coins).  */
+    accounts.CreateNew ("andy", Faction::RED)->AddBalance (10);
+
+    CHECK_EQ (buildings.CreateNew ("ancient1", "andy", Faction::RED)
+                ->GetId (), 101);
+
+    inv.Get (ANCIENT_BUILDING, "andy")
+        ->GetInventory ().AddFungibleCount ("foo", 10);
+    inv.Get (101, "andy")
+        ->GetInventory ().AddFungibleCount ("foo", 10);
+    inv.Get (101, "domob")
+        ->GetInventory ().AddFungibleCount ("foo", 10);
+  }
+
+};
+
+TEST_F (ServicesFeeTests, NoFeeInAncientBuilding)
+{
+  ASSERT_TRUE (Process ("andy", R"({
+    "t": "ref",
+    "b": 100,
+    "i": "foo",
+    "n": 3
+  })"));
+  EXPECT_EQ (accounts.GetByName ("andy")->GetBalance (), 0);
+}
+
+TEST_F (ServicesFeeTests, NoFeeInOwnBuilding)
+{
+  buildings.GetById (101)->MutableProto ().set_service_fee_percent (50);
+  ASSERT_TRUE (Process ("andy", R"({
+    "t": "ref",
+    "b": 101,
+    "i": "foo",
+    "n": 3
+  })"));
+  EXPECT_EQ (accounts.GetByName ("andy")->GetBalance (), 0);
+}
+
+TEST_F (ServicesFeeTests, InsufficientBalanceWithFee)
+{
+  auto b = buildings.CreateNew ("ancient1", "domob", Faction::RED);
+  ASSERT_EQ (b->GetId (), 102);
+  b->MutableProto ().set_service_fee_percent (50);
+  b.reset ();
+
+  inv.Get (102, "andy")
+      ->GetInventory ().AddFungibleCount ("foo", 10);
+
+  ASSERT_FALSE (Process ("andy", R"({
+    "t": "ref",
+    "b": 102,
+    "i": "foo",
+    "n": 3
+  })"));
+  EXPECT_EQ (accounts.GetByName ("andy")->GetBalance (), 10);
+}
+
+TEST_F (ServicesFeeTests, NormalFeePayment)
+{
+  buildings.GetById (101)->MutableProto ().set_service_fee_percent (50);
+  ASSERT_TRUE (Process ("domob", R"({
+    "t": "ref",
+    "b": 101,
+    "i": "foo",
+    "n": 3
+  })"));
+  EXPECT_EQ (accounts.GetByName ("andy")->GetBalance (), 15);
+  EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 85);
+}
+
+TEST_F (ServicesFeeTests, ZeroFeePossible)
+{
+  buildings.GetById (101)->MutableProto ().set_service_fee_percent (0);
+  ASSERT_TRUE (Process ("domob", R"({
+    "t": "ref",
+    "b": 101,
+    "i": "foo",
+    "n": 3
+  })"));
+  EXPECT_EQ (accounts.GetByName ("andy")->GetBalance (), 10);
+  EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 90);
+}
+
+TEST_F (ServicesFeeTests, FeeRoundedUp)
+{
+  buildings.GetById (101)->MutableProto ().set_service_fee_percent (1);
+  ASSERT_TRUE (Process ("domob", R"({
+    "t": "ref",
+    "b": 101,
+    "i": "foo",
+    "n": 3
+  })"));
+  EXPECT_EQ (accounts.GetByName ("andy")->GetBalance (), 11);
+  EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 89);
 }
 
 /* ************************************************************************** */
