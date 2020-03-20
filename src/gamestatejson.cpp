@@ -345,6 +345,7 @@ template <>
 
   const auto& pb = b.GetProto ();
   res["rotationsteps"] = IntToJson (pb.shape_trafo ().rotation_steps ());
+  res["servicefee"] = IntToJson (pb.service_fee_percent ());
 
   Json::Value tiles(Json::arrayValue);
   for (const auto& c : GetBuildingShape (b))

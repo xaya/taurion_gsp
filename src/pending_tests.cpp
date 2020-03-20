@@ -513,7 +513,7 @@ TEST_F (PendingStateTests, ServiceOperations)
         "t": "ref",
         "i": "foo",
         "n": 3
-      })"), ctx, buildings, buildingInv, characters));
+      })"), ctx, accounts, buildings, buildingInv, characters));
   state.AddServiceOperation (*ServiceOperation::Parse (
       *accounts.GetByName ("andy"),
       ParseJson (R"({
@@ -521,7 +521,7 @@ TEST_F (PendingStateTests, ServiceOperations)
         "t": "ref",
         "i": "foo",
         "n": 6
-      })"), ctx, buildings, buildingInv, characters));
+      })"), ctx, accounts, buildings, buildingInv, characters));
   state.AddServiceOperation (*ServiceOperation::Parse (
       *accounts.GetByName ("domob"),
       ParseJson (R"({
@@ -529,7 +529,7 @@ TEST_F (PendingStateTests, ServiceOperations)
         "t": "ref",
         "i": "foo",
         "n": 9
-      })"), ctx, buildings, buildingInv, characters));
+      })"), ctx, accounts, buildings, buildingInv, characters));
 
   ExpectStateJson (R"(
     {

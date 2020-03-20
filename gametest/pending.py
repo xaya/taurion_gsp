@@ -206,7 +206,7 @@ class PendingTest (PXTest):
                 {
                   "building": building,
                   "type": "refining",
-                  "cost": 30,
+                  "cost": {"base": 30, "fee": 0},
                   "input": {"foo": 9},
                   "output": {"bar": 6, "zerospace": 3},
                 }

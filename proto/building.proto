@@ -56,4 +56,11 @@ message Building
    */
   optional CombatData combat_data = 2;
 
+  /**
+   * The service fee that users need to pay to the building owner for using
+   * services in the building.  This is a percentage of the service's base
+   * fee (the burnt amount).
+   */
+  optional uint32 service_fee_percent = 3;
+
 }

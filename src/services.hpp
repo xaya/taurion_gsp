@@ -44,11 +44,24 @@ class ServiceOperation
 
 private:
 
+  /**
+   * Account table, which is needed to look up and modify the building owner
+   * account when fees are paid.
+   */
+  AccountsTable& accounts;
+
   /** The account triggering the service operation.  */
   Account& acc;
 
   /** The building in which the operation is happening.  */
   BuildingsTable::Handle building;
+
+  /**
+   * Computes the base and service cost.  The base cost is burnt (and defined
+   * by the service operation subclasses), while the service fee is sent
+   * to the building's owner and controlled by them.
+   */
+  void GetCosts (Amount& base, Amount& fee) const;
 
 protected:
 
@@ -60,8 +73,9 @@ protected:
 
   explicit ServiceOperation (Account& a, BuildingsTable::Handle b,
                              const Context& cx,
+                             AccountsTable& at,
                              BuildingInventoriesTable& i)
-    : acc(a), building(std::move (b)), ctx(cx), invTable(i)
+    : accounts(at), acc(a), building(std::move (b)), ctx(cx), invTable(i)
   {}
 
   /**
@@ -132,6 +146,7 @@ public:
   static std::unique_ptr<ServiceOperation> Parse (
       Account& acc, const Json::Value& data,
       const Context& ctx,
+      AccountsTable& accounts,
       BuildingsTable& buildings, BuildingInventoriesTable& inv,
       CharacterTable& characters);
 

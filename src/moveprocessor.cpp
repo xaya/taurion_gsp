@@ -35,6 +35,13 @@
 namespace pxd
 {
 
+/**
+ * The maximum allowed service fee in a building.  The value is consensus
+ * relevant, as it affects move validation.  It is chosen to disallow
+ * "completely scam" buildings.
+ */
+static constexpr unsigned MAX_SERVICE_FEE_PERCENT = 1'000;
+
 /* ************************************************************************** */
 
 BaseMoveProcessor::BaseMoveProcessor (Database& d, const Context& c)
@@ -210,6 +217,74 @@ BaseMoveProcessor::TryCharacterUpdates (const std::string& name,
 }
 
 void
+BaseMoveProcessor::TryBuildingUpdates (const std::string& name,
+                                       const Json::Value& mv)
+{
+  const auto& cmd = mv["b"];
+  if (!cmd.isObject ())
+    return;
+
+  /* The order in which building updates are processed may be relevant for
+     consensus, and we perform the update in order of increasing *numerical*
+     value of the ID (unlike the alphabetical value of the string keys).
+     This matches how character updates are processed.
+
+     Unlike characters, however, updates with ID lists are not necessary.  */
+
+  std::map<Database::IdT, Json::Value> updates;
+  for (auto i = cmd.begin (); i != cmd.end (); ++i)
+    {
+      Database::IdT id;
+      if (!IdFromString (i.name (), id))
+        {
+          LOG (WARNING)
+              << "Ignoring invalid building ID for update: " << i.name ();
+          continue;
+        }
+
+      const auto& upd = *i;
+      if (!upd.isObject ())
+        {
+          LOG (WARNING)
+              << "Building update is not an object: " << upd;
+          continue;
+        }
+
+      CHECK (updates.emplace (id, upd).second);
+    }
+
+  for (const auto& entry : updates)
+    {
+      auto b = buildings.GetById (entry.first);
+      if (b == nullptr)
+        {
+          LOG (WARNING)
+              << "Building ID does not exist: " << entry.first;
+          continue;
+        }
+
+      if (b->GetFaction () == Faction::ANCIENT)
+        {
+          LOG (WARNING)
+              << "User " << name
+              << " is not allowed to update ancient buildings";
+          continue;
+        }
+
+      if (b->GetOwner () != name)
+        {
+          LOG (WARNING)
+              << "User " << name
+              << " is not allowed to update building owned by "
+              << b->GetOwner ();
+          continue;
+        }
+
+      PerformBuildingUpdate (*b, entry.second);
+    }
+}
+
+void
 BaseMoveProcessor::TryServiceOperations (const std::string& name,
                                          const Json::Value& mv)
 {
@@ -223,6 +298,7 @@ BaseMoveProcessor::TryServiceOperations (const std::string& name,
   for (const auto& op : cmds)
     {
       auto parsed = ServiceOperation::Parse (*a, op, ctx,
+                                             accounts,
                                              buildings, buildingInv,
                                              characters);
       if (parsed != nullptr)
@@ -730,6 +806,7 @@ MoveProcessor::ProcessOne (const Json::Value& moveObj)
   TryCharacterUpdates (name, mv);
   TryCharacterCreation (name, mv, paidToDev);
 
+  TryBuildingUpdates (name, mv);
   TryServiceOperations (name, mv);
 }
 
@@ -1083,6 +1160,41 @@ MoveProcessor::PerformCharacterUpdate (Character& c, const Json::Value& upd)
      than allowing to exit & enter again in the same move.  */
   MaybeEnterBuilding (c, upd);
   MaybeExitBuilding (c, upd);
+}
+
+namespace
+{
+
+/**
+ * Tries to perform a service-fee update in a building.
+ */
+void
+MaybeUpdateServiceFee (Building& b, const Json::Value& upd)
+{
+  if (!upd.isUInt64 ())
+    return;
+
+  const uint64_t val = upd.asUInt64 ();
+  if (val > MAX_SERVICE_FEE_PERCENT)
+    {
+      LOG (WARNING)
+          << "Service fee " << val << "% is too much for building "
+          << b.GetId () << " of " << b.GetOwner ();
+      return;
+    }
+
+  LOG (INFO)
+      << "Setting service fee for building " << b.GetId ()
+      << " to " << val << "%";
+  b.MutableProto ().set_service_fee_percent (val);
+}
+
+} // anonymous namespace
+
+void
+MoveProcessor::PerformBuildingUpdate (Building& b, const Json::Value& upd)
+{
+  MaybeUpdateServiceFee (b, upd["sf"]);
 }
 
 void
