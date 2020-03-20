@@ -1923,6 +1923,137 @@ TEST_F (MiningMoveTests, MiningAndWaypointsInSameMove)
 
 /* ************************************************************************** */
 
+class BuildingUpdateTests : public MoveProcessorTests
+{
+
+protected:
+
+  static constexpr Database::IdT ANCIENT = 100;
+  static constexpr Database::IdT ANDY_OWNED = 101;
+  static constexpr Database::IdT DOMOB_OWNED = 102;
+
+  BuildingsTable buildings;
+
+  BuildingUpdateTests ()
+    : buildings(db)
+  {
+    accounts.CreateNew ("domob", Faction::RED);
+    accounts.CreateNew ("andy", Faction::RED);
+
+    db.SetNextId (100);
+    CHECK_EQ (buildings.CreateNew ("ancient1", "", Faction::ANCIENT)
+                ->GetId (), ANCIENT);
+    CHECK_EQ (buildings.CreateNew ("checkmark", "andy", Faction::RED)
+                ->GetId (), ANDY_OWNED);
+    CHECK_EQ (buildings.CreateNew ("checkmark", "domob", Faction::RED)
+                ->GetId (), DOMOB_OWNED);
+  }
+
+};
+
+TEST_F (BuildingUpdateTests, InvalidFormat)
+{
+  Process (R"([
+    {"name": "domob", "move": {"b": null}},
+    {"name": "domob", "move": {"b": []}},
+    {"name": "domob", "move": {"b": "foo"}},
+    {
+      "name": "domob",
+      "move": {"b": {"x": {"sf": 10}}}
+    },
+    {
+      "name": "domob",
+      "move": {"b": {"-50": {"sf": 10}}}
+    },
+    {
+      "name": "domob",
+      "move": {"b": {"102": "foo"}}
+    }
+  ])");
+
+  EXPECT_FALSE (buildings.GetById (DOMOB_OWNED)
+                  ->GetProto ().has_service_fee_percent ());
+}
+
+TEST_F (BuildingUpdateTests, NonExistantBuilding)
+{
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"b": {"12345": {"sf": 10}}}
+    }
+  ])");
+  EXPECT_FALSE (buildings.GetById (DOMOB_OWNED)
+                  ->GetProto ().has_service_fee_percent ());
+}
+
+TEST_F (BuildingUpdateTests, AncientCannotBeUpdated)
+{
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"b": {"100": {"sf": 10}}}
+    }
+  ])");
+  EXPECT_FALSE (buildings.GetById (ANCIENT)
+                  ->GetProto ().has_service_fee_percent ());
+}
+
+TEST_F (BuildingUpdateTests, NotOwner)
+{
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"b": {"101": {"sf": 10}}}
+    }
+  ])");
+  EXPECT_FALSE (buildings.GetById (ANDY_OWNED)
+                  ->GetProto ().has_service_fee_percent ());
+}
+
+TEST_F (BuildingUpdateTests, SetServiceFee)
+{
+  Process (R"([
+    {
+      "name": "andy",
+      "move": {"b": {"101": {"x": 42, "sf": 1000}}}
+    },
+    {
+      "name": "domob",
+      "move": {"b": {"101": {"sf": 0}, "102": {"sf": 1}}}
+    }
+  ])");
+  EXPECT_EQ (buildings.GetById (ANDY_OWNED)
+                ->GetProto ().service_fee_percent (), 1'000);
+  EXPECT_EQ (buildings.GetById (DOMOB_OWNED)
+                ->GetProto ().service_fee_percent (), 1);
+
+  Process (R"([
+    {
+      "name": "andy",
+      "move": {"b": {"101": {"sf": 1001}}}
+    },
+    {
+      "name": "andy",
+      "move": {"b": {"101": {"sf": -20}}}
+    },
+    {
+      "name": "andy",
+      "move": {"b": {"101": {"sf": "42"}}}
+    },
+    {
+      "name": "domob",
+      "move": {"b": {"102": {"sf": 0}}}
+    }
+  ])");
+  EXPECT_EQ (buildings.GetById (ANDY_OWNED)
+                ->GetProto ().service_fee_percent (), 1'000);
+  EXPECT_EQ (buildings.GetById (DOMOB_OWNED)
+                ->GetProto ().service_fee_percent (), 0);
+}
+
+/* ************************************************************************** */
+
 class ServicesMoveTests : public MoveProcessorTests
 {
 

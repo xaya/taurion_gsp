@@ -200,6 +200,14 @@ protected:
   void TryCharacterUpdates (const std::string& name, const Json::Value& mv);
 
   /**
+   * Parses and verifies potential building updates as part of a move
+   * by the building's owner.  This does some general verification and
+   * parsing, and calls through to PerformBuildingUpdates with the
+   * data per building that is valid.
+   */
+  void TryBuildingUpdates (const std::string& name, const Json::Value& mv);
+
+  /**
    * Parses and handles a potential move with requested service operations.
    * Each valid operation will be passed to PerformServiceOperation for
    * either execution or recording in the pending state.
@@ -220,6 +228,14 @@ protected:
    */
   virtual void
   PerformCharacterUpdate (Character& c, const Json::Value& upd)
+  {}
+
+  /**
+   * This function is called when TryBuildingUpdates found a valid update
+   * that should be performed.
+   */
+  virtual void
+  PerformBuildingUpdate (Building& b, const Json::Value& upd)
   {}
 
   /**
@@ -334,6 +350,7 @@ protected:
 
   void PerformCharacterCreation (const std::string& name, Faction f) override;
   void PerformCharacterUpdate (Character& c, const Json::Value& mv) override;
+  void PerformBuildingUpdate (Building& b, const Json::Value& mv) override;
   void PerformServiceOperation (ServiceOperation& op) override;
 
 public:
