@@ -48,7 +48,7 @@ private:
   Account& acc;
 
   /** The building in which the operation is happening.  */
-  const Building& building;
+  BuildingsTable::Handle building;
 
 protected:
 
@@ -58,10 +58,10 @@ protected:
   /** Database handle for upating building inventories (e.g. for refining).  */
   BuildingInventoriesTable& invTable;
 
-  explicit ServiceOperation (Account& a, const Building& b,
+  explicit ServiceOperation (Account& a, BuildingsTable::Handle b,
                              const Context& cx,
                              BuildingInventoriesTable& i)
-    : acc(a), building(b), ctx(cx), invTable(i)
+    : acc(a), building(std::move (b)), ctx(cx), invTable(i)
   {}
 
   /**
@@ -103,7 +103,7 @@ public:
   const Building&
   GetBuilding () const
   {
-    return building;
+    return *building;
   }
 
   /**

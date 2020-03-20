@@ -84,7 +84,7 @@ protected:
 
 public:
 
-  explicit RefiningOperation (Account& a, const Building& b,
+  explicit RefiningOperation (Account& a, BuildingsTable::Handle b,
                               const std::string& t,
                               const Inventory::QuantityT am,
                               const Context& cx,
@@ -96,19 +96,19 @@ public:
    * fails.
    */
   static std::unique_ptr<RefiningOperation> Parse (Account& acc,
-                                                   const Building& b,
+                                                   BuildingsTable::Handle b,
                                                    const Json::Value& data,
                                                    const Context& cx,
                                                    BuildingInventoriesTable& i);
 
 };
 
-RefiningOperation::RefiningOperation (Account& a, const Building& b,
+RefiningOperation::RefiningOperation (Account& a, BuildingsTable::Handle b,
                                       const std::string& t,
                                       const Inventory::QuantityT am,
                                       const Context& cx,
                                       BuildingInventoriesTable& i)
-  : ServiceOperation(a, b, cx, i),
+  : ServiceOperation(a, std::move (b), cx, i),
     type(t), amount(am)
 {
   const auto& itemData = RoConfigData ().fungible_items ();
@@ -205,7 +205,7 @@ RefiningOperation::ExecuteSpecific ()
 }
 
 std::unique_ptr<RefiningOperation>
-RefiningOperation::Parse (Account& acc, const Building& b,
+RefiningOperation::Parse (Account& acc, BuildingsTable::Handle b,
                           const Json::Value& data,
                           const Context& cx,
                           BuildingInventoriesTable& inv)
@@ -222,8 +222,10 @@ RefiningOperation::Parse (Account& acc, const Building& b,
   if (!amount.isUInt64 ())
     return nullptr;
 
-  return std::make_unique<RefiningOperation> (acc, b, type.asString (),
-                                              amount.asUInt64 (), cx, inv);
+  return std::make_unique<RefiningOperation> (acc, std::move (b),
+                                              type.asString (),
+                                              amount.asUInt64 (),
+                                              cx, inv);
 }
 
 /* ************************************************************************** */
@@ -265,7 +267,7 @@ protected:
 
 public:
 
-  explicit RepairOperation (Account& a, const Building& b,
+  explicit RepairOperation (Account& a, BuildingsTable::Handle b,
                             CharacterTable::Handle c,
                             const Context& cx,
                             BuildingInventoriesTable& i);
@@ -276,7 +278,7 @@ public:
    * fails.
    */
   static std::unique_ptr<RepairOperation> Parse (Account& acc,
-                                                 const Building& b,
+                                                 BuildingsTable::Handle b,
                                                  const Json::Value& data,
                                                  const Context& cx,
                                                  BuildingInventoriesTable& i,
@@ -284,11 +286,11 @@ public:
 
 };
 
-RepairOperation::RepairOperation (Account& a, const Building& b,
+RepairOperation::RepairOperation (Account& a, BuildingsTable::Handle b,
                                   CharacterTable::Handle c,
                                   const Context& cx,
                                   BuildingInventoriesTable& i)
-  : ServiceOperation(a, b, cx, i), ch(std::move (c))
+  : ServiceOperation(a, std::move (b), cx, i), ch(std::move (c))
 {}
 
 bool
@@ -372,7 +374,7 @@ RepairOperation::ExecuteSpecific ()
 }
 
 std::unique_ptr<RepairOperation>
-RepairOperation::Parse (Account& acc, const Building& b,
+RepairOperation::Parse (Account& acc, BuildingsTable::Handle b,
                         const Json::Value& data,
                         const Context& cx,
                         BuildingInventoriesTable& inv,
@@ -386,7 +388,8 @@ RepairOperation::Parse (Account& acc, const Building& b,
   if (!IdFromJson (data["c"], charId))
     return nullptr;
 
-  return std::make_unique<RepairOperation> (acc, b, characters.GetById (charId),
+  return std::make_unique<RepairOperation> (acc, std::move (b),
+                                            characters.GetById (charId),
                                             cx, inv);
 }
 
@@ -400,7 +403,7 @@ ServiceOperation::ToPendingJson () const
   Json::Value res = SpecificToPendingJson ();
   CHECK (res.isObject ());
 
-  res["building"] = IntToJson (building.GetId ());
+  res["building"] = IntToJson (building->GetId ());
   res["cost"] = IntToJson (GetBaseCost ());
 
   return res;
@@ -452,9 +455,11 @@ ServiceOperation::Parse (Account& acc, const Json::Value& data,
 
   std::unique_ptr<ServiceOperation> op;
   if (type == "ref")
-    op = RefiningOperation::Parse (acc, *b, data, ctx, inv);
+    op = RefiningOperation::Parse (acc, std::move (b), data,
+                                   ctx, inv);
   else if (type == "fix")
-    op = RepairOperation::Parse (acc, *b, data, ctx, inv, characters);
+    op = RepairOperation::Parse (acc, std::move (b), data,
+                                 ctx, inv, characters);
   else
     {
       LOG (WARNING) << "Unknown service operation: " << type;
@@ -467,10 +472,10 @@ ServiceOperation::Parse (Account& acc, const Json::Value& data,
       return nullptr;
     }
 
-  if (!op->IsSupported (*b))
+  if (!op->IsSupported (op->GetBuilding ()))
     {
       LOG (WARNING)
-          << "Building " << b->GetId ()
+          << "Building " << op->GetBuilding ().GetId ()
           << " does not support service operation: " << data;
       return nullptr;
     }
