@@ -48,6 +48,12 @@ Inventory::operator= (LazyProto<proto::Inventory>&& d)
   return *this;
 }
 
+void
+Inventory::Clear ()
+{
+  data.Mutable ().clear_fungible ();
+}
+
 bool
 Inventory::IsEmpty () const
 {

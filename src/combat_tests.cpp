@@ -820,8 +820,8 @@ TEST_F (ProcessKillsBuildingTests, MayDropAnyInventoryItem)
         {
           EXPECT_EQ (entry.second, expectedAmounts.at (entry.first));
           dropped.insert (entry.first);
-          l->GetInventory ().SetFungibleCount (entry.first, 0);
         }
+      l->GetInventory ().Clear ();
     }
 
   EXPECT_EQ (dropped.size (), expectedAmounts.size ());

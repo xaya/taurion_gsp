@@ -95,6 +95,11 @@ public:
   void operator= (const Inventory&) = delete;
 
   /**
+   * Clears the inventory completely.  This is mostly useful for testing.
+   */
+  void Clear ();
+
+  /**
    * Returns the fungible inventory items as protobuf maps.  This can be
    * used to iterate over all non-zero fungible items (e.g. to construct
    * the JSON state for it).

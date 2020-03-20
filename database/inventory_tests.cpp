@@ -109,6 +109,19 @@ TEST_F (InventoryTests, Modification)
   EXPECT_TRUE (inv.IsDirty ());
 }
 
+TEST_F (InventoryTests, Clear)
+{
+  inv.SetFungibleCount ("foo", 10);
+  inv.SetFungibleCount ("bar", 5);
+
+  /* Clearing twice should be fine (and just not have any effect).  */
+  inv.Clear ();
+  inv.Clear ();
+
+  EXPECT_TRUE (inv.IsEmpty ());
+  EXPECT_EQ (inv.GetFungibleCount ("foo"), 0);
+}
+
 TEST_F (InventoryTests, AdditionOfOtherInventory)
 {
   inv.SetFungibleCount ("foo", 10);
