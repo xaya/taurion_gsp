@@ -1930,9 +1930,10 @@ protected:
 
   BuildingsTable buildings;
   BuildingInventoriesTable inv;
+  CharacterTable characters;
 
   ServicesMoveTests ()
-    : buildings(db), inv(db)
+    : buildings(db), inv(db), characters(db)
   {
     accounts.CreateNew ("domob", Faction::RED)->AddBalance (100);
 
@@ -2012,6 +2013,34 @@ TEST_F (ServicesMoveTests, ServicesAfterCoinOperations)
   EXPECT_EQ (i->GetInventory ().GetFungibleCount ("foo"), 3);
   EXPECT_EQ (i->GetInventory ().GetFungibleCount ("bar"), 0);
   EXPECT_EQ (i->GetInventory ().GetFungibleCount ("zerospace"), 0);
+}
+
+TEST_F (ServicesMoveTests, ServicesAfterCharacterUpdates)
+{
+  db.SetNextId (200);
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  ASSERT_EQ (c->GetId (), 200);
+  c->SetBuildingId (100);
+  c->MutableRegenData ().mutable_max_hp ()->set_armour (100);
+  c->MutableHP ().set_armour (5);
+  c.reset ();
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move":
+        {
+          "s": [{"b": 100, "t": "fix", "c": 200}],
+          "c": {"200": {"xb": {}}}
+        }
+    }
+  ])");
+
+  EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 100);
+  c = characters.GetById (200);
+  EXPECT_FALSE (c->IsInBuilding ());
+  EXPECT_EQ (c->GetHP ().armour (), 5);
+  EXPECT_EQ (c->GetBusy (), 0);
 }
 
 /* ************************************************************************** */
