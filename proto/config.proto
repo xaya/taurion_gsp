@@ -84,6 +84,29 @@ message ItemData
   /** If this is a blueprint, the associated data.  */
   optional BlueprintData is_blueprint = 4;
 
+  /**
+   * Data about the ability to reverse-engineer an item to obtain blueprints.
+   */
+  message RevEngData
+  {
+
+    /** Cost (in vCHI) for a reveng attempt.  */
+    optional uint32 cost = 1;
+
+    /**
+     * Types of items (most likely blueprint originals) that can be obtained
+     * from this through reverse engineering.
+     */
+    repeated string possible_outputs = 2;
+
+  }
+
+  /**
+   * If this can be reverse engineered (i.e. is an artefact), the configuration
+   * data specifying the corresponding stats.
+   */
+  optional RevEngData reveng = 5;
+
 }
 
 /* ************************************************************************** */

@@ -30,8 +30,8 @@ fungible_items:
     value: { space: 0 }
   }
 
-# This one is a dummy "weapon" that can be equipped and constructed
-# from a dummy blueprint for testing purposes.
+# These ones are dummy "weapons" that can be equipped and constructed
+# from dummy blueprints for testing purposes.
 fungible_items:
   {
     key: "bow"
@@ -39,5 +39,29 @@ fungible_items:
       {
         space: 1,
         with_blueprint: true
+      }
+  }
+fungible_items:
+  {
+    key: "sword"
+    value:
+      {
+        space: 1,
+        with_blueprint: true
+      }
+  }
+
+fungible_items:
+  {
+    key: "test aretefact"
+    value:
+      {
+        space: 0,
+        reveng:
+          {
+            cost: 10
+            possible_outputs: "bow bpo"
+            possible_outputs: "sword bpo"
+          }
       }
   }
