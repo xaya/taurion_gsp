@@ -21,7 +21,7 @@
 #include "testutils.hpp"
 
 #include "database/dbtest.hpp"
-#include "database/prizes.hpp"
+#include "database/itemcounts.hpp"
 #include "hexagonal/coord.hpp"
 #include "proto/roitems.hpp"
 
@@ -128,7 +128,6 @@ protected:
     : characters(db), regions(db, 1'042)
   {
     ctx.SetChain (xaya::Chain::REGTEST);
-    InitialisePrizes (db, ctx.Params ());
 
     const auto h = characters.CreateNew ("domob", Faction::RED);
     CHECK_EQ (h->GetId (), 1);
@@ -251,11 +250,11 @@ TEST_F (FinishProspectingTests, Prizes)
     }
   c.reset ();
 
-  Prizes prizeTable(db);
+  ItemCounts cnt(db);
   for (const auto& p : ctx.Params ().ProspectingPrizes ())
     {
       LOG (INFO) << "Found for prize " << p.name << ": " << foundMap[p.name];
-      EXPECT_EQ (prizeTable.GetFound (p.name), foundMap[p.name]);
+      EXPECT_EQ (cnt.GetFound (p.name + " prize"), foundMap[p.name]);
     }
 
   /* We should have found all gold prizes (since there are only a few),
@@ -280,8 +279,8 @@ TEST_F (FinishProspectingTests, FewerPrizesInCentre)
   for (unsigned i = 0; i < trials; ++i)
     ProspectAndClear (characters.GetById (id), POS_LOW_PRIZES);
 
-  Prizes prizeTable(db);
-  const auto silver = prizeTable.GetFound ("silver");
+  ItemCounts cnt(db);
+  const auto silver = cnt.GetFound ("silver prize");
   LOG (INFO) << "Found silver prizes in low-chance area: " << silver;
   /* Expected value is 550.  */
   EXPECT_GE (silver, 500);

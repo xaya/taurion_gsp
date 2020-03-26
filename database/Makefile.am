@@ -23,7 +23,7 @@ libdatabase_la_SOURCES = \
   faction.cpp \
   fighter.cpp \
   inventory.cpp \
-  prizes.cpp \
+  itemcounts.cpp \
   region.cpp \
   schema.cpp \
   target.cpp
@@ -39,8 +39,8 @@ noinst_HEADERS = \
   faction.hpp faction.tpp \
   fighter.hpp \
   inventory.hpp \
+  itemcounts.hpp \
   lazyproto.hpp lazyproto.tpp \
-  prizes.hpp \
   region.hpp \
   schema.hpp \
   target.hpp
@@ -84,8 +84,8 @@ tests_SOURCES = \
   faction_tests.cpp \
   fighter_tests.cpp \
   inventory_tests.cpp \
+  itemcounts_tests.cpp \
   lazyproto_tests.cpp \
-  prizes_tests.cpp \
   region_tests.cpp \
   schema_tests.cpp \
   target_tests.cpp

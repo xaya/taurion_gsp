@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "prizes.hpp"
+#include "itemcounts.hpp"
 
 #include <glog/logging.h>
 
@@ -26,7 +26,7 @@ namespace pxd
 namespace
 {
 
-struct PrizesResult : public Database::ResultType
+struct ItemCountsResult : public Database::ResultType
 {
   RESULT_COLUMN (int64_t, found, 1);
 };
@@ -34,32 +34,37 @@ struct PrizesResult : public Database::ResultType
 } // anonymous namespace
 
 unsigned
-Prizes::GetFound (const std::string& name)
+ItemCounts::GetFound (const std::string& name)
 {
   auto stmt = db.Prepare (R"(
-    SELECT `found` FROM `prizes` WHERE `name` = ?1
+    SELECT `found`
+      FROM `item_counts`
+      WHERE `name` = ?1
   )");
   stmt.Bind (1, name);
 
-  auto res = stmt.Query<PrizesResult> ();
-  CHECK (res.Step ()) << "Prize not found in database: " << name;
-  const unsigned found = res.Get<PrizesResult::found> ();
+  auto res = stmt.Query<ItemCountsResult> ();
+  if (!res.Step ())
+    return 0;
+
+  const unsigned found = res.Get<ItemCountsResult::found> ();
   CHECK (!res.Step ());
 
   return found;
 }
 
 void
-Prizes::IncrementFound (const std::string& name)
+ItemCounts::IncrementFound (const std::string& name)
 {
-  VLOG (1) << "Incrementing found counter for prize " << name << "...";
+  VLOG (1) << "Incrementing found counter for item " << name << "...";
 
   auto stmt = db.Prepare (R"(
-    UPDATE `prizes`
-      SET `found` = `found` + 1
-      WHERE `name` = ?1
+    INSERT OR REPLACE INTO `item_counts`
+      (`name`, `found`)
+      VALUES (?1, ?2)
   )");
   stmt.Bind (1, name);
+  stmt.Bind (2, GetFound (name) + 1);
   stmt.Execute ();
 }
 

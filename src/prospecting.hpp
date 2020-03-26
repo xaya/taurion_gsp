@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,12 +31,6 @@
 
 namespace pxd
 {
-
-/**
- * Fills in the initial data for the prizes table from the prizes defined
- * in the game parameters.
- */
-void InitialisePrizes (Database& db, const Params& params);
 
 /**
  * Checks if the given region can be prospected by the given character

@@ -296,14 +296,14 @@ CREATE INDEX IF NOT EXISTS `building_inventories_by_account`
 
 -- =============================================================================
 
--- Data about the still available prospecting prizes (so that we can
--- ensure only a certain number can be found).
-CREATE TABLE IF NOT EXISTS `prizes` (
+-- Data about counts of items found for a particular type already (for
+-- things where it matters, like prizes and blueprints).
+CREATE TABLE IF NOT EXISTS `item_counts` (
 
-  -- Name of the prize (as defined in the game params).
+  -- Name of the item type.
   `name` TEXT PRIMARY KEY,
 
-  -- Number of prizes found from this type already.
+  -- Number of items of this type found already.
   `found` INTEGER NOT NULL
 
 );

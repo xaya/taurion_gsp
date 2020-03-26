@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,26 +20,11 @@
 
 #include "resourcedist.hpp"
 
-#include "database/prizes.hpp"
+#include "database/itemcounts.hpp"
 #include "proto/roconfig.hpp"
 
 namespace pxd
 {
-
-void
-InitialisePrizes (Database& db, const Params& params)
-{
-  auto stmt = db.Prepare (R"(
-    INSERT INTO `prizes` (`name`, `found`) VALUES (?1, 0)
-  )");
-
-  for (const auto& p : params.ProspectingPrizes ())
-    {
-      stmt.Reset ();
-      stmt.Bind (1, p.name);
-      stmt.Execute ();
-    }
-}
 
 bool
 CanProspectRegion (const Character& c, const Region& r, const Context& ctx)
@@ -119,10 +104,11 @@ FinishProspecting (Character& c, Database& db, RegionsTable& regions,
 
   /* Check the prizes in order to see if we won any.  */
   const bool lowChance = ctx.Params ().IsLowPrizeZone (pos);
-  Prizes prizeTable(db);
+  ItemCounts cnt(db);
   for (const auto& p : ctx.Params ().ProspectingPrizes ())
     {
-      const unsigned found = prizeTable.GetFound (p.name);
+      const std::string prizeItem = p.name + " prize";
+      const unsigned found = cnt.GetFound (prizeItem);
       CHECK_LE (found, p.number);
       if (found == p.number)
         continue;
@@ -136,8 +122,8 @@ FinishProspecting (Character& c, Database& db, RegionsTable& regions,
         << "Character " << c.GetId ()
         << " found a prize of tier " << p.name
         << " prospecting region " << regionId;
-      prizeTable.IncrementFound (p.name);
-      c.GetInventory ().AddFungibleCount (p.name + " prize", 1);
+      cnt.IncrementFound (prizeItem);
+      c.GetInventory ().AddFungibleCount (prizeItem, 1);
       break;
     }
 }
