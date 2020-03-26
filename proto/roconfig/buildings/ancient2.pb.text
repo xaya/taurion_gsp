@@ -8,6 +8,7 @@ building_types:
           {
             refining: true
             armour_repair: true
+            reverse_engineering: true
           }
         shape_tiles: { x: -15 y: -14 }
         shape_tiles: { x: -29 y: 14 }

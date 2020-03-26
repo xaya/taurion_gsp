@@ -183,7 +183,6 @@ PXLogic::InitialiseState (xaya::SQLiteDatabase& db)
   SQLiteGameDatabase dbObj(db, *this);
   const Params params(GetChain ());
 
-  InitialisePrizes (dbObj, params);
   InitialiseBuildings (dbObj);
 
   /* The initialisation uses up some auto IDs, namely for placed buildings.

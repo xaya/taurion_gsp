@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,8 +16,8 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef DATABASE_PRIZES_HPP
-#define DATABASE_PRIZES_HPP
+#ifndef DATABASE_ITEMCOUNTS_HPP
+#define DATABASE_ITEMCOUNTS_HPP
 
 #include "database.hpp"
 
@@ -27,9 +27,9 @@ namespace pxd
 {
 
 /**
- * Wrapper class around the table of prospecting prizes in the database.
+ * Wrapper class around the table of item counts in the database.
  */
-class Prizes
+class ItemCounts
 {
 
 private:
@@ -39,21 +39,21 @@ private:
 
 public:
 
-  explicit Prizes (Database& d)
+  explicit ItemCounts (Database& d)
     : db(d)
   {}
 
-  Prizes () = delete;
-  Prizes (const Prizes&) = delete;
-  void operator= (const Prizes&) = delete;
+  ItemCounts () = delete;
+  ItemCounts (const ItemCounts&) = delete;
+  void operator= (const ItemCounts&) = delete;
 
   /**
-   * Query how many of a given prize have been found already.
+   * Query how many of a given item have been found already.
    */
   unsigned GetFound (const std::string& name);
 
   /**
-   * Increment the found counter of the given prize.
+   * Increment the found counter of the given item.
    */
   void IncrementFound (const std::string& name);
 
@@ -61,4 +61,4 @@ public:
 
 } // namespace pxd
 
-#endif // DATABASE_PRIZES_HPP
+#endif // DATABASE_ITEMCOUNTS_HPP

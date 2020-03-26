@@ -26,7 +26,7 @@
 #include "database/building.hpp"
 #include "database/character.hpp"
 #include "database/faction.hpp"
-#include "database/prizes.hpp"
+#include "database/itemcounts.hpp"
 #include "database/region.hpp"
 #include "hexagonal/pathfinder.hpp"
 #include "proto/character.pb.h"
@@ -428,7 +428,7 @@ template <typename T, typename R>
 Json::Value
 GameStateJson::PrizeStats ()
 {
-  Prizes prizeTable(db);
+  ItemCounts cnt(db);
 
   Json::Value res(Json::objectValue);
   for (const auto& p : params.ProspectingPrizes ())
@@ -437,7 +437,7 @@ GameStateJson::PrizeStats ()
       cur["number"] = p.number;
       cur["probability"] = p.probability;
 
-      const unsigned found = prizeTable.GetFound (p.name);
+      const unsigned found = cnt.GetFound (p.name + " prize");
       CHECK_LE (found, p.number);
 
       cur["found"] = found;

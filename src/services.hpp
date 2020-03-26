@@ -26,6 +26,9 @@
 #include "database/building.hpp"
 #include "database/character.hpp"
 #include "database/inventory.hpp"
+#include "database/itemcounts.hpp"
+
+#include <xayautil/random.hpp>
 
 #include <json/json.h>
 
@@ -65,18 +68,24 @@ private:
 
 protected:
 
+  /**
+   * Utility class that wraps all database table and context references
+   * needed to construct a ServiceOperation instance, so we can easily pass
+   * them around without ever-growing argument lists.
+   */
+  class ContextRefs;
+
   /** Context for parameters and such.  */
   const Context& ctx;
 
   /** Database handle for upating building inventories (e.g. for refining).  */
   BuildingInventoriesTable& invTable;
 
+  /** Database handle for item-count tables.  */
+  ItemCounts& itemCounts;
+
   explicit ServiceOperation (Account& a, BuildingsTable::Handle b,
-                             const Context& cx,
-                             AccountsTable& at,
-                             BuildingInventoriesTable& i)
-    : accounts(at), acc(a), building(std::move (b)), ctx(cx), invTable(i)
-  {}
+                             const ContextRefs& refs);
 
   /**
    * Returns true if the service is supported by the given building.
@@ -98,7 +107,7 @@ protected:
    * Executes the subclass-specific part of this operation, which is all updates
    * except for the vCHI cost.
    */
-  virtual void ExecuteSpecific () = 0;
+  virtual void ExecuteSpecific (xaya::Random& rnd) = 0;
 
   /**
    * Converts the subclass-specific data of this operation (not including
@@ -137,7 +146,7 @@ public:
   /**
    * Fully executes the update corresponding to this operation.
    */
-  void Execute ();
+  void Execute (xaya::Random& rnd);
 
   /**
    * Tries to parse a service operation from JSON move data.  Returns nullptr
@@ -148,7 +157,8 @@ public:
       const Context& ctx,
       AccountsTable& accounts,
       BuildingsTable& buildings, BuildingInventoriesTable& inv,
-      CharacterTable& characters);
+      CharacterTable& characters,
+      ItemCounts& cnt);
 
 };
 

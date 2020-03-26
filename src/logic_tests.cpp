@@ -20,7 +20,6 @@
 
 #include "fame_tests.hpp"
 #include "params.hpp"
-#include "prospecting.hpp"
 #include "protoutils.hpp"
 #include "testutils.hpp"
 
@@ -80,9 +79,7 @@ protected:
   PXLogicTests ()
     : accounts(db), buildings(db), characters(db),
       inv(db), groundLoot(db), regions(db, HEIGHT)
-  {
-    InitialisePrizes (db, ctx.Params ());
-  }
+  {}
 
   /**
    * Builds a blockData JSON value from the given moves (JSON serialised

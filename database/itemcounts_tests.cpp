@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "prizes.hpp"
+#include "itemcounts.hpp"
 
 #include "dbtest.hpp"
 
@@ -27,48 +27,50 @@ namespace pxd
 namespace
 {
 
-class PrizesTests : public DBTestWithSchema
+class ItemCountsTests : public DBTestWithSchema
 {
 
 protected:
 
-  /** Prizes instance for tests.  */
-  Prizes p;
+  ItemCounts cnt;
 
-  PrizesTests ()
-    : p(db)
+  ItemCountsTests ()
+    : cnt(db)
   {
     auto stmt = db.Prepare (R"(
-      INSERT INTO `prizes` (`name`, `found`) VALUES (?1, ?2)
+      INSERT INTO `item_counts`
+        (`name`, `found`)
+        VALUES (?1, ?2)
     )");
 
-    stmt.Bind<std::string> (1, "gold");
+    stmt.Bind<std::string> (1, "gold prize");
     stmt.Bind (2, 10);
     stmt.Execute ();
 
     stmt.Reset ();
-    stmt.Bind<std::string> (1, "silver");
-    stmt.Bind (2, 0);
+    stmt.Bind<std::string> (1, "bow bpo");
+    stmt.Bind (2, 3);
     stmt.Execute ();
   }
 
 };
 
-TEST_F (PrizesTests, GetFound)
+TEST_F (ItemCountsTests, GetFound)
 {
-  EXPECT_EQ (p.GetFound ("gold"), 10);
-  EXPECT_EQ (p.GetFound ("silver"), 0);
+  EXPECT_EQ (cnt.GetFound ("gold prize"), 10);
+  EXPECT_EQ (cnt.GetFound ("silver prize"), 0);
+  EXPECT_EQ (cnt.GetFound ("bow bpo"), 3);
 }
 
-TEST_F (PrizesTests, IncrementFound)
+TEST_F (ItemCountsTests, IncrementFound)
 {
-  p.IncrementFound ("gold");
-  EXPECT_EQ (p.GetFound ("gold"), 11);
-  EXPECT_EQ (p.GetFound ("silver"), 0);
+  cnt.IncrementFound ("gold prize");
+  EXPECT_EQ (cnt.GetFound ("gold prize"), 11);
+  EXPECT_EQ (cnt.GetFound ("silver prize"), 0);
 
-  p.IncrementFound ("silver");
-  EXPECT_EQ (p.GetFound ("gold"), 11);
-  EXPECT_EQ (p.GetFound ("silver"), 1);
+  cnt.IncrementFound ("silver prize");
+  EXPECT_EQ (cnt.GetFound ("gold prize"), 11);
+  EXPECT_EQ (cnt.GetFound ("silver prize"), 1);
 }
 
 } // anonymous namespace

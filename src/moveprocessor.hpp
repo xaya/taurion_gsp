@@ -29,6 +29,7 @@
 #include "database/character.hpp"
 #include "database/database.hpp"
 #include "database/inventory.hpp"
+#include "database/itemcounts.hpp"
 #include "database/region.hpp"
 #include "mapdata/basemap.hpp"
 
@@ -114,6 +115,9 @@ protected:
 
   /** Access handle for building inventories.  */
   BuildingInventoriesTable buildingInv;
+
+  /** Item counts table.  */
+  ItemCounts itemCounts;
 
   /** Access to the regions table.  */
   RegionsTable regions;

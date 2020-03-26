@@ -18,7 +18,6 @@
 
 #include "gamestatejson.hpp"
 
-#include "prospecting.hpp"
 #include "protoutils.hpp"
 #include "testutils.hpp"
 
@@ -27,7 +26,7 @@
 #include "database/character.hpp"
 #include "database/dbtest.hpp"
 #include "database/inventory.hpp"
-#include "database/prizes.hpp"
+#include "database/itemcounts.hpp"
 #include "database/region.hpp"
 #include "proto/character.pb.h"
 #include "proto/region.pb.h"
@@ -63,9 +62,7 @@ protected:
 
   GameStateJsonTests ()
     : params(xaya::Chain::MAIN), converter(db, params, map)
-  {
-    InitialisePrizes (db, params);
-  }
+  {}
 
   /**
    * Expects that the current state matches the given one, after parsing
@@ -910,19 +907,19 @@ class PrizesJsonTests : public GameStateJsonTests
 
 protected:
 
-  Prizes tbl;
+  ItemCounts cnt;
 
   PrizesJsonTests ()
-    : tbl(db)
+    : cnt(db)
   {}
 
 };
 
 TEST_F (PrizesJsonTests, Works)
 {
-  tbl.IncrementFound ("gold");
+  cnt.IncrementFound ("gold prize");
   for (unsigned i = 0; i < 10; ++i)
-    tbl.IncrementFound ("bronze");
+    cnt.IncrementFound ("bronze prize");
 
   ExpectStateJson (R"({
     "prizes":

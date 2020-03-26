@@ -36,20 +36,23 @@ class ServicesTests : public DBTestWithSchema
 
 private:
 
-  ContextForTesting ctx;
+  TestRandom rnd;
 
 protected:
 
   /** ID of an ancient building with all services.  */
   static constexpr Database::IdT ANCIENT_BUILDING = 100;
 
+  ContextForTesting ctx;
+
   AccountsTable accounts;
   BuildingsTable buildings;
   BuildingInventoriesTable inv;
   CharacterTable characters;
+  ItemCounts itemCounts;
 
   ServicesTests ()
-    : accounts(db), buildings(db), inv(db), characters(db)
+    : accounts(db), buildings(db), inv(db), characters(db), itemCounts(db)
   {
     accounts.CreateNew ("domob", Faction::RED)->AddBalance (100);
 
@@ -74,12 +77,12 @@ protected:
     auto a = accounts.GetByName (name);
     auto op = ServiceOperation::Parse (*a, ParseJson (dataStr),
                                        ctx, accounts, buildings,
-                                       inv, characters);
+                                       inv, characters, itemCounts);
 
     if (op == nullptr)
       return false;
 
-    op->Execute ();
+    op->Execute (rnd);
     return true;
   }
 
@@ -92,7 +95,7 @@ protected:
     auto a = accounts.GetByName (name);
     auto op = ServiceOperation::Parse (*a, ParseJson (dataStr),
                                        ctx, accounts, buildings,
-                                       inv, characters);
+                                       inv, characters, itemCounts);
     CHECK (op != nullptr);
     return op->ToPendingJson ();
   }
@@ -610,6 +613,162 @@ TEST_F (RepairTests, PendingJson)
   })"), ParseJson (R"({
     "type": "armourrepair",
     "character": 200
+  })")));
+}
+
+/* ************************************************************************** */
+
+class RevEngTests : public ServicesTests
+{
+
+protected:
+
+  RevEngTests ()
+  {
+    /* Regtest has better chances for reverse engineering (starting at 100%),
+       so that is more suitable for testing.  */
+    ctx.SetChain (xaya::Chain::REGTEST);
+
+    inv.Get (ANCIENT_BUILDING, "domob")
+        ->GetInventory ().AddFungibleCount ("test artefact", 3);
+  }
+
+};
+
+TEST_F (RevEngTests, InvalidFormat)
+{
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "rve",
+    "b": 100,
+    "i": "test artefact",
+    "n": 1,
+    "x": false
+  })"));
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "rve",
+    "b": 100,
+    "i": 42,
+    "n": 1
+  })"));
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "ref",
+    "b": 100,
+    "i": "test artefact",
+    "n": -1
+  })"));
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "ref",
+    "b": 100,
+    "i": "test artefact",
+    "n": "x"
+  })"));
+}
+
+TEST_F (RevEngTests, InvalidItemType)
+{
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "rve",
+    "b": 100,
+    "i": "invalid item",
+    "n": 1
+  })"));
+}
+
+TEST_F (RevEngTests, ItemNotAnArtefact)
+{
+  inv.Get (ANCIENT_BUILDING, "domob")
+      ->GetInventory ().AddFungibleCount ("foo", 10);
+
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "rve",
+    "b": 100,
+    "i": "foo",
+    "n": 1
+  })"));
+}
+
+TEST_F (RevEngTests, InvalidAmount)
+{
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "rve",
+    "b": 100,
+    "i": "test artefact",
+    "n": -3
+  })"));
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "rve",
+    "b": 100,
+    "i": "test artefact",
+    "n": 0
+  })"));
+}
+
+TEST_F (RevEngTests, TooMuch)
+{
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "rve",
+    "b": 100,
+    "i": "test artefact",
+    "n": 30
+  })"));
+}
+
+TEST_F (RevEngTests, OneItem)
+{
+  ASSERT_TRUE (Process ("domob", R"({
+    "t": "rve",
+    "b": 100,
+    "i": "test artefact",
+    "n": 1
+  })"));
+
+  EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 90);
+  auto i = inv.Get (ANCIENT_BUILDING, "domob");
+  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("test artefact"), 2);
+  const auto bow = i->GetInventory ().GetFungibleCount ("bow bpo");
+  const auto sword = i->GetInventory ().GetFungibleCount ("sword bpo");
+  EXPECT_EQ (bow + sword, 1);
+  EXPECT_EQ (itemCounts.GetFound ("bow bpo"), bow);
+  EXPECT_EQ (itemCounts.GetFound ("sword bpo"), sword);
+}
+
+TEST_F (RevEngTests, ManyTries)
+{
+  constexpr unsigned bowOffset = 10;
+
+  accounts.GetByName ("domob")->AddBalance (1'000'000);
+  inv.Get (ANCIENT_BUILDING, "domob")
+      ->GetInventory ().AddFungibleCount ("test artefact", 1'000);
+  for (unsigned i = 0; i < bowOffset; ++i)
+    itemCounts.IncrementFound ("bow bpo");
+
+  ASSERT_TRUE (Process ("domob", R"({
+    "t": "rve",
+    "b": 100,
+    "i": "test artefact",
+    "n": 1000
+  })"));
+
+  auto i = inv.Get (ANCIENT_BUILDING, "domob");
+  const auto bow = i->GetInventory ().GetFungibleCount ("bow bpo");
+  const auto sword = i->GetInventory ().GetFungibleCount ("sword bpo");
+  LOG (INFO) << "Found " << bow << " bows and " << sword << " swords";
+  EXPECT_GT (bow, 0);
+  EXPECT_GT (sword, bow);
+  EXPECT_EQ (itemCounts.GetFound ("bow bpo"), bow + bowOffset);
+  EXPECT_EQ (itemCounts.GetFound ("sword bpo"), sword);
+}
+
+TEST_F (RevEngTests, PendingJson)
+{
+  EXPECT_TRUE (PartialJsonEqual (GetPendingJson ("domob", R"({
+    "t": "rve",
+    "b": 100,
+    "i": "test artefact",
+    "n": 2
+  })"), ParseJson (R"({
+    "type": "reveng",
+    "input": {"test artefact": 2}
   })")));
 }
 

@@ -29,6 +29,33 @@
 namespace pxd
 {
 
+/* ************************************************************************** */
+
+class ServiceOperation::ContextRefs
+{
+
+private:
+
+  const Context& ctx;
+  AccountsTable& accounts;
+  BuildingInventoriesTable& invTable;
+  ItemCounts& cnt;
+
+  friend class ServiceOperation;
+
+public:
+
+  explicit ContextRefs (const Context& c, AccountsTable& a,
+                        BuildingInventoriesTable& i, ItemCounts& ic)
+    : ctx(c), accounts(a), invTable(i), cnt(ic)
+  {}
+
+  ContextRefs () = delete;
+  ContextRefs (const ContextRefs&) = delete;
+  void operator= (const ContextRefs&) = delete;
+
+};
+
 namespace
 {
 
@@ -80,16 +107,14 @@ protected:
 
   bool IsValid () const override;
   Json::Value SpecificToPendingJson () const override;
-  void ExecuteSpecific () override;
+  void ExecuteSpecific (xaya::Random& rnd) override;
 
 public:
 
   explicit RefiningOperation (Account& a, BuildingsTable::Handle b,
                               const std::string& t,
                               const Inventory::QuantityT am,
-                              const Context& cx,
-                              AccountsTable& at,
-                              BuildingInventoriesTable& i);
+                              const ContextRefs& refs);
 
   /**
    * Tries to parse a refining operation from the corresponding JSON move.
@@ -99,19 +124,15 @@ public:
   static std::unique_ptr<RefiningOperation> Parse (Account& acc,
                                                    BuildingsTable::Handle b,
                                                    const Json::Value& data,
-                                                   const Context& cx,
-                                                   AccountsTable& at,
-                                                   BuildingInventoriesTable& i);
+                                                   const ContextRefs& refs);
 
 };
 
 RefiningOperation::RefiningOperation (Account& a, BuildingsTable::Handle b,
                                       const std::string& t,
                                       const Inventory::QuantityT am,
-                                      const Context& cx,
-                                      AccountsTable& at,
-                                      BuildingInventoriesTable& i)
-  : ServiceOperation(a, std::move (b), cx, at, i),
+                                      const ContextRefs& refs)
+  : ServiceOperation(a, std::move (b), refs),
     type(t), amount(am)
 {
   const auto* itemData = RoItemDataOrNull (type);
@@ -188,7 +209,7 @@ RefiningOperation::SpecificToPendingJson () const
 }
 
 void
-RefiningOperation::ExecuteSpecific ()
+RefiningOperation::ExecuteSpecific (xaya::Random& rnd)
 {
   const auto buildingId = GetBuilding ().GetId ();
   const auto& name = GetAccount ().GetName ();
@@ -209,9 +230,7 @@ RefiningOperation::ExecuteSpecific ()
 std::unique_ptr<RefiningOperation>
 RefiningOperation::Parse (Account& acc, BuildingsTable::Handle b,
                           const Json::Value& data,
-                          const Context& cx,
-                          AccountsTable& at,
-                          BuildingInventoriesTable& inv)
+                          const ContextRefs& refs)
 {
   CHECK (data.isObject ());
   if (data.size () != 4)
@@ -228,7 +247,7 @@ RefiningOperation::Parse (Account& acc, BuildingsTable::Handle b,
   return std::make_unique<RefiningOperation> (acc, std::move (b),
                                               type.asString (),
                                               amount.asUInt64 (),
-                                              cx, at, inv);
+                                              refs);
 }
 
 /* ************************************************************************** */
@@ -266,15 +285,13 @@ protected:
   bool IsValid () const override;
   Amount GetBaseCost () const override;
   Json::Value SpecificToPendingJson () const override;
-  void ExecuteSpecific () override;
+  void ExecuteSpecific (xaya::Random& rnd) override;
 
 public:
 
   explicit RepairOperation (Account& a, BuildingsTable::Handle b,
                             CharacterTable::Handle c,
-                            const Context& cx,
-                            AccountsTable& at,
-                            BuildingInventoriesTable& i);
+                            const ContextRefs& refs);
 
   /**
    * Tries to parse a repair operation from the corresponding JSON move.
@@ -284,19 +301,15 @@ public:
   static std::unique_ptr<RepairOperation> Parse (Account& acc,
                                                  BuildingsTable::Handle b,
                                                  const Json::Value& data,
-                                                 const Context& cx,
-                                                 AccountsTable& at,
-                                                 BuildingInventoriesTable& i,
+                                                 const ContextRefs& refs,
                                                  CharacterTable& characters);
 
 };
 
 RepairOperation::RepairOperation (Account& a, BuildingsTable::Handle b,
                                   CharacterTable::Handle c,
-                                  const Context& cx,
-                                  AccountsTable& at,
-                                  BuildingInventoriesTable& i)
-  : ServiceOperation(a, std::move (b), cx, at, i), ch(std::move (c))
+                                  const ContextRefs& refs)
+  : ServiceOperation(a, std::move (b), refs), ch(std::move (c))
 {}
 
 bool
@@ -367,7 +380,7 @@ RepairOperation::SpecificToPendingJson () const
 }
 
 void
-RepairOperation::ExecuteSpecific ()
+RepairOperation::ExecuteSpecific (xaya::Random& rnd)
 {
   LOG (INFO) << "Character " << ch->GetId () << " is repairing their armour";
 
@@ -382,9 +395,7 @@ RepairOperation::ExecuteSpecific ()
 std::unique_ptr<RepairOperation>
 RepairOperation::Parse (Account& acc, BuildingsTable::Handle b,
                         const Json::Value& data,
-                        const Context& cx,
-                        AccountsTable& at,
-                        BuildingInventoriesTable& inv,
+                        const ContextRefs& refs,
                         CharacterTable& characters)
 {
   CHECK (data.isObject ());
@@ -397,12 +408,202 @@ RepairOperation::Parse (Account& acc, BuildingsTable::Handle b,
 
   return std::make_unique<RepairOperation> (acc, std::move (b),
                                             characters.GetById (charId),
-                                            cx, at, inv);
+                                            refs);
+}
+
+/* ************************************************************************** */
+
+/**
+ * A reverse engineering operation (artefacts to blueprints).
+ */
+class RevEngOperation : public ServiceOperation
+{
+
+private:
+
+  /** The type of artefact being reverse engineered.  */
+  const std::string type;
+
+  /** The number of artefacts to reverse engineer in this operation.  */
+  const Inventory::QuantityT num;
+
+  /**
+   * The reveng data for the artefact type.  May be null if the item
+   * type is invalid or it can't be refined.
+   */
+  const proto::ItemData::RevEngData* revEngData;
+
+protected:
+
+  bool
+  IsSupported (const Building& b) const override
+  {
+    return b.RoConfigData ().offered_services ().reverse_engineering ();
+  }
+
+  Amount
+  GetBaseCost () const override
+  {
+    return Inventory::Product (num, revEngData->cost ());
+  }
+
+  bool IsValid () const override;
+  Json::Value SpecificToPendingJson () const override;
+  void ExecuteSpecific (xaya::Random& rnd) override;
+
+public:
+
+  explicit RevEngOperation (Account& a, BuildingsTable::Handle b,
+                            const std::string& t,
+                            const Inventory::QuantityT n,
+                            const ContextRefs& refs);
+
+  /**
+   * Tries to parse a reveng operation from the corresponding JSON move.
+   * Returns a possibly invalid RevEngOperation instance or null if parsing
+   * fails.
+   */
+  static std::unique_ptr<RevEngOperation> Parse (Account& acc,
+                                                 BuildingsTable::Handle b,
+                                                 const Json::Value& data,
+                                                 const ContextRefs& refs);
+
+};
+
+RevEngOperation::RevEngOperation (Account& a, BuildingsTable::Handle b,
+                                  const std::string& t,
+                                  const Inventory::QuantityT n,
+                                  const ContextRefs& refs)
+  : ServiceOperation(a, std::move (b), refs),
+    type(t), num(n)
+{
+  const auto* itemData = RoItemDataOrNull (type);
+  if (itemData == nullptr)
+    {
+      LOG (WARNING) << "Can't reveng invalid item type " << type;
+      revEngData = nullptr;
+      return;
+    }
+
+  if (!itemData->has_reveng ())
+    {
+      LOG (WARNING) << "Item type " << type << " can't be reveng'ed";
+      revEngData = nullptr;
+      return;
+    }
+
+  revEngData = &itemData->reveng ();
+}
+
+bool
+RevEngOperation::IsValid () const
+{
+  if (revEngData == nullptr)
+    return false;
+
+  if (num <= 0)
+    return false;
+
+  const auto buildingId = GetBuilding ().GetId ();
+  const auto& name = GetAccount ().GetName ();
+
+  const auto inv = invTable.Get (buildingId, name);
+  const auto balance = inv->GetInventory ().GetFungibleCount (type);
+  if (num > balance)
+    {
+      LOG (WARNING)
+          << "Can't reveng " << num << " " << type
+          << " as balance of " << name << " in building " << buildingId
+          << " is only " << balance;
+      return false;
+    }
+
+  return true;
+}
+
+Json::Value
+RevEngOperation::SpecificToPendingJson () const
+{
+  Json::Value res(Json::objectValue);
+  res["type"] = "reveng";
+
+  Json::Value inp(Json::objectValue);
+  inp[type] = IntToJson (num);
+  res["input"] = inp;
+
+  return res;
+}
+
+void
+RevEngOperation::ExecuteSpecific (xaya::Random& rnd)
+{
+  const auto buildingId = GetBuilding ().GetId ();
+  const auto& name = GetAccount ().GetName ();
+
+  LOG (INFO)
+      << name << " in building " << buildingId
+      << " reverse engineers " << num << " " << type;
+
+  auto invHandle = invTable.Get (buildingId, name);
+  auto& inv = invHandle->GetInventory ();
+  inv.AddFungibleCount (type, -num);
+
+  const size_t numOptions = revEngData->possible_outputs_size ();
+  CHECK_GT (numOptions, 0);
+
+  for (unsigned trial = 0; trial < num; ++trial)
+    {
+      const size_t chosenOption = rnd.NextInt (numOptions);
+      const std::string outType = revEngData->possible_outputs (chosenOption);
+
+      const unsigned existingCount = itemCounts.GetFound (outType);
+      const unsigned chance = ctx.Params ().RevEngSuccessChance (existingCount);
+      const bool success = rnd.ProbabilityRoll (1, chance);
+      LOG (INFO)
+          << "Chosen output type " << outType
+          << " has chance 1 / " << chance
+          << "; success = " << success;
+
+      if (success)
+        {
+          inv.AddFungibleCount (outType, 1);
+          itemCounts.IncrementFound (outType);
+        }
+    }
+}
+
+std::unique_ptr<RevEngOperation>
+RevEngOperation::Parse (Account& acc, BuildingsTable::Handle b,
+                        const Json::Value& data,
+                        const ContextRefs& refs)
+{
+  CHECK (data.isObject ());
+  if (data.size () != 4)
+    return nullptr;
+
+  const auto& type = data["i"];
+  if (!type.isString ())
+    return nullptr;
+
+  const auto& num = data["n"];
+  if (!num.isUInt64 ())
+    return nullptr;
+
+  return std::make_unique<RevEngOperation> (acc, std::move (b),
+                                            type.asString (),
+                                            num.asUInt64 (),
+                                            refs);
 }
 
 /* ************************************************************************** */
 
 } // anonymous namespace
+
+ServiceOperation::ServiceOperation (Account& a, BuildingsTable::Handle b,
+                                    const ContextRefs& refs)
+  : accounts(refs.accounts), acc(a), building(std::move (b)),
+    ctx(refs.ctx), invTable(refs.invTable), itemCounts(refs.cnt)
+{}
 
 void
 ServiceOperation::GetCosts (Amount& base, Amount& fee) const
@@ -447,7 +648,7 @@ ServiceOperation::ToPendingJson () const
 }
 
 void
-ServiceOperation::Execute ()
+ServiceOperation::Execute (xaya::Random& rnd)
 {
   Amount base, fee;
   GetCosts (base, fee);
@@ -462,7 +663,7 @@ ServiceOperation::Execute ()
       owner->AddBalance (fee);
     }
 
-  ExecuteSpecific ();
+  ExecuteSpecific (rnd);
 }
 
 std::unique_ptr<ServiceOperation>
@@ -471,7 +672,8 @@ ServiceOperation::Parse (Account& acc, const Json::Value& data,
                          AccountsTable& accounts,
                          BuildingsTable& buildings,
                          BuildingInventoriesTable& inv,
-                         CharacterTable& characters)
+                         CharacterTable& characters,
+                         ItemCounts& cnt)
 {
   if (!data.isObject ())
     {
@@ -503,13 +705,14 @@ ServiceOperation::Parse (Account& acc, const Json::Value& data,
     }
   const std::string type = typeVal.asString ();
 
+  const ContextRefs refs(ctx, accounts, inv, cnt);
   std::unique_ptr<ServiceOperation> op;
   if (type == "ref")
-    op = RefiningOperation::Parse (acc, std::move (b), data,
-                                   ctx, accounts, inv);
+    op = RefiningOperation::Parse (acc, std::move (b), data, refs);
   else if (type == "fix")
-    op = RepairOperation::Parse (acc, std::move (b), data,
-                                 ctx, accounts, inv, characters);
+    op = RepairOperation::Parse (acc, std::move (b), data, refs, characters);
+  else if (type == "rve")
+    op = RevEngOperation::Parse (acc, std::move (b), data, refs);
   else
     {
       LOG (WARNING) << "Unknown service operation: " << type;
