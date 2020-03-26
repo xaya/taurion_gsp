@@ -65,6 +65,13 @@ private:
 
 protected:
 
+  /**
+   * Utility class that wraps all database table and context references
+   * needed to construct a ServiceOperation instance, so we can easily pass
+   * them around without ever-growing argument lists.
+   */
+  class ContextRefs;
+
   /** Context for parameters and such.  */
   const Context& ctx;
 
@@ -72,11 +79,7 @@ protected:
   BuildingInventoriesTable& invTable;
 
   explicit ServiceOperation (Account& a, BuildingsTable::Handle b,
-                             const Context& cx,
-                             AccountsTable& at,
-                             BuildingInventoriesTable& i)
-    : accounts(at), acc(a), building(std::move (b)), ctx(cx), invTable(i)
-  {}
+                             const ContextRefs& refs);
 
   /**
    * Returns true if the service is supported by the given building.

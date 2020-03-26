@@ -29,6 +29,32 @@
 namespace pxd
 {
 
+/* ************************************************************************** */
+
+class ServiceOperation::ContextRefs
+{
+
+private:
+
+  const Context& ctx;
+  AccountsTable& accounts;
+  BuildingInventoriesTable& invTable;
+
+  friend class ServiceOperation;
+
+public:
+
+  explicit ContextRefs (const Context& c, AccountsTable& a,
+                        BuildingInventoriesTable& i)
+    : ctx(c), accounts(a), invTable(i)
+  {}
+
+  ContextRefs () = delete;
+  ContextRefs (const ContextRefs&) = delete;
+  void operator= (const ContextRefs&) = delete;
+
+};
+
 namespace
 {
 
@@ -87,9 +113,7 @@ public:
   explicit RefiningOperation (Account& a, BuildingsTable::Handle b,
                               const std::string& t,
                               const Inventory::QuantityT am,
-                              const Context& cx,
-                              AccountsTable& at,
-                              BuildingInventoriesTable& i);
+                              const ContextRefs& refs);
 
   /**
    * Tries to parse a refining operation from the corresponding JSON move.
@@ -99,19 +123,15 @@ public:
   static std::unique_ptr<RefiningOperation> Parse (Account& acc,
                                                    BuildingsTable::Handle b,
                                                    const Json::Value& data,
-                                                   const Context& cx,
-                                                   AccountsTable& at,
-                                                   BuildingInventoriesTable& i);
+                                                   const ContextRefs& refs);
 
 };
 
 RefiningOperation::RefiningOperation (Account& a, BuildingsTable::Handle b,
                                       const std::string& t,
                                       const Inventory::QuantityT am,
-                                      const Context& cx,
-                                      AccountsTable& at,
-                                      BuildingInventoriesTable& i)
-  : ServiceOperation(a, std::move (b), cx, at, i),
+                                      const ContextRefs& refs)
+  : ServiceOperation(a, std::move (b), refs),
     type(t), amount(am)
 {
   const auto* itemData = RoItemDataOrNull (type);
@@ -209,9 +229,7 @@ RefiningOperation::ExecuteSpecific ()
 std::unique_ptr<RefiningOperation>
 RefiningOperation::Parse (Account& acc, BuildingsTable::Handle b,
                           const Json::Value& data,
-                          const Context& cx,
-                          AccountsTable& at,
-                          BuildingInventoriesTable& inv)
+                          const ContextRefs& refs)
 {
   CHECK (data.isObject ());
   if (data.size () != 4)
@@ -228,7 +246,7 @@ RefiningOperation::Parse (Account& acc, BuildingsTable::Handle b,
   return std::make_unique<RefiningOperation> (acc, std::move (b),
                                               type.asString (),
                                               amount.asUInt64 (),
-                                              cx, at, inv);
+                                              refs);
 }
 
 /* ************************************************************************** */
@@ -272,9 +290,7 @@ public:
 
   explicit RepairOperation (Account& a, BuildingsTable::Handle b,
                             CharacterTable::Handle c,
-                            const Context& cx,
-                            AccountsTable& at,
-                            BuildingInventoriesTable& i);
+                            const ContextRefs& refs);
 
   /**
    * Tries to parse a repair operation from the corresponding JSON move.
@@ -284,19 +300,15 @@ public:
   static std::unique_ptr<RepairOperation> Parse (Account& acc,
                                                  BuildingsTable::Handle b,
                                                  const Json::Value& data,
-                                                 const Context& cx,
-                                                 AccountsTable& at,
-                                                 BuildingInventoriesTable& i,
+                                                 const ContextRefs& refs,
                                                  CharacterTable& characters);
 
 };
 
 RepairOperation::RepairOperation (Account& a, BuildingsTable::Handle b,
                                   CharacterTable::Handle c,
-                                  const Context& cx,
-                                  AccountsTable& at,
-                                  BuildingInventoriesTable& i)
-  : ServiceOperation(a, std::move (b), cx, at, i), ch(std::move (c))
+                                  const ContextRefs& refs)
+  : ServiceOperation(a, std::move (b), refs), ch(std::move (c))
 {}
 
 bool
@@ -382,9 +394,7 @@ RepairOperation::ExecuteSpecific ()
 std::unique_ptr<RepairOperation>
 RepairOperation::Parse (Account& acc, BuildingsTable::Handle b,
                         const Json::Value& data,
-                        const Context& cx,
-                        AccountsTable& at,
-                        BuildingInventoriesTable& inv,
+                        const ContextRefs& refs,
                         CharacterTable& characters)
 {
   CHECK (data.isObject ());
@@ -397,12 +407,18 @@ RepairOperation::Parse (Account& acc, BuildingsTable::Handle b,
 
   return std::make_unique<RepairOperation> (acc, std::move (b),
                                             characters.GetById (charId),
-                                            cx, at, inv);
+                                            refs);
 }
 
 /* ************************************************************************** */
 
 } // anonymous namespace
+
+ServiceOperation::ServiceOperation (Account& a, BuildingsTable::Handle b,
+                                    const ContextRefs& refs)
+  : accounts(refs.accounts), acc(a), building(std::move (b)),
+    ctx(refs.ctx), invTable(refs.invTable)
+{}
 
 void
 ServiceOperation::GetCosts (Amount& base, Amount& fee) const
@@ -503,13 +519,12 @@ ServiceOperation::Parse (Account& acc, const Json::Value& data,
     }
   const std::string type = typeVal.asString ();
 
+  const ContextRefs refs(ctx, accounts, inv);
   std::unique_ptr<ServiceOperation> op;
   if (type == "ref")
-    op = RefiningOperation::Parse (acc, std::move (b), data,
-                                   ctx, accounts, inv);
+    op = RefiningOperation::Parse (acc, std::move (b), data, refs);
   else if (type == "fix")
-    op = RepairOperation::Parse (acc, std::move (b), data,
-                                 ctx, accounts, inv, characters);
+    op = RepairOperation::Parse (acc, std::move (b), data, refs, characters);
   else
     {
       LOG (WARNING) << "Unknown service operation: " << type;
