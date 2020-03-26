@@ -20,7 +20,7 @@
 
 #include "database/inventory.hpp"
 #include "database/region.hpp"
-#include "proto/roconfig.hpp"
+#include "proto/roitems.hpp"
 
 namespace pxd
 {
@@ -42,8 +42,6 @@ ProcessAllMining (Database& db, xaya::Random& rnd, const Context& ctx)
 {
   CharacterTable characters(db);
   RegionsTable regions(db, ctx.Height ());
-
-  const auto& itemData = RoConfigData ().fungible_items ();
 
   auto res = characters.QueryMining ();
   while (res.Step ())
@@ -100,13 +98,11 @@ ProcessAllMining (Database& db, xaya::Random& rnd, const Context& ctx)
       const int64_t freeCargo = pb.cargo_space () - c->UsedCargoSpace ();
       CHECK_GE (freeCargo, 0);
 
-      const auto mitItem = itemData.find (type);
-      CHECK (mitItem != itemData.end ())
-          << "Unknown resource type to be mined: " << type;
-      CHECK_GT (mitItem->second.space (), 0)
+      const auto itemSpace = RoItemData (type).space ();
+      CHECK_GT (itemSpace, 0)
           << "Minable resource " << type << " has zero space";
 
-      const auto maxForSpace = freeCargo / mitItem->second.space ();
+      const auto maxForSpace = freeCargo / itemSpace;
       if (mined > maxForSpace)
         {
           VLOG (1)

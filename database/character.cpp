@@ -18,7 +18,7 @@
 
 #include "character.hpp"
 
-#include "proto/roconfig.hpp"
+#include "proto/roitems.hpp"
 
 #include <glog/logging.h>
 
@@ -218,16 +218,9 @@ Character::GetBuildingId () const
 uint64_t
 Character::UsedCargoSpace () const
 {
-  const auto& itemData = RoConfigData ().fungible_items ();
-
   uint64_t res = 0;
   for (const auto& entry : inv.GetFungible ())
-    {
-      const auto mit = itemData.find (entry.first);
-      CHECK (mit != itemData.end ())
-          << "Unknown item in character inventory: " << entry.first;
-      res += Inventory::Product (entry.second, mit->second.space ());
-    }
+    res += Inventory::Product (entry.second, RoItemData (entry.first).space ());
 
   return res;
 }

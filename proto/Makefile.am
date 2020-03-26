@@ -40,11 +40,13 @@ libpxproto_la_CXXFLAGS = $(PROTOBUF_CFLAGS)
 libpxproto_la_LBADD = $(PROTOBUF_LIBS)
 libpxproto_la_SOURCES = \
   roconfig.cpp \
+  roitems.cpp \
   \
   roconfig_blob.s \
   $(PROTOS:.proto=.pb.cc)
 noinst_HEADERS = \
   roconfig.hpp \
+  roitems.hpp \
   \
   $(PROTOS:.proto=.pb.h)
 
@@ -67,7 +69,8 @@ tests_LDADD = \
   $(GTEST_MAIN_LIBS) \
   $(GTEST_LIBS) $(GLOG_LIBS) $(PROTOBUF_LIBS)
 tests_SOURCES = \
-  roconfig_tests.cpp
+  roconfig_tests.cpp \
+  roitems_tests.cpp
 
 %.pb.h %.pb.cc: $(srcdir)/%.proto
 	protoc -I$(srcdir) --cpp_out=. "$<"

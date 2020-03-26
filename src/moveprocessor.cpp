@@ -29,6 +29,7 @@
 #include "database/faction.hpp"
 #include "proto/character.pb.h"
 #include "proto/roconfig.hpp"
+#include "proto/roitems.hpp"
 
 #include <sstream>
 
@@ -555,7 +556,6 @@ FungibleAmountMap
 ParseFungibleQuantities (const Json::Value& obj)
 {
   CHECK (obj.isObject ());
-  const auto& itemData = RoConfigData ().fungible_items ();
 
   FungibleAmountMap res;
   for (auto it = obj.begin (); it != obj.end (); ++it)
@@ -564,7 +564,7 @@ ParseFungibleQuantities (const Json::Value& obj)
       CHECK (keyVal.isString ());
       const std::string key = keyVal.asString ();
 
-      if (itemData.find (key) == itemData.end ())
+      if (RoItemDataOrNull (key) == nullptr)
         {
           LOG (WARNING) << "Invalid fungible item: " << key;
           continue;
@@ -998,8 +998,6 @@ MoveFungibleBetweenInventories (const FungibleAmountMap& items,
                                 const std::string& toName,
                                 int64_t maxSpace = -1)
 {
-  const auto& itemData = RoConfigData ().fungible_items ();
-
   for (const auto& entry : items)
     {
       const auto available = from.GetFungibleCount (entry.first);
@@ -1015,13 +1013,11 @@ MoveFungibleBetweenInventories (const FungibleAmountMap& items,
 
       if (maxSpace >= 0)
         {
-          const auto mit = itemData.find (entry.first);
-          CHECK (mit != itemData.end ())
-              << "Unknown item to be transferred: " << entry.first;
+          const auto itemSpace = RoItemData (entry.first).space ();
 
-          if (mit->second.space () > 0)
+          if (itemSpace > 0)
             {
-              const auto maxForSpace = maxSpace / mit->second.space ();
+              const auto maxForSpace = maxSpace / itemSpace;
               if (cnt > maxForSpace)
                 {
                   LOG (WARNING)
@@ -1031,7 +1027,7 @@ MoveFungibleBetweenInventories (const FungibleAmountMap& items,
                   cnt = maxForSpace;
                 }
 
-              maxSpace -= Inventory::Product (cnt, mit->second.space ());
+              maxSpace -= Inventory::Product (cnt, itemSpace);
             }
 
           CHECK_GE (maxSpace, 0);

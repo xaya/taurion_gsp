@@ -20,7 +20,7 @@
 
 #include "jsonutils.hpp"
 
-#include "proto/roconfig.hpp"
+#include "proto/roitems.hpp"
 
 #include <glog/logging.h>
 
@@ -114,23 +114,22 @@ RefiningOperation::RefiningOperation (Account& a, BuildingsTable::Handle b,
   : ServiceOperation(a, std::move (b), cx, at, i),
     type(t), amount(am)
 {
-  const auto& itemData = RoConfigData ().fungible_items ();
-  const auto mit = itemData.find (type);
-  if (mit == itemData.end ())
+  const auto* itemData = RoItemDataOrNull (type);
+  if (itemData == nullptr)
     {
       LOG (WARNING) << "Can't refine invalid item type " << type;
       refData = nullptr;
       return;
     }
 
-  if (!mit->second.has_refines ())
+  if (!itemData->has_refines ())
     {
       LOG (WARNING) << "Item type " << type << " can't be refined";
       refData = nullptr;
       return;
     }
 
-  refData = &mit->second.refines ();
+  refData = &itemData->refines ();
 }
 
 bool
