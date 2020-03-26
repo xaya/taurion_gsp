@@ -150,6 +150,7 @@ message BuildingData
   {
     optional bool refining = 1;
     optional bool armour_repair = 2;
+    optional bool reverse_engineering = 3;
   }
 
   /** Services this building type offers.  */

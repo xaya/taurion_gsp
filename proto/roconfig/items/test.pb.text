@@ -53,7 +53,7 @@ fungible_items:
 
 fungible_items:
   {
-    key: "test aretefact"
+    key: "test artefact"
     value:
       {
         space: 0,

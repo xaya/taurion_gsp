@@ -145,6 +145,12 @@ public:
   Amount ArmourRepairCostMillis () const;
 
   /**
+   * Returns the chance for reverse-engineering success (as N in 1/N) based
+   * on the already existing number of blueprints.
+   */
+  unsigned RevEngSuccessChance (unsigned existingBp) const;
+
+  /**
    * Returns the spawn centre and radius for the given faction.
    */
   HexCoord SpawnArea (Faction f, HexCoord::IntT& radius) const;

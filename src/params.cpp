@@ -199,6 +199,46 @@ Params::ArmourRepairCostMillis () const
   return 100;
 }
 
+unsigned
+Params::RevEngSuccessChance (const unsigned existingBp) const
+{
+  constexpr uint64_t fpMultiple = 1'000'000;
+  constexpr uint64_t minChance = 1'000'000'000;
+
+  uint64_t base;
+  switch (chain)
+    {
+    case xaya::Chain::MAIN:
+    case xaya::Chain::TEST:
+      base = 2'000;
+      break;
+    case xaya::Chain::REGTEST:
+      base = 1;
+      break;
+    default:
+      LOG (FATAL) << "Invalid chain value: " << static_cast<int> (chain);
+    }
+
+  /* The base chance is then discounted by a factor of 75% (i.e. the N value
+     for 1/N increased accordingly) for each existing blueprint.  The minimum
+     chance (preventing mostly integer overflows) is 1/1M.
+
+     At least on regtest with a very low base chance, we have to do the
+     calculation in fixed point math (not integer) in order to get
+     values above 1.  */
+
+  base *= fpMultiple;
+  for (unsigned i = 0; i < existingBp; ++i)
+    {
+      base = (4 * base) / 3;
+      if (base >= fpMultiple * minChance)
+        return minChance;
+    }
+  base /= fpMultiple;
+
+  return base;
+}
+
 HexCoord
 Params::SpawnArea (const Faction f, HexCoord::IntT& radius) const
 {

@@ -48,7 +48,8 @@ static constexpr unsigned MAX_SERVICE_FEE_PERCENT = 1'000;
 BaseMoveProcessor::BaseMoveProcessor (Database& d, const Context& c)
   : ctx(c), db(d),
     accounts(db), buildings(db), characters(db),
-    groundLoot(db), buildingInv(db), regions(db, ctx.Height ())
+    groundLoot(db), buildingInv(db), itemCounts(db),
+    regions(db, ctx.Height ())
 {}
 
 bool
@@ -301,7 +302,7 @@ BaseMoveProcessor::TryServiceOperations (const std::string& name,
       auto parsed = ServiceOperation::Parse (*a, op, ctx,
                                              accounts,
                                              buildings, buildingInv,
-                                             characters);
+                                             characters, itemCounts);
       if (parsed != nullptr)
         PerformServiceOperation (*parsed);
     }
@@ -1196,7 +1197,7 @@ MoveProcessor::PerformBuildingUpdate (Building& b, const Json::Value& upd)
 void
 MoveProcessor::PerformServiceOperation (ServiceOperation& op)
 {
-  op.Execute ();
+  op.Execute (rnd);
 }
 
 namespace

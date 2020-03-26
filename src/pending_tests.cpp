@@ -25,6 +25,7 @@
 #include "database/building.hpp"
 #include "database/character.hpp"
 #include "database/dbtest.hpp"
+#include "database/itemcounts.hpp"
 #include "database/region.hpp"
 
 #include <gtest/gtest.h>
@@ -49,12 +50,14 @@ protected:
   BuildingsTable buildings;
   BuildingInventoriesTable buildingInv;
   CharacterTable characters;
+  ItemCounts itemCounts;
   RegionsTable regions;
 
   PendingStateTests ()
     : accounts(db),
       buildings(db), buildingInv(db),
       characters(db),
+      itemCounts(db),
       regions(db, 1'042)
   {}
 
@@ -513,7 +516,7 @@ TEST_F (PendingStateTests, ServiceOperations)
         "t": "ref",
         "i": "foo",
         "n": 3
-      })"), ctx, accounts, buildings, buildingInv, characters));
+      })"), ctx, accounts, buildings, buildingInv, characters, itemCounts));
   state.AddServiceOperation (*ServiceOperation::Parse (
       *accounts.GetByName ("andy"),
       ParseJson (R"({
@@ -521,7 +524,7 @@ TEST_F (PendingStateTests, ServiceOperations)
         "t": "ref",
         "i": "foo",
         "n": 6
-      })"), ctx, accounts, buildings, buildingInv, characters));
+      })"), ctx, accounts, buildings, buildingInv, characters, itemCounts));
   state.AddServiceOperation (*ServiceOperation::Parse (
       *accounts.GetByName ("domob"),
       ParseJson (R"({
@@ -529,7 +532,7 @@ TEST_F (PendingStateTests, ServiceOperations)
         "t": "ref",
         "i": "foo",
         "n": 9
-      })"), ctx, accounts, buildings, buildingInv, characters));
+      })"), ctx, accounts, buildings, buildingInv, characters, itemCounts));
 
   ExpectStateJson (R"(
     {
