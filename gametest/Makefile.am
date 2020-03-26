@@ -31,6 +31,7 @@ REGTESTS = \
   services_fees.py \
   services_refining.py \
   services_repair.py \
+  services_reveng.py \
   splitstaterpcs.py
 
 EXTRA_DIST = $(REGTESTS) $(TEST_LIBRARY)
