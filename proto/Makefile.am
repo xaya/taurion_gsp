@@ -2,8 +2,11 @@ noinst_PROGRAMS = roconfig_gen
 noinst_LTLIBRARIES = libpxproto.la
 
 ROCONFIG_TEXT_PROTOS = \
-  roconfig/items.pb.text \
   roconfig/resourcedist.pb.text \
+  \
+  roconfig/items/materials.pb.text \
+  roconfig/items/prizes.pb.text \
+  roconfig/items/test.pb.text \
   \
   roconfig/buildings/checkmark.pb.text \
   roconfig/buildings/ancient1.pb.text \

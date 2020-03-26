@@ -1,0 +1,46 @@
+# Raw resources in the game.
+fungible_items:
+  {
+    key: "raw a"
+    value: { space: 1 }
+  }
+fungible_items:
+  {
+    key: "raw b"
+    value: { space: 1 }
+  }
+fungible_items:
+  {
+    key: "raw c"
+    value: { space: 1 }
+  }
+fungible_items:
+  {
+    key: "raw d"
+    value: { space: 1 }
+  }
+fungible_items:
+  {
+    key: "raw e"
+    value: { space: 1 }
+  }
+fungible_items:
+  {
+    key: "raw f"
+    value: { space: 1 }
+  }
+fungible_items:
+  {
+    key: "raw g"
+    value: { space: 1 }
+  }
+fungible_items:
+  {
+    key: "raw h"
+    value: { space: 1 }
+  }
+fungible_items:
+  {
+    key: "raw i"
+    value: { space: 1 }
+  }
