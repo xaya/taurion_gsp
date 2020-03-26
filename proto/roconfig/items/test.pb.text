@@ -1,22 +1,7 @@
-#   GSP for the Taurion blockchain game
-#   Copyright (C) 2019  Autonomous Worlds Ltd
-#
-#   This program is free software: you can redistribute it and/or modify
-#   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation, either version 3 of the License, or
-#   (at your option) any later version.
-#
-#   This program is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU General Public License for more details.
-#
-#   You should have received a copy of the GNU General Public License
-#   along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
 # The following items are used only for tests.  They are defined also
 # in the real game, but since they are never generated (except through
 # god-mode or direct intervention in tests), that has no effect.
+
 fungible_items:
   {
     key: "foo"
@@ -32,13 +17,27 @@ fungible_items:
           }
       }
   }
+
 fungible_items:
   {
     key: "bar"
     value: { space: 20 }
   }
+
 fungible_items:
   {
     key: "zerospace"
     value: { space: 0 }
+  }
+
+# This one is a dummy "weapon" that can be equipped and constructed
+# from a dummy blueprint for testing purposes.
+fungible_items:
+  {
+    key: "bow"
+    value:
+      {
+        space: 1,
+        with_blueprint: true
+      }
   }

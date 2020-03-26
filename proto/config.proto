@@ -23,6 +23,8 @@ import "geometry.proto";
 
 package pxd.proto;
 
+/* ************************************************************************** */
+
 /**
  * Hardcoded data defining a type of fungible item.
  */
@@ -56,7 +58,35 @@ message ItemData
   /** If this type of item can be refined, then the stats for doing so.  */
   optional RefiningData refines = 2;
 
+  /** Whether or not this item has an associated blueprint.  */
+  optional bool with_blueprint = 3;
+
+  /**
+   * Specific data for blueprint items defining the modalities for
+   * constructing stuff from it.
+   */
+  message BlueprintData
+  {
+
+    /** The item type constructed from the blueprint.  */
+    optional string for_item = 1;
+
+    /**
+     * Whether or not this is an original.  Originals can be copied and
+     * can be used an unlimited amount of time, whereas copies (if not
+     * originals) cannot be copied themselves and can only be used once
+     * to build an item.
+     */
+    optional bool original = 2;
+
+  }
+
+  /** If this is a blueprint, the associated data.  */
+  optional BlueprintData is_blueprint = 4;
+
 }
+
+/* ************************************************************************** */
 
 /**
  * Hardcoded data defining a type of building.
@@ -104,6 +134,8 @@ message BuildingData
 
 }
 
+/* ************************************************************************** */
+
 /**
  * Data for the resource distribution on the map (when prospecting).
  * This is based on multiple "areas" where one or two resources occur.
@@ -146,6 +178,8 @@ message ResourceDistribution
   repeated Area areas = 2;
 
 }
+
+/* ************************************************************************** */
 
 /**
  * The hardcoded "configuration data" for Taurion.  This includes all data
