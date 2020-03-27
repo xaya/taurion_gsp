@@ -27,6 +27,7 @@
 #include "database/dbtest.hpp"
 #include "database/inventory.hpp"
 #include "database/itemcounts.hpp"
+#include "database/ongoing.hpp"
 #include "database/region.hpp"
 #include "proto/character.pb.h"
 #include "proto/region.pb.h"
@@ -808,6 +809,98 @@ TEST_F (GroundLootJsonTests, FungibleInventory)
                   "": 100
                 }
             }
+        }
+      ]
+  })");
+}
+
+/* ************************************************************************** */
+
+class OngoingsJsonTests : public GameStateJsonTests
+{
+
+protected:
+
+  OngoingsTable tbl;
+
+  OngoingsJsonTests ()
+    : tbl(db)
+  {}
+
+};
+
+TEST_F (OngoingsJsonTests, Empty)
+{
+  ExpectStateJson (R"({
+    "ongoings": []
+  })");
+}
+
+TEST_F (OngoingsJsonTests, BasicData)
+{
+  auto op = tbl.CreateNew ();
+  ASSERT_EQ (op->GetId (), 1);
+  op->SetHeight (5);
+  op->SetCharacterId (42);
+  op->MutableProto ().mutable_prospection ();
+  op.reset ();
+
+  op = tbl.CreateNew ();
+  op->SetHeight (10);
+  op->SetBuildingId (50);
+  op->MutableProto ().mutable_prospection ();
+  op.reset ();
+
+  ExpectStateJson (R"({
+    "ongoings":
+      [
+        {
+          "id": 1,
+          "height": 5,
+          "characterid": 42,
+          "buildingid": null
+        },
+        {
+          "id": 2,
+          "height": 10,
+          "characterid": null,
+          "buildingid": 50
+        }
+      ]
+  })");
+}
+
+TEST_F (OngoingsJsonTests, Prospection)
+{
+  auto op = tbl.CreateNew ();
+  ASSERT_EQ (op->GetId (), 1);
+  op->MutableProto ().mutable_prospection ();
+  op.reset ();
+
+  ExpectStateJson (R"({
+    "ongoings":
+      [
+        {
+          "id": 1,
+          "operation": "prospecting"
+        }
+      ]
+  })");
+}
+
+TEST_F (OngoingsJsonTests, ArmourRepair)
+{
+  auto op = tbl.CreateNew ();
+  ASSERT_EQ (op->GetId (), 1);
+  op->MutableProto ().mutable_armour_repair ();
+  op.reset ();
+
+  ExpectStateJson (R"({
+    "ongoings":
+      [
+        {
+          "id": 1,
+          "operation": "armourrepair"
         }
       ]
   })");

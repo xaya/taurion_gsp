@@ -103,6 +103,11 @@ public:
   Json::Value GroundLoot ();
 
   /**
+   * Returns the JSON data about all ongoing operations.
+   */
+  Json::Value OngoingOperations ();
+
+  /**
    * Returns the JSON data representing all regions in the game state which
    * where modified after the given block height.
    */

@@ -27,6 +27,7 @@
 #include "database/character.hpp"
 #include "database/faction.hpp"
 #include "database/itemcounts.hpp"
+#include "database/ongoing.hpp"
 #include "database/region.hpp"
 #include "hexagonal/pathfinder.hpp"
 #include "proto/character.pb.h"
@@ -379,6 +380,38 @@ template <>
 
 template <>
   Json::Value
+  GameStateJson::Convert<pxd::OngoingOperation> (
+      const pxd::OngoingOperation& op) const
+{
+  Json::Value res(Json::objectValue);
+
+  res["id"] = IntToJson (op.GetId ());
+  res["height"] = IntToJson (op.GetHeight ());
+  if (op.GetCharacterId () != Database::EMPTY_ID)
+    res["characterid"] = IntToJson (op.GetCharacterId ());
+  if (op.GetBuildingId () != Database::EMPTY_ID)
+    res["buildingid"] = IntToJson (op.GetBuildingId ());
+
+  const auto& pb = op.GetProto ();
+  switch (pb.op_case ())
+    {
+    case proto::OngoingOperation::kProspection:
+      res["operation"] = "prospecting";
+      break;
+
+    case proto::OngoingOperation::kArmourRepair:
+      res["operation"] = "armourrepair";
+      break;
+
+    default:
+      LOG (FATAL) << "Unexpected ongoing operation case: " << pb.op_case ();
+    }
+
+  return res;
+}
+
+template <>
+  Json::Value
   GameStateJson::Convert<Region> (const Region& r) const
 {
   const auto& pb = r.GetProto ();
@@ -478,6 +511,13 @@ GameStateJson::GroundLoot ()
 }
 
 Json::Value
+GameStateJson::OngoingOperations ()
+{
+  OngoingsTable tbl(db);
+  return ResultsAsArray (tbl, tbl.QueryAll ());
+}
+
+Json::Value
 GameStateJson::Regions (const unsigned h)
 {
   RegionsTable tbl(db, RegionsTable::HEIGHT_READONLY);
@@ -493,6 +533,7 @@ GameStateJson::FullState ()
   res["buildings"] = Buildings ();
   res["characters"] = Characters ();
   res["groundloot"] = GroundLoot ();
+  res["ongoings"] = OngoingOperations ();
   res["regions"] = Regions (0);
   res["prizes"] = PrizeStats ();
 

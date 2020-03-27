@@ -128,6 +128,7 @@ public:
   Json::Value getbuildings () override;
   Json::Value getcharacters () override;
   Json::Value getgroundloot () override;
+  Json::Value getongoings () override;
   Json::Value getregions (int fromHeight) override;
   Json::Value getprizestats () override;
 
