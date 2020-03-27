@@ -69,10 +69,6 @@ CREATE TABLE IF NOT EXISTS `characters` (
   -- as we later on only process attacks of characters with a selected target.
   `target` BLOB NULL,
 
-  -- If non-zero, then the number represents for how many more blocks the
-  -- character is "locked" at being busy (e.g. prospecting).
-  `busy` INTEGER NOT NULL,
-
   -- Flag indicating if the character is currently moving.  This is set
   -- based on the encoded protocol buffer when updating the table, and is
   -- used so that we can efficiently retrieve only those characters that are
@@ -109,7 +105,6 @@ CREATE INDEX IF NOT EXISTS `characters_pos` ON `characters` (`x`, `y`);
 CREATE INDEX IF NOT EXISTS `characters_building` ON `characters` (`inbuilding`);
 CREATE INDEX IF NOT EXISTS `characters_enterbuilding`
   ON `characters` (`enterbuilding`);
-CREATE INDEX IF NOT EXISTS `characters_busy` ON `characters` (`busy`);
 CREATE INDEX IF NOT EXISTS `characters_ismoving` ON `characters` (`ismoving`);
 CREATE INDEX IF NOT EXISTS `characters_ismining` ON `characters` (`ismining`);
 CREATE INDEX IF NOT EXISTS `characters_attackrange`

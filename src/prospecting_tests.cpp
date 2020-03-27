@@ -144,8 +144,7 @@ protected:
 
   /**
    * Prospects with the given character on the given location.  This sets up
-   * the character on that position, marks it as prospecting, and calls
-   * FinishProspecting.
+   * the character on that position and calls FinishProspecting.
    *
    * Returns the region ID prospected.
    */
@@ -154,8 +153,6 @@ protected:
   {
     const auto id = c->GetId ();
     c->SetPosition (pos);
-    c->SetBusy (1);
-    c->MutableProto ().mutable_prospection ();
     c.reset ();
 
     const auto region = ctx.Map ().Regions ().GetRegionId (pos);
@@ -186,10 +183,6 @@ TEST_F (FinishProspectingTests, Basic)
 {
   ctx.SetHeight (10);
   const auto region = Prospect (GetTest (), HexCoord (10, -20));
-
-  auto c = GetTest ();
-  EXPECT_EQ (c->GetBusy (), 0);
-  EXPECT_FALSE (c->GetProto ().has_prospection ());
 
   auto r = regions.GetById (region);
   EXPECT_FALSE (r->GetProto ().has_prospecting_character ());

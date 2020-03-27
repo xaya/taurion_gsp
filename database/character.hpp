@@ -50,9 +50,8 @@ struct CharacterResult : public ResultWithFaction, public ResultWithCoord,
   RESULT_COLUMN (int64_t, inbuilding, 3);
   RESULT_COLUMN (int64_t, enterbuilding, 4);
   RESULT_COLUMN (pxd::proto::VolatileMovement, volatilemv, 5);
-  RESULT_COLUMN (int64_t, busy, 6);
-  RESULT_COLUMN (pxd::proto::Inventory, inventory, 7);
-  RESULT_COLUMN (pxd::proto::Character, proto, 8);
+  RESULT_COLUMN (pxd::proto::Inventory, inventory, 6);
+  RESULT_COLUMN (pxd::proto::Character, proto, 7);
 };
 
 /**
@@ -90,9 +89,6 @@ private:
 
   /** Volatile movement proto.  */
   LazyProto<proto::VolatileMovement> volatileMv;
-
-  /** The number of blocks (or zero) the character is still busy.  */
-  int busy;
 
   /** The character's inventory.  */
   Inventory inv;
@@ -239,18 +235,11 @@ public:
     return volatileMv.Mutable ();
   }
 
-  unsigned
-  GetBusy () const
-  {
-    return busy;
-  }
-
-  void
-  SetBusy (const unsigned b)
-  {
-    busy = b;
-    dirtyFields = true;
-  }
+  /**
+   * Returns true if the character is currently busy, i.e. has an ongoing
+   * operation in its proto.
+   */
+  bool IsBusy () const;
 
   const Inventory&
   GetInventory () const
@@ -389,12 +378,6 @@ public:
   Database::Result<CharacterResult> QueryWithTarget ();
 
   /**
-   * Queries all characters that have busy=1, i.e. need their operation
-   * processed and finished next.
-   */
-  Database::Result<CharacterResult> QueryBusyDone ();
-
-  /**
    * Queries all characters that want to enter a building.
    */
   Database::Result<CharacterResult> QueryForEnterBuilding ();
@@ -411,16 +394,6 @@ public:
    * Deletes the character with the given ID.
    */
   void DeleteById (Database::IdT id);
-
-  /**
-   * Decrements the busy counter for all characters (and keeps it at zero
-   * where it already is zero).  This function must only be called if there
-   * are no characters with a count exactly one (it CHECK-fails instead).
-   * The reason is that those characters should be processed manually, including
-   * an update to their busy field in the proto.  Otherwise their state would
-   * become inconsistent.
-   */
-  void DecrementBusy ();
 
   /**
    * Returns the number of characters owned by the given account.

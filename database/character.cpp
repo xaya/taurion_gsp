@@ -28,7 +28,7 @@ namespace pxd
 Character::Character (Database& d, const std::string& o, const Faction f)
   : CombatEntity(d), id(db.GetNextId ()), owner(o), faction(f),
     pos(0, 0), inBuilding(Database::EMPTY_ID),
-    enterBuilding(Database::EMPTY_ID), busy(0),
+    enterBuilding(Database::EMPTY_ID),
     dirtyFields(true)
 {
   VLOG (1)
@@ -60,7 +60,6 @@ Character::Character (Database& d, const Database::Result<CharacterResult>& res)
     enterBuilding = res.Get<CharacterResult::enterbuilding> ();
 
   volatileMv = res.GetProto<CharacterResult::volatilemv> ();
-  busy = res.Get<CharacterResult::busy> ();
   inv = res.GetProto<CharacterResult::inventory> ();
   data = res.GetProto<CharacterResult::proto> ();
 
@@ -84,7 +83,7 @@ Character::~Character ()
            `owner`, `x`, `y`,
            `inbuilding`, `enterbuilding`,
            `volatilemv`, `hp`,
-           `busy`, `canregen`,
+           `canregen`,
            `faction`,
            `ismoving`, `ismining`, `attackrange`,
            `regendata`, `target`, `inventory`, `proto`)
@@ -93,7 +92,7 @@ Character::~Character ()
            ?2, ?3, ?4,
            ?5, ?6,
            ?7, ?8,
-           ?9, ?10,
+           ?9,
            ?101,
            ?102, ?103, ?104,
            ?105, ?106, ?107, ?108)
@@ -126,8 +125,7 @@ Character::~Character ()
               `enterbuilding` = ?6,
               `volatilemv` = ?7,
               `hp` = ?8,
-              `busy` = ?9,
-              `canregen` = ?10
+              `canregen` = ?9
           WHERE `id` = ?1
       )");
 
@@ -145,7 +143,6 @@ Character::Validate () const
   CombatEntity::Validate ();
 
   CHECK_NE (id, Database::EMPTY_ID);
-  CHECK_GE (busy, 0);
 
   /* Since this method is always called when loading a character, we should
      not access any of the protocol buffer fields.  Otherwise we would
@@ -156,13 +153,8 @@ Character::Validate () const
 
   const auto& pb = data.Get ();
 
-  if (busy == 0)
-    CHECK_EQ (pb.busy_case (), proto::Character::BUSY_NOT_SET);
-  else
-    {
-      CHECK_NE (pb.busy_case (), proto::Character::BUSY_NOT_SET);
-      CHECK (!pb.has_movement ()) << "Busy character should not be moving";
-    }
+  if (IsBusy ())
+    CHECK (!pb.has_movement ()) << "Busy character should not be moving";
 
   if (!regenData.IsDirty () && !hp.IsDirty ())
     CHECK_EQ (oldCanRegen, ComputeCanRegen ());
@@ -178,7 +170,7 @@ Character::Validate () const
 void
 Character::BindFieldValues (Database::Statement& stmt) const
 {
-  CombatEntity::BindFields (stmt, 8, 10);
+  CombatEntity::BindFields (stmt, 8, 9);
 
   stmt.Bind (1, id);
   stmt.Bind (2, owner);
@@ -198,7 +190,6 @@ Character::BindFieldValues (Database::Statement& stmt) const
   else
     stmt.Bind (6, enterBuilding);
   stmt.BindProto (7, volatileMv);
-  stmt.Bind (9, busy);
 }
 
 const HexCoord&
@@ -213,6 +204,17 @@ Character::GetBuildingId () const
 {
   CHECK (IsInBuilding ());
   return inBuilding;
+}
+
+bool
+Character::IsBusy () const
+{
+  const auto& pb = GetProto ();
+  if (!pb.has_ongoing ())
+    return false;
+
+  CHECK_GT (pb.ongoing (), 0);
+  return true;
 }
 
 uint64_t
@@ -342,15 +344,6 @@ CharacterTable::QueryWithTarget ()
 }
 
 Database::Result<CharacterResult>
-CharacterTable::QueryBusyDone ()
-{
-  auto stmt = db.Prepare (R"(
-    SELECT * FROM `characters` WHERE `busy` = 1 ORDER BY `id`
-  )");
-  return stmt.Query<CharacterResult> ();
-}
-
-Database::Result<CharacterResult>
 CharacterTable::QueryForEnterBuilding ()
 {
   auto stmt = db.Prepare (R"(
@@ -412,28 +405,6 @@ struct CountResult : public Database::ResultType
 };
 
 } // anonymous namespace
-
-void
-CharacterTable::DecrementBusy ()
-{
-  VLOG (1) << "Decrementing busy counter for all characters...";
-
-  auto stmt = db.Prepare (R"(
-    SELECT COUNT(*) AS `cnt` FROM `characters` WHERE `busy` = 1
-  )");
-  auto res = stmt.Query<CountResult> ();
-  CHECK (res.Step ());
-  CHECK_EQ (res.Get<CountResult::cnt> (), 0)
-      << "DecrementBusy called but there are characters with busy=1";
-  CHECK (!res.Step ());
-
-  stmt = db.Prepare (R"(
-    UPDATE `characters`
-      SET `busy` = `busy` - 1
-      WHERE `busy` > 0
-  )");
-  stmt.Execute ();
-}
 
 unsigned
 CharacterTable::CountForOwner (const std::string& owner)

@@ -50,9 +50,11 @@ protected:
   BuildingInventoriesTable inv;
   CharacterTable characters;
   ItemCounts itemCounts;
+  OngoingsTable ongoings;
 
   ServicesTests ()
-    : accounts(db), buildings(db), inv(db), characters(db), itemCounts(db)
+    : accounts(db), buildings(db), inv(db), characters(db),
+      itemCounts(db), ongoings(db)
   {
     accounts.CreateNew ("domob", Faction::RED)->AddBalance (100);
 
@@ -77,7 +79,7 @@ protected:
     auto a = accounts.GetByName (name);
     auto op = ServiceOperation::Parse (*a, ParseJson (dataStr),
                                        ctx, accounts, buildings,
-                                       inv, characters, itemCounts);
+                                       inv, characters, itemCounts, ongoings);
 
     if (op == nullptr)
       return false;
@@ -95,7 +97,7 @@ protected:
     auto a = accounts.GetByName (name);
     auto op = ServiceOperation::Parse (*a, ParseJson (dataStr),
                                        ctx, accounts, buildings,
-                                       inv, characters, itemCounts);
+                                       inv, characters, itemCounts, ongoings);
     CHECK (op != nullptr);
     return op->ToPendingJson ();
   }
@@ -474,6 +476,8 @@ protected:
     c->SetBuildingId (ANCIENT_BUILDING);
     c->MutableRegenData ().mutable_max_hp ()->set_armour (1'000);
     c->MutableHP ().set_armour (950);
+
+    ctx.SetHeight (100);
   }
 
 };
@@ -553,9 +557,15 @@ TEST_F (RepairTests, BasicExecution)
   })"));
 
   auto c = characters.GetById (200);
-  EXPECT_EQ (c->GetBusy (), 1);
-  EXPECT_TRUE (c->GetProto ().has_armour_repair ());
+  ASSERT_TRUE (c->IsBusy ());
   EXPECT_EQ (c->GetHP ().armour (), 950);
+
+  auto op = ongoings.GetById (c->GetProto ().ongoing ());
+  EXPECT_EQ (op->GetHeight (), 101);
+  EXPECT_EQ (op->GetCharacterId (), c->GetId ());
+  EXPECT_TRUE (op->GetProto ().has_armour_repair ());
+
+  op.reset ();
   c.reset ();
 
   EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 95);
@@ -570,7 +580,10 @@ TEST_F (RepairTests, SingleHpMissing)
     "c": 200
   })"));
 
-  EXPECT_EQ (characters.GetById (200)->GetBusy (), 1);
+  auto c = characters.GetById (200);
+  ASSERT_TRUE (c->IsBusy ());
+  auto op = ongoings.GetById (c->GetProto ().ongoing ());
+  EXPECT_EQ (op->GetHeight (), 101);
   EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 99);
 }
 
@@ -583,7 +596,10 @@ TEST_F (RepairTests, MultipleBlocks)
     "c": 200
   })"));
 
-  EXPECT_EQ (characters.GetById (200)->GetBusy (), 9);
+  auto c = characters.GetById (200);
+  ASSERT_TRUE (c->IsBusy ());
+  auto op = ongoings.GetById (c->GetProto ().ongoing ());
+  EXPECT_EQ (op->GetHeight (), 109);
   EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 10);
 }
 
@@ -595,7 +611,10 @@ TEST_F (RepairTests, AlreadyRepairing)
     "c": 200
   })"));
 
-  EXPECT_EQ (characters.GetById (200)->GetBusy (), 1);
+  auto c = characters.GetById (200);
+  ASSERT_TRUE (c->IsBusy ());
+  auto op = ongoings.GetById (c->GetProto ().ongoing ());
+  EXPECT_EQ (op->GetHeight (), 101);
 
   EXPECT_FALSE (Process ("domob", R"({
     "t": "fix",

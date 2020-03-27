@@ -25,6 +25,7 @@
 #include "database/damagelists.hpp"
 #include "database/dbtest.hpp"
 #include "database/faction.hpp"
+#include "database/ongoing.hpp"
 #include "database/region.hpp"
 #include "hexagonal/coord.hpp"
 #include "proto/combat.pb.h"
@@ -627,9 +628,10 @@ class ProcessKillsTests : public CombatTests
 protected:
 
   GroundLootTable loot;
+  OngoingsTable ongoings;
 
   ProcessKillsTests ()
-    : loot(db)
+    : loot(db), ongoings(db)
   {}
 
 };
@@ -682,6 +684,23 @@ TEST_F (ProcessKillsCharacterTests, RemovesFromDamageLists)
   EXPECT_EQ (dl.GetAttackers (id2), DamageLists::Attackers ({}));
 }
 
+TEST_F (ProcessKillsCharacterTests, RemovesOngoings)
+{
+  const auto id1 = characters.CreateNew ("domob", Faction::RED)->GetId ();
+  const auto id2 = characters.CreateNew ("domob", Faction::RED)->GetId ();
+
+  db.SetNextId (101);
+  ongoings.CreateNew ()->SetCharacterId (id1);
+  ongoings.CreateNew ()->SetCharacterId (id2);
+  ongoings.CreateNew ()->SetBuildingId (12345);
+
+  KillCharacter (id2);
+
+  EXPECT_NE (ongoings.GetById (101), nullptr);
+  EXPECT_EQ (ongoings.GetById (102), nullptr);
+  EXPECT_NE (ongoings.GetById (103), nullptr);
+}
+
 TEST_F (ProcessKillsCharacterTests, CancelsProspection)
 {
   const HexCoord pos(-42, 100);
@@ -690,8 +709,14 @@ TEST_F (ProcessKillsCharacterTests, CancelsProspection)
   auto c = characters.CreateNew ("domob", Faction::RED);
   const auto id = c->GetId ();
   c->SetPosition (pos);
-  c->SetBusy (10);
-  c->MutableProto ().mutable_prospection ();
+
+  auto op = ongoings.CreateNew ();
+  const auto opId = op->GetId ();
+  c->MutableProto ().set_ongoing (op->GetId ());
+  op->SetCharacterId (id);
+  op->MutableProto ().mutable_prospection ();
+
+  op.reset ();
   c.reset ();
 
   ctx.SetHeight (1'042);
@@ -705,6 +730,7 @@ TEST_F (ProcessKillsCharacterTests, CancelsProspection)
   EXPECT_TRUE (characters.GetById (id) == nullptr);
   r = regions.GetById (regionId);
   EXPECT_FALSE (r->GetProto ().has_prospecting_character ());
+  EXPECT_TRUE (ongoings.GetById (opId) == nullptr);
 }
 
 TEST_F (ProcessKillsCharacterTests, DropsInventory)
@@ -768,6 +794,30 @@ TEST_F (ProcessKillsBuildingTests, RemovesBuildingAndInventories)
   EXPECT_EQ (i->GetAccount (), "domob");
   EXPECT_EQ (i->GetInventory ().GetFungibleCount ("foo"), 10);
   EXPECT_FALSE (res.Step ());
+}
+
+TEST_F (ProcessKillsBuildingTests, RemovesOngoings)
+{
+  const auto bId
+      = buildings.CreateNew ("checkmark", "domob", Faction::RED)->GetId ();
+
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  const auto cId = c->GetId ();
+  c->SetBuildingId (bId);
+  c.reset ();
+
+  db.SetNextId (101);
+  ongoings.CreateNew ()->SetHeight (42);
+  ongoings.CreateNew ()->SetBuildingId (bId);
+  ongoings.CreateNew ()->SetCharacterId (cId);
+  ongoings.CreateNew ()->SetBuildingId (12345);
+
+  KillBuilding (bId);
+
+  EXPECT_NE (ongoings.GetById (101), nullptr);
+  EXPECT_EQ (ongoings.GetById (102), nullptr);
+  EXPECT_EQ (ongoings.GetById (103), nullptr);
+  EXPECT_NE (ongoings.GetById (104), nullptr);
 }
 
 TEST_F (ProcessKillsBuildingTests, MayDropAnyInventoryItem)

@@ -51,6 +51,7 @@ protected:
   BuildingInventoriesTable buildingInv;
   CharacterTable characters;
   ItemCounts itemCounts;
+  OngoingsTable ongoings;
   RegionsTable regions;
 
   PendingStateTests ()
@@ -58,6 +59,7 @@ protected:
       buildings(db), buildingInv(db),
       characters(db),
       itemCounts(db),
+      ongoings(db),
       regions(db, 1'042)
   {}
 
@@ -516,7 +518,8 @@ TEST_F (PendingStateTests, ServiceOperations)
         "t": "ref",
         "i": "foo",
         "n": 3
-      })"), ctx, accounts, buildings, buildingInv, characters, itemCounts));
+      })"), ctx, accounts, buildings, buildingInv, characters,
+            itemCounts, ongoings));
   state.AddServiceOperation (*ServiceOperation::Parse (
       *accounts.GetByName ("andy"),
       ParseJson (R"({
@@ -524,7 +527,8 @@ TEST_F (PendingStateTests, ServiceOperations)
         "t": "ref",
         "i": "foo",
         "n": 6
-      })"), ctx, accounts, buildings, buildingInv, characters, itemCounts));
+      })"), ctx, accounts, buildings, buildingInv, characters,
+            itemCounts, ongoings));
   state.AddServiceOperation (*ServiceOperation::Parse (
       *accounts.GetByName ("domob"),
       ParseJson (R"({
@@ -532,7 +536,8 @@ TEST_F (PendingStateTests, ServiceOperations)
         "t": "ref",
         "i": "foo",
         "n": 9
-      })"), ctx, accounts, buildings, buildingInv, characters, itemCounts));
+      })"), ctx, accounts, buildings, buildingInv, characters,
+            itemCounts, ongoings));
 
   ExpectStateJson (R"(
     {
@@ -897,8 +902,7 @@ TEST_F (PendingStateUpdaterTests, Prospecting)
 
   h = characters.CreateNew ("domob", Faction::GREEN);
   ASSERT_EQ (h->GetId (), 2);
-  h->SetBusy (10);
-  h->MutableProto ().mutable_prospection ();
+  h->MutableProto ().set_ongoing (42);
   h.reset ();
 
   Process ("domob", R"({

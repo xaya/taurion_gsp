@@ -79,13 +79,6 @@ FinishProspecting (Character& c, Database& db, RegionsTable& regions,
       << "Character " << c.GetId ()
       << " finished prospecting region " << regionId;
 
-  CHECK_EQ (c.GetBusy (), 1);
-  c.SetBusy (0);
-
-  auto& cpb = c.MutableProto ();
-  CHECK (cpb.has_prospection ());
-  cpb.clear_prospection ();
-
   auto r = regions.GetById (regionId);
   auto& mpb = r->MutableProto ();
   CHECK_EQ (mpb.prospecting_character (), c.GetId ());

@@ -20,7 +20,6 @@ syntax = "proto2";
 
 import "combat.proto";
 import "movement.proto";
-import "ongoing.proto";
 
 package pxd.proto;
 
@@ -73,23 +72,19 @@ message Character
   optional CombatData combat_data = 2;
 
   /**
-   * If the character is currently busy, then this holds data about the
-   * currently ongoing operation.
+   * If the character is currently busy, then this is the ID of the
+   * corresponding ongoing operation.
    */
-  oneof busy
-  {
-    OngoingProspection prospection = 3;
-    ArmourRepair armour_repair = 4;
-  }
+  optional uint64 ongoing = 3;
 
   /** The character's mining data, if it can mine.  */
-  optional MiningData mining = 5;
+  optional MiningData mining = 4;
 
   /** Movement speed of the character.  */
-  optional uint32 speed = 6;
+  optional uint32 speed = 5;
 
   /** Total cargo space the character has.  */
-  optional uint64 cargo_space = 7;
+  optional uint64 cargo_space = 6;
 
   /* Fields that are stored directly in the database and thus not part of the
      encoded protocol buffer:
@@ -104,7 +99,6 @@ message Character
      - current HP proto
      - HP regeneration data proto
      - selected target as TargetId proto (if any)
-     - number of blocks the character is still "busy"
      - inventory proto
   */
 

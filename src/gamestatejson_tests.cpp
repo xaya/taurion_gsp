@@ -487,15 +487,11 @@ TEST_F (CharacterJsonTests, DamageLists)
   })");
 }
 
-TEST_F (CharacterJsonTests, Prospecting)
+TEST_F (CharacterJsonTests, Busy)
 {
-  const HexCoord pos(10, -5);
-  ASSERT_EQ (map.Regions ().GetRegionId (pos), 350146);
-
   auto c = tbl.CreateNew ("domob", Faction::RED);
-  c->SetPosition (HexCoord (10, -5));
-  c->SetBusy (42);
-  c->MutableProto ().mutable_prospection ();
+  ASSERT_EQ (c->GetId (), 1);
+  c->MutableProto ().set_ongoing (42);
   c.reset ();
 
   tbl.CreateNew ("notbusy", Faction::RED);
@@ -505,39 +501,11 @@ TEST_F (CharacterJsonTests, Prospecting)
       [
         {
           "owner": "domob",
-          "busy":
-            {
-              "blocks": 42,
-              "operation": "prospecting",
-              "region": 350146
-            }
+          "busy": 42
         },
         {
           "owner": "notbusy",
           "busy": null
-        }
-      ]
-  })");
-}
-
-TEST_F (CharacterJsonTests, ArmourRepair)
-{
-  auto c = tbl.CreateNew ("domob", Faction::RED);
-  c->SetBuildingId (20);
-  c->SetBusy (42);
-  c->MutableProto ().mutable_armour_repair ();
-  c.reset ();
-
-  ExpectStateJson (R"({
-    "characters":
-      [
-        {
-          "owner": "domob",
-          "busy":
-            {
-              "blocks": 42,
-              "operation": "armourrepair"
-            }
         }
       ]
   })");

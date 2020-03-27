@@ -30,6 +30,7 @@
 #include "database/dbtest.hpp"
 #include "database/faction.hpp"
 #include "database/inventory.hpp"
+#include "database/ongoing.hpp"
 #include "database/region.hpp"
 #include "hexagonal/coord.hpp"
 #include "mapdata/basemap.hpp"
@@ -59,12 +60,6 @@ private:
 
   TestRandom rnd;
 
-  /**
-   * Block height we use in tests.  This must be consistent between some things
-   * to not trigger assertion failures.
-   */
-  static constexpr unsigned HEIGHT = 42;
-
 protected:
 
   ContextForTesting ctx;
@@ -74,12 +69,15 @@ protected:
   CharacterTable characters;
   BuildingInventoriesTable inv;
   GroundLootTable groundLoot;
+  OngoingsTable ongoings;
   RegionsTable regions;
 
   PXLogicTests ()
     : accounts(db), buildings(db), characters(db),
-      inv(db), groundLoot(db), regions(db, HEIGHT)
-  {}
+      inv(db), groundLoot(db), ongoings(db), regions(db, 0)
+  {
+    SetHeight (42);
+  }
 
   /**
    * Builds a blockData JSON value from the given moves (JSON serialised
@@ -93,7 +91,7 @@ protected:
     blockData["moves"] = ParseJson (movesStr);
 
     Json::Value meta(Json::objectValue);
-    meta["height"] = HEIGHT;
+    meta["height"] = ctx.Height ();
     meta["timestamp"] = 1500000000;
     blockData["block"] = meta;
 
@@ -113,6 +111,16 @@ protected:
 
     CHECK (a->GetFaction () == f);
     return characters.CreateNew (name, f);
+  }
+
+  /**
+   * Sets the block height for processing the next block.
+   */
+  void
+  SetHeight (const unsigned h)
+  {
+    ctx.SetHeight (h);
+    regions.SetHeightForTesting (h);
   }
 
   /**
@@ -488,8 +496,7 @@ TEST_F (PXLogicTests, ProspectingBeforeMovement)
 
   c = characters.GetById (1);
   EXPECT_EQ (c->GetPosition (), pos1);
-  EXPECT_EQ (c->GetBusy (), 10);
-  EXPECT_TRUE (c->GetProto ().has_prospection ());
+  EXPECT_TRUE (c->IsBusy ());
 
   auto r = regions.GetById (region1);
   EXPECT_EQ (r->GetProto ().prospecting_character (), 1);
@@ -529,12 +536,15 @@ TEST_F (PXLogicTests, ProspectingUserKilled)
   ])");
 
   c = characters.GetById (2);
-  EXPECT_EQ (c->GetBusy (), 10);
-  EXPECT_TRUE (c->GetProto ().has_prospection ());
+  EXPECT_TRUE (c->IsBusy ());
+  auto op = ongoings.GetById (c->GetProto ().ongoing ());
+  ASSERT_NE (op, nullptr);
+  EXPECT_TRUE (op->GetProto ().has_prospection ());
 
   /* Make sure that the prospecting operation would be finished on the next
      step (but it won't be as the character is killed).  */
-  c->SetBusy (1);
+  SetHeight (op->GetHeight ());
+  op.reset ();
   c.reset ();
 
   auto r = regions.GetById (region);
@@ -552,8 +562,7 @@ TEST_F (PXLogicTests, ProspectingUserKilled)
   EXPECT_TRUE (characters.GetById (2) == nullptr);
 
   c = characters.GetById (1);
-  EXPECT_EQ (c->GetBusy (), 10);
-  EXPECT_TRUE (c->GetProto ().has_prospection ());
+  EXPECT_TRUE (c->IsBusy ());
 
   r = regions.GetById (region);
   EXPECT_EQ (r->GetProto ().prospecting_character (), 1);
@@ -579,18 +588,22 @@ TEST_F (PXLogicTests, FinishingProspecting)
       "move": {"c": {"1": {"prospect": {}}}}
     }
   ])");
-  EXPECT_EQ (characters.GetById (1)->GetBusy (), 10);
 
-  /* Process blocks until the operation is nearly done.  */
-  for (unsigned i = 0; i < 9; ++i)
-    UpdateState ("[]");
-  EXPECT_EQ (characters.GetById (1)->GetBusy (), 1);
+  c = characters.GetById (1);
+  EXPECT_TRUE (c->IsBusy ());
+  auto op = ongoings.GetById (c->GetProto ().ongoing ());
+  EXPECT_TRUE (op->GetProto ().has_prospection ());
+
+  /* Set context height so that the next block finishes prospecting.  */
+  SetHeight (op->GetHeight ());
+  op.reset ();
+  c.reset ();
 
   auto r = regions.GetById (region);
   EXPECT_EQ (r->GetProto ().prospecting_character (), 1);
   EXPECT_FALSE (r->GetProto ().has_prospection ());
 
-  /* Process the last block which finishes prospecting.  We should be able
+  /* Process the next block which finishes prospecting.  We should be able
      to do a movement command right away as well, since the busy state is
      processed before the moves.  */
   UpdateState (R"([
@@ -601,8 +614,7 @@ TEST_F (PXLogicTests, FinishingProspecting)
   ])");
 
   c = characters.GetById (1);
-  EXPECT_EQ (c->GetBusy (), 0);
-  EXPECT_FALSE (c->GetProto ().has_prospection ());
+  EXPECT_FALSE (c->IsBusy ());
   EXPECT_TRUE (c->GetProto ().has_movement ());
 
   r = regions.GetById (region);
@@ -631,9 +643,11 @@ TEST_F (PXLogicTests, MiningRightAfterProspecting)
       "move": {"c": {"1": {"prospect": {}}}}
     }
   ])");
-  for (unsigned i = 0; i < 9; ++i)
-    UpdateState ("[]");
-  EXPECT_EQ (characters.GetById (1)->GetBusy (), 1);
+  c = characters.GetById (1);
+  auto op = ongoings.GetById (c->GetProto ().ongoing ());
+  SetHeight (op->GetHeight ());
+  op.reset ();
+  c.reset ();
 
   /* In the next block, prospecting will be finished.  We can already start
      mining the now-prospected region immediately.  */
@@ -649,7 +663,7 @@ TEST_F (PXLogicTests, MiningRightAfterProspecting)
   LOG (INFO) << "Resource found: " << type;
 
   c = characters.GetById (1);
-  EXPECT_EQ (c->GetBusy (), 0);
+  EXPECT_FALSE (c->IsBusy ());
   EXPECT_TRUE (c->GetProto ().mining ().active ());
   EXPECT_EQ (c->GetInventory ().GetFungibleCount (type), 1);
 }
@@ -743,7 +757,7 @@ TEST_F (PXLogicTests, MiningWhenReprospected)
   UpdateStateWithData (data);
 
   c = characters.GetById (1);
-  EXPECT_EQ (c->GetBusy (), 10);
+  EXPECT_TRUE (c->IsBusy ());
   EXPECT_FALSE (c->GetProto ().mining ().active ());
   c.reset ();
   EXPECT_FALSE (regions.GetById (region)->GetProto ().has_prospection ());
@@ -871,46 +885,6 @@ TEST_F (PXLogicTests, EnterAndExitBuildingWhenOutside)
   c = characters.GetById (2);
   ASSERT_TRUE (c->IsInBuilding ());
   EXPECT_EQ (c->GetBuildingId (), 1);
-}
-
-TEST_F (PXLogicTests, ArmourRepair)
-{
-  accounts.CreateNew ("domob", Faction::RED)->AddBalance (100);
-
-  auto c = CreateCharacter ("domob", Faction::RED);
-  ASSERT_EQ (c->GetId (), 1);
-  c->SetBuildingId (100);
-  auto& regen = c->MutableRegenData ();
-  regen.mutable_max_hp ()->set_armour (1'000);
-  regen.mutable_max_hp ()->set_shield (100);
-  regen.set_shield_regeneration_mhp (1'000);
-  c->MutableHP ().set_armour (850);
-  c->MutableHP ().set_shield (0);
-  c.reset ();
-
-  db.SetNextId (100);
-  buildings.CreateNew ("ancient1", "", Faction::ANCIENT);
-
-  UpdateState (R"([
-    {
-      "name": "domob",
-      "move": {"s": [{"t": "fix", "b": 100, "c": 1}]}
-    }
-  ])");
-  EXPECT_EQ (characters.GetById (1)->GetBusy (), 2);
-  EXPECT_EQ (characters.GetById (1)->GetHP ().armour (), 850);
-  EXPECT_EQ (characters.GetById (1)->GetHP ().shield (), 1);
-  EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 85);
-
-  UpdateState ("[]");
-  EXPECT_EQ (characters.GetById (1)->GetBusy (), 1);
-  EXPECT_EQ (characters.GetById (1)->GetHP ().armour (), 850);
-  EXPECT_EQ (characters.GetById (1)->GetHP ().shield (), 2);
-
-  UpdateState ("[]");
-  EXPECT_EQ (characters.GetById (1)->GetBusy (), 0);
-  EXPECT_EQ (characters.GetById (1)->GetHP ().armour (), 1'000);
-  EXPECT_EQ (characters.GetById (1)->GetHP ().shield (), 3);
 }
 
 /* ************************************************************************** */

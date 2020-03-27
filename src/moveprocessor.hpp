@@ -30,6 +30,7 @@
 #include "database/database.hpp"
 #include "database/inventory.hpp"
 #include "database/itemcounts.hpp"
+#include "database/ongoing.hpp"
 #include "database/region.hpp"
 #include "mapdata/basemap.hpp"
 
@@ -118,6 +119,9 @@ protected:
 
   /** Item counts table.  */
   ItemCounts itemCounts;
+
+  /** Ongoing operations table.  */
+  OngoingsTable ongoings;
 
   /** Access to the regions table.  */
   RegionsTable regions;
