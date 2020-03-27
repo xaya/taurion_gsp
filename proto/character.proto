@@ -20,34 +20,9 @@ syntax = "proto2";
 
 import "combat.proto";
 import "movement.proto";
+import "ongoing.proto";
 
 package pxd.proto;
-
-/**
- * Data representing an on-going prospection by a character.
- */
-message OngoingProspection
-{
-
-  /* There are no fields required.  The only piece of data is which region
-     is being prospected, but that is implicit from the character's
-     position on the map.
-
-     This message is simply used as a flag to indicate that a prospecting
-     operation is ongoing in the character's "busy" oneof.  */
-
-}
-
-/**
- * Data representing an "armour repair" operation in progress.
- */
-message ArmourRepair
-{
-
-  /* As with OngoingProspection, this is just a signal message for the
-     busy oneof, at least for the time being.  */
-
-}
 
 /**
  * Data about the mining state of a character.

@@ -1,0 +1,68 @@
+/*
+    GSP for the Taurion blockchain game
+    Copyright (C) 2020  Autonomous Worlds Ltd
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
+syntax = "proto2";
+
+package pxd.proto;
+
+/**
+ * Data representing an on-going prospection by a character.
+ */
+message OngoingProspection
+{
+
+  /* There are no fields required.  The only piece of data is which region
+     is being prospected, but that is implicit from the character's
+     position on the map.
+
+     This message is simply used as a flag to indicate that an ongoing
+     operation is prospecting.  */
+
+}
+
+/**
+ * Data representing an "armour repair" operation in progress.
+ */
+message ArmourRepair
+{
+
+  /* As with OngoingProspection, this is just a signal message for the
+     op oneof, at least for the time being.  */
+
+}
+
+/**
+ * Data about an ongoing operation.
+ */
+message OngoingOperation
+{
+
+  /** The ongoing operation itself, which can be one of several types.  */
+  oneof op
+  {
+    OngoingProspection prospection = 1;
+    ArmourRepair armour_repair = 2;
+  }
+
+  /* The database stores extra data directly in columns:
+      - block height when the operation is finished
+      - associated character ID (if any)
+      - associated building ID (if any)
+  */
+
+}
