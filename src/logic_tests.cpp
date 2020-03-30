@@ -990,6 +990,57 @@ TEST_F (ValidateStateTests, BuildingInventories)
   ValidateState ();
 }
 
+TEST_F (ValidateStateTests, OngoingsToCharacterLink)
+{
+  accounts.CreateNew ("domob", Faction::RED);
+  db.SetNextId (101);
+
+  auto op = ongoings.CreateNew ();
+  op->SetCharacterId (102);
+  op.reset ();
+  EXPECT_DEATH (ValidateState (), "refers to non-existing character");
+
+  characters.CreateNew ("domob", Faction::RED);
+  EXPECT_DEATH (ValidateState (), "does not refer back to ongoing");
+
+  auto c = characters.GetById (102);
+  c->MutableProto ().set_ongoing (101);
+  c.reset ();
+  ValidateState ();
+}
+
+TEST_F (ValidateStateTests, CharacterToOngoingsLink)
+{
+  accounts.CreateNew ("domob", Faction::RED);
+  db.SetNextId (101);
+
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  c->MutableProto ().set_ongoing (102);
+  c.reset ();
+  EXPECT_DEATH (ValidateState (), "has non-existing ongoing");
+
+  ongoings.CreateNew ();
+  EXPECT_DEATH (ValidateState (), "does not refer back to character");
+
+  auto op = ongoings.GetById (102);
+  op->SetCharacterId (101);
+  op.reset ();
+  ValidateState ();
+}
+
+TEST_F (ValidateStateTests, OngoingsToBuildingLink)
+{
+  db.SetNextId (101);
+
+  auto op = ongoings.CreateNew ();
+  op->SetBuildingId (102);
+  op.reset ();
+  EXPECT_DEATH (ValidateState (), "refers to non-existing building");
+
+  buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+  ValidateState ();
+}
+
 /* ************************************************************************** */
 
 } // anonymous namespace

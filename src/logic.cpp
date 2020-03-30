@@ -326,6 +326,63 @@ ValidateBuildingInventories (Database& db)
     }
 }
 
+/**
+ * Verifies that the links between characters/buildings and ongoing
+ * operations are all valid.
+ */
+void
+ValidateOngoingsLinks (Database& db)
+{
+  BuildingsTable buildings(db);
+  CharacterTable characters(db);
+  OngoingsTable ongoings(db);
+
+  {
+    auto res = ongoings.QueryAll ();
+    while (res.Step ())
+      {
+        auto op = ongoings.GetFromResult (res);
+        const auto bId = op->GetBuildingId ();
+        const auto cId = op->GetCharacterId ();
+
+        if (bId != Database::EMPTY_ID)
+          CHECK (buildings.GetById (bId) != nullptr)
+              << "Operation " << op->GetId ()
+              << " refers to non-existing building " << bId;
+
+        if (cId != Database::EMPTY_ID)
+          {
+            auto c = characters.GetById (cId);
+            CHECK (c != nullptr)
+                << "Operation " << op->GetId ()
+                << " refers to non-existing character " << cId;
+            CHECK_EQ (c->GetProto ().ongoing (), op->GetId ())
+                << "Character " << cId
+                << " does not refer back to ongoing " << op->GetId ();
+          }
+      }
+  }
+
+  {
+    auto res = characters.QueryAll ();
+    while (res.Step ())
+      {
+        auto c = characters.GetFromResult (res);
+        if (!c->IsBusy ())
+          continue;
+
+        const auto opId = c->GetProto ().ongoing ();
+        const auto op = ongoings.GetById (opId);
+        CHECK (op != nullptr)
+            << "Character " << c->GetId ()
+            << " has non-existing ongoing operation " << opId;
+        CHECK_EQ (op->GetCharacterId (), c->GetId ())
+            << "Operation " << opId
+            << " does not refer back to character " << c->GetId ();
+      }
+  }
+}
+
 } // anonymous namespace
 
 void
@@ -336,6 +393,7 @@ PXLogic::ValidateStateSlow (Database& db, const Context& ctx)
   ValidateCharacterLimit (db, ctx);
   ValidateCharactersInBuildings (db);
   ValidateBuildingInventories (db);
+  ValidateOngoingsLinks (db);
 }
 
 } // namespace pxd
