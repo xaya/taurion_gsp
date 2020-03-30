@@ -371,6 +371,19 @@ KillProcessor::ProcessBuilding (const Database::IdT id)
       }
   }
 
+  {
+    auto res = ongoings.QueryForBuilding (id);
+    while (res.Step ())
+      {
+        auto op = ongoings.GetFromResult (res);
+        if (!op->GetProto ().has_blueprint_copy ())
+          continue;
+
+        const auto& type = op->GetProto ().blueprint_copy ().original_type ();
+        totalInv.AddFungibleCount (type, 1);
+      }
+  }
+
   /* The underlying proto map does not have a well-defined order.  Since the
      random rolls depend on the other, make sure to explicitly sort the
      the list of inventory positions.  */

@@ -137,6 +137,31 @@ TEST_F (OngoingsTableTests, QueryForHeight)
   ASSERT_FALSE (res.Step ());
 }
 
+TEST_F (OngoingsTableTests, QueryForBuilding)
+{
+  auto op = tbl.CreateNew ();
+  op->SetHeight (1);
+  op->SetBuildingId (42);
+  op.reset ();
+
+  op = tbl.CreateNew ();
+  op->SetHeight (2);
+  op->SetBuildingId (5);
+  op.reset ();
+
+  op = tbl.CreateNew ();
+  op->SetHeight (3);
+  op->SetCharacterId (42);
+  op.reset ();
+
+  auto res = tbl.QueryForBuilding (42);
+
+  ASSERT_TRUE (res.Step ());
+  EXPECT_EQ (tbl.GetFromResult (res)->GetHeight (), 1);
+
+  ASSERT_FALSE (res.Step ());
+}
+
 TEST_F (OngoingsTableTests, DeleteForCharacter)
 {
   db.SetNextId (101);

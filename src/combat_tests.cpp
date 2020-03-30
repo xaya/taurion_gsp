@@ -877,6 +877,44 @@ TEST_F (ProcessKillsBuildingTests, MayDropAnyInventoryItem)
   EXPECT_EQ (dropped.size (), expectedAmounts.size ());
 }
 
+TEST_F (ProcessKillsBuildingTests, MayDropCopiedBlueprint)
+{
+  const HexCoord pos(10, 20);
+  constexpr unsigned trials = 100;
+  unsigned dropped = 0;
+
+  for (unsigned i = 0; i < trials; ++i)
+    {
+      auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+      const auto bId = b->GetId ();
+      b->SetCentre (pos);
+      b.reset ();
+
+      auto op = ongoings.CreateNew ();
+      op->SetHeight (42);
+      op->SetBuildingId (bId);
+      auto& cp = *op->MutableProto ().mutable_blueprint_copy ();
+      cp.set_account ("domob");
+      cp.set_original_type ("bow bpo");
+      cp.set_copy_type ("bow bpc");
+      cp.set_num_copies (42);
+      op.reset ();
+
+      KillBuilding (bId);
+
+      auto l = loot.GetByCoord (pos);
+      EXPECT_EQ (l->GetInventory ().GetFungibleCount ("bow bpc"), 0);
+      const auto originalCnt = l->GetInventory ().GetFungibleCount ("bow bpo");
+      EXPECT_LE (originalCnt, 1);
+      if (originalCnt == 1)
+        ++dropped;
+      l->GetInventory ().Clear ();
+    }
+
+  LOG (INFO) << "Copied blueprint dropped " << dropped << " times";
+  EXPECT_GT (dropped, 0);
+}
+
 TEST_F (ProcessKillsBuildingTests, ItemDropChance)
 {
   /* This verifies that the chance for dropping an item from a destroyed

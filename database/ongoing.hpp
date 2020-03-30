@@ -205,6 +205,13 @@ public:
   Database::Result<OngoingResult> QueryAll ();
 
   /**
+   * Queries the database for all operations associated to a given building.
+   * This is used to process some of them (e.g. blueprint copy) when the
+   * building is destroyed, in addition to deleting them afterwards.
+   */
+  Database::Result<OngoingResult> QueryForBuilding (Database::IdT id);
+
+  /**
    * Queries the database for all operations that need processing at the
    * given (current) block height.
    */
