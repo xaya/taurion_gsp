@@ -86,8 +86,30 @@ class Character (object):
     return self.data["speed"]
 
   def getBusy (self):
+    """
+    If the character is busy, looks up the ongoing operation and returns
+    it.  Returns None if the character is not busy.
+
+    The returned operation object is modified from the original "getongoings"
+    RPC result to make it easier to work with.  We remove the ongoing ID and
+    character ID, and translate the "height" to "blocks" (based on the
+    current Xaya block height).
+    """
+
     if "busy" in self.data:
-      return self.data["busy"]
+      opId = self.data["busy"]
+      ongoings = self.test.getRpc ("getongoings")
+      for o in ongoings:
+        if o["id"] == opId:
+          # Translate to make it easier for expecting in tests.
+          del o["id"]
+          assert o["characterid"] == self.getId ()
+          del o["characterid"]
+          o["blocks"] = o["height"] - self.test.rpc.xaya.getblockcount ()
+          del o["height"]
+          return o
+      raise AssertionError ("Character busy %d not found in ongoings", opId)
+
     return None
 
   def getFungibleInventory (self):
