@@ -61,6 +61,34 @@ public:
 namespace
 {
 
+/**
+ * Basic parser routine for the common case of (item type, amount) as additional
+ * data in the JSON.  This is shared between refinery, reveng, blueprint copy
+ * and construction.
+ */
+template <typename T>
+  std::unique_ptr<T>
+  ParseItemAmount (Account& acc, BuildingsTable::Handle b,
+                   const Json::Value& data,
+                   const ServiceOperation::ContextRefs& refs)
+{
+  CHECK (data.isObject ());
+  if (data.size () != 4)
+    return nullptr;
+
+  const auto& type = data["i"];
+  if (!type.isString ())
+    return nullptr;
+
+  const auto& amount = data["n"];
+  if (!amount.isUInt64 ())
+    return nullptr;
+
+  return std::make_unique<T> (acc, std::move (b),
+                              type.asString (), amount.asUInt64 (),
+                              refs);
+}
+
 /* ************************************************************************** */
 
 /**
@@ -117,16 +145,6 @@ public:
                               const std::string& t,
                               const Inventory::QuantityT am,
                               const ContextRefs& refs);
-
-  /**
-   * Tries to parse a refining operation from the corresponding JSON move.
-   * Returns a possibly invalid RefiningOperation instance or null if parsing
-   * fails.
-   */
-  static std::unique_ptr<RefiningOperation> Parse (Account& acc,
-                                                   BuildingsTable::Handle b,
-                                                   const Json::Value& data,
-                                                   const ContextRefs& refs);
 
 };
 
@@ -227,29 +245,6 @@ RefiningOperation::ExecuteSpecific (xaya::Random& rnd)
   const unsigned steps = GetSteps ();
   for (const auto& out : refData->outputs ())
     inv.AddFungibleCount (out.first, steps * out.second);
-}
-
-std::unique_ptr<RefiningOperation>
-RefiningOperation::Parse (Account& acc, BuildingsTable::Handle b,
-                          const Json::Value& data,
-                          const ContextRefs& refs)
-{
-  CHECK (data.isObject ());
-  if (data.size () != 4)
-    return nullptr;
-
-  const auto& type = data["i"];
-  if (!type.isString ())
-    return nullptr;
-
-  const auto& amount = data["n"];
-  if (!amount.isUInt64 ())
-    return nullptr;
-
-  return std::make_unique<RefiningOperation> (acc, std::move (b),
-                                              type.asString (),
-                                              amount.asUInt64 (),
-                                              refs);
 }
 
 /* ************************************************************************** */
@@ -463,16 +458,6 @@ public:
                             const Inventory::QuantityT n,
                             const ContextRefs& refs);
 
-  /**
-   * Tries to parse a reveng operation from the corresponding JSON move.
-   * Returns a possibly invalid RevEngOperation instance or null if parsing
-   * fails.
-   */
-  static std::unique_ptr<RevEngOperation> Parse (Account& acc,
-                                                 BuildingsTable::Handle b,
-                                                 const Json::Value& data,
-                                                 const ContextRefs& refs);
-
 };
 
 RevEngOperation::RevEngOperation (Account& a, BuildingsTable::Handle b,
@@ -577,29 +562,6 @@ RevEngOperation::ExecuteSpecific (xaya::Random& rnd)
     }
 }
 
-std::unique_ptr<RevEngOperation>
-RevEngOperation::Parse (Account& acc, BuildingsTable::Handle b,
-                        const Json::Value& data,
-                        const ContextRefs& refs)
-{
-  CHECK (data.isObject ());
-  if (data.size () != 4)
-    return nullptr;
-
-  const auto& type = data["i"];
-  if (!type.isString ())
-    return nullptr;
-
-  const auto& num = data["n"];
-  if (!num.isUInt64 ())
-    return nullptr;
-
-  return std::make_unique<RevEngOperation> (acc, std::move (b),
-                                            type.asString (),
-                                            num.asUInt64 (),
-                                            refs);
-}
-
 /* ************************************************************************** */
 
 /**
@@ -650,14 +612,6 @@ public:
                                    const std::string& o,
                                    const Inventory::QuantityT n,
                                    const ContextRefs& refs);
-
-  /**
-   * Tries to parse a copy operation from the corresponding JSON move.
-   * Returns a possibly invalid instance or null if parsing fails.
-   */
-  static std::unique_ptr<BlueprintCopyOperation> Parse (
-      Account& acc, BuildingsTable::Handle b,
-      const Json::Value& data, const ContextRefs& refs);
 
 };
 
@@ -752,29 +706,6 @@ BlueprintCopyOperation::ExecuteSpecific (xaya::Random& rnd)
   cp.set_original_type (original);
   cp.set_copy_type (copy);
   cp.set_num_copies (num);
-}
-
-std::unique_ptr<BlueprintCopyOperation>
-BlueprintCopyOperation::Parse (Account& acc, BuildingsTable::Handle b,
-                               const Json::Value& data,
-                               const ContextRefs& refs)
-{
-  CHECK (data.isObject ());
-  if (data.size () != 4)
-    return nullptr;
-
-  const auto& type = data["i"];
-  if (!type.isString ())
-    return nullptr;
-
-  const auto& num = data["n"];
-  if (!num.isUInt64 ())
-    return nullptr;
-
-  return std::make_unique<BlueprintCopyOperation> (acc, std::move (b),
-                                                   type.asString (),
-                                                   num.asUInt64 (),
-                                                   refs);
 }
 
 /* ************************************************************************** */
@@ -892,13 +823,14 @@ ServiceOperation::Parse (Account& acc, const Json::Value& data,
   const ContextRefs refs(ctx, accounts, inv, cnt, ong);
   std::unique_ptr<ServiceOperation> op;
   if (type == "ref")
-    op = RefiningOperation::Parse (acc, std::move (b), data, refs);
+    op = ParseItemAmount<RefiningOperation> (acc, std::move (b), data, refs);
   else if (type == "fix")
     op = RepairOperation::Parse (acc, std::move (b), data, refs, characters);
   else if (type == "rve")
-    op = RevEngOperation::Parse (acc, std::move (b), data, refs);
+    op = ParseItemAmount<RevEngOperation> (acc, std::move (b), data, refs);
   else if (type == "cp")
-    op = BlueprintCopyOperation::Parse (acc, std::move (b), data, refs);
+    op = ParseItemAmount<BlueprintCopyOperation> (acc, std::move (b),
+                                                  data, refs);
   else
     {
       LOG (WARNING) << "Unknown service operation: " << type;
