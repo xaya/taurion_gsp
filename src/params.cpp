@@ -239,6 +239,18 @@ Params::RevEngSuccessChance (const unsigned existingBp) const
   return base;
 }
 
+Amount
+Params::BlueprintCopyCost (const unsigned complexity) const
+{
+  return 100 * complexity;
+}
+
+unsigned
+Params::BlueprintCopyBlocks (const unsigned complexity) const
+{
+  return 10 * complexity;
+}
+
 HexCoord
 Params::SpawnArea (const Faction f, HexCoord::IntT& radius) const
 {

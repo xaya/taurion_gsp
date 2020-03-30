@@ -602,6 +602,183 @@ RevEngOperation::Parse (Account& acc, BuildingsTable::Handle b,
 
 /* ************************************************************************** */
 
+/**
+ * A blueprint copying operation.
+ */
+class BlueprintCopyOperation : public ServiceOperation
+{
+
+private:
+
+  /** The type of blueprint being copied (the original).  */
+  const std::string original;
+
+  /** The number of copies to make.  */
+  const Inventory::QuantityT num;
+
+  /**
+   * The type of copies being produced.  This may be the empty string if the
+   * data is invalid, e.g. the original type is no valid blueprint item.
+   */
+  std::string copy;
+
+  /** The base item's complexity.  */
+  unsigned complexity;
+
+protected:
+
+  bool
+  IsSupported (const Building& b) const override
+  {
+    return b.RoConfigData ().offered_services ().blueprint_copy ();
+  }
+
+  Amount
+  GetBaseCost () const override
+  {
+    const Amount one = ctx.Params ().BlueprintCopyCost (complexity);
+    return Inventory::Product (num, one);
+  }
+
+  bool IsValid () const override;
+  Json::Value SpecificToPendingJson () const override;
+  void ExecuteSpecific (xaya::Random& rnd) override;
+
+public:
+
+  explicit BlueprintCopyOperation (Account& a, BuildingsTable::Handle b,
+                                   const std::string& o,
+                                   const Inventory::QuantityT n,
+                                   const ContextRefs& refs);
+
+  /**
+   * Tries to parse a copy operation from the corresponding JSON move.
+   * Returns a possibly invalid instance or null if parsing fails.
+   */
+  static std::unique_ptr<BlueprintCopyOperation> Parse (
+      Account& acc, BuildingsTable::Handle b,
+      const Json::Value& data, const ContextRefs& refs);
+
+};
+
+BlueprintCopyOperation::BlueprintCopyOperation (
+      Account& a, BuildingsTable::Handle b,
+      const std::string& o, const Inventory::QuantityT n,
+      const ContextRefs& refs)
+  : ServiceOperation(a, std::move (b), refs),
+    original(o), num(n)
+{
+  const auto* origData = RoItemDataOrNull (original);
+  if (origData == nullptr || !origData->has_is_blueprint ())
+    {
+      LOG (WARNING) << "Can't copy item type " << original;
+      return;
+    }
+
+  if (!origData->is_blueprint ().original ())
+    {
+      LOG (WARNING) << "Can't copy non-original item " << original;
+      return;
+    }
+
+  const auto& baseType = origData->is_blueprint ().for_item ();
+  copy = baseType + " bpc";
+  complexity = RoItemData (baseType).complexity ();
+  CHECK_GT (complexity, 0)
+      << "Invalid complexity " << complexity << " for type " << baseType;
+}
+
+bool
+BlueprintCopyOperation::IsValid () const
+{
+  if (copy.empty ())
+    return false;
+
+  if (num <= 0)
+    return false;
+
+  const auto buildingId = GetBuilding ().GetId ();
+  const auto& name = GetAccount ().GetName ();
+
+  const auto inv = invTable.Get (buildingId, name);
+  const auto balance = inv->GetInventory ().GetFungibleCount (original);
+  if (balance == 0)
+    {
+      LOG (WARNING)
+          << "Can't copy blueprint " << original
+          << " as " << name
+          << " does not own any in building " << buildingId;
+      return false;
+    }
+  CHECK_GT (balance, 0);
+
+  return true;
+}
+
+Json::Value
+BlueprintCopyOperation::SpecificToPendingJson () const
+{
+  Json::Value res(Json::objectValue);
+  res["type"] = "bpcopy";
+  res["original"] = original;
+
+  Json::Value outp(Json::objectValue);
+  outp[copy] = IntToJson (num);
+  res["output"] = outp;
+
+  return res;
+}
+
+void
+BlueprintCopyOperation::ExecuteSpecific (xaya::Random& rnd)
+{
+  const auto buildingId = GetBuilding ().GetId ();
+  const auto& name = GetAccount ().GetName ();
+
+  LOG (INFO)
+      << name << " in building " << buildingId
+      << " copies " << original << " " << num << " times";
+
+  auto invHandle = invTable.Get (buildingId, name);
+  auto& inv = invHandle->GetInventory ();
+  inv.AddFungibleCount (original, -1);
+
+  auto op = ongoings.CreateNew ();
+  const unsigned baseDuration = ctx.Params ().BlueprintCopyBlocks (complexity);
+  op->SetHeight (ctx.Height () + num * baseDuration);
+  op->SetBuildingId (buildingId);
+  auto& cp = *op->MutableProto ().mutable_blueprint_copy ();
+  cp.set_account (name);
+  cp.set_original_type (original);
+  cp.set_copy_type (copy);
+  cp.set_num_copies (num);
+}
+
+std::unique_ptr<BlueprintCopyOperation>
+BlueprintCopyOperation::Parse (Account& acc, BuildingsTable::Handle b,
+                               const Json::Value& data,
+                               const ContextRefs& refs)
+{
+  CHECK (data.isObject ());
+  if (data.size () != 4)
+    return nullptr;
+
+  const auto& type = data["i"];
+  if (!type.isString ())
+    return nullptr;
+
+  const auto& num = data["n"];
+  if (!num.isUInt64 ())
+    return nullptr;
+
+  return std::make_unique<BlueprintCopyOperation> (acc, std::move (b),
+                                                   type.asString (),
+                                                   num.asUInt64 (),
+                                                   refs);
+}
+
+/* ************************************************************************** */
+
 } // anonymous namespace
 
 ServiceOperation::ServiceOperation (Account& a, BuildingsTable::Handle b,
@@ -720,6 +897,8 @@ ServiceOperation::Parse (Account& acc, const Json::Value& data,
     op = RepairOperation::Parse (acc, std::move (b), data, refs, characters);
   else if (type == "rve")
     op = RevEngOperation::Parse (acc, std::move (b), data, refs);
+  else if (type == "cp")
+    op = BlueprintCopyOperation::Parse (acc, std::move (b), data, refs);
   else
     {
       LOG (WARNING) << "Unknown service operation: " << type;

@@ -34,6 +34,9 @@ message ItemData
   /** The cargo space it uses per unit.  */
   optional uint32 space = 1;
 
+  /** For items that have one, the complexity level.  */
+  optional uint32 complexity = 2;
+
   /**
    * Data about the ability to refine items of this type to other item types
    * (i.e. raw materials into refined resources).
@@ -56,10 +59,10 @@ message ItemData
   }
 
   /** If this type of item can be refined, then the stats for doing so.  */
-  optional RefiningData refines = 2;
+  optional RefiningData refines = 3;
 
   /** Whether or not this item has an associated blueprint.  */
-  optional bool with_blueprint = 3;
+  optional bool with_blueprint = 4;
 
   /**
    * Specific data for blueprint items defining the modalities for
@@ -82,7 +85,7 @@ message ItemData
   }
 
   /** If this is a blueprint, the associated data.  */
-  optional BlueprintData is_blueprint = 4;
+  optional BlueprintData is_blueprint = 5;
 
   /**
    * Data about the ability to reverse-engineer an item to obtain blueprints.
@@ -105,7 +108,7 @@ message ItemData
    * If this can be reverse engineered (i.e. is an artefact), the configuration
    * data specifying the corresponding stats.
    */
-  optional RevEngData reveng = 5;
+  optional RevEngData reveng = 6;
 
 }
 
@@ -151,6 +154,7 @@ message BuildingData
     optional bool refining = 1;
     optional bool armour_repair = 2;
     optional bool reverse_engineering = 3;
+    optional bool blueprint_copy = 4;
   }
 
   /** Services this building type offers.  */
