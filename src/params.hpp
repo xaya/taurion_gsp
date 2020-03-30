@@ -151,6 +151,17 @@ public:
   unsigned RevEngSuccessChance (unsigned existingBp) const;
 
   /**
+   * Returns the cost for copying a blueprint of the given complexity.
+   */
+  Amount BlueprintCopyCost (unsigned complexity) const;
+
+  /**
+   * Returns the number of blocks for copying a blueprint of the given
+   * complexity.
+   */
+  unsigned BlueprintCopyBlocks (unsigned complexity) const;
+
+  /**
    * Returns the spawn centre and radius for the given faction.
    */
   HexCoord SpawnArea (Faction f, HexCoord::IntT& radius) const;

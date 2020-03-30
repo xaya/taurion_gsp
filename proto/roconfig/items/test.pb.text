@@ -38,6 +38,7 @@ fungible_items:
     value:
       {
         space: 1,
+        complexity: 100,
         with_blueprint: true
       }
   }
@@ -47,6 +48,7 @@ fungible_items:
     value:
       {
         space: 1,
+        complexity: 1,
         with_blueprint: true
       }
   }

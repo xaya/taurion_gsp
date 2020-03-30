@@ -119,6 +119,19 @@ OngoingsTable::QueryAll ()
 }
 
 Database::Result<OngoingResult>
+OngoingsTable::QueryForBuilding (const Database::IdT id)
+{
+  auto stmt = db.Prepare (R"(
+    SELECT *
+      FROM `ongoing_operations`
+      WHERE `building` = ?1
+      ORDER BY `id`
+  )");
+  stmt.Bind (1, id);
+  return stmt.Query<OngoingResult> ();
+}
+
+Database::Result<OngoingResult>
 OngoingsTable::QueryForHeight (const unsigned h)
 {
   /* There should never be any entries *less* than the current block height

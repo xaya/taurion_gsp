@@ -20,7 +20,9 @@
 
 #include "prospecting.hpp"
 
+#include "database/building.hpp"
 #include "database/character.hpp"
+#include "database/inventory.hpp"
 #include "database/ongoing.hpp"
 #include "database/region.hpp"
 
@@ -34,6 +36,8 @@ ProcessAllOngoings (Database& db, xaya::Random& rnd, const Context& ctx)
 {
   LOG (INFO) << "Processing ongoing operations for height " << ctx.Height ();
 
+  BuildingsTable buildings(db);
+  BuildingInventoriesTable buildingInv(db);
   CharacterTable characters(db);
   OngoingsTable ongoings(db);
   RegionsTable regions(db, ctx.Height ());
@@ -52,6 +56,10 @@ ProcessAllOngoings (Database& db, xaya::Random& rnd, const Context& ctx)
       if (op->GetCharacterId () != Database::EMPTY_ID)
         c = characters.GetById (op->GetCharacterId ());
 
+      BuildingsTable::Handle b;
+      if (op->GetBuildingId () != Database::EMPTY_ID)
+        b = buildings.GetById (op->GetBuildingId ());
+
       switch (op->GetProto ().op_case ())
         {
         case proto::OngoingOperation::kProspection:
@@ -66,6 +74,20 @@ ProcessAllOngoings (Database& db, xaya::Random& rnd, const Context& ctx)
           c->MutableHP ().set_armour (c->GetRegenData ().max_hp ().armour ());
           c->MutableProto ().clear_ongoing ();
           break;
+
+        case proto::OngoingOperation::kBlueprintCopy:
+          {
+            CHECK (b != nullptr);
+            const auto& cp = op->GetProto ().blueprint_copy ();
+            LOG (INFO)
+                << "Finished blue-print copy of " << cp.account ()
+                << " in building " << b->GetId ();
+            auto inv = buildingInv.Get (b->GetId (), cp.account ());
+            inv->GetInventory ().AddFungibleCount (cp.original_type (), 1);
+            inv->GetInventory ().AddFungibleCount (cp.copy_type (),
+                                                   cp.num_copies ());
+            break;
+          }
 
         default:
           LOG (FATAL)

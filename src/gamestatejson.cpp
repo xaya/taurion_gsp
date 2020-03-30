@@ -369,6 +369,21 @@ template <>
       res["operation"] = "armourrepair";
       break;
 
+    case proto::OngoingOperation::kBlueprintCopy:
+      {
+        const auto& cp = pb.blueprint_copy ();
+
+        res["operation"] = "bpcopy";
+        res["account"] = cp.account ();
+        res["original"] = cp.original_type ();
+
+        Json::Value output(Json::objectValue);
+        output[cp.copy_type ()] = IntToJson (cp.num_copies ());
+        res["output"] = output;
+
+        break;
+      }
+
     default:
       LOG (FATAL) << "Unexpected ongoing operation case: " << pb.op_case ();
     }

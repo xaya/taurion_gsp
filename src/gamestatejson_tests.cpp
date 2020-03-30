@@ -874,6 +874,30 @@ TEST_F (OngoingsJsonTests, ArmourRepair)
   })");
 }
 
+TEST_F (OngoingsJsonTests, BlueprintCopy)
+{
+  auto op = tbl.CreateNew ();
+  ASSERT_EQ (op->GetId (), 1);
+  auto& cp = *op->MutableProto ().mutable_blueprint_copy ();
+  cp.set_account ("domob");
+  cp.set_original_type ("bow bpo");
+  cp.set_copy_type ("bow bpc");
+  cp.set_num_copies (42);
+  op.reset ();
+
+  ExpectStateJson (R"({
+    "ongoings":
+      [
+        {
+          "id": 1,
+          "operation": "bpcopy",
+          "original": "bow bpo",
+          "output": {"bow bpc": 42}
+        }
+      ]
+  })");
+}
+
 /* ************************************************************************** */
 
 class RegionJsonTests : public GameStateJsonTests
