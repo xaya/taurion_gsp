@@ -20,8 +20,10 @@
 
 #include "testutils.hpp"
 
+#include "database/building.hpp"
 #include "database/character.hpp"
 #include "database/dbtest.hpp"
+#include "database/inventory.hpp"
 #include "database/ongoing.hpp"
 #include "database/region.hpp"
 
@@ -39,6 +41,8 @@ class OngoingsTests : public DBTestWithSchema
 
 protected:
 
+  BuildingsTable buildings;
+  BuildingInventoriesTable buildingInv;
   CharacterTable characters;
   OngoingsTable ongoings;
 
@@ -46,7 +50,7 @@ protected:
   ContextForTesting ctx;
 
   OngoingsTests ()
-    : characters(db), ongoings(db)
+    : buildings(db), buildingInv(db), characters(db), ongoings(db)
   {}
 
   /**
@@ -62,12 +66,85 @@ protected:
     return op;
   }
 
+  /**
+   * Inserts an ongoing operation into the table, associated to the given
+   * building.  Returns the handle.
+   */
+  OngoingsTable::Handle
+  AddOp (Building& b)
+  {
+    auto op = ongoings.CreateNew ();
+    op->SetBuildingId (b.GetId ());
+    return op;
+  }
+
+  /**
+   * Returns the number of ongoing operations.
+   */
+  unsigned
+  GetNumOngoing ()
+  {
+    auto res = ongoings.QueryAll ();
+    unsigned cnt = 0;
+    while (res.Step ())
+      ++cnt;
+    return cnt;
+  }
+
 };
 
-/* FIXME: Once we have copying blueprints (which are easier as the existing
-   character-based services), add a separate test just for the height
-   filtering and perhaps remove the partial height testing from ArmourRepair
-   afterwards.  */
+TEST_F (OngoingsTests, ProcessedByHeight)
+{
+  proto::BlueprintCopy cpTemplate;
+  cpTemplate.set_account ("domob");
+  cpTemplate.set_original_type ("bow bpo");
+  cpTemplate.set_copy_type ("bow bpc");
+
+  auto b = buildings.CreateNew ("ancient1", "", Faction::ANCIENT);
+  const auto bId = b->GetId ();
+
+  auto op = AddOp (*b);
+  op->SetHeight (10);
+  cpTemplate.set_num_copies (1);
+  *op->MutableProto ().mutable_blueprint_copy () = cpTemplate;
+  op.reset ();
+
+  op = AddOp (*b);
+  op->SetHeight (15);
+  cpTemplate.set_num_copies (10);
+  *op->MutableProto ().mutable_blueprint_copy () = cpTemplate;
+  op.reset ();
+
+  b.reset ();
+
+  ctx.SetHeight (9);
+  ProcessAllOngoings (db, rnd, ctx);
+  auto inv = buildingInv.Get (bId, "domob");
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpo"), 0);
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpc"), 0);
+  EXPECT_EQ (GetNumOngoing (), 2);
+
+  ctx.SetHeight (10);
+  ProcessAllOngoings (db, rnd, ctx);
+  inv = buildingInv.Get (bId, "domob");
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpo"), 1);
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpc"), 1);
+  EXPECT_EQ (GetNumOngoing (), 1);
+
+  ctx.SetHeight (14);
+  ProcessAllOngoings (db, rnd, ctx);
+  inv = buildingInv.Get (bId, "domob");
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpo"), 1);
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpc"), 1);
+  EXPECT_EQ (GetNumOngoing (), 1);
+
+  ctx.SetHeight (15);
+  ProcessAllOngoings (db, rnd, ctx);
+  inv = buildingInv.Get (bId, "domob");
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpo"), 2);
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpc"), 11);
+  EXPECT_EQ (GetNumOngoing (), 0);
+}
 
 TEST_F (OngoingsTests, ArmourRepair)
 {
@@ -84,15 +161,6 @@ TEST_F (OngoingsTests, ArmourRepair)
   op.reset ();
   c.reset ();
 
-  ctx.SetHeight (9);
-  ProcessAllOngoings (db, rnd, ctx);
-
-  c = characters.GetById (cId);
-  EXPECT_TRUE (c->IsBusy ());
-  EXPECT_EQ (c->GetHP ().armour (), 850);
-  EXPECT_NE (ongoings.GetById (opId), nullptr);
-  c.reset ();
-
   ctx.SetHeight (10);
   ProcessAllOngoings (db, rnd, ctx);
 
@@ -100,6 +168,7 @@ TEST_F (OngoingsTests, ArmourRepair)
   EXPECT_FALSE (c->IsBusy ());
   EXPECT_EQ (c->GetHP ().armour (), 1'000);
   EXPECT_EQ (ongoings.GetById (opId), nullptr);
+  EXPECT_EQ (GetNumOngoing (), 0);
 }
 
 TEST_F (OngoingsTests, Prospection)
@@ -129,6 +198,34 @@ TEST_F (OngoingsTests, Prospection)
   auto r = regions.GetById (region);
   EXPECT_FALSE (r->GetProto ().has_prospecting_character ());
   EXPECT_EQ (r->GetProto ().prospection ().name (), "domob");
+  EXPECT_EQ (GetNumOngoing (), 0);
+}
+
+TEST_F (OngoingsTests, BlueprintCopy)
+{
+  auto b = buildings.CreateNew ("ancient1", "", Faction::ANCIENT);
+  const auto bId = b->GetId ();
+  auto op = AddOp (*b);
+  op->SetHeight (10);
+  auto& cp = *op->MutableProto ().mutable_blueprint_copy ();
+  cp.set_account ("domob");
+  cp.set_original_type ("bow bpo");
+  cp.set_copy_type ("bow bpc");
+  cp.set_num_copies (20);
+  op.reset ();
+  b.reset ();
+
+  auto inv = buildingInv.Get (bId, "domob");
+  inv->GetInventory ().AddFungibleCount ("bow bpc", 10);
+  inv.reset ();
+
+  ctx.SetHeight (10);
+  ProcessAllOngoings (db, rnd, ctx);
+
+  inv = buildingInv.Get (bId, "domob");
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpo"), 1);
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpc"), 30);
+  EXPECT_EQ (GetNumOngoing (), 0);
 }
 
 } // anonymous namespace

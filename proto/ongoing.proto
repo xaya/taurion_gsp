@@ -47,6 +47,28 @@ message ArmourRepair
 }
 
 /**
+ * Data about an ongoing blueprint copy operation.  While a blueprint is being
+ * copied, it is "removed" from the main inventory, and only given back together
+ * with the copy when the operation is done.
+ */
+message BlueprintCopy
+{
+
+  /** The account doing the copying.  Also the owner of the blueprints.  */
+  optional string account = 1;
+
+  /** The blueprint item type being copied (the original).  */
+  optional string original_type = 2;
+
+  /** The item type of the copy that will be produced.  */
+  optional string copy_type = 3;
+
+  /** The number of copies being made.  */
+  optional uint32 num_copies = 4;
+
+}
+
+/**
  * Data about an ongoing operation.
  */
 message OngoingOperation
@@ -57,6 +79,7 @@ message OngoingOperation
   {
     OngoingProspection prospection = 1;
     ArmourRepair armour_repair = 2;
+    BlueprintCopy blueprint_copy = 3;
   }
 
   /* The database stores extra data directly in columns:
