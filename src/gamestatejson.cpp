@@ -27,6 +27,7 @@
 #include "database/character.hpp"
 #include "database/faction.hpp"
 #include "database/itemcounts.hpp"
+#include "database/ongoing.hpp"
 #include "database/region.hpp"
 #include "hexagonal/pathfinder.hpp"
 #include "proto/character.pb.h"
@@ -191,39 +192,6 @@ GetCombatJsonObject (const Character& c, const DamageLists& dl)
 }
 
 /**
- * Constructs the JSON state object for a character's busy state.  Returns
- * JSON null if the character is not busy.
- */
-Json::Value
-GetBusyJsonObject (const BaseMap& map, const Character& c)
-{
-  const auto busyBlocks = c.GetBusy ();
-  if (busyBlocks == 0)
-    return Json::Value ();
-
-  Json::Value res(Json::objectValue);
-  res["blocks"] = IntToJson (busyBlocks);
-
-  const auto& pb = c.GetProto ();
-  switch (pb.busy_case ())
-    {
-    case proto::Character::kProspection:
-      res["operation"] = "prospecting";
-      res["region"] = IntToJson (map.Regions ().GetRegionId (c.GetPosition ()));
-      break;
-
-    case proto::Character::kArmourRepair:
-      res["operation"] = "armourrepair";
-      break;
-
-    default:
-      LOG (FATAL) << "Unexpected busy state for character: " << pb.busy_case ();
-    }
-
-  return res;
-}
-
-/**
  * Constructs the JSON representation of a character's cargo space.
  */
 Json::Value
@@ -304,9 +272,8 @@ template <>
   if (!mv.empty ())
     res["movement"] = mv;
 
-  const Json::Value busy = GetBusyJsonObject (map, c);
-  if (!busy.isNull ())
-    res["busy"] = busy;
+  if (c.IsBusy ())
+    res["busy"] = IntToJson (c.GetProto ().ongoing ());
 
   const Json::Value mining = GetMiningJsonObject (map, c);
   if (!mining.isNull ())
@@ -373,6 +340,38 @@ template <>
   Json::Value res(Json::objectValue);
   res["position"] = CoordToJson (loot.GetPosition ());
   res["inventory"] = Convert (loot.GetInventory ());
+
+  return res;
+}
+
+template <>
+  Json::Value
+  GameStateJson::Convert<pxd::OngoingOperation> (
+      const pxd::OngoingOperation& op) const
+{
+  Json::Value res(Json::objectValue);
+
+  res["id"] = IntToJson (op.GetId ());
+  res["height"] = IntToJson (op.GetHeight ());
+  if (op.GetCharacterId () != Database::EMPTY_ID)
+    res["characterid"] = IntToJson (op.GetCharacterId ());
+  if (op.GetBuildingId () != Database::EMPTY_ID)
+    res["buildingid"] = IntToJson (op.GetBuildingId ());
+
+  const auto& pb = op.GetProto ();
+  switch (pb.op_case ())
+    {
+    case proto::OngoingOperation::kProspection:
+      res["operation"] = "prospecting";
+      break;
+
+    case proto::OngoingOperation::kArmourRepair:
+      res["operation"] = "armourrepair";
+      break;
+
+    default:
+      LOG (FATAL) << "Unexpected ongoing operation case: " << pb.op_case ();
+    }
 
   return res;
 }
@@ -478,6 +477,13 @@ GameStateJson::GroundLoot ()
 }
 
 Json::Value
+GameStateJson::OngoingOperations ()
+{
+  OngoingsTable tbl(db);
+  return ResultsAsArray (tbl, tbl.QueryAll ());
+}
+
+Json::Value
 GameStateJson::Regions (const unsigned h)
 {
   RegionsTable tbl(db, RegionsTable::HEIGHT_READONLY);
@@ -493,6 +499,7 @@ GameStateJson::FullState ()
   res["buildings"] = Buildings ();
   res["characters"] = Characters ();
   res["groundloot"] = GroundLoot ();
+  res["ongoings"] = OngoingOperations ();
   res["regions"] = Regions (0);
   res["prizes"] = PrizeStats ();
 

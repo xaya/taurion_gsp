@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -242,56 +242,6 @@ BENCHMARK (CharacterProtoUpdate)
   ->Args ({1, 100})
   ->Args ({1, 1000})
   ->Args ({10, 100});
-
-/**
- * Benchmarks the decrement busy function.  The time reported is the time
- * it takes to perform 1,000 decrement operations for the full set of
- * specified characters.
- *
- * Arguments are:
- *  - Number of characters that are busy (and thus updated)
- *  - Number of characters with busy=0 (ignored)
- */
-void
-DecrementBusy (benchmark::State& state)
-{
-  TestDatabase db;
-  SetupDatabaseSchema (db.GetHandle ());
-  CharacterTable tbl(db);
-
-  const unsigned numBusy = state.range (0);
-  const unsigned numNonBusy = state.range (1);
-
-  std::vector<Database::IdT> busyIds;
-  busyIds.reserve (numBusy);
-  for (unsigned i = 0; i < numBusy; ++i)
-    busyIds.push_back (tbl.CreateNew ("domob", Faction::RED)->GetId ());
-  for (unsigned i = 0; i < numNonBusy; ++i)
-    tbl.CreateNew ("domob", Faction::GREEN);
-
-  for (auto _ : state)
-    {
-      /* Reset the busy state here to make sure that it will never run down
-         to zero (independently of how many iterations the benchmark runs).  */
-      state.PauseTiming ();
-      for (const auto id : busyIds)
-        {
-          auto c = tbl.GetById (id);
-          c->SetBusy (2000 + id);
-          c->MutableProto ().mutable_prospection ();
-        }
-      state.ResumeTiming ();
-
-      for (unsigned i = 0; i < 1000; ++i)
-        tbl.DecrementBusy ();
-    }
-}
-BENCHMARK (DecrementBusy)
-  ->Unit (benchmark::kMillisecond)
-  ->Args ({1, 0})
-  ->Args ({100, 0})
-  ->Args ({1, 100000})
-  ->Args ({100, 100000});
 
 } // anonymous namespace
 } // namespace pxd

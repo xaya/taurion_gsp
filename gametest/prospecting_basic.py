@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2019  Autonomous Worlds Ltd
+#   Copyright (C) 2019-2020  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -81,7 +81,6 @@ class BasicProspectingTest (PXTest):
     self.assertEqual (c.getBusy (), {
       "blocks": 10,
       "operation": "prospecting",
-      "region": region.getId (),
     })
     self.assertEqual (region.data["prospection"], {"inprogress": c.getId ()})
 
@@ -127,7 +126,6 @@ class BasicProspectingTest (PXTest):
     self.assertEqual (c.getBusy (), {
       "blocks": 10,
       "operation": "prospecting",
-      "region": region.getId (),
     })
 
     self.setCharactersHP ({
@@ -153,7 +151,6 @@ class BasicProspectingTest (PXTest):
     self.assertEqual (chars[self.prospectors[0]].getBusy (), {
       "blocks": 9,
       "operation": "prospecting",
-      "region": region.getId (),
     })
     self.assertEqual (chars[self.prospectors[1]].getBusy (), None)
     self.assertEqual (region.data["prospection"], {
@@ -259,7 +256,6 @@ class BasicProspectingTest (PXTest):
     self.assertEqual (c.getBusy (), {
       "blocks": 10,
       "operation": "prospecting",
-      "region": region.getId (),
     })
     self.assertEqual (region.data["prospection"], {"inprogress": c.getId ()})
 

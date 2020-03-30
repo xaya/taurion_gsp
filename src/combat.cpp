@@ -21,6 +21,7 @@
 #include "database/building.hpp"
 #include "database/character.hpp"
 #include "database/fighter.hpp"
+#include "database/ongoing.hpp"
 #include "database/region.hpp"
 #include "database/target.hpp"
 #include "hexagonal/coord.hpp"
@@ -252,6 +253,7 @@ private:
   BuildingsTable buildings;
   BuildingInventoriesTable inventories;
   CharacterTable characters;
+  OngoingsTable ongoings;
   RegionsTable regions;
 
   /**
@@ -264,6 +266,7 @@ private:
     const auto id = h->GetId ();
     h.reset ();
     damageLists.RemoveCharacter (id);
+    ongoings.DeleteForCharacter (id);
     characters.DeleteById (id);
   }
 
@@ -272,7 +275,8 @@ public:
   explicit KillProcessor (Database& db, DamageLists& dl, GroundLootTable& l,
                           xaya::Random& r, const Context& c)
     : rnd(r), ctx(c), damageLists(dl), loot(l),
-      buildings(db), inventories(db), characters(db), regions(db, ctx.Height ())
+      buildings(db), inventories(db), characters(db),
+      ongoings(db), regions(db, ctx.Height ())
   {}
 
   KillProcessor () = delete;
@@ -299,17 +303,22 @@ KillProcessor::ProcessCharacter (const Database::IdT id)
 
   /* If the character was prospecting some region, cancel that
      operation and mark the region as not being prospected.  */
-  if (c->GetProto ().has_prospection ())
+  if (c->IsBusy ())
     {
-      const auto regionId = ctx.Map ().Regions ().GetRegionId (pos);
-      LOG (INFO)
-          << "Killed character " << id
-          << " was prospecting region " << regionId
-          << ", cancelling";
+      const auto op = ongoings.GetById (c->GetProto ().ongoing ());
+      CHECK (op != nullptr);
+      if (op->GetProto ().has_prospection ())
+        {
+          const auto regionId = ctx.Map ().Regions ().GetRegionId (pos);
+          LOG (INFO)
+              << "Killed character " << id
+              << " was prospecting region " << regionId
+              << ", cancelling";
 
-      auto r = regions.GetById (regionId);
-      CHECK_EQ (r->GetProto ().prospecting_character (), id);
-      r->MutableProto ().clear_prospecting_character ();
+          auto r = regions.GetById (regionId);
+          CHECK_EQ (r->GetProto ().prospecting_character (), id);
+          r->MutableProto ().clear_prospecting_character ();
+        }
     }
 
   /* If the character has an inventory, drop everything they had
@@ -393,6 +402,7 @@ KillProcessor::ProcessBuilding (const Database::IdT id)
     }
 
   inventories.RemoveBuilding (id);
+  ongoings.DeleteForBuilding (id);
   buildings.DeleteById (id);
 }
 

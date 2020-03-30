@@ -27,6 +27,7 @@
 #include "database/dbtest.hpp"
 #include "database/inventory.hpp"
 #include "database/itemcounts.hpp"
+#include "database/ongoing.hpp"
 #include "database/region.hpp"
 #include "proto/character.pb.h"
 #include "proto/region.pb.h"
@@ -486,15 +487,11 @@ TEST_F (CharacterJsonTests, DamageLists)
   })");
 }
 
-TEST_F (CharacterJsonTests, Prospecting)
+TEST_F (CharacterJsonTests, Busy)
 {
-  const HexCoord pos(10, -5);
-  ASSERT_EQ (map.Regions ().GetRegionId (pos), 350146);
-
   auto c = tbl.CreateNew ("domob", Faction::RED);
-  c->SetPosition (HexCoord (10, -5));
-  c->SetBusy (42);
-  c->MutableProto ().mutable_prospection ();
+  ASSERT_EQ (c->GetId (), 1);
+  c->MutableProto ().set_ongoing (42);
   c.reset ();
 
   tbl.CreateNew ("notbusy", Faction::RED);
@@ -504,39 +501,11 @@ TEST_F (CharacterJsonTests, Prospecting)
       [
         {
           "owner": "domob",
-          "busy":
-            {
-              "blocks": 42,
-              "operation": "prospecting",
-              "region": 350146
-            }
+          "busy": 42
         },
         {
           "owner": "notbusy",
           "busy": null
-        }
-      ]
-  })");
-}
-
-TEST_F (CharacterJsonTests, ArmourRepair)
-{
-  auto c = tbl.CreateNew ("domob", Faction::RED);
-  c->SetBuildingId (20);
-  c->SetBusy (42);
-  c->MutableProto ().mutable_armour_repair ();
-  c.reset ();
-
-  ExpectStateJson (R"({
-    "characters":
-      [
-        {
-          "owner": "domob",
-          "busy":
-            {
-              "blocks": 42,
-              "operation": "armourrepair"
-            }
         }
       ]
   })");
@@ -808,6 +777,98 @@ TEST_F (GroundLootJsonTests, FungibleInventory)
                   "": 100
                 }
             }
+        }
+      ]
+  })");
+}
+
+/* ************************************************************************** */
+
+class OngoingsJsonTests : public GameStateJsonTests
+{
+
+protected:
+
+  OngoingsTable tbl;
+
+  OngoingsJsonTests ()
+    : tbl(db)
+  {}
+
+};
+
+TEST_F (OngoingsJsonTests, Empty)
+{
+  ExpectStateJson (R"({
+    "ongoings": []
+  })");
+}
+
+TEST_F (OngoingsJsonTests, BasicData)
+{
+  auto op = tbl.CreateNew ();
+  ASSERT_EQ (op->GetId (), 1);
+  op->SetHeight (5);
+  op->SetCharacterId (42);
+  op->MutableProto ().mutable_prospection ();
+  op.reset ();
+
+  op = tbl.CreateNew ();
+  op->SetHeight (10);
+  op->SetBuildingId (50);
+  op->MutableProto ().mutable_prospection ();
+  op.reset ();
+
+  ExpectStateJson (R"({
+    "ongoings":
+      [
+        {
+          "id": 1,
+          "height": 5,
+          "characterid": 42,
+          "buildingid": null
+        },
+        {
+          "id": 2,
+          "height": 10,
+          "characterid": null,
+          "buildingid": 50
+        }
+      ]
+  })");
+}
+
+TEST_F (OngoingsJsonTests, Prospection)
+{
+  auto op = tbl.CreateNew ();
+  ASSERT_EQ (op->GetId (), 1);
+  op->MutableProto ().mutable_prospection ();
+  op.reset ();
+
+  ExpectStateJson (R"({
+    "ongoings":
+      [
+        {
+          "id": 1,
+          "operation": "prospecting"
+        }
+      ]
+  })");
+}
+
+TEST_F (OngoingsJsonTests, ArmourRepair)
+{
+  auto op = tbl.CreateNew ();
+  ASSERT_EQ (op->GetId (), 1);
+  op->MutableProto ().mutable_armour_repair ();
+  op.reset ();
+
+  ExpectStateJson (R"({
+    "ongoings":
+      [
+        {
+          "id": 1,
+          "operation": "armourrepair"
         }
       ]
   })");

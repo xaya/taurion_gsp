@@ -50,6 +50,11 @@
     "returns": {}
   },
   {
+    "name": "getongoings",
+    "params": {},
+    "returns": {}
+  },
+  {
     "name": "getregions",
     "params": {
       "fromheight": 42

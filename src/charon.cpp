@@ -73,6 +73,7 @@ const std::map<std::string, PXRpcMethod> CHARON_METHODS = {
   {"getbuildings", &PXRpcServer::getbuildingsI},
   {"getcharacters", &PXRpcServer::getcharactersI},
   {"getgroundloot", &PXRpcServer::getgroundlootI},
+  {"getongoings", &PXRpcServer::getongoingsI},
   {"getregions", &PXRpcServer::getregionsI},
   {"getprizestats", &PXRpcServer::getprizestatsI},
 };

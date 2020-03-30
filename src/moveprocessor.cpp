@@ -49,7 +49,7 @@ BaseMoveProcessor::BaseMoveProcessor (Database& d, const Context& c)
   : ctx(c), db(d),
     accounts(db), buildings(db), characters(db),
     groundLoot(db), buildingInv(db), itemCounts(db),
-    regions(db, ctx.Height ())
+    ongoings(db), regions(db, ctx.Height ())
 {}
 
 bool
@@ -302,7 +302,8 @@ BaseMoveProcessor::TryServiceOperations (const std::string& name,
       auto parsed = ServiceOperation::Parse (*a, op, ctx,
                                              accounts,
                                              buildings, buildingInv,
-                                             characters, itemCounts);
+                                             characters, itemCounts,
+                                             ongoings);
       if (parsed != nullptr)
         PerformServiceOperation (*parsed);
     }
@@ -415,7 +416,7 @@ BaseMoveProcessor::ParseCharacterWaypoints (const Character& c,
   if (!wpArr.isArray ())
     return false;
 
-  if (c.GetBusy () > 0)
+  if (c.IsBusy ())
     {
       LOG (WARNING)
           << "Character " << c.GetId () << " is busy, can't set waypoints";
@@ -523,7 +524,7 @@ BaseMoveProcessor::ParseExitBuilding (const Character& c,
       return false;
     }
 
-  if (c.GetBusy () > 0)
+  if (c.IsBusy ())
     {
       LOG (WARNING)
           << "Character " << c.GetId () << " is busy, can't exit building";
@@ -635,7 +636,7 @@ BaseMoveProcessor::ParseCharacterProspecting (const Character& c,
       return false;
     }
 
-  if (c.GetBusy () > 0)
+  if (c.IsBusy ())
     {
       LOG (WARNING)
           << "Character " << c.GetId () << " is busy, can't prospect";
@@ -683,7 +684,7 @@ BaseMoveProcessor::ParseCharacterMining (const Character& c,
       return false;
     }
 
-  if (c.GetBusy () > 0)
+  if (c.IsBusy ())
     {
       LOG (WARNING)
           << "Character " << c.GetId () << " is busy, can't mine";
@@ -962,8 +963,12 @@ MoveProcessor::MaybeStartProspecting (Character& c, const Json::Value& upd)
   r->MutableProto ().clear_prospection ();
 
   StopCharacter (c);
-  c.SetBusy (ctx.Params ().ProspectingBlocks ());
-  c.MutableProto ().mutable_prospection ();
+
+  auto op = ongoings.CreateNew ();
+  c.MutableProto ().set_ongoing (op->GetId ());
+  op->SetHeight (ctx.Height () + ctx.Params ().ProspectingBlocks ());
+  op->SetCharacterId (c.GetId ());
+  op->MutableProto ().mutable_prospection ();
 }
 
 void

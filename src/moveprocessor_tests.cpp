@@ -758,8 +758,7 @@ TEST_F (CharacterUpdateTests, InvalidUpdate)
 TEST_F (CharacterUpdateTests, WhenBusy)
 {
   auto h = GetTest ();
-  h->SetBusy (2);
-  h->MutableProto ().mutable_prospection ();
+  h->MutableProto ().set_ongoing (42);
   h->MutableProto ().mutable_mining ();
   h.reset ();
 
@@ -780,8 +779,8 @@ TEST_F (CharacterUpdateTests, WhenBusy)
 
   h = GetTest ();
   /* The fresh prospect command should have been ignored.  If it were not,
-     then busy would have been set to 10.  */
-  EXPECT_EQ (h->GetBusy (), 2);
+     then the ongoing ID would have been set to something else.  */
+  EXPECT_EQ (h->GetProto ().ongoing (), 42);
   EXPECT_FALSE (h->GetProto ().has_movement ());
   EXPECT_FALSE (h->GetProto ().mining ().active ());
 }
@@ -790,7 +789,6 @@ TEST_F (CharacterUpdateTests, InvalidWhenInsideBuilding)
 {
   auto h = GetTest ();
   h->SetBuildingId (10);
-  h->MutableProto ().mutable_prospection ();
   h->MutableProto ().mutable_mining ();
   h.reset ();
 
@@ -810,7 +808,7 @@ TEST_F (CharacterUpdateTests, InvalidWhenInsideBuilding)
   ])");
 
   h = GetTest ();
-  EXPECT_EQ (h->GetBusy (), 0);
+  EXPECT_FALSE (h->IsBusy ());
   EXPECT_FALSE (h->GetProto ().has_movement ());
   EXPECT_FALSE (h->GetProto ().mining ().active ());
 }
@@ -1101,7 +1099,7 @@ TEST_F (EnterBuildingMoveTests, BusyIsFine)
   ASSERT_EQ (b->GetId (), 100);
   b.reset ();
 
-  GetTest ()->SetBusy (10);
+  GetTest ()->MutableProto ().set_ongoing (42);
 
   Process (R"([
     {
@@ -1165,7 +1163,7 @@ TEST_F (ExitBuildingMoveTests, WhenBusy)
       = buildings.CreateNew ("checkmark", "domob", Faction::RED)->GetId ();
 
   GetTest ()->SetBuildingId (buildingId);
-  GetTest ()->SetBusy (1);
+  GetTest ()->MutableProto ().set_ongoing (42);
 
   Process (R"([
     {
@@ -1605,7 +1603,18 @@ protected:
 
 };
 
-using ProspectingMoveTests = MoveTestsWithRegion;
+class ProspectingMoveTests : public MoveTestsWithRegion
+{
+
+protected:
+
+  OngoingsTable ongoings;
+
+  ProspectingMoveTests ()
+    : ongoings(db)
+  {}
+
+};
 
 TEST_F (ProspectingMoveTests, Success)
 {
@@ -1614,6 +1623,7 @@ TEST_F (ProspectingMoveTests, Success)
   h->MutableProto ().mutable_movement ()->add_waypoints ();
   h.reset ();
 
+  ctx.SetHeight (100);
   Process (R"([
     {
       "name": "domob",
@@ -1625,10 +1635,14 @@ TEST_F (ProspectingMoveTests, Success)
   ])");
 
   h = GetTest ();
-  EXPECT_EQ (h->GetBusy (), 10);
-  EXPECT_TRUE (h->GetProto ().has_prospection ());
+  EXPECT_TRUE (h->IsBusy ());
   EXPECT_FALSE (h->GetVolatileMv ().has_partial_step ());
   EXPECT_FALSE (h->GetProto ().has_movement ());
+
+  auto op = ongoings.GetById (h->GetProto ().ongoing ());
+  EXPECT_EQ (op->GetHeight (), 110);
+  EXPECT_EQ (op->GetCharacterId (), 1);
+  EXPECT_TRUE (op->GetProto ().has_prospection ());
 
   auto r = regions.GetById (region);
   EXPECT_EQ (r->GetProto ().prospecting_character (), 1);
@@ -1678,8 +1692,7 @@ TEST_F (ProspectingMoveTests, Invalid)
   ])");
 
   auto h = GetTest ();
-  EXPECT_EQ (h->GetBusy (), 0);
-  EXPECT_FALSE (h->GetProto ().has_prospection ());
+  EXPECT_FALSE (h->IsBusy ());
   EXPECT_TRUE (h->GetProto ().has_movement ());
 
   auto r = regions.GetById (region);
@@ -1701,8 +1714,7 @@ TEST_F (ProspectingMoveTests, CannotProspectRegion)
   ])");
 
   auto h = GetTest ();
-  EXPECT_EQ (h->GetBusy (), 0);
-  EXPECT_FALSE (h->GetProto ().has_prospection ());
+  EXPECT_FALSE (h->IsBusy ());
 
   r = regions.GetById (region);
   EXPECT_FALSE (r->GetProto ().has_prospecting_character ());
@@ -1731,11 +1743,11 @@ TEST_F (ProspectingMoveTests, MultipleCharacters)
 
   c = tbl.GetById (1);
   ASSERT_EQ (c->GetOwner (), "domob");
-  EXPECT_EQ (c->GetBusy (), 0);
+  EXPECT_FALSE (c->IsBusy ());
 
   c = tbl.GetById (2);
   ASSERT_EQ (c->GetOwner (), "foo");
-  EXPECT_EQ (c->GetBusy (), 10);
+  EXPECT_TRUE (c->IsBusy ());
 
   auto r = regions.GetById (region);
   EXPECT_EQ (r->GetProto ().prospecting_character (), 2);
@@ -1758,10 +1770,8 @@ TEST_F (ProspectingMoveTests, OrderOfCharactersInAMove)
     }
   ])");
 
-  auto h = tbl.GetById (9);
-  EXPECT_TRUE (h->GetProto ().has_prospection ());
-  h = tbl.GetById (10);
-  EXPECT_FALSE (h->GetProto ().has_prospection ());
+  EXPECT_TRUE (tbl.GetById (9)->IsBusy ());
+  EXPECT_FALSE (tbl.GetById (10)->IsBusy ());
 
   EXPECT_EQ (regions.GetById (region)->GetProto ().prospecting_character (), 9);
 }
@@ -2171,7 +2181,7 @@ TEST_F (ServicesMoveTests, ServicesAfterCharacterUpdates)
   c = characters.GetById (200);
   EXPECT_FALSE (c->IsInBuilding ());
   EXPECT_EQ (c->GetHP ().armour (), 5);
-  EXPECT_EQ (c->GetBusy (), 0);
+  EXPECT_FALSE (c->IsBusy ());
 }
 
 /* ************************************************************************** */

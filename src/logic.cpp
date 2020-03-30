@@ -24,7 +24,7 @@
 #include "mining.hpp"
 #include "movement.hpp"
 #include "moveprocessor.hpp"
-#include "prospecting.hpp"
+#include "ongoings.hpp"
 
 #include "database/account.hpp"
 #include "database/building.hpp"
@@ -46,50 +46,6 @@ SQLiteGameDatabase::GetNextId ()
 {
   return game.Ids ("pxd").GetNext ();
 }
-
-namespace
-{
-
-/**
- * Decrements busy blocks for all characters and processes those that have
- * their operation finished.
- */
-void
-ProcessBusy (Database& db, xaya::Random& rnd, const Context& ctx)
-{
-  CharacterTable characters(db);
-  RegionsTable regions(db, ctx.Height ());
-
-  auto res = characters.QueryBusyDone ();
-  while (res.Step ())
-    {
-      auto c = characters.GetFromResult (res);
-      CHECK_EQ (c->GetBusy (), 1);
-      switch (c->GetProto ().busy_case ())
-        {
-        case proto::Character::kProspection:
-          FinishProspecting (*c, db, regions, rnd, ctx);
-          break;
-
-        case proto::Character::kArmourRepair:
-          LOG (INFO) << "Finished armour repair of character " << c->GetId ();
-          c->MutableHP ().set_armour (c->GetRegenData ().max_hp ().armour ());
-          c->MutableProto ().clear_armour_repair ();
-          c->SetBusy (0);
-          break;
-
-        default:
-          LOG (FATAL)
-              << "Unexpected busy case: " << c->GetProto ().busy_case ();
-        }
-
-      CHECK_EQ (c->GetBusy (), 0);
-    }
-
-  characters.DecrementBusy ();
-}
-
-} // anonymous namespace
 
 void
 PXLogic::UpdateState (Database& db, xaya::Random& rnd,
@@ -118,7 +74,7 @@ PXLogic::UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
   fame.GetDamageLists ().RemoveOld (ctx.Params ().DamageListBlocks ());
 
   AllHpUpdates (db, fame, rnd, ctx);
-  ProcessBusy (db, rnd, ctx);
+  ProcessAllOngoings (db, rnd, ctx);
 
   DynObstacles dyn(db);
   MoveProcessor mvProc(db, dyn, rnd, ctx);
@@ -370,6 +326,63 @@ ValidateBuildingInventories (Database& db)
     }
 }
 
+/**
+ * Verifies that the links between characters/buildings and ongoing
+ * operations are all valid.
+ */
+void
+ValidateOngoingsLinks (Database& db)
+{
+  BuildingsTable buildings(db);
+  CharacterTable characters(db);
+  OngoingsTable ongoings(db);
+
+  {
+    auto res = ongoings.QueryAll ();
+    while (res.Step ())
+      {
+        auto op = ongoings.GetFromResult (res);
+        const auto bId = op->GetBuildingId ();
+        const auto cId = op->GetCharacterId ();
+
+        if (bId != Database::EMPTY_ID)
+          CHECK (buildings.GetById (bId) != nullptr)
+              << "Operation " << op->GetId ()
+              << " refers to non-existing building " << bId;
+
+        if (cId != Database::EMPTY_ID)
+          {
+            auto c = characters.GetById (cId);
+            CHECK (c != nullptr)
+                << "Operation " << op->GetId ()
+                << " refers to non-existing character " << cId;
+            CHECK_EQ (c->GetProto ().ongoing (), op->GetId ())
+                << "Character " << cId
+                << " does not refer back to ongoing " << op->GetId ();
+          }
+      }
+  }
+
+  {
+    auto res = characters.QueryAll ();
+    while (res.Step ())
+      {
+        auto c = characters.GetFromResult (res);
+        if (!c->IsBusy ())
+          continue;
+
+        const auto opId = c->GetProto ().ongoing ();
+        const auto op = ongoings.GetById (opId);
+        CHECK (op != nullptr)
+            << "Character " << c->GetId ()
+            << " has non-existing ongoing operation " << opId;
+        CHECK_EQ (op->GetCharacterId (), c->GetId ())
+            << "Operation " << opId
+            << " does not refer back to character " << c->GetId ();
+      }
+  }
+}
+
 } // anonymous namespace
 
 void
@@ -380,6 +393,7 @@ PXLogic::ValidateStateSlow (Database& db, const Context& ctx)
   ValidateCharacterLimit (db, ctx);
   ValidateCharactersInBuildings (db);
   ValidateBuildingInventories (db);
+  ValidateOngoingsLinks (db);
 }
 
 } // namespace pxd

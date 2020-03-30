@@ -151,6 +151,19 @@ private:
    */
   unsigned height;
 
+  /**
+   * Sets the height to a different value.  We need this for some tests so
+   * that we can reuse an existing RegionsTable instance for processing
+   * multiple blocks.
+   */
+  void
+  SetHeightForTesting (const unsigned h)
+  {
+    height = h;
+  }
+
+  friend class PXLogicTests;
+
 public:
 
   /**

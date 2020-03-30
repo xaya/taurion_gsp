@@ -27,6 +27,7 @@
 #include "database/character.hpp"
 #include "database/inventory.hpp"
 #include "database/itemcounts.hpp"
+#include "database/ongoing.hpp"
 
 #include <xayautil/random.hpp>
 
@@ -83,6 +84,9 @@ protected:
 
   /** Database handle for item-count tables.  */
   ItemCounts& itemCounts;
+
+  /** Database table for ongoing operations.  */
+  OngoingsTable& ongoings;
 
   explicit ServiceOperation (Account& a, BuildingsTable::Handle b,
                              const ContextRefs& refs);
@@ -158,7 +162,8 @@ public:
       AccountsTable& accounts,
       BuildingsTable& buildings, BuildingInventoriesTable& inv,
       CharacterTable& characters,
-      ItemCounts& cnt);
+      ItemCounts& cnt,
+      OngoingsTable& ong);
 
 };
 

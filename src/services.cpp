@@ -40,14 +40,16 @@ private:
   AccountsTable& accounts;
   BuildingInventoriesTable& invTable;
   ItemCounts& cnt;
+  OngoingsTable& ongoings;
 
   friend class ServiceOperation;
 
 public:
 
   explicit ContextRefs (const Context& c, AccountsTable& a,
-                        BuildingInventoriesTable& i, ItemCounts& ic)
-    : ctx(c), accounts(a), invTable(i), cnt(ic)
+                        BuildingInventoriesTable& i, ItemCounts& ic,
+                        OngoingsTable& ong)
+    : ctx(c), accounts(a), invTable(i), cnt(ic), ongoings(ong)
   {}
 
   ContextRefs () = delete;
@@ -338,7 +340,7 @@ RepairOperation::IsValid () const
       return false;
     }
 
-  if (ch->GetBusy () > 0)
+  if (ch->IsBusy ())
     {
       LOG (WARNING)
           << "Character " << ch->GetId () << " is busy, can't repair armour";
@@ -388,8 +390,11 @@ RepairOperation::ExecuteSpecific (xaya::Random& rnd)
   const auto blocksBusy = (GetMissingHp () + (hpPerBlock - 1)) / hpPerBlock;
   CHECK_GT (blocksBusy, 0);
 
-  ch->SetBusy (blocksBusy);
-  ch->MutableProto ().mutable_armour_repair ();
+  auto op = ongoings.CreateNew ();
+  ch->MutableProto ().set_ongoing (op->GetId ());
+  op->SetHeight (ctx.Height () + blocksBusy);
+  op->SetCharacterId (ch->GetId ());
+  op->MutableProto ().mutable_armour_repair ();
 }
 
 std::unique_ptr<RepairOperation>
@@ -602,7 +607,8 @@ RevEngOperation::Parse (Account& acc, BuildingsTable::Handle b,
 ServiceOperation::ServiceOperation (Account& a, BuildingsTable::Handle b,
                                     const ContextRefs& refs)
   : accounts(refs.accounts), acc(a), building(std::move (b)),
-    ctx(refs.ctx), invTable(refs.invTable), itemCounts(refs.cnt)
+    ctx(refs.ctx), invTable(refs.invTable), itemCounts(refs.cnt),
+    ongoings(refs.ongoings)
 {}
 
 void
@@ -673,7 +679,8 @@ ServiceOperation::Parse (Account& acc, const Json::Value& data,
                          BuildingsTable& buildings,
                          BuildingInventoriesTable& inv,
                          CharacterTable& characters,
-                         ItemCounts& cnt)
+                         ItemCounts& cnt,
+                         OngoingsTable& ong)
 {
   if (!data.isObject ())
     {
@@ -705,7 +712,7 @@ ServiceOperation::Parse (Account& acc, const Json::Value& data,
     }
   const std::string type = typeVal.asString ();
 
-  const ContextRefs refs(ctx, accounts, inv, cnt);
+  const ContextRefs refs(ctx, accounts, inv, cnt, ong);
   std::unique_ptr<ServiceOperation> op;
   if (type == "ref")
     op = RefiningOperation::Parse (acc, std::move (b), data, refs);

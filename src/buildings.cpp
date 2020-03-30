@@ -98,7 +98,7 @@ ProcessEnterBuildings (Database& db)
       ++processed;
       auto c = characters.GetFromResult (res);
 
-      if (c->GetBusy () > 0)
+      if (c->IsBusy ())
         {
           LOG (WARNING)
               << "Busy character " << c->GetId () << " can't enter building";

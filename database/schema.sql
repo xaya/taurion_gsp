@@ -69,10 +69,6 @@ CREATE TABLE IF NOT EXISTS `characters` (
   -- as we later on only process attacks of characters with a selected target.
   `target` BLOB NULL,
 
-  -- If non-zero, then the number represents for how many more blocks the
-  -- character is "locked" at being busy (e.g. prospecting).
-  `busy` INTEGER NOT NULL,
-
   -- Flag indicating if the character is currently moving.  This is set
   -- based on the encoded protocol buffer when updating the table, and is
   -- used so that we can efficiently retrieve only those characters that are
@@ -109,7 +105,6 @@ CREATE INDEX IF NOT EXISTS `characters_pos` ON `characters` (`x`, `y`);
 CREATE INDEX IF NOT EXISTS `characters_building` ON `characters` (`inbuilding`);
 CREATE INDEX IF NOT EXISTS `characters_enterbuilding`
   ON `characters` (`enterbuilding`);
-CREATE INDEX IF NOT EXISTS `characters_busy` ON `characters` (`busy`);
 CREATE INDEX IF NOT EXISTS `characters_ismoving` ON `characters` (`ismoving`);
 CREATE INDEX IF NOT EXISTS `characters_ismining` ON `characters` (`ismining`);
 CREATE INDEX IF NOT EXISTS `characters_attackrange`
@@ -307,3 +302,35 @@ CREATE TABLE IF NOT EXISTS `item_counts` (
   `found` INTEGER NOT NULL
 
 );
+
+-- =============================================================================
+
+-- Ongoing operations that take a couple of blocks and need processing
+-- at a later time (when they are done / need updates).
+CREATE TABLE IF NOT EXISTS `ongoing_operations` (
+
+  -- Unique ID for the operation.
+  `id` INTEGER PRIMARY KEY,
+
+  -- The block height at which the next processing / update is required.
+  `height` INTEGER NOT NULL,
+
+  -- Character ID that is associated to this operation (might be NULL if there
+  -- is no associated character).  If the character dies, then the operation
+  -- is removed.
+  `character` INTEGER NULL,
+
+  -- Building ID that is associated to this operation (if any).
+  `building` INTEGER NULL,
+
+  -- Main data for the operation encoded as serialised OngoingOperation proto.
+  `proto` BLOB NOT NULL
+
+);
+
+CREATE INDEX IF NOT EXISTS `ongoing_operations_by_height`
+  ON `ongoing_operations` (`height`);
+CREATE INDEX IF NOT EXISTS `ongoing_operations_by_character`
+  ON `ongoing_operations` (`character`);
+CREATE INDEX IF NOT EXISTS `ongoing_operations_by_building`
+  ON `ongoing_operations` (`building`);

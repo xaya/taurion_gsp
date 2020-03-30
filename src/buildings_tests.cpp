@@ -118,7 +118,7 @@ TEST_F (ProcessEnterBuildingsTests, BusyCharacter)
   auto c = GetCharacter (10);
   c->SetPosition (HexCoord (5, 0));
   c->SetEnterBuilding (1);
-  c->SetBusy (2);
+  c->MutableProto ().set_ongoing (12345);
   c.reset ();
 
   ProcessEnterBuildings (db);

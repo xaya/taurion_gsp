@@ -31,6 +31,7 @@ libtaurion_la_SOURCES = \
   mining.cpp \
   movement.cpp \
   moveprocessor.cpp \
+  ongoings.cpp \
   params.cpp \
   pending.cpp \
   prospecting.cpp \
@@ -50,6 +51,7 @@ libtaurionheaders = \
   mining.hpp \
   movement.hpp \
   moveprocessor.hpp \
+  ongoings.hpp \
   params.hpp \
   pending.hpp \
   prospecting.hpp \
@@ -122,6 +124,7 @@ tests_SOURCES = \
   mining_tests.cpp \
   movement_tests.cpp \
   moveprocessor_tests.cpp \
+  ongoings_tests.cpp \
   pending_tests.cpp \
   prospecting_tests.cpp \
   protoutils_tests.cpp \

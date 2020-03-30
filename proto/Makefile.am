@@ -26,6 +26,7 @@ PROTOS = \
   geometry.proto \
   inventory.proto \
   movement.proto \
+  ongoing.proto \
   region.proto
 EXTRA_DIST = \
   $(PROTOS) $(ROCONFIG_TEXT_PROTOS) \

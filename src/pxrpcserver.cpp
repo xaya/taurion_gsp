@@ -270,6 +270,17 @@ PXRpcServer::getgroundloot ()
 }
 
 Json::Value
+PXRpcServer::getongoings ()
+{
+  LOG (INFO) << "RPC method called: getongoings";
+  return logic.GetCustomStateData (game,
+    [] (GameStateJson& gsj)
+      {
+        return gsj.OngoingOperations ();
+      });
+}
+
+Json::Value
 PXRpcServer::getregions (const int fromHeight)
 {
   LOG (INFO) << "RPC method called: getregions " << fromHeight;
