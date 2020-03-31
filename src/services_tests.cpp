@@ -843,11 +843,6 @@ TEST_F (BlueprintCopyTests, InvalidFormat)
 
 TEST_F (BlueprintCopyTests, InvalidItemType)
 {
-  inv.Get (ANCIENT_BUILDING, "domob")
-      ->GetInventory ().AddFungibleCount ("sword", 10);
-  inv.Get (ANCIENT_BUILDING, "domob")
-      ->GetInventory ().AddFungibleCount ("sword bpc", 10);
-
   EXPECT_FALSE (Process ("domob", R"({
     "t": "cp",
     "b": 100,
@@ -932,6 +927,243 @@ TEST_F (BlueprintCopyTests, PendingJson)
     "type": "bpcopy",
     "original": "sword bpo",
     "output": {"sword bpc": 2}
+  })")));
+}
+
+/* ************************************************************************** */
+
+class ConstructionTests : public ServicesTests
+{
+
+protected:
+
+  ConstructionTests ()
+  {
+    accounts.GetByName ("domob")->AddBalance (999'900);
+    CHECK_EQ (accounts.GetByName ("domob")->GetBalance (), 1'000'000);
+
+    auto i = inv.Get (ANCIENT_BUILDING, "domob");
+    i->GetInventory ().AddFungibleCount ("sword bpo", 1);
+    i->GetInventory ().AddFungibleCount ("sword bpc", 1);
+    i->GetInventory ().AddFungibleCount ("zerospace", 100);
+
+    ctx.SetHeight (100);
+  }
+
+};
+
+TEST_F (ConstructionTests, InvalidFormat)
+{
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "bld",
+    "b": 100,
+    "i": "sword bpo",
+    "n": 1,
+    "x": false
+  })"));
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "bld",
+    "b": 100,
+    "i": 42,
+    "n": 1
+  })"));
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "bld",
+    "b": 100,
+    "i": "sword bpo",
+    "n": -1
+  })"));
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "bld",
+    "b": 100,
+    "i": "sword bpo",
+    "n": "x"
+  })"));
+}
+
+TEST_F (ConstructionTests, InvalidItemType)
+{
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "bld",
+    "b": 100,
+    "i": "invalid item",
+    "n": 1
+  })"));
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "bld",
+    "b": 100,
+    "i": "sword",
+    "n": 1
+  })"));
+}
+
+TEST_F (ConstructionTests, InvalidAmount)
+{
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "bld",
+    "b": 100,
+    "i": "sword bpo",
+    "n": -3
+  })"));
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "bld",
+    "b": 100,
+    "i": "sword bpo",
+    "n": 0
+  })"));
+}
+
+TEST_F (ConstructionTests, MissingResources)
+{
+  auto i = inv.Get (ANCIENT_BUILDING, "domob");
+  i->GetInventory ().AddFungibleCount ("bow bpo", 1);
+  i->GetInventory ().AddFungibleCount ("foo", 100);
+  i->GetInventory ().AddFungibleCount ("bar", 2);
+  i.reset ();
+
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "bld",
+    "b": 100,
+    "i": "bow bpo",
+    "n": 3
+  })"));
+}
+
+TEST_F (ConstructionTests, MissingBlueprints)
+{
+  auto i = inv.Get (ANCIENT_BUILDING, "domob");
+  i->GetInventory ().AddFungibleCount ("bow bpc", 1);
+  i->GetInventory ().AddFungibleCount ("foo", 100);
+  i->GetInventory ().AddFungibleCount ("bar", 200);
+  i.reset ();
+
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "bld",
+    "b": 100,
+    "i": "bow bpo",
+    "n": 1
+  })"));
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "bld",
+    "b": 100,
+    "i": "bow bpc",
+    "n": 2
+  })"));
+}
+
+TEST_F (ConstructionTests, RequiredServiceType)
+{
+  inv.Get (ANCIENT_BUILDING, "domob")
+      ->GetInventory ().AddFungibleCount ("chariot bpo", 1);
+
+  db.SetNextId (201);
+  buildings.CreateNew ("itemmaker", "", Faction::ANCIENT);
+  buildings.CreateNew ("carmaker", "", Faction::ANCIENT);
+
+  for (const Database::IdT id : {201, 202})
+    {
+      auto i = inv.Get (id, "domob");
+      i->GetInventory ().AddFungibleCount ("sword bpo", 1);
+      i->GetInventory ().AddFungibleCount ("chariot bpo", 1);
+      i->GetInventory ().AddFungibleCount ("zerospace", 10);
+    }
+
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "bld",
+    "b": 201,
+    "i": "chariot bpo",
+    "n": 1
+  })"));
+  EXPECT_TRUE (Process ("domob", R"({
+    "t": "bld",
+    "b": 201,
+    "i": "sword bpo",
+    "n": 1
+  })"));
+
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "bld",
+    "b": 202,
+    "i": "sword bpo",
+    "n": 1
+  })"));
+  EXPECT_TRUE (Process ("domob", R"({
+    "t": "bld",
+    "b": 202,
+    "i": "chariot bpo",
+    "n": 1
+  })"));
+}
+
+TEST_F (ConstructionTests, FromOriginal)
+{
+  db.SetNextId (100);
+  ASSERT_TRUE (Process ("domob", R"({
+    "t": "bld",
+    "b": 100,
+    "i": "sword bpo",
+    "n": 5
+  })"));
+
+  EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 999'500);
+  auto i = inv.Get (ANCIENT_BUILDING, "domob");
+  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("sword bpo"), 0);
+  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("sword bpc"), 1);
+  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("zerospace"), 50);
+
+  auto op = ongoings.GetById (100);
+  ASSERT_NE (op, nullptr);
+  EXPECT_EQ (op->GetHeight (), 100 + 5 * 10);
+  EXPECT_EQ (op->GetBuildingId (), ANCIENT_BUILDING);
+  ASSERT_TRUE (op->GetProto ().has_construction ());
+  const auto& c = op->GetProto ().construction ();
+  EXPECT_EQ (c.account (), "domob");
+  EXPECT_EQ (c.output_type (), "sword");
+  EXPECT_EQ (c.num_items (), 5);
+  EXPECT_EQ (c.original_type (), "sword bpo");
+}
+
+TEST_F (ConstructionTests, FromCopy)
+{
+  inv.Get (ANCIENT_BUILDING, "domob")
+      ->GetInventory ().AddFungibleCount ("sword bpc", 4);
+  db.SetNextId (100);
+  ASSERT_TRUE (Process ("domob", R"({
+    "t": "bld",
+    "b": 100,
+    "i": "sword bpc",
+    "n": 5
+  })"));
+
+  EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 999'500);
+  auto i = inv.Get (ANCIENT_BUILDING, "domob");
+  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("sword bpo"), 1);
+  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("sword bpc"), 0);
+  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("zerospace"), 50);
+
+  auto op = ongoings.GetById (100);
+  ASSERT_NE (op, nullptr);
+  EXPECT_EQ (op->GetHeight (), 100 + 10);
+  EXPECT_EQ (op->GetBuildingId (), ANCIENT_BUILDING);
+  ASSERT_TRUE (op->GetProto ().has_construction ());
+  const auto& c = op->GetProto ().construction ();
+  EXPECT_EQ (c.account (), "domob");
+  EXPECT_EQ (c.output_type (), "sword");
+  EXPECT_EQ (c.num_items (), 5);
+  EXPECT_FALSE (c.has_original_type ());
+}
+
+TEST_F (ConstructionTests, PendingJson)
+{
+  EXPECT_TRUE (PartialJsonEqual (GetPendingJson ("domob", R"({
+    "t": "bld",
+    "b": 100,
+    "i": "sword bpo",
+    "n": 2
+  })"), ParseJson (R"({
+    "type": "construct",
+    "blueprint": "sword bpo",
+    "output": {"sword": 2}
   })")));
 }
 

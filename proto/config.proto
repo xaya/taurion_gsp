@@ -110,6 +110,24 @@ message ItemData
    */
   optional RevEngData reveng = 6;
 
+  /**
+   * The resources required to construct one of this item type, assuming
+   * there exists a blueprint for it.
+   */
+  map<string, uint32> construction_resources = 7;
+
+  /**
+   * Data specific about items that are vehicles.
+   */
+  message VehicleData
+  {
+    /* TODO: When we implement changing vehicles, we should fill in the
+       data here as required.  */
+  }
+
+  /** If this is a vehicle item, the specific stats for that.  */
+  optional VehicleData vehicle = 8;
+
 }
 
 /* ************************************************************************** */
@@ -155,6 +173,8 @@ message BuildingData
     optional bool armour_repair = 2;
     optional bool reverse_engineering = 3;
     optional bool blueprint_copy = 4;
+    optional bool item_construction = 5;
+    optional bool vehicle_construction = 6;
   }
 
   /** Services this building type offers.  */

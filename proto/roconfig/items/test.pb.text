@@ -40,6 +40,8 @@ fungible_items:
         space: 1,
         complexity: 100,
         with_blueprint: true
+        construction_resources: { key: "foo" value: 2 }
+        construction_resources: { key: "bar" value: 1 }
       }
   }
 fungible_items:
@@ -50,6 +52,7 @@ fungible_items:
         space: 1,
         complexity: 1,
         with_blueprint: true
+        construction_resources: { key: "zerospace" value: 10 }
       }
   }
 
@@ -65,5 +68,17 @@ fungible_items:
             possible_outputs: "bow bpo"
             possible_outputs: "sword bpo"
           }
+      }
+  }
+
+fungible_items:
+  {
+    key: "chariot"
+    value:
+      {
+        space: 50,
+        complexity: 100,
+        with_blueprint: true,
+        vehicle: {}
       }
   }

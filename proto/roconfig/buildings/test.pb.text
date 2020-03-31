@@ -1,0 +1,42 @@
+# Some test buildings that can only be constructed through god mode or
+# in unit tests.
+
+building_types:
+  {
+    key: "checkmark"
+    value:
+      {
+
+        enter_radius: 5
+
+        # The shape is chosen such that all rotations / transformations
+        # can be distinguished.  It looks like a "check mark" with the
+        # centre coordinate as corner.
+        shape_tiles: { x: 0 y: 0 }
+        shape_tiles: { x: 1 y: 0 }
+        shape_tiles: { x: 0 y: 1 }
+        shape_tiles: { x: 0 y: 2 }
+
+      }
+  }
+
+building_types:
+  {
+    key: "itemmaker"
+    value:
+      {
+        enter_radius: 5
+        shape_tiles: { x: 0 y: 0 }
+        offered_services: { item_construction: true }
+      }
+  }
+building_types:
+  {
+    key: "carmaker"
+    value:
+      {
+        enter_radius: 5
+        shape_tiles: { x: 0 y: 0 }
+        offered_services: { vehicle_construction: true }
+      }
+  }
