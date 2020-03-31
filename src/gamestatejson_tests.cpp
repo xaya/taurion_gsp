@@ -898,6 +898,43 @@ TEST_F (OngoingsJsonTests, BlueprintCopy)
   })");
 }
 
+TEST_F (OngoingsJsonTests, Construction)
+{
+  auto op = tbl.CreateNew ();
+  ASSERT_EQ (op->GetId (), 1);
+  auto* c = op->MutableProto ().mutable_construction ();
+  c->set_account ("domob");
+  c->set_output_type ("bow");
+  c->set_num_items (42);
+  op.reset ();
+
+  op = tbl.CreateNew ();
+  ASSERT_EQ (op->GetId (), 2);
+  c = op->MutableProto ().mutable_construction ();
+  c->set_account ("domob");
+  c->set_output_type ("bow");
+  c->set_num_items (5);
+  c->set_original_type ("bow bpo");
+  op.reset ();
+
+  ExpectStateJson (R"({
+    "ongoings":
+      [
+        {
+          "id": 1,
+          "operation": "construct",
+          "output": {"bow": 42}
+        },
+        {
+          "id": 2,
+          "operation": "construct",
+          "output": {"bow": 5},
+          "original": "bow bpo"
+        }
+      ]
+  })");
+}
+
 /* ************************************************************************** */
 
 class RegionJsonTests : public GameStateJsonTests

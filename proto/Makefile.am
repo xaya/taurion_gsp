@@ -8,14 +8,14 @@ ROCONFIG_TEXT_PROTOS = \
   roconfig/items/prizes.pb.text \
   roconfig/items/test.pb.text \
   \
-  roconfig/buildings/checkmark.pb.text \
   roconfig/buildings/ancient1.pb.text \
   roconfig/buildings/ancient2.pb.text \
   roconfig/buildings/ancient3.pb.text \
   roconfig/buildings/obelisk1.pb.text \
   roconfig/buildings/obelisk2.pb.text \
   roconfig/buildings/obelisk3.pb.text \
-  roconfig/buildings/turrets.pb.text
+  roconfig/buildings/turrets.pb.text \
+  roconfig/buildings/test.pb.text
 
 PROTOS = \
   account.proto \

@@ -10,6 +10,8 @@ building_types:
             armour_repair: true
             reverse_engineering: true
             blueprint_copy: true
+            item_construction: true
+            vehicle_construction: true
           }
         shape_tiles: { x: -13 y: -6 }
         shape_tiles: { x: -14 y: -5 }

@@ -162,6 +162,17 @@ public:
   unsigned BlueprintCopyBlocks (unsigned complexity) const;
 
   /**
+   * Returns the cost in vCHI for constructing a given item complexity.
+   */
+  Amount ConstructionCost (unsigned complexity) const;
+
+  /**
+   * Returns the number of blocks for constructing an item of the
+   * given complexity.
+   */
+  unsigned ConstructionBlocks (unsigned complexity) const;
+
+  /**
    * Returns the spawn centre and radius for the given faction.
    */
   HexCoord SpawnArea (Faction f, HexCoord::IntT& radius) const;

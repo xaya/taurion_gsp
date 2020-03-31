@@ -69,6 +69,34 @@ message BlueprintCopy
 }
 
 /**
+ * Data about an ongoing item or vehicle construction.  If it is based on
+ * an original blueprint, then the blueprint will be taken away temporarily and
+ * given back together with the constructed items.  Blueprint copies and
+ * resources required for the construction are always just removed when the
+ * operation starts (and thus not related to the operation state).
+ */
+message Construction
+{
+
+  /** The account doing the operation, which will receive items when done.  */
+  optional string account = 1;
+
+  /** The constructed item.  */
+  optional string output_type = 2;
+
+  /** The number of constructed items.  */
+  optional uint32 num_items = 3;
+
+  /**
+   * If this construction is based on an original blueprint, then this is the
+   * blueprint type used.  After it is done (or if the building is destroyed),
+   * one item of this type is also given back.
+   */
+  optional string original_type = 4;
+
+}
+
+/**
  * Data about an ongoing operation.
  */
 message OngoingOperation
@@ -80,6 +108,7 @@ message OngoingOperation
     OngoingProspection prospection = 1;
     ArmourRepair armour_repair = 2;
     BlueprintCopy blueprint_copy = 3;
+    Construction construction = 4;
   }
 
   /* The database stores extra data directly in columns:

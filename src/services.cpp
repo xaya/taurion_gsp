@@ -710,6 +710,199 @@ BlueprintCopyOperation::ExecuteSpecific (xaya::Random& rnd)
 
 /* ************************************************************************** */
 
+/**
+ * A general construction operation.  This can be a vehicle or fitment;
+ * both work the same, with the only difference being the building service
+ * that's needed (construction facility vs vehicle bay).
+ */
+class ConstructionOperation : public ServiceOperation
+{
+
+private:
+
+  /** The type of blueprint being used for construction.  */
+  const std::string blueprint;
+
+  /** The number of items to construct.  */
+  const Inventory::QuantityT num;
+
+  /**
+   * The output item's config data.  May be null if the operation is
+   * invalid.
+   */
+  const proto::ItemData* outputData;
+
+  /** The name of the output item.  */
+  std::string output;
+
+  /** Whether or not this is copying an original blueprint.  */
+  bool fromOriginal;
+
+protected:
+
+  bool IsSupported (const Building& b) const override;
+
+  Amount
+  GetBaseCost () const override
+  {
+    const Amount one
+        = ctx.Params ().ConstructionCost (outputData->complexity ());
+    return Inventory::Product (num, one);
+  }
+
+  bool IsValid () const override;
+  Json::Value SpecificToPendingJson () const override;
+  void ExecuteSpecific (xaya::Random& rnd) override;
+
+public:
+
+  explicit ConstructionOperation (Account& a, BuildingsTable::Handle b,
+                                  const std::string& bp,
+                                  const Inventory::QuantityT n,
+                                  const ContextRefs& refs);
+
+};
+
+ConstructionOperation::ConstructionOperation (
+      Account& a, BuildingsTable::Handle b,
+      const std::string& bp, const Inventory::QuantityT n,
+      const ContextRefs& refs)
+  : ServiceOperation(a, std::move (b), refs),
+    blueprint(bp), num(n)
+{
+  const auto* bpData = RoItemDataOrNull (blueprint);
+  if (bpData == nullptr || !bpData->has_is_blueprint ())
+    {
+      LOG (WARNING) << "Can't construct from item type " << blueprint;
+      outputData = nullptr;
+      return;
+    }
+
+  fromOriginal = bpData->is_blueprint ().original ();
+  output = bpData->is_blueprint ().for_item ();
+  outputData = &RoItemData (output);
+  CHECK_GT (outputData->complexity (), 0)
+      << "Invalid complexity " << outputData->complexity ()
+      << " for type " << output;
+}
+
+bool
+ConstructionOperation::IsSupported (const Building& b) const
+{
+  const auto& offered = b.RoConfigData ().offered_services ();
+
+  if (outputData->has_vehicle ())
+    return offered.vehicle_construction ();
+
+  return offered.item_construction ();
+}
+
+bool
+ConstructionOperation::IsValid () const
+{
+  if (outputData == nullptr)
+    return false;
+
+  if (num <= 0)
+    return false;
+
+  const auto buildingId = GetBuilding ().GetId ();
+  const auto& name = GetAccount ().GetName ();
+
+  const auto inv = invTable.Get (buildingId, name);
+  for (const auto& entry : outputData->construction_resources ())
+    {
+      const auto balance = inv->GetInventory ().GetFungibleCount (entry.first);
+      const auto required = Inventory::Product (num, entry.second);
+      if (required > balance)
+        {
+          LOG (WARNING)
+              << "Can't construct " << num << " " << output
+              << " as " << name << " in building " << buildingId
+              << " has only " << balance << " " << entry.first
+              << " while the construction needs " << required;
+          return false;
+        }
+    }
+
+  const auto bpBalance = inv->GetInventory ().GetFungibleCount (blueprint);
+  Inventory::QuantityT bpRequired;
+  if (fromOriginal)
+    bpRequired = 1;
+  else
+    bpRequired = num;
+  if (bpRequired > bpBalance)
+    {
+      LOG (WARNING)
+          << "Can't construct " << num << " items from " << blueprint
+          << " as " << name << " in building " << buildingId
+          << " has only " << bpBalance;
+      return false;
+    }
+
+  return true;
+}
+
+Json::Value
+ConstructionOperation::SpecificToPendingJson () const
+{
+  Json::Value res(Json::objectValue);
+  res["type"] = "construct";
+  res["blueprint"] = blueprint;
+
+  Json::Value outp(Json::objectValue);
+  outp[output] = IntToJson (num);
+  res["output"] = outp;
+
+  return res;
+}
+
+void
+ConstructionOperation::ExecuteSpecific (xaya::Random& rnd)
+{
+  const auto buildingId = GetBuilding ().GetId ();
+  const auto& name = GetAccount ().GetName ();
+
+  LOG (INFO)
+      << name << " in building " << buildingId
+      << " constructs " << num << " " << output;
+
+  auto invHandle = invTable.Get (buildingId, name);
+  auto& inv = invHandle->GetInventory ();
+  for (const auto& entry : outputData->construction_resources ())
+    {
+      const auto required = Inventory::Product (num, entry.second);
+      inv.AddFungibleCount (entry.first, -required);
+    }
+
+  if (fromOriginal)
+    inv.AddFungibleCount (blueprint, -1);
+  else
+    inv.AddFungibleCount (blueprint, -num);
+
+  auto op = ongoings.CreateNew ();
+  op->SetBuildingId (buildingId);
+
+  /* When constructing from an original, the items have to be constructed
+     in series.  With blueprint copies, we need to have as many copies as items
+     anyway, and can construct the items in parallel.  */
+  const unsigned baseDuration
+      = ctx.Params ().ConstructionBlocks (outputData->complexity ());
+  if (fromOriginal)
+    op->SetHeight (ctx.Height () + num * baseDuration);
+  else
+    op->SetHeight (ctx.Height () + baseDuration);
+
+  auto& c = *op->MutableProto ().mutable_construction ();
+  c.set_account (name);
+  c.set_output_type (output);
+  c.set_num_items (num);
+  if (fromOriginal)
+    c.set_original_type (blueprint);
+}
+
+/* ************************************************************************** */
+
 } // anonymous namespace
 
 ServiceOperation::ServiceOperation (Account& a, BuildingsTable::Handle b,
@@ -831,6 +1024,9 @@ ServiceOperation::Parse (Account& acc, const Json::Value& data,
   else if (type == "cp")
     op = ParseItemAmount<BlueprintCopyOperation> (acc, std::move (b),
                                                   data, refs);
+  else if (type == "bld")
+    op = ParseItemAmount<ConstructionOperation> (acc, std::move (b),
+                                                 data, refs);
   else
     {
       LOG (WARNING) << "Unknown service operation: " << type;
