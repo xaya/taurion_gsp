@@ -17,13 +17,13 @@
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 """
-Tests the "blueprint copy" building service.
+Tests the "item/vehicle construction" building service.
 """
 
 from pxtest import PXTest
 
 
-class ServicesBlueprintCopyTest (PXTest):
+class ServicesConstructionTest (PXTest):
 
   def run (self):
     self.collectPremine ()
@@ -36,54 +36,53 @@ class ServicesBlueprintCopyTest (PXTest):
 
     self.initAccount ("domob", "r")
     self.generate (1)
-    self.giftCoins ({"domob": 1000})
-    self.dropIntoBuilding (building, "domob", {"sword bpo": 2})
+    self.giftCoins ({"domob": 1000000})
+    self.dropIntoBuilding (building, "domob", {"sword bpo": 1})
+    self.dropIntoBuilding (building, "domob", {"zerospace": 50})
+    self.dropIntoBuilding (building, "domob", {"chariot bpc": 2})
     self.generate (1)
 
-    # Start three operations.  The third will be invalid as the blueprints
-    # are "blocked" by then.
-    self.mainLogger.info ("Starting the copying operation...")
+    self.mainLogger.info ("Starting the construction operations...")
     self.sendMove ("domob", {"s": [
-      {"b": building, "t": "cp", "i": "sword bpo", "n": 3},
-      {"b": building, "t": "cp", "i": "sword bpo", "n": 2},
-      {"b": building, "t": "cp", "i": "sword bpo", "n": 1},
+      {"b": building, "t": "bld", "i": "sword bpo", "n": 5},
+      {"b": building, "t": "bld", "i": "chariot bpc", "n": 2},
     ]})
 
     self.generate (1)
-    self.assertEqual (self.getAccounts ()["domob"].getBalance (), 500)
+    self.assertEqual (self.getAccounts ()["domob"].getBalance (),
+                      1000000 - 5 * 100 - 2 * 100 * 100)
     b = self.getBuildings ()[building]
     self.assertEqual (b.getFungibleInventory ("domob"), {})
     self.assertEqual (self.getRpc ("getongoings"), [
       {
         "id": 1002,
-        "operation": "bpcopy",
+        "operation": "construct",
         "buildingid": building,
         "account": "domob",
-        "height": self.rpc.xaya.getblockcount () + 30,
+        "height": self.rpc.xaya.getblockcount () + 50,
         "original": "sword bpo",
-        "output": {"sword bpc": 3},
+        "output": {"sword": 5},
       },
       {
         "id": 1003,
-        "operation": "bpcopy",
+        "operation": "construct",
         "buildingid": building,
         "account": "domob",
-        "height": self.rpc.xaya.getblockcount () + 20,
-        "original": "sword bpo",
-        "output": {"sword bpc": 2},
+        "height": self.rpc.xaya.getblockcount () + 1000,
+        "output": {"chariot": 2},
       },
     ])
 
-    self.mainLogger.info ("Finishing the copying...")
-    self.generate (50)
-    self.assertEqual (self.getAccounts ()["domob"].getBalance (), 500)
+    self.mainLogger.info ("Finishing the constructions...")
+    self.generate (1000)
     b = self.getBuildings ()[building]
     self.assertEqual (b.getFungibleInventory ("domob"), {
-      "sword bpo": 2,
-      "sword bpc": 5,
+      "sword bpo": 1,
+      "sword": 5,
+      "chariot": 2,
     })
     self.assertEqual (self.getRpc ("getongoings"), [])
 
 
 if __name__ == "__main__":
-  ServicesBlueprintCopyTest ().main ()
+  ServicesConstructionTest ().main ()

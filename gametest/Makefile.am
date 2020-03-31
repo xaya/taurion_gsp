@@ -29,6 +29,7 @@ REGTESTS = \
   prospecting_prizes.py \
   prospecting_resources.py \
   services_bpcopy.py \
+  services_construction.py \
   services_fees.py \
   services_refining.py \
   services_repair.py \
