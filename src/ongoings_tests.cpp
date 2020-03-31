@@ -228,5 +228,60 @@ TEST_F (OngoingsTests, BlueprintCopy)
   EXPECT_EQ (GetNumOngoing (), 0);
 }
 
+TEST_F (OngoingsTests, ConstructionFromOriginal)
+{
+  auto b = buildings.CreateNew ("ancient1", "", Faction::ANCIENT);
+  const auto bId = b->GetId ();
+  auto op = AddOp (*b);
+  op->SetHeight (10);
+  auto& c = *op->MutableProto ().mutable_construction ();
+  c.set_account ("domob");
+  c.set_output_type ("bow");
+  c.set_num_items (20);
+  c.set_original_type ("bow bpo");
+  op.reset ();
+  b.reset ();
+
+  auto inv = buildingInv.Get (bId, "domob");
+  inv->GetInventory ().AddFungibleCount ("bow bpo", 10);
+  inv.reset ();
+
+  ctx.SetHeight (10);
+  ProcessAllOngoings (db, rnd, ctx);
+
+  inv = buildingInv.Get (bId, "domob");
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpo"), 11);
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpc"), 0);
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow"), 20);
+  EXPECT_EQ (GetNumOngoing (), 0);
+}
+
+TEST_F (OngoingsTests, ConstructionFromCopy)
+{
+  auto b = buildings.CreateNew ("ancient1", "", Faction::ANCIENT);
+  const auto bId = b->GetId ();
+  auto op = AddOp (*b);
+  op->SetHeight (10);
+  auto& c = *op->MutableProto ().mutable_construction ();
+  c.set_account ("domob");
+  c.set_output_type ("bow");
+  c.set_num_items (5);
+  op.reset ();
+  b.reset ();
+
+  auto inv = buildingInv.Get (bId, "domob");
+  inv->GetInventory ().AddFungibleCount ("bow", 10);
+  inv.reset ();
+
+  ctx.SetHeight (10);
+  ProcessAllOngoings (db, rnd, ctx);
+
+  inv = buildingInv.Get (bId, "domob");
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpo"), 0);
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpc"), 0);
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow"), 15);
+  EXPECT_EQ (GetNumOngoing (), 0);
+}
+
 } // anonymous namespace
 } // namespace pxd

@@ -384,6 +384,23 @@ template <>
         break;
       }
 
+    case proto::OngoingOperation::kConstruction:
+      {
+        const auto& c = pb.construction ();
+
+        res["operation"] = "construct";
+        res["account"] = c.account ();
+
+        Json::Value output(Json::objectValue);
+        output[c.output_type ()] = IntToJson (c.num_items ());
+        res["output"] = output;
+
+        if (c.has_original_type ())
+          res["original"] = c.original_type ();
+
+        break;
+      }
+
     default:
       LOG (FATAL) << "Unexpected ongoing operation case: " << pb.op_case ();
     }

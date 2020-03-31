@@ -915,6 +915,55 @@ TEST_F (ProcessKillsBuildingTests, MayDropCopiedBlueprint)
   EXPECT_GT (dropped, 0);
 }
 
+TEST_F (ProcessKillsBuildingTests, MayDropBlueprintsFromConstruction)
+{
+  const HexCoord pos(10, 20);
+  constexpr unsigned trials = 100;
+  unsigned dropped = 0;
+
+  for (unsigned i = 0; i < trials; ++i)
+    {
+      auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+      const auto bId = b->GetId ();
+      b->SetCentre (pos);
+      b.reset ();
+
+      auto op = ongoings.CreateNew ();
+      op->SetHeight (42);
+      op->SetBuildingId (bId);
+      auto* c = op->MutableProto ().mutable_construction ();
+      c->set_account ("domob");
+      c->set_output_type ("bow");
+      c->set_num_items (42);
+      c->set_original_type ("bow bpo");
+      op.reset ();
+
+      op = ongoings.CreateNew ();
+      op->SetHeight (42);
+      op->SetBuildingId (bId);
+      c = op->MutableProto ().mutable_construction ();
+      c->set_account ("domob");
+      c->set_output_type ("sword");
+      c->set_num_items (10);
+      op.reset ();
+
+      KillBuilding (bId);
+
+      auto l = loot.GetByCoord (pos);
+      const auto originalCnt = l->GetInventory ().GetFungibleCount ("bow bpo");
+      EXPECT_LE (originalCnt, 1);
+      if (originalCnt == 1)
+        ++dropped;
+      l->GetInventory ().SetFungibleCount ("bow bpo", 0);
+
+      /* Nothing else should have been dropped.  */
+      ASSERT_TRUE (l->GetInventory ().IsEmpty ());
+    }
+
+  LOG (INFO) << "Construction blueprint dropped " << dropped << " times";
+  EXPECT_GT (dropped, 0);
+}
+
 TEST_F (ProcessKillsBuildingTests, ItemDropChance)
 {
   /* This verifies that the chance for dropping an item from a destroyed

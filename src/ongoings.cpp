@@ -89,6 +89,22 @@ ProcessAllOngoings (Database& db, xaya::Random& rnd, const Context& ctx)
             break;
           }
 
+        case proto::OngoingOperation::kConstruction:
+          {
+            CHECK (b != nullptr);
+            const auto& c = op->GetProto ().construction ();
+            LOG (INFO)
+                << c.account () << " finished constructing "
+                << c.num_items () << " " << c.output_type ()
+                << " in building " << b->GetId ();
+            auto inv = buildingInv.Get (b->GetId (), c.account ());
+            inv->GetInventory ().AddFungibleCount (c.output_type (),
+                                                   c.num_items ());
+            if (c.has_original_type ())
+              inv->GetInventory ().AddFungibleCount (c.original_type (), 1);
+            break;
+          }
+
         default:
           LOG (FATAL)
               << "Unexpected operation case: " << op->GetProto ().op_case ();

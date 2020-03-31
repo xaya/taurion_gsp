@@ -376,11 +376,22 @@ KillProcessor::ProcessBuilding (const Database::IdT id)
     while (res.Step ())
       {
         auto op = ongoings.GetFromResult (res);
-        if (!op->GetProto ().has_blueprint_copy ())
-          continue;
 
-        const auto& type = op->GetProto ().blueprint_copy ().original_type ();
-        totalInv.AddFungibleCount (type, 1);
+        if (op->GetProto ().has_blueprint_copy ())
+          {
+            const auto& type
+                = op->GetProto ().blueprint_copy ().original_type ();
+            totalInv.AddFungibleCount (type, 1);
+            continue;
+          }
+
+        if (op->GetProto ().has_construction ())
+          {
+            const auto& c = op->GetProto ().construction ();
+            if (c.has_original_type ())
+              totalInv.AddFungibleCount (c.original_type (), 1);
+            continue;
+          }
       }
   }
 
