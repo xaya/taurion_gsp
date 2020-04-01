@@ -18,6 +18,7 @@
 
 syntax = "proto2";
 
+import "character.proto";
 import "combat.proto";
 import "geometry.proto";
 
@@ -121,8 +122,22 @@ message ItemData
    */
   message VehicleData
   {
-    /* TODO: When we implement changing vehicles, we should fill in the
-       data here as required.  */
+
+    /** Base cargo space of this vehicle.  */
+    optional uint32 cargo_space = 1;
+
+    /** Base movement speed (in milli-tiles per block).  */
+    optional uint32 speed = 2;
+
+    /** Basic regeneration data and max HP.  */
+    optional RegenData regen_data = 3;
+
+    /** Basic combat data (including attacks mostly).  */
+    optional CombatData combat_data = 4;
+
+    /** Base mining speed for the vehicle.  */
+    optional MiningData.Speed mining_rate = 5;
+
   }
 
   /** If this is a vehicle item, the specific stats for that.  */

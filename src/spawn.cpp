@@ -18,6 +18,8 @@
 
 #include "spawn.hpp"
 
+#include "fitments.hpp"
+
 #include "hexagonal/coord.hpp"
 #include "hexagonal/ring.hpp"
 
@@ -121,10 +123,25 @@ SpawnCharacter (const std::string& owner, const Faction f,
   c->SetPosition (pos);
   dyn.AddVehicle (pos, f);
 
-  auto& regen = c->MutableRegenData ();
-  auto& pb = c->MutableProto ();
-  ctx.Params ().InitCharacterStats (f, regen, pb);
-  c->MutableHP () = regen.max_hp ();
+  switch (f)
+    {
+    case Faction::RED:
+      c->MutableProto ().set_vehicle ("rv st");
+      break;
+    case Faction::GREEN:
+      c->MutableProto ().set_vehicle ("gv st");
+      break;
+    case Faction::BLUE:
+      c->MutableProto ().set_vehicle ("bv st");
+      break;
+    default:
+      LOG (FATAL)
+          << "Unexpected faction for spawned character: "
+          << static_cast<int> (f);
+      break;
+    }
+
+  DeriveCharacterStats (*c);
 
   return c;
 }

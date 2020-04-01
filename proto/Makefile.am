@@ -6,6 +6,7 @@ ROCONFIG_TEXT_PROTOS = \
   \
   roconfig/items/materials.pb.text \
   roconfig/items/prizes.pb.text \
+  roconfig/items/vehicles.pb.text \
   roconfig/items/test.pb.text \
   \
   roconfig/buildings/ancient1.pb.text \

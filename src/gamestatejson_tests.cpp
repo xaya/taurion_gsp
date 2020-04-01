@@ -265,6 +265,22 @@ TEST_F (CharacterJsonTests, MultipleStep)
   })");
 }
 
+TEST_F (CharacterJsonTests, Vehicle)
+{
+  auto c = tbl.CreateNew ("domob", Faction::RED);
+  c->MutableProto ().set_vehicle ("rv st");
+  c.reset ();
+
+  ExpectStateJson (R"({
+    "characters":
+      [
+        {
+          "vehicle": "rv st"
+        }
+      ]
+  })");
+}
+
 TEST_F (CharacterJsonTests, Target)
 {
   auto c = tbl.CreateNew ("domob", Faction::RED);

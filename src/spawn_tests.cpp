@@ -24,6 +24,7 @@
 #include "hexagonal/coord.hpp"
 #include "hexagonal/ring.hpp"
 
+#include <google/protobuf/util/message_differencer.h>
 #include <gtest/gtest.h>
 
 #include <unordered_set>
@@ -32,6 +33,8 @@ namespace pxd
 {
 namespace
 {
+
+using google::protobuf::util::MessageDifferencer;
 
 /* ************************************************************************** */
 
@@ -97,6 +100,8 @@ TEST_F (SpawnTests, DataInitialised)
 
   EXPECT_TRUE (c->GetProto ().has_combat_data ());
   EXPECT_FALSE (c->GetProto ().combat_data ().attacks ().empty ());
+  EXPECT_TRUE (MessageDifferencer::Equals (c->GetHP (),
+                                           c->GetRegenData ().max_hp ()));
 }
 
 TEST_F (SpawnTests, PerFactionStats)

@@ -254,6 +254,7 @@ template <>
   res["id"] = IntToJson (c.GetId ());
   res["owner"] = c.GetOwner ();
   res["faction"] = FactionToString (c.GetFaction ());
+  res["vehicle"] = c.GetProto ().vehicle ();
 
   if (c.IsInBuilding ())
     res["inbuilding"] = IntToJson (c.GetBuildingId ());
