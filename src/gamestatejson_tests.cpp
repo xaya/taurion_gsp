@@ -265,17 +265,25 @@ TEST_F (CharacterJsonTests, MultipleStep)
   })");
 }
 
-TEST_F (CharacterJsonTests, Vehicle)
+TEST_F (CharacterJsonTests, VehicleAndFitments)
 {
   auto c = tbl.CreateNew ("domob", Faction::RED);
   c->MutableProto ().set_vehicle ("rv st");
+  c->MutableProto ().add_fitments ("turbo");
+  c->MutableProto ().add_fitments ("bomb");
   c.reset ();
+
+  tbl.CreateNew ("andy", Faction::GREEN);
 
   ExpectStateJson (R"({
     "characters":
       [
         {
-          "vehicle": "rv st"
+          "vehicle": "rv st",
+          "fitments": ["turbo", "bomb"]
+        },
+        {
+          "fitments": []
         }
       ]
   })");

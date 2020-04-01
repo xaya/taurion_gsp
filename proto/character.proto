@@ -63,8 +63,11 @@ message Character
   /** The vehicle (as item type) this character is using.  */
   optional string vehicle = 1;
 
+  /** Fitments placed on the vehicle.  */
+  repeated string fitments = 2;
+
   /** Active movement of the character, if any.  */
-  optional Movement movement = 2;
+  optional Movement movement = 3;
 
   /**
    * Static combat data for thie character.  That data is derived from other
@@ -72,22 +75,22 @@ message Character
    * here for easy computation of combat.  The data here changes only
    * through explicit actions done by the owner.
    */
-  optional CombatData combat_data = 3;
+  optional CombatData combat_data = 4;
 
   /**
    * If the character is currently busy, then this is the ID of the
    * corresponding ongoing operation.
    */
-  optional uint64 ongoing = 4;
+  optional uint64 ongoing = 5;
 
   /** The character's mining data, if it can mine.  */
-  optional MiningData mining = 5;
+  optional MiningData mining = 6;
 
   /** Movement speed of the character.  */
-  optional uint32 speed = 6;
+  optional uint32 speed = 7;
 
   /** Total cargo space the character has.  */
-  optional uint64 cargo_space = 7;
+  optional uint64 cargo_space = 8;
 
   /* Fields that are stored directly in the database and thus not part of the
      encoded protocol buffer:

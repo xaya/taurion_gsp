@@ -1,0 +1,104 @@
+fungible_items:
+  {
+    key: "bomb"
+    value:
+      {
+        space: 5
+        complexity: 4
+        with_blueprint: true
+        fitment:
+          {
+            attack:
+              {
+                range: 2
+                area: true
+                min_damage: 2
+                max_damage: 5
+              }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "expander"
+    value:
+      {
+        space: 1
+        complexity: 4
+        with_blueprint: true
+        fitment: { cargo_space: { percent: 10 } }
+      }
+  }
+
+fungible_items:
+  {
+    key: "turbo"
+    value:
+      {
+        space: 1
+        complexity: 4
+        with_blueprint: true
+        fitment: { speed: { percent: 10 } }
+      }
+  }
+
+fungible_items:
+  {
+    key: "plating"
+    value:
+      {
+        space: 1
+        complexity: 4
+        with_blueprint: true
+        fitment: { max_armour: { percent: 10 } }
+      }
+  }
+
+fungible_items:
+  {
+    key: "shield"
+    value:
+      {
+        space: 1
+        complexity: 4
+        with_blueprint: true
+        fitment: { max_shield: { percent: 10 } }
+      }
+  }
+
+fungible_items:
+  {
+    key: "replenisher"
+    value:
+      {
+        space: 1
+        complexity: 4
+        with_blueprint: true
+        fitment: { shield_regen: { percent: 10 } }
+      }
+  }
+
+fungible_items:
+  {
+    key: "rangeext"
+    value:
+      {
+        space: 1
+        complexity: 4
+        with_blueprint: true
+        fitment: { range: { percent: 10 } }
+      }
+  }
+
+fungible_items:
+  {
+    key: "dmgext"
+    value:
+      {
+        space: 1
+        complexity: 4
+        with_blueprint: true
+        fitment: { damage: { percent: 10 } }
+      }
+  }

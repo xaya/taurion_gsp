@@ -21,8 +21,56 @@
 
 #include "database/character.hpp"
 
+#include "proto/config.pb.h"
+
 namespace pxd
 {
+
+/**
+ * Simple wrapper around a stat modifier.  It allows adding up different
+ * modifiers to stack them, and computing their effect on a given number.
+ */
+class StatModifier
+{
+
+private:
+
+  /** Increase (or decrease if negative) of the base number as percent.  */
+  int64_t percent = 0;
+
+public:
+
+  StatModifier () = default;
+  StatModifier (const StatModifier&) = default;
+  StatModifier& operator= (const StatModifier&) = default;
+
+  /**
+   * Converts from the roconfig proto form to the instance.
+   */
+  StatModifier (const proto::StatModifier& pb)
+    : percent(pb.percent ())
+  {}
+
+  /**
+   * Adds another modifier "on top of" the current one.
+   */
+  StatModifier&
+  operator+= (const StatModifier& m)
+  {
+    percent += m.percent;
+    return *this;
+  }
+
+  /**
+   * Applies this modifier to a given base value.
+   */
+  int64_t
+  operator() (int64_t base) const
+  {
+    return base + (base * percent) / 100;
+  }
+
+};
 
 /**
  * Updates the "derived" stats of the character based on the vehicle and

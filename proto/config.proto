@@ -24,6 +24,21 @@ import "geometry.proto";
 
 package pxd.proto;
 
+/**
+ * General modification something can give to an existing numerical value,
+ * e.g. an increase to a vehicle speed or combat damage.
+ */
+message StatModifier
+{
+
+  /**
+   * Relative change to the base value, in percent.  This is added (or
+   * subtracted if negative), so not a multiplicative factor.
+   */
+  optional sint32 percent = 1;
+
+}
+
 /* ************************************************************************** */
 
 /**
@@ -142,6 +157,41 @@ message ItemData
 
   /** If this is a vehicle item, the specific stats for that.  */
   optional VehicleData vehicle = 8;
+
+  /**
+   * Data specific about items that are fitments.
+   */
+  message FitmentData
+  {
+
+    /** An attack this does.  */
+    optional Attack attack = 1;
+
+    /** Modification to the cargo space.  */
+    optional StatModifier cargo_space = 2;
+
+    /** Modification to the movement speed.  */
+    optional StatModifier speed = 3;
+
+    /** Modification to max armour HP.  */
+    optional StatModifier max_armour = 4;
+
+    /** Modification to max shield HP.  */
+    optional StatModifier max_shield = 5;
+
+    /** Modification to shield regeneration rate.  */
+    optional StatModifier shield_regen = 6;
+
+    /** Modification of all attack ranges.  */
+    optional StatModifier range = 7;
+
+    /** Modification of all attack damages (min and max).  */
+    optional StatModifier damage = 8;
+
+  }
+
+  /** If this is a fitment, the specific stats for that.  */
+  optional FitmentData fitment = 9;
 
 }
 
