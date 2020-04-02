@@ -19,6 +19,7 @@
 #include "moveprocessor.hpp"
 
 #include "buildings.hpp"
+#include "fitments.hpp"
 #include "jsonutils.hpp"
 #include "mining.hpp"
 #include "movement.hpp"
@@ -735,6 +736,98 @@ BaseMoveProcessor::ParseCharacterMining (const Character& c,
   return true;
 }
 
+namespace
+{
+
+/**
+ * Checks if the given character has a fully repaired and shield regenerated
+ * vehicle.  That's a condition before changing fitments or vehicle.
+ */
+bool
+HasFullHp (const Character& c)
+{
+  const auto& hp = c.GetHP ();
+  const auto& maxHp = c.GetRegenData ().max_hp ();
+
+  if (hp.armour () < maxHp.armour ())
+    return false;
+  if (hp.shield () < maxHp.shield ())
+    return false;
+
+  CHECK_EQ (hp.armour (), maxHp.armour ());
+  CHECK_EQ (hp.shield (), maxHp.shield ());
+  return true;
+}
+
+} // anonymous namespace
+
+bool
+BaseMoveProcessor::ParseSetFitments (const Character& c, const Json::Value& upd,
+                                     std::vector<std::string>& fitments)
+{
+  CHECK (upd.isObject ());
+  const auto& cmd = upd["fit"];
+  if (!cmd.isArray ())
+    return false;
+
+  if (!HasFullHp (c))
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId ()
+          << " can't change fitments without full HP";
+      return false;
+    }
+
+  if (!c.IsInBuilding ())
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId ()
+          << " is not in building and can't change fitments";
+      return false;
+    }
+  const auto buildingId = c.GetBuildingId ();
+
+  fitments.clear ();
+  for (const auto& f : cmd)
+    {
+      if (!f.isString ())
+        {
+          LOG (WARNING) << "Fitment entry is not a string: " << f;
+          return false;
+        }
+      const auto item = f.asString ();
+
+      const auto* data = RoItemDataOrNull (item);
+      if (data == nullptr || !data->has_fitment ())
+        {
+          LOG (WARNING) << "Invalid fitment: " << item;
+          return false;
+        }
+
+      fitments.push_back (item);
+    }
+
+  /* Make sure the user has the required items in their inventory.  Existing
+     fitments from the character are also fine, as they will be removed
+     before being added back.  */
+  std::unordered_map<std::string, Inventory::QuantityT> items;
+  for (const auto& f : fitments)
+    ++items[f];
+  for (const auto& f : c.GetProto ().fitments ())
+    --items[f];
+  auto inv = buildingInv.Get (buildingId, c.GetOwner ());
+  for (const auto& entry : items)
+    if (entry.second > inv->GetInventory ().GetFungibleCount (entry.first))
+      {
+        LOG (WARNING)
+            << "Fitment items are not available to user " << c.GetOwner ()
+            << " in building " << buildingId << ":\n" << cmd;
+        return false;
+      }
+
+  return CheckVehicleFitments (c.GetProto ().vehicle (), fitments);
+}
+
 /* ************************************************************************** */
 
 void
@@ -988,6 +1081,54 @@ namespace
 {
 
 /**
+ * Drops all inventory of a character (which is assumed to be inside a building)
+ * into the owner's inventory in the building.  This happens automatically
+ * when changing vehicle or fitments.
+ */
+void
+DropAllInventory (Character& c, BuildingInventory& inv)
+{
+  CHECK_EQ (c.GetBuildingId (), inv.GetBuildingId ());
+  CHECK_EQ (c.GetOwner (), inv.GetAccount ());
+
+  inv.GetInventory () += c.GetInventory ();
+  c.GetInventory ().Clear ();
+}
+
+} // anonymous namespace
+
+void
+MoveProcessor::MaybeSetFitments (Character& c, const Json::Value& upd)
+{
+  std::vector<std::string> fitments;
+  if (!ParseSetFitments (c, upd, fitments))
+    return;
+
+  VLOG (1) << "Changing fitments of character " << c.GetId ();
+
+  const auto buildingId = c.GetBuildingId ();
+  auto inv = buildingInv.Get (buildingId, c.GetOwner ());
+  auto& pb = c.MutableProto ();
+
+  DropAllInventory (c, *inv);
+
+  for (const auto& f : pb.fitments ())
+    inv->GetInventory ().AddFungibleCount (f, 1);
+  pb.clear_fitments ();
+
+  for (const auto& f : fitments)
+    {
+      inv->GetInventory ().AddFungibleCount (f, -1);
+      pb.add_fitments (f);
+    }
+
+  DeriveCharacterStats (c);
+}
+
+namespace
+{
+
+/**
  * Tries to move fungible items from one inventory (e.g. a character's)
  * to another (e.g. ground loot), based on the quantities given in the
  * map.  This verifies that there is enough in the "source" inventory,
@@ -1130,6 +1271,13 @@ MoveProcessor::PerformCharacterUpdate (Character& c, const Json::Value& upd)
 {
   MaybeTransferCharacter (c, upd);
   MaybeStartProspecting (c, upd);
+
+  /* Updates to the vehicle and fitments are done before handling item
+     pickups/drops, which means that we can place e.g. a cargo-expansion
+     fitment and use it right away.  It also specifies the priorities when
+     an item is picked up and at the same time put as fitment (it will
+     be a fitment then).  */
+  MaybeSetFitments (c, upd);
 
   /* Mining should be started before setting waypoints.  This ensures that if
      a move does both, we do not end up moving and mining at the same time
