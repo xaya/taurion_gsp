@@ -42,6 +42,7 @@ fungible_items:
         with_blueprint: true
         construction_resources: { key: "foo" value: 2 }
         construction_resources: { key: "bar" value: 1 }
+        fitment: { slot: "high" }
       }
   }
 fungible_items:
@@ -53,6 +54,7 @@ fungible_items:
         complexity: 1,
         with_blueprint: true
         construction_resources: { key: "zerospace" value: 10 }
+        fitment: { slot: "high" }
       }
   }
 
@@ -71,14 +73,45 @@ fungible_items:
       }
   }
 
+# A test vehicle with some well-defined stats that can be used
+# also e.g. in tests for fitments.
 fungible_items:
   {
     key: "chariot"
     value:
       {
-        space: 50,
-        complexity: 100,
-        with_blueprint: true,
-        vehicle: {}
+        space: 50
+        complexity: 100
+        with_blueprint: true
+        vehicle:
+          {
+            cargo_space: 1000
+            speed: 1000
+            regen_data:
+              {
+                max_hp: { armour: 1000 shield: 100 }
+                shield_regeneration_mhp: 10
+              }
+            combat_data:
+              {
+                attacks:
+                  {
+                    range: 100
+                    min_damage: 10
+                    max_damage: 100
+                  }
+                attacks:
+                  {
+                    range: 10
+                    area: true
+                    min_damage: 1
+                    max_damage: 10
+                  }
+              }
+            mining_rate: { min: 10 max: 100 }
+            equipment_slots: { key: "high" value: 3 }
+            equipment_slots: { key: "mid" value: 2 }
+            equipment_slots: { key: "low" value: 1 }
+          }
       }
   }

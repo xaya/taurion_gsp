@@ -1,0 +1,92 @@
+/*
+    GSP for the Taurion blockchain game
+    Copyright (C) 2020  Autonomous Worlds Ltd
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
+#ifndef PXD_FITMENTS_HPP
+#define PXD_FITMENTS_HPP
+
+#include "database/character.hpp"
+
+#include "proto/config.pb.h"
+
+#include <string>
+#include <vector>
+
+namespace pxd
+{
+
+/**
+ * Simple wrapper around a stat modifier.  It allows adding up different
+ * modifiers to stack them, and computing their effect on a given number.
+ */
+class StatModifier
+{
+
+private:
+
+  /** Increase (or decrease if negative) of the base number as percent.  */
+  int64_t percent = 0;
+
+public:
+
+  StatModifier () = default;
+  StatModifier (const StatModifier&) = default;
+  StatModifier& operator= (const StatModifier&) = default;
+
+  /**
+   * Converts from the roconfig proto form to the instance.
+   */
+  StatModifier (const proto::StatModifier& pb)
+    : percent(pb.percent ())
+  {}
+
+  /**
+   * Adds another modifier "on top of" the current one.
+   */
+  StatModifier&
+  operator+= (const StatModifier& m)
+  {
+    percent += m.percent;
+    return *this;
+  }
+
+  /**
+   * Applies this modifier to a given base value.
+   */
+  int64_t
+  operator() (int64_t base) const
+  {
+    return base + (base * percent) / 100;
+  }
+
+};
+
+/**
+ * Checks if the given list of fitments can be put onto a given vehicle.
+ */
+bool CheckVehicleFitments (const std::string& vehicle,
+                           const std::vector<std::string>& fitments);
+
+/**
+ * Updates the "derived" stats of the character based on the vehicle and
+ * fitments it is equipped with.
+ */
+void DeriveCharacterStats (Character& c);
+
+} // namespace pxd
+
+#endif // PXD_FITMENTS_HPP

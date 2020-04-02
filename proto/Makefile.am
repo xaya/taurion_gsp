@@ -4,8 +4,10 @@ noinst_LTLIBRARIES = libpxproto.la
 ROCONFIG_TEXT_PROTOS = \
   roconfig/resourcedist.pb.text \
   \
+  roconfig/items/fitments.pb.text \
   roconfig/items/materials.pb.text \
   roconfig/items/prizes.pb.text \
+  roconfig/items/vehicles.pb.text \
   roconfig/items/test.pb.text \
   \
   roconfig/buildings/ancient1.pb.text \

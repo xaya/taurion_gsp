@@ -203,6 +203,18 @@ PendingState::AddCharacterMining (const Character& ch,
 }
 
 void
+PendingState::AddCharacterFitments (const Character& ch,
+                                    const std::vector<std::string>& fitments)
+{
+  VLOG (1) << "Character " << ch.GetId () << " has pending fitments";
+
+  auto& chState = GetCharacterState (ch);
+  chState.fitments = Json::Value(Json::arrayValue);
+  for (const auto& f : fitments)
+    chState.fitments.append (f);
+}
+
+void
 PendingState::AddCharacterCreation (const std::string& name, const Faction f)
 {
   VLOG (1)
@@ -286,6 +298,9 @@ PendingState::CharacterState::ToJson () const
     res["prospecting"] = IntToJson (prospectingRegionId);
   if (miningRegionId != RegionMap::OUT_OF_MAP)
     res["mining"] = IntToJson (miningRegionId);
+
+  if (!fitments.isNull ())
+    res["fitments"] = fitments;
 
   return res;
 }
@@ -411,6 +426,10 @@ PendingStateUpdater::PerformCharacterUpdate (Character& c,
     state.AddEnterBuilding (c, buildingId);
   if (ParseExitBuilding (c, upd))
     state.AddExitBuilding (c);
+
+  std::vector<std::string> fitments;
+  if (ParseSetFitments (c, upd, fitments))
+    state.AddCharacterFitments (c, fitments);
 }
 
 void

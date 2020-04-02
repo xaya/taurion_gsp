@@ -254,6 +254,12 @@ template <>
   res["id"] = IntToJson (c.GetId ());
   res["owner"] = c.GetOwner ();
   res["faction"] = FactionToString (c.GetFaction ());
+  res["vehicle"] = c.GetProto ().vehicle ();
+
+  Json::Value fitments(Json::arrayValue);
+  for (const auto& f : c.GetProto ().fitments ())
+    fitments.append (f);
+  res["fitments"] = fitments;
 
   if (c.IsInBuilding ())
     res["inbuilding"] = IntToJson (c.GetBuildingId ());

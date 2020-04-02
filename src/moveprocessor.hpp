@@ -40,6 +40,7 @@
 
 #include <map>
 #include <string>
+#include <vector>
 
 namespace pxd
 {
@@ -191,6 +192,13 @@ protected:
                              Database::IdT& regionId);
 
   /**
+   * Parses and verifies a potential command to set fitments on a character's
+   * current vehicle.
+   */
+  bool ParseSetFitments (const Character& c, const Json::Value& upd,
+                         std::vector<std::string>& fitments);
+
+  /**
    * Parses and verifies a potential character creation as part of the
    * given move.  For all valid creations, PerformCharacterCreation
    * is called with the relevant data.
@@ -326,6 +334,11 @@ private:
    * Processes a command to start mining at the current location.
    */
   void MaybeStartMining (Character& c, const Json::Value& upd);
+
+  /**
+   * Processes a command to set fitments.
+   */
+  void MaybeSetFitments (Character& c, const Json::Value& upd);
 
   /**
    * Processes a command to drop loot from the character's inventory

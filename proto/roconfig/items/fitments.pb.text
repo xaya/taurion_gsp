@@ -1,0 +1,149 @@
+fungible_items:
+  {
+    key: "bomb"
+    value:
+      {
+        space: 5
+        complexity: 4
+        with_blueprint: true
+        fitment:
+          {
+            slot: "high"
+            attack:
+              {
+                range: 2
+                area: true
+                min_damage: 2
+                max_damage: 5
+              }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "expander"
+    value:
+      {
+        space: 1
+        complexity: 4
+        with_blueprint: true
+        fitment:
+          {
+            slot: "low"
+            cargo_space: { percent: 10 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "turbo"
+    value:
+      {
+        space: 1
+        complexity: 4
+        with_blueprint: true
+        fitment:
+          {
+            slot: "mid"
+            speed: { percent: 10 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "plating"
+    value:
+      {
+        space: 1
+        complexity: 4
+        with_blueprint: true
+        fitment:
+          {
+            slot: "low"
+            max_armour: { percent: 10 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "shield"
+    value:
+      {
+        space: 1
+        complexity: 4
+        with_blueprint: true
+        fitment:
+          {
+            slot: "mid"
+            max_shield: { percent: 10 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "replenisher"
+    value:
+      {
+        space: 1
+        complexity: 4
+        with_blueprint: true
+        fitment:
+          {
+            slot: "mid"
+            shield_regen: { percent: 10 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "rangeext"
+    value:
+      {
+        space: 1
+        complexity: 4
+        with_blueprint: true
+        fitment:
+          {
+            slot: "mid"
+            range: { percent: 10 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "dmgext"
+    value:
+      {
+        space: 1
+        complexity: 4
+        with_blueprint: true
+        fitment:
+          {
+            slot: "low"
+            damage: { percent: 10 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "multiplier"
+    value:
+      {
+        space: 1
+        complexity: 1
+        with_blueprint: true
+        fitment:
+          {
+            slot: "low"
+            complexity: { percent: 10 }
+          }
+      }
+  }

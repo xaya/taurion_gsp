@@ -974,6 +974,276 @@ TEST_F (CharacterUpdateTests, ChosenSpeedInvalid)
 
 /* ************************************************************************** */
 
+class FitmentMoveTests : public CharacterUpdateTests
+{
+
+private:
+
+  static constexpr Database::IdT BUILDING = 100;
+
+  BuildingsTable buildings;
+  BuildingInventoriesTable inv;
+
+protected:
+
+  FitmentMoveTests ()
+    : buildings(db), inv(db)
+  {
+    db.SetNextId (BUILDING);
+    buildings.CreateNew ("ancient1", "", Faction::ANCIENT);
+
+    auto c = GetTest ();
+    c->SetBuildingId (BUILDING);
+
+    auto& regen = c->MutableRegenData ();
+    regen.mutable_max_hp ()->set_armour (100);
+    regen.mutable_max_hp ()->set_shield (30);
+
+    auto& hp = c->MutableHP ();
+    hp.set_armour (regen.max_hp ().armour ());
+    hp.set_shield (regen.max_hp ().shield ());
+  }
+
+  /**
+   * Sets the test character's vehicle and existing fitments.
+   */
+  void
+  SetVehicle (const std::string& vehicle,
+              const std::vector<std::string>& fitments)
+  {
+    auto c = GetTest ();
+    auto& pb = c->MutableProto ();
+    pb.set_vehicle (vehicle);
+    pb.clear_fitments ();
+    for (const auto& f : fitments)
+      pb.add_fitments (f);
+  }
+
+  /**
+   * Expects that the fitments on the test character are as given.
+   */
+  void
+  ExpectFitments (const std::vector<std::string>& expected)
+  {
+    std::vector<std::string> actual;
+    auto c = GetTest ();
+    for (const auto& f : c->GetProto ().fitments ())
+      actual.push_back (f);
+
+    ASSERT_EQ (actual, expected);
+  }
+
+  /**
+   * Returns the inventory of the owner of the test character in our
+   * test building.
+   */
+  BuildingInventoriesTable::Handle
+  GetBuildingInv ()
+  {
+    return inv.Get (BUILDING, GetTest ()->GetOwner ());
+  }
+
+};
+
+TEST_F (FitmentMoveTests, InvalidFormat)
+{
+  SetVehicle ("chariot", {"bow"});
+  GetBuildingInv ()->GetInventory ().AddFungibleCount ("sword", 1);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fit": {"bow": 5}}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fit": ["sword", 42]}}}
+    }
+  ])");
+
+  ExpectFitments ({"bow"});
+}
+
+TEST_F (FitmentMoveTests, InvalidItems)
+{
+  SetVehicle ("chariot", {"bow"});
+  GetBuildingInv ()->GetInventory ().AddFungibleCount ("foo", 1);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fit": ["invalid item"]}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fit": ["foo"]}}}
+    }
+  ])");
+
+  ExpectFitments ({"bow"});
+}
+
+TEST_F (FitmentMoveTests, NotInBuilding)
+{
+  SetVehicle ("chariot", {"bow"});
+  GetTest ()->SetPosition (HexCoord (42, 10));
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fit": ["sword"]}}}
+    }
+  ])");
+
+  ExpectFitments ({"bow"});
+}
+
+TEST_F (FitmentMoveTests, NoFullHp)
+{
+  SetVehicle ("chariot", {"bow"});
+  GetBuildingInv ()->GetInventory ().AddFungibleCount ("sword", 1);
+
+  GetTest ()->MutableHP ().set_armour (30);
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fit": ["sword"]}}}
+    }
+  ])");
+
+  GetTest ()->MutableHP ().set_armour (100);
+  GetTest ()->MutableHP ().set_shield (10);
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fit": ["sword"]}}}
+    }
+  ])");
+
+  ExpectFitments ({"bow"});
+}
+
+TEST_F (FitmentMoveTests, ItemsNotAvailable)
+{
+  SetVehicle ("chariot", {"bow"});
+
+  /* Even though the inventory is auto-dropped before changing fitments,
+     the item in the character inventory is not enough (because the check
+     happens before the auto-drop).  */
+
+  GetBuildingInv ()->GetInventory ().AddFungibleCount ("sword", 1);
+  GetTest ()->GetInventory ().AddFungibleCount ("sword", 1);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fit": ["sword", "sword"]}}}
+    }
+  ])");
+
+  ExpectFitments ({"bow"});
+}
+
+TEST_F (FitmentMoveTests, InvalidFitments)
+{
+  SetVehicle ("chariot", {"bow"});
+  GetBuildingInv ()->GetInventory ().AddFungibleCount ("sword", 10);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fit": ["bow", "sword"]}}}
+    }
+  ])");
+
+  ExpectFitments ({"bow"});
+}
+
+TEST_F (FitmentMoveTests, ValidUpdate)
+{
+  SetVehicle ("chariot", {"bow"});
+  GetBuildingInv ()->GetInventory ().AddFungibleCount ("sword", 2);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fit": ["sword"]}}}
+    }
+  ])");
+
+  ExpectFitments ({"sword"});
+  auto inv = GetBuildingInv ();
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow"), 1);
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("sword"), 1);
+}
+
+TEST_F (FitmentMoveTests, ExistingFitmentsReused)
+{
+  SetVehicle ("chariot", {"expander", "expander"});
+  GetBuildingInv ()->GetInventory ().AddFungibleCount ("sword", 1);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fit": ["sword", "expander"]}}}
+    }
+  ])");
+
+  ExpectFitments ({"sword", "expander"});
+  auto inv = GetBuildingInv ();
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("expander"), 1);
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("sword"), 0);
+}
+
+TEST_F (FitmentMoveTests, DropsInventory)
+{
+  SetVehicle ("chariot", {});
+  GetBuildingInv ()->GetInventory ().AddFungibleCount ("sword", 1);
+  GetTest ()->GetInventory ().AddFungibleCount ("foo", 5);
+  GetTest ()->GetInventory ().AddFungibleCount ("bar", 2);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fit": ["sword"]}}}
+    }
+  ])");
+
+  ExpectFitments ({"sword"});
+  auto inv = GetBuildingInv ();
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("sword"), 0);
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("foo"), 5);
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bar"), 2);
+  EXPECT_TRUE (GetTest ()->GetInventory ().IsEmpty ());
+}
+
+TEST_F (FitmentMoveTests, FitmentBeforePickup)
+{
+  SetVehicle ("chariot", {});
+  GetTest ()->MutableProto ().set_cargo_space (100);
+  GetBuildingInv ()->GetInventory ().AddFungibleCount ("sword", 1);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {
+        "pu": {"f": {"sword": 1}},
+        "fit": ["sword"]
+      }}}
+    }
+  ])");
+
+  ExpectFitments ({"sword"});
+  EXPECT_TRUE (GetBuildingInv ()->GetInventory ().IsEmpty ());
+  EXPECT_TRUE (GetTest ()->GetInventory ().IsEmpty ());
+}
+
+/* ************************************************************************** */
+
 class EnterBuildingMoveTests : public CharacterUpdateTests
 {
 

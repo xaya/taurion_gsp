@@ -23,7 +23,6 @@
 #include "database/amount.hpp"
 #include "database/faction.hpp"
 #include "database/inventory.hpp"
-#include "proto/character.pb.h"
 
 #include <xayagame/gamelogic.hpp>
 
@@ -176,13 +175,6 @@ public:
    * Returns the spawn centre and radius for the given faction.
    */
   HexCoord SpawnArea (Faction f, HexCoord::IntT& radius) const;
-
-  /**
-   * Initialises the stats for a newly created character.  This fills in the
-   * combat data and other fields in the protocol buffer as needed.
-   */
-  void InitCharacterStats (Faction f, proto::RegenData& regen,
-                           proto::Character& pb) const;
 
   /**
    * Returns true if god-mode commands are allowed (on regtest).

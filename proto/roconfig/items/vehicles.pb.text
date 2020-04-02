@@ -1,0 +1,93 @@
+################################################################################
+# Starter vehicles.
+
+fungible_items:
+  {
+    key: "rv st"
+    value:
+      {
+        space: 100
+        complexity: 1
+        vehicle:
+          {
+            cargo_space: 20
+            speed: 2100
+            regen_data:
+              {
+                max_hp: { armour: 75 shield: 30 }
+                shield_regeneration_mhp: 500
+              }
+            combat_data:
+              {
+                attacks:
+                  {
+                    range: 7
+                    area: true
+                    min_damage: 1
+                    max_damage: 20
+                  }
+              }
+            mining_rate: { min: 0 max: 5 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "gv st"
+    value:
+      {
+        space: 100
+        complexity: 1
+        vehicle:
+          {
+            cargo_space: 30
+            speed: 2000
+            regen_data:
+              {
+                max_hp: { armour: 150 shield: 30 }
+                shield_regeneration_mhp: 200
+              }
+            combat_data:
+              {
+                attacks:
+                  {
+                    range: 10
+                    min_damage: 1
+                    max_damage: 20
+                  }
+              }
+            mining_rate: { min: 0 max: 5 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "bv st"
+    value:
+      {
+        space: 100
+        complexity: 1
+        vehicle:
+          {
+            cargo_space: 20
+            speed: 2200
+            regen_data:
+              {
+                max_hp: { armour: 50 shield: 30 }
+                shield_regeneration_mhp: 1000
+              }
+            combat_data:
+              {
+                attacks:
+                  {
+                    range: 10
+                    min_damage: 1
+                    max_damage: 12
+                  }
+              }
+            mining_rate: { min: 0 max: 5 }
+          }
+      }
+  }
