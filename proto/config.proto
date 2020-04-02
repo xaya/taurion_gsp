@@ -180,32 +180,37 @@ message ItemData
   /** For items that have one, the complexity level.  */
   optional uint32 complexity = 2;
 
-  /** If this type of item can be refined, then the stats for doing so.  */
-  optional RefiningData refines = 3;
-
   /** Whether or not this item has an associated blueprint.  */
-  optional bool with_blueprint = 4;
-
-  /** If this is a blueprint, the associated data.  */
-  optional BlueprintData is_blueprint = 5;
-
-  /**
-   * If this can be reverse engineered (i.e. is an artefact), the configuration
-   * data specifying the corresponding stats.
-   */
-  optional RevEngData reveng = 6;
+  optional bool with_blueprint = 3;
 
   /**
    * The resources required to construct one of this item type, assuming
    * there exists a blueprint for it.
    */
-  map<string, uint32> construction_resources = 7;
+  map<string, uint32> construction_resources = 4;
 
-  /** If this is a vehicle item, the specific stats for that.  */
-  optional VehicleData vehicle = 8;
+  oneof type
+  {
 
-  /** If this is a fitment, the specific stats for that.  */
-  optional FitmentData fitment = 9;
+    /** If this type of item can be refined, then the stats for doing so.  */
+    RefiningData refines = 101;
+
+    /** If this is a blueprint, the associated data.  */
+    BlueprintData is_blueprint = 102;
+
+    /**
+     * If this can be reverse engineered (i.e. is an artefact), the
+     * configuration data specifying the corresponding stats.
+     */
+    RevEngData reveng = 103;
+
+    /** If this is a vehicle item, the specific stats for that.  */
+    VehicleData vehicle = 104;
+
+    /** If this is a fitment, the specific stats for that.  */
+    FitmentData fitment = 105;
+
+  }
 
 }
 
