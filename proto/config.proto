@@ -153,6 +153,14 @@ message ItemData
     /** Base mining speed for the vehicle.  */
     optional MiningData.Speed mining_rate = 5;
 
+    /**
+     * Number of equipment slots of each type.  The slot types are just strings
+     * which have to be matched between here and the fitment configs.  The valid
+     * values are "high", "mid" and "low".  Unfortunately we cannot use enum
+     * values as they can't be keys in protocol buffer maps.
+     */
+    map<string, uint32> equipment_slots = 6;
+
   }
 
   /** If this is a vehicle item, the specific stats for that.  */
@@ -164,29 +172,35 @@ message ItemData
   message FitmentData
   {
 
+    /** The type of slot this requires.  */
+    optional string slot = 1;
+
     /** An attack this does.  */
-    optional Attack attack = 1;
+    optional Attack attack = 2;
 
     /** Modification to the cargo space.  */
-    optional StatModifier cargo_space = 2;
+    optional StatModifier cargo_space = 3;
 
     /** Modification to the movement speed.  */
-    optional StatModifier speed = 3;
+    optional StatModifier speed = 4;
 
     /** Modification to max armour HP.  */
-    optional StatModifier max_armour = 4;
+    optional StatModifier max_armour = 5;
 
     /** Modification to max shield HP.  */
-    optional StatModifier max_shield = 5;
+    optional StatModifier max_shield = 6;
 
     /** Modification to shield regeneration rate.  */
-    optional StatModifier shield_regen = 6;
+    optional StatModifier shield_regen = 7;
 
     /** Modification of all attack ranges.  */
-    optional StatModifier range = 7;
+    optional StatModifier range = 8;
 
     /** Modification of all attack damages (min and max).  */
-    optional StatModifier damage = 8;
+    optional StatModifier damage = 9;
+
+    /** Modification to the vehicle's allowed fitment complexity.  */
+    optional StatModifier complexity = 10;
 
   }
 

@@ -42,6 +42,7 @@ fungible_items:
         with_blueprint: true
         construction_resources: { key: "foo" value: 2 }
         construction_resources: { key: "bar" value: 1 }
+        fitment: { slot: "high" }
       }
   }
 fungible_items:
@@ -53,6 +54,7 @@ fungible_items:
         complexity: 1,
         with_blueprint: true
         construction_resources: { key: "zerospace" value: 10 }
+        fitment: { slot: "high" }
       }
   }
 
@@ -107,6 +109,9 @@ fungible_items:
                   }
               }
             mining_rate: { min: 10 max: 100 }
+            equipment_slots: { key: "high" value: 3 }
+            equipment_slots: { key: "mid" value: 2 }
+            equipment_slots: { key: "low" value: 1 }
           }
       }
   }

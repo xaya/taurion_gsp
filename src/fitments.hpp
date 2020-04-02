@@ -23,6 +23,9 @@
 
 #include "proto/config.pb.h"
 
+#include <string>
+#include <vector>
+
 namespace pxd
 {
 
@@ -71,6 +74,12 @@ public:
   }
 
 };
+
+/**
+ * Checks if the given list of fitments can be put onto a given vehicle.
+ */
+bool CheckVehicleFitments (const std::string& vehicle,
+                           const std::vector<std::string>& fitments);
 
 /**
  * Updates the "derived" stats of the character based on the vehicle and

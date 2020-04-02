@@ -20,8 +20,73 @@
 
 #include "proto/roitems.hpp"
 
+#include <map>
+
 namespace pxd
 {
+
+bool
+CheckVehicleFitments (const std::string& vehicle,
+                      const std::vector<std::string>& fitments)
+{
+  /* We first go through all fitments, and sum up what slots we need and
+     what complexity is required.  We also keep track of any potential
+     modification to the supported complexity.  */
+  StatModifier vehicleComplexity;
+  unsigned complexityRequired = 0;
+  std::map<std::string, unsigned> slotsRequired;
+  for (const auto& f : fitments)
+    {
+      const auto& fitmentData = RoItemData (f);
+      CHECK (fitmentData.has_fitment ())
+          << "Item type " << f << " is not a fitment";
+
+      complexityRequired += fitmentData.complexity ();
+      ++slotsRequired[fitmentData.fitment ().slot ()];
+
+      vehicleComplexity += fitmentData.fitment ().complexity ();
+    }
+
+  /* Now check up the required stats against the vehicle.  */
+  const auto& vehicleData = RoItemData (vehicle);
+  CHECK (vehicleData.has_vehicle ())
+      << "Item type " << vehicle << " is not a vehicle";
+
+  const unsigned complexityAvailable
+      = vehicleComplexity (vehicleData.complexity ());
+  if (complexityRequired > complexityAvailable)
+    {
+      VLOG (1)
+          << "Fitments to vehicle " << vehicle
+          << " would require complexity " << complexityRequired
+          << ", but only " << complexityAvailable << " is available";
+      return false;
+    }
+
+  const auto& slotsAvailable = vehicleData.vehicle ().equipment_slots ();
+  for (const auto& entry : slotsRequired)
+    {
+      const auto mit = slotsAvailable.find (entry.first);
+      if (mit == slotsAvailable.end ())
+        {
+          VLOG (1)
+              << "Vehicle " << vehicle
+              << " does not have any slots of type " << entry.first;
+          return false;
+        }
+      if (entry.second > mit->second)
+        {
+          VLOG (1)
+              << "Fitments to vehicle " << vehicle
+              << " would require " << entry.second
+              << " slots of type " << entry.first
+              << ", but only " << mit->second << " are available";
+          return false;
+        }
+    }
+
+  return true;
+}
 
 namespace
 {

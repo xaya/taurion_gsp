@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -87,6 +87,35 @@ TEST_F (StatModifierTests, Stacking)
   m += Modifier ("percent: 100");
 
   EXPECT_EQ (m (100), 300);
+}
+
+/* ************************************************************************** */
+
+using CheckVehicleFitmentsTests = testing::Test;
+
+TEST_F (CheckVehicleFitmentsTests, ComplexityLimit)
+{
+  EXPECT_FALSE (CheckVehicleFitments ("chariot", {"bow", "bow"}));
+  EXPECT_TRUE (CheckVehicleFitments ("chariot", {"sword", "sword"}));
+}
+
+TEST_F (CheckVehicleFitmentsTests, Slots)
+{
+  EXPECT_FALSE (CheckVehicleFitments ("rv st", {"sword"}));
+  EXPECT_FALSE (CheckVehicleFitments ("chariot",
+                                      {"bomb", "bomb", "bomb", "bomb"}));
+  EXPECT_TRUE (CheckVehicleFitments ("chariot", {
+      "bomb", "bomb", "bomb",
+      "turbo", "turbo",
+      "expander",
+  }));
+}
+
+TEST_F (CheckVehicleFitmentsTests, ComplexityMultiplier)
+{
+  EXPECT_FALSE (CheckVehicleFitments ("chariot", {"bow", "turbo"}));
+  EXPECT_TRUE (CheckVehicleFitments ("chariot",
+                                     {"bow", "turbo", "multiplier"}));
 }
 
 /* ************************************************************************** */

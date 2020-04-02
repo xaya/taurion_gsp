@@ -8,6 +8,7 @@ fungible_items:
         with_blueprint: true
         fitment:
           {
+            slot: "high"
             attack:
               {
                 range: 2
@@ -27,7 +28,11 @@ fungible_items:
         space: 1
         complexity: 4
         with_blueprint: true
-        fitment: { cargo_space: { percent: 10 } }
+        fitment:
+          {
+            slot: "low"
+            cargo_space: { percent: 10 }
+          }
       }
   }
 
@@ -39,7 +44,11 @@ fungible_items:
         space: 1
         complexity: 4
         with_blueprint: true
-        fitment: { speed: { percent: 10 } }
+        fitment:
+          {
+            slot: "mid"
+            speed: { percent: 10 }
+          }
       }
   }
 
@@ -51,7 +60,11 @@ fungible_items:
         space: 1
         complexity: 4
         with_blueprint: true
-        fitment: { max_armour: { percent: 10 } }
+        fitment:
+          {
+            slot: "low"
+            max_armour: { percent: 10 }
+          }
       }
   }
 
@@ -63,7 +76,11 @@ fungible_items:
         space: 1
         complexity: 4
         with_blueprint: true
-        fitment: { max_shield: { percent: 10 } }
+        fitment:
+          {
+            slot: "mid"
+            max_shield: { percent: 10 }
+          }
       }
   }
 
@@ -75,7 +92,11 @@ fungible_items:
         space: 1
         complexity: 4
         with_blueprint: true
-        fitment: { shield_regen: { percent: 10 } }
+        fitment:
+          {
+            slot: "mid"
+            shield_regen: { percent: 10 }
+          }
       }
   }
 
@@ -87,7 +108,11 @@ fungible_items:
         space: 1
         complexity: 4
         with_blueprint: true
-        fitment: { range: { percent: 10 } }
+        fitment:
+          {
+            slot: "mid"
+            range: { percent: 10 }
+          }
       }
   }
 
@@ -99,6 +124,26 @@ fungible_items:
         space: 1
         complexity: 4
         with_blueprint: true
-        fitment: { damage: { percent: 10 } }
+        fitment:
+          {
+            slot: "low"
+            damage: { percent: 10 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "multiplier"
+    value:
+      {
+        space: 1
+        complexity: 1
+        with_blueprint: true
+        fitment:
+          {
+            slot: "low"
+            complexity: { percent: 10 }
+          }
       }
   }
