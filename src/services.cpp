@@ -109,7 +109,7 @@ private:
    * The refining data for the resource type.  May be null if the item
    * type is invalid or it can't be refined.
    */
-  const proto::ItemData::RefiningData* refData;
+  const proto::RefiningData* refData;
 
   /**
    * Returns the number of refining steps this operation represents.  Assumes
@@ -431,7 +431,7 @@ private:
    * The reveng data for the artefact type.  May be null if the item
    * type is invalid or it can't be refined.
    */
-  const proto::ItemData::RevEngData* revEngData;
+  const proto::RevEngData* revEngData;
 
 protected:
 

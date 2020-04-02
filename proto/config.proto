@@ -42,6 +42,133 @@ message StatModifier
 /* ************************************************************************** */
 
 /**
+ * Data about the ability to refine items of this type to other item types
+ * (i.e. raw materials into refined resources).
+ */
+message RefiningData
+{
+
+  /** Number of instances going into one "refining unit".  */
+  optional uint32 input_units = 1;
+
+  /** Base cost (burnt) in vCHI for one refinement step.  */
+  optional uint32 cost = 2;
+
+  /**
+   * The outputs (as item type, amount) for one refining step (i.e.
+   * "input_units" input units).
+   */
+  map<string, uint32> outputs = 3;
+
+}
+
+/**
+ * Specific data for blueprint items defining the modalities for
+ * constructing stuff from it.
+ */
+message BlueprintData
+{
+
+  /** The item type constructed from the blueprint.  */
+  optional string for_item = 1;
+
+  /**
+   * Whether or not this is an original.  Originals can be copied and
+   * can be used an unlimited amount of time, whereas copies (if not
+   * originals) cannot be copied themselves and can only be used once
+   * to build an item.
+   */
+  optional bool original = 2;
+
+}
+
+/**
+ * Data about the ability to reverse-engineer an item to obtain blueprints.
+ */
+message RevEngData
+{
+
+  /** Cost (in vCHI) for a reveng attempt.  */
+  optional uint32 cost = 1;
+
+  /**
+   * Types of items (most likely blueprint originals) that can be obtained
+   * from this through reverse engineering.
+   */
+  repeated string possible_outputs = 2;
+
+}
+
+/**
+ * Data specific about items that are vehicles.
+ */
+message VehicleData
+{
+
+  /** Base cargo space of this vehicle.  */
+  optional uint32 cargo_space = 1;
+
+  /** Base movement speed (in milli-tiles per block).  */
+  optional uint32 speed = 2;
+
+  /** Basic regeneration data and max HP.  */
+  optional RegenData regen_data = 3;
+
+  /** Basic combat data (including attacks mostly).  */
+  optional CombatData combat_data = 4;
+
+  /** Base mining speed for the vehicle.  */
+  optional MiningData.Speed mining_rate = 5;
+
+  /**
+   * Number of equipment slots of each type.  The slot types are just strings
+   * which have to be matched between here and the fitment configs.  The valid
+   * values are "high", "mid" and "low".  Unfortunately we cannot use enum
+   * values as they can't be keys in protocol buffer maps.
+   */
+  map<string, uint32> equipment_slots = 6;
+
+}
+
+/**
+ * Data specific about items that are fitments.
+ */
+message FitmentData
+{
+
+  /** The type of slot this requires.  */
+  optional string slot = 1;
+
+  /** An attack this does.  */
+  optional Attack attack = 2;
+
+  /** Modification to the cargo space.  */
+  optional StatModifier cargo_space = 3;
+
+  /** Modification to the movement speed.  */
+  optional StatModifier speed = 4;
+
+  /** Modification to max armour HP.  */
+  optional StatModifier max_armour = 5;
+
+  /** Modification to max shield HP.  */
+  optional StatModifier max_shield = 6;
+
+  /** Modification to shield regeneration rate.  */
+  optional StatModifier shield_regen = 7;
+
+  /** Modification of all attack ranges.  */
+  optional StatModifier range = 8;
+
+  /** Modification of all attack damages (min and max).  */
+  optional StatModifier damage = 9;
+
+  /** Modification to the vehicle's allowed fitment complexity.  */
+  optional StatModifier complexity = 10;
+
+}
+
+/**
  * Hardcoded data defining a type of fungible item.
  */
 message ItemData
@@ -53,72 +180,14 @@ message ItemData
   /** For items that have one, the complexity level.  */
   optional uint32 complexity = 2;
 
-  /**
-   * Data about the ability to refine items of this type to other item types
-   * (i.e. raw materials into refined resources).
-   */
-  message RefiningData
-  {
-
-    /** Number of instances going into one "refining unit".  */
-    optional uint32 input_units = 1;
-
-    /** Base cost (burnt) in vCHI for one refinement step.  */
-    optional uint32 cost = 2;
-
-    /**
-     * The outputs (as item type, amount) for one refining step (i.e.
-     * "input_units" input units).
-     */
-    map<string, uint32> outputs = 3;
-
-  }
-
   /** If this type of item can be refined, then the stats for doing so.  */
   optional RefiningData refines = 3;
 
   /** Whether or not this item has an associated blueprint.  */
   optional bool with_blueprint = 4;
 
-  /**
-   * Specific data for blueprint items defining the modalities for
-   * constructing stuff from it.
-   */
-  message BlueprintData
-  {
-
-    /** The item type constructed from the blueprint.  */
-    optional string for_item = 1;
-
-    /**
-     * Whether or not this is an original.  Originals can be copied and
-     * can be used an unlimited amount of time, whereas copies (if not
-     * originals) cannot be copied themselves and can only be used once
-     * to build an item.
-     */
-    optional bool original = 2;
-
-  }
-
   /** If this is a blueprint, the associated data.  */
   optional BlueprintData is_blueprint = 5;
-
-  /**
-   * Data about the ability to reverse-engineer an item to obtain blueprints.
-   */
-  message RevEngData
-  {
-
-    /** Cost (in vCHI) for a reveng attempt.  */
-    optional uint32 cost = 1;
-
-    /**
-     * Types of items (most likely blueprint originals) that can be obtained
-     * from this through reverse engineering.
-     */
-    repeated string possible_outputs = 2;
-
-  }
 
   /**
    * If this can be reverse engineered (i.e. is an artefact), the configuration
@@ -132,77 +201,8 @@ message ItemData
    */
   map<string, uint32> construction_resources = 7;
 
-  /**
-   * Data specific about items that are vehicles.
-   */
-  message VehicleData
-  {
-
-    /** Base cargo space of this vehicle.  */
-    optional uint32 cargo_space = 1;
-
-    /** Base movement speed (in milli-tiles per block).  */
-    optional uint32 speed = 2;
-
-    /** Basic regeneration data and max HP.  */
-    optional RegenData regen_data = 3;
-
-    /** Basic combat data (including attacks mostly).  */
-    optional CombatData combat_data = 4;
-
-    /** Base mining speed for the vehicle.  */
-    optional MiningData.Speed mining_rate = 5;
-
-    /**
-     * Number of equipment slots of each type.  The slot types are just strings
-     * which have to be matched between here and the fitment configs.  The valid
-     * values are "high", "mid" and "low".  Unfortunately we cannot use enum
-     * values as they can't be keys in protocol buffer maps.
-     */
-    map<string, uint32> equipment_slots = 6;
-
-  }
-
   /** If this is a vehicle item, the specific stats for that.  */
   optional VehicleData vehicle = 8;
-
-  /**
-   * Data specific about items that are fitments.
-   */
-  message FitmentData
-  {
-
-    /** The type of slot this requires.  */
-    optional string slot = 1;
-
-    /** An attack this does.  */
-    optional Attack attack = 2;
-
-    /** Modification to the cargo space.  */
-    optional StatModifier cargo_space = 3;
-
-    /** Modification to the movement speed.  */
-    optional StatModifier speed = 4;
-
-    /** Modification to max armour HP.  */
-    optional StatModifier max_armour = 5;
-
-    /** Modification to max shield HP.  */
-    optional StatModifier max_shield = 6;
-
-    /** Modification to shield regeneration rate.  */
-    optional StatModifier shield_regen = 7;
-
-    /** Modification of all attack ranges.  */
-    optional StatModifier range = 8;
-
-    /** Modification of all attack damages (min and max).  */
-    optional StatModifier damage = 9;
-
-    /** Modification to the vehicle's allowed fitment complexity.  */
-    optional StatModifier complexity = 10;
-
-  }
 
   /** If this is a fitment, the specific stats for that.  */
   optional FitmentData fitment = 9;

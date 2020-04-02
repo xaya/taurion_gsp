@@ -96,7 +96,7 @@ namespace
  * given vehicle.
  */
 void
-InitCharacterStats (Character& c, const proto::ItemData::VehicleData& data)
+InitCharacterStats (Character& c, const proto::VehicleData& data)
 {
   auto& pb = c.MutableProto ();
   pb.set_cargo_space (data.cargo_space ());
