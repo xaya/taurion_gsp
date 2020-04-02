@@ -97,6 +97,12 @@ private:
     Database::IdT miningRegionId = RegionMap::OUT_OF_MAP;
 
     /**
+     * Placed fitments on the character, if any.  This is already in JSON
+     * format for simplicity, and None if there are no fitment moves.
+     */
+    Json::Value fitments;
+
+    /**
      * Returns the JSON representation of the pending state.
      */
     Json::Value ToJson () const;
@@ -223,6 +229,13 @@ public:
    * is ignored.
    */
   void AddCharacterMining (const Character& ch, Database::IdT regionId);
+
+  /**
+   * Updates the state to add a move that sets fitments to the
+   * given list of items.
+   */
+  void AddCharacterFitments (const Character& ch,
+                             const std::vector<std::string>& fitments);
 
   /**
    * Updates the state for a new pending character creation.

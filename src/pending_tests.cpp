@@ -428,6 +428,37 @@ TEST_F (PendingStateTests, MiningCancelledByWaypoints)
   )");
 }
 
+TEST_F (PendingStateTests, Fitments)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  state.AddCharacterDrop (*c);
+
+  c = characters.CreateNew ("domob", Faction::RED);
+  state.AddCharacterFitments (*c, {});
+
+  c = characters.CreateNew ("domob", Faction::RED);
+  state.AddCharacterFitments (*c, {"sword"});
+  state.AddCharacterFitments (*c, {"bow", "expander"});
+
+  c.reset ();
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {
+            "fitments": null
+          },
+          {
+            "fitments": []
+          },
+          {
+            "fitments": ["bow", "expander"]
+          }
+        ]
+    }
+  )");
+}
+
 TEST_F (PendingStateTests, CharacterCreation)
 {
   state.AddCharacterCreation ("foo", Faction::RED);
@@ -957,6 +988,74 @@ TEST_F (PendingStateUpdaterTests, Mining)
       "characters":
         [
           {"id": 1, "mining": 345820}
+        ]
+    }
+  )");
+}
+
+TEST_F (PendingStateUpdaterTests, Fitments)
+{
+  accounts.CreateNew ("domob", Faction::RED);
+
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  ASSERT_EQ (c->GetId (), 1);
+  c->MutableProto ().set_vehicle ("chariot");
+
+  auto b = buildings.CreateNew ("ancient1", "", Faction::RED);
+  const auto bId = b->GetId ();
+  c->SetBuildingId (bId);
+
+  c.reset ();
+  b.reset ();
+
+  auto inv = buildingInv.Get (bId, "domob");
+  inv->GetInventory ().AddFungibleCount ("bow", 2);
+  inv->GetInventory ().AddFungibleCount ("sword", 1);
+  inv->GetInventory ().AddFungibleCount ("expander", 1);
+  inv.reset ();
+
+  /* Invalid move format, no fitments will be pending.  */
+  Process ("domob", R"({
+    "c":
+      {
+        "1": {"fit": [42]}
+      }
+  })");
+  ExpectStateJson (R"(
+    {
+      "characters": []
+    }
+  )");
+
+  /* This one is valid and sets pending fitments.  */
+  Process ("domob", R"({
+    "c":
+      {
+        "1": {"fit": ["sword", "expander"]}
+      }
+  })");
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {"fitments": ["sword", "expander"]}
+        ]
+    }
+  )");
+
+  /* This one is invalid (exceeding the complexity limit) and thus
+     the previous one will remain.  */
+  Process ("domob", R"({
+    "c":
+      {
+        "1": {"fit": ["sword", "bow"]}
+      }
+  })");
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {"fitments": ["sword", "expander"]}
         ]
     }
   )");
