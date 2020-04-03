@@ -1090,6 +1090,7 @@ TEST_F (FitmentMoveTests, InvalidItems)
 TEST_F (FitmentMoveTests, NotInBuilding)
 {
   SetVehicle ("chariot", {"bow"});
+  GetBuildingInv ()->GetInventory ().AddFungibleCount ("sword", 1);
   GetTest ()->SetPosition (HexCoord (42, 10));
 
   Process (R"([
@@ -1245,6 +1246,220 @@ TEST_F (FitmentMoveTests, FitmentBeforePickup)
   ExpectFitments ({"sword"});
   EXPECT_TRUE (GetBuildingInv ()->GetInventory ().IsEmpty ());
   EXPECT_TRUE (GetTest ()->GetInventory ().IsEmpty ());
+}
+
+using ChangeVehicleMoveTests = FitmentMoveTests;
+
+TEST_F (ChangeVehicleMoveTests, InvalidFormat)
+{
+  SetVehicle ("rv st", {});
+  GetBuildingInv ()->GetInventory ().AddFungibleCount ("chariot", 1);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"v": 42}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"v": {"chariot": 1}}}}
+    }
+  ])");
+
+  EXPECT_EQ (GetTest ()->GetProto ().vehicle (), "rv st");
+}
+
+TEST_F (ChangeVehicleMoveTests, InvalidVehicle)
+{
+  SetVehicle ("rv st", {});
+  GetBuildingInv ()->GetInventory ().AddFungibleCount ("foo", 1);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"v": "foo"}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"v": "invalid item"}}}
+    }
+  ])");
+
+  EXPECT_EQ (GetTest ()->GetProto ().vehicle (), "rv st");
+}
+
+TEST_F (ChangeVehicleMoveTests, NotInBuilding)
+{
+  SetVehicle ("rv st", {});
+  GetBuildingInv ()->GetInventory ().AddFungibleCount ("chariot", 1);
+  GetTest ()->SetPosition (HexCoord (42, 10));
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"v": "chariot"}}}
+    }
+  ])");
+
+  EXPECT_EQ (GetTest ()->GetProto ().vehicle (), "rv st");
+}
+
+TEST_F (ChangeVehicleMoveTests, NoFullHp)
+{
+  SetVehicle ("rv st", {});
+  GetBuildingInv ()->GetInventory ().AddFungibleCount ("chariot", 1);
+
+  GetTest ()->MutableHP ().set_armour (30);
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"v": "chariot"}}}
+    }
+  ])");
+
+  GetTest ()->MutableHP ().set_armour (100);
+  GetTest ()->MutableHP ().set_shield (10);
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"v": "chariot"}}}
+    }
+  ])");
+
+  EXPECT_EQ (GetTest ()->GetProto ().vehicle (), "rv st");
+}
+
+TEST_F (ChangeVehicleMoveTests, MissingItem)
+{
+  SetVehicle ("rv st", {});
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"v": "chariot"}}}
+    }
+  ])");
+
+  EXPECT_EQ (GetTest ()->GetProto ().vehicle (), "rv st");
+}
+
+TEST_F (ChangeVehicleMoveTests, BasicUpdate)
+{
+  SetVehicle ("rv st", {});
+  GetBuildingInv ()->GetInventory ().AddFungibleCount ("chariot", 1);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"v": "chariot"}}}
+    }
+  ])");
+
+  EXPECT_EQ (GetTest ()->GetProto ().vehicle (), "chariot");
+  auto inv = GetBuildingInv ();
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("chariot"), 0);
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("rv st"), 1);
+  auto c = GetTest ();
+  EXPECT_EQ (c->GetRegenData ().max_hp ().armour (), 1'000);
+  EXPECT_EQ (c->GetRegenData ().max_hp ().shield (), 100);
+  EXPECT_EQ (c->GetHP ().armour (), 1'000);
+  EXPECT_EQ (c->GetHP ().shield (), 100);
+}
+
+TEST_F (ChangeVehicleMoveTests, InventoryDropped)
+{
+  SetVehicle ("rv st", {});
+  GetBuildingInv ()->GetInventory ().AddFungibleCount ("chariot", 1);
+  GetTest ()->GetInventory ().AddFungibleCount ("foo", 5);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"v": "chariot"}}}
+    }
+  ])");
+
+  EXPECT_EQ (GetTest ()->GetProto ().vehicle (), "chariot");
+  EXPECT_EQ (GetBuildingInv ()->GetInventory ().GetFungibleCount ("foo"), 5);
+  EXPECT_TRUE (GetTest ()->GetInventory ().IsEmpty ());
+}
+
+TEST_F (ChangeVehicleMoveTests, RemovesFitments)
+{
+  SetVehicle ("rv st", {"bow"});
+  GetBuildingInv ()->GetInventory ().AddFungibleCount ("chariot", 1);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"v": "chariot"}}}
+    }
+  ])");
+
+  ExpectFitments ({});
+  EXPECT_EQ (GetTest ()->GetProto ().vehicle (), "chariot");
+  EXPECT_EQ (GetBuildingInv ()->GetInventory ().GetFungibleCount ("bow"), 1);
+}
+
+TEST_F (ChangeVehicleMoveTests, ChangeToSameType)
+{
+  /* If we try to change to the same type of vehicle, it only works if we
+     have another of that type in the building inventory.  In other words,
+     the vehicle we are in itself does not count.  So trying to change
+     to that one again will not work, and thus not have the other effects
+     (or dropping inventory or fitments).  */
+
+  SetVehicle ("chariot", {"bow"});
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"v": "chariot"}}}
+    }
+  ])");
+  ExpectFitments ({"bow"});
+
+  GetBuildingInv ()->GetInventory ().AddFungibleCount ("chariot", 1);
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"v": "chariot"}}}
+    }
+  ])");
+  ExpectFitments ({});
+}
+
+TEST_F (ChangeVehicleMoveTests, ChangeVehicleBeforeFitmentsAndPickup)
+{
+  SetVehicle ("rv st", {"bow"});
+  GetBuildingInv ()->GetInventory ().AddFungibleCount ("chariot", 1);
+  GetBuildingInv ()->GetInventory ().AddFungibleCount ("sword", 1);
+  GetTest ()->GetInventory ().AddFungibleCount ("foo", 1);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {
+        "fit": ["sword"],
+        "pu": {"f": {"foo": 1}},
+        "v": "chariot"
+      }}}
+    }
+  ])");
+
+  ExpectFitments ({"sword"});
+  EXPECT_EQ (GetTest ()->GetProto ().vehicle (), "chariot");
+  auto inv = GetBuildingInv ();
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("chariot"), 0);
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("rv st"), 1);
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow"), 1);
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("sword"), 0);
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("foo"), 0);
+  EXPECT_EQ (GetTest ()->GetInventory ().GetFungibleCount ("foo"), 1);
 }
 
 /* ************************************************************************** */
