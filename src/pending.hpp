@@ -96,6 +96,9 @@ private:
      */
     Database::IdT miningRegionId = RegionMap::OUT_OF_MAP;
 
+    /** The vehicle the character is changing to (if non-empty).  */
+    Json::Value changeVehicle;
+
     /**
      * Placed fitments on the character, if any.  This is already in JSON
      * format for simplicity, and None if there are no fitment moves.
@@ -229,6 +232,11 @@ public:
    * is ignored.
    */
   void AddCharacterMining (const Character& ch, Database::IdT regionId);
+
+  /**
+   * Updates the state to add a "change vehicle" move.
+   */
+  void AddCharacterVehicle (const Character& ch, const std::string& vehicle);
 
   /**
    * Updates the state to add a move that sets fitments to the

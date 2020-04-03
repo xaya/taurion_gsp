@@ -203,6 +203,14 @@ PendingState::AddCharacterMining (const Character& ch,
 }
 
 void
+PendingState::AddCharacterVehicle (const Character& ch,
+                                   const std::string& vehicle)
+{
+  VLOG (1) << "Character " << ch.GetId () << " changes to vehicle " << vehicle;
+  GetCharacterState (ch).changeVehicle = vehicle;
+}
+
+void
 PendingState::AddCharacterFitments (const Character& ch,
                                     const std::vector<std::string>& fitments)
 {
@@ -299,6 +307,8 @@ PendingState::CharacterState::ToJson () const
   if (miningRegionId != RegionMap::OUT_OF_MAP)
     res["mining"] = IntToJson (miningRegionId);
 
+  if (!changeVehicle.empty ())
+    res["changevehicle"] = changeVehicle;
   if (!fitments.isNull ())
     res["fitments"] = fitments;
 
@@ -427,6 +437,9 @@ PendingStateUpdater::PerformCharacterUpdate (Character& c,
   if (ParseExitBuilding (c, upd))
     state.AddExitBuilding (c);
 
+  std::string vehicle;
+  if (ParseChangeVehicle (c, upd, vehicle))
+    state.AddCharacterVehicle (c, vehicle);
   std::vector<std::string> fitments;
   if (ParseSetFitments (c, upd, fitments))
     state.AddCharacterFitments (c, fitments);

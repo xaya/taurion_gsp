@@ -428,6 +428,31 @@ TEST_F (PendingStateTests, MiningCancelledByWaypoints)
   )");
 }
 
+TEST_F (PendingStateTests, ChangeVehicle)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  state.AddCharacterDrop (*c);
+
+  c = characters.CreateNew ("domob", Faction::RED);
+  state.AddCharacterVehicle (*c, "chariot");
+  state.AddCharacterVehicle (*c, "rv st");
+
+  c.reset ();
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {
+            "changevehicle": null
+          },
+          {
+            "changevehicle": "rv st"
+          }
+        ]
+    }
+  )");
+}
+
 TEST_F (PendingStateTests, Fitments)
 {
   auto c = characters.CreateNew ("domob", Faction::RED);
@@ -988,6 +1013,72 @@ TEST_F (PendingStateUpdaterTests, Mining)
       "characters":
         [
           {"id": 1, "mining": 345820}
+        ]
+    }
+  )");
+}
+
+TEST_F (PendingStateUpdaterTests, ChangeVehicle)
+{
+  accounts.CreateNew ("domob", Faction::RED);
+
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  ASSERT_EQ (c->GetId (), 1);
+  c->MutableProto ().set_vehicle ("rv st");
+
+  auto b = buildings.CreateNew ("ancient1", "", Faction::RED);
+  const auto bId = b->GetId ();
+  c->SetBuildingId (bId);
+
+  c.reset ();
+  b.reset ();
+
+  auto inv = buildingInv.Get (bId, "domob");
+  inv->GetInventory ().AddFungibleCount ("chariot", 1);
+  inv.reset ();
+
+  /* Invalid move format.  */
+  Process ("domob", R"({
+    "c":
+      {
+        "1": {"v": ["chariot"]}
+      }
+  })");
+  ExpectStateJson (R"(
+    {
+      "characters": []
+    }
+  )");
+
+  /* This one is valid.  */
+  Process ("domob", R"({
+    "c":
+      {
+        "1": {"v": "chariot"}
+      }
+  })");
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {"changevehicle": "chariot"}
+        ]
+    }
+  )");
+
+  /* This one is invalid (item not owned) and thus does not change
+     the pending state.  */
+  Process ("domob", R"({
+    "c":
+      {
+        "1": {"v": "rv st"}
+      }
+  })");
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {"changevehicle": "chariot"}
         ]
     }
   )");
