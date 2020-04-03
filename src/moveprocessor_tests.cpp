@@ -1166,19 +1166,24 @@ TEST_F (FitmentMoveTests, InvalidFitments)
 TEST_F (FitmentMoveTests, ValidUpdate)
 {
   SetVehicle ("chariot", {"bow"});
-  GetBuildingInv ()->GetInventory ().AddFungibleCount ("sword", 2);
+  GetBuildingInv ()->GetInventory ().AddFungibleCount ("plating", 2);
 
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"fit": ["sword"]}}}
+      "move": {"c": {"1": {"fit": ["plating"]}}}
     }
   ])");
 
-  ExpectFitments ({"sword"});
+  ExpectFitments ({"plating"});
   auto inv = GetBuildingInv ();
   EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow"), 1);
-  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("sword"), 1);
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("plating"), 1);
+  auto c = GetTest ();
+  EXPECT_EQ (c->GetRegenData ().max_hp ().armour (), 1'100);
+  EXPECT_EQ (c->GetRegenData ().max_hp ().shield (), 100);
+  EXPECT_EQ (c->GetHP ().armour (), 1'100);
+  EXPECT_EQ (c->GetHP ().shield (), 100);
 }
 
 TEST_F (FitmentMoveTests, ExistingFitmentsReused)
