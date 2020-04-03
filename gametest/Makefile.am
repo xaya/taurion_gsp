@@ -34,7 +34,8 @@ REGTESTS = \
   services_refining.py \
   services_repair.py \
   services_reveng.py \
-  splitstaterpcs.py
+  splitstaterpcs.py \
+  vehiclefitments.py
 
 EXTRA_DIST = $(REGTESTS) $(TEST_LIBRARY)
 TESTS = $(REGTESTS)
