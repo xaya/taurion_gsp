@@ -762,6 +762,53 @@ HasFullHp (const Character& c)
 } // anonymous namespace
 
 bool
+BaseMoveProcessor::ParseChangeVehicle (const Character& c,
+                                       const Json::Value& upd,
+                                       std::string& vehicle)
+{
+  CHECK (upd.isObject ());
+  const auto& cmd = upd["v"];
+  if (!cmd.isString ())
+    return false;
+  vehicle = cmd.asString ();
+
+  if (!HasFullHp (c))
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId ()
+          << " can't change vehicles without full HP";
+      return false;
+    }
+
+  if (!c.IsInBuilding ())
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId ()
+          << " is not in building and can't change vehicles";
+      return false;
+    }
+  const auto buildingId = c.GetBuildingId ();
+
+  const auto* data = RoItemDataOrNull (vehicle);
+  if (data == nullptr || !data->has_vehicle ())
+    {
+      LOG (WARNING) << "Invalid vehicle: " << vehicle;
+      return false;
+    }
+
+  auto inv = buildingInv.Get (buildingId, c.GetOwner ());
+  if (inv->GetInventory ().GetFungibleCount (vehicle) == 0)
+    {
+      LOG (WARNING)
+          << "User " << c.GetOwner () << " does not own " << vehicle
+          << " in building " << buildingId;
+      return false;
+    }
+
+  return true;
+}
+
+bool
 BaseMoveProcessor::ParseSetFitments (const Character& c, const Json::Value& upd,
                                      std::vector<std::string>& fitments)
 {
@@ -1095,7 +1142,43 @@ DropAllInventory (Character& c, BuildingInventory& inv)
   c.GetInventory ().Clear ();
 }
 
+/**
+ * Removes all fitments of the given character.
+ */
+void
+RemoveAllFitments (Character& c, BuildingInventory& inv)
+{
+  auto& pb = c.MutableProto ();
+  for (const auto& f : pb.fitments ())
+    inv.GetInventory ().AddFungibleCount (f, 1);
+  pb.clear_fitments ();
+}
+
 } // anonymous namespace
+
+void
+MoveProcessor::MaybeChangeVehicle (Character& c, const Json::Value& upd)
+{
+  std::string vehicle;
+  if (!ParseChangeVehicle (c, upd, vehicle))
+    return;
+
+  VLOG (1)
+      << "Changing vehicle of character " << c.GetId ()
+      << " to " << vehicle;
+
+  const auto buildingId = c.GetBuildingId ();
+  auto inv = buildingInv.Get (buildingId, c.GetOwner ());
+
+  DropAllInventory (c, *inv);
+  RemoveAllFitments (c, *inv);
+
+  inv->GetInventory ().AddFungibleCount (c.GetProto ().vehicle (), 1);
+  inv->GetInventory ().AddFungibleCount (vehicle, -1);
+  c.MutableProto ().set_vehicle (vehicle);
+
+  DeriveCharacterStats (c);
+}
 
 void
 MoveProcessor::MaybeSetFitments (Character& c, const Json::Value& upd)
@@ -1108,18 +1191,14 @@ MoveProcessor::MaybeSetFitments (Character& c, const Json::Value& upd)
 
   const auto buildingId = c.GetBuildingId ();
   auto inv = buildingInv.Get (buildingId, c.GetOwner ());
-  auto& pb = c.MutableProto ();
 
   DropAllInventory (c, *inv);
-
-  for (const auto& f : pb.fitments ())
-    inv->GetInventory ().AddFungibleCount (f, 1);
-  pb.clear_fitments ();
+  RemoveAllFitments (c, *inv);
 
   for (const auto& f : fitments)
     {
       inv->GetInventory ().AddFungibleCount (f, -1);
-      pb.add_fitments (f);
+      c.MutableProto ().add_fitments (f);
     }
 
   DeriveCharacterStats (c);
@@ -1276,7 +1355,11 @@ MoveProcessor::PerformCharacterUpdate (Character& c, const Json::Value& upd)
      pickups/drops, which means that we can place e.g. a cargo-expansion
      fitment and use it right away.  It also specifies the priorities when
      an item is picked up and at the same time put as fitment (it will
-     be a fitment then).  */
+     be a fitment then).
+
+     We change vehicle before fitments, so that one can change to a new
+     vehicle and immediately equip fitments in a single move.  */
+  MaybeChangeVehicle (c, upd);
   MaybeSetFitments (c, upd);
 
   /* Mining should be started before setting waypoints.  This ensures that if

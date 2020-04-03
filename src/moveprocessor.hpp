@@ -192,6 +192,12 @@ protected:
                              Database::IdT& regionId);
 
   /**
+   * Parses and verifies a potential "change vehicle" command.
+   */
+  bool ParseChangeVehicle (const Character& c, const Json::Value& upd,
+                           std::string& vehicle);
+
+  /**
    * Parses and verifies a potential command to set fitments on a character's
    * current vehicle.
    */
@@ -334,6 +340,11 @@ private:
    * Processes a command to start mining at the current location.
    */
   void MaybeStartMining (Character& c, const Json::Value& upd);
+
+  /**
+   * Processes a command to change character vehicle.
+   */
+  void MaybeChangeVehicle (Character& c, const Json::Value& upd);
 
   /**
    * Processes a command to set fitments.
