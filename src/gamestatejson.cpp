@@ -308,15 +308,19 @@ template <>
   Json::Value
   GameStateJson::Convert<Building> (const Building& b) const
 {
+  const auto& pb = b.GetProto ();
+
   Json::Value res(Json::objectValue);
   res["id"] = IntToJson (b.GetId ());
   res["type"] = b.GetType ();
+  if (pb.foundation ())
+    res["foundation"] = true;
+
   res["faction"] = FactionToString (b.GetFaction ());
   if (b.GetFaction () != Faction::ANCIENT)
     res["owner"] = b.GetOwner ();
   res["centre"] = CoordToJson (b.GetCentre ());
 
-  const auto& pb = b.GetProto ();
   res["rotationsteps"] = IntToJson (pb.shape_trafo ().rotation_steps ());
   res["servicefee"] = IntToJson (pb.service_fee_percent ());
 

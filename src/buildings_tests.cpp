@@ -76,8 +76,14 @@ TEST_F (BuildingsTests, UpdateBuildingStats)
   auto h = tbl.CreateNew ("r_rt", "domob", Faction::RED);
   UpdateBuildingStats (*h);
   EXPECT_EQ (h->GetProto ().combat_data ().attacks_size (), 1);
-  EXPECT_GT (h->GetRegenData ().max_hp ().armour (), 0);
-  EXPECT_GT (h->GetHP ().armour (), 0);
+  EXPECT_EQ (h->GetRegenData ().max_hp ().armour (), 1'000);
+  EXPECT_EQ (h->GetHP ().armour (), 1'000);
+
+  h->MutableProto ().set_foundation (true);
+  UpdateBuildingStats (*h);
+  EXPECT_EQ (h->GetProto ().combat_data ().attacks_size (), 0);
+  EXPECT_EQ (h->GetRegenData ().max_hp ().armour (), 50);
+  EXPECT_EQ (h->GetHP ().armour (), 50);
 }
 
 /* ************************************************************************** */

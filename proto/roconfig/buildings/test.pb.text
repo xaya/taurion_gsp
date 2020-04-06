@@ -1,5 +1,7 @@
 # Some test buildings that can only be constructed through god mode or
-# in unit tests.
+# in unit tests.  This is enforced by having them either be unconstructible
+# outright, or require test-resources (not available through normal
+# gameplay) for construction.
 
 building_types:
   {
@@ -17,9 +19,16 @@ building_types:
         shape_tiles: { x: 0 y: 1 }
         shape_tiles: { x: 0 y: 2 }
 
+        construction:
+          {
+            foundation: { key: "foo" value: 1 }
+          }
+
       }
   }
 
+# Buildings that allow testing the differentiation between the
+# "construct item" and "construct vehicle" services.
 building_types:
   {
     key: "itemmaker"
@@ -38,5 +47,39 @@ building_types:
         enter_radius: 5
         shape_tiles: { x: 0 y: 0 }
         offered_services: { vehicle_construction: true }
+      }
+  }
+
+# Simple building with well-defined construction data for use in
+# tests of building construction logic.
+building_types:
+  {
+    key: "huesli"
+    value:
+      {
+        enter_radius: 5
+        shape_tiles: { x: 0 y: 0 }
+        offered_services: { armour_repair: true }
+        foundation:
+          {
+            regen_data:
+              {
+                max_hp: { armour: 10 }
+              }
+          }
+        full_building:
+          {
+            regen_data:
+              {
+                max_hp: { armour: 100 }
+              }
+          }
+        construction:
+          {
+            foundation: { key: "foo" value: 2 }
+            construction: { key: "foo" value: 3 }
+            construction: { key: "zerospace" value: 10 }
+            blocks: 10
+          }
       }
   }

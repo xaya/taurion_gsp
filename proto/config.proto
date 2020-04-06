@@ -236,15 +236,50 @@ message BuildingData
   repeated HexCoord shape_tiles = 2;
 
   /**
-   * Combat data (attacks) the building has in its base (unupgraded)
-   * form, if any.
+   * Combination of combat and regen data for a building or
+   * the foundation.
    */
-  optional CombatData combat_data = 3;
+  message AllCombatData
+  {
+    optional CombatData combat_data = 1;
+    optional RegenData regen_data = 2;
+  }
 
   /**
-   * Maximum HP and regeneration data the building has in its base form.
+   * Combat data for the foundation of the building alone.
    */
-  optional RegenData regen_data = 4;
+  optional AllCombatData foundation = 3;
+
+  /**
+   * Combat data for the full building (after construction is done).
+   */
+  optional AllCombatData full_building = 4;
+
+  /**
+   * Required resources and other data for constructing the building.
+   */
+  message ConstructionData
+  {
+
+    /**
+     * Resources (keyed by item type, value is the quantity) required to
+     * lay the foundation.
+     */
+    map<string, uint32> foundation = 1;
+
+    /** Resources for upgrading the foundation to the full building.  */
+    map<string, uint32> construction = 2;
+
+    /**
+     * Number of blocks the construction (from foundation to full building)
+     * takes for this type.
+     */
+    optional uint32 blocks = 3;
+
+  }
+
+  /** The data for constructing this building.  */
+  optional ConstructionData construction = 5;
 
   /**
    * The set of services offered by a building.  Since "false" is the default
@@ -262,7 +297,7 @@ message BuildingData
   }
 
   /** Services this building type offers.  */
-  optional Services offered_services = 5;
+  optional Services offered_services = 6;
 
 }
 

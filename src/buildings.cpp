@@ -78,10 +78,16 @@ void
 UpdateBuildingStats (Building& b)
 {
   const auto& roData = b.RoConfigData ();
+  const proto::BuildingData::AllCombatData* data;
 
-  *b.MutableProto ().mutable_combat_data () = roData.combat_data ();
-  b.MutableRegenData () = roData.regen_data ();
-  b.MutableHP () = roData.regen_data ().max_hp ();
+  if (b.GetProto ().foundation ())
+    data = &roData.foundation ();
+  else
+    data = &roData.full_building ();
+
+  *b.MutableProto ().mutable_combat_data () = data->combat_data ();
+  b.MutableRegenData () = data->regen_data ();
+  b.MutableHP () = data->regen_data ().max_hp ();
 }
 
 void
