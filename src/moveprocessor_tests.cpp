@@ -38,21 +38,17 @@ namespace
 class MoveProcessorTests : public DBTestWithSchema
 {
 
-protected:
-
-  ContextForTesting ctx;
-  DynObstacles dyn;
-
 private:
 
   TestRandom rnd;
 
 protected:
 
+  ContextForTesting ctx;
   AccountsTable accounts;
 
   explicit MoveProcessorTests ()
-    : dyn(db), accounts(db)
+    : accounts(db)
   {}
 
   /**
@@ -61,6 +57,7 @@ protected:
   void
   ProcessAdmin (const std::string& str)
   {
+    DynObstacles dyn(db);
     MoveProcessor mvProc(db, dyn, rnd, ctx);
     mvProc.ProcessAdmin (ParseJson (str));
   }
@@ -72,6 +69,7 @@ protected:
   void
   Process (const std::string& str)
   {
+    DynObstacles dyn(db);
     MoveProcessor mvProc(db, dyn, rnd, ctx);
     mvProc.ProcessAll (ParseJson (str));
   }
@@ -88,6 +86,7 @@ protected:
     for (auto& entry : val)
       entry["out"][ctx.Params ().DeveloperAddress ()] = AmountToJson (amount);
 
+    DynObstacles dyn(db);
     MoveProcessor mvProc(db, dyn, rnd, ctx);
     mvProc.ProcessAll (val);
   }
@@ -485,7 +484,7 @@ TEST_F (CharacterCreationTests, CharacterLimit)
 {
   accounts.CreateNew ("domob", Faction::RED);
   for (unsigned i = 0; i < ctx.Params ().CharacterLimit () - 1; ++i)
-    tbl.CreateNew ("domob", Faction::RED);
+    tbl.CreateNew ("domob", Faction::RED)->SetPosition (HexCoord (i, 0));
 
   EXPECT_EQ (tbl.CountForOwner ("domob"), ctx.Params ().CharacterLimit () - 1);
 
@@ -542,7 +541,9 @@ protected:
       accounts.CreateNew (owner, Faction::RED);
 
     db.SetNextId (id);
-    tbl.CreateNew (owner, Faction::RED);
+    /* We have to place the character on a spot not yet taken by another,
+       thus set a position based on the ID.  */
+    tbl.CreateNew (owner, Faction::RED)->SetPosition (HexCoord (id, 1));
 
     auto h = tbl.GetById (id);
     CHECK (h != nullptr);
@@ -595,7 +596,7 @@ TEST_F (CharacterUpdateTests, CreationAndUpdate)
 TEST_F (CharacterUpdateTests, AccountNotInitialised)
 {
   db.SetNextId (10);
-  auto c = tbl.CreateNew ("unknown account", Faction::RED);
+  auto c = tbl.CreateNew ("unknown account", Faction::GREEN);
   ASSERT_EQ (c->GetId (), 10);
   c.reset ();
 
@@ -686,7 +687,7 @@ TEST_F (CharacterUpdateTests, InvalidTransfer)
 {
   accounts.CreateNew ("at limit", Faction::RED);
   for (unsigned i = 0; i < ctx.Params ().CharacterLimit (); ++i)
-    tbl.CreateNew ("at limit", Faction::RED);
+    tbl.CreateNew ("at limit", Faction::RED)->SetPosition (HexCoord (i, 0));
 
   accounts.CreateNew ("wrong faction", Faction::GREEN);
 
@@ -1547,10 +1548,12 @@ TEST_F (EnterBuildingMoveTests, InvalidClear)
 TEST_F (EnterBuildingMoveTests, ValidEnter)
 {
   db.SetNextId (100);
-  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  auto b = buildings.CreateNew ("huesli", "domob", Faction::RED);
   ASSERT_EQ (b->GetId (), 100);
-  b = buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+  b->SetCentre (HexCoord (2, 0));
+  b = buildings.CreateNew ("huesli", "", Faction::ANCIENT);
   ASSERT_EQ (b->GetId (), 101);
+  b->SetCentre (HexCoord (-2, 0));
   b.reset ();
 
   Process (R"([
@@ -2213,9 +2216,9 @@ TEST_F (ProspectingMoveTests, CannotProspectRegion)
 
 TEST_F (ProspectingMoveTests, MultipleCharacters)
 {
-  accounts.CreateNew ("foo", Faction::RED);
+  accounts.CreateNew ("foo", Faction::GREEN);
 
-  auto c = tbl.CreateNew ("foo", Faction::RED);
+  auto c = tbl.CreateNew ("foo", Faction::GREEN);
   ASSERT_EQ (c->GetId (), 2);
   c->SetPosition (pos);
   c.reset ();
@@ -2245,9 +2248,11 @@ TEST_F (ProspectingMoveTests, MultipleCharacters)
 
 TEST_F (ProspectingMoveTests, OrderOfCharactersInAMove)
 {
+  GetTest ()->SetPosition (HexCoord (0, 0));
+
   /* Character 9 will be processed before character 10, since we order by
      ID and not by string.  */
-  SetupCharacter (9, "domob")->SetPosition (pos);
+  SetupCharacter (9, "domob")->SetPosition (pos + HexCoord (1, 0));
   SetupCharacter (10, "domob")->SetPosition (pos);
 
   Process (R"([
@@ -2441,12 +2446,18 @@ protected:
     accounts.CreateNew ("andy", Faction::RED);
 
     db.SetNextId (100);
-    CHECK_EQ (buildings.CreateNew ("ancient1", "", Faction::ANCIENT)
-                ->GetId (), ANCIENT);
-    CHECK_EQ (buildings.CreateNew ("checkmark", "andy", Faction::RED)
-                ->GetId (), ANDY_OWNED);
-    CHECK_EQ (buildings.CreateNew ("checkmark", "domob", Faction::RED)
-                ->GetId (), DOMOB_OWNED);
+
+    auto b = buildings.CreateNew ("ancient1", "", Faction::ANCIENT);
+    CHECK_EQ (b->GetId (), ANCIENT);
+    b->SetCentre (HexCoord (100, 10));
+
+    b = buildings.CreateNew ("checkmark", "andy", Faction::RED);
+    CHECK_EQ (b->GetId (), ANDY_OWNED);
+    b->SetCentre (HexCoord (-10, 10));
+
+    b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+    CHECK_EQ (b->GetId (), DOMOB_OWNED);
+    b->SetCentre (HexCoord (10, 10));
   }
 
 };
@@ -2569,8 +2580,10 @@ protected:
     accounts.CreateNew ("domob", Faction::RED)->AddBalance (100);
 
     db.SetNextId (100);
-    buildings.CreateNew ("ancient1", "", Faction::ANCIENT);
-    buildings.CreateNew ("ancient2", "", Faction::ANCIENT);
+    buildings.CreateNew ("ancient1", "", Faction::ANCIENT)
+        ->SetCentre (HexCoord (100, 0));
+    buildings.CreateNew ("ancient2", "", Faction::ANCIENT)
+        ->SetCentre (HexCoord (-100, 0));
 
     inv.Get (100, "domob")->GetInventory ().AddFungibleCount ("foo", 3);
     inv.Get (101, "domob")->GetInventory ().AddFungibleCount ("foo", 6);
