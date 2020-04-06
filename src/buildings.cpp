@@ -147,6 +147,16 @@ UpdateBuildingStats (Building& b)
 }
 
 void
+EnterBuilding (Character& c, const Building& b)
+{
+  c.SetBuildingId (b.GetId ());
+  c.ClearTarget ();
+  c.SetEnterBuilding (Database::EMPTY_ID);
+  StopCharacter (c);
+  StopMining (c);
+}
+
+void
 ProcessEnterBuildings (Database& db)
 {
   BuildingsTable buildings(db);
@@ -194,12 +204,7 @@ ProcessEnterBuildings (Database& db)
       LOG (INFO)
           << "Character " << c->GetId () << " is entering " << buildingId;
       ++entered;
-
-      c->SetBuildingId (buildingId);
-      c->ClearTarget ();
-      c->SetEnterBuilding (Database::EMPTY_ID);
-      StopCharacter (*c);
-      StopMining (*c);
+      EnterBuilding (*c, *b);
     }
 
   LOG (INFO)

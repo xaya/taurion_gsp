@@ -33,6 +33,7 @@
 #include "database/ongoing.hpp"
 #include "database/region.hpp"
 #include "mapdata/basemap.hpp"
+#include "proto/building.pb.h"
 
 #include <xayautil/random.hpp>
 
@@ -205,6 +206,15 @@ protected:
                          std::vector<std::string>& fitments);
 
   /**
+   * Parses and verifies a potential command to place a building foundation
+   * at the character's position.
+   */
+  bool ParseFoundBuilding (const Character& c, const Json::Value& upd,
+                           const DynObstacles& d,
+                           std::string& type,
+                           proto::ShapeTransformation& trafo);
+
+  /**
    * Parses and verifies a potential character creation as part of the
    * given move.  For all valid creations, PerformCharacterCreation
    * is called with the relevant data.
@@ -350,6 +360,11 @@ private:
    * Processes a command to set fitments.
    */
   void MaybeSetFitments (Character& c, const Json::Value& upd);
+
+  /**
+   * Processes a command to build a foundation.
+   */
+  void MaybeFoundBuilding (Character& c, const Json::Value& upd);
 
   /**
    * Processes a command to drop loot from the character's inventory

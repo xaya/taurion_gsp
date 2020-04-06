@@ -1465,6 +1465,195 @@ TEST_F (ChangeVehicleMoveTests, ChangeVehicleBeforeFitmentsAndPickup)
 
 /* ************************************************************************** */
 
+class FoundBuildingMoveTests : public CharacterUpdateTests
+{
+
+protected:
+
+  BuildingsTable buildings;
+  BuildingInventoriesTable buildingInv;
+
+  FoundBuildingMoveTests ()
+    : buildings(db), buildingInv(db)
+  {
+    db.SetNextId (101);
+  }
+
+};
+
+TEST_F (FoundBuildingMoveTests, InvalidFormat)
+{
+  GetTest ()->GetInventory ().AddFungibleCount ("foo", 10);
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fb": "foo"}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fb": {"t": 42, "rot": 5}}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fb": {"t": "huesli", "rot": -1}}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fb": {"t": "huesli", "rot": 6}}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fb": {"t": "huesli", "rot": 0, "x": false}}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fb": {"t": "huesli", "x": false}}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fb": {"rot": 0}}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fb": {"t": "invalid building", "rot": 0}}}}
+    }
+  ])");
+  EXPECT_EQ (buildings.GetById (101), nullptr);
+}
+
+TEST_F (FoundBuildingMoveTests, CharacterBusy)
+{
+  GetTest ()->GetInventory ().AddFungibleCount ("foo", 10);
+  GetTest ()->MutableProto ().set_ongoing (1234);
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fb": {"t": "huesli", "rot": 0}}}}
+    }
+  ])");
+  EXPECT_EQ (buildings.GetById (101), nullptr);
+}
+
+TEST_F (FoundBuildingMoveTests, InBuilding)
+{
+  GetTest ()->GetInventory ().AddFungibleCount ("foo", 10);
+  GetTest ()->SetBuildingId (42);
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fb": {"t": "huesli", "rot": 0}}}}
+    }
+  ])");
+  EXPECT_EQ (buildings.GetById (101), nullptr);
+}
+
+TEST_F (FoundBuildingMoveTests, UnconstructibleBuilding)
+{
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fb": {"t": "itemmaker", "rot": 0}}}}
+    }
+  ])");
+  EXPECT_EQ (buildings.GetById (101), nullptr);
+}
+
+TEST_F (FoundBuildingMoveTests, NotEnoughResources)
+{
+  GetTest ()->GetInventory ().AddFungibleCount ("foo", 1);
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fb": {"t": "huesli", "rot": 0}}}}
+    }
+  ])");
+  EXPECT_EQ (buildings.GetById (101), nullptr);
+}
+
+TEST_F (FoundBuildingMoveTests, CannotPlaceBuilding)
+{
+  GetTest ()->GetInventory ().AddFungibleCount ("foo", 10);
+  db.SetNextId (10);
+  tbl.CreateNew ("andy", Faction::GREEN)
+      ->SetPosition (GetTest ()->GetPosition ());
+  db.SetNextId (101);
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fb": {"t": "huesli", "rot": 0}}}}
+    }
+  ])");
+  EXPECT_EQ (buildings.GetById (101), nullptr);
+}
+
+TEST_F (FoundBuildingMoveTests, Success)
+{
+  const HexCoord pos = GetTest ()->GetPosition ();
+  GetTest ()->GetInventory ().AddFungibleCount ("foo", 10);
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fb": {"t": "huesli", "rot": 3}}}}
+    }
+  ])");
+
+  auto b = buildings.GetById (101);
+  ASSERT_NE (b, nullptr);
+  EXPECT_EQ (b->GetType (), "huesli");
+  EXPECT_EQ (b->GetOwner (), "domob");
+  EXPECT_EQ (b->GetFaction (), Faction::RED);
+  EXPECT_EQ (b->GetCentre (), pos);
+  EXPECT_EQ (b->GetHP ().armour (), 10);
+
+  const auto& pb = b->GetProto ();
+  EXPECT_TRUE (pb.foundation ());
+  EXPECT_EQ (pb.shape_trafo ().rotation_steps (), 3);
+
+  auto c = GetTest ();
+  EXPECT_EQ (c->GetInventory ().GetFungibleCount ("foo"), 8);
+  ASSERT_TRUE (c->IsInBuilding ());
+  EXPECT_EQ (c->GetBuildingId (), b->GetId ());
+}
+
+TEST_F (FoundBuildingMoveTests, FoundationBeforeDrop)
+{
+  GetTest ()->GetInventory ().AddFungibleCount ("foo", 2);
+  GetTest ()->GetInventory ().AddFungibleCount ("zerospace", 10);
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {
+        "drop": {"f": {"zerospace": 100, "foo": 100}},
+        "fb": {"t": "huesli", "rot": 3}
+      }}}
+    }
+  ])");
+
+  ASSERT_NE (buildings.GetById (101), nullptr);
+  EXPECT_TRUE (GetTest ()->GetInventory ().IsEmpty ());
+  EXPECT_EQ (buildingInv.Get (101, "domob")
+                ->GetInventory ().GetFungibleCount ("zerospace"), 10);
+}
+
+TEST_F (FoundBuildingMoveTests, FoundationBeforeExit)
+{
+  GetTest ()->GetInventory ().AddFungibleCount ("foo", 2);
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {
+        "xb": {},
+        "fb": {"t": "huesli", "rot": 3}
+      }}}
+    }
+  ])");
+
+  ASSERT_NE (buildings.GetById (101), nullptr);
+  EXPECT_FALSE (GetTest ()->IsInBuilding ());
+}
+
+/* ************************************************************************** */
+
 class EnterBuildingMoveTests : public CharacterUpdateTests
 {
 
