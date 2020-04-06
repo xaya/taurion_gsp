@@ -102,5 +102,23 @@ TEST_F (DynObstaclesTests, Modifications)
   EXPECT_FALSE (dyn.IsPassable (HexCoord (1, 0), Faction::RED));
 }
 
+TEST_F (DynObstaclesTests, IsFree)
+{
+  auto b = buildings.CreateNew ("huesli", "", Faction::ANCIENT);
+  b->SetCentre (HexCoord (0, 0));
+
+  DynObstacles dyn(db);
+  dyn.AddBuilding (*b);
+  dyn.AddVehicle (HexCoord (1, 0), Faction::RED);
+  dyn.AddVehicle (HexCoord (2, 0), Faction::GREEN);
+  dyn.AddVehicle (HexCoord (3, 0), Faction::BLUE);
+
+  EXPECT_TRUE (dyn.IsFree (HexCoord (0, 1)));
+  EXPECT_FALSE (dyn.IsFree (HexCoord (0, 0)));
+  EXPECT_FALSE (dyn.IsFree (HexCoord (1, 0)));
+  EXPECT_FALSE (dyn.IsFree (HexCoord (2, 0)));
+  EXPECT_FALSE (dyn.IsFree (HexCoord (3, 0)));
+}
+
 } // anonymous namespace
 } // namespace pxd

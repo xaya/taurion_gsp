@@ -1618,6 +1618,12 @@ MaybeGodBuild (AccountsTable& accounts, BuildingsTable& tbl,
         }
       const unsigned rot = val.asUInt ();
 
+      /* Note that we do not check CanPlaceBuilding here on purpose.  It is ok
+         if god-mode can in theory result in invalid situations.  But by not
+         enforcing the conditions here we ensure that buildings can be easily
+         placed as needed in tests, without having to worry about regions
+         and the ability to build in them.  */
+
       auto h = tbl.CreateNew (type, owner, f);
       h->SetCentre (centre);
       h->MutableProto ().mutable_shape_trafo ()->set_rotation_steps (rot);

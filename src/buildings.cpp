@@ -23,6 +23,7 @@
 #include "protoutils.hpp"
 #include "spawn.hpp"
 
+#include "mapdata/regionmap.hpp"
 #include "proto/config.pb.h"
 #include "proto/roconfig.hpp"
 
@@ -31,13 +32,22 @@
 namespace pxd
 {
 
-std::vector<HexCoord>
-GetBuildingShape (const Building& b)
+namespace
 {
-  const auto& roData = b.RoConfigData ();
 
-  const auto centre = b.GetCentre ();
-  const auto& trafo = b.GetProto ().shape_trafo ();
+/**
+ * Returns the building shape based on the raw data, so that it can be used
+ * also for not-yet-existing buildings (e.g. while placing).
+ */
+std::vector<HexCoord>
+GetBuildingShape (const std::string& type,
+                  const proto::ShapeTransformation& trafo,
+                  const HexCoord& pos)
+{
+  const auto& roConfig = RoConfigData ().building_types ();
+  const auto mit = roConfig.find (type);
+  CHECK (mit != roConfig.end ()) << "Building has undefined type: " << type;
+  const auto& roData = mit->second;
 
   std::vector<HexCoord> res;
   res.reserve (roData.shape_tiles ().size ());
@@ -45,11 +55,57 @@ GetBuildingShape (const Building& b)
     {
       HexCoord c = CoordFromProto (pbTile);
       c = c.RotateCW (trafo.rotation_steps ()); 
-      c += centre;
+      c += pos;
       res.push_back (c);
     }
 
   return res;
+}
+
+} // anonymous namespace
+
+std::vector<HexCoord>
+GetBuildingShape (const Building& b)
+{
+  return GetBuildingShape (b.GetType (), b.GetProto ().shape_trafo (),
+                           b.GetCentre ());
+}
+
+bool
+CanPlaceBuilding (const std::string& type,
+                  const proto::ShapeTransformation& trafo,
+                  const HexCoord& pos,
+                  const DynObstacles& dyn, const Context& ctx)
+{
+  RegionMap::IdT region = RegionMap::OUT_OF_MAP;
+  for (const auto& c : GetBuildingShape (type, trafo, pos))
+    {
+      if (!ctx.Map ().IsPassable (c))
+        {
+          VLOG (1) << "Position " << c << " is not passable in the base map";
+          return false;
+        }
+      if (!dyn.IsFree (c))
+        {
+          VLOG (1) << "Position " << c << " has a dynamic obstacle";
+          return false;
+        }
+
+      const auto curRegion = ctx.Map ().Regions ().GetRegionId (c);
+      CHECK_NE (curRegion, RegionMap::OUT_OF_MAP);
+
+      if (region == RegionMap::OUT_OF_MAP)
+        region = curRegion;
+      else if (region != curRegion)
+        {
+          VLOG (1)
+              << "Position " << c << " has region " << curRegion
+              << ", while other parts are on region " << region;
+          return false;
+        }
+    }
+
+  return true;
 }
 
 void

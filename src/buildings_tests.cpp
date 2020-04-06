@@ -88,6 +88,82 @@ TEST_F (BuildingsTests, UpdateBuildingStats)
 
 /* ************************************************************************** */
 
+class CanPlaceBuildingTests : public BuildingsTests
+{
+
+protected:
+
+  ContextForTesting ctx;
+
+  CanPlaceBuildingTests ()
+  {}
+
+  /**
+   * Calls CanPlaceBuilding with fresh dynobstacles map from the database and a
+   * shape trafo that contains the given rotation.
+   */
+  bool
+  CanPlace (const std::string& type, const unsigned rot,
+            const HexCoord& pos)
+  {
+    DynObstacles dyn(db);
+    proto::ShapeTransformation trafo;
+    trafo.set_rotation_steps (rot);
+    return CanPlaceBuilding (type, trafo, pos, dyn, ctx);
+  }
+
+};
+
+TEST_F (CanPlaceBuildingTests, Ok)
+{
+  /* Some offset added to all coordinates to make the situation fit
+     into one region entirely.  */
+  const HexCoord offs(-1, -5);
+
+  tbl.CreateNew ("huesli", "", Faction::ANCIENT)
+      ->SetCentre (offs + HexCoord (-1, 0));
+
+  characters.CreateNew ("domob", Faction::RED)
+      ->SetPosition (offs + HexCoord (2, 0));
+  characters.CreateNew ("andy", Faction::GREEN)
+      ->SetPosition (offs + HexCoord (0, -1));
+  characters.CreateNew ("daniel", Faction::BLUE)
+      ->SetPosition (offs + HexCoord (0, 3));
+
+  EXPECT_TRUE (CanPlace ("checkmark", 0, offs));
+}
+
+TEST_F (CanPlaceBuildingTests, OutOfMap)
+{
+  EXPECT_FALSE (CanPlace ("huesli", 0, HexCoord (10'000, 0)));
+}
+
+TEST_F (CanPlaceBuildingTests, Impassable)
+{
+  const HexCoord impassable(149, 0);
+  ASSERT_FALSE (ctx.Map ().IsPassable (impassable));
+
+  EXPECT_FALSE (CanPlace ("huesli", 0, impassable));
+}
+
+TEST_F (CanPlaceBuildingTests, DynObstacle)
+{
+  characters.CreateNew ("domob", Faction::RED)->SetPosition (HexCoord (0, 0));
+  EXPECT_FALSE (CanPlace ("huesli", 0, HexCoord (0, 0)));
+}
+
+TEST_F (CanPlaceBuildingTests, MultiRegion)
+{
+  const HexCoord pos(0, 0);
+  const HexCoord outside(pos + HexCoord (0, 2));
+  ASSERT_NE (ctx.Map ().Regions ().GetRegionId (pos),
+             ctx.Map ().Regions ().GetRegionId (outside));
+
+  EXPECT_FALSE (CanPlace ("checkmark", 0, pos));
+}
+
+/* ************************************************************************** */
+
 class ProcessEnterBuildingsTests : public BuildingsTests
 {
 

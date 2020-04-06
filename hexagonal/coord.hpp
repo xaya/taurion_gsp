@@ -85,6 +85,7 @@ public:
 
   void operator+= (const HexCoord& delta);
   friend HexCoord operator* (const IntT f, const HexCoord& c);
+  friend HexCoord operator+ (const HexCoord& a, const HexCoord& b);
 
   /**
    * Computes and returns the matching z coordinate in cubic hex coordinates.

@@ -26,6 +26,7 @@
 #include "database/character.hpp"
 #include "database/database.hpp"
 #include "hexagonal/coord.hpp"
+#include "proto/building.pb.h"
 
 #include <xayautil/random.hpp>
 
@@ -39,6 +40,17 @@ namespace pxd
  * its shape trafo into account.
  */
 std::vector<HexCoord> GetBuildingShape (const Building& b);
+
+/**
+ * Checks if a building of the given type and rotation can be placed
+ * at the given location.  The conditions are that no tile must be taken
+ * already by another building or character, and that all tiles must be
+ * of the same region.
+ */
+bool CanPlaceBuilding (const std::string& type,
+                       const proto::ShapeTransformation& trafo,
+                       const HexCoord& pos,
+                       const DynObstacles& dyn, const Context& ctx);
 
 /**
  * Places initial buildings (ancient and obelisks) onto the map.

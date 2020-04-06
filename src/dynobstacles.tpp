@@ -45,6 +45,12 @@ DynObstacles::IsPassable (const HexCoord& c, const Faction f) const
   return !buildings.Get (c) && !FactionVehicles (f).Get (c);
 }
 
+inline bool
+DynObstacles::IsFree (const HexCoord& c) const
+{
+  return !buildings.Get (c) && !red.Get (c) && !green.Get (c) && !blue.Get (c);
+}
+
 inline void
 DynObstacles::AddVehicle (const HexCoord& c, const Faction f)
 {

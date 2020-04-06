@@ -80,6 +80,12 @@ public:
   bool IsPassable (const HexCoord& c, Faction f) const;
 
   /**
+   * Checks whether the given tile is entirely free (which is needed to
+   * place buildings).
+   */
+  bool IsFree (const HexCoord& c) const;
+
+  /**
    * Adds a new vehicle with the given faction and position.
    */
   void AddVehicle (const HexCoord& c, Faction f);
