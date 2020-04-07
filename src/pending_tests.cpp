@@ -428,6 +428,39 @@ TEST_F (PendingStateTests, MiningCancelledByWaypoints)
   )");
 }
 
+TEST_F (PendingStateTests, FoundBuilding)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  state.AddCharacterDrop (*c);
+
+  c = characters.CreateNew ("domob", Faction::RED);
+  proto::ShapeTransformation trafo;
+  trafo.set_rotation_steps (3);
+  state.AddFoundBuilding (*c, "huesli", trafo);
+
+  /* The second move will be ignored.  */
+  state.AddFoundBuilding (*c, "checkmark", trafo);
+
+  c.reset ();
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {
+            "foundbuilding": null
+          },
+          {
+            "foundbuilding":
+              {
+                "type": "huesli",
+                "rotationsteps": 3
+              }
+          }
+        ]
+    }
+  )");
+}
+
 TEST_F (PendingStateTests, ChangeVehicle)
 {
   auto c = characters.CreateNew ("domob", Faction::RED);
@@ -1008,6 +1041,52 @@ TEST_F (PendingStateUpdaterTests, Mining)
       "characters":
         [
           {"id": 1, "mining": 345820}
+        ]
+    }
+  )");
+}
+
+TEST_F (PendingStateUpdaterTests, FoundBuilding)
+{
+  accounts.CreateNew ("domob", Faction::RED);
+
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  c->GetInventory ().AddFungibleCount ("foo", 10);
+  c->SetPosition (HexCoord (10, 0));
+  c.reset ();
+
+  c = characters.CreateNew ("domob", Faction::RED);
+  c->GetInventory ().AddFungibleCount ("foo", 10);
+  c->SetPosition (HexCoord (-10, 0));
+  c.reset ();
+
+  /* This character will prevent the second "domob" from placing a building,
+     verifying that the verification and DynObstacles map is correctly used
+     for pending moves as well.  */
+  c = characters.CreateNew ("andy", Faction::GREEN);
+  c->SetPosition (HexCoord (-10, 0));
+  c.reset ();
+
+  Process ("domob", R"({
+    "c":
+      {
+        "1": {"fb": {"t": "huesli", "rot": 3}},
+        "2": {"fb": {"t": "huesli", "rot": 0}}
+      }
+  })");
+
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {
+            "id": 1,
+            "foundbuilding":
+              {
+                "type": "huesli",
+                "rotationsteps": 3
+              }
+          }
         ]
     }
   )");

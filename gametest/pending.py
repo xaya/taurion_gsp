@@ -233,6 +233,57 @@ class PendingTest (PXTest):
     self.rpc.xaya.invalidateblock (blk)
     sleepSome ()
     self.assertEqual (self.getPendingState (), oldPending)
+    self.generate (50)
+
+    self.testDynObstacles ()
+
+  def testDynObstacles (self):
+    """
+    Tests pending "found building" moves, which in particular also
+    verifies the DynObstacles instance used for pending moves.
+    """
+
+    self.mainLogger.info ("Testing dynamic obstacles...")
+
+    pos1 = {"x": 100, "y": 0}
+    pos2 = offsetCoord (pos1, {"x": -1, "y": 0}, False)
+
+    self.moveCharactersTo ({
+      "domob": pos1,
+      "andy": pos2,
+    })
+    self.dropLoot (pos1, {"foo": 10})
+    self.dropLoot (pos2, {"foo": 10})
+    c = self.getCharacters ()
+    c["domob"].sendMove ({"pu": {"f": {"foo": 100}}})
+    c["andy"].sendMove ({"pu": {"f": {"foo": 100}}})
+    self.generate (1)
+
+    # domob's huesli can be built, while andy's checkmark would overlap
+    # with the dynamic obstacle presented by the domob character.
+    c = self.getCharacters ()
+    c["domob"].sendMove ({"fb": {"t": "huesli", "rot": 3}})
+    c["andy"].sendMove ({"fb": {"t": "checkmark", "rot": 0}})
+    self.assertEqual (self.getPendingState (), {
+      "characters":
+        [
+          {
+            "id": c["domob"].getId (),
+            "foundbuilding":
+              {
+                "type": "huesli",
+                "rotationsteps": 3,
+              },
+            "pickup": False,
+            "drop": False,
+          }
+        ],
+      "newcharacters": [],
+      "accounts": [],
+    })
+
+    # Make sure nothing sticks around for later tests.
+    self.generate (1)
 
 
 if __name__ == "__main__":

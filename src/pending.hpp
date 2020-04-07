@@ -29,6 +29,7 @@
 #include "database/faction.hpp"
 #include "hexagonal/coord.hpp"
 #include "mapdata/basemap.hpp"
+#include "proto/building.pb.h"
 
 #include <xayagame/sqlitegame.hpp>
 
@@ -96,6 +97,9 @@ private:
      * RegionMap::OUT_OF_MAP if no mining is being started.
      */
     Database::IdT miningRegionId = RegionMap::OUT_OF_MAP;
+
+    /** A pending move to found a building, if any (otherwise JSON null).  */
+    Json::Value foundBuilding;
 
     /** The vehicle the character is changing to (if non-empty).  */
     Json::Value changeVehicle;
@@ -233,6 +237,13 @@ public:
    * is ignored.
    */
   void AddCharacterMining (const Character& ch, Database::IdT regionId);
+
+  /**
+   * Updates the state of a character to indiciate that it will
+   * found a building.
+   */
+  void AddFoundBuilding (const Character& ch, const std::string& type,
+                         const proto::ShapeTransformation& trafo);
 
   /**
    * Updates the state to add a "change vehicle" move.

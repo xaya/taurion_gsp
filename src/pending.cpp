@@ -203,6 +203,32 @@ PendingState::AddCharacterMining (const Character& ch,
 }
 
 void
+PendingState::AddFoundBuilding (const Character& ch, const std::string& type,
+                                const proto::ShapeTransformation& trafo)
+{
+  auto& chState = GetCharacterState (ch);
+
+  /* In theory, there are situations in which a single character can found
+     two buildings in the same block:  They can found a building, then exit
+     it (even in the same move), and then found another one at the place
+     they'll end up at.  But this is not something we care about (or even
+     can properly predict) in pending tracking, so just ignore all further
+     found-building moves.  */
+  if (!chState.foundBuilding.isNull ())
+    {
+      LOG (WARNING)
+          << "Character " << ch.GetId ()
+          << " already has a pending 'found building' move, ignoring next";
+      return;
+    }
+
+  VLOG (1) << "Character " << ch.GetId () << " is founding " << type;
+  chState.foundBuilding = Json::Value (Json::objectValue);
+  chState.foundBuilding["type"] = type;
+  chState.foundBuilding["rotationsteps"] = IntToJson (trafo.rotation_steps ());
+}
+
+void
 PendingState::AddCharacterVehicle (const Character& ch,
                                    const std::string& vehicle)
 {
@@ -306,6 +332,9 @@ PendingState::CharacterState::ToJson () const
     res["prospecting"] = IntToJson (prospectingRegionId);
   if (miningRegionId != RegionMap::OUT_OF_MAP)
     res["mining"] = IntToJson (miningRegionId);
+
+  if (!foundBuilding.isNull ())
+    res["foundbuilding"] = foundBuilding;
 
   if (!changeVehicle.empty ())
     res["changevehicle"] = changeVehicle;
@@ -436,6 +465,11 @@ PendingStateUpdater::PerformCharacterUpdate (Character& c,
     state.AddEnterBuilding (c, buildingId);
   if (ParseExitBuilding (c, upd))
     state.AddExitBuilding (c);
+
+  std::string type;
+  proto::ShapeTransformation trafo;
+  if (ParseFoundBuilding (c, upd, type, trafo))
+    state.AddFoundBuilding (c, type, trafo);
 
   std::string vehicle;
   if (ParseChangeVehicle (c, upd, vehicle))
