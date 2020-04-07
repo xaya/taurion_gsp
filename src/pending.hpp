@@ -20,6 +20,7 @@
 #define PXD_PENDING_HPP
 
 #include "context.hpp"
+#include "dynobstacles.hpp"
 #include "moveprocessor.hpp"
 #include "services.hpp"
 
@@ -271,6 +272,9 @@ public:
  * BaseMoveProcessor class that updates the pending state.  This contains the
  * main logic for PendingMoves::AddPendingMove, and is also accessible from
  * the unit tests independently of SQLiteGame.
+ *
+ * Instances of this class are light-weight and just contain the logic.  They
+ * are created on-the-fly for processing a single move.
  */
 class PendingStateUpdater : public BaseMoveProcessor
 {
@@ -288,8 +292,9 @@ protected:
 
 public:
 
-  explicit PendingStateUpdater (Database& d, PendingState& s, const Context& c)
-    : BaseMoveProcessor(d, c), state(s)
+  explicit PendingStateUpdater (Database& d, DynObstacles& o,
+                                PendingState& s, const Context& c)
+    : BaseMoveProcessor(d, o, c), state(s)
   {}
 
   /**
@@ -311,6 +316,14 @@ private:
 
   /** The current state of pending moves.  */
   PendingState state;
+
+  /**
+   * A DynObstacles instance based on the confirmed database state.
+   * This is costly to create, thus we create it on-demand and keep it cached
+   * for all pending moves until the next call to Clear (when the confirmed
+   * state changes).
+   */
+  std::unique_ptr<DynObstacles> dyn;
 
 protected:
 

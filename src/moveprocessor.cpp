@@ -46,8 +46,9 @@ static constexpr unsigned MAX_SERVICE_FEE_PERCENT = 1'000;
 
 /* ************************************************************************** */
 
-BaseMoveProcessor::BaseMoveProcessor (Database& d, const Context& c)
-  : ctx(c), db(d),
+BaseMoveProcessor::BaseMoveProcessor (Database& d, DynObstacles& o,
+                                      const Context& c)
+  : ctx(c), db(d), dyn(o),
     accounts(db), buildings(db), characters(db),
     groundLoot(db), buildingInv(db), itemCounts(db),
     ongoings(db), regions(db, ctx.Height ())
@@ -923,7 +924,6 @@ ParseBuildingConfig (const Json::Value& build,
 bool
 BaseMoveProcessor::ParseFoundBuilding (const Character& c,
                                        const Json::Value& upd,
-                                       const DynObstacles& d,
                                        std::string& type,
                                        proto::ShapeTransformation& trafo)
 {
@@ -978,8 +978,8 @@ BaseMoveProcessor::ParseFoundBuilding (const Character& c,
   /* Before we check the placement, we have to temporarily remove the
      building character itself.  It is fine if they are in the way, as they
      will automatically enter the foundation once placed.  */
-  MoveInDynObstacles dynMover(c, const_cast<DynObstacles&> (d));
-  if (!CanPlaceBuilding (type, trafo, c.GetPosition (), d, ctx))
+  MoveInDynObstacles dynMover(c, dyn);
+  if (!CanPlaceBuilding (type, trafo, c.GetPosition (), dyn, ctx))
     {
       LOG (WARNING)
           << "Can't place building in this configuration at "
@@ -1325,7 +1325,7 @@ MoveProcessor::MaybeFoundBuilding (Character& c, const Json::Value& upd)
 {
   std::string type;
   proto::ShapeTransformation trafo;
-  if (!ParseFoundBuilding (c, upd, dyn, type, trafo))
+  if (!ParseFoundBuilding (c, upd, type, trafo))
     return;
 
   VLOG (1)

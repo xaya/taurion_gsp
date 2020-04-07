@@ -491,6 +491,7 @@ void
 PendingMoves::Clear ()
 {
   state.Clear ();
+  dyn.reset ();
 }
 
 void
@@ -500,10 +501,13 @@ PendingMoves::AddPendingMove (const Json::Value& mv)
   PXLogic& rules = dynamic_cast<PXLogic&> (GetSQLiteGame ());
   SQLiteGameDatabase dbObj(db, rules);
 
+  if (dyn == nullptr)
+    dyn = std::make_unique<DynObstacles> (dbObj);
+
   const Context ctx(GetChain (), rules.GetBaseMap (),
                     GetConfirmedHeight () + 1, Context::NO_TIMESTAMP);
 
-  PendingStateUpdater updater(dbObj, state, ctx);
+  PendingStateUpdater updater(dbObj, *dyn, state, ctx);
   updater.ProcessMove (mv);
 }
 

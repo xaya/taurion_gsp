@@ -104,6 +104,14 @@ protected:
    */
   Database& db;
 
+  /**
+   * Dynamic obstacle layer, used for spawning characters and placing buildings.
+   * This is costly to create, and thus we use a passed-in reference instead
+   * of having our own instance.  (Also for processing blocks, it needs to
+   * stick around in the modified form for post-processing like movement.)
+   */
+  DynObstacles& dyn;
+
   /** Access handle for the accounts database table.  */
   AccountsTable accounts;
 
@@ -128,7 +136,7 @@ protected:
   /** Access to the regions table.  */
   RegionsTable regions;
 
-  explicit BaseMoveProcessor (Database& d, const Context& c);
+  explicit BaseMoveProcessor (Database& d, DynObstacles& o, const Context& c);
 
   /**
    * Parses some basic stuff from a move JSON object.  This extracts the
@@ -210,7 +218,6 @@ protected:
    * at the character's position.
    */
   bool ParseFoundBuilding (const Character& c, const Json::Value& upd,
-                           const DynObstacles& d,
                            std::string& type,
                            proto::ShapeTransformation& trafo);
 
@@ -295,9 +302,6 @@ class MoveProcessor : public BaseMoveProcessor
 {
 
 private:
-
-  /** Dynamic obstacle layer, used for spawning characters.  */
-  DynObstacles& dyn;
 
   /** Handle for random numbers.  */
   xaya::Random& rnd;
@@ -404,8 +408,7 @@ public:
 
   explicit MoveProcessor (Database& d, DynObstacles& dyo, xaya::Random& r,
                           const Context& c)
-    : BaseMoveProcessor(d, c),
-      dyn(dyo), rnd(r)
+    : BaseMoveProcessor(d, dyo, c), rnd(r)
   {}
 
   /**

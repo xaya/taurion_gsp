@@ -621,16 +621,6 @@ protected:
 
   ContextForTesting ctx;
 
-private:
-
-  PendingStateUpdater updater;
-
-protected:
-
-  PendingStateUpdaterTests ()
-    : updater(db, state, ctx)
-  {}
-
   /**
    * Processes a move for the given name and with the given move data, parsed
    * from JSON string.  If paidToDev is non-zero, then add an "out" entry
@@ -648,6 +638,8 @@ protected:
       moveObj["out"][ctx.Params ().DeveloperAddress ()]
           = AmountToJson (paidToDev);
 
+    DynObstacles dyn(db);
+    PendingStateUpdater updater(db, dyn, state, ctx);
     updater.ProcessMove (moveObj);
   }
 
@@ -682,7 +674,8 @@ TEST_F (PendingStateUpdaterTests, InvalidCreation)
 
   accounts.CreateNew ("at limit", Faction::BLUE);
   for (unsigned i = 0; i < ctx.Params ().CharacterLimit (); ++i)
-    characters.CreateNew ("at limit", Faction::BLUE);
+    characters.CreateNew ("at limit", Faction::BLUE)
+        ->SetPosition (HexCoord (i, 1));
 
   ProcessWithDevPayment ("domob", ctx.Params ().CharacterCost (), R"(
     {
@@ -771,9 +764,9 @@ TEST_F (PendingStateUpdaterTests, Waypoints)
 {
   accounts.CreateNew ("domob", Faction::RED);
 
-  CHECK_EQ (characters.CreateNew ("domob", Faction::RED)->GetId (), 1);
-  CHECK_EQ (characters.CreateNew ("domob", Faction::RED)->GetId (), 2);
-  CHECK_EQ (characters.CreateNew ("domob", Faction::RED)->GetId (), 3);
+  characters.CreateNew ("domob", Faction::RED)->SetPosition (HexCoord (0, 1));
+  characters.CreateNew ("domob", Faction::RED)->SetPosition (HexCoord (0, 2));
+  characters.CreateNew ("domob", Faction::RED)->SetPosition (HexCoord (0, 3));
 
   /* Some invalid updates that will just not show up (i.e. ID 1 will have no
      pending updates later on).  */
@@ -815,13 +808,15 @@ TEST_F (PendingStateUpdaterTests, EnterBuilding)
 {
   accounts.CreateNew ("domob", Faction::RED);
 
-  CHECK_EQ (characters.CreateNew ("domob", Faction::RED)->GetId (), 1);
-  CHECK_EQ (characters.CreateNew ("domob", Faction::RED)->GetId (), 2);
-  CHECK_EQ (characters.CreateNew ("domob", Faction::RED)->GetId (), 3);
+  characters.CreateNew ("domob", Faction::RED)->SetPosition (HexCoord (0, -1));
+  characters.CreateNew ("domob", Faction::RED)->SetPosition (HexCoord (0, 0));
+  characters.CreateNew ("domob", Faction::RED)->SetPosition (HexCoord (0, 1));
 
   db.SetNextId (100);
-  buildings.CreateNew ("checkmark", "domob", Faction::RED);
-  buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  buildings.CreateNew ("huesli", "domob", Faction::RED)
+      ->SetCentre (HexCoord (-1, 0));
+  buildings.CreateNew ("huesli", "domob", Faction::RED)
+      ->SetCentre (HexCoord (1, 0));
 
   /* Some invalid updates that will just not show up (i.e. ID 1 will have no
      pending updates later on).  */
@@ -906,8 +901,8 @@ TEST_F (PendingStateUpdaterTests, ExitBuilding)
 TEST_F (PendingStateUpdaterTests, DropPickup)
 {
   accounts.CreateNew ("domob", Faction::RED);
-  CHECK_EQ (characters.CreateNew ("domob", Faction::RED)->GetId (), 1);
-  CHECK_EQ (characters.CreateNew ("domob", Faction::RED)->GetId (), 2);
+  characters.CreateNew ("domob", Faction::RED)->SetPosition (HexCoord (0, 0));
+  characters.CreateNew ("domob", Faction::RED)->SetPosition (HexCoord (1, 0));
 
   /* Some invalid / empty commands.  */
   Process ("domob", R"({
@@ -1230,8 +1225,10 @@ TEST_F (PendingStateUpdaterTests, ServiceOperations)
   accounts.CreateNew ("domob", Faction::RED)->AddBalance (100);
 
   db.SetNextId (100);
-  buildings.CreateNew ("ancient1", "", Faction::ANCIENT);
-  buildings.CreateNew ("ancient2", "", Faction::ANCIENT);
+  buildings.CreateNew ("ancient1", "", Faction::ANCIENT)
+      ->SetCentre  (HexCoord (100, 0));
+  buildings.CreateNew ("ancient2", "", Faction::ANCIENT)
+      ->SetCentre (HexCoord (-100, 0));
 
   buildingInv.Get (100, "domob")->GetInventory ().AddFungibleCount ("foo", 7);
 
