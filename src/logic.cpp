@@ -306,7 +306,7 @@ ValidateCharactersInBuildings (Database& db)
 
 /**
  * Verifies that all "in building" inventories have an existing
- * building and account association.
+ * building and account association.  No inventories may be inside a foundation.
  */
 void
 ValidateBuildingInventories (Database& db)
@@ -315,15 +315,33 @@ ValidateBuildingInventories (Database& db)
   AccountsTable accounts(db);
   BuildingsTable buildings(db);
 
-  auto res = inv.QueryAll ();
-  while (res.Step ())
-    {
-      auto h = inv.GetFromResult (res);
-      CHECK (buildings.GetById (h->GetBuildingId ()) != nullptr)
-          << "Inventory for non-existant building " << h->GetBuildingId ();
-      CHECK (accounts.GetByName (h->GetAccount ()) != nullptr)
-          << "Inventory for non-existant account " << h->GetAccount ();
-    }
+  {
+    auto res = inv.QueryAll ();
+    while (res.Step ())
+      {
+        auto h = inv.GetFromResult (res);
+        auto b = buildings.GetById (h->GetBuildingId ());
+        CHECK (b != nullptr)
+            << "Inventory for non-existant building " << h->GetBuildingId ();
+        CHECK (!b->GetProto ().foundation ())
+            << "Inventory for " << h->GetAccount ()
+            << " in foundation " << h->GetBuildingId ();
+        CHECK (accounts.GetByName (h->GetAccount ()) != nullptr)
+            << "Inventory for non-existant account " << h->GetAccount ();
+      }
+  }
+
+  {
+    auto res = buildings.QueryAll ();
+    while (res.Step ())
+      {
+        auto b = buildings.GetFromResult (res);
+        const auto& pb = b->GetProto ();
+        CHECK (pb.foundation () || !pb.has_construction_inventory ())
+            << "Building " << b->GetId ()
+            << " is not a foundation but has construction inventory";
+      }
+  }
 }
 
 /**

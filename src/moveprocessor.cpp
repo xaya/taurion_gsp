@@ -1455,11 +1455,22 @@ MoveProcessor::MaybeDropLoot (Character& c, const Json::Value& cmd)
   if (c.IsInBuilding ())
     {
       toName << "building " << c.GetBuildingId ();
-      auto inv = buildingInv.Get (c.GetBuildingId (), c.GetOwner ());
-      MoveFungibleBetweenInventories (fungible,
-                                      c.GetInventory (),
-                                      inv->GetInventory (),
-                                      fromName.str (), toName.str ());
+      auto b = buildings.GetById (c.GetBuildingId ());
+      if (b->GetProto ().foundation ())
+        {
+          Inventory inv(*b->MutableProto ().mutable_construction_inventory ());
+          MoveFungibleBetweenInventories (fungible,
+                                          c.GetInventory (), inv,
+                                          fromName.str (), toName.str ());
+        }
+      else
+        {
+          auto inv = buildingInv.Get (c.GetBuildingId (), c.GetOwner ());
+          MoveFungibleBetweenInventories (fungible,
+                                          c.GetInventory (),
+                                          inv->GetInventory (),
+                                          fromName.str (), toName.str ());
+        }
     }
   else
     {

@@ -1020,6 +1020,19 @@ TEST_F (ValidateStateTests, BuildingInventories)
   EXPECT_DEATH (ValidateState (), "non-existant building");
   buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
   ValidateState ();
+
+  buildings.GetById (10)->MutableProto ().set_foundation (true);
+  EXPECT_DEATH (ValidateState (), "in foundation");
+  buildings.GetById (10)->MutableProto ().set_foundation (false);
+  ValidateState ();
+
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  ASSERT_EQ (b->GetId (), 12);
+  b->MutableProto ().mutable_construction_inventory ();
+  b.reset ();
+  EXPECT_DEATH (ValidateState (), "has construction inventory");
+  buildings.GetById (12)->MutableProto ().set_foundation (true);
+  ValidateState ();
 }
 
 TEST_F (ValidateStateTests, OngoingsToCharacterLink)

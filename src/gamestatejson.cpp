@@ -331,14 +331,19 @@ template <>
 
   res["combat"] = GetCombatJsonObject (b);
 
-  auto invRes = buildingInventories.QueryForBuilding (b.GetId ());
-  Json::Value inv(Json::objectValue);
-  while (invRes.Step ())
+  if (pb.foundation ())
+    res["constructioninv"] = Convert (Inventory (pb.construction_inventory ()));
+  else
     {
-      auto h = buildingInventories.GetFromResult (invRes);
-      inv[h->GetAccount ()] = Convert (h->GetInventory ());
+      auto invRes = buildingInventories.QueryForBuilding (b.GetId ());
+      Json::Value inv(Json::objectValue);
+      while (invRes.Step ())
+        {
+          auto h = buildingInventories.GetFromResult (invRes);
+          inv[h->GetAccount ()] = Convert (h->GetInventory ());
+        }
+      res["inventories"] = inv;
     }
-  res["inventories"] = inv;
 
   return res;
 }

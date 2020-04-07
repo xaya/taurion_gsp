@@ -877,6 +877,36 @@ TEST_F (ProcessKillsBuildingTests, MayDropAnyInventoryItem)
   EXPECT_EQ (dropped.size (), expectedAmounts.size ());
 }
 
+TEST_F (ProcessKillsBuildingTests, MayDropConstructionInventory)
+{
+  const HexCoord pos(10, 20);
+  constexpr unsigned trials = 100;
+  unsigned dropped = 0;
+
+  for (unsigned i = 0; i < trials; ++i)
+    {
+      auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+      const auto bId = b->GetId ();
+      b->SetCentre (pos);
+      b->MutableProto ().set_foundation (true);
+      Inventory cInv(*b->MutableProto ().mutable_construction_inventory ());
+      cInv.AddFungibleCount ("foo", 1);
+      b.reset ();
+
+      KillBuilding (bId);
+
+      auto l = loot.GetByCoord (pos);
+      const auto cnt = l->GetInventory ().GetFungibleCount ("foo");
+      EXPECT_LE (cnt, 1);
+      if (cnt == 1)
+        ++dropped;
+      l->GetInventory ().Clear ();
+    }
+
+  LOG (INFO) << "Copied blueprint dropped " << dropped << " times";
+  EXPECT_GT (dropped, 0);
+}
+
 TEST_F (ProcessKillsBuildingTests, MayDropCopiedBlueprint)
 {
   const HexCoord pos(10, 20);

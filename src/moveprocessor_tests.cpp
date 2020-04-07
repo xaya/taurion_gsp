@@ -1660,8 +1660,10 @@ TEST_F (FoundBuildingMoveTests, FoundationBeforeDrop)
 
   ASSERT_NE (buildings.GetById (101), nullptr);
   EXPECT_TRUE (GetTest ()->GetInventory ().IsEmpty ());
-  EXPECT_EQ (buildingInv.Get (101, "domob")
-                ->GetInventory ().GetFungibleCount ("zerospace"), 10);
+
+  auto b = buildings.GetById (101);
+  Inventory constructionInv(b->GetProto ().construction_inventory ());
+  EXPECT_EQ (constructionInv.GetFungibleCount ("zerospace"), 10);
 }
 
 TEST_F (FoundBuildingMoveTests, FoundationBeforeExit)
@@ -2295,7 +2297,7 @@ TEST_F (DropPickupMoveTests, InBuilding)
   });
 }
 
-TEST_F (DropPickupMoveTests, PickupInFoundation)
+TEST_F (DropPickupMoveTests, DropInFoundation)
 {
   auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
   const auto bId = b->GetId ();
@@ -2303,10 +2305,37 @@ TEST_F (DropPickupMoveTests, PickupInFoundation)
   b.reset ();
 
   GetTest ()->SetBuildingId (bId);
+  SetInventoryItems (GetTest ()->GetInventory (), {
+    {"foo", 30},
+  });
 
-  /* FIXME: Add items to construction inventory here once that
-     concept is implemented.  Picking up should definitely not
-     remove from there, even if it is the building owner.  */
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {
+        "drop": {"f": {"foo": 5}}
+      }}}
+    }
+  ])");
+
+  b = buildings.GetById (bId);
+  Inventory constructionInv(b->GetProto ().construction_inventory ());
+  ExpectInventoryItems (constructionInv, {{"foo", 5}});
+
+  ExpectInventoryItems (inv.Get (bId, "domob")->GetInventory (), {});
+  ExpectInventoryItems (GetTest ()->GetInventory (), {{"foo", 25}});
+}
+
+TEST_F (DropPickupMoveTests, PickupInFoundation)
+{
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  const auto bId = b->GetId ();
+  b->MutableProto ().set_foundation (true);
+  Inventory (*b->MutableProto ().mutable_construction_inventory ())
+      .AddFungibleCount ("foo", 10);
+  b.reset ();
+
+  GetTest ()->SetBuildingId (bId);
 
   Process (R"([
     {
@@ -2316,6 +2345,10 @@ TEST_F (DropPickupMoveTests, PickupInFoundation)
       }}}
     }
   ])");
+
+  b = buildings.GetById (bId);
+  Inventory constructionInv(b->GetProto ().construction_inventory ());
+  ExpectInventoryItems (constructionInv, {{"foo", 10}});
 
   ExpectInventoryItems (GetTest ()->GetInventory (), {});
 }

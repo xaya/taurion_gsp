@@ -647,6 +647,8 @@ TEST_F (BuildingJsonTests, Foundation)
 
   b = tbl.CreateNew ("checkmark", "foo", Faction::RED);
   b->MutableProto ().set_foundation (true);
+  b->MutableProto ().mutable_construction_inventory ()
+      ->mutable_fungible ()->insert ({"bar", 10});
   b.reset ();
 
   ExpectStateJson (R"({
@@ -654,7 +656,9 @@ TEST_F (BuildingJsonTests, Foundation)
       [
         {
           "id": 1,
-          "foundation": null
+          "foundation": null,
+          "constructioninv": null,
+          "inventories": {}
         },
         {
           "id": 2,
@@ -662,7 +666,12 @@ TEST_F (BuildingJsonTests, Foundation)
         },
         {
           "id": 3,
-          "foundation": true
+          "foundation": true,
+          "constructioninv":
+            {
+              "fungible": {"bar": 10}
+            },
+          "inventories": null
         }
       ]
   })");

@@ -19,6 +19,7 @@
 syntax = "proto2";
 
 import "combat.proto";
+import "inventory.proto";
 
 package pxd.proto;
 
@@ -53,17 +54,23 @@ message Building
   optional bool foundation = 2;
 
   /**
+   * The inventory with materials for construction of the full building,
+   * while this is just a foundation.
+   */
+  optional Inventory construction_inventory = 3;
+
+  /**
    * Static combat data for this building (besides regeneration).  This is
    * mostly based on the building type, but may change if the building is
    * upgraded or the account gains skills.
    */
-  optional CombatData combat_data = 3;
+  optional CombatData combat_data = 4;
 
   /**
    * The service fee that users need to pay to the building owner for using
    * services in the building.  This is a percentage of the service's base
    * fee (the burnt amount).
    */
-  optional uint32 service_fee_percent = 4;
+  optional uint32 service_fee_percent = 5;
 
 }
