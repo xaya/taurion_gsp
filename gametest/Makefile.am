@@ -6,6 +6,7 @@ REGTESTS = \
   buildings_basic.py \
   buildings_combat.py \
   buildings_enterexit.py \
+  buildings_foundations.py \
   buildings_inventory.py \
   character_limit.py \
   characters.py \
