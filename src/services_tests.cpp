@@ -190,11 +190,20 @@ TEST_F (ServicesTests, UnsupportedBuilding)
 {
   db.SetNextId (200);
   buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+  buildings.CreateNew ("ancient1", "", Faction::ANCIENT)
+      ->MutableProto ().set_foundation (true);
   inv.Get (200, "domob")->GetInventory ().AddFungibleCount ("foo", 10);
+  inv.Get (201, "domob")->GetInventory ().AddFungibleCount ("foo", 10);
 
   EXPECT_FALSE (Process ("domob", R"({
     "t": "ref",
     "b": 200,
+    "i": "foo",
+    "n": 3
+  })"));
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "ref",
+    "b": 201,
     "i": "foo",
     "n": 3
   })"));

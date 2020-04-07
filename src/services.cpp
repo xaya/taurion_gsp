@@ -1004,6 +1004,12 @@ ServiceOperation::Parse (Account& acc, const Json::Value& data,
           << buildingId;
       return nullptr;
     }
+  if (b->GetProto ().foundation ())
+    {
+      LOG (WARNING)
+          << "Service operation requested in foundation " << buildingId;
+      return nullptr;
+    }
 
   const auto& typeVal = data["t"];
   if (!typeVal.isString ())

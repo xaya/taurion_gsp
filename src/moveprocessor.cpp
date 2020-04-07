@@ -790,6 +790,18 @@ BaseMoveProcessor::ParseChangeVehicle (const Character& c,
     }
   const auto buildingId = c.GetBuildingId ();
 
+  /* In theory, changing a vehicle inside a foundation is not possible
+     anyway because there can be no account inventory there.  But it probably
+     does not hurt to explicitly enforce this in any case.  */
+  auto b = buildings.GetById (buildingId);
+  if (b->GetProto ().foundation ())
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId ()
+          << " cannot change vehicle inside a foundation only";
+      return false;
+    }
+
   const auto* data = RoItemDataOrNull (vehicle);
   if (data == nullptr || !data->has_vehicle ())
     {
@@ -834,6 +846,15 @@ BaseMoveProcessor::ParseSetFitments (const Character& c, const Json::Value& upd,
       return false;
     }
   const auto buildingId = c.GetBuildingId ();
+
+  auto b = buildings.GetById (buildingId);
+  if (b->GetProto ().foundation ())
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId ()
+          << " cannot change fitments inside a foundation only";
+      return false;
+    }
 
   fitments.clear ();
   for (const auto& f : cmd)
@@ -1470,6 +1491,19 @@ MoveProcessor::MaybePickupLoot (Character& c, const Json::Value& cmd)
 
   if (c.IsInBuilding ())
     {
+      /* In principle, it is not possible to pick up stuff anyway
+         in a foundation, because there won't be any inventory.  But still
+         make it explicit, just to be safe.  */
+      auto b = buildings.GetById (c.GetBuildingId ());
+      if (b->GetProto ().foundation ())
+        {
+          LOG (WARNING)
+              << "Character " << c.GetId ()
+              << " can't pick up in " << b->GetId ()
+              << " which is a foundation";
+          return;
+        }
+
       fromName << "building " << c.GetBuildingId ();
       auto inv = buildingInv.Get (c.GetBuildingId (), c.GetOwner ());
       MoveFungibleBetweenInventories (fungible,

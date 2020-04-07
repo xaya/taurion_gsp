@@ -974,6 +974,29 @@ TEST_F (PendingStateUpdaterTests, DropPickup)
   )");
 }
 
+TEST_F (PendingStateUpdaterTests, PickupInFoundation)
+{
+  accounts.CreateNew ("domob", Faction::RED);
+  auto b = buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+  const auto bId = b->GetId ();
+  b->MutableProto ().set_foundation (true);
+  Inventory (*b->MutableProto ().mutable_construction_inventory ())
+      .AddFungibleCount ("foo", 10);
+  b.reset ();
+
+  db.SetNextId (101);
+  characters.CreateNew ("domob", Faction::RED)->SetBuildingId (bId);
+
+  Process ("domob", R"({
+    "c": {"101": {"pu": {"f": {"foo": 100}}}}
+  })");
+  ExpectStateJson (R"(
+    {
+      "characters": []
+    }
+  )");
+}
+
 TEST_F (PendingStateUpdaterTests, Prospecting)
 {
   accounts.CreateNew ("domob", Faction::RED);

@@ -978,14 +978,12 @@ TEST_F (CharacterUpdateTests, ChosenSpeedInvalid)
 class FitmentMoveTests : public CharacterUpdateTests
 {
 
-private:
+protected:
 
   static constexpr Database::IdT BUILDING = 100;
 
   BuildingsTable buildings;
   BuildingInventoriesTable inv;
-
-protected:
 
   FitmentMoveTests ()
     : buildings(db), inv(db)
@@ -1098,6 +1096,21 @@ TEST_F (FitmentMoveTests, NotInBuilding)
     {
       "name": "domob",
       "move": {"c": {"1": {"fit": ["sword"]}}}
+    }
+  ])");
+
+  ExpectFitments ({"bow"});
+}
+
+TEST_F (FitmentMoveTests, InFoundation)
+{
+  SetVehicle ("chariot", {"bow"});
+  buildings.GetById (BUILDING)->MutableProto ().set_foundation (true);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fit": []}}}
     }
   ])");
 
@@ -1298,6 +1311,22 @@ TEST_F (ChangeVehicleMoveTests, NotInBuilding)
   SetVehicle ("rv st", {});
   GetBuildingInv ()->GetInventory ().AddFungibleCount ("chariot", 1);
   GetTest ()->SetPosition (HexCoord (42, 10));
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"v": "chariot"}}}
+    }
+  ])");
+
+  EXPECT_EQ (GetTest ()->GetProto ().vehicle (), "rv st");
+}
+
+TEST_F (ChangeVehicleMoveTests, InFoundation)
+{
+  SetVehicle ("rv st", {});
+  GetBuildingInv ()->GetInventory ().AddFungibleCount ("chariot", 1);
+  buildings.GetById (BUILDING)->MutableProto ().set_foundation (true);
 
   Process (R"([
     {
@@ -1945,12 +1974,13 @@ class DropPickupMoveTests : public CharacterUpdateTests
 protected:
 
   GroundLootTable loot;
+  BuildingsTable buildings;
   BuildingInventoriesTable inv;
 
   const HexCoord pos;
 
   DropPickupMoveTests ()
-    : loot(db), inv(db), pos(1, 2)
+    : loot(db), buildings(db), inv(db), pos(1, 2)
   {
     GetTest ()->MutableProto ().set_cargo_space (1000);
     GetTest ()->SetPosition (pos);
@@ -2213,17 +2243,22 @@ TEST_F (DropPickupMoveTests, OrderOfItems)
 
 TEST_F (DropPickupMoveTests, InBuilding)
 {
-  GetTest ()->SetBuildingId (10);
+  auto b = buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+  const auto bId = b->GetId ();
+  const Database::IdT otherBuilding = 1234;
+  b.reset ();
 
-  SetInventoryItems (inv.Get (10, "andy")->GetInventory (), {
+  GetTest ()->SetBuildingId (bId);
+
+  SetInventoryItems (inv.Get (bId, "andy")->GetInventory (), {
     {"foo", 1},
     {"bar", 2},
   });
-  SetInventoryItems (inv.Get (20, "domob")->GetInventory (), {
+  SetInventoryItems (inv.Get (otherBuilding, "domob")->GetInventory (), {
     {"foo", 1},
     {"bar", 2},
   });
-  SetInventoryItems (inv.Get (10, "domob")->GetInventory (), {
+  SetInventoryItems (inv.Get (bId, "domob")->GetInventory (), {
     {"foo", 10},
     {"bar", 20},
   });
@@ -2242,15 +2277,15 @@ TEST_F (DropPickupMoveTests, InBuilding)
   ])");
 
   ExpectInventoryItems (loot.GetByCoord (pos)->GetInventory (), {});
-  ExpectInventoryItems (inv.Get (10, "andy")->GetInventory (), {
+  ExpectInventoryItems (inv.Get (bId, "andy")->GetInventory (), {
     {"bar", 2},
     {"foo", 1},
   });
-  ExpectInventoryItems (inv.Get (20, "domob")->GetInventory (), {
+  ExpectInventoryItems (inv.Get (otherBuilding, "domob")->GetInventory (), {
     {"bar", 2},
     {"foo", 1},
   });
-  ExpectInventoryItems (inv.Get (10, "domob")->GetInventory (), {
+  ExpectInventoryItems (inv.Get (bId, "domob")->GetInventory (), {
     {"bar", 17},
     {"foo", 15},
   });
@@ -2258,6 +2293,31 @@ TEST_F (DropPickupMoveTests, InBuilding)
     {"bar", 3},
     {"foo", 25},
   });
+}
+
+TEST_F (DropPickupMoveTests, PickupInFoundation)
+{
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  const auto bId = b->GetId ();
+  b->MutableProto ().set_foundation (true);
+  b.reset ();
+
+  GetTest ()->SetBuildingId (bId);
+
+  /* FIXME: Add items to construction inventory here once that
+     concept is implemented.  Picking up should definitely not
+     remove from there, even if it is the building owner.  */
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {
+        "pu": {"f": {"foo": 10}}
+      }}}
+    }
+  ])");
+
+  ExpectInventoryItems (GetTest ()->GetInventory (), {});
 }
 
 /* ************************************************************************** */
