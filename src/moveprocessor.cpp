@@ -1363,11 +1363,12 @@ MoveProcessor::MaybeFoundBuilding (Character& c, const Json::Value& upd)
   for (const auto& entry : b->RoConfigData ().construction ().foundation ())
     inv.AddFungibleCount (entry.first, -static_cast<int> (entry.second));
 
-  dyn.RemoveVehicle (c.GetPosition (), c.GetFaction ());
-  dyn.AddBuilding (*b);
-
   UpdateBuildingStats (*b);
-  EnterBuilding (c, *b);
+  EnterBuilding (c, *b, dyn);
+
+  /* EnterBuilding already removes the vehicle from dyn, but we have to add
+     the building afterwards manually.  */
+  dyn.AddBuilding (*b);
 }
 
 namespace

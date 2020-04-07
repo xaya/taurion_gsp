@@ -88,7 +88,7 @@ PXLogic::UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
      enter as soon as possible (perhaps in the same instant the move for it
      gets confirmed).  It should be before combat targets, so that players
      entering a building won't be attacked any more.  */
-  ProcessEnterBuildings (db);
+  ProcessEnterBuildings (db, dyn);
 
   FindCombatTargets (db, rnd);
 

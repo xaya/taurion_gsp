@@ -147,8 +147,9 @@ UpdateBuildingStats (Building& b)
 }
 
 void
-EnterBuilding (Character& c, const Building& b)
+EnterBuilding (Character& c, const Building& b, DynObstacles& dyn)
 {
+  dyn.RemoveVehicle (c.GetPosition (), c.GetFaction ());
   c.SetBuildingId (b.GetId ());
   c.ClearTarget ();
   c.SetEnterBuilding (Database::EMPTY_ID);
@@ -157,7 +158,7 @@ EnterBuilding (Character& c, const Building& b)
 }
 
 void
-ProcessEnterBuildings (Database& db)
+ProcessEnterBuildings (Database& db, DynObstacles& dyn)
 {
   BuildingsTable buildings(db);
   CharacterTable characters(db);
@@ -204,7 +205,7 @@ ProcessEnterBuildings (Database& db)
       LOG (INFO)
           << "Character " << c->GetId () << " is entering " << buildingId;
       ++entered;
-      EnterBuilding (*c, *b);
+      EnterBuilding (*c, *b, dyn);
     }
 
   LOG (INFO)
@@ -231,6 +232,7 @@ LeaveBuilding (BuildingsTable& buildings, Character& c,
       << " is leaving building " << b->GetId ()
       << " to location " << pos;
   c.SetPosition (pos);
+  dyn.AddVehicle (pos, c.GetFaction ());
 }
 
 } // namespace pxd

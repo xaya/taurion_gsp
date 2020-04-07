@@ -67,13 +67,13 @@ void UpdateBuildingStats (Building& b);
  * Processes the updates (without any validation) for entering the given
  * building with the given character.
  */
-void EnterBuilding (Character& c, const Building& b);
+void EnterBuilding (Character& c, const Building& b, DynObstacles& dyn);
 
 /**
  * Processes all characters that want to enter a building, and lets them in
  * if it is possible for them.
  */
-void ProcessEnterBuildings (Database& db);
+void ProcessEnterBuildings (Database& db, DynObstacles& dyn);
 
 /**
  * Makes the given character leave the building it is currently in.
