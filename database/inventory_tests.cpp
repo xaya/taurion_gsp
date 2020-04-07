@@ -136,6 +136,25 @@ TEST_F (InventoryTests, AdditionOfOtherInventory)
   EXPECT_EQ (inv.GetFungibleCount ("bar"), 3);
 }
 
+TEST_F (InventoryTests, ProtoRef)
+{
+  proto::Inventory pb;
+  pb.mutable_fungible ()->insert ({"foo", 5});
+
+  Inventory other(pb);
+  EXPECT_EQ (other.GetFungibleCount ("foo"), 5);
+  other.AddFungibleCount ("foo", -5);
+  other.AddFungibleCount ("bar", 10);
+
+  EXPECT_EQ (pb.fungible ().size (), 1);
+  EXPECT_EQ (pb.fungible ().at ("bar"), 10);
+
+  const proto::Inventory& constRef(pb);
+  Inventory ro(constRef);
+  EXPECT_EQ (ro.GetFungibleCount ("bar"), 10);
+  EXPECT_DEATH (ro.AddFungibleCount ("foo", 1), "non-mutable");
+}
+
 TEST_F (InventoryTests, DualProduct)
 {
   const auto val = Inventory::Product (MAX_ITEM_QUANTITY, -MAX_ITEM_DUAL);

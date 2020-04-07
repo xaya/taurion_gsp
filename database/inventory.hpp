@@ -28,6 +28,7 @@
 #include <google/protobuf/map.h>
 
 #include <cstdint>
+#include <memory>
 #include <string>
 
 namespace pxd
@@ -67,8 +68,27 @@ class Inventory
 
 private:
 
-  /** The underlying data as proto.  */
-  LazyProto<proto::Inventory> data;
+  /** The underlying data if it comes from a database column.  */
+  std::unique_ptr<LazyProto<proto::Inventory>> data;
+
+  /**
+   * The underlying data if it just references a proto directly, e.g. when
+   * it is part of another proto.
+   */
+  proto::Inventory* ref;
+
+  /** If this is a reference, whether it is mutable.  */
+  bool mutableRef;
+
+  /**
+   * Returns the underlying proto as read-only data.
+   */
+  const proto::Inventory& Get () const;
+
+  /**
+   * Returns the underlying data for mutation.
+   */
+  proto::Inventory& Mutable ();
 
 public:
 
@@ -80,6 +100,15 @@ public:
    * be modified, for instance).
    */
   Inventory ();
+
+  /**
+   * Constructs an instance based on the given explicit proto.  This is
+   * used to wrap a raw proto not coming from a database column (e.g.
+   * already part of another proto) so that it can interface with
+   * code that expects an Inventory instance.
+   */
+  explicit Inventory (proto::Inventory& p);
+  explicit Inventory (const proto::Inventory& p);
 
   /**
    * Constructs an instance wrapping the given proto data.
@@ -107,7 +136,7 @@ public:
   const google::protobuf::Map<std::string, google::protobuf::uint64>&
   GetFungible () const
   {
-    return data.Get ().fungible ();
+    return Get ().fungible ();
   }
 
   /**
@@ -136,11 +165,7 @@ public:
    * Returns true if the inventory data has been modified (and thus needs to
    * be saved back to the database).
    */
-  bool
-  IsDirty () const
-  {
-    return data.IsDirty ();
-  }
+  bool IsDirty () const;
 
   /**
    * Returns true if the inventory is empty.  Note that this forces the
@@ -151,11 +176,7 @@ public:
   /**
    * Gives access to the underlying lazy proto for binding purposes.
    */
-  const LazyProto<proto::Inventory>&
-  GetProtoForBinding () const
-  {
-    return data;
-  }
+  const LazyProto<proto::Inventory>& GetProtoForBinding () const;
 
   /**
    * Computes the product of a quantity value with a dual value.  Both

@@ -32,11 +32,21 @@ static_assert ((MAX_ITEM_QUANTITY * MAX_ITEM_DUAL) / MAX_ITEM_DUAL
 /* ************************************************************************** */
 
 Inventory::Inventory ()
+  : data(std::make_unique<LazyProto<proto::Inventory>> ()), ref(nullptr)
 {
-  data.SetToDefault ();
+  data->SetToDefault ();
 }
 
+Inventory::Inventory (proto::Inventory& p)
+  : data(nullptr), ref(&p), mutableRef(true)
+{}
+
+Inventory::Inventory (const proto::Inventory& p)
+  : data(nullptr), ref(const_cast<proto::Inventory*> (&p)), mutableRef(false)
+{}
+
 Inventory::Inventory (LazyProto<proto::Inventory>&& d)
+  : data(std::make_unique<LazyProto<proto::Inventory>> ()), ref(nullptr)
 {
   *this = std::move (d);
 }
@@ -44,30 +54,66 @@ Inventory::Inventory (LazyProto<proto::Inventory>&& d)
 Inventory&
 Inventory::operator= (LazyProto<proto::Inventory>&& d)
 {
-  data = std::move (d);
+  CHECK (data != nullptr);
+  *data = std::move (d);
   return *this;
+}
+
+const proto::Inventory&
+Inventory::Get () const
+{
+  if (data != nullptr)
+    return data->Get ();
+
+  CHECK (ref != nullptr);
+  return *ref;
+}
+
+proto::Inventory&
+Inventory::Mutable ()
+{
+  if (data != nullptr)
+    return data->Mutable ();
+
+  CHECK (mutableRef) << "Inventory is a non-mutable proto reference";
+  CHECK (ref != nullptr);
+  return *ref;
 }
 
 void
 Inventory::Clear ()
 {
-  data.Mutable ().clear_fungible ();
+  Mutable ().clear_fungible ();
+}
+
+bool
+Inventory::IsDirty () const
+{
+  CHECK (data != nullptr);
+  return data->IsDirty ();
 }
 
 bool
 Inventory::IsEmpty () const
 {
-  return data.Get ().fungible ().empty ();
+  return Get ().fungible ().empty ();
 }
 
 Inventory::QuantityT
 Inventory::GetFungibleCount (const std::string& type) const
 {
-  const auto& fungible = data.Get ().fungible ();
+  const auto& fungible = Get ().fungible ();
   const auto mit = fungible.find (type);
   if (mit == fungible.end ())
     return 0;
   return mit->second;
+}
+
+const LazyProto<proto::Inventory>&
+Inventory::GetProtoForBinding () const
+{
+  CHECK (data != nullptr);
+  return *data;
 }
 
 void
@@ -76,7 +122,7 @@ Inventory::SetFungibleCount (const std::string& type, const QuantityT count)
   CHECK_GE (count, 0);
   CHECK_LE (count, MAX_ITEM_QUANTITY);
 
-  auto& fungible = *data.Mutable ().mutable_fungible ();
+  auto& fungible = *Mutable ().mutable_fungible ();
 
   if (count == 0)
     fungible.erase (type);
