@@ -1075,6 +1075,7 @@ TEST_F (ValidateStateTests, CharacterToOngoingsLink)
 
 TEST_F (ValidateStateTests, OngoingsToBuildingLink)
 {
+  accounts.CreateNew ("domob", Faction::RED);
   db.SetNextId (101);
 
   auto op = ongoings.CreateNew ();
@@ -1082,7 +1083,31 @@ TEST_F (ValidateStateTests, OngoingsToBuildingLink)
   op.reset ();
   EXPECT_DEATH (ValidateState (), "refers to non-existing building");
 
-  buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+  buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  EXPECT_DEATH (ValidateState (), "does not refer back to ongoing");
+
+  auto b = buildings.GetById (102);
+  b->MutableProto ().set_ongoing_construction (101);
+  b.reset ();
+  ValidateState ();
+}
+
+TEST_F (ValidateStateTests, BuildingToOngoingsLink)
+{
+  accounts.CreateNew ("domob", Faction::RED);
+  db.SetNextId (101);
+
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  b->MutableProto ().set_ongoing_construction (102);
+  b.reset ();
+  EXPECT_DEATH (ValidateState (), "has non-existing ongoing");
+
+  ongoings.CreateNew ();
+  EXPECT_DEATH (ValidateState (), "does not refer back to building");
+
+  auto op = ongoings.GetById (102);
+  op->SetBuildingId (101);
+  op.reset ();
   ValidateState ();
 }
 

@@ -164,7 +164,8 @@ class Building (object):
     return "foundation" in self.data
 
   def getConstructionInventory (self):
-    return collections.Counter (self.data["constructioninv"]["fungible"])
+    constr = self.data["construction"]
+    return collections.Counter (constr["inventory"]["fungible"])
 
   def getFungibleInventory (self, account):
     inv = self.data["inventories"]

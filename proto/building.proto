@@ -60,17 +60,23 @@ message Building
   optional Inventory construction_inventory = 3;
 
   /**
+   * If this is a foundation being upgraded to full building right now,
+   * then this is the ID of the ongoing operation corresponding to it.
+   */
+  optional uint64 ongoing_construction = 4;
+
+  /**
    * Static combat data for this building (besides regeneration).  This is
    * mostly based on the building type, but may change if the building is
    * upgraded or the account gains skills.
    */
-  optional CombatData combat_data = 4;
+  optional CombatData combat_data = 5;
 
   /**
    * The service fee that users need to pay to the building owner for using
    * services in the building.  This is a percentage of the service's base
    * fee (the burnt amount).
    */
-  optional uint32 service_fee_percent = 5;
+  optional uint32 service_fee_percent = 6;
 
 }
