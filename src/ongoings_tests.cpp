@@ -228,13 +228,13 @@ TEST_F (OngoingsTests, BlueprintCopy)
   EXPECT_EQ (GetNumOngoing (), 0);
 }
 
-TEST_F (OngoingsTests, ConstructionFromOriginal)
+TEST_F (OngoingsTests, ItemConstructionFromOriginal)
 {
   auto b = buildings.CreateNew ("ancient1", "", Faction::ANCIENT);
   const auto bId = b->GetId ();
   auto op = AddOp (*b);
   op->SetHeight (10);
-  auto& c = *op->MutableProto ().mutable_construction ();
+  auto& c = *op->MutableProto ().mutable_item_construction ();
   c.set_account ("domob");
   c.set_output_type ("bow");
   c.set_num_items (20);
@@ -256,13 +256,13 @@ TEST_F (OngoingsTests, ConstructionFromOriginal)
   EXPECT_EQ (GetNumOngoing (), 0);
 }
 
-TEST_F (OngoingsTests, ConstructionFromCopy)
+TEST_F (OngoingsTests, ItemConstructionFromCopy)
 {
   auto b = buildings.CreateNew ("ancient1", "", Faction::ANCIENT);
   const auto bId = b->GetId ();
   auto op = AddOp (*b);
   op->SetHeight (10);
-  auto& c = *op->MutableProto ().mutable_construction ();
+  auto& c = *op->MutableProto ().mutable_item_construction ();
   c.set_account ("domob");
   c.set_output_type ("bow");
   c.set_num_items (5);

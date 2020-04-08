@@ -89,10 +89,10 @@ ProcessAllOngoings (Database& db, xaya::Random& rnd, const Context& ctx)
             break;
           }
 
-        case proto::OngoingOperation::kConstruction:
+        case proto::OngoingOperation::kItemConstruction:
           {
             CHECK (b != nullptr);
-            const auto& c = op->GetProto ().construction ();
+            const auto& c = op->GetProto ().item_construction ();
             LOG (INFO)
                 << c.account () << " finished constructing "
                 << c.num_items () << " " << c.output_type ()

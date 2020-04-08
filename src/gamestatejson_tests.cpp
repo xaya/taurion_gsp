@@ -962,11 +962,11 @@ TEST_F (OngoingsJsonTests, BlueprintCopy)
   })");
 }
 
-TEST_F (OngoingsJsonTests, Construction)
+TEST_F (OngoingsJsonTests, ItemConstruction)
 {
   auto op = tbl.CreateNew ();
   ASSERT_EQ (op->GetId (), 1);
-  auto* c = op->MutableProto ().mutable_construction ();
+  auto* c = op->MutableProto ().mutable_item_construction ();
   c->set_account ("domob");
   c->set_output_type ("bow");
   c->set_num_items (42);
@@ -974,7 +974,7 @@ TEST_F (OngoingsJsonTests, Construction)
 
   op = tbl.CreateNew ();
   ASSERT_EQ (op->GetId (), 2);
-  c = op->MutableProto ().mutable_construction ();
+  c = op->MutableProto ().mutable_item_construction ();
   c->set_account ("domob");
   c->set_output_type ("bow");
   c->set_num_items (5);

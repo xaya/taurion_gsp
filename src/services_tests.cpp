@@ -1124,8 +1124,8 @@ TEST_F (ConstructionTests, FromOriginal)
   ASSERT_NE (op, nullptr);
   EXPECT_EQ (op->GetHeight (), 100 + 5 * 10);
   EXPECT_EQ (op->GetBuildingId (), ANCIENT_BUILDING);
-  ASSERT_TRUE (op->GetProto ().has_construction ());
-  const auto& c = op->GetProto ().construction ();
+  ASSERT_TRUE (op->GetProto ().has_item_construction ());
+  const auto& c = op->GetProto ().item_construction ();
   EXPECT_EQ (c.account (), "domob");
   EXPECT_EQ (c.output_type (), "sword");
   EXPECT_EQ (c.num_items (), 5);
@@ -1154,8 +1154,8 @@ TEST_F (ConstructionTests, FromCopy)
   ASSERT_NE (op, nullptr);
   EXPECT_EQ (op->GetHeight (), 100 + 10);
   EXPECT_EQ (op->GetBuildingId (), ANCIENT_BUILDING);
-  ASSERT_TRUE (op->GetProto ().has_construction ());
-  const auto& c = op->GetProto ().construction ();
+  ASSERT_TRUE (op->GetProto ().has_item_construction ());
+  const auto& c = op->GetProto ().item_construction ();
   EXPECT_EQ (c.account (), "domob");
   EXPECT_EQ (c.output_type (), "sword");
   EXPECT_EQ (c.num_items (), 5);

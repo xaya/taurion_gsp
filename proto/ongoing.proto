@@ -75,7 +75,7 @@ message BlueprintCopy
  * resources required for the construction are always just removed when the
  * operation starts (and thus not related to the operation state).
  */
-message Construction
+message ItemConstruction
 {
 
   /** The account doing the operation, which will receive items when done.  */
@@ -108,7 +108,7 @@ message OngoingOperation
     OngoingProspection prospection = 1;
     ArmourRepair armour_repair = 2;
     BlueprintCopy blueprint_copy = 3;
-    Construction construction = 4;
+    ItemConstruction item_construction = 4;
   }
 
   /* The database stores extra data directly in columns:

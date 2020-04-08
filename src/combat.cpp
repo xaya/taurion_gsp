@@ -385,9 +385,9 @@ KillProcessor::ProcessBuilding (const Database::IdT id)
             continue;
           }
 
-        if (op->GetProto ().has_construction ())
+        if (op->GetProto ().has_item_construction ())
           {
-            const auto& c = op->GetProto ().construction ();
+            const auto& c = op->GetProto ().item_construction ();
             if (c.has_original_type ())
               totalInv.AddFungibleCount (c.original_type (), 1);
             continue;

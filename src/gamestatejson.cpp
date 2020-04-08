@@ -399,9 +399,9 @@ template <>
         break;
       }
 
-    case proto::OngoingOperation::kConstruction:
+    case proto::OngoingOperation::kItemConstruction:
       {
-        const auto& c = pb.construction ();
+        const auto& c = pb.item_construction ();
 
         res["operation"] = "construct";
         res["account"] = c.account ();
