@@ -164,6 +164,74 @@ TEST_F (CanPlaceBuildingTests, MultiRegion)
 
 /* ************************************************************************** */
 
+class MaybeStartBuildingConstructionTests : public BuildingsTests
+{
+
+protected:
+
+  ContextForTesting ctx;
+  OngoingsTable ongoings;
+
+  /** An example "huesli" building handle for use in this test.  */
+  BuildingsTable::Handle huesli;
+
+  /** The huesli building's construction inventory.  */
+  Inventory cInv;
+
+  MaybeStartBuildingConstructionTests ()
+    : ongoings(db),
+      huesli(tbl.CreateNew ("huesli", "domob", Faction::RED)),
+      cInv(*huesli->MutableProto ().mutable_construction_inventory ())
+  {
+    huesli->MutableProto ().set_foundation (true);
+    ctx.SetHeight (100);
+
+    db.SetNextId (101);
+  }
+
+};
+
+TEST_F (MaybeStartBuildingConstructionTests, NotEnoughResources)
+{
+  cInv.AddFungibleCount ("foo", 2);
+  cInv.AddFungibleCount ("zerospace", 100);
+
+  MaybeStartBuildingConstruction (*huesli, ongoings, ctx);
+  EXPECT_FALSE (ongoings.QueryAll ().Step ());
+  EXPECT_FALSE (huesli->GetProto ().has_ongoing_construction ());
+}
+
+TEST_F (MaybeStartBuildingConstructionTests, AlreadyConstructing)
+{
+  huesli->MutableProto ().set_ongoing_construction (42);
+
+  cInv.AddFungibleCount ("foo", 3);
+  cInv.AddFungibleCount ("zerospace", 100);
+
+  MaybeStartBuildingConstruction (*huesli, ongoings, ctx);
+  EXPECT_FALSE (ongoings.QueryAll ().Step ());
+}
+
+TEST_F (MaybeStartBuildingConstructionTests, StartsOperation)
+{
+  cInv.AddFungibleCount ("foo", 3);
+  cInv.AddFungibleCount ("zerospace", 100);
+
+  MaybeStartBuildingConstruction (*huesli, ongoings, ctx);
+
+  auto res = ongoings.QueryAll ();
+  ASSERT_TRUE (res.Step ());
+  auto op = ongoings.GetFromResult (res);
+  EXPECT_EQ (op->GetHeight (), 110);
+  EXPECT_EQ (op->GetBuildingId (), huesli->GetId ());
+  EXPECT_TRUE (op->GetProto ().has_building_construction ());
+  EXPECT_EQ (huesli->GetProto ().ongoing_construction (), op->GetId ());
+
+  EXPECT_FALSE (res.Step ());
+}
+
+/* ************************************************************************** */
+
 class ProcessEnterBuildingsTests : public BuildingsTests
 {
 

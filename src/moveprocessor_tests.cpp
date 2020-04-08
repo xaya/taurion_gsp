@@ -2353,6 +2353,61 @@ TEST_F (DropPickupMoveTests, PickupInFoundation)
   ExpectInventoryItems (GetTest ()->GetInventory (), {});
 }
 
+TEST_F (DropPickupMoveTests, StartBuildingConstruction)
+{
+  OngoingsTable ongoings(db);
+
+  auto b = buildings.CreateNew ("huesli", "domob", Faction::RED);
+  const auto bId = b->GetId ();
+  b->MutableProto ().set_foundation (true);
+  b.reset ();
+
+  GetTest ()->SetBuildingId (bId);
+  SetInventoryItems (GetTest ()->GetInventory (), {
+    {"foo", 10},
+    {"zerospace", 10},
+  });
+
+  /* This is not enough.  */
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {
+        "drop": {"f": {"foo": 5, "zerospace": 9}}
+      }}}
+    }
+  ])");
+  EXPECT_FALSE (buildings.GetById (bId)
+                  ->GetProto ().has_ongoing_construction ());
+  ASSERT_FALSE (ongoings.QueryAll ().Step ());
+
+  /* This will start construction.  */
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {
+        "drop": {"f": {"zerospace": 1}}
+      }}}
+    }
+  ])");
+  EXPECT_TRUE (buildings.GetById (bId)
+                  ->GetProto ().has_ongoing_construction ());
+
+  /* Dropping more is fine but doesn't do anything else.  */
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {
+        "drop": {"f": {"foo": 1}}
+      }}}
+    }
+  ])");
+  auto res = ongoings.QueryAll ();
+  ASSERT_TRUE (res.Step ());
+  EXPECT_EQ (ongoings.GetFromResult (res)->GetBuildingId (), bId);
+  EXPECT_FALSE (res.Step ());
+}
+
 /* ************************************************************************** */
 
 class MoveTestsWithRegion : public CharacterUpdateTests

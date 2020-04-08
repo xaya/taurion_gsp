@@ -25,6 +25,7 @@
 #include "database/building.hpp"
 #include "database/character.hpp"
 #include "database/database.hpp"
+#include "database/ongoing.hpp"
 #include "hexagonal/coord.hpp"
 #include "proto/building.pb.h"
 
@@ -56,6 +57,14 @@ bool CanPlaceBuilding (const std::string& type,
  * Places initial buildings (ancient and obelisks) onto the map.
  */
 void InitialiseBuildings (Database& db);
+
+/**
+ * Check if the given building has all required resources to start
+ * construction (from foundation to full building).  If so, actually
+ * start the relevant ongoing operation for it.
+ */
+void MaybeStartBuildingConstruction (Building& b, OngoingsTable& ongoings,
+                                     const Context& ctx);
 
 /**
  * Computes and updates the stats of a building (e.g. combat data, HP) from
