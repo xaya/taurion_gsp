@@ -26,6 +26,7 @@
 #include "database/character.hpp"
 #include "database/database.hpp"
 #include "hexagonal/coord.hpp"
+#include "proto/building.pb.h"
 
 #include <xayautil/random.hpp>
 
@@ -41,6 +42,17 @@ namespace pxd
 std::vector<HexCoord> GetBuildingShape (const Building& b);
 
 /**
+ * Checks if a building of the given type and rotation can be placed
+ * at the given location.  The conditions are that no tile must be taken
+ * already by another building or character, and that all tiles must be
+ * of the same region.
+ */
+bool CanPlaceBuilding (const std::string& type,
+                       const proto::ShapeTransformation& trafo,
+                       const HexCoord& pos,
+                       const DynObstacles& dyn, const Context& ctx);
+
+/**
  * Places initial buildings (ancient and obelisks) onto the map.
  */
 void InitialiseBuildings (Database& db);
@@ -52,10 +64,16 @@ void InitialiseBuildings (Database& db);
 void UpdateBuildingStats (Building& b);
 
 /**
+ * Processes the updates (without any validation) for entering the given
+ * building with the given character.
+ */
+void EnterBuilding (Character& c, const Building& b, DynObstacles& dyn);
+
+/**
  * Processes all characters that want to enter a building, and lets them in
  * if it is possible for them.
  */
-void ProcessEnterBuildings (Database& db);
+void ProcessEnterBuildings (Database& db, DynObstacles& dyn);
 
 /**
  * Makes the given character leave the building it is currently in.

@@ -395,6 +395,11 @@ KillProcessor::ProcessBuilding (const Database::IdT id)
       }
   }
 
+  auto b = buildings.GetById (id);
+  CHECK (b != nullptr) << "Killed non-existant building " << id;
+  if (b->GetProto ().has_construction_inventory ())
+    totalInv += Inventory (b->GetProto ().construction_inventory ());
+
   /* The underlying proto map does not have a well-defined order.  Since the
      random rolls depend on the other, make sure to explicitly sort the
      the list of inventory positions.  */
@@ -402,8 +407,6 @@ KillProcessor::ProcessBuilding (const Database::IdT id)
   const std::map<std::string, Inventory::QuantityT> invItems (
       protoInvMap.begin (), protoInvMap.end ());
 
-  auto b = buildings.GetById (id);
-  CHECK (b != nullptr) << "Killed non-existant building " << id;
   auto lootHandle = loot.GetByCoord (b->GetCentre ());
   b.reset ();
 

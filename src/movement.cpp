@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -291,48 +291,6 @@ template <typename Fcn>
     }
 }
 
-/**
- * RAII helper class to remove a vehicle from the dynamic obstacles and
- * then add it back again at the (potentially) changed position.
- */
-class MoveInDynObstacles
-{
-
-private:
-
-  /** The character to move.  */
-  const Character& character;
-
-  /** Dynamic obstacles instance to update.  */
-  DynObstacles& dyn;
-
-public:
-
-  MoveInDynObstacles () = delete;
-  MoveInDynObstacles (const MoveInDynObstacles&) = delete;
-  void operator= (const MoveInDynObstacles&) = delete;
-
-  explicit MoveInDynObstacles (const Character& c, DynObstacles& d)
-    : character(c), dyn(d)
-  {
-    VLOG (1)
-        << "Removing character " << character.GetId ()
-        << " at position " << character.GetPosition ()
-        << " from the dynamic obstacle map before moving it...";
-    dyn.RemoveVehicle (character.GetPosition (), character.GetFaction ());
-  }
-
-  ~MoveInDynObstacles ()
-  {
-    VLOG (1)
-        << "Adding back character " << character.GetId ()
-        << " at position " << character.GetPosition ()
-        << " to the dynamic obstacle map...";
-    dyn.AddVehicle (character.GetPosition (), character.GetFaction ());
-  }
-
-};
-
 } // anonymous namespace
 
 void
@@ -358,6 +316,25 @@ ProcessAllMovement (Database& db, DynObstacles& dyn, const Context& ctx)
 
       CharacterMovement (*c, ctx, edges);
     }
+}
+
+MoveInDynObstacles::MoveInDynObstacles (const Character& c, DynObstacles& d)
+  : character(c), dyn(d)
+{
+  VLOG (1)
+      << "Removing character " << character.GetId ()
+      << " at position " << character.GetPosition ()
+      << " from the dynamic obstacle map before moving it...";
+  dyn.RemoveVehicle (character.GetPosition (), character.GetFaction ());
+}
+
+MoveInDynObstacles::~MoveInDynObstacles ()
+{
+  VLOG (1)
+      << "Adding back character " << character.GetId ()
+      << " at position " << character.GetPosition ()
+      << " to the dynamic obstacle map...";
+  dyn.AddVehicle (character.GetPosition (), character.GetFaction ());
 }
 
 namespace test

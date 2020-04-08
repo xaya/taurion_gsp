@@ -286,6 +286,38 @@ TEST_F (PXLogicTests, KilledVehicleNoLongerBlocks)
   EXPECT_EQ (characters.GetById (idMoving)->GetPosition (), HexCoord (10, 0));
 }
 
+TEST_F (PXLogicTests, NewBuildingBlocksMovement)
+{
+  auto c = CreateCharacter ("builder", Faction::GREEN);
+  ASSERT_EQ (c->GetId (), 1);
+  c->SetPosition (HexCoord (0, 0));
+  c->GetInventory ().AddFungibleCount ("foo", 10);
+  c.reset ();
+
+  c = CreateCharacter ("moving", Faction::RED);
+  ASSERT_EQ (c->GetId (), 2);
+  c->SetPosition (HexCoord (1, 0));
+  c->MutableProto ().set_speed (1'000);
+  c.reset ();
+
+  /* Building a foundation should immediately block future movement in the
+     same round already.  */
+  db.SetNextId (101);
+  UpdateState (R"([
+    {
+      "name": "moving",
+      "move": {"c": {"2": {"wp": [{"x": 0, "y": 0}]}}}
+    },
+    {
+      "name": "builder",
+      "move": {"c": {"1": {"fb": {"t": "huesli", "rot": 0}}}}
+    }
+  ])");
+
+  EXPECT_NE (buildings.GetById (101), nullptr);
+  EXPECT_EQ (characters.GetById (2)->GetPosition (), HexCoord (1, 0));
+}
+
 TEST_F (PXLogicTests, DamageInNextRound)
 {
   auto c = CreateCharacter ("domob", Faction::RED);
@@ -987,6 +1019,19 @@ TEST_F (ValidateStateTests, BuildingInventories)
   inv.Get (11, "domob")->GetInventory ().SetFungibleCount ("foo", 1);
   EXPECT_DEATH (ValidateState (), "non-existant building");
   buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+  ValidateState ();
+
+  buildings.GetById (10)->MutableProto ().set_foundation (true);
+  EXPECT_DEATH (ValidateState (), "in foundation");
+  buildings.GetById (10)->MutableProto ().set_foundation (false);
+  ValidateState ();
+
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  ASSERT_EQ (b->GetId (), 12);
+  b->MutableProto ().mutable_construction_inventory ();
+  b.reset ();
+  EXPECT_DEATH (ValidateState (), "has construction inventory");
+  buildings.GetById (12)->MutableProto ().set_foundation (true);
   ValidateState ();
 }
 

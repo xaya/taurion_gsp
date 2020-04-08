@@ -46,8 +46,9 @@ static constexpr unsigned MAX_SERVICE_FEE_PERCENT = 1'000;
 
 /* ************************************************************************** */
 
-BaseMoveProcessor::BaseMoveProcessor (Database& d, const Context& c)
-  : ctx(c), db(d),
+BaseMoveProcessor::BaseMoveProcessor (Database& d, DynObstacles& o,
+                                      const Context& c)
+  : ctx(c), db(d), dyn(o),
     accounts(db), buildings(db), characters(db),
     groundLoot(db), buildingInv(db), itemCounts(db),
     ongoings(db), regions(db, ctx.Height ())
@@ -789,6 +790,18 @@ BaseMoveProcessor::ParseChangeVehicle (const Character& c,
     }
   const auto buildingId = c.GetBuildingId ();
 
+  /* In theory, changing a vehicle inside a foundation is not possible
+     anyway because there can be no account inventory there.  But it probably
+     does not hurt to explicitly enforce this in any case.  */
+  auto b = buildings.GetById (buildingId);
+  if (b->GetProto ().foundation ())
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId ()
+          << " cannot change vehicle inside a foundation only";
+      return false;
+    }
+
   const auto* data = RoItemDataOrNull (vehicle);
   if (data == nullptr || !data->has_vehicle ())
     {
@@ -834,6 +847,15 @@ BaseMoveProcessor::ParseSetFitments (const Character& c, const Json::Value& upd,
     }
   const auto buildingId = c.GetBuildingId ();
 
+  auto b = buildings.GetById (buildingId);
+  if (b->GetProto ().foundation ())
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId ()
+          << " cannot change fitments inside a foundation only";
+      return false;
+    }
+
   fitments.clear ();
   for (const auto& f : cmd)
     {
@@ -873,6 +895,121 @@ BaseMoveProcessor::ParseSetFitments (const Character& c, const Json::Value& upd,
       }
 
   return CheckVehicleFitments (c.GetProto ().vehicle (), fitments);
+}
+
+namespace
+{
+
+/**
+ * Parses a building configuration (type and shape trafo) from
+ * JSON.  This is shared between proper "found building" moves
+ * and god-mode build commands.
+ */
+bool
+ParseBuildingConfig (const Json::Value& build,
+                     std::string& type, proto::ShapeTransformation& trafo)
+{
+  CHECK (build.isObject ());
+
+  auto val = build["t"];
+  if (!val.isString ())
+    {
+      LOG (WARNING) << "Building element has invalid type: " << build;
+      return false;
+    }
+  type = val.asString ();
+
+  const auto& buildingTypes = RoConfigData ().building_types ();
+  if (buildingTypes.find (type) == buildingTypes.end ())
+    {
+      LOG (WARNING) << "Invalid type for building: " << type;
+      return false;
+    }
+
+  val = build["rot"];
+  if (!val.isUInt () || val.asUInt () > 5)
+    {
+      LOG (WARNING) << "Building element has invalid rotation: " << build;
+      return false;
+    }
+  const unsigned rot = val.asUInt ();
+
+  trafo.Clear ();
+  trafo.set_rotation_steps (rot);
+
+  return true;
+}
+
+} // anonymous namespace
+
+bool
+BaseMoveProcessor::ParseFoundBuilding (const Character& c,
+                                       const Json::Value& upd,
+                                       std::string& type,
+                                       proto::ShapeTransformation& trafo)
+{
+  CHECK (upd.isObject ());
+  const auto& build = upd["fb"];
+  if (!build.isObject ())
+    return false;
+
+  if (build.size () != 2 || !ParseBuildingConfig (build, type, trafo))
+    {
+      LOG (WARNING) << "Invalid building element: " << build;
+      return false;
+    }
+
+  if (c.IsBusy ())
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId () << " is busy, can't found a building";
+      return false;
+    }
+
+  if (c.IsInBuilding ())
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId ()
+          << " is inside a building, can't found a building";
+      return false;
+    }
+
+  const auto& roData = RoConfigData ().building_types ().at (type);
+  if (!roData.has_construction ())
+    {
+      LOG (WARNING) << "Building " << type << " cannot be constructed";
+      return false;
+    }
+
+  const auto& inv = c.GetInventory ();
+  for (const auto& entry : roData.construction ().foundation ())
+    {
+      const auto available = inv.GetFungibleCount (entry.first);
+      if (entry.second > available)
+        {
+          LOG (WARNING)
+              << "Character " << c.GetId ()
+              << " has only " << available << " " << entry.first
+              << " but needs " << entry.second
+              << " to build foundations of " << type;
+          return false;
+        }
+    }
+
+  /* Before we check the placement, we have to temporarily remove the
+     building character itself.  It is fine if they are in the way, as they
+     will automatically enter the foundation once placed.  */
+  MoveInDynObstacles dynMover(c, dyn);
+  if (!CanPlaceBuilding (type, trafo, c.GetPosition (), dyn, ctx))
+    {
+      LOG (WARNING)
+          << "Can't place building in this configuration at "
+          << c.GetPosition ()
+          << ": " << build;
+      return false;
+    }
+
+  return true;
 }
 
 /* ************************************************************************** */
@@ -1204,6 +1341,36 @@ MoveProcessor::MaybeSetFitments (Character& c, const Json::Value& upd)
   DeriveCharacterStats (c);
 }
 
+void
+MoveProcessor::MaybeFoundBuilding (Character& c, const Json::Value& upd)
+{
+  std::string type;
+  proto::ShapeTransformation trafo;
+  if (!ParseFoundBuilding (c, upd, type, trafo))
+    return;
+
+  VLOG (1)
+      << "Building foundation for " << type
+      << " at " << c.GetPosition ();
+
+  auto b = buildings.CreateNew (type, c.GetOwner (), c.GetFaction ());
+  b->SetCentre (c.GetPosition ());
+  auto& pb = b->MutableProto ();
+  pb.set_foundation (true);
+  *pb.mutable_shape_trafo () = trafo;
+
+  auto& inv = c.GetInventory ();
+  for (const auto& entry : b->RoConfigData ().construction ().foundation ())
+    inv.AddFungibleCount (entry.first, -static_cast<int> (entry.second));
+
+  UpdateBuildingStats (*b);
+  EnterBuilding (c, *b, dyn);
+
+  /* EnterBuilding already removes the vehicle from dyn, but we have to add
+     the building afterwards manually.  */
+  dyn.AddBuilding (*b);
+}
+
 namespace
 {
 
@@ -1289,11 +1456,22 @@ MoveProcessor::MaybeDropLoot (Character& c, const Json::Value& cmd)
   if (c.IsInBuilding ())
     {
       toName << "building " << c.GetBuildingId ();
-      auto inv = buildingInv.Get (c.GetBuildingId (), c.GetOwner ());
-      MoveFungibleBetweenInventories (fungible,
-                                      c.GetInventory (),
-                                      inv->GetInventory (),
-                                      fromName.str (), toName.str ());
+      auto b = buildings.GetById (c.GetBuildingId ());
+      if (b->GetProto ().foundation ())
+        {
+          Inventory inv(*b->MutableProto ().mutable_construction_inventory ());
+          MoveFungibleBetweenInventories (fungible,
+                                          c.GetInventory (), inv,
+                                          fromName.str (), toName.str ());
+        }
+      else
+        {
+          auto inv = buildingInv.Get (c.GetBuildingId (), c.GetOwner ());
+          MoveFungibleBetweenInventories (fungible,
+                                          c.GetInventory (),
+                                          inv->GetInventory (),
+                                          fromName.str (), toName.str ());
+        }
     }
   else
     {
@@ -1325,6 +1503,19 @@ MoveProcessor::MaybePickupLoot (Character& c, const Json::Value& cmd)
 
   if (c.IsInBuilding ())
     {
+      /* In principle, it is not possible to pick up stuff anyway
+         in a foundation, because there won't be any inventory.  But still
+         make it explicit, just to be safe.  */
+      auto b = buildings.GetById (c.GetBuildingId ());
+      if (b->GetProto ().foundation ())
+        {
+          LOG (WARNING)
+              << "Character " << c.GetId ()
+              << " can't pick up in " << b->GetId ()
+              << " which is a foundation";
+          return;
+        }
+
       fromName << "building " << c.GetBuildingId ();
       auto inv = buildingInv.Get (c.GetBuildingId (), c.GetOwner ());
       MoveFungibleBetweenInventories (fungible,
@@ -1372,6 +1563,11 @@ MoveProcessor::PerformCharacterUpdate (Character& c, const Json::Value& upd)
      waypoints and a chosen speed in a single move.  */
   MaybeSetCharacterWaypoints (c, upd);
   MaybeSetCharacterSpeed (c, upd);
+
+  /* Founding a building puts the character into the newly created foundation.
+     They may want to then drop resources there (for further construction),
+     and/or exit immediately again.  */
+  MaybeFoundBuilding (c, upd);
 
   /* Dropping items is done before trying to pick items up.  This allows
      a player to drop stuff (and thus free cargo) before picking up something
@@ -1553,8 +1749,6 @@ MaybeGodBuild (AccountsTable& accounts, BuildingsTable& tbl,
   if (!cmd.isArray ())
     return;
 
-  const auto& buildingTypes = RoConfigData ().building_types ();
-
   for (const auto& build : cmd)
     {
       if (!build.isObject () || build.size () != 4)
@@ -1563,16 +1757,11 @@ MaybeGodBuild (AccountsTable& accounts, BuildingsTable& tbl,
           continue;
         }
 
-      auto val = build["t"];
-      if (!val.isString ())
+      std::string type;
+      proto::ShapeTransformation trafo;
+      if (!ParseBuildingConfig (build, type, trafo))
         {
-          LOG (WARNING) << "God-build element has invalid type: " << build;
-          continue;
-        }
-      const std::string type = val.asString ();
-      if (buildingTypes.find (type) == buildingTypes.end ())
-        {
-          LOG (WARNING) << "Invalid type for god build: " << type;
+          LOG (WARNING) << "Invalid god-build element: " << build;
           continue;
         }
 
@@ -1581,7 +1770,7 @@ MaybeGodBuild (AccountsTable& accounts, BuildingsTable& tbl,
           LOG (WARNING) << "God-build element has no owner field: " << build;
           continue;
         }
-      val = build["o"];
+      const auto val = build["o"];
       Faction f;
       std::string owner;
       if (val.isNull ())
@@ -1610,24 +1799,22 @@ MaybeGodBuild (AccountsTable& accounts, BuildingsTable& tbl,
           continue;
         }
 
-      val = build["rot"];
-      if (!val.isUInt () || val.asUInt () > 5)
-        {
-          LOG (WARNING) << "God-build element has invalid rotation: " << build;
-          continue;
-        }
-      const unsigned rot = val.asUInt ();
+      /* Note that we do not check CanPlaceBuilding here on purpose.  It is ok
+         if god-mode can in theory result in invalid situations.  But by not
+         enforcing the conditions here we ensure that buildings can be easily
+         placed as needed in tests, without having to worry about regions
+         and the ability to build in them.  */
 
       auto h = tbl.CreateNew (type, owner, f);
       h->SetCentre (centre);
-      h->MutableProto ().mutable_shape_trafo ()->set_rotation_steps (rot);
+      *h->MutableProto ().mutable_shape_trafo () = trafo;
       UpdateBuildingStats (*h);
       LOG (INFO)
           << "God building " << type
           << " for " << owner << " of faction " << FactionToString (f) << ":\n"
           << "  id: " << h->GetId () << "\n"
           << "  centre: " << centre << "\n"
-          << "  rotation: " << rot;
+          << "  rotation: " << trafo.rotation_steps ();
     }
 }
 

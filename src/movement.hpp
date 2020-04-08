@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -45,6 +45,32 @@ void StopCharacter (Character& c);
  * the given edge weights.
  */
 void ProcessAllMovement (Database& db, DynObstacles& dyn, const Context& ctx);
+
+/**
+ * RAII helper class to remove a vehicle from the dynamic obstacles and
+ * then add it back again at the (potentially) changed position.
+ */
+class MoveInDynObstacles
+{
+
+private:
+
+  /** The character to move.  */
+  const Character& character;
+
+  /** Dynamic obstacles instance to update.  */
+  DynObstacles& dyn;
+
+public:
+
+  MoveInDynObstacles () = delete;
+  MoveInDynObstacles (const MoveInDynObstacles&) = delete;
+  void operator= (const MoveInDynObstacles&) = delete;
+
+  explicit MoveInDynObstacles (const Character& c, DynObstacles& d);
+  ~MoveInDynObstacles ();
+
+};
 
 namespace test
 {

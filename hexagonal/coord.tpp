@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -64,6 +64,12 @@ inline HexCoord
 operator* (const HexCoord::IntT f, const HexCoord& c)
 {
   return HexCoord (f * c.GetX (), f * c.GetY ());
+}
+
+inline HexCoord
+operator+ (const HexCoord& a, const HexCoord& b)
+{
+  return HexCoord (a.GetX () + b.GetX (), a.GetY () + b.GetY ());
 }
 
 inline HexCoord::IntT

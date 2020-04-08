@@ -308,15 +308,19 @@ template <>
   Json::Value
   GameStateJson::Convert<Building> (const Building& b) const
 {
+  const auto& pb = b.GetProto ();
+
   Json::Value res(Json::objectValue);
   res["id"] = IntToJson (b.GetId ());
   res["type"] = b.GetType ();
+  if (pb.foundation ())
+    res["foundation"] = true;
+
   res["faction"] = FactionToString (b.GetFaction ());
   if (b.GetFaction () != Faction::ANCIENT)
     res["owner"] = b.GetOwner ();
   res["centre"] = CoordToJson (b.GetCentre ());
 
-  const auto& pb = b.GetProto ();
   res["rotationsteps"] = IntToJson (pb.shape_trafo ().rotation_steps ());
   res["servicefee"] = IntToJson (pb.service_fee_percent ());
 
@@ -327,14 +331,19 @@ template <>
 
   res["combat"] = GetCombatJsonObject (b);
 
-  auto invRes = buildingInventories.QueryForBuilding (b.GetId ());
-  Json::Value inv(Json::objectValue);
-  while (invRes.Step ())
+  if (pb.foundation ())
+    res["constructioninv"] = Convert (Inventory (pb.construction_inventory ()));
+  else
     {
-      auto h = buildingInventories.GetFromResult (invRes);
-      inv[h->GetAccount ()] = Convert (h->GetInventory ());
+      auto invRes = buildingInventories.QueryForBuilding (b.GetId ());
+      Json::Value inv(Json::objectValue);
+      while (invRes.Step ())
+        {
+          auto h = buildingInventories.GetFromResult (invRes);
+          inv[h->GetAccount ()] = Convert (h->GetInventory ());
+        }
+      res["inventories"] = inv;
     }
-  res["inventories"] = inv;
 
   return res;
 }

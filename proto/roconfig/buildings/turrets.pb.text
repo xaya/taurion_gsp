@@ -7,24 +7,32 @@ building_types:
         enter_radius: 1
         shape_tiles: { x: 0 y: 0 }
 
-        combat_data:
+        foundation:
           {
-            attacks:
+            combat_data: {}
+            regen_data:
               {
-                range: 5
-                min_damage: 1
-                max_damage: 3
+                max_hp: { armour: 50 shield: 0 }
+                shield_regeneration_mhp: 0
               }
           }
 
-        regen_data:
+        full_building:
           {
-            max_hp:
+            combat_data:
               {
-                armour: 1000
-                shield: 200
+                attacks:
+                  {
+                    range: 5
+                    min_damage: 1
+                    max_damage: 3
+                  }
               }
-            shield_regeneration_mhp: 500
+            regen_data:
+              {
+                max_hp: { armour: 1000 shield: 200 }
+                shield_regeneration_mhp: 500
+              }
           }
 
       }

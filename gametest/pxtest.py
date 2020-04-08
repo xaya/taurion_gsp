@@ -160,6 +160,12 @@ class Building (object):
   def getCentre (self):
     return self.data["centre"]
 
+  def isFoundation (self):
+    return "foundation" in self.data
+
+  def getConstructionInventory (self):
+    return collections.Counter (self.data["constructioninv"]["fungible"])
+
   def getFungibleInventory (self, account):
     inv = self.data["inventories"]
     if account not in inv:
@@ -331,6 +337,35 @@ class PXTest (XayaGameTest):
       sethp[idStr] = c
 
     self.adminCommand ({"god": {"sethp": {"c": sethp}}})
+    self.generate (1)
+
+  def changeCharacterVehicle (self, char, vehicleType, fitments=[]):
+    """
+    Changes the vehicle of the given character to the given type.  This is
+    done through god-mode, by dropping the vehicle type into an ancient
+    building and changing there.
+    """
+
+    b = self.getBuildings ()[1]
+    self.assertEqual (b.getFaction (), "a")
+    pos = offsetCoord (b.getCentre (), {"x": 30, "y": 0}, False)
+    self.moveCharactersTo ({char: pos})
+
+    c = self.getCharacters ()[char]
+    c.sendMove ({"eb": b.getId ()})
+    inv = {vehicleType: 1}
+    for f in fitments:
+      if f in inv:
+        ++inv[f]
+      else:
+        inv[f] = 1
+    self.dropIntoBuilding (b.getId (), c.getOwner (), inv)
+
+    self.getCharacters ()[char].sendMove ({
+      "v": vehicleType,
+      "fit": fitments,
+      "xb": {},
+    })
     self.generate (1)
 
   def build (self, typ, owner, centre, rot):

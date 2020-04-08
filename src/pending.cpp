@@ -203,6 +203,32 @@ PendingState::AddCharacterMining (const Character& ch,
 }
 
 void
+PendingState::AddFoundBuilding (const Character& ch, const std::string& type,
+                                const proto::ShapeTransformation& trafo)
+{
+  auto& chState = GetCharacterState (ch);
+
+  /* In theory, there are situations in which a single character can found
+     two buildings in the same block:  They can found a building, then exit
+     it (even in the same move), and then found another one at the place
+     they'll end up at.  But this is not something we care about (or even
+     can properly predict) in pending tracking, so just ignore all further
+     found-building moves.  */
+  if (!chState.foundBuilding.isNull ())
+    {
+      LOG (WARNING)
+          << "Character " << ch.GetId ()
+          << " already has a pending 'found building' move, ignoring next";
+      return;
+    }
+
+  VLOG (1) << "Character " << ch.GetId () << " is founding " << type;
+  chState.foundBuilding = Json::Value (Json::objectValue);
+  chState.foundBuilding["type"] = type;
+  chState.foundBuilding["rotationsteps"] = IntToJson (trafo.rotation_steps ());
+}
+
+void
 PendingState::AddCharacterVehicle (const Character& ch,
                                    const std::string& vehicle)
 {
@@ -307,6 +333,9 @@ PendingState::CharacterState::ToJson () const
   if (miningRegionId != RegionMap::OUT_OF_MAP)
     res["mining"] = IntToJson (miningRegionId);
 
+  if (!foundBuilding.isNull ())
+    res["foundbuilding"] = foundBuilding;
+
   if (!changeVehicle.empty ())
     res["changevehicle"] = changeVehicle;
   if (!fitments.isNull ())
@@ -407,6 +436,10 @@ void
 PendingStateUpdater::PerformCharacterUpdate (Character& c,
                                              const Json::Value& upd)
 {
+  BuildingsTable::Handle b;
+  if (c.IsInBuilding ())
+    b = buildings.GetById (c.GetBuildingId ());
+
   Database::IdT regionId;
   if (ParseCharacterProspecting (c, upd, regionId))
     state.AddCharacterProspecting (c, regionId);
@@ -417,7 +450,14 @@ PendingStateUpdater::PerformCharacterUpdate (Character& c,
   FungibleAmountMap items;
   items = ParseDropPickupFungible (upd["pu"]);
   if (!items.empty ())
-    state.AddCharacterPickup (c);
+    {
+      if (b != nullptr && b->GetProto ().foundation ())
+        LOG (WARNING)
+            << "Ignoring pending move for character " << c.GetId ()
+            << " to pick up in foundation " << b->GetId ();
+      else
+        state.AddCharacterPickup (c);
+    }
   items = ParseDropPickupFungible (upd["drop"]);
   if (!items.empty ())
     state.AddCharacterDrop (c);
@@ -436,6 +476,11 @@ PendingStateUpdater::PerformCharacterUpdate (Character& c,
     state.AddEnterBuilding (c, buildingId);
   if (ParseExitBuilding (c, upd))
     state.AddExitBuilding (c);
+
+  std::string type;
+  proto::ShapeTransformation trafo;
+  if (ParseFoundBuilding (c, upd, type, trafo))
+    state.AddFoundBuilding (c, type, trafo);
 
   std::string vehicle;
   if (ParseChangeVehicle (c, upd, vehicle))
@@ -491,6 +536,7 @@ void
 PendingMoves::Clear ()
 {
   state.Clear ();
+  dyn.reset ();
 }
 
 void
@@ -500,10 +546,13 @@ PendingMoves::AddPendingMove (const Json::Value& mv)
   PXLogic& rules = dynamic_cast<PXLogic&> (GetSQLiteGame ());
   SQLiteGameDatabase dbObj(db, rules);
 
+  if (dyn == nullptr)
+    dyn = std::make_unique<DynObstacles> (dbObj);
+
   const Context ctx(GetChain (), rules.GetBaseMap (),
                     GetConfirmedHeight () + 1, Context::NO_TIMESTAMP);
 
-  PendingStateUpdater updater(dbObj, state, ctx);
+  PendingStateUpdater updater(dbObj, *dyn, state, ctx);
   updater.ProcessMove (mv);
 }
 

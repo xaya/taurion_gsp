@@ -20,6 +20,7 @@
 #define PXD_PENDING_HPP
 
 #include "context.hpp"
+#include "dynobstacles.hpp"
 #include "moveprocessor.hpp"
 #include "services.hpp"
 
@@ -28,6 +29,7 @@
 #include "database/faction.hpp"
 #include "hexagonal/coord.hpp"
 #include "mapdata/basemap.hpp"
+#include "proto/building.pb.h"
 
 #include <xayagame/sqlitegame.hpp>
 
@@ -95,6 +97,9 @@ private:
      * RegionMap::OUT_OF_MAP if no mining is being started.
      */
     Database::IdT miningRegionId = RegionMap::OUT_OF_MAP;
+
+    /** A pending move to found a building, if any (otherwise JSON null).  */
+    Json::Value foundBuilding;
 
     /** The vehicle the character is changing to (if non-empty).  */
     Json::Value changeVehicle;
@@ -234,6 +239,13 @@ public:
   void AddCharacterMining (const Character& ch, Database::IdT regionId);
 
   /**
+   * Updates the state of a character to indiciate that it will
+   * found a building.
+   */
+  void AddFoundBuilding (const Character& ch, const std::string& type,
+                         const proto::ShapeTransformation& trafo);
+
+  /**
    * Updates the state to add a "change vehicle" move.
    */
   void AddCharacterVehicle (const Character& ch, const std::string& vehicle);
@@ -271,6 +283,9 @@ public:
  * BaseMoveProcessor class that updates the pending state.  This contains the
  * main logic for PendingMoves::AddPendingMove, and is also accessible from
  * the unit tests independently of SQLiteGame.
+ *
+ * Instances of this class are light-weight and just contain the logic.  They
+ * are created on-the-fly for processing a single move.
  */
 class PendingStateUpdater : public BaseMoveProcessor
 {
@@ -288,8 +303,9 @@ protected:
 
 public:
 
-  explicit PendingStateUpdater (Database& d, PendingState& s, const Context& c)
-    : BaseMoveProcessor(d, c), state(s)
+  explicit PendingStateUpdater (Database& d, DynObstacles& o,
+                                PendingState& s, const Context& c)
+    : BaseMoveProcessor(d, o, c), state(s)
   {}
 
   /**
@@ -311,6 +327,14 @@ private:
 
   /** The current state of pending moves.  */
   PendingState state;
+
+  /**
+   * A DynObstacles instance based on the confirmed database state.
+   * This is costly to create, thus we create it on-demand and keep it cached
+   * for all pending moves until the next call to Clear (when the confirmed
+   * state changes).
+   */
+  std::unique_ptr<DynObstacles> dyn;
 
 protected:
 

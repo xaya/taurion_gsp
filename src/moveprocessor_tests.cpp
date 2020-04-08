@@ -38,21 +38,17 @@ namespace
 class MoveProcessorTests : public DBTestWithSchema
 {
 
-protected:
-
-  ContextForTesting ctx;
-  DynObstacles dyn;
-
 private:
 
   TestRandom rnd;
 
 protected:
 
+  ContextForTesting ctx;
   AccountsTable accounts;
 
   explicit MoveProcessorTests ()
-    : dyn(db), accounts(db)
+    : accounts(db)
   {}
 
   /**
@@ -61,6 +57,7 @@ protected:
   void
   ProcessAdmin (const std::string& str)
   {
+    DynObstacles dyn(db);
     MoveProcessor mvProc(db, dyn, rnd, ctx);
     mvProc.ProcessAdmin (ParseJson (str));
   }
@@ -72,6 +69,7 @@ protected:
   void
   Process (const std::string& str)
   {
+    DynObstacles dyn(db);
     MoveProcessor mvProc(db, dyn, rnd, ctx);
     mvProc.ProcessAll (ParseJson (str));
   }
@@ -88,6 +86,7 @@ protected:
     for (auto& entry : val)
       entry["out"][ctx.Params ().DeveloperAddress ()] = AmountToJson (amount);
 
+    DynObstacles dyn(db);
     MoveProcessor mvProc(db, dyn, rnd, ctx);
     mvProc.ProcessAll (val);
   }
@@ -485,7 +484,7 @@ TEST_F (CharacterCreationTests, CharacterLimit)
 {
   accounts.CreateNew ("domob", Faction::RED);
   for (unsigned i = 0; i < ctx.Params ().CharacterLimit () - 1; ++i)
-    tbl.CreateNew ("domob", Faction::RED);
+    tbl.CreateNew ("domob", Faction::RED)->SetPosition (HexCoord (i, 0));
 
   EXPECT_EQ (tbl.CountForOwner ("domob"), ctx.Params ().CharacterLimit () - 1);
 
@@ -542,7 +541,9 @@ protected:
       accounts.CreateNew (owner, Faction::RED);
 
     db.SetNextId (id);
-    tbl.CreateNew (owner, Faction::RED);
+    /* We have to place the character on a spot not yet taken by another,
+       thus set a position based on the ID.  */
+    tbl.CreateNew (owner, Faction::RED)->SetPosition (HexCoord (id, 1));
 
     auto h = tbl.GetById (id);
     CHECK (h != nullptr);
@@ -595,7 +596,7 @@ TEST_F (CharacterUpdateTests, CreationAndUpdate)
 TEST_F (CharacterUpdateTests, AccountNotInitialised)
 {
   db.SetNextId (10);
-  auto c = tbl.CreateNew ("unknown account", Faction::RED);
+  auto c = tbl.CreateNew ("unknown account", Faction::GREEN);
   ASSERT_EQ (c->GetId (), 10);
   c.reset ();
 
@@ -686,7 +687,7 @@ TEST_F (CharacterUpdateTests, InvalidTransfer)
 {
   accounts.CreateNew ("at limit", Faction::RED);
   for (unsigned i = 0; i < ctx.Params ().CharacterLimit (); ++i)
-    tbl.CreateNew ("at limit", Faction::RED);
+    tbl.CreateNew ("at limit", Faction::RED)->SetPosition (HexCoord (i, 0));
 
   accounts.CreateNew ("wrong faction", Faction::GREEN);
 
@@ -977,14 +978,12 @@ TEST_F (CharacterUpdateTests, ChosenSpeedInvalid)
 class FitmentMoveTests : public CharacterUpdateTests
 {
 
-private:
+protected:
 
   static constexpr Database::IdT BUILDING = 100;
 
   BuildingsTable buildings;
   BuildingInventoriesTable inv;
-
-protected:
 
   FitmentMoveTests ()
     : buildings(db), inv(db)
@@ -1097,6 +1096,21 @@ TEST_F (FitmentMoveTests, NotInBuilding)
     {
       "name": "domob",
       "move": {"c": {"1": {"fit": ["sword"]}}}
+    }
+  ])");
+
+  ExpectFitments ({"bow"});
+}
+
+TEST_F (FitmentMoveTests, InFoundation)
+{
+  SetVehicle ("chariot", {"bow"});
+  buildings.GetById (BUILDING)->MutableProto ().set_foundation (true);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fit": []}}}
     }
   ])");
 
@@ -1308,6 +1322,22 @@ TEST_F (ChangeVehicleMoveTests, NotInBuilding)
   EXPECT_EQ (GetTest ()->GetProto ().vehicle (), "rv st");
 }
 
+TEST_F (ChangeVehicleMoveTests, InFoundation)
+{
+  SetVehicle ("rv st", {});
+  GetBuildingInv ()->GetInventory ().AddFungibleCount ("chariot", 1);
+  buildings.GetById (BUILDING)->MutableProto ().set_foundation (true);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"v": "chariot"}}}
+    }
+  ])");
+
+  EXPECT_EQ (GetTest ()->GetProto ().vehicle (), "rv st");
+}
+
 TEST_F (ChangeVehicleMoveTests, NoFullHp)
 {
   SetVehicle ("rv st", {});
@@ -1464,6 +1494,197 @@ TEST_F (ChangeVehicleMoveTests, ChangeVehicleBeforeFitmentsAndPickup)
 
 /* ************************************************************************** */
 
+class FoundBuildingMoveTests : public CharacterUpdateTests
+{
+
+protected:
+
+  BuildingsTable buildings;
+  BuildingInventoriesTable buildingInv;
+
+  FoundBuildingMoveTests ()
+    : buildings(db), buildingInv(db)
+  {
+    db.SetNextId (101);
+  }
+
+};
+
+TEST_F (FoundBuildingMoveTests, InvalidFormat)
+{
+  GetTest ()->GetInventory ().AddFungibleCount ("foo", 10);
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fb": "foo"}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fb": {"t": 42, "rot": 5}}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fb": {"t": "huesli", "rot": -1}}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fb": {"t": "huesli", "rot": 6}}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fb": {"t": "huesli", "rot": 0, "x": false}}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fb": {"t": "huesli", "x": false}}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fb": {"rot": 0}}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fb": {"t": "invalid building", "rot": 0}}}}
+    }
+  ])");
+  EXPECT_EQ (buildings.GetById (101), nullptr);
+}
+
+TEST_F (FoundBuildingMoveTests, CharacterBusy)
+{
+  GetTest ()->GetInventory ().AddFungibleCount ("foo", 10);
+  GetTest ()->MutableProto ().set_ongoing (1234);
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fb": {"t": "huesli", "rot": 0}}}}
+    }
+  ])");
+  EXPECT_EQ (buildings.GetById (101), nullptr);
+}
+
+TEST_F (FoundBuildingMoveTests, InBuilding)
+{
+  GetTest ()->GetInventory ().AddFungibleCount ("foo", 10);
+  GetTest ()->SetBuildingId (42);
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fb": {"t": "huesli", "rot": 0}}}}
+    }
+  ])");
+  EXPECT_EQ (buildings.GetById (101), nullptr);
+}
+
+TEST_F (FoundBuildingMoveTests, UnconstructibleBuilding)
+{
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fb": {"t": "itemmaker", "rot": 0}}}}
+    }
+  ])");
+  EXPECT_EQ (buildings.GetById (101), nullptr);
+}
+
+TEST_F (FoundBuildingMoveTests, NotEnoughResources)
+{
+  GetTest ()->GetInventory ().AddFungibleCount ("foo", 1);
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fb": {"t": "huesli", "rot": 0}}}}
+    }
+  ])");
+  EXPECT_EQ (buildings.GetById (101), nullptr);
+}
+
+TEST_F (FoundBuildingMoveTests, CannotPlaceBuilding)
+{
+  GetTest ()->GetInventory ().AddFungibleCount ("foo", 10);
+  db.SetNextId (10);
+  tbl.CreateNew ("andy", Faction::GREEN)
+      ->SetPosition (GetTest ()->GetPosition ());
+  db.SetNextId (101);
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fb": {"t": "huesli", "rot": 0}}}}
+    }
+  ])");
+  EXPECT_EQ (buildings.GetById (101), nullptr);
+}
+
+TEST_F (FoundBuildingMoveTests, Success)
+{
+  const HexCoord pos = GetTest ()->GetPosition ();
+  GetTest ()->GetInventory ().AddFungibleCount ("foo", 10);
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"fb": {"t": "huesli", "rot": 3}}}}
+    }
+  ])");
+
+  auto b = buildings.GetById (101);
+  ASSERT_NE (b, nullptr);
+  EXPECT_EQ (b->GetType (), "huesli");
+  EXPECT_EQ (b->GetOwner (), "domob");
+  EXPECT_EQ (b->GetFaction (), Faction::RED);
+  EXPECT_EQ (b->GetCentre (), pos);
+  EXPECT_EQ (b->GetHP ().armour (), 10);
+
+  const auto& pb = b->GetProto ();
+  EXPECT_TRUE (pb.foundation ());
+  EXPECT_EQ (pb.shape_trafo ().rotation_steps (), 3);
+
+  auto c = GetTest ();
+  EXPECT_EQ (c->GetInventory ().GetFungibleCount ("foo"), 8);
+  ASSERT_TRUE (c->IsInBuilding ());
+  EXPECT_EQ (c->GetBuildingId (), b->GetId ());
+}
+
+TEST_F (FoundBuildingMoveTests, FoundationBeforeDrop)
+{
+  GetTest ()->GetInventory ().AddFungibleCount ("foo", 2);
+  GetTest ()->GetInventory ().AddFungibleCount ("zerospace", 10);
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {
+        "drop": {"f": {"zerospace": 100, "foo": 100}},
+        "fb": {"t": "huesli", "rot": 3}
+      }}}
+    }
+  ])");
+
+  ASSERT_NE (buildings.GetById (101), nullptr);
+  EXPECT_TRUE (GetTest ()->GetInventory ().IsEmpty ());
+
+  auto b = buildings.GetById (101);
+  Inventory constructionInv(b->GetProto ().construction_inventory ());
+  EXPECT_EQ (constructionInv.GetFungibleCount ("zerospace"), 10);
+}
+
+TEST_F (FoundBuildingMoveTests, FoundationBeforeExit)
+{
+  GetTest ()->GetInventory ().AddFungibleCount ("foo", 2);
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {
+        "xb": {},
+        "fb": {"t": "huesli", "rot": 3}
+      }}}
+    }
+  ])");
+
+  ASSERT_NE (buildings.GetById (101), nullptr);
+  EXPECT_FALSE (GetTest ()->IsInBuilding ());
+}
+
+/* ************************************************************************** */
+
 class EnterBuildingMoveTests : public CharacterUpdateTests
 {
 
@@ -1547,10 +1768,12 @@ TEST_F (EnterBuildingMoveTests, InvalidClear)
 TEST_F (EnterBuildingMoveTests, ValidEnter)
 {
   db.SetNextId (100);
-  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  auto b = buildings.CreateNew ("huesli", "domob", Faction::RED);
   ASSERT_EQ (b->GetId (), 100);
-  b = buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+  b->SetCentre (HexCoord (2, 0));
+  b = buildings.CreateNew ("huesli", "", Faction::ANCIENT);
   ASSERT_EQ (b->GetId (), 101);
+  b->SetCentre (HexCoord (-2, 0));
   b.reset ();
 
   Process (R"([
@@ -1753,12 +1976,13 @@ class DropPickupMoveTests : public CharacterUpdateTests
 protected:
 
   GroundLootTable loot;
+  BuildingsTable buildings;
   BuildingInventoriesTable inv;
 
   const HexCoord pos;
 
   DropPickupMoveTests ()
-    : loot(db), inv(db), pos(1, 2)
+    : loot(db), buildings(db), inv(db), pos(1, 2)
   {
     GetTest ()->MutableProto ().set_cargo_space (1000);
     GetTest ()->SetPosition (pos);
@@ -2021,17 +2245,22 @@ TEST_F (DropPickupMoveTests, OrderOfItems)
 
 TEST_F (DropPickupMoveTests, InBuilding)
 {
-  GetTest ()->SetBuildingId (10);
+  auto b = buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+  const auto bId = b->GetId ();
+  const Database::IdT otherBuilding = 1234;
+  b.reset ();
 
-  SetInventoryItems (inv.Get (10, "andy")->GetInventory (), {
+  GetTest ()->SetBuildingId (bId);
+
+  SetInventoryItems (inv.Get (bId, "andy")->GetInventory (), {
     {"foo", 1},
     {"bar", 2},
   });
-  SetInventoryItems (inv.Get (20, "domob")->GetInventory (), {
+  SetInventoryItems (inv.Get (otherBuilding, "domob")->GetInventory (), {
     {"foo", 1},
     {"bar", 2},
   });
-  SetInventoryItems (inv.Get (10, "domob")->GetInventory (), {
+  SetInventoryItems (inv.Get (bId, "domob")->GetInventory (), {
     {"foo", 10},
     {"bar", 20},
   });
@@ -2050,15 +2279,15 @@ TEST_F (DropPickupMoveTests, InBuilding)
   ])");
 
   ExpectInventoryItems (loot.GetByCoord (pos)->GetInventory (), {});
-  ExpectInventoryItems (inv.Get (10, "andy")->GetInventory (), {
+  ExpectInventoryItems (inv.Get (bId, "andy")->GetInventory (), {
     {"bar", 2},
     {"foo", 1},
   });
-  ExpectInventoryItems (inv.Get (20, "domob")->GetInventory (), {
+  ExpectInventoryItems (inv.Get (otherBuilding, "domob")->GetInventory (), {
     {"bar", 2},
     {"foo", 1},
   });
-  ExpectInventoryItems (inv.Get (10, "domob")->GetInventory (), {
+  ExpectInventoryItems (inv.Get (bId, "domob")->GetInventory (), {
     {"bar", 17},
     {"foo", 15},
   });
@@ -2066,6 +2295,62 @@ TEST_F (DropPickupMoveTests, InBuilding)
     {"bar", 3},
     {"foo", 25},
   });
+}
+
+TEST_F (DropPickupMoveTests, DropInFoundation)
+{
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  const auto bId = b->GetId ();
+  b->MutableProto ().set_foundation (true);
+  b.reset ();
+
+  GetTest ()->SetBuildingId (bId);
+  SetInventoryItems (GetTest ()->GetInventory (), {
+    {"foo", 30},
+  });
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {
+        "drop": {"f": {"foo": 5}}
+      }}}
+    }
+  ])");
+
+  b = buildings.GetById (bId);
+  Inventory constructionInv(b->GetProto ().construction_inventory ());
+  ExpectInventoryItems (constructionInv, {{"foo", 5}});
+
+  ExpectInventoryItems (inv.Get (bId, "domob")->GetInventory (), {});
+  ExpectInventoryItems (GetTest ()->GetInventory (), {{"foo", 25}});
+}
+
+TEST_F (DropPickupMoveTests, PickupInFoundation)
+{
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  const auto bId = b->GetId ();
+  b->MutableProto ().set_foundation (true);
+  Inventory (*b->MutableProto ().mutable_construction_inventory ())
+      .AddFungibleCount ("foo", 10);
+  b.reset ();
+
+  GetTest ()->SetBuildingId (bId);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {
+        "pu": {"f": {"foo": 10}}
+      }}}
+    }
+  ])");
+
+  b = buildings.GetById (bId);
+  Inventory constructionInv(b->GetProto ().construction_inventory ());
+  ExpectInventoryItems (constructionInv, {{"foo", 10}});
+
+  ExpectInventoryItems (GetTest ()->GetInventory (), {});
 }
 
 /* ************************************************************************** */
@@ -2213,9 +2498,9 @@ TEST_F (ProspectingMoveTests, CannotProspectRegion)
 
 TEST_F (ProspectingMoveTests, MultipleCharacters)
 {
-  accounts.CreateNew ("foo", Faction::RED);
+  accounts.CreateNew ("foo", Faction::GREEN);
 
-  auto c = tbl.CreateNew ("foo", Faction::RED);
+  auto c = tbl.CreateNew ("foo", Faction::GREEN);
   ASSERT_EQ (c->GetId (), 2);
   c->SetPosition (pos);
   c.reset ();
@@ -2245,9 +2530,11 @@ TEST_F (ProspectingMoveTests, MultipleCharacters)
 
 TEST_F (ProspectingMoveTests, OrderOfCharactersInAMove)
 {
+  GetTest ()->SetPosition (HexCoord (0, 0));
+
   /* Character 9 will be processed before character 10, since we order by
      ID and not by string.  */
-  SetupCharacter (9, "domob")->SetPosition (pos);
+  SetupCharacter (9, "domob")->SetPosition (pos + HexCoord (1, 0));
   SetupCharacter (10, "domob")->SetPosition (pos);
 
   Process (R"([
@@ -2441,12 +2728,18 @@ protected:
     accounts.CreateNew ("andy", Faction::RED);
 
     db.SetNextId (100);
-    CHECK_EQ (buildings.CreateNew ("ancient1", "", Faction::ANCIENT)
-                ->GetId (), ANCIENT);
-    CHECK_EQ (buildings.CreateNew ("checkmark", "andy", Faction::RED)
-                ->GetId (), ANDY_OWNED);
-    CHECK_EQ (buildings.CreateNew ("checkmark", "domob", Faction::RED)
-                ->GetId (), DOMOB_OWNED);
+
+    auto b = buildings.CreateNew ("ancient1", "", Faction::ANCIENT);
+    CHECK_EQ (b->GetId (), ANCIENT);
+    b->SetCentre (HexCoord (100, 10));
+
+    b = buildings.CreateNew ("checkmark", "andy", Faction::RED);
+    CHECK_EQ (b->GetId (), ANDY_OWNED);
+    b->SetCentre (HexCoord (-10, 10));
+
+    b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+    CHECK_EQ (b->GetId (), DOMOB_OWNED);
+    b->SetCentre (HexCoord (10, 10));
   }
 
 };
@@ -2569,8 +2862,10 @@ protected:
     accounts.CreateNew ("domob", Faction::RED)->AddBalance (100);
 
     db.SetNextId (100);
-    buildings.CreateNew ("ancient1", "", Faction::ANCIENT);
-    buildings.CreateNew ("ancient2", "", Faction::ANCIENT);
+    buildings.CreateNew ("ancient1", "", Faction::ANCIENT)
+        ->SetCentre (HexCoord (100, 0));
+    buildings.CreateNew ("ancient2", "", Faction::ANCIENT)
+        ->SetCentre (HexCoord (-100, 0));
 
     inv.Get (100, "domob")->GetInventory ().AddFungibleCount ("foo", 3);
     inv.Get (101, "domob")->GetInventory ().AddFungibleCount ("foo", 6);

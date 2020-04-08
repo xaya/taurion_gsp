@@ -637,6 +637,46 @@ TEST_F (BuildingJsonTests, Ancient)
   })");
 }
 
+TEST_F (BuildingJsonTests, Foundation)
+{
+  tbl.CreateNew ("checkmark", "foo", Faction::RED);
+
+  auto b = tbl.CreateNew ("checkmark", "foo", Faction::RED);
+  b->MutableProto ().set_foundation (false);
+  b.reset ();
+
+  b = tbl.CreateNew ("checkmark", "foo", Faction::RED);
+  b->MutableProto ().set_foundation (true);
+  b->MutableProto ().mutable_construction_inventory ()
+      ->mutable_fungible ()->insert ({"bar", 10});
+  b.reset ();
+
+  ExpectStateJson (R"({
+    "buildings":
+      [
+        {
+          "id": 1,
+          "foundation": null,
+          "constructioninv": null,
+          "inventories": {}
+        },
+        {
+          "id": 2,
+          "foundation": null
+        },
+        {
+          "id": 3,
+          "foundation": true,
+          "constructioninv":
+            {
+              "fungible": {"bar": 10}
+            },
+          "inventories": null
+        }
+      ]
+  })");
+}
+
 TEST_F (BuildingJsonTests, Inventories)
 {
   ASSERT_EQ (tbl.CreateNew ("checkmark", "", Faction::ANCIENT)->GetId (), 1);
