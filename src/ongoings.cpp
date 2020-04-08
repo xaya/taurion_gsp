@@ -18,6 +18,7 @@
 
 #include "ongoings.hpp"
 
+#include "buildings.hpp"
 #include "prospecting.hpp"
 
 #include "database/building.hpp"
@@ -30,6 +31,44 @@
 
 namespace pxd
 {
+
+namespace
+{
+
+/**
+ * Finishes construction of the given building.
+ */
+void
+FinishBuildingConstruction (Building& b, BuildingInventoriesTable& buildingInv)
+{
+  CHECK (b.GetProto ().foundation ())
+      << "Building " << b.GetId () << " is not a foundation";
+  const auto& roData = b.RoConfigData ();
+  CHECK (roData.has_construction ())
+      << "Building type " << b.GetType () << " is not constructible";
+
+  LOG (INFO)
+      << "Construction of building " << b.GetId ()
+      << " owned by " << b.GetOwner () << " is finished";
+
+  auto& pb = b.MutableProto ();
+  Inventory cInv(*pb.mutable_construction_inventory ());
+  for (const auto& entry : roData.construction ().full_building ())
+    cInv.AddFungibleCount (entry.first,
+                           -static_cast<Inventory::QuantityT> (entry.second));
+
+  /* All resources not used for the actual construction go to the owner's
+     account inside the new building.  */
+  auto inv = buildingInv.Get (b.GetId (), b.GetOwner ());
+  inv->GetInventory () += cInv;
+
+  pb.clear_construction_inventory ();
+  pb.set_foundation (false);
+
+  UpdateBuildingStats (b);
+}
+
+} // anonymous namespace
 
 void
 ProcessAllOngoings (Database& db, xaya::Random& rnd, const Context& ctx)
@@ -89,10 +128,10 @@ ProcessAllOngoings (Database& db, xaya::Random& rnd, const Context& ctx)
             break;
           }
 
-        case proto::OngoingOperation::kConstruction:
+        case proto::OngoingOperation::kItemConstruction:
           {
             CHECK (b != nullptr);
-            const auto& c = op->GetProto ().construction ();
+            const auto& c = op->GetProto ().item_construction ();
             LOG (INFO)
                 << c.account () << " finished constructing "
                 << c.num_items () << " " << c.output_type ()
@@ -104,6 +143,11 @@ ProcessAllOngoings (Database& db, xaya::Random& rnd, const Context& ctx)
               inv->GetInventory ().AddFungibleCount (c.original_type (), 1);
             break;
           }
+
+        case proto::OngoingOperation::kBuildingConstruction:
+          CHECK (b != nullptr);
+          FinishBuildingConstruction (*b, buildingInv);
+          break;
 
         default:
           LOG (FATAL)

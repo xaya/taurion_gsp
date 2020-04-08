@@ -131,6 +131,34 @@ InitialiseBuildings (Database& db)
 }
 
 void
+MaybeStartBuildingConstruction (Building& b, OngoingsTable& ongoings,
+                                const Context& ctx)
+{
+  CHECK (b.GetProto ().has_foundation ());
+  if (b.GetProto ().has_ongoing_construction ())
+    return;
+
+  const auto& roData = b.RoConfigData ();
+  CHECK (roData.has_construction ());
+
+  const Inventory cInv(b.GetProto ().construction_inventory ());
+  for (const auto& entry : roData.construction ().full_building ())
+    if (entry.second > cInv.GetFungibleCount (entry.first))
+      return;
+
+  auto op = ongoings.CreateNew ();
+  op->SetHeight (ctx.Height () + roData.construction ().blocks ());
+  CHECK_GT (op->GetHeight (), ctx.Height ());
+  op->SetBuildingId (b.GetId ());
+  op->MutableProto ().mutable_building_construction ();
+  b.MutableProto ().set_ongoing_construction (op->GetId ());
+
+  LOG (INFO)
+      << "Started construction of building " << b.GetId ()
+      << ": ongoing ID " << op->GetId ();
+}
+
+void
 UpdateBuildingStats (Building& b)
 {
   const auto& roData = b.RoConfigData ();

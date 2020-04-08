@@ -893,7 +893,7 @@ ConstructionOperation::ExecuteSpecific (xaya::Random& rnd)
   else
     op->SetHeight (ctx.Height () + baseDuration);
 
-  auto& c = *op->MutableProto ().mutable_construction ();
+  auto& c = *op->MutableProto ().mutable_item_construction ();
   c.set_account (name);
   c.set_output_type (output);
   c.set_num_items (num);

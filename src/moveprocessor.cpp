@@ -1463,6 +1463,10 @@ MoveProcessor::MaybeDropLoot (Character& c, const Json::Value& cmd)
           MoveFungibleBetweenInventories (fungible,
                                           c.GetInventory (), inv,
                                           fromName.str (), toName.str ());
+
+          /* Since items were added to the construction inventory, this may
+             be the time to start construction itself.  */
+          MaybeStartBuildingConstruction (*b, ongoings, ctx);
         }
       else
         {

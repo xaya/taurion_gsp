@@ -332,7 +332,13 @@ template <>
   res["combat"] = GetCombatJsonObject (b);
 
   if (pb.foundation ())
-    res["constructioninv"] = Convert (Inventory (pb.construction_inventory ()));
+    {
+      Json::Value constr(Json::objectValue);
+      if (pb.has_ongoing_construction ())
+        constr["ongoing"] = IntToJson (pb.ongoing_construction ());
+      constr["inventory"] = Convert (Inventory (pb.construction_inventory ()));
+      res["construction"] = constr;
+    }
   else
     {
       auto invRes = buildingInventories.QueryForBuilding (b.GetId ());
@@ -399,9 +405,9 @@ template <>
         break;
       }
 
-    case proto::OngoingOperation::kConstruction:
+    case proto::OngoingOperation::kItemConstruction:
       {
-        const auto& c = pb.construction ();
+        const auto& c = pb.item_construction ();
 
         res["operation"] = "construct";
         res["account"] = c.account ();
@@ -415,6 +421,10 @@ template <>
 
         break;
       }
+
+    case proto::OngoingOperation::kBuildingConstruction:
+      res["operation"] = "build";
+      break;
 
     default:
       LOG (FATAL) << "Unexpected ongoing operation case: " << pb.op_case ();

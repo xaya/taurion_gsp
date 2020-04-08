@@ -364,9 +364,15 @@ ValidateOngoingsLinks (Database& db)
         const auto cId = op->GetCharacterId ();
 
         if (bId != Database::EMPTY_ID)
-          CHECK (buildings.GetById (bId) != nullptr)
-              << "Operation " << op->GetId ()
-              << " refers to non-existing building " << bId;
+          {
+            auto b = buildings.GetById (bId);
+            CHECK (b != nullptr)
+                << "Operation " << op->GetId ()
+                << " refers to non-existing building " << bId;
+            CHECK_EQ (b->GetProto ().ongoing_construction (), op->GetId ())
+                << "Building " << bId
+                << " does not refer back to ongoing " << op->GetId ();
+          }
 
         if (cId != Database::EMPTY_ID)
           {
@@ -397,6 +403,25 @@ ValidateOngoingsLinks (Database& db)
         CHECK_EQ (op->GetCharacterId (), c->GetId ())
             << "Operation " << opId
             << " does not refer back to character " << c->GetId ();
+      }
+  }
+
+  {
+    auto res = buildings.QueryAll ();
+    while (res.Step ())
+      {
+        auto b = buildings.GetFromResult (res);
+        if (!b->GetProto ().has_ongoing_construction ())
+          continue;
+
+        const auto opId = b->GetProto ().ongoing_construction ();
+        const auto op = ongoings.GetById (opId);
+        CHECK (op != nullptr)
+            << "Building " << b->GetId ()
+            << " has non-existing ongoing operation " << opId;
+        CHECK_EQ (op->GetBuildingId (), b->GetId ())
+            << "Operation " << opId
+            << " does not refer back to building " << b->GetId ();
       }
   }
 }

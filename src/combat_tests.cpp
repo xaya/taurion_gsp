@@ -961,7 +961,7 @@ TEST_F (ProcessKillsBuildingTests, MayDropBlueprintsFromConstruction)
       auto op = ongoings.CreateNew ();
       op->SetHeight (42);
       op->SetBuildingId (bId);
-      auto* c = op->MutableProto ().mutable_construction ();
+      auto* c = op->MutableProto ().mutable_item_construction ();
       c->set_account ("domob");
       c->set_output_type ("bow");
       c->set_num_items (42);
@@ -971,7 +971,7 @@ TEST_F (ProcessKillsBuildingTests, MayDropBlueprintsFromConstruction)
       op = ongoings.CreateNew ();
       op->SetHeight (42);
       op->SetBuildingId (bId);
-      c = op->MutableProto ().mutable_construction ();
+      c = op->MutableProto ().mutable_item_construction ();
       c->set_account ("domob");
       c->set_output_type ("sword");
       c->set_num_items (10);

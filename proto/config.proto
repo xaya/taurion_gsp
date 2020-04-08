@@ -268,7 +268,7 @@ message BuildingData
     map<string, uint32> foundation = 1;
 
     /** Resources for upgrading the foundation to the full building.  */
-    map<string, uint32> construction = 2;
+    map<string, uint32> full_building = 2;
 
     /**
      * Number of blocks the construction (from foundation to full building)
