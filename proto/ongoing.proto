@@ -97,6 +97,19 @@ message ItemConstruction
 }
 
 /**
+ * An operation to finish building construction (i.e. upgrade it from
+ * a foundation to the full building).
+ */
+message BuildingConstruction
+{
+
+  /* No extra data is needed.  The building and end-height are already general
+     fields of any ongoing operation, and the resources to take away on
+     completion are known as well from the building type.  */
+
+}
+
+/**
  * Data about an ongoing operation.
  */
 message OngoingOperation
@@ -109,6 +122,7 @@ message OngoingOperation
     ArmourRepair armour_repair = 2;
     BlueprintCopy blueprint_copy = 3;
     ItemConstruction item_construction = 4;
+    BuildingConstruction building_construction = 5;
   }
 
   /* The database stores extra data directly in columns:

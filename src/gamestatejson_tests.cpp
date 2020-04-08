@@ -999,6 +999,26 @@ TEST_F (OngoingsJsonTests, ItemConstruction)
   })");
 }
 
+TEST_F (OngoingsJsonTests, BuildingConstruction)
+{
+  auto op = tbl.CreateNew ();
+  ASSERT_EQ (op->GetId (), 1);
+  op->SetBuildingId (42);
+  op->MutableProto ().mutable_building_construction ();
+  op.reset ();
+
+  ExpectStateJson (R"({
+    "ongoings":
+      [
+        {
+          "id": 1,
+          "operation": "build",
+          "buildingid": 42
+        }
+      ]
+  })");
+}
+
 /* ************************************************************************** */
 
 class RegionJsonTests : public GameStateJsonTests

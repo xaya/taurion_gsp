@@ -22,6 +22,7 @@ building_types:
         construction:
           {
             foundation: { key: "foo" value: 1 }
+            full_building: { key: "zerospace" value: 10 }
           }
 
       }
@@ -77,8 +78,8 @@ building_types:
         construction:
           {
             foundation: { key: "foo" value: 2 }
-            construction: { key: "foo" value: 3 }
-            construction: { key: "zerospace" value: 10 }
+            full_building: { key: "foo" value: 3 }
+            full_building: { key: "zerospace" value: 10 }
             blocks: 10
           }
       }

@@ -283,5 +283,37 @@ TEST_F (OngoingsTests, ItemConstructionFromCopy)
   EXPECT_EQ (GetNumOngoing (), 0);
 }
 
+TEST_F (OngoingsTests, BuildingConstruction)
+{
+  auto b = buildings.CreateNew ("huesli", "domob", Faction::RED);
+  const auto bId = b->GetId ();
+  b->MutableProto ().set_foundation (true);
+  b->MutableHP ().set_armour (1);
+  Inventory cInv(*b->MutableProto ().mutable_construction_inventory ());
+  cInv.AddFungibleCount ("foo", 5);
+  cInv.AddFungibleCount ("bar", 42);
+  cInv.AddFungibleCount ("zerospace", 10);
+
+  auto op = AddOp (*b);
+  op->SetHeight (10);
+  op->MutableProto ().mutable_building_construction ();
+
+  op.reset ();
+  b.reset ();
+
+  ctx.SetHeight (10);
+  ProcessAllOngoings (db, rnd, ctx);
+
+  b = buildings.GetById (bId);
+  auto inv = buildingInv.Get (bId, "domob");
+  EXPECT_FALSE (b->GetProto ().foundation ());
+  EXPECT_FALSE (b->GetProto ().has_construction_inventory ());
+  EXPECT_EQ (b->GetHP ().armour (), 100);
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("foo"), 2);
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bar"), 42);
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("zerospace"), 0);
+  EXPECT_EQ (GetNumOngoing (), 0);
+}
+
 } // anonymous namespace
 } // namespace pxd

@@ -416,6 +416,10 @@ template <>
         break;
       }
 
+    case proto::OngoingOperation::kBuildingConstruction:
+      res["operation"] = "build";
+      break;
+
     default:
       LOG (FATAL) << "Unexpected ongoing operation case: " << pb.op_case ();
     }
