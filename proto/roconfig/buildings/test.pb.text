@@ -23,6 +23,7 @@ building_types:
           {
             foundation: { key: "foo" value: 1 }
             full_building: { key: "zerospace" value: 10 }
+            blocks: 10
           }
 
       }

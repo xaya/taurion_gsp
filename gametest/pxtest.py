@@ -163,6 +163,35 @@ class Building (object):
   def isFoundation (self):
     return "foundation" in self.data
 
+  def getOngoingConstruction (self):
+    """
+    Returns the ongoing operation data for the building's construction
+    (from foundation to full building) or None if there is no ongoing
+    construction for it.
+
+    To make asserting of the value easy, the IDs (ongoing and building ID)
+    are removed, and the "height" value is translated to "blocks" based
+    on the current height of Xaya Core.
+    """
+
+    if "construction" not in self.data:
+      return None
+    if "ongoing" not in self.data["construction"]:
+      return None
+
+    opId = self.data["construction"]["ongoing"]
+    ongoings = self.test.getRpc ("getongoings")
+    for o in ongoings:
+      if o["id"] == opId:
+        del o["id"]
+        assert o["buildingid"] == self.getId ()
+        del o["buildingid"]
+        o["blocks"] = o["height"] - self.test.rpc.xaya.getblockcount ()
+        del o["height"]
+        return o
+
+    raise AssertionError ("Ongoing construction %d not found in ongoings", opId)
+
   def getConstructionInventory (self):
     constr = self.data["construction"]
     return collections.Counter (constr["inventory"]["fungible"])
