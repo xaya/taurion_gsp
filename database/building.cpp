@@ -193,7 +193,7 @@ BuildingsTable::QueryWithAttacks ()
   auto stmt = db.Prepare (R"(
     SELECT *
       FROM `buildings`
-      WHERE `attackrange` > 0
+      WHERE `attackrange` IS NOT NULL
       ORDER BY `id`
   )");
   return stmt.Query<BuildingResult> ();

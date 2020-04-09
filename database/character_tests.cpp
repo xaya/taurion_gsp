@@ -215,6 +215,11 @@ TEST_F (CharacterTests, AttackRange)
   c.reset ();
 
   c = tbl.GetById (id);
+  EXPECT_EQ (c->GetAttackRange (), CombatEntity::NO_ATTACKS);
+  c->MutableProto ().mutable_combat_data ()->add_attacks ()->set_range (0);
+  c.reset ();
+
+  c = tbl.GetById (id);
   EXPECT_EQ (c->GetAttackRange (), 0);
   c->MutableProto ().mutable_combat_data ()->add_attacks ()->set_range (5);
   c.reset ();
@@ -224,7 +229,7 @@ TEST_F (CharacterTests, AttackRange)
   c->MutableProto ().clear_combat_data ();
   c.reset ();
 
-  EXPECT_EQ (tbl.GetById (id)->GetAttackRange (), 0);
+  EXPECT_EQ (tbl.GetById (id)->GetAttackRange (), CombatEntity::NO_ATTACKS);
 }
 
 TEST_F (CharacterTests, UsedCargoSpace)
@@ -318,7 +323,7 @@ TEST_F (CharacterTableTests, QueryWithAttacks)
 {
   tbl.CreateNew ("domob", Faction::RED);
   tbl.CreateNew ("andy", Faction::RED)
-    ->MutableProto ().mutable_combat_data ()->add_attacks ()->set_range (1);
+    ->MutableProto ().mutable_combat_data ()->add_attacks ()->set_range (0);
   auto h = tbl.CreateNew ("inbuilding", Faction::RED);
   h->SetBuildingId (100);
   h->MutableProto ().mutable_combat_data ()->add_attacks ()->set_range (1);

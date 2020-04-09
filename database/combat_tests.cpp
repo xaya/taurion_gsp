@@ -119,7 +119,7 @@ namespace
 
 TEST_F (FindAttackRangeTests, NoAttacks)
 {
-  EXPECT_EQ (FindRange (""), 0);
+  EXPECT_EQ (FindRange (""), CombatEntity::NO_ATTACKS);
 }
 
 TEST_F (FindAttackRangeTests, MaximumRange)
@@ -129,6 +129,13 @@ TEST_F (FindAttackRangeTests, MaximumRange)
     attacks: { range: 42 }
     attacks: { range: 1 }
   )"), 42);
+}
+
+TEST_F (FindAttackRangeTests, ZeroRange)
+{
+  EXPECT_EQ (FindRange (R"(
+    attacks: { range: 0 }
+  )"), 0);
 }
 
 } // anonymous namespace

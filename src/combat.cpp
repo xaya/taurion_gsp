@@ -50,12 +50,12 @@ SelectTarget (TargetFinder& targets, xaya::Random& rnd, FighterTable::Handle f)
   const HexCoord pos = f->GetCombatPosition ();
 
   const HexCoord::IntT range = f->GetAttackRange ();
-  if (range == 0)
+  if (range == CombatEntity::NO_ATTACKS)
     {
       VLOG (1) << "Fighter at " << pos << " has no attacks";
       return;
     }
-  CHECK_GT (range, 0);
+  CHECK_GE (range, 0);
 
   HexCoord::IntT closestRange;
   std::vector<proto::TargetId> closestTargets;

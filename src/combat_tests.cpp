@@ -156,6 +156,34 @@ TEST_F (TargetSelectionTests, ClosestTarget)
     }
 }
 
+TEST_F (TargetSelectionTests, ZeroRange)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  const auto idFighter = c->GetId ();
+  c->SetPosition (HexCoord (0, 0));
+  AddAttackWithRange (*c->MutableProto ().mutable_combat_data (), 0);
+  c.reset ();
+
+  c = characters.CreateNew ("andy", Faction::GREEN);
+  const auto idTarget = c->GetId ();
+  c->SetPosition (HexCoord (1, 0));
+  NoAttacks (c->MutableProto ());
+  c.reset ();
+
+  FindCombatTargets (db, rnd);
+
+  EXPECT_FALSE (characters.GetById (idFighter)->HasTarget ());
+  characters.GetById (idTarget)->SetPosition (HexCoord (0, 0));
+
+  FindCombatTargets (db, rnd);
+
+  c = characters.GetById (idFighter);
+  ASSERT_TRUE (c->HasTarget ());
+  const auto& t = c->GetTarget ();
+  EXPECT_EQ (t.type (), proto::TargetId::TYPE_CHARACTER);
+  EXPECT_EQ (t.id (), idTarget);
+}
+
 TEST_F (TargetSelectionTests, WithBuildings)
 {
   auto c = characters.CreateNew ("domob", Faction::RED);
