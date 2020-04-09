@@ -131,6 +131,16 @@ TEST_F (FindAttackRangeTests, MaximumRange)
   )"), 42);
 }
 
+TEST_F (FindAttackRangeTests, AreaAttacks)
+{
+  EXPECT_EQ (FindRange (R"(
+    attacks: { range: 5 area: 2 }
+  )"), 5);
+  EXPECT_EQ (FindRange (R"(
+    attacks: { area: 3 }
+  )"), 3);
+}
+
 TEST_F (FindAttackRangeTests, ZeroRange)
 {
   EXPECT_EQ (FindRange (R"(

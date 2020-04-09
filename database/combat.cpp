@@ -121,7 +121,15 @@ CombatEntity::FindAttackRange (const proto::CombatData& cd)
   HexCoord::IntT res = NO_ATTACKS;
   for (const auto& attack : cd.attacks ())
     {
-      const HexCoord::IntT cur = attack.range ();
+      HexCoord::IntT cur;
+      if (attack.has_range ())
+        cur = attack.range ();
+      else
+        {
+          CHECK (attack.has_area ());
+          cur = attack.area ();
+        }
+
       if (res == NO_ATTACKS || cur > res)
         res = cur;
     }

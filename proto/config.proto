@@ -157,7 +157,7 @@ message FitmentData
   /** Modification to shield regeneration rate.  */
   optional StatModifier shield_regen = 7;
 
-  /** Modification of all attack ranges.  */
+  /** Modification of all attack ranges (and AoE area sizes).  */
   optional StatModifier range = 8;
 
   /** Modification of all attack damages (min and max).  */

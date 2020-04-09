@@ -11,10 +11,31 @@ fungible_items:
             slot: "high"
             attack:
               {
-                range: 2
-                area: true
+                area: 2
                 min_damage: 2
                 max_damage: 5
+              }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "missile"
+    value:
+      {
+        space: 5
+        complexity: 4
+        with_blueprint: true
+        fitment:
+          {
+            slot: "high"
+            attack:
+              {
+                range: 5
+                area: 2
+                min_damage: 1
+                max_damage: 3
               }
           }
       }

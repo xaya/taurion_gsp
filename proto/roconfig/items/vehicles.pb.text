@@ -21,8 +21,7 @@ fungible_items:
               {
                 attacks:
                   {
-                    range: 7
-                    area: true
+                    area: 7
                     min_damage: 1
                     max_damage: 20
                   }

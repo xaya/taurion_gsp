@@ -280,17 +280,13 @@ TEST_F (TargetSelectionTests, OnlyAreaAttacks)
   auto c = characters.CreateNew ("red", Faction::RED);
   const auto id1 = c->GetId ();
   c->SetPosition (HexCoord (0, 0));
-  auto* attack = &AddAttack (*c);
-  attack->set_range (7);
-  attack->set_area (true);
+  AddAttack (*c).set_area (7);
   c.reset ();
 
   c = characters.CreateNew ("green", Faction::GREEN);
   const auto id2 = c->GetId ();
   c->SetPosition (HexCoord (7, 0));
-  attack = &AddAttack (*c);
-  attack->set_range (6);
-  attack->set_area (true);
+  AddAttack (*c).set_area (6);
   c.reset ();
 
   FindCombatTargets (db, rnd);
@@ -378,8 +374,7 @@ protected:
                  const unsigned minDmg, const unsigned maxDmg)
   {
     auto& attack = CombatTests::AddAttack (c);
-    attack.set_range (range);
-    attack.set_area (true);
+    attack.set_area (range);
     attack.set_min_damage (minDmg);
     attack.set_max_damage (maxDmg);
     return attack;
@@ -468,6 +463,54 @@ TEST_F (DealDamageTests, AreaAttacks)
   EXPECT_EQ (cnt[1] + cnt[2], trials);
   EXPECT_GT (cnt[1], 0);
   EXPECT_GT (cnt[2], 0);
+}
+
+TEST_F (DealDamageTests, AreaAroundTarget)
+{
+  auto c = characters.CreateNew ("red", Faction::RED);
+  AddAreaAttack (*c, 5, 1, 1).set_range (10);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idTarget = c->GetId ();
+  c->SetPosition (HexCoord (10, 0));
+  c->MutableHP ().set_armour (100);
+  NoAttacks (*c);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idArea = c->GetId ();
+  c->SetPosition (HexCoord (10, 5));
+  c->MutableHP ().set_armour (100);
+  NoAttacks (*c);
+  c.reset ();
+
+  FindTargetsAndDamage ();
+
+  EXPECT_EQ (characters.GetById (idTarget)->GetHP ().armour (), 99);
+  EXPECT_EQ (characters.GetById (idArea)->GetHP ().armour (), 99);
+}
+
+TEST_F (DealDamageTests, AreaTargetTooFar)
+{
+  auto c = characters.CreateNew ("red", Faction::RED);
+  /* We have one normal attack and a long range, which targets a character
+     and hits it.  But the area attacks have shorter range, so they won't
+     damage the target further.  */
+  AddAttack (*c, 10, 1, 1);
+  AddAreaAttack (*c, 5, 10, 10);
+  AddAreaAttack (*c, 5, 10, 10).set_range (5);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idTarget = c->GetId ();
+  c->SetPosition (HexCoord (10, 0));
+  c->MutableHP ().set_armour (100);
+  NoAttacks (*c);
+  c.reset ();
+
+  FindTargetsAndDamage ();
+  EXPECT_EQ (characters.GetById (idTarget)->GetHP ().armour (), 99);
 }
 
 TEST_F (DealDamageTests, MixedAttacks)
