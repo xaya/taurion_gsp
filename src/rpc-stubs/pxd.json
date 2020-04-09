@@ -91,5 +91,15 @@
         "coord": {}
       },
     "returns": {}
+  },
+  {
+    "name": "getbuildingshape",
+    "params":
+      {
+        "type": "huesli",
+        "centre": {},
+        "rot": 42
+      },
+    "returns": []
   }
 ]

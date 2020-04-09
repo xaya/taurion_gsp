@@ -18,7 +18,10 @@
 
 #include "pxrpcserver.hpp"
 
+#include "buildings.hpp"
 #include "jsonutils.hpp"
+
+#include "proto/roconfig.hpp"
 
 #include <xayagame/gamerpcserver.hpp>
 
@@ -30,6 +33,8 @@
 
 namespace pxd
 {
+
+/* ************************************************************************** */
 
 namespace
 {
@@ -89,6 +94,8 @@ CheckIntBounds (const std::string& name, const int value,
 }
 
 } // anonymous namespace
+
+/* ************************************************************************** */
 
 Json::Value
 NonStateRpcServer::findpath (const int l1range, const Json::Value& source,
@@ -178,6 +185,40 @@ NonStateRpcServer::getregionat (const Json::Value& coord)
 
   return res;
 }
+
+Json::Value
+NonStateRpcServer::getbuildingshape (const Json::Value& centre, const int rot,
+                                     const std::string& type)
+{
+  LOG (INFO)
+      << "RPC method called: getbuildingshape " << type << "\n"
+      << "  centre=" << centre << "\n"
+      << "  rot=" << rot;
+
+  HexCoord c;
+  if (!CoordFromJson (centre, c))
+    ReturnError (ErrorCode::INVALID_ARGUMENT,
+                 "centre is not a valid coordinate");
+
+  if (rot < 0 || rot >= 6)
+    ReturnError (ErrorCode::INVALID_ARGUMENT,
+                 "rot is outside the valid range [0, 5]");
+
+  const auto& roBuildings = RoConfigData ().building_types ();
+  if (roBuildings.find (type) == roBuildings.end ())
+    ReturnError (ErrorCode::INVALID_ARGUMENT, "unknown building type");
+
+  proto::ShapeTransformation trafo;
+  trafo.set_rotation_steps (rot);
+
+  Json::Value res(Json::arrayValue);
+  for (const auto& t : GetBuildingShape (type, trafo, c))
+    res.append (CoordToJson (t));
+
+  return res;
+}
+
+/* ************************************************************************** */
 
 void
 PXRpcServer::stop ()
@@ -324,5 +365,7 @@ PXRpcServer::getbootstrapdata ()
         return gsj.BootstrapData ();
       });
 }
+
+/* ************************************************************************** */
 
 } // namespace pxd

@@ -84,6 +84,8 @@ public:
   Json::Value findpath (int l1range, const Json::Value& source,
                         const Json::Value& target, int wpdist) override;
   Json::Value getregionat (const Json::Value& coord) override;
+  Json::Value getbuildingshape (const Json::Value& centre, int rot,
+                                const std::string& type) override;
 
 };
 
@@ -145,6 +147,13 @@ public:
   getregionat (const Json::Value& coord) override
   {
     return nonstate.getregionat (coord);
+  }
+
+  Json::Value
+  getbuildingshape (const Json::Value& centre, const int rot,
+                    const std::string& type) override
+  {
+    return nonstate.getbuildingshape (centre, rot, type);
   }
 
 };

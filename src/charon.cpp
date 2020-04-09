@@ -362,6 +362,7 @@ const std::map<std::string, RealCharonClient::RpcServer::NonStateMethod>
   {
     {"findpath", &NonStateRpcServer::findpathI},
     {"getregionat", &NonStateRpcServer::getregionatI},
+    {"getbuildingshape", &NonStateRpcServer::getbuildingshapeI},
   };
 
 RealCharonClient::RpcServer::RpcServer (RealCharonClient& p,

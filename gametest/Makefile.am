@@ -18,6 +18,7 @@ REGTESTS = \
   damage_lists.py \
   fame.py \
   findpath.py \
+  getbuildingshape.py \
   getregionat.py \
   godmode.py \
   loot.py \

@@ -32,13 +32,6 @@
 namespace pxd
 {
 
-namespace
-{
-
-/**
- * Returns the building shape based on the raw data, so that it can be used
- * also for not-yet-existing buildings (e.g. while placing).
- */
 std::vector<HexCoord>
 GetBuildingShape (const std::string& type,
                   const proto::ShapeTransformation& trafo,
@@ -61,8 +54,6 @@ GetBuildingShape (const std::string& type,
 
   return res;
 }
-
-} // anonymous namespace
 
 std::vector<HexCoord>
 GetBuildingShape (const Building& b)

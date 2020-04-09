@@ -37,6 +37,14 @@ namespace pxd
 {
 
 /**
+ * Returns the building shape based on the raw data, so that it can be used
+ * also for not-yet-existing buildings (e.g. while placing).
+ */
+std::vector<HexCoord> GetBuildingShape (const std::string& type,
+                                        const proto::ShapeTransformation& trafo,
+                                        const HexCoord& pos);
+
+/**
  * Returns all shape tiles of a given building, taking the centre and
  * its shape trafo into account.
  */
