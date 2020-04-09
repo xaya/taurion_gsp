@@ -102,8 +102,7 @@ fungible_items:
                   }
                 attacks:
                   {
-                    range: 10
-                    area: true
+                    area: 10
                     min_damage: 1
                     max_damage: 10
                   }
@@ -112,6 +111,33 @@ fungible_items:
             equipment_slots: { key: "high" value: 3 }
             equipment_slots: { key: "mid" value: 2 }
             equipment_slots: { key: "low" value: 1 }
+          }
+      }
+  }
+
+# Test vehicle without intrinsic attacks, so that we can equip it with
+# attack fitments and test them in isolation.
+fungible_items:
+  {
+    key: "basetank"
+    value:
+      {
+        space: 50
+        complexity: 100
+        with_blueprint: true
+        vehicle:
+          {
+            cargo_space: 1000
+            speed: 1000
+            regen_data:
+              {
+                max_hp: { armour: 1000 shield: 100 }
+                shield_regeneration_mhp: 1000
+              }
+            combat_data: {}
+            equipment_slots: { key: "high" value: 10 }
+            equipment_slots: { key: "mid" value: 10 }
+            equipment_slots: { key: "low" value: 10 }
           }
       }
   }

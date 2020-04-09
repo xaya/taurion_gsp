@@ -325,8 +325,7 @@ TEST_F (CharacterJsonTests, Attacks)
   attack->set_min_damage (2);
   attack->set_max_damage (10);
   attack = cd->add_attacks ();
-  attack->set_range (1);
-  attack->set_area (true);
+  attack->set_area (1);
   attack->set_min_damage (0);
   attack->set_max_damage (1);
   c.reset ();
@@ -339,8 +338,8 @@ TEST_F (CharacterJsonTests, Attacks)
             {
               "attacks":
                 [
-                  {"range": 5, "area": false, "mindamage": 2, "maxdamage": 10},
-                  {"range": 1, "area": true, "mindamage": 0, "maxdamage": 1}
+                  {"range": 5, "mindamage": 2, "maxdamage": 10},
+                  {"area": 1, "mindamage": 0, "maxdamage": 1}
                 ]
             }
         }
@@ -790,7 +789,7 @@ TEST_F (BuildingJsonTests, CombatData)
                 },
               "attacks":
                 [
-                  {"range": 5, "area": false, "mindamage": 1, "maxdamage": 2}
+                  {"range": 5, "mindamage": 1, "maxdamage": 2}
                 ],
               "target": { "id": 10 }
             }

@@ -316,7 +316,7 @@ CharacterTable::QueryWithAttacks ()
   auto stmt = db.Prepare (R"(
     SELECT *
       FROM `characters`
-      WHERE `attackrange` > 0 AND `inBuilding` IS NULL
+      WHERE `attackrange` IS NOT NULL AND `inBuilding` IS NULL
       ORDER BY `id`
   )");
   return stmt.Query<CharacterResult> ();

@@ -119,7 +119,7 @@ TEST_F (BuildingTests, CombatFields)
   const auto id = tbl.CreateNew ("turret", "andy", Faction::RED)->GetId ();
 
   auto h = tbl.GetById (id);
-  EXPECT_EQ (h->GetAttackRange (), 0);
+  EXPECT_EQ (h->GetAttackRange (), CombatEntity::NO_ATTACKS);
   auto* att = h->MutableProto ().mutable_combat_data ()->add_attacks ();
   att->set_range (5);
   h.reset ();
@@ -183,7 +183,7 @@ TEST_F (BuildingsTableTests, QueryWithAttacks)
 {
   tbl.CreateNew ("checkmark", "domob", Faction::RED);
   tbl.CreateNew ("checkmark", "andy", Faction::RED)
-    ->MutableProto ().mutable_combat_data ()->add_attacks ()->set_range (1);
+    ->MutableProto ().mutable_combat_data ()->add_attacks ()->set_range (0);
 
   auto res = tbl.QueryWithAttacks ();
   ASSERT_TRUE (res.Step ());

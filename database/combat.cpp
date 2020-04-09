@@ -23,6 +23,8 @@
 namespace pxd
 {
 
+constexpr HexCoord::IntT CombatEntity::NO_ATTACKS;
+
 CombatEntity::CombatEntity (Database& d)
   : db(d), isNew(true), oldCanRegen(false)
 {
@@ -38,7 +40,12 @@ CombatEntity::BindFullFields (Database::Statement& stmt,
                               const unsigned indAttackRange) const
 {
   stmt.BindProto (indRegenData, regenData);
-  stmt.Bind (indAttackRange, FindAttackRange (GetCombatData ()));
+
+  const auto range = FindAttackRange (GetCombatData ());
+  if (range == NO_ATTACKS)
+    stmt.BindNull (indAttackRange);
+  else
+    stmt.Bind (indAttackRange, range);
 
   if (HasTarget ())
     stmt.BindProto (indTarget, target);
@@ -64,7 +71,7 @@ CombatEntity::Validate () const
 #ifdef ENABLE_SLOW_ASSERTS
 
   if (!isNew && !IsDirtyCombatData ())
-    CHECK_EQ (attackRange, FindAttackRange (pb.combat_data ()));
+    CHECK_EQ (oldAttackRange, FindAttackRange (pb.combat_data ()));
 
 #endif // ENABLE_SLOW_ASSERTS
 }
@@ -111,11 +118,20 @@ CombatEntity::ComputeCanRegen (const proto::HP& hp,
 HexCoord::IntT
 CombatEntity::FindAttackRange (const proto::CombatData& cd)
 {
-  HexCoord::IntT res = 0;
+  HexCoord::IntT res = NO_ATTACKS;
   for (const auto& attack : cd.attacks ())
     {
-      CHECK_GT (attack.range (), 0);
-      res = std::max<HexCoord::IntT> (res, attack.range ());
+      HexCoord::IntT cur;
+      if (attack.has_range ())
+        cur = attack.range ();
+      else
+        {
+          CHECK (attack.has_area ());
+          cur = attack.area ();
+        }
+
+      if (res == NO_ATTACKS || cur > res)
+        res = cur;
     }
 
   return res;

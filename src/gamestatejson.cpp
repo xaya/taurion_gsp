@@ -154,8 +154,10 @@ GetCombatJsonObject (const CombatEntity& h)
   for (const auto& attack : pb.attacks ())
     {
       Json::Value obj(Json::objectValue);
-      obj["range"] = IntToJson (attack.range ());
-      obj["area"] = attack.area ();
+      if (attack.has_range ())
+        obj["range"] = IntToJson (attack.range ());
+      if (attack.has_area ())
+        obj["area"] = IntToJson (attack.area ());
       obj["mindamage"] = IntToJson (attack.min_damage ());
       obj["maxdamage"] = IntToJson (attack.max_damage ());
       attacks.append (obj);

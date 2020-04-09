@@ -151,7 +151,13 @@ ApplyFitments (Character& c)
 
   for (auto& a : *pb.mutable_combat_data ()->mutable_attacks ())
     {
-      a.set_range (range (a.range ()));
+      /* Both the targeting range and size of AoE area (if applicable)
+         are modified in the same way through the "range" modifier.  */
+      if (a.has_range ())
+        a.set_range (range (a.range ()));
+      if (a.has_area ())
+        a.set_area (range (a.area ()));
+
       a.set_min_damage (damage (a.min_damage ()));
       a.set_max_damage (damage (a.max_damage ()));
     }

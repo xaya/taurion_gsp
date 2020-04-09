@@ -100,7 +100,7 @@ private:
 
   /**
    * Computes the attack range of a fighter with the given combat data.
-   * Returns zero if there are no attacks at all.
+   * Returns NO_ATTACKS if there are no attacks at all.
    */
   static HexCoord::IntT FindAttackRange (const proto::CombatData& cd);
 
@@ -170,6 +170,9 @@ protected:
 
 public:
 
+  /** Magic value for attack range if there are no attacks.  */
+  static constexpr HexCoord::IntT NO_ATTACKS = -1;
+
   /**
    * The destructor here does nothing.  It is the subclasses' job to
    * update the database row, using the IsDirty and BindField functions.
@@ -212,7 +215,7 @@ public:
   void SetTarget (const proto::TargetId& t);
 
   /**
-   * Returns the entity's attack range or zero if there are no attacks.
+   * Returns the entity's attack range or NO_ATTACKS if there are no attacks.
    * Note that this method must only be called if the instance has been
    * read from the database (not newly constructed) and if its main proto
    * has not been modified.  That allows us to use the cached attack-range

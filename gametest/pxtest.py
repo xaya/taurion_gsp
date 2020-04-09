@@ -391,6 +391,13 @@ class PXTest (XayaGameTest):
         inv[f] = 1
     self.dropIntoBuilding (b.getId (), c.getOwner (), inv)
 
+    # Make sure that we can change vehicle and fitments by maxing the
+    # character's HP (just in case).
+    maxHp = self.getCharacters ()[char].data["combat"]["hp"]["max"]
+    self.setCharactersHP ({
+      char: {"a": maxHp["armour"], "s": maxHp["shield"]},
+    })
+
     self.getCharacters ()[char].sendMove ({
       "v": vehicleType,
       "fit": fitments,

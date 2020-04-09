@@ -181,8 +181,8 @@ TEST_F (DeriveCharacterStatsTests, FitmentAttacks)
   const auto& attacks = c->GetProto ().combat_data ().attacks ();
   ASSERT_EQ (attacks.size (), 3);
   EXPECT_EQ (attacks[0].range (), 100);
-  EXPECT_EQ (attacks[1].range (), 10);
-  EXPECT_EQ (attacks[2].range (), 2);
+  EXPECT_EQ (attacks[1].area (), 10);
+  EXPECT_EQ (attacks[2].area (), 2);
 }
 
 TEST_F (DeriveCharacterStatsTests, CargoSpeed)
@@ -207,10 +207,16 @@ TEST_F (DeriveCharacterStatsTests, MaxHpRegen)
 TEST_F (DeriveCharacterStatsTests, RangeDamage)
 {
   auto c = Derive ("chariot", {"rangeext", "dmgext"});
-  const auto& a = c->GetProto ().combat_data ().attacks (0);
-  EXPECT_EQ (a.range (), 110);
-  EXPECT_EQ (a.min_damage (), 11);
-  EXPECT_EQ (a.max_damage (), 110);
+
+  const auto* a = &c->GetProto ().combat_data ().attacks (0);
+  EXPECT_FALSE (a->has_area ());
+  EXPECT_EQ (a->range (), 110);
+  EXPECT_EQ (a->min_damage (), 11);
+  EXPECT_EQ (a->max_damage (), 110);
+
+  a = &c->GetProto ().combat_data ().attacks (1);
+  EXPECT_FALSE (a->has_range ());
+  EXPECT_EQ (a->area (), 11);
 }
 
 TEST_F (DeriveCharacterStatsTests, StackingButNotCompounding)

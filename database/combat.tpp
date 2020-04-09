@@ -38,7 +38,11 @@ template <typename T>
   else
     target = res.template GetProto<typename T::target> ();
 
-  oldAttackRange = res.template Get<typename T::attackrange> ();
+  if (res.template IsNull<typename T::attackrange> ())
+    oldAttackRange = NO_ATTACKS;
+  else
+    oldAttackRange = res.template Get<typename T::attackrange> ();
+
   oldCanRegen = res.template Get<typename T::canregen> ();
 }
 

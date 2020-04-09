@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -59,14 +59,22 @@ message TargetId
 message Attack
 {
 
-  /** The range of the attack (as L1 distance on our hex grid).  */
+  /**
+   * The range of the attack (as L1 distance on our hex grid).  This may be
+   * zero in which case it affects only enemies on the same tile.
+   *
+   * If the value is missing entirely instead, it implies that there will not
+   * be a concrete "target", which is the case e.g. for AoE effects
+   * around the attacker itself.
+   */
   optional uint32 range = 1;
 
   /**
-   * If true, then the attack applies to all enemies in range (rather than
-   * just the single selected target).
+   * The size of the AoE for this attack, around the selected target (if range
+   * is present) or the attacker (if range is not present).  If this is not
+   * present, then it means that only the target itself is affected.
    */
-  optional bool area = 2;
+  optional uint32 area = 2;
 
   /* Maximum and minimum damage of the attack.  The actual damage will be
      chosen uniformly from the both-inclusive range.  */
