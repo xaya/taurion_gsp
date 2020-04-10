@@ -211,8 +211,8 @@ TEST_F (DeriveCharacterStatsTests, RangeDamage)
   const auto* a = &c->GetProto ().combat_data ().attacks (0);
   EXPECT_FALSE (a->has_area ());
   EXPECT_EQ (a->range (), 110);
-  EXPECT_EQ (a->min_damage (), 11);
-  EXPECT_EQ (a->max_damage (), 110);
+  EXPECT_EQ (a->damage ().min (), 11);
+  EXPECT_EQ (a->damage ().max (), 110);
 
   a = &c->GetProto ().combat_data ().attacks (1);
   EXPECT_FALSE (a->has_range ());
@@ -229,7 +229,7 @@ TEST_F (DeriveCharacterStatsTests, FitmentAttacksAlsoBoosted)
 {
   auto c = Derive ("chariot", {"bomb", "dmgext", "dmgext"});
   const auto& a = c->GetProto ().combat_data ().attacks (2);
-  EXPECT_EQ (a.max_damage (), 6);
+  EXPECT_EQ (a.damage ().max (), 6);
 }
 
 /* ************************************************************************** */

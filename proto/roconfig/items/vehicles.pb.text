@@ -22,8 +22,7 @@ fungible_items:
                 attacks:
                   {
                     area: 7
-                    min_damage: 1
-                    max_damage: 20
+                    damage: { min: 1 max: 20 }
                   }
               }
             mining_rate: { min: 0 max: 5 }
@@ -52,8 +51,7 @@ fungible_items:
                 attacks:
                   {
                     range: 10
-                    min_damage: 1
-                    max_damage: 20
+                    damage: { min: 1 max: 20 }
                   }
               }
             mining_rate: { min: 0 max: 5 }
@@ -82,8 +80,7 @@ fungible_items:
                 attacks:
                   {
                     range: 10
-                    min_damage: 1
-                    max_damage: 12
+                    damage: { min: 1 max: 12 }
                   }
               }
             mining_rate: { min: 0 max: 5 }

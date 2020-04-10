@@ -360,8 +360,8 @@ protected:
   {
     auto& attack = CombatTests::AddAttack (c);
     attack.set_range (range);
-    attack.set_min_damage (minDmg);
-    attack.set_max_damage (maxDmg);
+    attack.mutable_damage ()->set_min (minDmg);
+    attack.mutable_damage ()->set_max (maxDmg);
     return attack;
   }
 
@@ -375,8 +375,8 @@ protected:
   {
     auto& attack = CombatTests::AddAttack (c);
     attack.set_area (range);
-    attack.set_min_damage (minDmg);
-    attack.set_max_damage (maxDmg);
+    attack.mutable_damage ()->set_min (minDmg);
+    attack.mutable_damage ()->set_max (maxDmg);
     return attack;
   }
 

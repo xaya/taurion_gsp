@@ -119,9 +119,11 @@ namespace
 unsigned
 RollAttackDamage (const proto::Attack& attack, xaya::Random& rnd)
 {
-  CHECK_LE (attack.min_damage (), attack.max_damage ());
-  const auto n = attack.max_damage () - attack.min_damage () + 1;
-  return attack.min_damage () + rnd.NextInt (n);
+  CHECK (attack.has_damage ());
+  const auto& dmg = attack.damage ();
+  CHECK_LE (dmg.min (), dmg.max ());
+  const auto n = dmg.max () - dmg.min () + 1;
+  return dmg.min () + rnd.NextInt (n);
 }
 
 /**

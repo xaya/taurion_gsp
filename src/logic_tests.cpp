@@ -180,8 +180,8 @@ AddUnityAttack (Character& c, const HexCoord::IntT range)
 {
   auto* attack = c.MutableProto ().mutable_combat_data ()->add_attacks ();
   attack->set_range (range);
-  attack->set_min_damage (1);
-  attack->set_max_damage (1);
+  attack->mutable_damage ()->set_min (1);
+  attack->mutable_damage ()->set_max (1);
 }
 
 /* ************************************************************************** */

@@ -12,8 +12,7 @@ fungible_items:
             attack:
               {
                 area: 2
-                min_damage: 2
-                max_damage: 5
+                damage: { min: 2 max: 5 }
               }
           }
       }
@@ -34,8 +33,7 @@ fungible_items:
               {
                 range: 5
                 area: 2
-                min_damage: 1
-                max_damage: 3
+                damage: { min: 1 max: 3 }
               }
           }
       }

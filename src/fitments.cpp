@@ -158,8 +158,12 @@ ApplyFitments (Character& c)
       if (a.has_area ())
         a.set_area (range (a.area ()));
 
-      a.set_min_damage (damage (a.min_damage ()));
-      a.set_max_damage (damage (a.max_damage ()));
+      if (a.has_damage ())
+        {
+          auto& dmg = *a.mutable_damage ();
+          dmg.set_min (damage (dmg.min ()));
+          dmg.set_max (damage (dmg.max ()));
+        }
     }
 }
 
