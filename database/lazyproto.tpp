@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -80,6 +80,14 @@ template <typename Proto>
 {
   CHECK (state != State::UNINITIALISED);
   return state == State::MODIFIED;
+}
+
+template <typename Proto>
+  inline bool
+  LazyProto<Proto>::IsEmpty () const
+{
+  CHECK (state != State::UNINITIALISED);
+  return state == State::UNMODIFIED && data.empty ();
 }
 
 template <typename Proto>

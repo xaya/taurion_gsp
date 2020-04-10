@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -81,6 +81,8 @@ namespace
 
 TEST_F (LazyProtoTests, SetToDefault)
 {
+  SetToCoord (HexCoord (42, -5));
+
   lazy.SetToDefault ();
   EXPECT_EQ (lazy.GetSerialised (), "");
   EXPECT_FALSE (lazy.Get ().has_x ());
@@ -134,6 +136,19 @@ TEST_F (LazyProtoTests, ProtoModified)
   ASSERT_TRUE (pb.ParseFromString (bytes));
   EXPECT_EQ (pb.x (), -10);
   EXPECT_EQ (pb.y (), -5);
+}
+
+TEST_F (LazyProtoTests, IsEmpty)
+{
+  SetToCoord (HexCoord (42, -5));
+  EXPECT_FALSE (lazy.IsEmpty ());
+
+  lazy.SetToDefault ();
+  lazy.Get ();
+  EXPECT_TRUE (lazy.IsEmpty ());
+
+  lazy.Mutable ();
+  EXPECT_FALSE (lazy.IsEmpty ());
 }
 
 } // anonymous namespace
