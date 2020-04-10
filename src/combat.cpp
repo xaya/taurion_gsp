@@ -182,53 +182,38 @@ DealDamage (FighterTable& fighters, TargetFinder& targets,
   const auto& pos = f->GetCombatPosition ();
 
   CHECK (f->HasTarget ());
-  HexCoord targetPos;
-  HexCoord::IntT targetDist;
+  FighterTable::Handle tf = fighters.GetForTarget (f->GetTarget ());
+  const auto targetPos = tf->GetCombatPosition ();
+  const auto targetDist = HexCoord::DistanceL1 (pos, targetPos);
+  tf.reset ();
 
-  /* First, apply all non-area attacks to the selected target.  */
-  {
-    auto tf = fighters.GetForTarget (f->GetTarget ());
-    targetPos = tf->GetCombatPosition ();
-    targetDist = HexCoord::DistanceL1 (pos, targetPos);
-    unsigned dmg = 0;
-    for (const auto& attack : cd.attacks ())
-      {
-        if (attack.has_area ())
-          continue;
-        if (targetDist > static_cast<int> (attack.range ()))
-          continue;
-
-        dmg += RollAttackDamage (attack, rnd);
-      }
-    ApplyDamage (dl, dmg, *f, std::move (tf), dead);
-  }
-
-  /* Second, apply all area attacks to matching targets.  */
   for (const auto& attack : cd.attacks ())
     {
-      if (!attack.has_area ())
+      /* If this is not a centred-on-attacker AoE attack, check that
+         the target is actually within range of this attack.  */
+      if (attack.has_range ()
+            && targetDist > static_cast<int> (attack.range ()))
         continue;
-
-      HexCoord centre;
-      if (attack.has_range ())
-        {
-          /* If the target is out of range for this attack, nothing
-             more happens.  */
-          if (targetDist > static_cast<int> (attack.range ()))
-            continue;
-
-          centre = targetPos;
-        }
-      else
-        centre = pos;
 
       const unsigned dmg = RollAttackDamage (attack, rnd);
 
-      targets.ProcessL1Targets (centre, attack.area (), f->GetFaction (),
-        [&] (const HexCoord& c, const proto::TargetId& id)
+      if (attack.has_area ())
         {
-          ApplyDamage (dl, dmg, *f, fighters.GetForTarget (id), dead);
-        });
+          HexCoord centre;
+          if (attack.has_range ())
+            centre = targetPos;
+          else
+            centre = pos;
+
+          targets.ProcessL1Targets (centre, attack.area (), f->GetFaction (),
+            [&] (const HexCoord& c, const proto::TargetId& id)
+            {
+              ApplyDamage (dl, dmg, *f, fighters.GetForTarget (id), dead);
+            });
+        }
+      else
+        ApplyDamage (dl, dmg, *f, fighters.GetForTarget (f->GetTarget ()),
+                     dead);
     }
 }
 
