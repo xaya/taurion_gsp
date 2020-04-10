@@ -18,6 +18,8 @@
 
 #include "fitments.hpp"
 
+#include "modifier.hpp"
+
 #include "proto/roitems.hpp"
 
 #include <map>

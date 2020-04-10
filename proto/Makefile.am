@@ -27,6 +27,7 @@ PROTOS = \
   config.proto \
   geometry.proto \
   inventory.proto \
+  modifier.proto \
   movement.proto \
   ongoing.proto \
   region.proto

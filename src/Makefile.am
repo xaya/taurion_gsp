@@ -51,6 +51,7 @@ libtaurionheaders = \
   jsonutils.hpp \
   logic.hpp \
   mining.hpp \
+  modifier.hpp \
   movement.hpp \
   moveprocessor.hpp \
   ongoings.hpp \
@@ -125,6 +126,7 @@ tests_SOURCES = \
   jsonutils_tests.cpp \
   logic_tests.cpp \
   mining_tests.cpp \
+  modifier_tests.cpp \
   movement_tests.cpp \
   moveprocessor_tests.cpp \
   ongoings_tests.cpp \
