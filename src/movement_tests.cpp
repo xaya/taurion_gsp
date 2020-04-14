@@ -299,6 +299,40 @@ TEST_F (MovementTests, FastChosenSpeed)
     });
 }
 
+TEST_F (MovementTests, CombatEffectSlowdown)
+{
+  SetWaypoints ({HexCoord (12, 0)});
+  GetTest ()->MutableEffects ().mutable_speed ()->set_percent (-25);
+  ExpectSteps (4, EdgeWeights (1),
+    {
+      {1, HexCoord (3, 0)},
+      {3, HexCoord (12, 0)},
+    });
+}
+
+TEST_F (MovementTests, CombatEffectAndChosenSpeed)
+{
+  SetWaypoints ({HexCoord (10, 0)});
+  GetTest ()->MutableEffects ().mutable_speed ()->set_percent (-50);
+  GetTest ()->MutableProto ().mutable_movement ()->set_chosen_speed (2);
+  ExpectSteps (10, EdgeWeights (1),
+    {
+      {1, HexCoord (2, 0)},
+      {4, HexCoord (10, 0)},
+    });
+}
+
+TEST_F (MovementTests, CombatEffectBelowZero)
+{
+  SetWaypoints ({HexCoord (12, 0)});
+  GetTest ()->MutableEffects ().mutable_speed ()->set_percent (-150);
+
+  EXPECT_TRUE (IsMoving ());
+  StepCharacter (10, EdgeWeights (1), 100);
+  EXPECT_EQ (GetTest ()->GetPosition (), HexCoord (0, 0));
+  EXPECT_TRUE (IsMoving ());
+}
+
 TEST_F (MovementTests, DuplicateWaypoints)
 {
   SetWaypoints (
