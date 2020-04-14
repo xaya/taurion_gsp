@@ -130,6 +130,28 @@ Building::GetIdAsTarget () const
   return res;
 }
 
+const proto::CombatEffects&
+Building::GetEffects () const
+{
+  /* Buildings do not support effects, so we just return a
+     default proto.  */
+  return proto::CombatEffects::default_instance ();
+}
+
+proto::CombatEffects&
+Building::MutableEffects ()
+{
+  /* Buildings do not support effects, so we just return a mutable
+     dummy proto that can be freely modified (without affecting the
+     outcome of anything else).
+
+     We use a thread-local variable to avoid situations where two threads
+     try to access and modify the same dummy proto at the same time in
+     case we multi-thread some game logic later on.  */
+  thread_local proto::CombatEffects dummy;
+  return dummy;
+}
+
 const proto::BuildingData&
 Building::RoConfigData () const
 {

@@ -264,13 +264,13 @@ public:
   }
 
   const proto::CombatEffects&
-  GetEffects () const
+  GetEffects () const override
   {
     return effects.Get ();
   }
 
   proto::CombatEffects&
-  MutableEffects ()
+  MutableEffects () override
   {
     return effects.Mutable ();
   }

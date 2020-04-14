@@ -152,6 +152,13 @@ TEST_F (BuildingTests, CombatFields)
   EXPECT_FALSE (tbl.GetById (id)->HasTarget ());
 }
 
+TEST_F (BuildingTests, DummyCombatEffects)
+{
+  auto h = tbl.CreateNew ("checkmark", "andy", Faction::RED);
+  h->MutableEffects ().mutable_speed ()->set_percent (42);
+  EXPECT_FALSE (h->GetEffects ().has_speed ());
+}
+
 /* ************************************************************************** */
 
 using BuildingsTableTests = BuildingTests;
