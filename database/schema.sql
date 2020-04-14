@@ -69,6 +69,10 @@ CREATE TABLE IF NOT EXISTS `characters` (
   -- as we later on only process attacks of characters with a selected target.
   `target` BLOB NULL,
 
+  -- Any combat effects that apply to the character (or NULL if none).
+  -- This is a serialised CombatEffects protocol buffer.
+  `effects` BLOB NULL,
+
   -- Flag indicating if the character is currently moving.  This is set
   -- based on the encoded protocol buffer when updating the table, and is
   -- used so that we can efficiently retrieve only those characters that are
@@ -111,6 +115,7 @@ CREATE INDEX IF NOT EXISTS `characters_attackrange`
   ON `characters` (`attackrange`);
 CREATE INDEX IF NOT EXISTS `characters_canregen` ON `characters` (`canregen`);
 CREATE INDEX IF NOT EXISTS `characters_target` ON `characters` (`target`);
+CREATE INDEX IF NOT EXISTS `characters_effects` ON `characters` (`effects`);
 
 -- =============================================================================
 

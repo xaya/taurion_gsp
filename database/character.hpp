@@ -50,8 +50,9 @@ struct CharacterResult : public ResultWithFaction, public ResultWithCoord,
   RESULT_COLUMN (int64_t, inbuilding, 3);
   RESULT_COLUMN (int64_t, enterbuilding, 4);
   RESULT_COLUMN (pxd::proto::VolatileMovement, volatilemv, 5);
-  RESULT_COLUMN (pxd::proto::Inventory, inventory, 6);
-  RESULT_COLUMN (pxd::proto::Character, proto, 7);
+  RESULT_COLUMN (pxd::proto::CombatEffects, effects, 6);
+  RESULT_COLUMN (pxd::proto::Inventory, inventory, 7);
+  RESULT_COLUMN (pxd::proto::Character, proto, 8);
 };
 
 /**
@@ -92,6 +93,9 @@ private:
 
   /** The character's inventory.  */
   Inventory inv;
+
+  /** Combat effects applying to this character.  */
+  LazyProto<proto::CombatEffects> effects;
 
   /** All other data in the protocol buffer.  */
   LazyProto<proto::Character> data;
@@ -253,6 +257,24 @@ public:
     return inv;
   }
 
+  bool
+  HasEffects () const
+  {
+    return !effects.IsEmpty ();
+  }
+
+  const proto::CombatEffects&
+  GetEffects () const
+  {
+    return effects.Get ();
+  }
+
+  proto::CombatEffects&
+  MutableEffects ()
+  {
+    return effects.Mutable ();
+  }
+
   const proto::Character&
   GetProto () const
   {
@@ -399,6 +421,11 @@ public:
    * Returns the number of characters owned by the given account.
    */
   unsigned CountForOwner (const std::string& owner);
+
+  /**
+   * Clears the "effects" column for all characters.
+   */
+  void ClearAllEffects ();
 
 };
 

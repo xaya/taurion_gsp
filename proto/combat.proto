@@ -18,6 +18,8 @@
 
 syntax = "proto2";
 
+import "modifier.proto";
+
 package pxd.proto;
 
 /**
@@ -46,6 +48,18 @@ message TargetId
    * this field means that the target is "empty" / null / there is no target.
    */
   optional uint64 id = 2;
+
+}
+
+/**
+ * Modifications done to a combat entity's stats due to attacks (e.g.
+ * slowing or range reduction).
+ */
+message CombatEffects
+{
+
+  /** Modification to the speed.  */
+  optional StatModifier speed = 1;
 
 }
 
