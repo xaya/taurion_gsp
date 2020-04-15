@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -42,7 +42,8 @@ void FindCombatTargets (Database& db, xaya::Random& rnd);
 
 /**
  * Deals damage from combat and returns the target IDs of all fighters
- * that are now dead (and need to be handled accordingly).
+ * that are now dead (and need to be handled accordingly).  This also
+ * applies non-damage effects like slowing.
  */
 std::vector<proto::TargetId> DealCombatDamage (Database& db, DamageLists& dl,
                                                xaya::Random& rnd);

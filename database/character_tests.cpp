@@ -208,6 +208,28 @@ TEST_F (CharacterTests, Inventory)
   h.reset ();
 }
 
+TEST_F (CharacterTests, CombatEffects)
+{
+  auto h = tbl.CreateNew ("domob", Faction::RED);
+  const auto id = h->GetId ();
+  EXPECT_FALSE (h->HasEffects ());
+  EXPECT_FALSE (h->GetEffects ().has_speed ());
+  h.reset ();
+
+  h = tbl.GetById (id);
+  EXPECT_FALSE (h->HasEffects ());
+  EXPECT_FALSE (h->GetEffects ().has_speed ());
+  h->MutableEffects ().mutable_speed ()->set_percent (42);
+  EXPECT_TRUE (h->HasEffects ());
+  EXPECT_EQ (h->GetEffects ().speed ().percent (), 42);
+  h.reset ();
+
+  h = tbl.GetById (id);
+  EXPECT_TRUE (h->HasEffects ());
+  EXPECT_EQ (h->GetEffects ().speed ().percent (), 42);
+  h.reset ();
+}
+
 TEST_F (CharacterTests, AttackRange)
 {
   auto c = tbl.CreateNew ("domob", Faction::RED);
@@ -507,6 +529,22 @@ TEST_F (CharacterTableTests, CountForOwner)
   tbl.DeleteById (id);
   EXPECT_EQ (tbl.CountForOwner ("domob"), 2);
   EXPECT_EQ (tbl.CountForOwner ("andy"), 0);
+}
+
+TEST_F (CharacterTableTests, ClearAllEffects)
+{
+  auto c = tbl.CreateNew ("domob", Faction::RED);
+  const auto id = c->GetId ();
+  c->MutableProto ().set_speed (123);
+  c->MutableEffects ().mutable_speed ()->set_percent (10);
+  c.reset ();
+
+  tbl.ClearAllEffects ();
+
+  c = tbl.GetById (id);
+  EXPECT_EQ (c->GetProto ().speed (), 123);
+  EXPECT_FALSE (c->HasEffects ());
+  EXPECT_FALSE (c->GetEffects ().has_speed ());
 }
 
 /* ************************************************************************** */

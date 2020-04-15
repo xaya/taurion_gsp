@@ -18,6 +18,7 @@
 
 #include "movement.hpp"
 
+#include "modifier.hpp"
 #include "protoutils.hpp"
 
 namespace pxd
@@ -36,6 +37,29 @@ namespace
 
 constexpr bool PROCESSING_DONE = true;
 constexpr bool CONTINUE_PROCESSING = false;
+
+/**
+ * Returns the actual movement speed to use for a character.  This handles
+ * a chosen speed reduction if any, as well as combat effects that slow
+ * the character as well.
+ */
+uint32_t
+GetCharacterSpeed (const Character& c)
+{
+  const auto& pb = c.GetProto ();
+  int64_t res = pb.speed ();
+
+  const StatModifier modifier(c.GetEffects ().speed ());
+  res = modifier (res);
+  if (res < 0)
+    return 0;
+
+  if (pb.movement ().has_chosen_speed ())
+    res = std::min<int64_t> (res, pb.movement ().chosen_speed ());
+
+  CHECK_GE (res, 0);
+  return res;
+}
 
 /**
  * Try to step along the precomputed path of the given character.  Returns true
@@ -253,12 +277,12 @@ template <typename Fcn>
       << "Character " << c.GetId ()
       << " was selected for movement but is not actually moving";
 
-  auto speed = pb.speed ();
-  if (pb.movement ().has_chosen_speed ())
-    speed = std::min (speed, pb.movement ().chosen_speed ());
-
-  /* If a character cannot move, then we should never even set a movement
-     for it in the first place.  */
+  /* In principle, we do not allow to even set waypoints if the speed is
+     zero.  But if a retarder is applied, the base speed might be non-zero
+     but the actual speed is zero.  So handle that.  */
+  const auto speed = GetCharacterSpeed (c);
+  if (speed == 0)
+    return;
   CHECK_GT (speed, 0);
 
   VLOG (1)

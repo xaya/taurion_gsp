@@ -16,29 +16,21 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef PXD_FITMENTS_HPP
-#define PXD_FITMENTS_HPP
+syntax = "proto2";
 
-#include "database/character.hpp"
+package pxd.proto;
 
-#include <string>
-#include <vector>
-
-namespace pxd
+/**
+ * General modification something can give to an existing numerical value,
+ * e.g. an increase to a vehicle speed or combat damage.
+ */
+message StatModifier
 {
 
-/**
- * Checks if the given list of fitments can be put onto a given vehicle.
- */
-bool CheckVehicleFitments (const std::string& vehicle,
-                           const std::vector<std::string>& fitments);
+  /**
+   * Relative change to the base value, in percent.  This is added (or
+   * subtracted if negative), so not a multiplicative factor.
+   */
+  optional sint32 percent = 1;
 
-/**
- * Updates the "derived" stats of the character based on the vehicle and
- * fitments it is equipped with.
- */
-void DeriveCharacterStats (Character& c);
-
-} // namespace pxd
-
-#endif // PXD_FITMENTS_HPP
+}

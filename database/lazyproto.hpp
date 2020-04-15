@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -117,6 +117,11 @@ public:
    * data (e.g. so we know that it needs updating in the database).
    */
   bool IsDirty () const;
+
+  /**
+   * Returns true if this is known to be the empty message.
+   */
+  bool IsEmpty () const;
 
   /**
    * Returns a serialised form of the potentially modified protocol buffer.

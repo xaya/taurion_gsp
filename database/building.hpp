@@ -178,6 +178,9 @@ public:
     return data.Get ().combat_data ();
   }
 
+  const proto::CombatEffects& GetEffects () const override;
+  proto::CombatEffects& MutableEffects () override;
+
   /**
    * Returns the rodata for the building type.
    */

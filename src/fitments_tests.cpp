@@ -22,72 +22,12 @@
 
 #include "database/dbtest.hpp"
 
-#include <google/protobuf/text_format.h>
-
 #include <gtest/gtest.h>
 
 namespace pxd
 {
 namespace
 {
-
-using google::protobuf::TextFormat;
-
-/* ************************************************************************** */
-
-class StatModifierTests : public testing::Test
-{
-
-protected:
-
-  /**
-   * Constructs a stat modifier from a text proto.
-   */
-  static StatModifier
-  Modifier (const std::string& text)
-  {
-    proto::StatModifier m;
-    CHECK (TextFormat::ParseFromString (text, &m));
-    return m;
-  }
-
-};
-
-TEST_F (StatModifierTests, Default)
-{
-  StatModifier m;
-  m += proto::StatModifier ();
-
-  EXPECT_EQ (m (0), 0);
-  EXPECT_EQ (m (-5), -5);
-  EXPECT_EQ (m (1'000), 1'000);
-}
-
-TEST_F (StatModifierTests, Application)
-{
-  StatModifier m = Modifier ("percent: 50");
-  EXPECT_EQ (m (0), 0);
-  EXPECT_EQ (m (-100), -150);
-  EXPECT_EQ (m (1'000), 1'500);
-  EXPECT_EQ (m (1), 1);
-  EXPECT_EQ (m (3), 4);
-
-  m = Modifier ("percent: -10");
-  EXPECT_EQ (m (0), 0);
-  EXPECT_EQ (m (-100), -90);
-  EXPECT_EQ (m (10), 9);
-}
-
-TEST_F (StatModifierTests, Stacking)
-{
-  StatModifier m;
-  m += Modifier ("percent: 100");
-  m += Modifier ("percent: 100");
-  m += Modifier ("percent: -100");
-  m += Modifier ("percent: 100");
-
-  EXPECT_EQ (m (100), 300);
-}
 
 /* ************************************************************************** */
 
@@ -211,8 +151,8 @@ TEST_F (DeriveCharacterStatsTests, RangeDamage)
   const auto* a = &c->GetProto ().combat_data ().attacks (0);
   EXPECT_FALSE (a->has_area ());
   EXPECT_EQ (a->range (), 110);
-  EXPECT_EQ (a->min_damage (), 11);
-  EXPECT_EQ (a->max_damage (), 110);
+  EXPECT_EQ (a->damage ().min (), 11);
+  EXPECT_EQ (a->damage ().max (), 110);
 
   a = &c->GetProto ().combat_data ().attacks (1);
   EXPECT_FALSE (a->has_range ());
@@ -229,7 +169,7 @@ TEST_F (DeriveCharacterStatsTests, FitmentAttacksAlsoBoosted)
 {
   auto c = Derive ("chariot", {"bomb", "dmgext", "dmgext"});
   const auto& a = c->GetProto ().combat_data ().attacks (2);
-  EXPECT_EQ (a.max_damage (), 6);
+  EXPECT_EQ (a.damage ().max (), 6);
 }
 
 /* ************************************************************************** */

@@ -18,6 +18,8 @@
 
 syntax = "proto2";
 
+import "modifier.proto";
+
 package pxd.proto;
 
 /**
@@ -50,6 +52,18 @@ message TargetId
 }
 
 /**
+ * Modifications done to a combat entity's stats due to attacks (e.g.
+ * slowing or range reduction).
+ */
+message CombatEffects
+{
+
+  /** Modification to the speed.  */
+  optional StatModifier speed = 1;
+
+}
+
+/**
  * An attack that a character or building has.  This data is either hardcoded
  * (for buildings) or derived from other stuff (like equipped weapons).  But
  * it is stored in the current form in the game state as a sort of "cache"
@@ -76,10 +90,22 @@ message Attack
    */
   optional uint32 area = 2;
 
-  /* Maximum and minimum damage of the attack.  The actual damage will be
-     chosen uniformly from the both-inclusive range.  */
-  optional uint32 min_damage = 3;
-  optional uint32 max_damage = 4;
+  /**
+   * Data about the damage a particular attack does.
+   */
+  message Damage
+  {
+    /* Maximum and minimum damage of the attack.  The actual damage will be
+       chosen uniformly from the both-inclusive range.  */
+    optional uint32 min = 1;
+    optional uint32 max = 2;
+  }
+
+  /** If this attack does damage, the stats for it.  */
+  optional Damage damage = 3;
+
+  /** If this attack has non-damage effects, the stats for it.  */
+  optional CombatEffects effects = 4;
 
 }
 

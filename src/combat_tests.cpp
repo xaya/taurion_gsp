@@ -360,8 +360,8 @@ protected:
   {
     auto& attack = CombatTests::AddAttack (c);
     attack.set_range (range);
-    attack.set_min_damage (minDmg);
-    attack.set_max_damage (maxDmg);
+    attack.mutable_damage ()->set_min (minDmg);
+    attack.mutable_damage ()->set_max (maxDmg);
     return attack;
   }
 
@@ -375,8 +375,8 @@ protected:
   {
     auto& attack = CombatTests::AddAttack (c);
     attack.set_area (range);
-    attack.set_min_damage (minDmg);
-    attack.set_max_damage (maxDmg);
+    attack.mutable_damage ()->set_min (minDmg);
+    attack.mutable_damage ()->set_max (maxDmg);
     return attack;
   }
 
@@ -708,6 +708,56 @@ TEST_F (DealDamageTests, Kills)
   ASSERT_EQ (dead.size (), 1);
   EXPECT_EQ (dead[0].type (), proto::TargetId::TYPE_CHARACTER);
   EXPECT_EQ (dead[0].id (), id2);
+}
+
+TEST_F (DealDamageTests, Effects)
+{
+  auto c = characters.CreateNew ("red", Faction::RED);
+  AddAttack (*c, 5, 1, 1);
+  auto& attack = CombatTests::AddAttack (*c);
+  attack.set_range (5);
+  attack.mutable_effects ()->mutable_speed ()->set_percent (-10);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idTarget = c->GetId ();
+  c->MutableEffects ().mutable_speed ()->set_percent (50);
+  NoAttacks (*c);
+  c.reset ();
+
+  FindTargetsAndDamage ();
+
+  c = characters.GetById (idTarget);
+  EXPECT_EQ (c->GetEffects ().speed ().percent (), 40);
+}
+
+TEST_F (DealDamageTests, EffectsAndDamageApplied)
+{
+  auto c = characters.CreateNew ("red", Faction::RED);
+  AddAttack (*c, 5, 1, 1);
+  {
+    auto& attack = CombatTests::AddAttack (*c);
+    attack.set_range (5);
+    attack.mutable_effects ()->mutable_speed ()->set_percent (-10);
+  }
+  {
+    auto& attack = CombatTests::AddAttack (*c);
+    attack.set_area (5);
+    attack.mutable_effects ()->mutable_speed ()->set_percent (-5);
+  }
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idTarget = c->GetId ();
+  c->MutableHP ().set_armour (100);
+  NoAttacks (*c);
+  c.reset ();
+
+  FindTargetsAndDamage ();
+
+  c = characters.GetById (idTarget);
+  EXPECT_EQ (c->GetHP ().armour (), 99);
+  EXPECT_EQ (c->GetEffects ().speed ().percent (), -15);
 }
 
 /* ************************************************************************** */

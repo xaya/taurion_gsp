@@ -35,6 +35,7 @@ Character::Character (Database& d, const std::string& o, const Faction f)
       << "Created new character with ID " << id << ": "
       << "owner=" << owner;
   volatileMv.SetToDefault ();
+  effects.SetToDefault ();
   data.SetToDefault ();
   Validate ();
 }
@@ -59,6 +60,11 @@ Character::Character (Database& d, const Database::Result<CharacterResult>& res)
   else
     enterBuilding = res.Get<CharacterResult::enterbuilding> ();
 
+  if (res.IsNull<CharacterResult::effects> ())
+    effects.SetToDefault ();
+  else
+    effects = res.GetProto<CharacterResult::effects> ();
+
   volatileMv = res.GetProto<CharacterResult::volatilemv> ();
   inv = res.GetProto<CharacterResult::inventory> ();
   data = res.GetProto<CharacterResult::proto> ();
@@ -72,7 +78,7 @@ Character::~Character ()
   Validate ();
 
   if (isNew || CombatEntity::IsDirtyFull ()
-        || inv.IsDirty () || data.IsDirty ())
+        || inv.IsDirty () || effects.IsDirty () || data.IsDirty ())
     {
       VLOG (1)
           << "Character " << id
@@ -86,7 +92,7 @@ Character::~Character ()
            `canregen`,
            `faction`,
            `ismoving`, `ismining`, `attackrange`,
-           `regendata`, `target`, `inventory`, `proto`)
+           `regendata`, `target`, `inventory`, `effects`, `proto`)
           VALUES
           (?1,
            ?2, ?3, ?4,
@@ -95,17 +101,22 @@ Character::~Character ()
            ?9,
            ?101,
            ?102, ?103, ?104,
-           ?105, ?106, ?107, ?108)
+           ?105, ?106, ?107, ?108, ?109)
       )");
 
       BindFieldValues (stmt);
       CombatEntity::BindFullFields (stmt, 105, 106, 104);
 
+      if (effects.IsEmpty ())
+        stmt.BindNull (108);
+      else
+        stmt.BindProto (108, effects);
+
       BindFactionParameter (stmt, 101, faction);
       stmt.Bind (102, data.Get ().has_movement ());
       stmt.Bind (103, data.Get ().mining ().active ());
       stmt.BindProto (107, inv.GetProtoForBinding ());
-      stmt.BindProto (108, data);
+      stmt.BindProto (109, data);
       stmt.Execute ();
 
       return;
@@ -423,6 +434,19 @@ CharacterTable::CountForOwner (const std::string& owner)
   CHECK (!res.Step ());
 
   return count;
+}
+
+void
+CharacterTable::ClearAllEffects ()
+{
+  VLOG (1) << "Clearing all combat effects on characters";
+
+  auto stmt = db.Prepare (R"(
+    UPDATE `characters`
+      SET `effects` = NULL
+      WHERE `effects` IS NOT NULL
+  )");
+  stmt.Execute ();
 }
 
 } // namespace pxd

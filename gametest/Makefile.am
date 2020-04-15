@@ -15,6 +15,7 @@ REGTESTS = \
   coinops.py \
   combat_aoe.py \
   combat_damage.py \
+  combat_effects.py \
   combat_targets.py \
   damage_lists.py \
   fame.py \

@@ -16,29 +16,28 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef PXD_FITMENTS_HPP
-#define PXD_FITMENTS_HPP
-
-#include "database/character.hpp"
-
-#include <string>
-#include <vector>
+#include "modifier.hpp"
 
 namespace pxd
 {
 
-/**
- * Checks if the given list of fitments can be put onto a given vehicle.
- */
-bool CheckVehicleFitments (const std::string& vehicle,
-                           const std::vector<std::string>& fitments);
+proto::StatModifier
+StatModifier::ToProto () const
+{
+  proto::StatModifier res;
+  res.set_percent (percent);
 
-/**
- * Updates the "derived" stats of the character based on the vehicle and
- * fitments it is equipped with.
- */
-void DeriveCharacterStats (Character& c);
+  return res;
+}
+
+proto::StatModifier&
+operator+= (proto::StatModifier& pb, const proto::StatModifier& other)
+{
+  StatModifier mod(pb);
+  mod += other;
+
+  pb = mod.ToProto ();
+  return pb;
+}
 
 } // namespace pxd
-
-#endif // PXD_FITMENTS_HPP
