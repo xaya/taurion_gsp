@@ -68,7 +68,16 @@ public:
     return base + (base * percent) / 100;
   }
 
+  /**
+   * Converts the state back to a proto.
+   */
+  proto::StatModifier ToProto () const;
+
 };
+
+/** Adds together two modifiers directly as protos.  */
+proto::StatModifier& operator+= (proto::StatModifier& pb,
+                                 const proto::StatModifier& other);
 
 } // namespace pxd
 

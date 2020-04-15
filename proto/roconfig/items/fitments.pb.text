@@ -41,6 +41,47 @@ fungible_items:
 
 fungible_items:
   {
+    key: "retarder"
+    value:
+      {
+        space: 5
+        complexity: 4
+        with_blueprint: true
+        fitment:
+          {
+            slot: "high"
+            attack:
+              {
+                area: 5
+                effects: { speed: { percent: -25 } }
+              }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "longretard"
+    value:
+      {
+        space: 5
+        complexity: 4
+        with_blueprint: true
+        fitment:
+          {
+            slot: "high"
+            attack:
+              {
+                range: 10
+                area: 2
+                effects: { speed: { percent: -25 } }
+              }
+          }
+      }
+  }
+
+fungible_items:
+  {
     key: "expander"
     value:
       {

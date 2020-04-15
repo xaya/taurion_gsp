@@ -486,6 +486,54 @@ TEST_F (PXLogicTests, FameUpdate)
   ASSERT_EQ (characters.GetById (ids[1]), nullptr);
 }
 
+TEST_F (PXLogicTests, CombatEffectRetarder)
+{
+  /* In this test, we set up a red character with retarding attack, and
+     move both a green enemy and a red friendly through the AoE of that
+     attack (which will last from (-10, 0) to (11, 0) along the x axis).  */
+
+  auto c = CreateCharacter ("domob", Faction::RED);
+  c->SetPosition (HexCoord (0, 0));
+  auto& attack = *c->MutableProto ().mutable_combat_data ()->add_attacks ();
+  attack.set_range (11);
+  attack.mutable_effects ()->mutable_speed ()->set_percent (-50);
+  c.reset ();
+
+  c = CreateCharacter ("andy", Faction::GREEN);
+  const auto idTarget = c->GetId ();
+  c->MutableProto ().mutable_combat_data ();
+  c->MutableProto ().set_speed (2'000);
+  *c->MutableProto ().mutable_movement ()->add_waypoints ()
+      = CoordToProto (HexCoord (20, 0));
+  c->SetPosition (HexCoord (-20, 0));
+  c.reset ();
+
+  c = CreateCharacter ("other", Faction::RED);
+  const auto idFriendly = c->GetId ();
+  c->MutableProto ().mutable_combat_data ();
+  c->MutableProto ().set_speed (2'000);
+  *c->MutableProto ().mutable_movement ()->add_waypoints ()
+      = CoordToProto (HexCoord (20, 0));
+  c->SetPosition (HexCoord (-20, 0));
+  c.reset ();
+
+  for (unsigned i = 0; i < 5; ++i)
+    UpdateState ("[]");
+  EXPECT_EQ (characters.GetById (idTarget)->GetPosition (), HexCoord (-10, 0));
+  UpdateState ("[]");
+  EXPECT_EQ (characters.GetById (idTarget)->GetPosition (), HexCoord (-9, 0));
+  EXPECT_EQ (characters.GetById (idFriendly)->GetPosition (), HexCoord (-8, 0));
+  for (unsigned i = 0; i < 21; ++i)
+    UpdateState ("[]");
+  EXPECT_EQ (characters.GetById (idTarget)->GetPosition (), HexCoord (12, 0));
+  EXPECT_EQ (characters.GetById (idFriendly)->GetPosition (), HexCoord (20, 0));
+  UpdateState ("[]");
+  EXPECT_EQ (characters.GetById (idTarget)->GetPosition (), HexCoord (14, 0));
+  for (unsigned i = 0; i < 3; ++i)
+    UpdateState ("[]");
+  EXPECT_EQ (characters.GetById (idTarget)->GetPosition (), HexCoord (20, 0));
+}
+
 TEST_F (PXLogicTests, ProspectingBeforeMovement)
 {
   /* This should test that prospecting is started before processing

@@ -84,5 +84,18 @@ TEST_F (StatModifierTests, Stacking)
   EXPECT_EQ (m (100), 300);
 }
 
+TEST_F (StatModifierTests, ToProto)
+{
+  const auto pb = Modifier ("percent: -42").ToProto ();
+  EXPECT_EQ (pb.percent (), -42);
+}
+
+TEST_F (StatModifierTests, ProtoAdd)
+{
+  auto pb = Modifier ("percent: 10").ToProto ();
+  pb += Modifier ("percent: -5").ToProto ();
+  EXPECT_EQ (pb.percent (), 5);
+}
+
 } // anonymous namespace
 } // namespace pxd

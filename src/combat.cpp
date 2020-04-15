@@ -18,6 +18,8 @@
 
 #include "combat.hpp"
 
+#include "modifier.hpp"
+
 #include "database/building.hpp"
 #include "database/character.hpp"
 #include "database/fighter.hpp"
@@ -131,10 +133,10 @@ RollAttackDamage (const proto::Attack& attack, xaya::Random& rnd)
  */
 void
 ApplyDamage (DamageLists& dl, unsigned dmg,
-             const CombatEntity& attacker, FighterTable::Handle target,
+             const CombatEntity& attacker, CombatEntity& target,
              std::vector<proto::TargetId>& dead)
 {
-  const auto targetId = target->GetIdAsTarget ();
+  const auto targetId = target.GetIdAsTarget ();
   if (dmg == 0)
     {
       VLOG (1) << "No damage done to target:\n" << targetId.DebugString ();
@@ -148,7 +150,7 @@ ApplyDamage (DamageLists& dl, unsigned dmg,
         && targetId.type () == proto::TargetId::TYPE_CHARACTER)
     dl.AddEntry (targetId.id (), attackerId.id ());
 
-  auto& hp = target->MutableHP ();
+  auto& hp = target.MutableHP ();
 
   const unsigned shieldDmg = std::min (dmg, hp.shield ());
   hp.set_shield (hp.shield () - shieldDmg);
@@ -168,6 +170,25 @@ ApplyDamage (DamageLists& dl, unsigned dmg,
       CHECK_LT (hp.shield_mhp (), 1000);
       dead.push_back (targetId);
     }
+}
+
+/**
+ * Applies combat effects (non-damage) to a target.
+ */
+void
+ApplyEffects (const proto::Attack& attack, CombatEntity& target)
+{
+  if (!attack.has_effects ())
+    return;
+
+  const auto targetId = target.GetIdAsTarget ();
+  VLOG (1) << "Applying combat effects to " << targetId.DebugString ();
+
+  const auto& effects = attack.effects ();
+  auto& pb = target.MutableEffects ();
+
+  if (effects.has_speed ())
+    *pb.mutable_speed () += effects.speed ();
 }
 
 /**
@@ -197,7 +218,9 @@ DealDamage (FighterTable& fighters, TargetFinder& targets,
             && targetDist > static_cast<int> (attack.range ()))
         continue;
 
-      const unsigned dmg = RollAttackDamage (attack, rnd);
+      unsigned dmg = 0;
+      if (attack.has_damage ())
+        dmg = RollAttackDamage (attack, rnd);
 
       if (attack.has_area ())
         {
@@ -210,12 +233,17 @@ DealDamage (FighterTable& fighters, TargetFinder& targets,
           targets.ProcessL1Targets (centre, attack.area (), f->GetFaction (),
             [&] (const HexCoord& c, const proto::TargetId& id)
             {
-              ApplyDamage (dl, dmg, *f, fighters.GetForTarget (id), dead);
+              auto t = fighters.GetForTarget (id);
+              ApplyDamage (dl, dmg, *f, *t, dead);
+              ApplyEffects (attack, *t);
             });
         }
       else
-        ApplyDamage (dl, dmg, *f, fighters.GetForTarget (f->GetTarget ()),
-                     dead);
+        {
+          auto t = fighters.GetForTarget (f->GetTarget ());
+          ApplyDamage (dl, dmg, *f, *t, dead);
+          ApplyEffects (attack, *t);
+        }
     }
 }
 

@@ -104,6 +104,9 @@ message Attack
   /** If this attack does damage, the stats for it.  */
   optional Damage damage = 3;
 
+  /** If this attack has non-damage effects, the stats for it.  */
+  optional CombatEffects effects = 4;
+
 }
 
 /**

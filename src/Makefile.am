@@ -30,6 +30,7 @@ libtaurion_la_SOURCES = \
   jsonutils.cpp \
   logic.cpp \
   mining.cpp \
+  modifier.cpp \
   movement.cpp \
   moveprocessor.cpp \
   ongoings.cpp \
