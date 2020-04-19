@@ -76,9 +76,7 @@ class PendingTest (PXTest):
     self.getCharacters ()["miner"].sendMove ({"prospect": {}})
 
     self.generate (15)
-    # getnullstate ensures that we sync up at least for the confirmed state
-    # before we look at the pending state.
-    self.getRpc ("getnullstate")
+    self.syncGame ()
     self.assertEqual (self.getPendingState (), {
       "characters": [],
       "newcharacters": [],
@@ -221,7 +219,7 @@ class PendingTest (PXTest):
 
     self.mainLogger.info ("Confirming the moves...")
     self.generate (1)
-    self.getRpc ("getnullstate")
+    self.syncGame ()
     self.assertEqual (self.getPendingState (), {
       "characters": [],
       "newcharacters": [],

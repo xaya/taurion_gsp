@@ -28,7 +28,6 @@ REGTESTS = \
   modifiedregions.py \
   movement.py \
   multiupdate.py \
-  nullstate.py \
   pending.py \
   prospecting_basic.py \
   prospecting_prizes.py \

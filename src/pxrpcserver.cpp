@@ -238,11 +238,7 @@ Json::Value
 PXRpcServer::getnullstate ()
 {
   LOG (INFO) << "RPC method called: getnullstate";
-  return logic.GetCustomStateData (game,
-    [] (GameStateJson& gsj)
-      {
-        return Json::Value ();
-      });
+  return game.GetNullJsonState ();
 }
 
 Json::Value
