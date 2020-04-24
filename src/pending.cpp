@@ -549,8 +549,12 @@ PendingMoves::AddPendingMove (const Json::Value& mv)
   if (dyn == nullptr)
     dyn = std::make_unique<DynObstacles> (dbObj);
 
+  const auto& blk = GetConfirmedBlock ();
+  const auto& heightVal = blk["height"];
+  CHECK (heightVal.isUInt ());
+
   const Context ctx(GetChain (), rules.GetBaseMap (),
-                    GetConfirmedHeight () + 1, Context::NO_TIMESTAMP);
+                    heightVal.asUInt () + 1, Context::NO_TIMESTAMP);
 
   PendingStateUpdater updater(dbObj, *dyn, state, ctx);
   updater.ProcessMove (mv);
