@@ -18,6 +18,8 @@
 
 #include "charon.hpp"
 
+#include "config.h"
+
 #include "pxrpcserver.hpp"
 
 #include <charon/notifications.hpp>
@@ -59,6 +61,34 @@ DEFINE_string (charon_pubsub_service, "",
 DEFINE_int32 (charon_timeout_ms, 3000,
               "Timeout in ms that the Charon client will wait"
               " for a server response");
+
+/**
+ * Returns the version string to use for this build in Charon (i.e. advertise
+ * in the server and require in the client).
+ */
+std::string
+GetBackendVersion ()
+{
+  /* The version is just the PACKAGE_VERSION declared in configure.ac, taking
+     only the first two numbers (major and minor) into account.  At least the
+     minor version will be changed whenever a change "breaks" the interface
+     or forks consensus, the numbers afterwards are for bug fixes.  */
+
+  std::string version = PACKAGE_VERSION;
+
+  /* Find the first '.', which is always there for our version format.  */
+  const size_t firstDot = version.find ('.');
+  CHECK_NE (firstDot, std::string::npos);
+  CHECK_LT (firstDot, version.size ());
+
+  /* Try and see if there is another one, from which we would strip off
+     all trailing stuff.  */
+  const size_t secondDot = version.find ('.', firstDot + 1);
+  if (secondDot == std::string::npos)
+    return version;
+
+  return version.substr (0, secondDot);
+}
 
 /* ************************************************************************** */
 
@@ -153,13 +183,15 @@ private:
 public:
 
   explicit CharonBackend (xaya::Game& game, PXLogic& rules)
-    : rpc(game, rules, conn), srv(*this)
+    : rpc(game, rules, conn), srv(GetBackendVersion (), *this)
   {}
 
   void
   Start () override
   {
-    LOG (INFO) << "Starting Charon server as " << FLAGS_charon_server_jid;
+    LOG (INFO)
+        << "Starting Charon server as " << FLAGS_charon_server_jid
+        << " providing backend version " << GetBackendVersion ();
     srv.Connect (FLAGS_charon_server_jid, FLAGS_charon_password,
                  FLAGS_charon_priority);
 
@@ -337,9 +369,11 @@ private:
 public:
 
   explicit RealCharonClient (const std::string& serverJid)
-    : client(serverJid)
+    : client(serverJid, GetBackendVersion ())
   {
-    LOG (INFO) << "Using " << serverJid << " as Charon server";
+    LOG (INFO)
+        << "Using " << serverJid << " as Charon server,"
+        << " requiring backend version " << GetBackendVersion ();
   }
 
   /**
