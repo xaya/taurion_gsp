@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
 #   Copyright (C) 2019-2020  Autonomous Worlds Ltd
@@ -69,7 +69,7 @@ class PendingTest (PXTest):
     })
 
     self.build ("ancient1", None, positionBuilding, 0)
-    building = self.getBuildings ().keys ()[-1]
+    building = list (self.getBuildings ().keys ())[-1]
     self.dropIntoBuilding (building, "andy", {"foo": 100})
     self.getCharacters ()["inbuilding"].sendMove ({"eb": building})
 

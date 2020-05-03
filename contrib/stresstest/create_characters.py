@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
 #   Copyright (C) 2019  Autonomous Worlds Ltd

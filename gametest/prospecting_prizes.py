@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
 #   Copyright (C) 2019-2020  Autonomous Worlds Ltd
@@ -38,7 +38,7 @@ class ProspectingPrizesTest (PXTest):
     items = self.getCharacters ()[nm].getFungibleInventory ()
 
     res = {}
-    for item, amount in items.iteritems ():
+    for item, amount in items.items ():
       suffix = " prize"
       if not item.endswith (suffix):
         continue
@@ -124,10 +124,10 @@ class ProspectingPrizesTest (PXTest):
     }
     for nm in self.getAccounts ():
       thisPrizes = self.getPrizes (nm)
-      for prize, num in thisPrizes.iteritems ():
+      for prize, num in thisPrizes.items ():
         prizesInRegions[prize] += num
 
-    for nm, val in self.getRpc ("getprizestats").iteritems ():
+    for nm, val in self.getRpc ("getprizestats").items ():
       self.assertEqual (prizesInRegions[nm], val["found"])
     self.log.info ("Found prizes:\n%s" % prizesInRegions)
     self.assertEqual (prizesInRegions["bronze"], 1)

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
 #   Copyright (C) 2020  Autonomous Worlds Ltd
@@ -56,7 +56,7 @@ class ServicesRevEngTest (PXTest):
       self.assertEqual (len (self.rpc.xaya.name_pending ("p/domob")), 1)
       self.generate (1)
       inv = self.getBuildings ()[building].getFungibleInventory ("domob")
-      for t, n in inv.iteritems ():
+      for t, n in inv.items ():
         if t == "test artefact":
           continue
         self.assertEqual (n, 1)

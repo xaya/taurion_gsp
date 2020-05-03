@@ -1,7 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2019  Autonomous Worlds Ltd
+#   Copyright (C) 2019-2020  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -45,7 +45,7 @@ class CombatTargetTest (PXTest):
     self.assertEqual (t["type"], "character")
 
     charId = t["id"]
-    for nm, val in chars.iteritems ():
+    for nm, val in chars.items ():
       if val.getId () == charId:
         return nm
 
@@ -88,7 +88,7 @@ class CombatTargetTest (PXTest):
       # Invalidate the last block so that we reroll the randomisation
       # with the next generated block.
       self.rpc.xaya.invalidateblock (self.rpc.xaya.getbestblockhash ())
-    for key, cnt in cnts.iteritems ():
+    for key, cnt in cnts.items ():
       self.log.info ("Target %s selected %d / %d times" % (key, cnt, rolls))
       assert cnt > 0
 

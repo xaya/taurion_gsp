@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
 #   Copyright (C) 2020  Autonomous Worlds Ltd
@@ -81,7 +81,8 @@ class BuildingsCombatTest (PXTest):
     self.rpc.xaya.invalidateblock (blk)
 
     self.generate (5)
-    self.assertEqual (self.getCharacters ().keys (), ["attacker", "domob"])
+    self.assertEqual (set (self.getCharacters ().keys ()),
+                      set (["attacker", "domob"]))
     assert self.building in self.getBuildings ()
 
     self.rpc.xaya.reconsiderblock (blk)

@@ -130,7 +130,7 @@ class Character (object):
     in the actual data).
     """
 
-    for key, val in expected.iteritems ():
+    for key, val in expected.items ():
       self.test.assertEqual (self.data[key], val)
 
 
@@ -344,7 +344,7 @@ class PXTest (XayaGameTest):
 
     chars = self.getCharacters ()
     teleport = {}
-    for nm, c in charTargets.iteritems ():
+    for nm, c in charTargets.items ():
       idStr = chars[nm].getIdStr ()
       teleport[idStr] = c
 
@@ -352,7 +352,7 @@ class PXTest (XayaGameTest):
     self.generate (1)
 
     chars = self.getCharacters ()
-    for nm, c in charTargets.iteritems ():
+    for nm, c in charTargets.items ():
       self.assertEqual (chars[nm].getPosition (), c)
 
   def setCharactersHP (self, charHP):
@@ -362,7 +362,7 @@ class PXTest (XayaGameTest):
 
     chars = self.getCharacters ()
     sethp = {}
-    for nm, c in charHP.iteritems ():
+    for nm, c in charHP.items ():
       idStr = chars[nm].getIdStr ()
       sethp[idStr] = c
 

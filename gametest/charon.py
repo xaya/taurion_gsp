@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
 #   Copyright (C) 2020  Autonomous Worlds Ltd
@@ -69,7 +69,7 @@ class CharonClient ():
     shutil.rmtree (self.datadir, ignore_errors=True)
     os.mkdir (self.datadir)
 
-    self.rpc = jsonrpclib.Server ("http://localhost:%d" % self.rpcport)
+    self.rpc = jsonrpclib.ServerProxy ("http://localhost:%d" % self.rpcport)
     self.proc = None
 
   def __enter__ (self):
@@ -122,7 +122,7 @@ class Waiter:
     time.sleep (0.1)
     assert self.thread.isAlive ()
 
-  def await (self):
+  def wait (self):
     self.thread.join ()
     return self.result
 
@@ -168,13 +168,13 @@ class CharonTest (PXTest):
       w = Waiter (client.rpc.waitforchange, "")
       w.assertRunning ()
       self.generate (1)
-      self.assertEqual (w.await (), self.rpc.xaya.getbestblockhash ())
+      self.assertEqual (w.wait (), self.rpc.xaya.getbestblockhash ())
 
       self.mainLogger.info ("Testing waitforpendingchange...")
       w = Waiter (client.rpc.waitforpendingchange, 0)
       w.assertRunning ()
       self.createCharacters ("domob", 1)
-      self.assertEqual (w.await ()["pending"], {
+      self.assertEqual (w.wait ()["pending"], {
         "characters": [],
         "newcharacters":
           [

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
 #   Copyright (C) 2020  Autonomous Worlds Ltd
@@ -49,7 +49,7 @@ class BuildingConstructionTest (PXTest):
     self.generate (1)
 
     buildings = self.getBuildings ()
-    bId = buildings.keys ()[-1]
+    bId = list (buildings.keys ())[-1]
     self.assertEqual (buildings[bId].isFoundation (), True)
     self.assertEqual (buildings[bId].getConstructionInventory (), {
       "foo": 98,

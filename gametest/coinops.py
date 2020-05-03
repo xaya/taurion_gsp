@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
 #   Copyright (C) 2020  Autonomous Worlds Ltd
@@ -32,7 +32,7 @@ class CoinOpsTest (PXTest):
     """
 
     acc = self.getAccounts ()
-    for k, v in expected.iteritems ():
+    for k, v in expected.items ():
       self.assertEqual (acc[k].getBalance (), v)
 
   def run (self):

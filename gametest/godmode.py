@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
 #   Copyright (C) 2019-2020  Autonomous Worlds Ltd
@@ -40,7 +40,7 @@ class GodModeTest (PXTest):
     self.build ("checkmark", None, {"x": 100, "y": 150}, rot=2)
     self.build ("checkmark", "domob", {"x": -100, "y": -150}, rot=0)
     buildings = self.getBuildings ()
-    buildingId = buildings.values ()[0].getId ()
+    buildingId = list (buildings.values ())[0].getId ()
     self.assertEqual (buildings[1002].data, {
       "id": 1002,
       "type": "checkmark",
