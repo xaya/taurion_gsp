@@ -62,6 +62,9 @@ DEFINE_int32 (charon_timeout_ms, 3000,
               "Timeout in ms that the Charon client will wait"
               " for a server response");
 
+/** Interval for Charon server reconnects.  */
+const auto RECONNECT_INTERVAL = std::chrono::seconds (5);
+
 /**
  * Returns the version string to use for this build in Charon (i.e. advertise
  * in the server and require in the client).
@@ -162,6 +165,9 @@ private:
   /** The Charon server that we use.  */
   charon::Server srv;
 
+  /** The server main loop.  */
+  charon::Server::ReconnectLoop loop;
+
   /**
    * Enables a notification waiter on the server.  The waiter will just
    * use the given notification type and call through to a method on
@@ -183,18 +189,11 @@ private:
 public:
 
   explicit CharonBackend (xaya::Game& game, PXLogic& rules)
-    : rpc(game, rules, conn), srv(GetBackendVersion (), *this)
-  {}
-
-  void
-  Start () override
+    : rpc(game, rules, conn),
+      srv(GetBackendVersion (), *this,
+          FLAGS_charon_server_jid, FLAGS_charon_password),
+      loop(srv, RECONNECT_INTERVAL)
   {
-    LOG (INFO)
-        << "Starting Charon server as " << FLAGS_charon_server_jid
-        << " providing backend version " << GetBackendVersion ();
-    srv.Connect (FLAGS_charon_server_jid, FLAGS_charon_password,
-                 FLAGS_charon_priority);
-
     LOG (INFO) << "Using " << FLAGS_charon_pubsub_service << " for pubsub";
     srv.AddPubSub (FLAGS_charon_pubsub_service);
 
@@ -205,10 +204,19 @@ public:
   }
 
   void
+  Start () override
+  {
+    LOG (INFO)
+        << "Starting Charon server as " << FLAGS_charon_server_jid
+        << " providing backend version " << GetBackendVersion ();
+    loop.Start (FLAGS_charon_priority);
+  }
+
+  void
   Stop () override
   {
     LOG (INFO) << "Stopping Charon server...";
-    srv.Disconnect ();
+    loop.Stop ();
   }
 
 };
