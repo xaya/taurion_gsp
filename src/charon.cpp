@@ -376,8 +376,10 @@ private:
 
 public:
 
-  explicit RealCharonClient (const std::string& serverJid)
-    : client(serverJid, GetBackendVersion ())
+  explicit RealCharonClient (const std::string& serverJid,
+                             const std::string& clientJid,
+                             const std::string& password)
+    : client(serverJid, GetBackendVersion (), clientJid, password)
   {
     LOG (INFO)
         << "Using " << serverJid << " as Charon server,"
@@ -476,7 +478,7 @@ void
 RealCharonClient::Run ()
 {
   LOG (INFO) << "Connecting client to XMPP as " << FLAGS_charon_client_jid;
-  client.Connect (FLAGS_charon_client_jid, FLAGS_charon_password, -1);
+  client.Connect ();
 
   const std::string srvResource = client.GetServerResource ();
   if (srvResource.empty ())
@@ -543,7 +545,9 @@ MaybeBuildCharonClient ()
       return nullptr;
     }
 
-  auto res = std::make_unique<RealCharonClient> (FLAGS_charon_server_jid);
+  auto res = std::make_unique<RealCharonClient> (FLAGS_charon_server_jid,
+                                                 FLAGS_charon_client_jid,
+                                                 FLAGS_charon_password);
   res->SetTimeout (std::chrono::milliseconds (FLAGS_charon_timeout_ms));
 
   return res;
