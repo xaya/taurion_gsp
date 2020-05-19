@@ -35,7 +35,7 @@ EXTRA_DIST = \
   $(PROTOS) $(ROCONFIG_TEXT_PROTOS) \
   roconfig_gen_head.cpp roconfig_gen_tail.cpp
 
-BUILT_SOURCES = $(PROTOS:.proto=.pb.h) roconfig.pb
+BUILT_SOURCES = $(PROTOS:.proto=.pb.h) roconfig_gen.cpp roconfig.pb
 CLEANFILES = \
   $(PROTOS:.proto=.pb.h) $(PROTOS:.proto=.pb.cc) \
   roconfig_gen.cpp roconfig.pb
