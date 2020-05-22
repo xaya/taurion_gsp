@@ -152,6 +152,9 @@ message FitmentData
   /** Modification to the vehicle's allowed fitment complexity.  */
   optional StatModifier complexity = 10;
 
+  /** Low-HP-boost this fitment provides (if any).  */
+  optional LowHpBoost low_hp_boost = 11;
+
 }
 
 /**

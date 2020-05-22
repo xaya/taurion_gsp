@@ -132,6 +132,9 @@ ApplyFitments (Character& c)
 
       if (fitment.has_attack ())
         *pb.mutable_combat_data ()->add_attacks () = fitment.attack ();
+      if (fitment.has_low_hp_boost ())
+        *pb.mutable_combat_data ()->add_low_hp_boosts ()
+            = fitment.low_hp_boost ();
 
       cargo += fitment.cargo_space ();
       speed += fitment.speed ();

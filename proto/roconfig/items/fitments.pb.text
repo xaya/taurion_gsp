@@ -114,6 +114,27 @@ fungible_items:
 
 fungible_items:
   {
+    key: "lowhpboost"
+    value:
+      {
+        space: 1
+        complexity: 4
+        with_blueprint: true
+        fitment:
+          {
+            slot: "low"
+            low_hp_boost:
+              {
+                max_hp_percent: 10
+                damage: { percent: 50 }
+                range: { percent: 20 }
+              }
+          }
+      }
+  }
+
+fungible_items:
+  {
     key: "plating"
     value:
       {

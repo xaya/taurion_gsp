@@ -110,6 +110,24 @@ message Attack
 }
 
 /**
+ * Stats for a boost to combat stats that is in effect when a character
+ * has low armour HP (i.e. "final breath" attack).
+ */
+message LowHpBoost
+{
+
+  /** The percentage of armour HP at which it activates.  */
+  optional uint32 max_hp_percent = 1;
+
+  /** Boost to damage.  */
+  optional StatModifier damage = 2;
+
+  /** Boost to range.  */
+  optional StatModifier range = 3;
+
+}
+
+/**
  * Small utility message to hold stats about HP (both the permanent
  * armour-based ones and the regenerating shield).
  */
@@ -160,5 +178,8 @@ message CombatData
 
   /** The offensive attacks the figher has.  */
   repeated Attack attacks = 1;
+
+  /** Any low-HP boosts for the fighter.  */
+  repeated LowHpBoost low_hp_boosts = 2;
 
 }
