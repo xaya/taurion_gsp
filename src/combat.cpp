@@ -43,6 +43,13 @@ namespace
  */
 constexpr const unsigned BUILDING_INVENTORY_DROP_PERCENT = 30;
 
+} // anonymous namespace
+
+/* ************************************************************************** */
+
+namespace
+{
+
 /**
  * Runs target selection for one fighter entity.
  */
@@ -112,14 +119,79 @@ FindCombatTargets (Database& db, xaya::Random& rnd)
     });
 }
 
+/* ************************************************************************** */
+
 namespace
 {
 
 /**
- * Performs a random roll to determine the damage a particular attack does.
+ * Helper class to perform the damage-dealing processing step.
  */
+class DamageProcessor
+{
+
+private:
+
+  DamageLists& dl;
+  xaya::Random& rnd;
+
+  BuildingsTable buildings;
+  CharacterTable characters;
+  FighterTable fighters;
+  TargetFinder targets;
+
+  /** The list of kills being built up.  */
+  std::vector<proto::TargetId> dead;
+
+  /**
+   * Performs a random roll to determine the damage a particular attack does.
+   */
+  unsigned RollAttackDamage (const proto::Attack& attack);
+
+  /**
+   * Applies a fixed given amount of damage to a given attack target.
+   */
+  void ApplyDamage (unsigned dmg, const CombatEntity& attacker,
+                    CombatEntity& target);
+
+  /**
+   * Applies combat effects (non-damage) to a target.
+   */
+  static void ApplyEffects (const proto::Attack& attack, CombatEntity& target);
+
+  /**
+   * Deals damage for one fighter with a target to the respective target
+   * (or any AoE targets).
+   */
+  void DealDamage (FighterTable::Handle f);
+
+public:
+
+  explicit DamageProcessor (Database& db, DamageLists& lst, xaya::Random& r)
+    : dl(lst), rnd(r),
+      buildings(db), characters(db),
+      fighters(buildings, characters),
+      targets(db)
+  {}
+
+  /**
+   * Runs the full damage processing step.
+   */
+  void Process ();
+
+  /**
+   * Returns the list of killed fighters.
+   */
+  const std::vector<proto::TargetId>&
+  GetDead () const
+  {
+    return dead;
+  }
+
+};
+
 unsigned
-RollAttackDamage (const proto::Attack& attack, xaya::Random& rnd)
+DamageProcessor::RollAttackDamage (const proto::Attack& attack)
 {
   CHECK (attack.has_damage ());
   const auto& dmg = attack.damage ();
@@ -128,13 +200,9 @@ RollAttackDamage (const proto::Attack& attack, xaya::Random& rnd)
   return dmg.min () + rnd.NextInt (n);
 }
 
-/**
- * Applies a fixed given amount of damage to a given attack target.
- */
 void
-ApplyDamage (DamageLists& dl, unsigned dmg,
-             const CombatEntity& attacker, CombatEntity& target,
-             std::vector<proto::TargetId>& dead)
+DamageProcessor::ApplyDamage (unsigned dmg, const CombatEntity& attacker,
+                              CombatEntity& target)
 {
   const auto targetId = target.GetIdAsTarget ();
   if (dmg == 0)
@@ -172,11 +240,9 @@ ApplyDamage (DamageLists& dl, unsigned dmg,
     }
 }
 
-/**
- * Applies combat effects (non-damage) to a target.
- */
 void
-ApplyEffects (const proto::Attack& attack, CombatEntity& target)
+DamageProcessor::ApplyEffects (const proto::Attack& attack,
+                               CombatEntity& target)
 {
   if (!attack.has_effects ())
     return;
@@ -191,15 +257,8 @@ ApplyEffects (const proto::Attack& attack, CombatEntity& target)
     *pb.mutable_speed () += effects.speed ();
 }
 
-/**
- * Deals damage for one fighter with a target to the respective target.
- * Adds the target to the vector of dead fighters if it had its HP reduced
- * to zero and is now dead.
- */
 void
-DealDamage (FighterTable& fighters, TargetFinder& targets,
-            DamageLists& dl, xaya::Random& rnd,
-            FighterTable::Handle f, std::vector<proto::TargetId>& dead)
+DamageProcessor::DealDamage (FighterTable::Handle f)
 {
   const auto& cd = f->GetCombatData ();
   const auto& pos = f->GetCombatPosition ();
@@ -220,7 +279,7 @@ DealDamage (FighterTable& fighters, TargetFinder& targets,
 
       unsigned dmg = 0;
       if (attack.has_damage ())
-        dmg = RollAttackDamage (attack, rnd);
+        dmg = RollAttackDamage (attack);
 
       if (attack.has_area ())
         {
@@ -234,17 +293,26 @@ DealDamage (FighterTable& fighters, TargetFinder& targets,
             [&] (const HexCoord& c, const proto::TargetId& id)
             {
               auto t = fighters.GetForTarget (id);
-              ApplyDamage (dl, dmg, *f, *t, dead);
+              ApplyDamage (dmg, *f, *t);
               ApplyEffects (attack, *t);
             });
         }
       else
         {
           auto t = fighters.GetForTarget (f->GetTarget ());
-          ApplyDamage (dl, dmg, *f, *t, dead);
+          ApplyDamage (dmg, *f, *t);
           ApplyEffects (attack, *t);
         }
     }
+}
+
+void
+DamageProcessor::Process ()
+{
+  fighters.ProcessWithTarget ([&] (FighterTable::Handle f)
+    {
+      DealDamage (std::move (f));
+    });
 }
 
 } // anonymous namespace
@@ -252,19 +320,12 @@ DealDamage (FighterTable& fighters, TargetFinder& targets,
 std::vector<proto::TargetId>
 DealCombatDamage (Database& db, DamageLists& dl, xaya::Random& rnd)
 {
-  BuildingsTable buildings(db);
-  CharacterTable characters(db);
-  FighterTable fighters(buildings, characters);
-  TargetFinder targets(db);
-
-  std::vector<proto::TargetId> dead;
-  fighters.ProcessWithTarget ([&] (FighterTable::Handle f)
-    {
-      DealDamage (fighters, targets, dl, rnd, std::move (f), dead);
-    });
-
-  return dead;
+  DamageProcessor proc(db, dl, rnd);
+  proc.Process ();
+  return proc.GetDead ();
 }
+
+/* ************************************************************************** */
 
 namespace
 {
@@ -492,6 +553,8 @@ ProcessKills (Database& db, DamageLists& dl, GroundLootTable& loot,
       }
 }
 
+/* ************************************************************************** */
+
 namespace
 {
 
@@ -543,6 +606,8 @@ RegenerateHP (Database& db)
       RegenerateFighterHP (std::move (f));
     });
 }
+
+/* ************************************************************************** */
 
 void
 AllHpUpdates (Database& db, FameUpdater& fame, xaya::Random& rnd,
