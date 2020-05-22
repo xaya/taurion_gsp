@@ -819,6 +819,89 @@ TEST_F (DealDamageTests, EffectsAndDamageApplied)
   EXPECT_EQ (c->GetEffects ().speed ().percent (), -15);
 }
 
+TEST_F (DealDamageTests, LowHpBoostRangeAndDamage)
+{
+  auto c = characters.CreateNew ("red", Faction::RED);
+  SetHp (*c, 0, 10, 0, 100);
+  AddAreaAttack (*c, 2, 1, 1).set_range (5);
+  AddLowHpBoost (*c, 10, 100);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idTarget = c->GetId ();
+  c->SetPosition (HexCoord (10, 0));
+  SetHp (*c, 0, 100, 0, 100);
+  NoAttacks (*c);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idArea = c->GetId ();
+  c->SetPosition (HexCoord (10, 4));
+  SetHp (*c, 0, 100, 0, 100);
+  NoAttacks (*c);
+  c.reset ();
+
+  FindTargetsAndDamage ();
+
+  EXPECT_EQ (characters.GetById (idTarget)->GetHP ().armour (), 98);
+  EXPECT_EQ (characters.GetById (idArea)->GetHP ().armour (), 98);
+}
+
+TEST_F (DealDamageTests, LowHpBoostStacking)
+{
+  auto c = characters.CreateNew ("red", Faction::RED);
+  SetHp (*c, 0, 10, 0, 100);
+  AddAttack (*c, 5, 1, 1);
+  /* This will give a total boost of 300% (4x) to range and damage.  The last
+     of the boosts is not in effect.  */
+  AddLowHpBoost (*c, 10, 100);
+  AddLowHpBoost (*c, 10, 100);
+  AddLowHpBoost (*c, 20, 100);
+  AddLowHpBoost (*c, 9, 100);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idTarget = c->GetId ();
+  c->SetPosition (HexCoord (20, 0));
+  SetHp (*c, 0, 100, 0, 100);
+  NoAttacks (*c);
+  c.reset ();
+
+  FindTargetsAndDamage ();
+  EXPECT_EQ (characters.GetById (idTarget)->GetHP ().armour (), 96);
+}
+
+TEST_F (DealDamageTests, LowHpBoostBasedOnOriginalHp)
+{
+  /* Two characters are attacking each other.  The low-HP boost should
+     be determined based on the original HP before applying any damage,
+     so neither of them should get any boost from the current damage round.  */
+
+  auto c = characters.CreateNew ("red", Faction::RED);
+  const auto id1 = c->GetId ();
+  SetHp (*c, 0, 11, 0, 100);
+  AddAttack (*c, 5, 1, 1);
+  AddLowHpBoost (*c, 10, 100);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto id2 = c->GetId ();
+  c->SetPosition (HexCoord (5, 0));
+  SetHp (*c, 0, 11, 0, 100);
+  AddAttack (*c, 5, 1, 1);
+  AddLowHpBoost (*c, 10, 100);
+  c.reset ();
+
+  FindTargetsAndDamage ();
+  EXPECT_EQ (characters.GetById (id1)->GetHP ().armour (), 10);
+  EXPECT_EQ (characters.GetById (id2)->GetHP ().armour (), 10);
+
+  /* Now both get the boost.  */
+  FindTargetsAndDamage ();
+  EXPECT_EQ (characters.GetById (id1)->GetHP ().armour (), 8);
+  EXPECT_EQ (characters.GetById (id2)->GetHP ().armour (), 8);
+}
+
 /* ************************************************************************** */
 
 class ProcessKillsTests : public CombatTests

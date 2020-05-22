@@ -30,6 +30,7 @@
 
 #include <algorithm>
 #include <map>
+#include <utility>
 
 namespace pxd
 {
@@ -174,6 +175,23 @@ namespace
 {
 
 /**
+ * Representation of a Target that can be used as key in a map.
+ */
+class TargetKey : public std::pair<proto::TargetId::Type, Database::IdT>
+{
+
+public:
+
+  TargetKey (const proto::TargetId& id)
+  {
+    CHECK (id.has_id ());
+    first = id.type ();
+    second = id.id ();
+  }
+
+};
+
+/**
  * Helper class to perform the damage-dealing processing step.
  */
 class DamageProcessor
@@ -189,13 +207,22 @@ private:
   FighterTable fighters;
   TargetFinder targets;
 
+  /**
+   * Modifiers to combat stats for all fighters that will deal damage.  This
+   * is filled in (e.g. from their low-HP boosts) before actual damaging starts,
+   * and is used to make the damaging independent of processing order.
+   */
+  std::map<TargetKey, CombatModifier> modifiers;
+
   /** The list of kills being built up.  */
   std::vector<proto::TargetId> dead;
 
   /**
    * Performs a random roll to determine the damage a particular attack does.
+   * The min/max damage is modified according to the stats modifier.
    */
-  unsigned RollAttackDamage (const proto::Attack& attack);
+  unsigned RollAttackDamage (const proto::Attack& attack,
+                             const StatModifier& mod);
 
   /**
    * Applies a fixed given amount of damage to a given attack target.
@@ -240,13 +267,17 @@ public:
 };
 
 unsigned
-DamageProcessor::RollAttackDamage (const proto::Attack& attack)
+DamageProcessor::RollAttackDamage (const proto::Attack& attack,
+                                   const StatModifier& mod)
 {
   CHECK (attack.has_damage ());
   const auto& dmg = attack.damage ();
-  CHECK_LE (dmg.min (), dmg.max ());
-  const auto n = dmg.max () - dmg.min () + 1;
-  return dmg.min () + rnd.NextInt (n);
+  const auto minDmg = mod (dmg.min ());
+  const auto maxDmg = mod (dmg.max ());
+
+  CHECK_LE (minDmg, maxDmg);
+  const auto n = maxDmg - minDmg + 1;
+  return minDmg + rnd.NextInt (n);
 }
 
 void
@@ -318,17 +349,19 @@ DamageProcessor::DealDamage (FighterTable::Handle f)
   const auto targetDist = HexCoord::DistanceL1 (pos, targetPos);
   tf.reset ();
 
+  const auto& mod = modifiers.at (f->GetIdAsTarget ());
+
   for (const auto& attack : cd.attacks ())
     {
       /* If this is not a centred-on-attacker AoE attack, check that
          the target is actually within range of this attack.  */
       if (attack.has_range ()
-            && targetDist > static_cast<int> (attack.range ()))
+            && targetDist > static_cast<int> (mod.range (attack.range ())))
         continue;
 
       unsigned dmg = 0;
       if (attack.has_damage ())
-        dmg = RollAttackDamage (attack);
+        dmg = RollAttackDamage (attack, mod.damage);
 
       if (attack.has_area ())
         {
@@ -338,7 +371,8 @@ DamageProcessor::DealDamage (FighterTable::Handle f)
           else
             centre = pos;
 
-          targets.ProcessL1Targets (centre, attack.area (), f->GetFaction (),
+          targets.ProcessL1Targets (centre, mod.range (attack.area ()),
+                                    f->GetFaction (),
             [&] (const HexCoord& c, const proto::TargetId& id)
             {
               auto t = fighters.GetForTarget (id);
@@ -358,6 +392,14 @@ DamageProcessor::DealDamage (FighterTable::Handle f)
 void
 DamageProcessor::Process ()
 {
+  modifiers.clear ();
+  fighters.ProcessWithTarget ([&] (FighterTable::Handle f)
+    {
+      CombatModifier mod;
+      ComputeLowHpBoosts (*f, mod);
+      CHECK (modifiers.emplace (f->GetIdAsTarget (), std::move (mod)).second);
+    });
+
   fighters.ProcessWithTarget ([&] (FighterTable::Handle f)
     {
       DealDamage (std::move (f));
