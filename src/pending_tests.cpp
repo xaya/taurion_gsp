@@ -596,16 +596,19 @@ TEST_F (PendingStateTests, ServiceOperations)
   buildings.CreateNew ("ancient2", "", Faction::ANCIENT);
   buildings.CreateNew ("ancient3", "", Faction::ANCIENT);
 
-  buildingInv.Get (100, "domob")->GetInventory ().AddFungibleCount ("foo", 10);
-  buildingInv.Get (101, "andy")->GetInventory ().AddFungibleCount ("foo", 10);
-  buildingInv.Get (102, "domob")->GetInventory ().AddFungibleCount ("foo", 10);
+  buildingInv.Get (100, "domob")->GetInventory ()
+      .AddFungibleCount ("test ore", 10);
+  buildingInv.Get (101, "andy")->GetInventory ()
+      .AddFungibleCount ("test ore", 10);
+  buildingInv.Get (102, "domob")->GetInventory ()
+      .AddFungibleCount ("test ore", 10);
 
   state.AddServiceOperation (*ServiceOperation::Parse (
       *accounts.GetByName ("domob"),
       ParseJson (R"({
         "b": 100,
         "t": "ref",
-        "i": "foo",
+        "i": "test ore",
         "n": 3
       })"), ctx, accounts, buildings, buildingInv, characters,
             itemCounts, ongoings));
@@ -614,7 +617,7 @@ TEST_F (PendingStateTests, ServiceOperations)
       ParseJson (R"({
         "b": 101,
         "t": "ref",
-        "i": "foo",
+        "i": "test ore",
         "n": 6
       })"), ctx, accounts, buildings, buildingInv, characters,
             itemCounts, ongoings));
@@ -623,7 +626,7 @@ TEST_F (PendingStateTests, ServiceOperations)
       ParseJson (R"({
         "b": 102,
         "t": "ref",
-        "i": "foo",
+        "i": "test ore",
         "n": 9
       })"), ctx, accounts, buildings, buildingInv, characters,
             itemCounts, ongoings));
@@ -1332,15 +1335,16 @@ TEST_F (PendingStateUpdaterTests, ServiceOperations)
   buildings.CreateNew ("ancient2", "", Faction::ANCIENT)
       ->SetCentre (HexCoord (-100, 0));
 
-  buildingInv.Get (100, "domob")->GetInventory ().AddFungibleCount ("foo", 7);
+  buildingInv.Get (100, "domob")->GetInventory ()
+      .AddFungibleCount ("test ore", 7);
 
   Process ("domob", R"({
     "s":
       [
-        {"b": 100, "t": "ref", "i": "foo", "n": 3},
+        {"b": 100, "t": "ref", "i": "test ore", "n": 3},
         {"x": "invalid"},
-        {"b": 101, "t": "ref", "i": "foo", "n": 3},
-        {"b": 100, "t": "ref", "i": "foo", "n": 6}
+        {"b": 101, "t": "ref", "i": "test ore", "n": 3},
+        {"b": 100, "t": "ref", "i": "test ore", "n": 6}
       ]
   })");
 
@@ -1352,8 +1356,8 @@ TEST_F (PendingStateUpdaterTests, ServiceOperations)
             "name": "domob",
             "serviceops":
               [
-                {"building": 100, "type": "refining", "input": {"foo": 3}},
-                {"building": 100, "type": "refining", "input": {"foo": 6}}
+                {"building": 100, "type": "refining", "input": {"test ore": 3}},
+                {"building": 100, "type": "refining", "input": {"test ore": 6}}
               ]
           }
         ]

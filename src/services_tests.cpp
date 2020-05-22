@@ -66,7 +66,7 @@ protected:
     /* We use refining for most general tests, thus it makes sense to set up
        basic resources for it already here.  */
     inv.Get (ANCIENT_BUILDING, "domob")
-        ->GetInventory ().AddFungibleCount ("foo", 10);
+        ->GetInventory ().AddFungibleCount ("test ore", 10);
   }
 
   /**
@@ -111,13 +111,13 @@ TEST_F (ServicesTests, BasicOperation)
   ASSERT_TRUE (Process ("domob", R"({
     "t": "ref",
     "b": 100,
-    "i": "foo",
+    "i": "test ore",
     "n": 3
   })"));
 
   EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 90);
   auto i = inv.Get (ANCIENT_BUILDING, "domob");
-  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("foo"), 7);
+  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("test ore"), 7);
   EXPECT_EQ (i->GetInventory ().GetFungibleCount ("bar"), 2);
   EXPECT_EQ (i->GetInventory ().GetFungibleCount ("zerospace"), 1);
 }
@@ -131,43 +131,43 @@ TEST_F (ServicesTests, InvalidFormat)
 
   EXPECT_FALSE (Process ("domob", R"({
     "t": "ref",
-    "i": "foo",
+    "i": "test ore",
     "n": 6
   })"));
   EXPECT_FALSE (Process ("domob", R"({
     "t": "ref",
     "b": "invalid",
-    "i": "foo",
+    "i": "test ore",
     "n": 6
   })"));
   EXPECT_FALSE (Process ("domob", R"({
     "t": "ref",
     "b": 42,
-    "i": "foo",
+    "i": "test ore",
     "n": 6
   })"));
 
   EXPECT_FALSE (Process ("domob", R"({
     "b": 100,
-    "i": "foo",
+    "i": "test ore",
     "n": 6
   })"));
   EXPECT_FALSE (Process ("domob", R"({
     "t": "",
     "b": 100,
-    "i": "foo",
+    "i": "test ore",
     "n": 6
   })"));
   EXPECT_FALSE (Process ("domob", R"({
     "t": "invalid type",
     "b": 100,
-    "i": "foo",
+    "i": "test ore",
     "n": 6
   })"));
   EXPECT_FALSE (Process ("domob", R"({
     "t": 42,
     "b": 100,
-    "i": "foo",
+    "i": "test ore",
     "n": 6
   })"));
 }
@@ -181,7 +181,7 @@ TEST_F (ServicesTests, InvalidOperation)
   EXPECT_FALSE (Process ("domob", R"({
     "t": "ref",
     "b": 100,
-    "i": "foo",
+    "i": "test ore",
     "n": 5
   })"));
 }
@@ -192,19 +192,19 @@ TEST_F (ServicesTests, UnsupportedBuilding)
   buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
   buildings.CreateNew ("ancient1", "", Faction::ANCIENT)
       ->MutableProto ().set_foundation (true);
-  inv.Get (200, "domob")->GetInventory ().AddFungibleCount ("foo", 10);
-  inv.Get (201, "domob")->GetInventory ().AddFungibleCount ("foo", 10);
+  inv.Get (200, "domob")->GetInventory ().AddFungibleCount ("test ore", 10);
+  inv.Get (201, "domob")->GetInventory ().AddFungibleCount ("test ore", 10);
 
   EXPECT_FALSE (Process ("domob", R"({
     "t": "ref",
     "b": 200,
-    "i": "foo",
+    "i": "test ore",
     "n": 3
   })"));
   EXPECT_FALSE (Process ("domob", R"({
     "t": "ref",
     "b": 201,
-    "i": "foo",
+    "i": "test ore",
     "n": 3
   })"));
 }
@@ -216,7 +216,7 @@ TEST_F (ServicesTests, InsufficientFunds)
   EXPECT_FALSE (Process ("domob", R"({
     "t": "ref",
     "b": 100,
-    "i": "foo",
+    "i": "test ore",
     "n": 3
   })"));
 }
@@ -230,12 +230,12 @@ TEST_F (ServicesTests, PendingJson)
   b->MutableProto ().set_service_fee_percent (50);
   b.reset ();
 
-  inv.Get (101, "domob")->GetInventory ().AddFungibleCount ("foo", 10);
+  inv.Get (101, "domob")->GetInventory ().AddFungibleCount ("test ore", 10);
 
   EXPECT_TRUE (PartialJsonEqual (GetPendingJson ("domob", R"({
     "t": "ref",
     "b": 101,
-    "i": "foo",
+    "i": "test ore",
     "n": 6
   })"), ParseJson (R"({
     "building": 101,
@@ -265,11 +265,11 @@ protected:
                 ->GetId (), 101);
 
     inv.Get (ANCIENT_BUILDING, "andy")
-        ->GetInventory ().AddFungibleCount ("foo", 10);
+        ->GetInventory ().AddFungibleCount ("test ore", 10);
     inv.Get (101, "andy")
-        ->GetInventory ().AddFungibleCount ("foo", 10);
+        ->GetInventory ().AddFungibleCount ("test ore", 10);
     inv.Get (101, "domob")
-        ->GetInventory ().AddFungibleCount ("foo", 10);
+        ->GetInventory ().AddFungibleCount ("test ore", 10);
   }
 
 };
@@ -279,7 +279,7 @@ TEST_F (ServicesFeeTests, NoFeeInAncientBuilding)
   ASSERT_TRUE (Process ("andy", R"({
     "t": "ref",
     "b": 100,
-    "i": "foo",
+    "i": "test ore",
     "n": 3
   })"));
   EXPECT_EQ (accounts.GetByName ("andy")->GetBalance (), 0);
@@ -291,7 +291,7 @@ TEST_F (ServicesFeeTests, NoFeeInOwnBuilding)
   ASSERT_TRUE (Process ("andy", R"({
     "t": "ref",
     "b": 101,
-    "i": "foo",
+    "i": "test ore",
     "n": 3
   })"));
   EXPECT_EQ (accounts.GetByName ("andy")->GetBalance (), 0);
@@ -305,12 +305,12 @@ TEST_F (ServicesFeeTests, InsufficientBalanceWithFee)
   b.reset ();
 
   inv.Get (102, "andy")
-      ->GetInventory ().AddFungibleCount ("foo", 10);
+      ->GetInventory ().AddFungibleCount ("test ore", 10);
 
   ASSERT_FALSE (Process ("andy", R"({
     "t": "ref",
     "b": 102,
-    "i": "foo",
+    "i": "test ore",
     "n": 3
   })"));
   EXPECT_EQ (accounts.GetByName ("andy")->GetBalance (), 10);
@@ -322,7 +322,7 @@ TEST_F (ServicesFeeTests, NormalFeePayment)
   ASSERT_TRUE (Process ("domob", R"({
     "t": "ref",
     "b": 101,
-    "i": "foo",
+    "i": "test ore",
     "n": 3
   })"));
   EXPECT_EQ (accounts.GetByName ("andy")->GetBalance (), 15);
@@ -335,7 +335,7 @@ TEST_F (ServicesFeeTests, ZeroFeePossible)
   ASSERT_TRUE (Process ("domob", R"({
     "t": "ref",
     "b": 101,
-    "i": "foo",
+    "i": "test ore",
     "n": 3
   })"));
   EXPECT_EQ (accounts.GetByName ("andy")->GetBalance (), 10);
@@ -348,7 +348,7 @@ TEST_F (ServicesFeeTests, FeeRoundedUp)
   ASSERT_TRUE (Process ("domob", R"({
     "t": "ref",
     "b": 101,
-    "i": "foo",
+    "i": "test ore",
     "n": 3
   })"));
   EXPECT_EQ (accounts.GetByName ("andy")->GetBalance (), 11);
@@ -364,7 +364,7 @@ TEST_F (RefiningTests, InvalidFormat)
   EXPECT_FALSE (Process ("domob", R"({
     "t": "ref",
     "b": 100,
-    "i": "foo",
+    "i": "test ore",
     "n": 3,
     "x": false
   })"));
@@ -377,13 +377,13 @@ TEST_F (RefiningTests, InvalidFormat)
   EXPECT_FALSE (Process ("domob", R"({
     "t": "ref",
     "b": 100,
-    "i": "foo",
+    "i": "test ore",
     "n": -3
   })"));
   EXPECT_FALSE (Process ("domob", R"({
     "t": "ref",
     "b": 100,
-    "i": "foo",
+    "i": "test ore",
     "n": "x"
   })"));
 }
@@ -401,12 +401,12 @@ TEST_F (RefiningTests, InvalidItemType)
 TEST_F (RefiningTests, ItemNotRefinable)
 {
   inv.Get (ANCIENT_BUILDING, "domob")
-      ->GetInventory ().AddFungibleCount ("bar", 10);
+      ->GetInventory ().AddFungibleCount ("foo", 10);
 
   EXPECT_FALSE (Process ("domob", R"({
     "t": "ref",
     "b": 100,
-    "i": "bar",
+    "i": "foo",
     "n": 3
   })"));
 }
@@ -416,19 +416,19 @@ TEST_F (RefiningTests, InvalidAmount)
   EXPECT_FALSE (Process ("domob", R"({
     "t": "ref",
     "b": 100,
-    "i": "foo",
+    "i": "test ore",
     "n": -3
   })"));
   EXPECT_FALSE (Process ("domob", R"({
     "t": "ref",
     "b": 100,
-    "i": "foo",
+    "i": "test ore",
     "n": 0
   })"));
   EXPECT_FALSE (Process ("domob", R"({
     "t": "ref",
     "b": 100,
-    "i": "foo",
+    "i": "test ore",
     "n": 2
   })"));
 }
@@ -438,7 +438,7 @@ TEST_F (RefiningTests, TooMuch)
   EXPECT_FALSE (Process ("domob", R"({
     "t": "ref",
     "b": 100,
-    "i": "foo",
+    "i": "test ore",
     "n": 30
   })"));
 }
@@ -448,13 +448,13 @@ TEST_F (RefiningTests, MultipleSteps)
   ASSERT_TRUE (Process ("domob", R"({
     "t": "ref",
     "b": 100,
-    "i": "foo",
+    "i": "test ore",
     "n": 9
   })"));
 
   EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 70);
   auto i = inv.Get (ANCIENT_BUILDING, "domob");
-  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("foo"), 1);
+  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("test ore"), 1);
   EXPECT_EQ (i->GetInventory ().GetFungibleCount ("bar"), 6);
   EXPECT_EQ (i->GetInventory ().GetFungibleCount ("zerospace"), 3);
 }
@@ -464,11 +464,11 @@ TEST_F (RefiningTests, PendingJson)
   EXPECT_TRUE (PartialJsonEqual (GetPendingJson ("domob", R"({
     "t": "ref",
     "b": 100,
-    "i": "foo",
+    "i": "test ore",
     "n": 6
   })"), ParseJson (R"({
     "type": "refining",
-    "input": {"foo": 6},
+    "input": {"test ore": 6},
     "output": {"bar": 4, "zerospace": 2}
   })")));
 }

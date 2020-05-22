@@ -2922,8 +2922,8 @@ protected:
     buildings.CreateNew ("ancient2", "", Faction::ANCIENT)
         ->SetCentre (HexCoord (-100, 0));
 
-    inv.Get (100, "domob")->GetInventory ().AddFungibleCount ("foo", 3);
-    inv.Get (101, "domob")->GetInventory ().AddFungibleCount ("foo", 6);
+    inv.Get (100, "domob")->GetInventory ().AddFungibleCount ("test ore", 3);
+    inv.Get (101, "domob")->GetInventory ().AddFungibleCount ("test ore", 6);
   }
 
 };
@@ -2935,19 +2935,19 @@ TEST_F (ServicesMoveTests, Works)
       "name": "domob",
       "move": {"s": [
         {"x": "invalid"},
-        {"b": 100, "t": "ref", "i": "foo", "n": 3},
-        {"b": 101, "t": "ref", "i": "foo", "n": 6}
+        {"b": 100, "t": "ref", "i": "test ore", "n": 3},
+        {"b": 101, "t": "ref", "i": "test ore", "n": 6}
       ]}
     }
   ])");
 
   EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 70);
   auto i = inv.Get (100, "domob");
-  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("foo"), 0);
+  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("test ore"), 0);
   EXPECT_EQ (i->GetInventory ().GetFungibleCount ("bar"), 2);
   EXPECT_EQ (i->GetInventory ().GetFungibleCount ("zerospace"), 1);
   i = inv.Get (101, "domob");
-  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("foo"), 0);
+  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("test ore"), 0);
   EXPECT_EQ (i->GetInventory ().GetFungibleCount ("bar"), 4);
   EXPECT_EQ (i->GetInventory ().GetFungibleCount ("zerospace"), 2);
 }
@@ -2957,18 +2957,18 @@ TEST_F (ServicesMoveTests, InvalidMoves)
   Process (R"([
     {
       "name": "domob",
-      "move": {"s": {"b": 100, "t": "ref", "i": "foo", "n": 3}}
+      "move": {"s": {"b": 100, "t": "ref", "i": "test ore", "n": 3}}
     },
     {
       "name": "domob",
       "move": {"s": [
-        {"b": 100, "t": "ref", "i": "foo", "n": 1}
+        {"b": 100, "t": "ref", "i": "test ore", "n": 1}
       ]}
     },
     {
       "name": "uninitialised account",
       "move": {"s": [
-        {"b": 100, "t": "ref", "i": "foo", "n": 3}
+        {"b": 100, "t": "ref", "i": "test ore", "n": 3}
       ]}
     }
   ])");
@@ -2983,7 +2983,7 @@ TEST_F (ServicesMoveTests, ServicesAfterCoinOperations)
       "name": "domob",
       "move":
         {
-          "s": [{"b": 100, "t": "ref", "i": "foo", "n": 3}],
+          "s": [{"b": 100, "t": "ref", "i": "test ore", "n": 3}],
           "vc": {"b": 100}
         }
     }
@@ -2991,7 +2991,7 @@ TEST_F (ServicesMoveTests, ServicesAfterCoinOperations)
 
   EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 0);
   auto i = inv.Get (100, "domob");
-  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("foo"), 3);
+  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("test ore"), 3);
   EXPECT_EQ (i->GetInventory ().GetFungibleCount ("bar"), 0);
   EXPECT_EQ (i->GetInventory ().GetFungibleCount ("zerospace"), 0);
 }

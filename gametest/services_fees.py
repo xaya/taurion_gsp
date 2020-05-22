@@ -40,9 +40,9 @@ class ServicesFeesTest (PXTest):
     self.assertEqual (self.getBuildings ()[ancient].getOwner (), None)
     self.assertEqual (self.getBuildings ()[domob].getOwner (), "domob")
 
-    self.dropIntoBuilding (ancient, "andy", {"foo": 3})
-    self.dropIntoBuilding (domob, "andy", {"foo": 3})
-    self.dropIntoBuilding (domob, "domob", {"foo": 3})
+    self.dropIntoBuilding (ancient, "andy", {"test ore": 3})
+    self.dropIntoBuilding (domob, "andy", {"test ore": 3})
+    self.dropIntoBuilding (domob, "domob", {"test ore": 3})
 
     self.mainLogger.info ("Setting service fee...")
     self.getBuildings ()[domob].sendMove ({"sf": 50})
@@ -52,10 +52,10 @@ class ServicesFeesTest (PXTest):
     self.mainLogger.info ("Using 'free' services...")
     self.giftCoins ({"domob": 10, "andy": 10})
     self.sendMove ("andy", {"s": [
-      {"b": ancient, "t": "ref", "i": "foo", "n": 3},
+      {"b": ancient, "t": "ref", "i": "test ore", "n": 3},
     ]})
     self.sendMove ("domob", {"s": [
-      {"b": domob, "t": "ref", "i": "foo", "n": 3},
+      {"b": domob, "t": "ref", "i": "test ore", "n": 3},
     ]})
     self.generate (1)
     self.assertEqual (self.getAccounts ()["andy"].getBalance (), 0)
@@ -73,7 +73,7 @@ class ServicesFeesTest (PXTest):
     self.mainLogger.info ("Using service with fee...")
     self.giftCoins ({"andy": 20})
     self.sendMove ("andy", {"s": [
-      {"b": domob, "t": "ref", "i": "foo", "n": 3},
+      {"b": domob, "t": "ref", "i": "test ore", "n": 3},
     ]})
     self.generate (1)
     self.assertEqual (self.getAccounts ()["andy"].getBalance (), 5)

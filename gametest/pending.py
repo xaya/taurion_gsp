@@ -70,7 +70,7 @@ class PendingTest (PXTest):
 
     self.build ("ancient1", None, positionBuilding, 0)
     building = list (self.getBuildings ().keys ())[-1]
-    self.dropIntoBuilding (building, "andy", {"foo": 100})
+    self.dropIntoBuilding (building, "andy", {"foo": 100, "test ore": 10})
     self.getCharacters ()["inbuilding"].sendMove ({"eb": building})
 
     self.getCharacters ()["miner"].sendMove ({"prospect": {}})
@@ -157,7 +157,7 @@ class PendingTest (PXTest):
       "vc": {"b": 10, "t": {"miner": 20}},
     })
     self.sendMove ("andy", {
-      "s": [{"b": building, "t": "ref", "i": "foo", "n": 9}],
+      "s": [{"b": building, "t": "ref", "i": "test ore", "n": 9}],
     })
 
     sleepSome ()
@@ -205,7 +205,7 @@ class PendingTest (PXTest):
                   "building": building,
                   "type": "refining",
                   "cost": {"base": 30, "fee": 0},
-                  "input": {"foo": 9},
+                  "input": {"test ore": 9},
                   "output": {"bar": 6, "zerospace": 3},
                 }
               ],

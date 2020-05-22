@@ -5,17 +5,7 @@
 fungible_items:
   {
     key: "foo"
-    value:
-      {
-        space: 10
-        refines:
-          {
-            input_units: 3
-            cost: 10
-            outputs: { key: "bar" value: 2 }
-            outputs: { key: "zerospace" value: 1 }
-          }
-      }
+    value: { space: 10 }
   }
 
 fungible_items:
@@ -28,6 +18,22 @@ fungible_items:
   {
     key: "zerospace"
     value: { space: 0 }
+  }
+
+fungible_items:
+  {
+    key: "test ore"
+    value:
+      {
+        space: 10
+        refines:
+          {
+            input_units: 3
+            cost: 10
+            outputs: { key: "bar" value: 2 }
+            outputs: { key: "zerospace" value: 1 }
+          }
+      }
   }
 
 # These ones are dummy "weapons" that can be equipped and constructed

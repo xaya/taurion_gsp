@@ -41,14 +41,14 @@ class ServicesRefiningTest (PXTest):
     self.giftCoins ({"domob": 10})
 
     for b in buildings:
-      self.dropIntoBuilding (b, "domob", {"foo": 3})
+      self.dropIntoBuilding (b, "domob", {"test ore": 3})
 
     self.generate (1)
     reorgBlk = self.rpc.xaya.getbestblockhash ()
 
     self.mainLogger.info ("Performing refine operation...")
     self.sendMove ("domob", {"s": [
-      {"b": b, "t": "ref", "i": "foo", "n": 3}
+      {"b": b, "t": "ref", "i": "test ore", "n": 3}
     for b in buildings]})
     self.generate (1)
 
@@ -59,7 +59,7 @@ class ServicesRefiningTest (PXTest):
       "zerospace": 1,
     })
     self.assertEqual (b[buildings[1]].getFungibleInventory ("domob"), {
-      "foo": 3,
+      "test ore": 3,
     })
 
     self.generate (20)
@@ -72,7 +72,7 @@ class ServicesRefiningTest (PXTest):
     self.rpc.xaya.invalidateblock (blk)
 
     self.sendMove ("domob", {"s": [
-      {"b": b, "t": "ref", "i": "foo", "n": 3}
+      {"b": b, "t": "ref", "i": "test ore", "n": 3}
     for b in buildings[::-1]]})
     self.generate (1)
 
@@ -83,7 +83,7 @@ class ServicesRefiningTest (PXTest):
       "zerospace": 1,
     })
     self.assertEqual (b[buildings[0]].getFungibleInventory ("domob"), {
-      "foo": 3,
+      "test ore": 3,
     })
 
     self.rpc.xaya.reconsiderblock (blk)
