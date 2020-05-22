@@ -43,6 +43,50 @@ namespace
  */
 constexpr const unsigned BUILDING_INVENTORY_DROP_PERCENT = 30;
 
+/**
+ * Modifications to combat-related stats.
+ */
+struct CombatModifier
+{
+
+  /** Modification of combat damage.  */
+  StatModifier damage;
+
+  /** Modifiction of range.  */
+  StatModifier range;
+
+  CombatModifier () = default;
+  CombatModifier (CombatModifier&&) = default;
+
+  CombatModifier (const CombatModifier&) = delete;
+  void operator= (const CombatModifier&) = delete;
+
+};
+
+/**
+ * Computes the low-HP boosts to damage and range for the given entity.
+ */
+void
+ComputeLowHpBoosts (const CombatEntity& f, CombatModifier& mod)
+{
+  mod.damage = StatModifier ();
+  mod.range = StatModifier ();
+
+  const auto& cd = f.GetCombatData ();
+  const auto& hp = f.GetHP ();
+  const auto& maxHp = f.GetRegenData ().max_hp ();
+
+  for (const auto& b : cd.low_hp_boosts ())
+    {
+      /* hp / max > p / 100 iff 100 hp > p max */
+      if (100 * hp.armour () > b.max_hp_percent () * maxHp.armour ())
+        continue;
+
+      mod.damage += b.damage ();
+      mod.range += b.range ();
+    }
+}
+
 } // anonymous namespace
 
 /* ************************************************************************** */
@@ -58,13 +102,18 @@ SelectTarget (TargetFinder& targets, xaya::Random& rnd, FighterTable::Handle f)
 {
   const HexCoord pos = f->GetCombatPosition ();
 
-  const HexCoord::IntT range = f->GetAttackRange ();
+  HexCoord::IntT range = f->GetAttackRange ();
   if (range == CombatEntity::NO_ATTACKS)
     {
       VLOG (1) << "Fighter at " << pos << " has no attacks";
       return;
     }
   CHECK_GE (range, 0);
+
+  /* Apply the low-HP boost to range (if any).  */
+  CombatModifier lowHpMod;
+  ComputeLowHpBoosts (*f, lowHpMod);
+  range = lowHpMod.range (range);
 
   HexCoord::IntT closestRange;
   std::vector<proto::TargetId> closestTargets;

@@ -343,6 +343,49 @@ TEST_F (TargetSelectionTests, Randomisation)
     }
 }
 
+TEST_F (TargetSelectionTests, LowHpBoost)
+{
+  proto::LowHpBoost boost;
+  boost.set_max_hp_percent (10);
+  boost.mutable_range ()->set_percent (10);
+
+  proto::HP maxHp;
+  maxHp.set_shield (0);
+  maxHp.set_armour (1'000);
+
+  auto c = characters.CreateNew ("boosted", Faction::RED);
+  const auto idBoosted = c->GetId ();
+  c->SetPosition (HexCoord (0, 0));
+  *c->MutableRegenData ().mutable_max_hp () = maxHp;
+  c->MutableHP ().set_armour (100);
+  AddAttack (*c).set_range (10);
+  *c->MutableProto ().mutable_combat_data ()->add_low_hp_boosts () = boost;
+  c.reset ();
+
+  c = characters.CreateNew ("boosted area", Faction::RED);
+  const auto idArea = c->GetId ();
+  c->SetPosition (HexCoord (0, 0));
+  *c->MutableRegenData ().mutable_max_hp () = maxHp;
+  c->MutableHP ().set_armour (100);
+  AddAttack (*c).set_area (10);
+  *c->MutableProto ().mutable_combat_data ()->add_low_hp_boosts () = boost;
+  c.reset ();
+
+  c = characters.CreateNew ("normal", Faction::GREEN);
+  const auto idNormal = c->GetId ();
+  c->SetPosition (HexCoord (11, 0));
+  *c->MutableRegenData ().mutable_max_hp () = maxHp;
+  c->MutableHP ().set_armour (101);
+  AddAttack (*c).set_range (10);
+  *c->MutableProto ().mutable_combat_data ()->add_low_hp_boosts () = boost;
+  c.reset ();
+
+  FindCombatTargets (db, rnd);
+  EXPECT_FALSE (characters.GetById (idNormal)->HasTarget ());
+  EXPECT_EQ (characters.GetById (idBoosted)->GetTarget ().id (), idNormal);
+  EXPECT_EQ (characters.GetById (idArea)->GetTarget ().id (), idNormal);
+}
+
 /* ************************************************************************** */
 
 class DealDamageTests : public CombatTests
