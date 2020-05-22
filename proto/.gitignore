@@ -1,5 +1,6 @@
 roconfig_gen
 roconfig_gen.cpp
+roconfig.pb.text
 roconfig.pb
 
 tests

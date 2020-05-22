@@ -35,10 +35,13 @@ EXTRA_DIST = \
   $(PROTOS) $(ROCONFIG_TEXT_PROTOS) \
   roconfig_gen_head.cpp roconfig_gen_tail.cpp
 
-BUILT_SOURCES = $(PROTOS:.proto=.pb.h) roconfig_gen.cpp roconfig.pb
+BUILT_SOURCES = \
+  $(PROTOS:.proto=.pb.h) \
+  roconfig_gen.cpp \
+  roconfig.pb.text roconfig.pb
 CLEANFILES = \
   $(PROTOS:.proto=.pb.h) $(PROTOS:.proto=.pb.cc) \
-  roconfig_gen.cpp roconfig.pb
+  roconfig_gen.cpp roconfig.pb.text roconfig.pb
 
 libpxproto_la_CXXFLAGS = $(PROTOBUF_CFLAGS)
 libpxproto_la_LBADD = $(PROTOBUF_LIBS)
@@ -79,7 +82,10 @@ tests_SOURCES = \
 %.pb.h %.pb.cc: $(srcdir)/%.proto
 	protoc -I$(srcdir) --cpp_out=. "$<"
 
-roconfig_gen.cpp: roconfig_gen_head.cpp $(ROCONFIG_TEXT_PROTOS) roconfig_gen_tail.cpp
+roconfig.pb.text: $(ROCONFIG_TEXT_PROTOS)
+	cat $^ >$@
+
+roconfig_gen.cpp: roconfig_gen_head.cpp roconfig.pb.text roconfig_gen_tail.cpp
 	cat $^ >$@
 
 roconfig.pb: $(builddir)/roconfig_gen
