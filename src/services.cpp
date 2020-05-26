@@ -935,6 +935,37 @@ ServiceOperation::GetCosts (Amount& base, Amount& fee) const
   fee = (base * building->GetProto ().service_fee_percent () + 99) / 100;
 }
 
+bool
+ServiceOperation::IsFullyValid () const
+{
+  if (!IsValid ())
+    {
+      LOG (WARNING) << "Service operation is invalid: " << rawMove;
+      return false;
+    }
+
+  if (!IsSupported (GetBuilding ()))
+    {
+      LOG (WARNING)
+          << "Building " << GetBuilding ().GetId ()
+          << " does not support service operation: " << rawMove;
+      return false;
+    }
+
+  Amount base, fee;
+  GetCosts (base, fee);
+  if (base + fee > acc.GetBalance ())
+    {
+      LOG (WARNING)
+          << "Service operation would cost " << (base + fee)
+          << ", but " << acc.GetName () << " has only " << acc.GetBalance ()
+          << ": " << rawMove;
+      return false;
+    }
+
+  return true;
+}
+
 Json::Value
 ServiceOperation::ToPendingJson () const
 {
@@ -1039,31 +1070,13 @@ ServiceOperation::Parse (Account& acc, const Json::Value& data,
       return nullptr;
     }
 
-  if (op == nullptr || !op->IsValid ())
+  if (op == nullptr)
     {
-      LOG (WARNING) << "Invalid service operation: " << data;
+      LOG (WARNING) << "Failed to parse service operation: " << data;
       return nullptr;
     }
 
-  if (!op->IsSupported (op->GetBuilding ()))
-    {
-      LOG (WARNING)
-          << "Building " << op->GetBuilding ().GetId ()
-          << " does not support service operation: " << data;
-      return nullptr;
-    }
-
-  Amount base, fee;
-  op->GetCosts (base, fee);
-  if (base + fee > acc.GetBalance ())
-    {
-      LOG (WARNING)
-          << "Service operation would cost " << (base + fee)
-          << ", but " << acc.GetName () << " has only " << acc.GetBalance ()
-          << ": " << data;
-      return nullptr;
-    }
-
+  op->rawMove = data;
   return op;
 }
 

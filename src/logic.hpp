@@ -134,6 +134,14 @@ protected:
 
 public:
 
+  /**
+   * Type for a callback that retrieves some JSON data from the database
+   * directly (not using GameStateJson).
+   */
+  using JsonStateFromRawDb
+      = std::function<Json::Value (Database& db, const xaya::uint256& hash,
+                                   unsigned height)>;
+
   /** Type for a callback that retrieves JSON data from the database.  */
   using JsonStateFromDatabase = std::function<Json::Value (GameStateJson& gsj)>;
 
@@ -156,6 +164,14 @@ public:
   {
     return map;
   }
+
+  /**
+   * Returns custom game-state data as JSON, with a callback that
+   * directly receives the database (and does not go through the
+   * GameStateJson class).
+   */
+  Json::Value GetCustomStateData (xaya::Game& game,
+                                  const JsonStateFromRawDb& cb);
 
   /**
    * Returns custom game-state data as JSON.  The provided callback is invoked

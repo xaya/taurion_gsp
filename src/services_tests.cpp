@@ -81,7 +81,7 @@ protected:
                                        ctx, accounts, buildings,
                                        inv, characters, itemCounts, ongoings);
 
-    if (op == nullptr)
+    if (op == nullptr || !op->IsFullyValid ())
       return false;
 
     op->Execute (rnd);
