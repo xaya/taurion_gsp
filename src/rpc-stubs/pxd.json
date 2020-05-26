@@ -74,6 +74,15 @@
   },
 
   {
+    "name": "getserviceinfo",
+    "params": {
+      "name": "foo",
+      "op": {}
+    },
+    "returns": {}
+  },
+
+  {
     "name": "findpath",
     "params":
       {

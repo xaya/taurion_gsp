@@ -136,6 +136,9 @@ public:
 
   Json::Value getbootstrapdata () override;
 
+  Json::Value getserviceinfo (const std::string& name,
+                              const Json::Value& op) override;
+
   Json::Value
   findpath (int l1range, const Json::Value& source,
             const Json::Value& target, int wpdist) override

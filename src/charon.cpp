@@ -102,6 +102,7 @@ using PXRpcMethod = void (PXRpcServer::*) (const Json::Value&, Json::Value&);
 const std::map<std::string, PXRpcMethod> CHARON_METHODS = {
   {"getnullstate", &PXRpcServer::getnullstateI},
   {"getpendingstate", &PXRpcServer::getpendingstateI},
+
   {"getaccounts", &PXRpcServer::getaccountsI},
   {"getbuildings", &PXRpcServer::getbuildingsI},
   {"getcharacters", &PXRpcServer::getcharactersI},
@@ -109,6 +110,8 @@ const std::map<std::string, PXRpcMethod> CHARON_METHODS = {
   {"getongoings", &PXRpcServer::getongoingsI},
   {"getregions", &PXRpcServer::getregionsI},
   {"getprizestats", &PXRpcServer::getprizestatsI},
+
+  {"getserviceinfo", &PXRpcServer::getserviceinfoI},
 };
 
 /**

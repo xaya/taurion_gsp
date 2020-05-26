@@ -20,7 +20,9 @@
 
 #include "buildings.hpp"
 #include "jsonutils.hpp"
+#include "services.hpp"
 
+#include "database/itemcounts.hpp"
 #include "proto/roconfig.hpp"
 
 #include <xayagame/gamerpcserver.hpp>
@@ -54,6 +56,9 @@ enum class ErrorCode
   /* Invalid values for arguments (e.g. passing a malformed JSON value for
      a HexCoord or an out-of-range integer.  */
   INVALID_ARGUMENT = -1,
+
+  /* Non-existing account passed as associated name for some RPC.  */
+  INVALID_ACCOUNT = -2,
 
   /* Specific errors with findpath.  */
   FINDPATH_NO_CONNECTION = 1,
@@ -360,6 +365,45 @@ PXRpcServer::getbootstrapdata ()
       {
         return gsj.BootstrapData ();
       });
+}
+
+Json::Value
+PXRpcServer::getserviceinfo (const std::string& name, const Json::Value& op)
+{
+  LOG (INFO) << "RPC method called: getserviceinfo " << name << "\n" << op;
+  return logic.GetCustomStateData (game,
+    [&] (Database& db, const xaya::uint256& hash, const unsigned height)
+    {
+      const Context ctx(logic.GetChain (), logic.GetBaseMap (),
+                        height + 1, Context::NO_TIMESTAMP);
+
+      AccountsTable accounts(db);
+      BuildingsTable buildings(db);
+      BuildingInventoriesTable inv(db);
+      CharacterTable characters(db);
+      ItemCounts cnt(db);
+      OngoingsTable ong(db);
+
+      const auto acc = accounts.GetByName (name);
+      if (acc == nullptr)
+        {
+          std::ostringstream msg;
+          msg << "account does not exist: " << name;
+          ReturnError (ErrorCode::INVALID_ACCOUNT, msg.str ());
+        }
+
+      const auto parsed = ServiceOperation::Parse (*acc, op, ctx,
+                                                   accounts, buildings, inv,
+                                                   characters, cnt, ong);
+      if (parsed == nullptr)
+        return Json::Value ();
+
+      Json::Value res = parsed->ToPendingJson ();
+      CHECK (res.isObject ());
+      res["valid"] = parsed->IsFullyValid ();
+
+      return res;
+    });
 }
 
 /* ************************************************************************** */
