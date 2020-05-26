@@ -21,6 +21,7 @@ REGTESTS = \
   fame.py \
   findpath.py \
   getbuildingshape.py \
+  getserviceinfo.py \
   getregionat.py \
   godmode.py \
   loot.py \
