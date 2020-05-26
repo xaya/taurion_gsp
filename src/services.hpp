@@ -60,6 +60,9 @@ private:
   /** The building in which the operation is happening.  */
   BuildingsTable::Handle building;
 
+  /** The operation's raw move JSON (used for logs and error reporting).  */
+  Json::Value rawMove;
+
   /**
    * Computes the base and service cost.  The base cost is burnt (and defined
    * by the service operation subclasses), while the service fee is sent
@@ -143,6 +146,13 @@ public:
   }
 
   /**
+   * Performs some additional validations (over what Parse already does)
+   * and returns true if the operation is fully valid (i.e. should be executed
+   * when confirmed / reported in the pending state).
+   */
+  bool IsFullyValid () const;
+
+  /**
    * Returns a JSON representation of this operation for pending moves.
    */
   Json::Value ToPendingJson () const;
@@ -154,7 +164,7 @@ public:
 
   /**
    * Tries to parse a service operation from JSON move data.  Returns nullptr
-   * if the format is invalid or the operation would not be valid.
+   * if the format is invalid.
    */
   static std::unique_ptr<ServiceOperation> Parse (
       Account& acc, const Json::Value& data,

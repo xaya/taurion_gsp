@@ -306,7 +306,7 @@ BaseMoveProcessor::TryServiceOperations (const std::string& name,
                                              buildings, buildingInv,
                                              characters, itemCounts,
                                              ongoings);
-      if (parsed != nullptr)
+      if (parsed != nullptr && parsed->IsFullyValid ())
         PerformServiceOperation (*parsed);
     }
 }
