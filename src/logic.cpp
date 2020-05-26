@@ -173,8 +173,7 @@ PXLogic::GetStateAsJson (const xaya::SQLiteDatabase& db)
 }
 
 Json::Value
-PXLogic::GetCustomStateData (xaya::Game& game,
-                             const JsonStateFromDatabaseWithBlock& cb)
+PXLogic::GetCustomStateData (xaya::Game& game, const JsonStateFromRawDb& cb)
 {
   return SQLiteGame::GetCustomStateData (game, "data",
       [this, &cb] (const xaya::SQLiteDatabase& db, const xaya::uint256& hash,
@@ -182,9 +181,19 @@ PXLogic::GetCustomStateData (xaya::Game& game,
         {
           SQLiteGameDatabase dbObj(const_cast<xaya::SQLiteDatabase&> (db),
                                    *this);
-          const Params params(GetChain ());
-          GameStateJson gsj(dbObj, params, map);
+          return cb (dbObj, hash, height);
+        });
+}
 
+Json::Value
+PXLogic::GetCustomStateData (xaya::Game& game,
+                             const JsonStateFromDatabaseWithBlock& cb)
+{
+  return GetCustomStateData (game,
+    [this, &cb] (Database& db, const xaya::uint256& hash, const unsigned height)
+        {
+          const Params params(GetChain ());
+          GameStateJson gsj(db, params, map);
           return cb (gsj, hash, height);
         });
 }
