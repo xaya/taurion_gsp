@@ -20,7 +20,7 @@
 
 #include "jsonutils.hpp"
 
-#include "proto/roitems.hpp"
+#include "proto/roconfig.hpp"
 
 #include <glog/logging.h>
 
@@ -126,7 +126,7 @@ protected:
   bool
   IsSupported (const Building& b) const override
   {
-    return b.RoConfigData ().offered_services ().refining ();
+    return RoConfig ().Building (b.GetType ()).offered_services ().refining ();
   }
 
   Amount
@@ -155,7 +155,7 @@ RefiningOperation::RefiningOperation (Account& a, BuildingsTable::Handle b,
   : ServiceOperation(a, std::move (b), refs),
     type(t), amount(am)
 {
-  const auto* itemData = RoItemDataOrNull (type);
+  const auto* itemData = RoConfig ().ItemOrNull (type);
   if (itemData == nullptr)
     {
       LOG (WARNING) << "Can't refine invalid item type " << type;
@@ -276,7 +276,8 @@ protected:
   bool
   IsSupported (const Building& b) const override
   {
-    return b.RoConfigData ().offered_services ().armour_repair ();
+    return RoConfig ().Building (b.GetType ())
+        .offered_services ().armour_repair ();
   }
 
   bool IsValid () const override;
@@ -443,7 +444,8 @@ protected:
   bool
   IsSupported (const Building& b) const override
   {
-    return b.RoConfigData ().offered_services ().reverse_engineering ();
+    return RoConfig ().Building (b.GetType ())
+        .offered_services ().reverse_engineering ();
   }
 
   Amount
@@ -472,7 +474,7 @@ RevEngOperation::RevEngOperation (Account& a, BuildingsTable::Handle b,
   : ServiceOperation(a, std::move (b), refs),
     type(t), num(n)
 {
-  const auto* itemData = RoItemDataOrNull (type);
+  const auto* itemData = RoConfig ().ItemOrNull (type);
   if (itemData == nullptr)
     {
       LOG (WARNING) << "Can't reveng invalid item type " << type;
@@ -597,7 +599,8 @@ protected:
   bool
   IsSupported (const Building& b) const override
   {
-    return b.RoConfigData ().offered_services ().blueprint_copy ();
+    return RoConfig ().Building (b.GetType ())
+        .offered_services ().blueprint_copy ();
   }
 
   Amount
@@ -627,7 +630,7 @@ BlueprintCopyOperation::BlueprintCopyOperation (
   : ServiceOperation(a, std::move (b), refs),
     original(o), num(n)
 {
-  const auto* origData = RoItemDataOrNull (original);
+  const auto* origData = RoConfig ().ItemOrNull (original);
   if (origData == nullptr || !origData->has_is_blueprint ())
     {
       LOG (WARNING) << "Can't copy item type " << original;
@@ -642,7 +645,7 @@ BlueprintCopyOperation::BlueprintCopyOperation (
 
   const auto& baseType = origData->is_blueprint ().for_item ();
   copy = baseType + " bpc";
-  complexity = RoItemData (baseType).complexity ();
+  complexity = RoConfig ().Item (baseType).complexity ();
   CHECK_GT (complexity, 0)
       << "Invalid complexity " << complexity << " for type " << baseType;
 }
@@ -775,7 +778,7 @@ ConstructionOperation::ConstructionOperation (
   : ServiceOperation(a, std::move (b), refs),
     blueprint(bp), num(n)
 {
-  const auto* bpData = RoItemDataOrNull (blueprint);
+  const auto* bpData = RoConfig ().ItemOrNull (blueprint);
   if (bpData == nullptr || !bpData->has_is_blueprint ())
     {
       LOG (WARNING) << "Can't construct from item type " << blueprint;
@@ -785,7 +788,7 @@ ConstructionOperation::ConstructionOperation (
 
   fromOriginal = bpData->is_blueprint ().original ();
   output = bpData->is_blueprint ().for_item ();
-  outputData = &RoItemData (output);
+  outputData = &(RoConfig ().Item (output));
   CHECK_GT (outputData->complexity (), 0)
       << "Invalid complexity " << outputData->complexity ()
       << " for type " << output;
@@ -794,7 +797,7 @@ ConstructionOperation::ConstructionOperation (
 bool
 ConstructionOperation::IsSupported (const Building& b) const
 {
-  const auto& offered = b.RoConfigData ().offered_services ();
+  const auto& offered = RoConfig ().Building (b.GetType ()).offered_services ();
 
   if (outputData->has_vehicle ())
     return offered.vehicle_construction ();

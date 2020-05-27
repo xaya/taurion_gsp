@@ -18,8 +18,6 @@
 
 #include "roconfig.hpp"
 
-#include "roitems.hpp"
-
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
@@ -32,19 +30,66 @@ namespace
 
 TEST (RoConfigTests, Parses)
 {
-  RoConfigData ();
+  *RoConfig ();
 }
 
-TEST (RoConfigTests, IsSingleton)
+TEST (RoConfigTests, ProtoIsSingleton)
 {
-  const auto* ptr1 = &RoConfigData ();
-  const auto* ptr2 = &RoConfigData ();
+  const auto* ptr1 = &(*RoConfig ());
+  const auto* ptr2 = &(*RoConfig ());
   EXPECT_EQ (ptr1, ptr2);
 }
 
 TEST (RoConfigTests, HasData)
 {
-  EXPECT_GT (RoConfigData ().fungible_items ().size (), 0);
+  EXPECT_GT (RoConfig ()->fungible_items ().size (), 0);
+}
+
+TEST (RoConfigTests, Building)
+{
+  EXPECT_EQ (RoConfig ().BuildingOrNull ("invalid building"), nullptr);
+  EXPECT_GT (RoConfig ().Building ("ancient1").enter_radius (), 0);
+}
+
+/* ************************************************************************** */
+
+class RoItemsTests : public testing::Test
+{
+
+protected:
+
+  RoConfig cfg;
+
+};
+
+TEST_F (RoItemsTests, BasicItem)
+{
+  EXPECT_EQ (cfg.Item ("foo").space (), 10);
+
+  EXPECT_NE (cfg.ItemOrNull ("foo"), nullptr);
+  EXPECT_EQ (cfg.ItemOrNull ("invalid item"), nullptr);
+}
+
+TEST_F (RoItemsTests, Blueprints)
+{
+  EXPECT_EQ (cfg.ItemOrNull ("bpo"), nullptr);
+  EXPECT_EQ (cfg.ItemOrNull ("bowbpo"), nullptr);
+  EXPECT_EQ (cfg.ItemOrNull ("bow bpo "), nullptr);
+
+  EXPECT_EQ (cfg.ItemOrNull ("foo bpo"), nullptr);
+  EXPECT_EQ (cfg.ItemOrNull ("foo bpc"), nullptr);
+
+  const auto& orig = cfg.Item ("bow bpo");
+  ASSERT_TRUE (orig.has_is_blueprint ());
+  EXPECT_EQ (orig.space (), 0);
+  EXPECT_EQ (orig.is_blueprint ().for_item (), "bow");
+  EXPECT_TRUE (orig.is_blueprint ().original ());
+
+  const auto& copy = cfg.Item ("bow bpc");
+  ASSERT_TRUE (copy.has_is_blueprint ());
+  EXPECT_EQ (copy.space (), 0);
+  EXPECT_EQ (copy.is_blueprint ().for_item (), "bow");
+  EXPECT_FALSE (copy.is_blueprint ().original ());
 }
 
 /* ************************************************************************** */
@@ -61,12 +106,12 @@ private:
    */
   template <typename Map>
     static bool
-    IsValidMaterialMap (const Map& m)
+    IsValidMaterialMap (const RoConfig& cfg, const Map& m)
   {
     for (const auto& entry : m)
       {
         const std::string type = entry.first;
-        const auto* item = RoItemDataOrNull (type);
+        const auto* item = cfg.ItemOrNull (type);
         if (item == nullptr)
           {
             LOG (WARNING) << "Unknown item: " << type;
@@ -89,9 +134,9 @@ private:
    * Checks if the given item type is a valid raw material.
    */
   static bool
-  IsRawMaterial (const std::string& type)
+  IsRawMaterial (const RoConfig& cfg, const std::string& type)
   {
-    const auto* item = RoItemDataOrNull (type);
+    const auto* item = cfg.ItemOrNull (type);
     if (item == nullptr)
       {
         LOG (WARNING) << "Unknown item: " << type;
@@ -119,25 +164,25 @@ protected:
    * like that item types referenced from other item configs (e.g. what
    * something refines to) are actually valid.
    */
-  static bool IsConfigValid (const proto::ConfigData& data);
+  static bool IsConfigValid (const RoConfig& cfg);
 
 };
 
 bool
-RoConfigSanityTests::IsConfigValid (const proto::ConfigData& data)
+RoConfigSanityTests::IsConfigValid (const RoConfig& cfg)
 {
-  for (const auto& entry : data.fungible_items ())
+  for (const auto& entry : cfg->fungible_items ())
     {
       const auto& i = entry.second;
 
-      if (!IsValidMaterialMap (i.construction_resources ()))
+      if (!IsValidMaterialMap (cfg, i.construction_resources ()))
         {
           LOG (WARNING)
               << "Item construction data is invalid for " << entry.first;
           return false;
         }
 
-      if (!IsValidMaterialMap (i.refines ().outputs ()))
+      if (!IsValidMaterialMap (cfg, i.refines ().outputs ()))
         {
           LOG (WARNING) << "Refines-to data is invalid for " << entry.first;
           return false;
@@ -151,7 +196,7 @@ RoConfigSanityTests::IsConfigValid (const proto::ConfigData& data)
 
       for (const auto& output : i.reveng ().possible_outputs ())
         {
-          const auto* o = RoItemDataOrNull (output);
+          const auto* o = cfg.ItemOrNull (output);
           if (o == nullptr || !o->is_blueprint ().original ())
             {
               LOG (WARNING)
@@ -180,16 +225,16 @@ RoConfigSanityTests::IsConfigValid (const proto::ConfigData& data)
         }
     }
 
-  for (const auto& entry : data.building_types ())
+  for (const auto& entry : cfg->building_types ())
     {
       const auto& b = entry.second;
-      if (!IsValidMaterialMap (b.construction ().foundation ()))
+      if (!IsValidMaterialMap (cfg, b.construction ().foundation ()))
         {
           LOG (WARNING)
               << "Building foundation data is invalid for " << entry.first;
           return false;
         }
-      if (!IsValidMaterialMap (b.construction ().full_building ()))
+      if (!IsValidMaterialMap (cfg, b.construction ().full_building ()))
         {
           LOG (WARNING)
               << "Building construction data is invalid for " << entry.first;
@@ -197,15 +242,15 @@ RoConfigSanityTests::IsConfigValid (const proto::ConfigData& data)
         }
     }
 
-  for (const auto& entry : data.resource_dist ().base_amounts ())
-    if (!IsRawMaterial (entry.first))
+  for (const auto& entry : cfg->resource_dist ().base_amounts ())
+    if (!IsRawMaterial (cfg, entry.first))
       {
         LOG (WARNING) << "Invalid base amounts in resource dist";
         return false;
       }
-  for (const auto& area : data.resource_dist ().areas ())
+  for (const auto& area : cfg->resource_dist ().areas ())
     for (const auto& type : area.resources ())
-      if (!IsRawMaterial (type))
+      if (!IsRawMaterial (cfg, type))
         {
           LOG (WARNING) << "Invalid resource areas for distribution";
           return false;
@@ -216,7 +261,7 @@ RoConfigSanityTests::IsConfigValid (const proto::ConfigData& data)
 
 TEST_F (RoConfigSanityTests, Valid)
 {
-  EXPECT_TRUE (IsConfigValid (RoConfigData ()));
+  EXPECT_TRUE (IsConfigValid (RoConfig ()));
 }
 
 /* ************************************************************************** */

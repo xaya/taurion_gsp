@@ -18,8 +18,6 @@
 
 #include "building.hpp"
 
-#include "proto/roconfig.hpp"
-
 #include <glog/logging.h>
 
 namespace pxd
@@ -150,16 +148,6 @@ Building::MutableEffects ()
      case we multi-thread some game logic later on.  */
   thread_local proto::CombatEffects dummy;
   return dummy;
-}
-
-const proto::BuildingData&
-Building::RoConfigData () const
-{
-  const auto& buildings = pxd::RoConfigData ().building_types ();
-  const auto mit = buildings.find (GetType ());
-  CHECK (mit != buildings.end ())
-      << "Building " << GetId () << " has undefined type: " << GetType ();
-  return mit->second;
 }
 
 BuildingsTable::Handle

@@ -37,10 +37,7 @@ GetBuildingShape (const std::string& type,
                   const proto::ShapeTransformation& trafo,
                   const HexCoord& pos)
 {
-  const auto& roConfig = RoConfigData ().building_types ();
-  const auto mit = roConfig.find (type);
-  CHECK (mit != roConfig.end ()) << "Building has undefined type: " << type;
-  const auto& roData = mit->second;
+  const auto& roData = RoConfig ().Building (type);
 
   std::vector<HexCoord> res;
   res.reserve (roData.shape_tiles ().size ());
@@ -129,7 +126,7 @@ MaybeStartBuildingConstruction (Building& b, OngoingsTable& ongoings,
   if (b.GetProto ().has_ongoing_construction ())
     return;
 
-  const auto& roData = b.RoConfigData ();
+  const auto& roData = RoConfig ().Building (b.GetType ());
   CHECK (roData.has_construction ());
 
   const Inventory cInv(b.GetProto ().construction_inventory ());
@@ -152,7 +149,7 @@ MaybeStartBuildingConstruction (Building& b, OngoingsTable& ongoings,
 void
 UpdateBuildingStats (Building& b)
 {
-  const auto& roData = b.RoConfigData ();
+  const auto& roData = RoConfig ().Building (b.GetType ());
   const proto::BuildingData::AllCombatData* data;
 
   if (b.GetProto ().foundation ())
@@ -215,7 +212,7 @@ ProcessEnterBuildings (Database& db, DynObstacles& dyn)
 
       const unsigned dist
           = HexCoord::DistanceL1 (c->GetPosition (), b->GetCentre ());
-      if (dist > b->RoConfigData ().enter_radius ())
+      if (dist > RoConfig ().Building (b->GetType ()).enter_radius ())
         {
           /* This is probably the most common case, no log spam here.  */
           continue;
@@ -241,10 +238,9 @@ LeaveBuilding (BuildingsTable& buildings, Character& c,
   auto b = buildings.GetById (c.GetBuildingId ());
   CHECK (b != nullptr);
 
-  const auto pos
-      = ChooseSpawnLocation (b->GetCentre (),
-                             b->RoConfigData ().enter_radius (),
-                             c.GetFaction (), rnd, dyn, ctx.Map ());
+  const auto radius = RoConfig ().Building (b->GetType ()).enter_radius ();
+  const auto pos = ChooseSpawnLocation (b->GetCentre (), radius,
+                                        c.GetFaction (), rnd, dyn, ctx.Map ());
 
   LOG (INFO)
       << "Character " << c.GetId ()

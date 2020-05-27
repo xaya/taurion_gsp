@@ -30,7 +30,6 @@
 #include "database/faction.hpp"
 #include "proto/character.pb.h"
 #include "proto/roconfig.hpp"
-#include "proto/roitems.hpp"
 
 #include <sstream>
 
@@ -568,7 +567,7 @@ ParseFungibleQuantities (const Json::Value& obj)
       CHECK (keyVal.isString ());
       const std::string key = keyVal.asString ();
 
-      if (RoItemDataOrNull (key) == nullptr)
+      if (RoConfig ().ItemOrNull (key) == nullptr)
         {
           LOG (WARNING) << "Invalid fungible item: " << key;
           continue;
@@ -802,7 +801,7 @@ BaseMoveProcessor::ParseChangeVehicle (const Character& c,
       return false;
     }
 
-  const auto* data = RoItemDataOrNull (vehicle);
+  const auto* data = RoConfig ().ItemOrNull (vehicle);
   if (data == nullptr || !data->has_vehicle ())
     {
       LOG (WARNING) << "Invalid vehicle: " << vehicle;
@@ -866,7 +865,7 @@ BaseMoveProcessor::ParseSetFitments (const Character& c, const Json::Value& upd,
         }
       const auto item = f.asString ();
 
-      const auto* data = RoItemDataOrNull (item);
+      const auto* data = RoConfig ().ItemOrNull (item);
       if (data == nullptr || !data->has_fitment ())
         {
           LOG (WARNING) << "Invalid fitment: " << item;
@@ -919,8 +918,7 @@ ParseBuildingConfig (const Json::Value& build,
     }
   type = val.asString ();
 
-  const auto& buildingTypes = RoConfigData ().building_types ();
-  if (buildingTypes.find (type) == buildingTypes.end ())
+  if (RoConfig ().BuildingOrNull (type) == nullptr)
     {
       LOG (WARNING) << "Invalid type for building: " << type;
       return false;
@@ -974,7 +972,7 @@ BaseMoveProcessor::ParseFoundBuilding (const Character& c,
       return false;
     }
 
-  const auto& roData = RoConfigData ().building_types ().at (type);
+  const auto& roData = RoConfig ().Building (type);
   if (!roData.has_construction ())
     {
       LOG (WARNING) << "Building " << type << " cannot be constructed";
@@ -1360,7 +1358,8 @@ MoveProcessor::MaybeFoundBuilding (Character& c, const Json::Value& upd)
   *pb.mutable_shape_trafo () = trafo;
 
   auto& inv = c.GetInventory ();
-  for (const auto& entry : b->RoConfigData ().construction ().foundation ())
+  const auto& roBuilding = RoConfig ().Building (b->GetType ());
+  for (const auto& entry : roBuilding.construction ().foundation ())
     inv.AddFungibleCount (entry.first, -static_cast<int> (entry.second));
 
   UpdateBuildingStats (*b);
@@ -1406,7 +1405,7 @@ MoveFungibleBetweenInventories (const FungibleAmountMap& items,
 
       if (maxSpace >= 0)
         {
-          const auto itemSpace = RoItemData (entry.first).space ();
+          const auto itemSpace = RoConfig ().Item (entry.first).space ();
 
           if (itemSpace > 0)
             {

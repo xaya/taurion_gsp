@@ -20,7 +20,7 @@
 
 #include "modifier.hpp"
 
-#include "proto/roitems.hpp"
+#include "proto/roconfig.hpp"
 
 #include <map>
 
@@ -39,7 +39,7 @@ CheckVehicleFitments (const std::string& vehicle,
   std::map<std::string, unsigned> slotsRequired;
   for (const auto& f : fitments)
     {
-      const auto& fitmentData = RoItemData (f);
+      const auto& fitmentData = RoConfig ().Item (f);
       CHECK (fitmentData.has_fitment ())
           << "Item type " << f << " is not a fitment";
 
@@ -50,7 +50,7 @@ CheckVehicleFitments (const std::string& vehicle,
     }
 
   /* Now check up the required stats against the vehicle.  */
-  const auto& vehicleData = RoItemData (vehicle);
+  const auto& vehicleData = RoConfig ().Item (vehicle);
   CHECK (vehicleData.has_vehicle ())
       << "Item type " << vehicle << " is not a vehicle";
 
@@ -125,7 +125,7 @@ ApplyFitments (Character& c)
   auto& pb = c.MutableProto ();
   for (const auto& f : pb.fitments ())
     {
-      const auto fItemData = RoItemData (f);
+      const auto fItemData = RoConfig ().Item (f);
       CHECK (fItemData.has_fitment ())
           << "Non-fitment type " << f << " on character " << c.GetId ();
       const auto& fitment = fItemData.fitment ();
@@ -177,7 +177,7 @@ ApplyFitments (Character& c)
 void
 DeriveCharacterStats (Character& c)
 {
-  const auto& vehicleItemData = RoItemData (c.GetProto ().vehicle ());
+  const auto& vehicleItemData = RoConfig ().Item (c.GetProto ().vehicle ());
   CHECK (vehicleItemData.has_vehicle ())
       << "Character " << c.GetId ()
       << " is in non-vehicle: " << c.GetProto ().vehicle ();

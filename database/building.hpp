@@ -26,7 +26,6 @@
 #include "lazyproto.hpp"
 
 #include "proto/building.pb.h"
-#include "proto/config.pb.h"
 
 namespace pxd
 {
@@ -180,11 +179,6 @@ public:
 
   const proto::CombatEffects& GetEffects () const override;
   proto::CombatEffects& MutableEffects () override;
-
-  /**
-   * Returns the rodata for the building type.
-   */
-  const proto::BuildingData& RoConfigData () const;
 
 };
 
