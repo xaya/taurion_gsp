@@ -115,7 +115,7 @@ protected:
   Inventory::QuantityT amount;
 
   DetectResourceTests ()
-    : rd(RoConfigData ().resource_dist ())
+    : rd(RoConfig ()->resource_dist ())
   {}
 
   /**

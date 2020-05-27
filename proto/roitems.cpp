@@ -116,7 +116,7 @@ RoItemDataOrNull (const std::string& item)
   }
 
   {
-    const auto& baseData = RoConfigData ().fungible_items ();
+    const auto& baseData = RoConfig ()->fungible_items ();
     const auto mit = baseData.find (item);
     if (mit != baseData.end ())
       return &mit->second;

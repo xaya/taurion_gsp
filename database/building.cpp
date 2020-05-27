@@ -155,7 +155,7 @@ Building::MutableEffects ()
 const proto::BuildingData&
 Building::RoConfigData () const
 {
-  const auto& buildings = pxd::RoConfigData ().building_types ();
+  const auto& buildings = RoConfig ()->building_types ();
   const auto mit = buildings.find (GetType ());
   CHECK (mit != buildings.end ())
       << "Building " << GetId () << " has undefined type: " << GetType ();

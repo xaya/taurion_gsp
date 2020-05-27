@@ -44,7 +44,7 @@ bool initialised = false;
 } // anonymous namespace
 
 const proto::ConfigData&
-RoConfigData ()
+RoConfig::operator* () const
 {
   if (!initialised)
     {
@@ -56,6 +56,12 @@ RoConfigData ()
     }
 
   return instance;
+}
+
+const proto::ConfigData*
+RoConfig::operator-> () const
+{
+  return &operator* ();
 }
 
 } // namespace pxd

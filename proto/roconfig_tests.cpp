@@ -32,19 +32,19 @@ namespace
 
 TEST (RoConfigTests, Parses)
 {
-  RoConfigData ();
+  *RoConfig ();
 }
 
-TEST (RoConfigTests, IsSingleton)
+TEST (RoConfigTests, ProtoIsSingleton)
 {
-  const auto* ptr1 = &RoConfigData ();
-  const auto* ptr2 = &RoConfigData ();
+  const auto* ptr1 = &(*RoConfig ());
+  const auto* ptr2 = &(*RoConfig ());
   EXPECT_EQ (ptr1, ptr2);
 }
 
 TEST (RoConfigTests, HasData)
 {
-  EXPECT_GT (RoConfigData ().fungible_items ().size (), 0);
+  EXPECT_GT (RoConfig ()->fungible_items ().size (), 0);
 }
 
 /* ************************************************************************** */
@@ -119,14 +119,14 @@ protected:
    * like that item types referenced from other item configs (e.g. what
    * something refines to) are actually valid.
    */
-  static bool IsConfigValid (const proto::ConfigData& data);
+  static bool IsConfigValid (const RoConfig& cfg);
 
 };
 
 bool
-RoConfigSanityTests::IsConfigValid (const proto::ConfigData& data)
+RoConfigSanityTests::IsConfigValid (const RoConfig& cfg)
 {
-  for (const auto& entry : data.fungible_items ())
+  for (const auto& entry : cfg->fungible_items ())
     {
       const auto& i = entry.second;
 
@@ -180,7 +180,7 @@ RoConfigSanityTests::IsConfigValid (const proto::ConfigData& data)
         }
     }
 
-  for (const auto& entry : data.building_types ())
+  for (const auto& entry : cfg->building_types ())
     {
       const auto& b = entry.second;
       if (!IsValidMaterialMap (b.construction ().foundation ()))
@@ -197,13 +197,13 @@ RoConfigSanityTests::IsConfigValid (const proto::ConfigData& data)
         }
     }
 
-  for (const auto& entry : data.resource_dist ().base_amounts ())
+  for (const auto& entry : cfg->resource_dist ().base_amounts ())
     if (!IsRawMaterial (entry.first))
       {
         LOG (WARNING) << "Invalid base amounts in resource dist";
         return false;
       }
-  for (const auto& area : data.resource_dist ().areas ())
+  for (const auto& area : cfg->resource_dist ().areas ())
     for (const auto& type : area.resources ())
       if (!IsRawMaterial (type))
         {
@@ -216,7 +216,7 @@ RoConfigSanityTests::IsConfigValid (const proto::ConfigData& data)
 
 TEST_F (RoConfigSanityTests, Valid)
 {
-  EXPECT_TRUE (IsConfigValid (RoConfigData ()));
+  EXPECT_TRUE (IsConfigValid (RoConfig ()));
 }
 
 /* ************************************************************************** */

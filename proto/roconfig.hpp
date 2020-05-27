@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,9 +25,36 @@ namespace pxd
 {
 
 /**
- * Returns the singleton, read-only instance of the global ConfigData proto.
+ * A light wrapper class around the read-only ConfigData proto.  It allows
+ * access to the proto data itself as well as provides some helper methods
+ * for accessing the data on a higher level (e.g. specifically for items
+ * or buildings).
  */
-const proto::ConfigData& RoConfigData ();
+class RoConfig
+{
+
+public:
+
+  /**
+   * Constructs a fresh instance of the wrapper class, which will give
+   * access to the underlying data.
+   */
+  RoConfig () = default;
+
+  RoConfig (const RoConfig&) = delete;
+  void operator= (const RoConfig&) = delete;
+
+  /**
+   * Exposes the actual protocol buffer.
+   */
+  const proto::ConfigData& operator* () const;
+
+  /**
+   * Exposes the actual protocol buffer's fields directly.
+   */
+  const proto::ConfigData* operator-> () const;
+
+};
 
 } // namespace pxd
 

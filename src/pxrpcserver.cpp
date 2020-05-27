@@ -209,7 +209,7 @@ NonStateRpcServer::getbuildingshape (const Json::Value& centre, const int rot,
     ReturnError (ErrorCode::INVALID_ARGUMENT,
                  "rot is outside the valid range [0, 5]");
 
-  const auto& roBuildings = RoConfigData ().building_types ();
+  const auto& roBuildings = RoConfig ()->building_types ();
   if (roBuildings.find (type) == roBuildings.end ())
     ReturnError (ErrorCode::INVALID_ARGUMENT, "unknown building type");
 
