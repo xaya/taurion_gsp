@@ -1358,7 +1358,8 @@ MoveProcessor::MaybeFoundBuilding (Character& c, const Json::Value& upd)
   *pb.mutable_shape_trafo () = trafo;
 
   auto& inv = c.GetInventory ();
-  for (const auto& entry : b->RoConfigData ().construction ().foundation ())
+  const auto& roBuilding = RoConfig ().Building (b->GetType ());
+  for (const auto& entry : roBuilding.construction ().foundation ())
     inv.AddFungibleCount (entry.first, -static_cast<int> (entry.second));
 
   UpdateBuildingStats (*b);

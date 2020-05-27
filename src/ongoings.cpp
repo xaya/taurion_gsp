@@ -26,6 +26,7 @@
 #include "database/inventory.hpp"
 #include "database/ongoing.hpp"
 #include "database/region.hpp"
+#include "proto/roconfig.hpp"
 
 #include <glog/logging.h>
 
@@ -43,7 +44,7 @@ FinishBuildingConstruction (Building& b, BuildingInventoriesTable& buildingInv)
 {
   CHECK (b.GetProto ().foundation ())
       << "Building " << b.GetId () << " is not a foundation";
-  const auto& roData = b.RoConfigData ();
+  const auto& roData = RoConfig ().Building (b.GetType ());
   CHECK (roData.has_construction ())
       << "Building type " << b.GetType () << " is not constructible";
 

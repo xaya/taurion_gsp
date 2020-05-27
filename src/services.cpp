@@ -126,7 +126,7 @@ protected:
   bool
   IsSupported (const Building& b) const override
   {
-    return b.RoConfigData ().offered_services ().refining ();
+    return RoConfig ().Building (b.GetType ()).offered_services ().refining ();
   }
 
   Amount
@@ -276,7 +276,8 @@ protected:
   bool
   IsSupported (const Building& b) const override
   {
-    return b.RoConfigData ().offered_services ().armour_repair ();
+    return RoConfig ().Building (b.GetType ())
+        .offered_services ().armour_repair ();
   }
 
   bool IsValid () const override;
@@ -443,7 +444,8 @@ protected:
   bool
   IsSupported (const Building& b) const override
   {
-    return b.RoConfigData ().offered_services ().reverse_engineering ();
+    return RoConfig ().Building (b.GetType ())
+        .offered_services ().reverse_engineering ();
   }
 
   Amount
@@ -597,7 +599,8 @@ protected:
   bool
   IsSupported (const Building& b) const override
   {
-    return b.RoConfigData ().offered_services ().blueprint_copy ();
+    return RoConfig ().Building (b.GetType ())
+        .offered_services ().blueprint_copy ();
   }
 
   Amount
@@ -794,7 +797,7 @@ ConstructionOperation::ConstructionOperation (
 bool
 ConstructionOperation::IsSupported (const Building& b) const
 {
-  const auto& offered = b.RoConfigData ().offered_services ();
+  const auto& offered = RoConfig ().Building (b.GetType ()).offered_services ();
 
   if (outputData->has_vehicle ())
     return offered.vehicle_construction ();
