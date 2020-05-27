@@ -23,7 +23,7 @@
 #include "database/dbtest.hpp"
 #include "database/itemcounts.hpp"
 #include "hexagonal/coord.hpp"
-#include "proto/roitems.hpp"
+#include "proto/roconfig.hpp"
 
 #include <gtest/gtest.h>
 
@@ -289,7 +289,7 @@ TEST (PrizesTests, AllInItemConfig)
     {
       const Params params(c);
       for (const auto& p : params.ProspectingPrizes ())
-        ASSERT_NE (RoItemDataOrNull (p.name + " prize"), nullptr)
+        ASSERT_NE (RoConfig ().ItemOrNull (p.name + " prize"), nullptr)
             << "Prize item not defined: " << p.name;
     }
 }

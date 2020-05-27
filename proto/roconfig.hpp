@@ -33,13 +33,32 @@ namespace pxd
 class RoConfig
 {
 
+private:
+
+  class Data;
+
+  /**
+   * A reference to the singleton instance that actually holds all the
+   * global state wrapped by this instance.
+   */
+  const Data* data;
+
+  /**
+   * The global singleton data instance or null when it is not yet initialised.
+   * This is never destructed.
+   */
+  static Data* instance;
+
 public:
 
   /**
    * Constructs a fresh instance of the wrapper class, which will give
    * access to the underlying data.
+   *
+   * On the first call, this will also instantiate and set up the underlying
+   * singleton instance with the real data.
    */
-  RoConfig () = default;
+  RoConfig ();
 
   RoConfig (const RoConfig&) = delete;
   void operator= (const RoConfig&) = delete;
@@ -53,6 +72,20 @@ public:
    * Exposes the actual protocol buffer's fields directly.
    */
   const proto::ConfigData* operator-> () const;
+
+  /**
+   * Looks up and returns the configuration data for the given type of item
+   * (or null if there is no such item).  This automatically "constructs" some
+   * things (e.g. blueprints, tech levels) instead of just looking data up
+   * in the real roconfig proto.  It should always be used instead of a direct
+   * access for items.
+   */
+  const proto::ItemData* ItemOrNull (const std::string& item) const;
+
+  /**
+   * Looks up item data, asserting that the item exists.
+   */
+  const proto::ItemData& Item (const std::string& item) const;
 
 };
 

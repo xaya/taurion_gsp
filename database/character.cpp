@@ -18,7 +18,7 @@
 
 #include "character.hpp"
 
-#include "proto/roitems.hpp"
+#include "proto/roconfig.hpp"
 
 #include <glog/logging.h>
 
@@ -233,7 +233,10 @@ Character::UsedCargoSpace () const
 {
   uint64_t res = 0;
   for (const auto& entry : inv.GetFungible ())
-    res += Inventory::Product (entry.second, RoItemData (entry.first).space ());
+    {
+      const auto& ro = RoConfig ().Item (entry.first);
+      res += Inventory::Product (entry.second, ro.space ());
+    }
 
   return res;
 }

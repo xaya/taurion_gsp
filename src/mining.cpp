@@ -20,7 +20,7 @@
 
 #include "database/inventory.hpp"
 #include "database/region.hpp"
-#include "proto/roitems.hpp"
+#include "proto/roconfig.hpp"
 
 namespace pxd
 {
@@ -98,7 +98,7 @@ ProcessAllMining (Database& db, xaya::Random& rnd, const Context& ctx)
       const int64_t freeCargo = pb.cargo_space () - c->UsedCargoSpace ();
       CHECK_GE (freeCargo, 0);
 
-      const auto itemSpace = RoItemData (type).space ();
+      const auto itemSpace = RoConfig ().Item (type).space ();
       CHECK_GT (itemSpace, 0)
           << "Minable resource " << type << " has zero space";
 
