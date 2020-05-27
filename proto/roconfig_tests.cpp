@@ -45,6 +45,12 @@ TEST (RoConfigTests, HasData)
   EXPECT_GT (RoConfig ()->fungible_items ().size (), 0);
 }
 
+TEST (RoConfigTests, Building)
+{
+  EXPECT_EQ (RoConfig ().BuildingOrNull ("invalid building"), nullptr);
+  EXPECT_GT (RoConfig ().Building ("ancient1").enter_radius (), 0);
+}
+
 /* ************************************************************************** */
 
 class RoItemsTests : public testing::Test

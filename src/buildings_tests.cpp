@@ -68,7 +68,7 @@ TEST_F (BuildingsTests, GetBuildingShape)
                                      HexCoord (-1, 4),
                                      HexCoord (0, 4),
                                      HexCoord (1, 3)));
-  EXPECT_DEATH (GetBuildingShape (*tbl.GetById (id2)), "undefined type");
+  EXPECT_DEATH (GetBuildingShape (*tbl.GetById (id2)), "Unknown building");
 }
 
 TEST_F (BuildingsTests, UpdateBuildingStats)
@@ -396,7 +396,7 @@ protected:
     : centre(10, 42)
   {
     const std::string type = "checkmark";
-    radius = RoConfig ()->building_types ().at (type).enter_radius ();
+    radius = RoConfig ().Building (type).enter_radius ();
 
     auto b = tbl.CreateNew (type, "", Faction::ANCIENT);
     CHECK_EQ (b->GetId (), 1);

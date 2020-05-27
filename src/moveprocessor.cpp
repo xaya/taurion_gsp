@@ -918,8 +918,7 @@ ParseBuildingConfig (const Json::Value& build,
     }
   type = val.asString ();
 
-  const auto& buildingTypes = RoConfig ()->building_types ();
-  if (buildingTypes.find (type) == buildingTypes.end ())
+  if (RoConfig ().BuildingOrNull (type) == nullptr)
     {
       LOG (WARNING) << "Invalid type for building: " << type;
       return false;
@@ -973,7 +972,7 @@ BaseMoveProcessor::ParseFoundBuilding (const Character& c,
       return false;
     }
 
-  const auto& roData = RoConfig ()->building_types ().at (type);
+  const auto& roData = RoConfig ().Building (type);
   if (!roData.has_construction ())
     {
       LOG (WARNING) << "Building " << type << " cannot be constructed";

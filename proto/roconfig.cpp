@@ -102,6 +102,26 @@ RoConfig::operator-> () const
   return &(operator* ());
 }
 
+const proto::BuildingData*
+RoConfig::BuildingOrNull (const std::string& type) const
+{
+  const auto& buildings = (*this)->building_types ();
+
+  const auto mit = buildings.find (type);
+  if (mit == buildings.end ())
+    return nullptr;
+
+  return &mit->second;
+}
+
+const proto::BuildingData&
+RoConfig::Building (const std::string& type) const
+{
+  const auto* ptr = BuildingOrNull (type);
+  CHECK (ptr != nullptr) << "Unknown building: " << type;
+  return *ptr;
+}
+
 /* ************************************************************************** */
 
 namespace

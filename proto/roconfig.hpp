@@ -87,6 +87,17 @@ public:
    */
   const proto::ItemData& Item (const std::string& item) const;
 
+  /**
+   * Looks up the data for a building type and returns it.  If the building
+   * does not exist, returns null.
+   */
+  const proto::BuildingData* BuildingOrNull (const std::string& type) const;
+
+  /**
+   * Looks up building data and asserts it exists.
+   */
+  const proto::BuildingData& Building (const std::string& type) const;
+
 };
 
 } // namespace pxd

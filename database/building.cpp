@@ -155,11 +155,10 @@ Building::MutableEffects ()
 const proto::BuildingData&
 Building::RoConfigData () const
 {
-  const auto& buildings = RoConfig ()->building_types ();
-  const auto mit = buildings.find (GetType ());
-  CHECK (mit != buildings.end ())
+  const auto* ptr = RoConfig ().BuildingOrNull (GetType ());
+  CHECK (ptr != nullptr)
       << "Building " << GetId () << " has undefined type: " << GetType ();
-  return mit->second;
+  return *ptr;
 }
 
 BuildingsTable::Handle

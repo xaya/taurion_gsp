@@ -37,10 +37,7 @@ GetBuildingShape (const std::string& type,
                   const proto::ShapeTransformation& trafo,
                   const HexCoord& pos)
 {
-  const auto& roConfig = RoConfig ()->building_types ();
-  const auto mit = roConfig.find (type);
-  CHECK (mit != roConfig.end ()) << "Building has undefined type: " << type;
-  const auto& roData = mit->second;
+  const auto& roData = RoConfig ().Building (type);
 
   std::vector<HexCoord> res;
   res.reserve (roData.shape_tiles ().size ());
