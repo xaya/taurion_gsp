@@ -362,7 +362,12 @@ RepairOperation::GetBaseCost () const
   const Amount costMillis
       = GetMissingHp () * ctx.Params ().ArmourRepairCostMillis ();
   const Amount res = (costMillis + 999) / 1'000;
-  CHECK_GT (res, 0);
+
+  /* If there are no missing HP, then the operation is invalid.  But through
+     getserviceinfo, the cost can still be calculated, and will then just
+     be zero.  */
+  CHECK_GE (res, 0);
+
   return res;
 }
 
@@ -916,6 +921,7 @@ void
 ServiceOperation::GetCosts (Amount& base, Amount& fee) const
 {
   base = GetBaseCost ();
+  CHECK_GE (base, 0);
 
   /* Service is free if the building is an ancient one or if the owner is
      using their own building.  Even though they would get the fee back in

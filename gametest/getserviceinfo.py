@@ -46,6 +46,14 @@ class GetServiceInfoTest (PXTest):
 
     self.dropIntoBuilding (building, "andy", {"test ore": 3})
 
+    self.giftCoins ({"domob": 100})
+    self.createCharacters ("domob")
+    self.generate (1)
+    cId = self.getCharacters ()["domob"].getId ()
+    self.moveCharactersTo ({"domob": {"x": 30, "y": 0}})
+    self.getCharacters ()["domob"].sendMove ({"eb": building})
+    self.generate (1)
+
     self.mainLogger.info ("Testing invalid account...")
     self.expectError (-2, "account does not exist",
                       getserviceinfo, "invalid", {})
@@ -65,6 +73,17 @@ class GetServiceInfoTest (PXTest):
     })
     self.giftCoins ({"andy": 100})
     self.assertEqual (getserviceinfo ("andy", op)["valid"], True)
+
+    # This used to crash the GSP because of its zero cost.
+    self.mainLogger.info ("Testing zero-cost repair...")
+    op = {"b": building, "t": "fix", "c": cId}
+    self.assertEqual (getserviceinfo ("andy", op), {
+      "type": "armourrepair",
+      "building": building,
+      "character": cId,
+      "cost": {"base": 0, "fee": 0},
+      "valid": False,
+    })
 
 
 if __name__ == "__main__":
