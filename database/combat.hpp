@@ -220,6 +220,10 @@ public:
    * read from the database (not newly constructed) and if its main proto
    * has not been modified.  That allows us to use the cached attack-range
    * column in the database directly.
+   *
+   * The attack range returned is just based on the base stats of the entity.
+   * It does not take combat effects, low-HP-boosts or things like that
+   * into account.
    */
   HexCoord::IntT GetAttackRange () const;
 

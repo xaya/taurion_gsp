@@ -125,6 +125,19 @@ TEST_F (DeriveCharacterStatsTests, FitmentAttacks)
   EXPECT_EQ (attacks[2].area (), 2);
 }
 
+TEST_F (DeriveCharacterStatsTests, FitmentLowHpBoosts)
+{
+  auto c = Derive ("chariot", {"lowhpboost", "lowhpboost"});
+  const auto& boosts = c->GetProto ().combat_data ().low_hp_boosts ();
+  ASSERT_EQ (boosts.size (), 2);
+  for (const auto& b : boosts)
+    {
+      EXPECT_EQ (b.max_hp_percent (), 10);
+      EXPECT_EQ (b.damage ().percent (), 50);
+      EXPECT_EQ (b.range ().percent (), 20);
+    }
+}
+
 TEST_F (DeriveCharacterStatsTests, CargoSpeed)
 {
   auto c = Derive ("chariot", {"turbo"});

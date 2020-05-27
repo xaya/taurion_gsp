@@ -86,6 +86,35 @@ protected:
     c.MutableProto ().mutable_combat_data ();
   }
 
+  /**
+   * Sets HP and max HP of a character.
+   */
+  static void
+  SetHp (Character& c, const unsigned shield, const unsigned armour,
+         const unsigned maxShield, const unsigned maxArmour)
+  {
+    c.MutableHP ().set_shield (shield);
+    c.MutableHP ().set_armour (armour);
+    c.MutableRegenData ().mutable_max_hp ()->set_shield (maxShield);
+    c.MutableRegenData ().mutable_max_hp ()->set_armour (maxArmour);
+  }
+
+  /**
+   * Adds a low-HP boost for the given character.  It will apply to range
+   * and damage with the same boost for simplicity.
+   */
+  static void
+  AddLowHpBoost (Character& c, const unsigned maxHpPercent,
+                 const unsigned boostPercent)
+  {
+    proto::LowHpBoost boost;
+    boost.set_max_hp_percent (maxHpPercent);
+    boost.mutable_range ()->set_percent (boostPercent);
+    boost.mutable_damage ()->set_percent (boostPercent);
+
+    *c.MutableProto ().mutable_combat_data ()->add_low_hp_boosts () = boost;
+  }
+
 };
 
 /* ************************************************************************** */
@@ -343,6 +372,38 @@ TEST_F (TargetSelectionTests, Randomisation)
     }
 }
 
+TEST_F (TargetSelectionTests, LowHpBoost)
+{
+  auto c = characters.CreateNew ("boosted", Faction::RED);
+  const auto idBoosted = c->GetId ();
+  c->SetPosition (HexCoord (0, 0));
+  SetHp (*c, 0, 100, 0, 1'000);
+  AddAttack (*c).set_range (10);
+  AddLowHpBoost (*c, 10, 10);
+  c.reset ();
+
+  c = characters.CreateNew ("boosted area", Faction::RED);
+  const auto idArea = c->GetId ();
+  c->SetPosition (HexCoord (0, 0));
+  SetHp (*c, 0, 100, 0, 1'000);
+  AddAttack (*c).set_area (10);
+  AddLowHpBoost (*c, 10, 10);
+  c.reset ();
+
+  c = characters.CreateNew ("normal", Faction::GREEN);
+  const auto idNormal = c->GetId ();
+  c->SetPosition (HexCoord (11, 0));
+  SetHp (*c, 0, 101, 0, 1'000);
+  AddAttack (*c).set_range (10);
+  AddLowHpBoost (*c, 10, 10);
+  c.reset ();
+
+  FindCombatTargets (db, rnd);
+  EXPECT_FALSE (characters.GetById (idNormal)->HasTarget ());
+  EXPECT_EQ (characters.GetById (idBoosted)->GetTarget ().id (), idNormal);
+  EXPECT_EQ (characters.GetById (idArea)->GetTarget ().id (), idNormal);
+}
+
 /* ************************************************************************** */
 
 class DealDamageTests : public CombatTests
@@ -401,7 +462,7 @@ TEST_F (DealDamageTests, NoAttacks)
   c = characters.CreateNew ("domob", Faction::GREEN);
   const auto idTarget = c->GetId ();
   NoAttacks (*c);
-  c->MutableHP ().set_armour (10);
+  SetHp (*c, 0, 10, 0, 10);
   c.reset ();
 
   FindTargetsAndDamage ();
@@ -420,7 +481,7 @@ TEST_F (DealDamageTests, OnlyAttacksInRange)
   const auto idTarget = c->GetId ();
   c->SetPosition (HexCoord (2, 0));
   NoAttacks (*c);
-  c->MutableHP ().set_armour (10);
+  SetHp (*c, 0, 10, 0, 10);
   c.reset ();
 
   FindTargetsAndDamage ();
@@ -439,7 +500,7 @@ TEST_F (DealDamageTests, AreaAttacks)
       c = characters.CreateNew ("green", Faction::GREEN);
       idTargets.push_back (c->GetId ());
       NoAttacks (*c);
-      c->MutableHP ().set_armour (1000);
+      SetHp (*c, 0, 1'000, 0, 1'000);
       c.reset ();
     }
 
@@ -474,14 +535,14 @@ TEST_F (DealDamageTests, AreaAroundTarget)
   c = characters.CreateNew ("green", Faction::GREEN);
   const auto idTarget = c->GetId ();
   c->SetPosition (HexCoord (10, 0));
-  c->MutableHP ().set_armour (100);
+  SetHp (*c, 0, 100, 0, 100);
   NoAttacks (*c);
   c.reset ();
 
   c = characters.CreateNew ("green", Faction::GREEN);
   const auto idArea = c->GetId ();
   c->SetPosition (HexCoord (10, 5));
-  c->MutableHP ().set_armour (100);
+  SetHp (*c, 0, 100, 0, 100);
   NoAttacks (*c);
   c.reset ();
 
@@ -505,7 +566,7 @@ TEST_F (DealDamageTests, AreaTargetTooFar)
   c = characters.CreateNew ("green", Faction::GREEN);
   const auto idTarget = c->GetId ();
   c->SetPosition (HexCoord (10, 0));
-  c->MutableHP ().set_armour (100);
+  SetHp (*c, 0, 100, 0, 100);
   NoAttacks (*c);
   c.reset ();
 
@@ -525,14 +586,14 @@ TEST_F (DealDamageTests, MixedAttacks)
   const auto idTargetNear = c->GetId ();
   c->SetPosition (HexCoord (5, 0));
   NoAttacks (*c);
-  c->MutableHP ().set_armour (10);
+  SetHp (*c, 0, 10, 0, 10);
   c.reset ();
 
   c = characters.CreateNew ("green", Faction::GREEN);
   const auto idTargetFar = c->GetId ();
   c->SetPosition (HexCoord (10, 0));
   NoAttacks (*c);
-  c->MutableHP ().set_armour (10);
+  SetHp (*c, 0, 10, 0, 10);
   c.reset ();
 
   /* Near and far take respective damage from the area attacks (near two
@@ -565,7 +626,7 @@ TEST_F (DealDamageTests, DamageLists)
   const auto idTarget = c->GetId ();
   c->SetPosition (HexCoord (2, 0));
   NoAttacks (*c);
-  c->MutableHP ().set_armour (10);
+  SetHp (*c, 0, 10, 0, 10);
   c.reset ();
 
   /* Add an existing dummy entry to verify it is kept.  */
@@ -590,7 +651,7 @@ TEST_F (DealDamageTests, RandomisedDamage)
   c = characters.CreateNew ("domob", Faction::GREEN);
   const auto idTarget = c->GetId ();
   NoAttacks (*c);
-  c->MutableHP ().set_armour (maxDmg * rolls);
+  SetHp (*c, 0, maxDmg * rolls, 0, maxDmg * rolls);
   c.reset ();
 
   std::vector<unsigned> cnts(maxDmg + 1);
@@ -686,17 +747,15 @@ TEST_F (DealDamageTests, Kills)
   c = characters.CreateNew ("domob", Faction::GREEN);
   const auto id1 = c->GetId ();
   NoAttacks (*c);
-  c->MutableHP ().set_shield (0);
+  SetHp (*c, 0, 1, 1, 1);
   c->MutableHP ().set_shield_mhp (999);
-  c->MutableHP ().set_armour (1);
   c.reset ();
 
   c = characters.CreateNew ("domob", Faction::GREEN);
   const auto id2 = c->GetId ();
   c->SetPosition (HexCoord (10, 10));
   NoAttacks (*c);
-  c->MutableHP ().set_shield (1);
-  c->MutableHP ().set_armour (1);
+  SetHp (*c, 1, 1, 1, 1);
   c.reset ();
 
   auto dead = FindTargetsAndDamage ();
@@ -749,7 +808,7 @@ TEST_F (DealDamageTests, EffectsAndDamageApplied)
 
   c = characters.CreateNew ("green", Faction::GREEN);
   const auto idTarget = c->GetId ();
-  c->MutableHP ().set_armour (100);
+  SetHp (*c, 0, 100, 0, 100);
   NoAttacks (*c);
   c.reset ();
 
@@ -758,6 +817,89 @@ TEST_F (DealDamageTests, EffectsAndDamageApplied)
   c = characters.GetById (idTarget);
   EXPECT_EQ (c->GetHP ().armour (), 99);
   EXPECT_EQ (c->GetEffects ().speed ().percent (), -15);
+}
+
+TEST_F (DealDamageTests, LowHpBoostRangeAndDamage)
+{
+  auto c = characters.CreateNew ("red", Faction::RED);
+  SetHp (*c, 0, 10, 0, 100);
+  AddAreaAttack (*c, 2, 1, 1).set_range (5);
+  AddLowHpBoost (*c, 10, 100);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idTarget = c->GetId ();
+  c->SetPosition (HexCoord (10, 0));
+  SetHp (*c, 0, 100, 0, 100);
+  NoAttacks (*c);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idArea = c->GetId ();
+  c->SetPosition (HexCoord (10, 4));
+  SetHp (*c, 0, 100, 0, 100);
+  NoAttacks (*c);
+  c.reset ();
+
+  FindTargetsAndDamage ();
+
+  EXPECT_EQ (characters.GetById (idTarget)->GetHP ().armour (), 98);
+  EXPECT_EQ (characters.GetById (idArea)->GetHP ().armour (), 98);
+}
+
+TEST_F (DealDamageTests, LowHpBoostStacking)
+{
+  auto c = characters.CreateNew ("red", Faction::RED);
+  SetHp (*c, 0, 10, 0, 100);
+  AddAttack (*c, 5, 1, 1);
+  /* This will give a total boost of 300% (4x) to range and damage.  The last
+     of the boosts is not in effect.  */
+  AddLowHpBoost (*c, 10, 100);
+  AddLowHpBoost (*c, 10, 100);
+  AddLowHpBoost (*c, 20, 100);
+  AddLowHpBoost (*c, 9, 100);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idTarget = c->GetId ();
+  c->SetPosition (HexCoord (20, 0));
+  SetHp (*c, 0, 100, 0, 100);
+  NoAttacks (*c);
+  c.reset ();
+
+  FindTargetsAndDamage ();
+  EXPECT_EQ (characters.GetById (idTarget)->GetHP ().armour (), 96);
+}
+
+TEST_F (DealDamageTests, LowHpBoostBasedOnOriginalHp)
+{
+  /* Two characters are attacking each other.  The low-HP boost should
+     be determined based on the original HP before applying any damage,
+     so neither of them should get any boost from the current damage round.  */
+
+  auto c = characters.CreateNew ("red", Faction::RED);
+  const auto id1 = c->GetId ();
+  SetHp (*c, 0, 11, 0, 100);
+  AddAttack (*c, 5, 1, 1);
+  AddLowHpBoost (*c, 10, 100);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto id2 = c->GetId ();
+  c->SetPosition (HexCoord (5, 0));
+  SetHp (*c, 0, 11, 0, 100);
+  AddAttack (*c, 5, 1, 1);
+  AddLowHpBoost (*c, 10, 100);
+  c.reset ();
+
+  FindTargetsAndDamage ();
+  EXPECT_EQ (characters.GetById (id1)->GetHP ().armour (), 10);
+  EXPECT_EQ (characters.GetById (id2)->GetHP ().armour (), 10);
+
+  /* Now both get the boost.  */
+  FindTargetsAndDamage ();
+  EXPECT_EQ (characters.GetById (id1)->GetHP ().armour (), 8);
+  EXPECT_EQ (characters.GetById (id2)->GetHP ().armour (), 8);
 }
 
 /* ************************************************************************** */
