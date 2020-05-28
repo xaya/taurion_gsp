@@ -115,14 +115,20 @@ message BuildingConstruction
 message OngoingOperation
 {
 
+  /**
+   * The block height when the operation started.  This is useful for
+   * the frontend to show (e.g. calculate progress).
+   */
+  optional uint32 start_height = 1;
+
   /** The ongoing operation itself, which can be one of several types.  */
   oneof op
   {
-    OngoingProspection prospection = 1;
-    ArmourRepair armour_repair = 2;
-    BlueprintCopy blueprint_copy = 3;
-    ItemConstruction item_construction = 4;
-    BuildingConstruction building_construction = 5;
+    OngoingProspection prospection = 101;
+    ArmourRepair armour_repair = 102;
+    BlueprintCopy blueprint_copy = 103;
+    ItemConstruction item_construction = 104;
+    BuildingConstruction building_construction = 105;
   }
 
   /* The database stores extra data directly in columns:

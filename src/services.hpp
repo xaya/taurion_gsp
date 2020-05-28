@@ -54,6 +54,9 @@ private:
    */
   AccountsTable& accounts;
 
+  /** Database table for ongoing operations.  */
+  OngoingsTable& ongoings;
+
   /** The account triggering the service operation.  */
   Account& acc;
 
@@ -88,11 +91,14 @@ protected:
   /** Database handle for item-count tables.  */
   ItemCounts& itemCounts;
 
-  /** Database table for ongoing operations.  */
-  OngoingsTable& ongoings;
-
   explicit ServiceOperation (Account& a, BuildingsTable::Handle b,
                              const ContextRefs& refs);
+
+  /**
+   * Creates a new ongoing operation entry and also sets the (mandatory)
+   * start height on it already.
+   */
+  OngoingsTable::Handle CreateOngoing ();
 
   /**
    * Returns true if the service is supported by the given building.

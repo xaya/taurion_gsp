@@ -1088,7 +1088,7 @@ TEST_F (ValidateStateTests, OngoingsToCharacterLink)
   accounts.CreateNew ("domob", Faction::RED);
   db.SetNextId (101);
 
-  auto op = ongoings.CreateNew ();
+  auto op = ongoings.CreateNew (1);
   op->SetCharacterId (102);
   op.reset ();
   EXPECT_DEATH (ValidateState (), "refers to non-existing character");
@@ -1112,7 +1112,7 @@ TEST_F (ValidateStateTests, CharacterToOngoingsLink)
   c.reset ();
   EXPECT_DEATH (ValidateState (), "has non-existing ongoing");
 
-  ongoings.CreateNew ();
+  ongoings.CreateNew (1);
   EXPECT_DEATH (ValidateState (), "does not refer back to character");
 
   auto op = ongoings.GetById (102);
@@ -1126,7 +1126,7 @@ TEST_F (ValidateStateTests, OngoingsToBuildingLink)
   accounts.CreateNew ("domob", Faction::RED);
   db.SetNextId (101);
 
-  auto op = ongoings.CreateNew ();
+  auto op = ongoings.CreateNew (1);
   op->SetBuildingId (102);
   op.reset ();
   EXPECT_DEATH (ValidateState (), "refers to non-existing building");
@@ -1150,7 +1150,7 @@ TEST_F (ValidateStateTests, BuildingToOngoingsLink)
   b.reset ();
   EXPECT_DEATH (ValidateState (), "has non-existing ongoing");
 
-  ongoings.CreateNew ();
+  ongoings.CreateNew (1);
   EXPECT_DEATH (ValidateState (), "does not refer back to building");
 
   auto op = ongoings.GetById (102);
