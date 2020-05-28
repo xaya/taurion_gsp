@@ -972,9 +972,9 @@ TEST_F (ProcessKillsCharacterTests, RemovesOngoings)
   const auto id2 = characters.CreateNew ("domob", Faction::RED)->GetId ();
 
   db.SetNextId (101);
-  ongoings.CreateNew ()->SetCharacterId (id1);
-  ongoings.CreateNew ()->SetCharacterId (id2);
-  ongoings.CreateNew ()->SetBuildingId (12345);
+  ongoings.CreateNew (1)->SetCharacterId (id1);
+  ongoings.CreateNew (1)->SetCharacterId (id2);
+  ongoings.CreateNew (1)->SetBuildingId (12345);
 
   KillCharacter (id2);
 
@@ -992,7 +992,7 @@ TEST_F (ProcessKillsCharacterTests, CancelsProspection)
   const auto id = c->GetId ();
   c->SetPosition (pos);
 
-  auto op = ongoings.CreateNew ();
+  auto op = ongoings.CreateNew (1);
   const auto opId = op->GetId ();
   c->MutableProto ().set_ongoing (op->GetId ());
   op->SetCharacterId (id);
@@ -1089,10 +1089,10 @@ TEST_F (ProcessKillsBuildingTests, RemovesOngoings)
   c.reset ();
 
   db.SetNextId (101);
-  ongoings.CreateNew ()->SetHeight (42);
-  ongoings.CreateNew ()->SetBuildingId (bId);
-  ongoings.CreateNew ()->SetCharacterId (cId);
-  ongoings.CreateNew ()->SetBuildingId (12345);
+  ongoings.CreateNew (1)->SetHeight (42);
+  ongoings.CreateNew (1)->SetBuildingId (bId);
+  ongoings.CreateNew (1)->SetCharacterId (cId);
+  ongoings.CreateNew (1)->SetBuildingId (12345);
 
   KillBuilding (bId);
 
@@ -1202,7 +1202,7 @@ TEST_F (ProcessKillsBuildingTests, MayDropCopiedBlueprint)
       b->SetCentre (pos);
       b.reset ();
 
-      auto op = ongoings.CreateNew ();
+      auto op = ongoings.CreateNew (1);
       op->SetHeight (42);
       op->SetBuildingId (bId);
       auto& cp = *op->MutableProto ().mutable_blueprint_copy ();
@@ -1240,7 +1240,7 @@ TEST_F (ProcessKillsBuildingTests, MayDropBlueprintsFromConstruction)
       b->SetCentre (pos);
       b.reset ();
 
-      auto op = ongoings.CreateNew ();
+      auto op = ongoings.CreateNew (1);
       op->SetHeight (42);
       op->SetBuildingId (bId);
       auto* c = op->MutableProto ().mutable_item_construction ();
@@ -1250,7 +1250,7 @@ TEST_F (ProcessKillsBuildingTests, MayDropBlueprintsFromConstruction)
       c->set_original_type ("bow bpo");
       op.reset ();
 
-      op = ongoings.CreateNew ();
+      op = ongoings.CreateNew (1);
       op->SetHeight (42);
       op->SetBuildingId (bId);
       c = op->MutableProto ().mutable_item_construction ();

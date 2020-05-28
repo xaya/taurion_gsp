@@ -21,13 +21,14 @@
 namespace pxd
 {
 
-OngoingOperation::OngoingOperation (Database& d)
+OngoingOperation::OngoingOperation (Database& d, const unsigned startHeight)
   : db(d), id(db.GetNextId ()), height(0),
     characterId(Database::EMPTY_ID), buildingId(Database::EMPTY_ID),
     dirtyFields(true)
 {
   VLOG (1) << "Created new ongoing operation with ID " << id;
   data.SetToDefault ();
+  data.Mutable ().set_start_height (startHeight);
 }
 
 OngoingOperation::OngoingOperation (Database& d,
@@ -52,6 +53,10 @@ OngoingOperation::~OngoingOperation ()
     }
 
   VLOG (1) << "Updating dirty ongoing " << id << " in the database";
+
+  /* Ongoing operations must always have a start height set.  */
+  CHECK (data.Get ().has_start_height ())
+      << "Ongoing operation " << id << " has no start height set";
 
   auto stmt = db.Prepare (R"(
     INSERT OR REPLACE INTO `ongoing_operations`
@@ -78,9 +83,9 @@ OngoingOperation::~OngoingOperation ()
 }
 
 OngoingsTable::Handle
-OngoingsTable::CreateNew ()
+OngoingsTable::CreateNew (const unsigned startHeight)
 {
-  return Handle (new OngoingOperation (db));
+  return Handle (new OngoingOperation (db, startHeight));
 }
 
 OngoingsTable::Handle

@@ -891,14 +891,14 @@ TEST_F (OngoingsJsonTests, Empty)
 
 TEST_F (OngoingsJsonTests, BasicData)
 {
-  auto op = tbl.CreateNew ();
+  auto op = tbl.CreateNew (3);
   ASSERT_EQ (op->GetId (), 1);
   op->SetHeight (5);
   op->SetCharacterId (42);
   op->MutableProto ().mutable_prospection ();
   op.reset ();
 
-  op = tbl.CreateNew ();
+  op = tbl.CreateNew (5);
   op->SetHeight (10);
   op->SetBuildingId (50);
   op->MutableProto ().mutable_prospection ();
@@ -909,13 +909,15 @@ TEST_F (OngoingsJsonTests, BasicData)
       [
         {
           "id": 1,
-          "height": 5,
+          "start_height": 3,
+          "end_height": 5,
           "characterid": 42,
           "buildingid": null
         },
         {
           "id": 2,
-          "height": 10,
+          "start_height": 5,
+          "end_height": 10,
           "characterid": null,
           "buildingid": 50
         }
@@ -925,7 +927,7 @@ TEST_F (OngoingsJsonTests, BasicData)
 
 TEST_F (OngoingsJsonTests, Prospection)
 {
-  auto op = tbl.CreateNew ();
+  auto op = tbl.CreateNew (1);
   ASSERT_EQ (op->GetId (), 1);
   op->MutableProto ().mutable_prospection ();
   op.reset ();
@@ -943,7 +945,7 @@ TEST_F (OngoingsJsonTests, Prospection)
 
 TEST_F (OngoingsJsonTests, ArmourRepair)
 {
-  auto op = tbl.CreateNew ();
+  auto op = tbl.CreateNew (1);
   ASSERT_EQ (op->GetId (), 1);
   op->MutableProto ().mutable_armour_repair ();
   op.reset ();
@@ -961,7 +963,7 @@ TEST_F (OngoingsJsonTests, ArmourRepair)
 
 TEST_F (OngoingsJsonTests, BlueprintCopy)
 {
-  auto op = tbl.CreateNew ();
+  auto op = tbl.CreateNew (1);
   ASSERT_EQ (op->GetId (), 1);
   auto& cp = *op->MutableProto ().mutable_blueprint_copy ();
   cp.set_account ("domob");
@@ -985,7 +987,7 @@ TEST_F (OngoingsJsonTests, BlueprintCopy)
 
 TEST_F (OngoingsJsonTests, ItemConstruction)
 {
-  auto op = tbl.CreateNew ();
+  auto op = tbl.CreateNew (1);
   ASSERT_EQ (op->GetId (), 1);
   auto* c = op->MutableProto ().mutable_item_construction ();
   c->set_account ("domob");
@@ -993,7 +995,7 @@ TEST_F (OngoingsJsonTests, ItemConstruction)
   c->set_num_items (42);
   op.reset ();
 
-  op = tbl.CreateNew ();
+  op = tbl.CreateNew (1);
   ASSERT_EQ (op->GetId (), 2);
   c = op->MutableProto ().mutable_item_construction ();
   c->set_account ("domob");
@@ -1022,7 +1024,7 @@ TEST_F (OngoingsJsonTests, ItemConstruction)
 
 TEST_F (OngoingsJsonTests, BuildingConstruction)
 {
-  auto op = tbl.CreateNew ();
+  auto op = tbl.CreateNew (1);
   ASSERT_EQ (op->GetId (), 1);
   op->SetBuildingId (42);
   op->MutableProto ().mutable_building_construction ();

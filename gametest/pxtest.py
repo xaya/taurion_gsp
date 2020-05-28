@@ -105,8 +105,9 @@ class Character (object):
           del o["id"]
           assert o["characterid"] == self.getId ()
           del o["characterid"]
-          o["blocks"] = o["height"] - self.test.rpc.xaya.getblockcount ()
-          del o["height"]
+          del o["start_height"]
+          o["blocks"] = o["end_height"] - self.test.rpc.xaya.getblockcount ()
+          del o["end_height"]
           return o
       raise AssertionError ("Character busy %d not found in ongoings", opId)
 
@@ -186,8 +187,9 @@ class Building (object):
         del o["id"]
         assert o["buildingid"] == self.getId ()
         del o["buildingid"]
-        o["blocks"] = o["height"] - self.test.rpc.xaya.getblockcount ()
-        del o["height"]
+        del o["start_height"]
+        o["blocks"] = o["end_height"] - self.test.rpc.xaya.getblockcount ()
+        del o["end_height"]
         return o
 
     raise AssertionError ("Ongoing construction %d not found in ongoings", opId)

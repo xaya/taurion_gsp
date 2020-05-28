@@ -76,7 +76,7 @@ private:
    * Constructs a new instance with auto-generated ID meant to be inserted
    * into the database.
    */
-  explicit OngoingOperation (Database& d);
+  explicit OngoingOperation (Database& d, unsigned startHeight);
 
   /**
    * Constructs an instance based on the given DB result set.  The result
@@ -185,9 +185,10 @@ public:
 
   /**
    * Creates a new entry in the database and returns the handle so it
-   * can be initialised.
+   * can be initialised.  The start height (i.e. current block height)
+   * needs to be passed, as this is a mandatory field for each ongoing.
    */
-  Handle CreateNew ();
+  Handle CreateNew (unsigned startHeight);
 
   /**
    * Returns a handle for the instance based on a Database::Result.

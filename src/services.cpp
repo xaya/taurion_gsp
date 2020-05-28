@@ -391,7 +391,7 @@ RepairOperation::ExecuteSpecific (xaya::Random& rnd)
   const auto blocksBusy = (GetMissingHp () + (hpPerBlock - 1)) / hpPerBlock;
   CHECK_GT (blocksBusy, 0);
 
-  auto op = ongoings.CreateNew ();
+  auto op = CreateOngoing ();
   ch->MutableProto ().set_ongoing (op->GetId ());
   op->SetHeight (ctx.Height () + blocksBusy);
   op->SetCharacterId (ch->GetId ());
@@ -705,7 +705,7 @@ BlueprintCopyOperation::ExecuteSpecific (xaya::Random& rnd)
   auto& inv = invHandle->GetInventory ();
   inv.AddFungibleCount (original, -1);
 
-  auto op = ongoings.CreateNew ();
+  auto op = CreateOngoing ();
   const unsigned baseDuration = ctx.Params ().BlueprintCopyBlocks (complexity);
   op->SetHeight (ctx.Height () + num * baseDuration);
   op->SetBuildingId (buildingId);
@@ -888,7 +888,7 @@ ConstructionOperation::ExecuteSpecific (xaya::Random& rnd)
   else
     inv.AddFungibleCount (blueprint, -num);
 
-  auto op = ongoings.CreateNew ();
+  auto op = CreateOngoing ();
   op->SetBuildingId (buildingId);
 
   /* When constructing from an original, the items have to be constructed
@@ -915,9 +915,9 @@ ConstructionOperation::ExecuteSpecific (xaya::Random& rnd)
 
 ServiceOperation::ServiceOperation (Account& a, BuildingsTable::Handle b,
                                     const ContextRefs& refs)
-  : accounts(refs.accounts), acc(a), building(std::move (b)),
-    ctx(refs.ctx), invTable(refs.invTable), itemCounts(refs.cnt),
-    ongoings(refs.ongoings)
+  : accounts(refs.accounts), ongoings(refs.ongoings),
+    acc(a), building(std::move (b)),
+    ctx(refs.ctx), invTable(refs.invTable), itemCounts(refs.cnt)
 {}
 
 void
@@ -942,6 +942,12 @@ ServiceOperation::GetCosts (Amount& base, Amount& fee) const
      with the percentage given by the building configuration.  The result
      is rounded up.  */
   fee = (base * building->GetProto ().service_fee_percent () + 99) / 100;
+}
+
+OngoingsTable::Handle
+ServiceOperation::CreateOngoing ()
+{
+  return ongoings.CreateNew (ctx.Height ());
 }
 
 bool

@@ -134,7 +134,7 @@ MaybeStartBuildingConstruction (Building& b, OngoingsTable& ongoings,
     if (entry.second > cInv.GetFungibleCount (entry.first))
       return;
 
-  auto op = ongoings.CreateNew ();
+  auto op = ongoings.CreateNew (ctx.Height ());
   op->SetHeight (ctx.Height () + roData.construction ().blocks ());
   CHECK_GT (op->GetHeight (), ctx.Height ());
   op->SetBuildingId (b.GetId ());

@@ -60,7 +60,7 @@ protected:
   OngoingsTable::Handle
   AddOp (Character& c)
   {
-    auto op = ongoings.CreateNew ();
+    auto op = ongoings.CreateNew (1);
     op->SetCharacterId (c.GetId ());
     c.MutableProto ().set_ongoing (op->GetId ());
     return op;
@@ -73,7 +73,7 @@ protected:
   OngoingsTable::Handle
   AddOp (Building& b)
   {
-    auto op = ongoings.CreateNew ();
+    auto op = ongoings.CreateNew (1);
     op->SetBuildingId (b.GetId ());
     return op;
   }

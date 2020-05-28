@@ -38,11 +38,17 @@ protected:
     : tbl(db)
   {}
 
+  OngoingsTable::Handle
+  Create ()
+  {
+    return tbl.CreateNew (12345);
+  }
+
 };
 
 TEST_F (OngoingOperationTests, DefaultData)
 {
-  auto op = tbl.CreateNew ();
+  auto op = Create ();
   EXPECT_EQ (op->GetHeight (), 0);
   EXPECT_EQ (op->GetCharacterId (), Database::EMPTY_ID);
   EXPECT_EQ (op->GetBuildingId (), Database::EMPTY_ID);
@@ -51,14 +57,14 @@ TEST_F (OngoingOperationTests, DefaultData)
 
 TEST_F (OngoingOperationTests, Update)
 {
-  auto op = tbl.CreateNew ();
+  auto op = Create ();
   const auto id1 = op->GetId ();
   op->SetHeight (5);
   op->SetCharacterId (10);
   op->MutableProto ().mutable_prospection ();
   op.reset ();
 
-  op = tbl.CreateNew ();
+  op = Create ();
   const auto id2 = op->GetId ();
   op->SetBuildingId (20);
   op->MutableProto ().mutable_armour_repair ();
@@ -95,8 +101,8 @@ using OngoingsTableTests = OngoingOperationTests;
 
 TEST_F (OngoingsTableTests, QueryAll)
 {
-  tbl.CreateNew ()->SetHeight (10);
-  tbl.CreateNew ()->SetHeight (5);
+  Create ()->SetHeight (10);
+  Create ()->SetHeight (5);
 
   auto res = tbl.QueryAll ();
 
@@ -111,17 +117,17 @@ TEST_F (OngoingsTableTests, QueryAll)
 
 TEST_F (OngoingsTableTests, QueryForHeight)
 {
-  auto op = tbl.CreateNew ();
+  auto op = Create ();
   op->SetHeight (5);
   op->SetCharacterId (2);
   op.reset ();
 
-  op = tbl.CreateNew ();
+  op = Create ();
   op->SetHeight (6);
   op->SetCharacterId (5);
   op.reset ();
 
-  op = tbl.CreateNew ();
+  op = Create ();
   op->SetHeight (5);
   op->SetCharacterId (1);
   op.reset ();
@@ -139,17 +145,17 @@ TEST_F (OngoingsTableTests, QueryForHeight)
 
 TEST_F (OngoingsTableTests, QueryForBuilding)
 {
-  auto op = tbl.CreateNew ();
+  auto op = Create ();
   op->SetHeight (1);
   op->SetBuildingId (42);
   op.reset ();
 
-  op = tbl.CreateNew ();
+  op = Create ();
   op->SetHeight (2);
   op->SetBuildingId (5);
   op.reset ();
 
-  op = tbl.CreateNew ();
+  op = Create ();
   op->SetHeight (3);
   op->SetCharacterId (42);
   op.reset ();
@@ -166,9 +172,9 @@ TEST_F (OngoingsTableTests, DeleteForCharacter)
 {
   db.SetNextId (101);
 
-  tbl.CreateNew ()->SetCharacterId (42);
-  tbl.CreateNew ()->SetBuildingId (42);
-  tbl.CreateNew ()->SetCharacterId (50);
+  Create ()->SetCharacterId (42);
+  Create ()->SetBuildingId (42);
+  Create ()->SetCharacterId (50);
 
   tbl.DeleteForCharacter (42);
   tbl.DeleteForCharacter (12345);
@@ -188,9 +194,9 @@ TEST_F (OngoingsTableTests, DeleteForBuilding)
 {
   db.SetNextId (101);
 
-  tbl.CreateNew ()->SetBuildingId (42);
-  tbl.CreateNew ()->SetCharacterId (42);
-  tbl.CreateNew ()->SetBuildingId (50);
+  Create ()->SetBuildingId (42);
+  Create ()->SetCharacterId (42);
+  Create ()->SetBuildingId (50);
 
   tbl.DeleteForBuilding (42);
   tbl.DeleteForBuilding (12345);
@@ -210,9 +216,9 @@ TEST_F (OngoingsTableTests, DeleteForHeight)
 {
   db.SetNextId (101);
 
-  tbl.CreateNew ()->SetHeight (50);
-  tbl.CreateNew ()->SetHeight (42);
-  tbl.CreateNew ()->SetHeight (10);
+  Create ()->SetHeight (50);
+  Create ()->SetHeight (42);
+  Create ()->SetHeight (10);
 
   tbl.DeleteForHeight (42);
 

@@ -380,15 +380,16 @@ template <>
       const pxd::OngoingOperation& op) const
 {
   Json::Value res(Json::objectValue);
+  const auto& pb = op.GetProto ();
 
   res["id"] = IntToJson (op.GetId ());
-  res["height"] = IntToJson (op.GetHeight ());
+  res["start_height"] = IntToJson (pb.start_height ());
+  res["end_height"] = IntToJson (op.GetHeight ());
   if (op.GetCharacterId () != Database::EMPTY_ID)
     res["characterid"] = IntToJson (op.GetCharacterId ());
   if (op.GetBuildingId () != Database::EMPTY_ID)
     res["buildingid"] = IntToJson (op.GetBuildingId ());
 
-  const auto& pb = op.GetProto ();
   switch (pb.op_case ())
     {
     case proto::OngoingOperation::kProspection:
