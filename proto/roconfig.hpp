@@ -46,10 +46,13 @@ private:
   const Data* data;
 
   /**
-   * The global singleton data instance or null when it is not yet initialised.
-   * This is never destructed.
+   * The global singleton data instance for mainnet or null when it is not yet
+   * initialised.  This is never destructed.
    */
-  static Data* instance;
+  static Data* mainnet;
+
+  /** The singleton instance for regtest.  */
+  static Data* regtest;
 
 public:
 

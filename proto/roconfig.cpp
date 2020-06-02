@@ -71,24 +71,49 @@ struct RoConfig::Data
 
 };
 
-RoConfig::Data* RoConfig::instance = nullptr;
+RoConfig::Data* RoConfig::mainnet = nullptr;
+RoConfig::Data* RoConfig::regtest = nullptr;
 
 RoConfig::RoConfig (const xaya::Chain chain)
 {
   std::lock_guard<std::mutex> lock(mutInstances);
 
-  /* FIXME: Construct different data for regtest.  */
+  Data** instancePtr = nullptr;
+  bool mergeRegtest;
+  switch (chain)
+    {
+    case xaya::Chain::MAIN:
+    case xaya::Chain::TEST:
+      instancePtr = &mainnet;
+      mergeRegtest = false;
+      break;
+    case xaya::Chain::REGTEST:
+      instancePtr = &regtest;
+      mergeRegtest = true;
+      break;
+    default:
+      LOG (FATAL) << "Unexpected chain: " << static_cast<int> (chain);
+    }
+  CHECK (instancePtr != nullptr);
 
-  if (instance == nullptr)
+  if (*instancePtr == nullptr)
     {
       LOG (INFO) << "Initialising hard-coded ConfigData proto instance...";
-      instance = new Data ();
+
+      *instancePtr = new Data ();
+      auto& pb = (*instancePtr)->proto;
+
       const auto* begin = &blob_roconfig_start;
       const auto* end = &blob_roconfig_end;
-      CHECK (instance->proto.ParseFromArray (begin, end - begin));
+      CHECK (pb.ParseFromArray (begin, end - begin));
+
+      CHECK (!pb.regtest_merge ().has_regtest_merge ());
+      if (mergeRegtest)
+        pb.MergeFrom (pb.regtest_merge ());
+      pb.clear_regtest_merge ();
     }
 
-  data = instance;
+  data = *instancePtr;
   CHECK (data != nullptr);
 }
 

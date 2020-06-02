@@ -39,12 +39,25 @@ TEST (RoConfigTests, ProtoIsSingleton)
 {
   const auto* ptr1 = &(*RoConfig (xaya::Chain::MAIN));
   const auto* ptr2 = &(*RoConfig (xaya::Chain::MAIN));
+  const auto* ptr3 = &(*RoConfig (xaya::Chain::REGTEST));
   EXPECT_EQ (ptr1, ptr2);
+  EXPECT_NE (ptr1, ptr3);
 }
 
-TEST (RoConfigTests, HasData)
+TEST (RoConfigTests, ChainDependence)
 {
-  EXPECT_GT (RoConfig (xaya::Chain::MAIN)->fungible_items ().size (), 0);
+  const RoConfig main(xaya::Chain::MAIN);
+  const RoConfig regtest(xaya::Chain::REGTEST);
+
+  EXPECT_NE (main.ItemOrNull ("raw a"), nullptr);
+  EXPECT_NE (regtest.ItemOrNull ("raw a"), nullptr);
+  EXPECT_EQ (main.ItemOrNull ("bow"), nullptr);
+  EXPECT_NE (regtest.ItemOrNull ("bow"), nullptr);
+
+  EXPECT_NE (main.BuildingOrNull ("ancient1"), nullptr);
+  EXPECT_NE (regtest.BuildingOrNull ("ancient1"), nullptr);
+  EXPECT_EQ (main.BuildingOrNull ("huesli"), nullptr);
+  EXPECT_NE (regtest.BuildingOrNull ("huesli"), nullptr);
 }
 
 TEST (RoConfigTests, Building)
