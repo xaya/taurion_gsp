@@ -58,9 +58,7 @@ protected:
   CanProspectRegionTests ()
     : characters(db), regions(db, 1'042),
       pos(-10, 42), region(ctx.Map ().Regions ().GetRegionId (pos))
-  {
-    ctx.SetChain (xaya::Chain::REGTEST);
-  }
+  {}
 
 };
 
@@ -127,8 +125,6 @@ protected:
   FinishProspectingTests ()
     : characters(db), regions(db, 1'042)
   {
-    ctx.SetChain (xaya::Chain::REGTEST);
-
     const auto h = characters.CreateNew ("domob", Faction::RED);
     CHECK_EQ (h->GetId (), 1);
   }
@@ -287,9 +283,10 @@ TEST (PrizesTests, AllInItemConfig)
   for (const xaya::Chain c : {xaya::Chain::MAIN, xaya::Chain::TEST,
                               xaya::Chain::REGTEST})
     {
+      const RoConfig cfg(c);
       const Params params(c);
       for (const auto& p : params.ProspectingPrizes ())
-        ASSERT_NE (RoConfig ().ItemOrNull (p.name + " prize"), nullptr)
+        ASSERT_NE (cfg.ItemOrNull (p.name + " prize"), nullptr)
             << "Prize item not defined: " << p.name;
     }
 }

@@ -546,15 +546,15 @@ PendingMoves::AddPendingMove (const Json::Value& mv)
   PXLogic& rules = dynamic_cast<PXLogic&> (GetSQLiteGame ());
   SQLiteGameDatabase dbObj(db, rules);
 
-  if (dyn == nullptr)
-    dyn = std::make_unique<DynObstacles> (dbObj);
-
   const auto& blk = GetConfirmedBlock ();
   const auto& heightVal = blk["height"];
   CHECK (heightVal.isUInt ());
 
   const Context ctx(GetChain (), rules.GetBaseMap (),
                     heightVal.asUInt () + 1, Context::NO_TIMESTAMP);
+
+  if (dyn == nullptr)
+    dyn = std::make_unique<DynObstacles> (dbObj, ctx);
 
   PendingStateUpdater updater(dbObj, *dyn, state, ctx);
   updater.ProcessMove (mv);

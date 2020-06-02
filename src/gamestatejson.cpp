@@ -204,9 +204,9 @@ GetCombatJsonObject (const Character& c, const DamageLists& dl)
  * Constructs the JSON representation of a character's cargo space.
  */
 Json::Value
-GetCargoSpaceJsonObject (const Character& c)
+GetCargoSpaceJsonObject (const Character& c, const Context& ctx)
 {
-  const auto used = c.UsedCargoSpace ();
+  const auto used = c.UsedCargoSpace (ctx.RoConfig ());
 
   Json::Value res(Json::objectValue);
   res["total"] = IntToJson (c.GetProto ().cargo_space ());
@@ -281,7 +281,7 @@ template <>
   res["combat"] = GetCombatJsonObject (c, dl);
   res["speed"] = c.GetProto ().speed ();
   res["inventory"] = Convert (c.GetInventory ());
-  res["cargospace"] = GetCargoSpaceJsonObject (c);
+  res["cargospace"] = GetCargoSpaceJsonObject (c, ctx);
 
   const Json::Value mv = GetMovementJsonObject (c);
   if (!mv.empty ())
@@ -290,7 +290,7 @@ template <>
   if (c.IsBusy ())
     res["busy"] = IntToJson (c.GetProto ().ongoing ());
 
-  const Json::Value mining = GetMiningJsonObject (map, c);
+  const Json::Value mining = GetMiningJsonObject (ctx.Map (), c);
   if (!mining.isNull ())
     res["mining"] = mining;
 
@@ -334,7 +334,7 @@ template <>
   res["servicefee"] = IntToJson (pb.service_fee_percent ());
 
   Json::Value tiles(Json::arrayValue);
-  for (const auto& c : GetBuildingShape (b))
+  for (const auto& c : GetBuildingShape (b, ctx))
     tiles.append (CoordToJson (c));
   res["tiles"] = tiles;
 
@@ -497,7 +497,7 @@ GameStateJson::PrizeStats ()
   ItemCounts cnt(db);
 
   Json::Value res(Json::objectValue);
-  for (const auto& p : params.ProspectingPrizes ())
+  for (const auto& p : ctx.Params ().ProspectingPrizes ())
     {
       Json::Value cur(Json::objectValue);
       cur["number"] = p.number;

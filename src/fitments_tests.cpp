@@ -31,31 +31,40 @@ namespace
 
 /* ************************************************************************** */
 
-using CheckVehicleFitmentsTests = testing::Test;
+class CheckVehicleFitmentsTests : public testing::Test
+{
+
+protected:
+
+  ContextForTesting ctx;
+
+};
 
 TEST_F (CheckVehicleFitmentsTests, ComplexityLimit)
 {
-  EXPECT_FALSE (CheckVehicleFitments ("chariot", {"bow", "bow"}));
-  EXPECT_TRUE (CheckVehicleFitments ("chariot", {"sword", "sword"}));
+  EXPECT_FALSE (CheckVehicleFitments ("chariot", {"bow", "bow"}, ctx));
+  EXPECT_TRUE (CheckVehicleFitments ("chariot", {"sword", "sword"}, ctx));
 }
 
 TEST_F (CheckVehicleFitmentsTests, Slots)
 {
-  EXPECT_FALSE (CheckVehicleFitments ("rv st", {"sword"}));
+  EXPECT_FALSE (CheckVehicleFitments ("rv st", {"sword"}, ctx));
   EXPECT_FALSE (CheckVehicleFitments ("chariot",
-                                      {"bomb", "bomb", "bomb", "bomb"}));
+                                      {"bomb", "bomb", "bomb", "bomb"},
+                                      ctx));
   EXPECT_TRUE (CheckVehicleFitments ("chariot", {
       "bomb", "bomb", "bomb",
       "turbo", "turbo",
       "expander",
-  }));
+  }, ctx));
 }
 
 TEST_F (CheckVehicleFitmentsTests, ComplexityMultiplier)
 {
-  EXPECT_FALSE (CheckVehicleFitments ("chariot", {"bow", "turbo"}));
+  EXPECT_FALSE (CheckVehicleFitments ("chariot", {"bow", "turbo"}, ctx));
   EXPECT_TRUE (CheckVehicleFitments ("chariot",
-                                     {"bow", "turbo", "multiplier"}));
+                                     {"bow", "turbo", "multiplier"},
+                                     ctx));
 }
 
 /* ************************************************************************** */
@@ -68,6 +77,8 @@ private:
   CharacterTable characters;
 
 protected:
+
+  ContextForTesting ctx;
 
   DeriveCharacterStatsTests ()
     : characters(db)
@@ -86,7 +97,7 @@ protected:
     for (const auto& f : fitments)
       c->MutableProto ().add_fitments (f);
 
-    DeriveCharacterStats (*c);
+    DeriveCharacterStats (*c, ctx);
     return c;
   }
 
@@ -109,7 +120,7 @@ TEST_F (DeriveCharacterStatsTests, HpAreReset)
 {
   auto c = Derive ("chariot", {});
   c->MutableHP ().set_armour (42);
-  DeriveCharacterStats (*c);
+  DeriveCharacterStats (*c, ctx);
 
   EXPECT_EQ (c->GetHP ().armour (), 1'000);
   EXPECT_EQ (c->GetHP ().shield (), 100);

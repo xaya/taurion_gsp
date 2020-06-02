@@ -19,7 +19,7 @@
 #ifndef PXD_GAMESTATEJSON_HPP
 #define PXD_GAMESTATEJSON_HPP
 
-#include "params.hpp"
+#include "context.hpp"
 
 #include "database/damagelists.hpp"
 #include "database/database.hpp"
@@ -52,11 +52,8 @@ private:
   /** Damage lists accessor (for adding the attackers to a character JSON).  */
   const DamageLists dl;
 
-  /** Game parameters.  */
-  const Params& params;
-
-  /** Basemap instance that can be used.  */
-  const BaseMap& map;
+  /** Current parameter context.  */
+  const Context& ctx;
 
   /**
    * Extracts all results from the Database::Result instance, converts them
@@ -67,8 +64,8 @@ private:
 
 public:
 
-  explicit GameStateJson (Database& d, const Params& p, const BaseMap& m)
-    : db(d), buildingInventories(db), dl(db), params(p), map(m)
+  explicit GameStateJson (Database& d, const Context& c)
+    : db(d), buildingInventories(db), dl(db), ctx(c)
   {}
 
   GameStateJson () = delete;

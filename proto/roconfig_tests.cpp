@@ -28,27 +28,43 @@ namespace
 
 /* ************************************************************************** */
 
-TEST (RoConfigTests, Parses)
+TEST (RoConfigTests, ConstructionWorks)
 {
-  *RoConfig ();
+  *RoConfig (xaya::Chain::MAIN);
+  *RoConfig (xaya::Chain::TEST);
+  *RoConfig (xaya::Chain::REGTEST);
 }
 
 TEST (RoConfigTests, ProtoIsSingleton)
 {
-  const auto* ptr1 = &(*RoConfig ());
-  const auto* ptr2 = &(*RoConfig ());
+  const auto* ptr1 = &(*RoConfig (xaya::Chain::MAIN));
+  const auto* ptr2 = &(*RoConfig (xaya::Chain::MAIN));
+  const auto* ptr3 = &(*RoConfig (xaya::Chain::REGTEST));
   EXPECT_EQ (ptr1, ptr2);
+  EXPECT_NE (ptr1, ptr3);
 }
 
-TEST (RoConfigTests, HasData)
+TEST (RoConfigTests, ChainDependence)
 {
-  EXPECT_GT (RoConfig ()->fungible_items ().size (), 0);
+  const RoConfig main(xaya::Chain::MAIN);
+  const RoConfig regtest(xaya::Chain::REGTEST);
+
+  EXPECT_NE (main.ItemOrNull ("raw a"), nullptr);
+  EXPECT_NE (regtest.ItemOrNull ("raw a"), nullptr);
+  EXPECT_EQ (main.ItemOrNull ("bow"), nullptr);
+  EXPECT_NE (regtest.ItemOrNull ("bow"), nullptr);
+
+  EXPECT_NE (main.BuildingOrNull ("ancient1"), nullptr);
+  EXPECT_NE (regtest.BuildingOrNull ("ancient1"), nullptr);
+  EXPECT_EQ (main.BuildingOrNull ("huesli"), nullptr);
+  EXPECT_NE (regtest.BuildingOrNull ("huesli"), nullptr);
 }
 
 TEST (RoConfigTests, Building)
 {
-  EXPECT_EQ (RoConfig ().BuildingOrNull ("invalid building"), nullptr);
-  EXPECT_GT (RoConfig ().Building ("ancient1").enter_radius (), 0);
+  const RoConfig cfg(xaya::Chain::REGTEST);
+  EXPECT_EQ (cfg.BuildingOrNull ("invalid building"), nullptr);
+  EXPECT_GT (cfg.Building ("ancient1").enter_radius (), 0);
 }
 
 /* ************************************************************************** */
@@ -59,6 +75,10 @@ class RoItemsTests : public testing::Test
 protected:
 
   RoConfig cfg;
+
+  RoItemsTests ()
+    : cfg(xaya::Chain::REGTEST)
+  {}
 
 };
 
@@ -261,7 +281,9 @@ RoConfigSanityTests::IsConfigValid (const RoConfig& cfg)
 
 TEST_F (RoConfigSanityTests, Valid)
 {
-  EXPECT_TRUE (IsConfigValid (RoConfig ()));
+  EXPECT_TRUE (IsConfigValid (RoConfig (xaya::Chain::MAIN)));
+  EXPECT_TRUE (IsConfigValid (RoConfig (xaya::Chain::TEST)));
+  EXPECT_TRUE (IsConfigValid (RoConfig (xaya::Chain::REGTEST)));
 }
 
 /* ************************************************************************** */

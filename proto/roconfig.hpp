@@ -21,6 +21,8 @@
 
 #include "config.pb.h"
 
+#include <xayagame/gamelogic.hpp>
+
 namespace pxd
 {
 
@@ -44,10 +46,13 @@ private:
   const Data* data;
 
   /**
-   * The global singleton data instance or null when it is not yet initialised.
-   * This is never destructed.
+   * The global singleton data instance for mainnet or null when it is not yet
+   * initialised.  This is never destructed.
    */
-  static Data* instance;
+  static Data* mainnet;
+
+  /** The singleton instance for regtest.  */
+  static Data* regtest;
 
 public:
 
@@ -58,7 +63,7 @@ public:
    * On the first call, this will also instantiate and set up the underlying
    * singleton instance with the real data.
    */
-  RoConfig ();
+  explicit RoConfig (xaya::Chain chain);
 
   RoConfig (const RoConfig&) = delete;
   void operator= (const RoConfig&) = delete;

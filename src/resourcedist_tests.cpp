@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -115,7 +115,7 @@ protected:
   Inventory::QuantityT amount;
 
   DetectResourceTests ()
-    : rd(RoConfig ()->resource_dist ())
+    : rd(RoConfig (xaya::Chain::REGTEST)->resource_dist ())
   {}
 
   /**

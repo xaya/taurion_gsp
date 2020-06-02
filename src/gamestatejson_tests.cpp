@@ -48,21 +48,19 @@ namespace
 class GameStateJsonTests : public DBTestWithSchema
 {
 
-private:
+protected:
 
-  /** Parameter instance for testing.  */
-  const Params params;
+  ContextForTesting ctx;
+
+private:
 
   /** GameStateJson instance used in testing.  */
   GameStateJson converter;
 
 protected:
 
-  /** Basemap instance for the test.  */
-  BaseMap map;
-
   GameStateJsonTests ()
-    : params(xaya::Chain::MAIN), converter(db, params, map)
+    : converter(db, ctx)
   {}
 
   /**
@@ -433,7 +431,7 @@ TEST_F (CharacterJsonTests, CargoSpace)
 TEST_F (CharacterJsonTests, Mining)
 {
   const HexCoord pos(10, -5);
-  ASSERT_EQ (map.Regions ().GetRegionId (pos), 350146);
+  ASSERT_EQ (ctx.Map ().Regions ().GetRegionId (pos), 350146);
 
   tbl.CreateNew ("without mining", Faction::RED);
 
@@ -1140,7 +1138,9 @@ protected:
 
   PrizesJsonTests ()
     : cnt(db)
-  {}
+  {
+    ctx.SetChain (xaya::Chain::MAIN);
+  }
 
 };
 

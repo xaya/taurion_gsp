@@ -357,4 +357,10 @@ message ConfigData
   /** Distribution of resources for prospecting.  */
   optional ResourceDistribution resource_dist = 3;
 
+  /**
+   * The regtest-specific configuration data.  This is merged into the main
+   * instance by the RoConfig-helper class when running on regtest.
+   */
+  optional ConfigData regtest_merge = 100;
+
 }

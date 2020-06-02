@@ -31,6 +31,7 @@
 #include "proto/character.pb.h"
 #include "proto/combat.pb.h"
 #include "proto/movement.pb.h"
+#include "proto/roconfig.hpp"
 
 #include <functional>
 #include <memory>
@@ -290,7 +291,7 @@ public:
   /**
    * Returns the used cargo space for the character's inventory.
    */
-  uint64_t UsedCargoSpace () const;
+  uint64_t UsedCargoSpace (const RoConfig& cfg) const;
 
   proto::TargetId GetIdAsTarget () const override;
 

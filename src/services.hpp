@@ -28,6 +28,7 @@
 #include "database/inventory.hpp"
 #include "database/itemcounts.hpp"
 #include "database/ongoing.hpp"
+#include "proto/roconfig.hpp"
 
 #include <xayautil/random.hpp>
 

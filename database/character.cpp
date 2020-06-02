@@ -18,8 +18,6 @@
 
 #include "character.hpp"
 
-#include "proto/roconfig.hpp"
-
 #include <glog/logging.h>
 
 namespace pxd
@@ -229,12 +227,12 @@ Character::IsBusy () const
 }
 
 uint64_t
-Character::UsedCargoSpace () const
+Character::UsedCargoSpace (const RoConfig& cfg) const
 {
   uint64_t res = 0;
   for (const auto& entry : inv.GetFungible ())
     {
-      const auto& ro = RoConfig ().Item (entry.first);
+      const auto& ro = cfg.Item (entry.first);
       res += Inventory::Product (entry.second, ro.space ());
     }
 

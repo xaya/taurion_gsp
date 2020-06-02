@@ -19,6 +19,8 @@
 #ifndef PXD_FITMENTS_HPP
 #define PXD_FITMENTS_HPP
 
+#include "context.hpp"
+
 #include "database/character.hpp"
 
 #include <string>
@@ -31,13 +33,14 @@ namespace pxd
  * Checks if the given list of fitments can be put onto a given vehicle.
  */
 bool CheckVehicleFitments (const std::string& vehicle,
-                           const std::vector<std::string>& fitments);
+                           const std::vector<std::string>& fitments,
+                           const Context& ctx);
 
 /**
  * Updates the "derived" stats of the character based on the vehicle and
  * fitments it is equipped with.
  */
-void DeriveCharacterStats (Character& c);
+void DeriveCharacterStats (Character& c, const Context& ctx);
 
 } // namespace pxd
 

@@ -74,11 +74,14 @@ private:
   /** The basemap we use.  */
   const BaseMap& map;
 
+  /** The chain this is running on.  */
+  const xaya::Chain chain;
+
 public:
 
   explicit NonStateRpcServer (jsonrpc::AbstractServerConnector& conn,
-                              const BaseMap& m)
-    : NonStateRpcServerStub(conn), map(m)
+                              const BaseMap& m, const xaya::Chain c)
+    : NonStateRpcServerStub(conn), map(m), chain(c)
   {}
 
   Json::Value findpath (int l1range, const Json::Value& source,
@@ -116,7 +119,7 @@ public:
   explicit PXRpcServer (xaya::Game& g, PXLogic& l,
                         jsonrpc::AbstractServerConnector& conn)
     : PXRpcServerStub(conn), game(g), logic(l),
-      nonstate(nullConnector, logic.map)
+      nonstate(nullConnector, logic.map, game.GetChain ())
   {}
 
   void stop () override;

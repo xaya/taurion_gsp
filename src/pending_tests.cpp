@@ -674,7 +674,7 @@ protected:
       moveObj["out"][ctx.Params ().DeveloperAddress ()]
           = AmountToJson (paidToDev);
 
-    DynObstacles dyn(db);
+    DynObstacles dyn(db, ctx);
     PendingStateUpdater updater(db, dyn, state, ctx);
     updater.ProcessMove (moveObj);
   }

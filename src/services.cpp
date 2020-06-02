@@ -20,8 +20,6 @@
 
 #include "jsonutils.hpp"
 
-#include "proto/roconfig.hpp"
-
 #include <glog/logging.h>
 
 #include <string>
@@ -126,7 +124,8 @@ protected:
   bool
   IsSupported (const Building& b) const override
   {
-    return RoConfig ().Building (b.GetType ()).offered_services ().refining ();
+    return ctx.RoConfig ().Building (b.GetType ())
+        .offered_services ().refining ();
   }
 
   Amount
@@ -155,7 +154,7 @@ RefiningOperation::RefiningOperation (Account& a, BuildingsTable::Handle b,
   : ServiceOperation(a, std::move (b), refs),
     type(t), amount(am)
 {
-  const auto* itemData = RoConfig ().ItemOrNull (type);
+  const auto* itemData = ctx.RoConfig ().ItemOrNull (type);
   if (itemData == nullptr)
     {
       LOG (WARNING) << "Can't refine invalid item type " << type;
@@ -276,7 +275,7 @@ protected:
   bool
   IsSupported (const Building& b) const override
   {
-    return RoConfig ().Building (b.GetType ())
+    return ctx.RoConfig ().Building (b.GetType ())
         .offered_services ().armour_repair ();
   }
 
@@ -444,7 +443,7 @@ protected:
   bool
   IsSupported (const Building& b) const override
   {
-    return RoConfig ().Building (b.GetType ())
+    return ctx.RoConfig ().Building (b.GetType ())
         .offered_services ().reverse_engineering ();
   }
 
@@ -474,7 +473,7 @@ RevEngOperation::RevEngOperation (Account& a, BuildingsTable::Handle b,
   : ServiceOperation(a, std::move (b), refs),
     type(t), num(n)
 {
-  const auto* itemData = RoConfig ().ItemOrNull (type);
+  const auto* itemData = ctx.RoConfig ().ItemOrNull (type);
   if (itemData == nullptr)
     {
       LOG (WARNING) << "Can't reveng invalid item type " << type;
@@ -599,7 +598,7 @@ protected:
   bool
   IsSupported (const Building& b) const override
   {
-    return RoConfig ().Building (b.GetType ())
+    return ctx.RoConfig ().Building (b.GetType ())
         .offered_services ().blueprint_copy ();
   }
 
@@ -630,7 +629,7 @@ BlueprintCopyOperation::BlueprintCopyOperation (
   : ServiceOperation(a, std::move (b), refs),
     original(o), num(n)
 {
-  const auto* origData = RoConfig ().ItemOrNull (original);
+  const auto* origData = ctx.RoConfig ().ItemOrNull (original);
   if (origData == nullptr || !origData->has_is_blueprint ())
     {
       LOG (WARNING) << "Can't copy item type " << original;
@@ -645,7 +644,7 @@ BlueprintCopyOperation::BlueprintCopyOperation (
 
   const auto& baseType = origData->is_blueprint ().for_item ();
   copy = baseType + " bpc";
-  complexity = RoConfig ().Item (baseType).complexity ();
+  complexity = ctx.RoConfig ().Item (baseType).complexity ();
   CHECK_GT (complexity, 0)
       << "Invalid complexity " << complexity << " for type " << baseType;
 }
@@ -778,7 +777,7 @@ ConstructionOperation::ConstructionOperation (
   : ServiceOperation(a, std::move (b), refs),
     blueprint(bp), num(n)
 {
-  const auto* bpData = RoConfig ().ItemOrNull (blueprint);
+  const auto* bpData = ctx.RoConfig ().ItemOrNull (blueprint);
   if (bpData == nullptr || !bpData->has_is_blueprint ())
     {
       LOG (WARNING) << "Can't construct from item type " << blueprint;
@@ -788,7 +787,7 @@ ConstructionOperation::ConstructionOperation (
 
   fromOriginal = bpData->is_blueprint ().original ();
   output = bpData->is_blueprint ().for_item ();
-  outputData = &(RoConfig ().Item (output));
+  outputData = &(ctx.RoConfig ().Item (output));
   CHECK_GT (outputData->complexity (), 0)
       << "Invalid complexity " << outputData->complexity ()
       << " for type " << output;
@@ -797,7 +796,8 @@ ConstructionOperation::ConstructionOperation (
 bool
 ConstructionOperation::IsSupported (const Building& b) const
 {
-  const auto& offered = RoConfig ().Building (b.GetType ()).offered_services ();
+  const auto& offered
+      = ctx.RoConfig ().Building (b.GetType ()).offered_services ();
 
   if (outputData->has_vehicle ())
     return offered.vehicle_construction ();
@@ -917,7 +917,8 @@ ServiceOperation::ServiceOperation (Account& a, BuildingsTable::Handle b,
                                     const ContextRefs& refs)
   : accounts(refs.accounts), ongoings(refs.ongoings),
     acc(a), building(std::move (b)),
-    ctx(refs.ctx), invTable(refs.invTable), itemCounts(refs.cnt)
+    ctx(refs.ctx),
+    invTable(refs.invTable), itemCounts(refs.cnt)
 {}
 
 void

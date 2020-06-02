@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #include "params.hpp"
 
 #include "mapdata/basemap.hpp"
+#include "proto/roconfig.hpp"
 
 #include <xayagame/gamelogic.hpp>
 
@@ -52,6 +53,9 @@ private:
    */
   std::unique_ptr<pxd::Params> params;
 
+  /** RoConfig instance dependant on the chain.  */
+  std::unique_ptr<pxd::RoConfig> cfg;
+
   /**
    * The current block's height.  This is set to the confirmed height plus
    * one for processing pending moves, as that corresponds to the expected
@@ -71,6 +75,9 @@ public:
 
   /** Value for timestamp if this is a pending block.  */
   static constexpr int64_t NO_TIMESTAMP = -1;
+
+  /** Value for height if there is no height set (and shouldn't be used).  */
+  static constexpr unsigned NO_HEIGHT = static_cast<unsigned> (-1);
 
   /**
    * Constructs an instance based on the given data.
@@ -95,11 +102,17 @@ public:
     return *params;
   }
 
-  unsigned
-  Height () const
+  const pxd::RoConfig&
+  RoConfig () const
   {
-    return height;
+    return *cfg;
   }
+
+  /**
+   * Returns the context's block height.  Must not be used if NO_HEIGHT was
+   * passed to the constructor.
+   */
+  unsigned Height () const;
 
   /**
    * Returns the context's block timestamp.  This must not be called for

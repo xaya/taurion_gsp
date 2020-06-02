@@ -18,6 +18,8 @@
 
 #include "dynobstacles.hpp"
 
+#include "testutils.hpp"
+
 #include "database/character.hpp"
 #include "database/dbtest.hpp"
 
@@ -36,6 +38,8 @@ protected:
   BuildingsTable buildings;
   CharacterTable characters;
 
+  ContextForTesting ctx;
+
   DynObstaclesTests ()
     : buildings(db), characters(db)
   {}
@@ -51,7 +55,7 @@ TEST_F (DynObstaclesTests, VehiclesFromDb)
   characters.CreateNew ("domob", Faction::GREEN)->SetPosition (c1);
   characters.CreateNew ("domob", Faction::BLUE)->SetPosition (c2);
 
-  DynObstacles dyn(db);
+  DynObstacles dyn(db, ctx);
 
   EXPECT_FALSE (dyn.IsPassable (c1, Faction::RED));
   EXPECT_FALSE (dyn.IsPassable (c1, Faction::GREEN));
@@ -70,7 +74,7 @@ TEST_F (DynObstaclesTests, BuildingsFromDb)
 {
   buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
 
-  DynObstacles dyn(db);
+  DynObstacles dyn(db, ctx);
 
   EXPECT_FALSE (dyn.IsPassable (HexCoord (0, 2), Faction::RED));
   EXPECT_FALSE (dyn.IsPassable (HexCoord (0, 2), Faction::GREEN));
@@ -84,7 +88,7 @@ TEST_F (DynObstaclesTests, BuildingsFromDb)
 TEST_F (DynObstaclesTests, Modifications)
 {
   const HexCoord c(42, 0);
-  DynObstacles dyn(db);
+  DynObstacles dyn(db, ctx);
 
   EXPECT_TRUE (dyn.IsPassable (c, Faction::RED));
 
@@ -107,7 +111,7 @@ TEST_F (DynObstaclesTests, IsFree)
   auto b = buildings.CreateNew ("huesli", "", Faction::ANCIENT);
   b->SetCentre (HexCoord (0, 0));
 
-  DynObstacles dyn(db);
+  DynObstacles dyn(db, ctx);
   dyn.AddBuilding (*b);
   dyn.AddVehicle (HexCoord (1, 0), Faction::RED);
   dyn.AddVehicle (HexCoord (2, 0), Faction::GREEN);
