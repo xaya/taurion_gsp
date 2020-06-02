@@ -28,6 +28,13 @@ Context::Context (const xaya::Chain c, const BaseMap& m,
   : map(m), chain(c), params(new pxd::Params (chain)), height(h), timestamp(ts)
 {}
 
+unsigned
+Context::Height () const
+{
+  CHECK_NE (height, NO_HEIGHT);
+  return height;
+}
+
 int64_t
 Context::Timestamp () const
 {

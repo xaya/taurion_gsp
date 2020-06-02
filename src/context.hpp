@@ -72,6 +72,9 @@ public:
   /** Value for timestamp if this is a pending block.  */
   static constexpr int64_t NO_TIMESTAMP = -1;
 
+  /** Value for height if there is no height set (and shouldn't be used).  */
+  static constexpr unsigned NO_HEIGHT = static_cast<unsigned> (-1);
+
   /**
    * Constructs an instance based on the given data.
    */
@@ -95,11 +98,11 @@ public:
     return *params;
   }
 
-  unsigned
-  Height () const
-  {
-    return height;
-  }
+  /**
+   * Returns the context's block height.  Must not be used if NO_HEIGHT was
+   * passed to the constructor.
+   */
+  unsigned Height () const;
 
   /**
    * Returns the context's block timestamp.  This must not be called for
