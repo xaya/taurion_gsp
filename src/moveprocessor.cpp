@@ -47,7 +47,7 @@ static constexpr unsigned MAX_SERVICE_FEE_PERCENT = 1'000;
 
 BaseMoveProcessor::BaseMoveProcessor (Database& d, DynObstacles& o,
                                       const Context& c)
-  : ctx(c), cfg(ctx.Chain ()), db(d), dyn(o),
+  : ctx(c), db(d), dyn(o),
     accounts(db), buildings(db), characters(db),
     groundLoot(db), buildingInv(db), itemCounts(db),
     ongoings(db), regions(db, ctx.Height ())
@@ -556,7 +556,7 @@ namespace
  * the range [0, MAX_ITEM_QUANTITY].
  */
 FungibleAmountMap
-ParseFungibleQuantities (const Json::Value& obj, const RoConfig& cfg)
+ParseFungibleQuantities (const Context& ctx, const Json::Value& obj)
 {
   CHECK (obj.isObject ());
 
@@ -567,7 +567,7 @@ ParseFungibleQuantities (const Json::Value& obj, const RoConfig& cfg)
       CHECK (keyVal.isString ());
       const std::string key = keyVal.asString ();
 
-      if (cfg.ItemOrNull (key) == nullptr)
+      if (ctx.RoConfig ().ItemOrNull (key) == nullptr)
         {
           LOG (WARNING) << "Invalid fungible item: " << key;
           continue;
@@ -616,7 +616,7 @@ BaseMoveProcessor::ParseDropPickupFungible (const Json::Value& cmd) const
       return {};
     }
 
-  return ParseFungibleQuantities (fungible, cfg);
+  return ParseFungibleQuantities (ctx, fungible);
 }
 
 bool
@@ -801,7 +801,7 @@ BaseMoveProcessor::ParseChangeVehicle (const Character& c,
       return false;
     }
 
-  const auto* data = cfg.ItemOrNull (vehicle);
+  const auto* data = ctx.RoConfig ().ItemOrNull (vehicle);
   if (data == nullptr || !data->has_vehicle ())
     {
       LOG (WARNING) << "Invalid vehicle: " << vehicle;
@@ -865,7 +865,7 @@ BaseMoveProcessor::ParseSetFitments (const Character& c, const Json::Value& upd,
         }
       const auto item = f.asString ();
 
-      const auto* data = cfg.ItemOrNull (item);
+      const auto* data = ctx.RoConfig ().ItemOrNull (item);
       if (data == nullptr || !data->has_fitment ())
         {
           LOG (WARNING) << "Invalid fitment: " << item;
@@ -905,9 +905,8 @@ namespace
  * and god-mode build commands.
  */
 bool
-ParseBuildingConfig (const Json::Value& build,
-                     std::string& type, proto::ShapeTransformation& trafo,
-                     const RoConfig& cfg)
+ParseBuildingConfig (const Context& ctx, const Json::Value& build,
+                     std::string& type, proto::ShapeTransformation& trafo)
 {
   CHECK (build.isObject ());
 
@@ -919,7 +918,7 @@ ParseBuildingConfig (const Json::Value& build,
     }
   type = val.asString ();
 
-  if (cfg.BuildingOrNull (type) == nullptr)
+  if (ctx.RoConfig ().BuildingOrNull (type) == nullptr)
     {
       LOG (WARNING) << "Invalid type for building: " << type;
       return false;
@@ -952,7 +951,7 @@ BaseMoveProcessor::ParseFoundBuilding (const Character& c,
   if (!build.isObject ())
     return false;
 
-  if (build.size () != 2 || !ParseBuildingConfig (build, type, trafo, cfg))
+  if (build.size () != 2 || !ParseBuildingConfig (ctx, build, type, trafo))
     {
       LOG (WARNING) << "Invalid building element: " << build;
       return false;
@@ -973,7 +972,7 @@ BaseMoveProcessor::ParseFoundBuilding (const Character& c,
       return false;
     }
 
-  const auto& roData = cfg.Building (type);
+  const auto& roData = ctx.RoConfig ().Building (type);
   if (!roData.has_construction ())
     {
       LOG (WARNING) << "Building " << type << " cannot be constructed";
@@ -1359,7 +1358,7 @@ MoveProcessor::MaybeFoundBuilding (Character& c, const Json::Value& upd)
   *pb.mutable_shape_trafo () = trafo;
 
   auto& inv = c.GetInventory ();
-  const auto& roBuilding = cfg.Building (b->GetType ());
+  const auto& roBuilding = ctx.RoConfig ().Building (b->GetType ());
   for (const auto& entry : roBuilding.construction ().foundation ())
     inv.AddFungibleCount (entry.first, -static_cast<int> (entry.second));
 
@@ -1385,7 +1384,7 @@ namespace
  * of a character inventory.
  */
 void
-MoveFungibleBetweenInventories (const RoConfig& cfg,
+MoveFungibleBetweenInventories (const Context& ctx,
                                 const FungibleAmountMap& items,
                                 Inventory& from, Inventory& to,
                                 const std::string& fromName,
@@ -1407,7 +1406,7 @@ MoveFungibleBetweenInventories (const RoConfig& cfg,
 
       if (maxSpace >= 0)
         {
-          const auto itemSpace = cfg.Item (entry.first).space ();
+          const auto itemSpace = ctx.RoConfig ().Item (entry.first).space ();
 
           if (itemSpace > 0)
             {
@@ -1461,7 +1460,7 @@ MoveProcessor::MaybeDropLoot (Character& c, const Json::Value& cmd)
       if (b->GetProto ().foundation ())
         {
           Inventory inv(*b->MutableProto ().mutable_construction_inventory ());
-          MoveFungibleBetweenInventories (cfg, fungible,
+          MoveFungibleBetweenInventories (ctx, fungible,
                                           c.GetInventory (), inv,
                                           fromName.str (), toName.str ());
 
@@ -1472,7 +1471,7 @@ MoveProcessor::MaybeDropLoot (Character& c, const Json::Value& cmd)
       else
         {
           auto inv = buildingInv.Get (c.GetBuildingId (), c.GetOwner ());
-          MoveFungibleBetweenInventories (cfg, fungible,
+          MoveFungibleBetweenInventories (ctx, fungible,
                                           c.GetInventory (),
                                           inv->GetInventory (),
                                           fromName.str (), toName.str ());
@@ -1482,7 +1481,7 @@ MoveProcessor::MaybeDropLoot (Character& c, const Json::Value& cmd)
     {
       toName << "ground loot at " << c.GetPosition ();
       auto ground = groundLoot.GetByCoord (c.GetPosition ());
-      MoveFungibleBetweenInventories (cfg, fungible,
+      MoveFungibleBetweenInventories (ctx, fungible,
                                       c.GetInventory (),
                                       ground->GetInventory (),
                                       fromName.str (), toName.str ());
@@ -1501,7 +1500,7 @@ MoveProcessor::MaybePickupLoot (Character& c, const Json::Value& cmd)
   toName << "character " << c.GetId ();
 
   const int64_t freeCargo
-      = c.GetProto ().cargo_space () - c.UsedCargoSpace (cfg);
+      = c.GetProto ().cargo_space () - c.UsedCargoSpace (ctx.RoConfig ());
   CHECK_GE (freeCargo, 0);
   VLOG (1)
       << "Character " << c.GetId () << " has " << freeCargo
@@ -1524,7 +1523,7 @@ MoveProcessor::MaybePickupLoot (Character& c, const Json::Value& cmd)
 
       fromName << "building " << c.GetBuildingId ();
       auto inv = buildingInv.Get (c.GetBuildingId (), c.GetOwner ());
-      MoveFungibleBetweenInventories (cfg, fungible,
+      MoveFungibleBetweenInventories (ctx, fungible,
                                       inv->GetInventory (),
                                       c.GetInventory (),
                                       fromName.str (), toName.str (),
@@ -1534,7 +1533,7 @@ MoveProcessor::MaybePickupLoot (Character& c, const Json::Value& cmd)
     {
       fromName << "ground loot at " << c.GetPosition ();
       auto ground = groundLoot.GetByCoord (c.GetPosition ());
-      MoveFungibleBetweenInventories (cfg, fungible,
+      MoveFungibleBetweenInventories (ctx, fungible,
                                       ground->GetInventory (),
                                       c.GetInventory (),
                                       fromName.str (), toName.str (),
@@ -1749,8 +1748,7 @@ MaybeGodAllSetHp (BuildingsTable& b, CharacterTable& c, const Json::Value& cmd)
  * Tries to parse and execute a god-mode command to create a building.
  */
 void
-MaybeGodBuild (AccountsTable& accounts, BuildingsTable& tbl,
-               const xaya::Chain chain, const RoConfig& cfg,
+MaybeGodBuild (AccountsTable& accounts, BuildingsTable& tbl, const Context& ctx,
                const Json::Value& cmd)
 {
   if (!cmd.isArray ())
@@ -1766,7 +1764,7 @@ MaybeGodBuild (AccountsTable& accounts, BuildingsTable& tbl,
 
       std::string type;
       proto::ShapeTransformation trafo;
-      if (!ParseBuildingConfig (build, type, trafo, cfg))
+      if (!ParseBuildingConfig (ctx, build, type, trafo))
         {
           LOG (WARNING) << "Invalid god-build element: " << build;
           continue;
@@ -1815,7 +1813,7 @@ MaybeGodBuild (AccountsTable& accounts, BuildingsTable& tbl,
       auto h = tbl.CreateNew (type, owner, f);
       h->SetCentre (centre);
       *h->MutableProto ().mutable_shape_trafo () = trafo;
-      UpdateBuildingStats (*h, chain);
+      UpdateBuildingStats (*h, ctx.Chain ());
       LOG (INFO)
           << "God building " << type
           << " for " << owner << " of faction " << FactionToString (f) << ":\n"
@@ -1853,7 +1851,7 @@ ParseBuildingInventory (const Json::Value& val,
  */
 void
 MaybeGodDropLoot (GroundLootTable& loot, BuildingInventoriesTable& buildingInv,
-                  const RoConfig& cfg, const Json::Value& cmd)
+                  const Context& ctx, const Json::Value& cmd)
 {
   if (!cmd.isArray ())
     return;
@@ -1873,7 +1871,7 @@ MaybeGodDropLoot (GroundLootTable& loot, BuildingInventoriesTable& buildingInv,
               << "Drop-loot element has invalid fungible member: " << tile;
           continue;
         }
-      const auto quantities = ParseFungibleQuantities (fungible, cfg);
+      const auto quantities = ParseFungibleQuantities (ctx, fungible);
 
       if (tile.size () != 2)
         {
@@ -1974,8 +1972,8 @@ MoveProcessor::HandleGodMode (const Json::Value& cmd)
 
   MaybeGodTeleport (characters, cmd["teleport"]);
   MaybeGodAllSetHp (buildings, characters, cmd["sethp"]);
-  MaybeGodBuild (accounts, buildings, ctx.Chain (), cfg, cmd["build"]);
-  MaybeGodDropLoot (groundLoot, buildingInv, cfg, cmd["drop"]);
+  MaybeGodBuild (accounts, buildings, ctx, cmd["build"]);
+  MaybeGodDropLoot (groundLoot, buildingInv, ctx, cmd["drop"]);
   MaybeGodGiftCoins (accounts, cmd["giftcoins"]);
 }
 

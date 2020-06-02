@@ -126,7 +126,7 @@ MaybeStartBuildingConstruction (Building& b, OngoingsTable& ongoings,
   if (b.GetProto ().has_ongoing_construction ())
     return;
 
-  const auto& roData = RoConfig (ctx.Chain ()).Building (b.GetType ());
+  const auto& roData = ctx.RoConfig ().Building (b.GetType ());
   CHECK (roData.has_construction ());
 
   const Inventory cInv(b.GetProto ().construction_inventory ());
@@ -176,7 +176,6 @@ EnterBuilding (Character& c, const Building& b, DynObstacles& dyn)
 void
 ProcessEnterBuildings (Database& db, DynObstacles& dyn, const Context& ctx)
 {
-  const RoConfig cfg(ctx.Chain ());
   BuildingsTable buildings(db);
   CharacterTable characters(db);
   auto res = characters.QueryForEnterBuilding ();
@@ -213,7 +212,7 @@ ProcessEnterBuildings (Database& db, DynObstacles& dyn, const Context& ctx)
 
       const unsigned dist
           = HexCoord::DistanceL1 (c->GetPosition (), b->GetCentre ());
-      if (dist > cfg.Building (b->GetType ()).enter_radius ())
+      if (dist > ctx.RoConfig ().Building (b->GetType ()).enter_radius ())
         {
           /* This is probably the most common case, no log spam here.  */
           continue;
@@ -239,8 +238,7 @@ LeaveBuilding (BuildingsTable& buildings, Character& c,
   auto b = buildings.GetById (c.GetBuildingId ());
   CHECK (b != nullptr);
 
-  const RoConfig cfg(ctx.Chain ());
-  const auto radius = cfg.Building (b->GetType ()).enter_radius ();
+  const auto radius = ctx.RoConfig ().Building (b->GetType ()).enter_radius ();
   const auto pos = ChooseSpawnLocation (b->GetCentre (), radius,
                                         c.GetFaction (), rnd, dyn, ctx.Map ());
 

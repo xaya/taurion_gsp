@@ -45,7 +45,7 @@ FinishBuildingConstruction (Building& b, const Context& ctx,
 {
   CHECK (b.GetProto ().foundation ())
       << "Building " << b.GetId () << " is not a foundation";
-  const auto& roData = RoConfig (ctx.Chain ()).Building (b.GetType ());
+  const auto& roData = ctx.RoConfig ().Building (b.GetType ());
   CHECK (roData.has_construction ())
       << "Building type " << b.GetType () << " is not constructible";
 

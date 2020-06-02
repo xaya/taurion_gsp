@@ -86,9 +86,6 @@ protected:
   /** Context for parameters and such.  */
   const Context& ctx;
 
-  /** RoConfig instance.  */
-  const RoConfig cfg;
-
   /** Database handle for upating building inventories (e.g. for refining).  */
   BuildingInventoriesTable& invTable;
 

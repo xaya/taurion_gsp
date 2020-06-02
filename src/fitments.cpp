@@ -32,8 +32,6 @@ CheckVehicleFitments (const std::string& vehicle,
                       const std::vector<std::string>& fitments,
                       const Context& ctx)
 {
-  const RoConfig cfg(ctx.Chain ());
-
   /* We first go through all fitments, and sum up what slots we need and
      what complexity is required.  We also keep track of any potential
      modification to the supported complexity.  */
@@ -42,7 +40,7 @@ CheckVehicleFitments (const std::string& vehicle,
   std::map<std::string, unsigned> slotsRequired;
   for (const auto& f : fitments)
     {
-      const auto& fitmentData = cfg.Item (f);
+      const auto& fitmentData = ctx.RoConfig ().Item (f);
       CHECK (fitmentData.has_fitment ())
           << "Item type " << f << " is not a fitment";
 
@@ -53,7 +51,7 @@ CheckVehicleFitments (const std::string& vehicle,
     }
 
   /* Now check up the required stats against the vehicle.  */
-  const auto& vehicleData = cfg.Item (vehicle);
+  const auto& vehicleData = ctx.RoConfig ().Item (vehicle);
   CHECK (vehicleData.has_vehicle ())
       << "Item type " << vehicle << " is not a vehicle";
 
@@ -118,8 +116,6 @@ InitCharacterStats (Character& c, const proto::VehicleData& data)
 void
 ApplyFitments (Character& c, const Context& ctx)
 {
-  const RoConfig cfg(ctx.Chain ());
-
   /* Boosts from stat modifiers are not compounding.  Thus we total up
      each modifier first and only apply them at the end.  */
   StatModifier cargo, speed;
@@ -130,7 +126,7 @@ ApplyFitments (Character& c, const Context& ctx)
   auto& pb = c.MutableProto ();
   for (const auto& f : pb.fitments ())
     {
-      const auto fItemData = cfg.Item (f);
+      const auto fItemData = ctx.RoConfig ().Item (f);
       CHECK (fItemData.has_fitment ())
           << "Non-fitment type " << f << " on character " << c.GetId ();
       const auto& fitment = fItemData.fitment ();
@@ -182,8 +178,7 @@ ApplyFitments (Character& c, const Context& ctx)
 void
 DeriveCharacterStats (Character& c, const Context& ctx)
 {
-  const RoConfig cfg(ctx.Chain ());
-  const auto& vehicleItemData = cfg.Item (c.GetProto ().vehicle ());
+  const auto& vehicleItemData = ctx.RoConfig ().Item (c.GetProto ().vehicle ());
   CHECK (vehicleItemData.has_vehicle ())
       << "Character " << c.GetId ()
       << " is in non-vehicle: " << c.GetProto ().vehicle ();

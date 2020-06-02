@@ -99,9 +99,6 @@ protected:
   /** Processing context data.  */
   const Context& ctx;
 
-  /** RoConfig instance.  */
-  const RoConfig cfg;
-
   /**
    * The Database handle we use for making any changes (and looking up the
    * current state while validating moves).

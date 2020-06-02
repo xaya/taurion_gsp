@@ -394,7 +394,7 @@ protected:
     : centre(10, 42)
   {
     const std::string type = "checkmark";
-    radius = RoConfig (ctx.Chain ()).Building (type).enter_radius ();
+    radius = ctx.RoConfig ().Building (type).enter_radius ();
 
     auto b = tbl.CreateNew (type, "", Faction::ANCIENT);
     CHECK_EQ (b->GetId (), 1);

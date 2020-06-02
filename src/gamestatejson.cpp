@@ -206,7 +206,7 @@ GetCombatJsonObject (const Character& c, const DamageLists& dl)
 Json::Value
 GetCargoSpaceJsonObject (const Character& c, const Context& ctx)
 {
-  const auto used = c.UsedCargoSpace (RoConfig (ctx.Chain ()));
+  const auto used = c.UsedCargoSpace (ctx.RoConfig ());
 
   Json::Value res(Json::objectValue);
   res["total"] = IntToJson (c.GetProto ().cargo_space ());

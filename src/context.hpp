@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #include "params.hpp"
 
 #include "mapdata/basemap.hpp"
+#include "proto/roconfig.hpp"
 
 #include <xayagame/gamelogic.hpp>
 
@@ -51,6 +52,9 @@ private:
    * can recreate it with modified chain in tests.
    */
   std::unique_ptr<pxd::Params> params;
+
+  /** RoConfig instance dependant on the chain.  */
+  std::unique_ptr<pxd::RoConfig> cfg;
 
   /**
    * The current block's height.  This is set to the confirmed height plus
@@ -96,6 +100,12 @@ public:
   Params () const
   {
     return *params;
+  }
+
+  const pxd::RoConfig&
+  RoConfig () const
+  {
+    return *cfg;
   }
 
   /**
