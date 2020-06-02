@@ -76,7 +76,7 @@ PXLogic::UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
   AllHpUpdates (db, fame, rnd, ctx);
   ProcessAllOngoings (db, rnd, ctx);
 
-  DynObstacles dyn(db);
+  DynObstacles dyn(db, ctx);
   MoveProcessor mvProc(db, dyn, rnd, ctx);
   mvProc.ProcessAdmin (blockData["admin"]);
   mvProc.ProcessAll (blockData["moves"]);
@@ -88,7 +88,7 @@ PXLogic::UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
      enter as soon as possible (perhaps in the same instant the move for it
      gets confirmed).  It should be before combat targets, so that players
      entering a building won't be attacked any more.  */
-  ProcessEnterBuildings (db, dyn);
+  ProcessEnterBuildings (db, dyn, ctx);
 
   FindCombatTargets (db, rnd);
 
@@ -146,7 +146,7 @@ PXLogic::InitialiseState (xaya::SQLiteDatabase& db)
   SQLiteGameDatabase dbObj(db, *this);
   const Params params(GetChain ());
 
-  InitialiseBuildings (dbObj);
+  InitialiseBuildings (dbObj, GetChain ());
 
   /* The initialisation uses up some auto IDs, namely for placed buildings.
      We start "regular" IDs at a later value to avoid shifting them always
@@ -166,8 +166,9 @@ Json::Value
 PXLogic::GetStateAsJson (const xaya::SQLiteDatabase& db)
 {
   SQLiteGameDatabase dbObj(const_cast<xaya::SQLiteDatabase&> (db), *this);
-  const Params params(GetChain ());
-  GameStateJson gsj(dbObj, params, map);
+  const Context ctx(GetChain (), map,
+                    Context::NO_HEIGHT, Context::NO_TIMESTAMP);
+  GameStateJson gsj(dbObj, ctx);
 
   return gsj.FullState ();
 }
@@ -192,8 +193,9 @@ PXLogic::GetCustomStateData (xaya::Game& game,
   return GetCustomStateData (game,
     [this, &cb] (Database& db, const xaya::uint256& hash, const unsigned height)
         {
-          const Params params(GetChain ());
-          GameStateJson gsj(db, params, map);
+          const Context ctx(GetChain (), map,
+                            Context::NO_HEIGHT, Context::NO_TIMESTAMP);
+          GameStateJson gsj(db, ctx);
           return cb (gsj, hash, height);
         });
 }

@@ -50,7 +50,7 @@ protected:
   CharacterTable tbl;
 
   SpawnTests ()
-    : dyn(db), tbl(db)
+    : dyn(db, ctx), tbl(db)
   {}
 
   /**

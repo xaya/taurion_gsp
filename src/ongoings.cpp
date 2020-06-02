@@ -40,11 +40,12 @@ namespace
  * Finishes construction of the given building.
  */
 void
-FinishBuildingConstruction (Building& b, BuildingInventoriesTable& buildingInv)
+FinishBuildingConstruction (Building& b, const Context& ctx,
+                            BuildingInventoriesTable& buildingInv)
 {
   CHECK (b.GetProto ().foundation ())
       << "Building " << b.GetId () << " is not a foundation";
-  const auto& roData = RoConfig ().Building (b.GetType ());
+  const auto& roData = RoConfig (ctx.Chain ()).Building (b.GetType ());
   CHECK (roData.has_construction ())
       << "Building type " << b.GetType () << " is not constructible";
 
@@ -66,7 +67,7 @@ FinishBuildingConstruction (Building& b, BuildingInventoriesTable& buildingInv)
   pb.clear_construction_inventory ();
   pb.set_foundation (false);
 
-  UpdateBuildingStats (b);
+  UpdateBuildingStats (b, ctx.Chain ());
 }
 
 } // anonymous namespace
@@ -147,7 +148,7 @@ ProcessAllOngoings (Database& db, xaya::Random& rnd, const Context& ctx)
 
         case proto::OngoingOperation::kBuildingConstruction:
           CHECK (b != nullptr);
-          FinishBuildingConstruction (*b, buildingInv);
+          FinishBuildingConstruction (*b, ctx, buildingInv);
           break;
 
         default:

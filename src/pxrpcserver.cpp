@@ -209,14 +209,14 @@ NonStateRpcServer::getbuildingshape (const Json::Value& centre, const int rot,
     ReturnError (ErrorCode::INVALID_ARGUMENT,
                  "rot is outside the valid range [0, 5]");
 
-  if (RoConfig ().BuildingOrNull (type) == nullptr)
+  if (RoConfig (chain).BuildingOrNull (type) == nullptr)
     ReturnError (ErrorCode::INVALID_ARGUMENT, "unknown building type");
 
   proto::ShapeTransformation trafo;
   trafo.set_rotation_steps (rot);
 
   Json::Value res(Json::arrayValue);
-  for (const auto& t : GetBuildingShape (type, trafo, c))
+  for (const auto& t : GetBuildingShape (type, trafo, c, chain))
     res.append (CoordToJson (t));
 
   return res;

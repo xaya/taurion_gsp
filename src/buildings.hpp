@@ -42,13 +42,13 @@ namespace pxd
  */
 std::vector<HexCoord> GetBuildingShape (const std::string& type,
                                         const proto::ShapeTransformation& trafo,
-                                        const HexCoord& pos);
+                                        const HexCoord& pos, xaya::Chain chain);
 
 /**
  * Returns all shape tiles of a given building, taking the centre and
  * its shape trafo into account.
  */
-std::vector<HexCoord> GetBuildingShape (const Building& b);
+std::vector<HexCoord> GetBuildingShape (const Building& b, const Context& ctx);
 
 /**
  * Checks if a building of the given type and rotation can be placed
@@ -64,7 +64,7 @@ bool CanPlaceBuilding (const std::string& type,
 /**
  * Places initial buildings (ancient and obelisks) onto the map.
  */
-void InitialiseBuildings (Database& db);
+void InitialiseBuildings (Database& db, xaya::Chain chain);
 
 /**
  * Check if the given building has all required resources to start
@@ -78,7 +78,7 @@ void MaybeStartBuildingConstruction (Building& b, OngoingsTable& ongoings,
  * Computes and updates the stats of a building (e.g. combat data, HP) from
  * its type and other attributes.
  */
-void UpdateBuildingStats (Building& b);
+void UpdateBuildingStats (Building& b, xaya::Chain chain);
 
 /**
  * Processes the updates (without any validation) for entering the given
@@ -90,7 +90,8 @@ void EnterBuilding (Character& c, const Building& b, DynObstacles& dyn);
  * Processes all characters that want to enter a building, and lets them in
  * if it is possible for them.
  */
-void ProcessEnterBuildings (Database& db, DynObstacles& dyn);
+void ProcessEnterBuildings (Database& db, DynObstacles& dyn,
+                            const Context& ctx);
 
 /**
  * Makes the given character leave the building it is currently in.

@@ -73,9 +73,11 @@ struct RoConfig::Data
 
 RoConfig::Data* RoConfig::instance = nullptr;
 
-RoConfig::RoConfig ()
+RoConfig::RoConfig (const xaya::Chain chain)
 {
   std::lock_guard<std::mutex> lock(mutInstances);
+
+  /* FIXME: Construct different data for regtest.  */
 
   if (instance == nullptr)
     {

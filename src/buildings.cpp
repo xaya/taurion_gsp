@@ -35,9 +35,9 @@ namespace pxd
 std::vector<HexCoord>
 GetBuildingShape (const std::string& type,
                   const proto::ShapeTransformation& trafo,
-                  const HexCoord& pos)
+                  const HexCoord& pos, const xaya::Chain chain)
 {
-  const auto& roData = RoConfig ().Building (type);
+  const auto& roData = RoConfig (chain).Building (type);
 
   std::vector<HexCoord> res;
   res.reserve (roData.shape_tiles ().size ());
@@ -53,10 +53,10 @@ GetBuildingShape (const std::string& type,
 }
 
 std::vector<HexCoord>
-GetBuildingShape (const Building& b)
+GetBuildingShape (const Building& b, const Context& ctx)
 {
   return GetBuildingShape (b.GetType (), b.GetProto ().shape_trafo (),
-                           b.GetCentre ());
+                           b.GetCentre (), ctx.Chain ());
 }
 
 bool
@@ -66,7 +66,7 @@ CanPlaceBuilding (const std::string& type,
                   const DynObstacles& dyn, const Context& ctx)
 {
   RegionMap::IdT region = RegionMap::OUT_OF_MAP;
-  for (const auto& c : GetBuildingShape (type, trafo, pos))
+  for (const auto& c : GetBuildingShape (type, trafo, pos, ctx.Chain ()))
     {
       if (!ctx.Map ().IsPassable (c))
         {
@@ -97,24 +97,24 @@ CanPlaceBuilding (const std::string& type,
 }
 
 void
-InitialiseBuildings (Database& db)
+InitialiseBuildings (Database& db, const xaya::Chain chain)
 {
   LOG (INFO) << "Adding initial ancient buildings to the map...";
   BuildingsTable tbl(db);
 
   auto h = tbl.CreateNew ("obelisk1", "", Faction::ANCIENT);
   h->SetCentre (HexCoord (-125, 810));
-  UpdateBuildingStats (*h);
+  UpdateBuildingStats (*h, chain);
   h.reset ();
 
   h = tbl.CreateNew ("obelisk2", "", Faction::ANCIENT);
   h->SetCentre (HexCoord (-1'301, 902));
-  UpdateBuildingStats (*h);
+  UpdateBuildingStats (*h, chain);
   h.reset ();
 
   h = tbl.CreateNew ("obelisk3", "", Faction::ANCIENT);
   h->SetCentre (HexCoord (-637, -291));
-  UpdateBuildingStats (*h);
+  UpdateBuildingStats (*h, chain);
   h.reset ();
 }
 
@@ -126,7 +126,7 @@ MaybeStartBuildingConstruction (Building& b, OngoingsTable& ongoings,
   if (b.GetProto ().has_ongoing_construction ())
     return;
 
-  const auto& roData = RoConfig ().Building (b.GetType ());
+  const auto& roData = RoConfig (ctx.Chain ()).Building (b.GetType ());
   CHECK (roData.has_construction ());
 
   const Inventory cInv(b.GetProto ().construction_inventory ());
@@ -147,9 +147,9 @@ MaybeStartBuildingConstruction (Building& b, OngoingsTable& ongoings,
 }
 
 void
-UpdateBuildingStats (Building& b)
+UpdateBuildingStats (Building& b, const xaya::Chain chain)
 {
-  const auto& roData = RoConfig ().Building (b.GetType ());
+  const auto& roData = RoConfig (chain).Building (b.GetType ());
   const proto::BuildingData::AllCombatData* data;
 
   if (b.GetProto ().foundation ())
@@ -174,8 +174,9 @@ EnterBuilding (Character& c, const Building& b, DynObstacles& dyn)
 }
 
 void
-ProcessEnterBuildings (Database& db, DynObstacles& dyn)
+ProcessEnterBuildings (Database& db, DynObstacles& dyn, const Context& ctx)
 {
+  const RoConfig cfg(ctx.Chain ());
   BuildingsTable buildings(db);
   CharacterTable characters(db);
   auto res = characters.QueryForEnterBuilding ();
@@ -212,7 +213,7 @@ ProcessEnterBuildings (Database& db, DynObstacles& dyn)
 
       const unsigned dist
           = HexCoord::DistanceL1 (c->GetPosition (), b->GetCentre ());
-      if (dist > RoConfig ().Building (b->GetType ()).enter_radius ())
+      if (dist > cfg.Building (b->GetType ()).enter_radius ())
         {
           /* This is probably the most common case, no log spam here.  */
           continue;
@@ -238,7 +239,8 @@ LeaveBuilding (BuildingsTable& buildings, Character& c,
   auto b = buildings.GetById (c.GetBuildingId ());
   CHECK (b != nullptr);
 
-  const auto radius = RoConfig ().Building (b->GetType ()).enter_radius ();
+  const RoConfig cfg(ctx.Chain ());
+  const auto radius = cfg.Building (b->GetType ()).enter_radius ();
   const auto pos = ChooseSpawnLocation (b->GetCentre (), radius,
                                         c.GetFaction (), rnd, dyn, ctx.Map ());
 

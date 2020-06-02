@@ -25,8 +25,8 @@
 namespace pxd
 {
 
-DynObstacles::DynObstacles (Database& db)
-  : red(false), green(false), blue(false), buildings(false)
+DynObstacles::DynObstacles (Database& db, const Context& c)
+  : ctx(c), red(false), green(false), blue(false), buildings(false)
 {
   {
     CharacterTable tbl(db);
@@ -48,7 +48,7 @@ DynObstacles::DynObstacles (Database& db)
 void
 DynObstacles::AddBuilding (const Building& b)
 {
-  for (const auto& c : GetBuildingShape (b))
+  for (const auto& c : GetBuildingShape (b, ctx))
     {
       auto ref = buildings.Access (c);
       CHECK (!ref);

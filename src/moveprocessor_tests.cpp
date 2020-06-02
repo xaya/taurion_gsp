@@ -57,7 +57,7 @@ protected:
   void
   ProcessAdmin (const std::string& str)
   {
-    DynObstacles dyn(db);
+    DynObstacles dyn(db, ctx);
     MoveProcessor mvProc(db, dyn, rnd, ctx);
     mvProc.ProcessAdmin (ParseJson (str));
   }
@@ -69,7 +69,7 @@ protected:
   void
   Process (const std::string& str)
   {
-    DynObstacles dyn(db);
+    DynObstacles dyn(db, ctx);
     MoveProcessor mvProc(db, dyn, rnd, ctx);
     mvProc.ProcessAll (ParseJson (str));
   }
@@ -86,7 +86,7 @@ protected:
     for (auto& entry : val)
       entry["out"][ctx.Params ().DeveloperAddress ()] = AmountToJson (amount);
 
-    DynObstacles dyn(db);
+    DynObstacles dyn(db, ctx);
     MoveProcessor mvProc(db, dyn, rnd, ctx);
     mvProc.ProcessAll (val);
   }

@@ -73,6 +73,8 @@ void
 FinishProspecting (Character& c, Database& db, RegionsTable& regions,
                    xaya::Random& rnd, const Context& ctx)
 {
+  const RoConfig cfg(ctx.Chain ());
+
   const auto& pos = c.GetPosition ();
   const auto regionId = ctx.Map ().Regions ().GetRegionId (pos);
   LOG (INFO)
@@ -91,7 +93,7 @@ FinishProspecting (Character& c, Database& db, RegionsTable& regions,
   /* Determine the mine-able resource here.  */
   std::string type;
   Inventory::QuantityT amount;
-  DetectResource (pos, RoConfig ()->resource_dist (), rnd, type, amount);
+  DetectResource (pos, cfg->resource_dist (), rnd, type, amount);
   prosp->set_resource (type);
   r->SetResourceLeft (amount);
 

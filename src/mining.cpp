@@ -40,6 +40,8 @@ StopMining (Character& c)
 void
 ProcessAllMining (Database& db, xaya::Random& rnd, const Context& ctx)
 {
+  const RoConfig cfg(ctx.Chain ());
+
   CharacterTable characters(db);
   RegionsTable regions(db, ctx.Height ());
 
@@ -95,10 +97,10 @@ ProcessAllMining (Database& db, xaya::Random& rnd, const Context& ctx)
         }
 
       /* Restrict the quantity by cargo space.  */
-      const int64_t freeCargo = pb.cargo_space () - c->UsedCargoSpace ();
+      const int64_t freeCargo = pb.cargo_space () - c->UsedCargoSpace (cfg);
       CHECK_GE (freeCargo, 0);
 
-      const auto itemSpace = RoConfig ().Item (type).space ();
+      const auto itemSpace = cfg.Item (type).space ();
       CHECK_GT (itemSpace, 0)
           << "Minable resource " << type << " has zero space";
 

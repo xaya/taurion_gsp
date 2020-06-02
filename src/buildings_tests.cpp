@@ -47,6 +47,8 @@ protected:
   BuildingsTable tbl;
   CharacterTable characters;
 
+  ContextForTesting ctx;
+
   BuildingsTests ()
     : tbl(db), characters(db)
   {}
@@ -63,24 +65,24 @@ TEST_F (BuildingsTests, GetBuildingShape)
 
   const auto id2 = tbl.CreateNew ("invalid", "", Faction::ANCIENT)->GetId ();
 
-  EXPECT_THAT (GetBuildingShape (*tbl.GetById (id1)),
+  EXPECT_THAT (GetBuildingShape (*tbl.GetById (id1), ctx),
                UnorderedElementsAre (HexCoord (-1, 5),
                                      HexCoord (-1, 4),
                                      HexCoord (0, 4),
                                      HexCoord (1, 3)));
-  EXPECT_DEATH (GetBuildingShape (*tbl.GetById (id2)), "Unknown building");
+  EXPECT_DEATH (GetBuildingShape (*tbl.GetById (id2), ctx), "Unknown building");
 }
 
 TEST_F (BuildingsTests, UpdateBuildingStats)
 {
   auto h = tbl.CreateNew ("r_rt", "domob", Faction::RED);
-  UpdateBuildingStats (*h);
+  UpdateBuildingStats (*h, ctx.Chain ());
   EXPECT_EQ (h->GetProto ().combat_data ().attacks_size (), 1);
   EXPECT_EQ (h->GetRegenData ().max_hp ().armour (), 1'000);
   EXPECT_EQ (h->GetHP ().armour (), 1'000);
 
   h->MutableProto ().set_foundation (true);
-  UpdateBuildingStats (*h);
+  UpdateBuildingStats (*h, ctx.Chain ());
   EXPECT_EQ (h->GetProto ().combat_data ().attacks_size (), 0);
   EXPECT_EQ (h->GetRegenData ().max_hp ().armour (), 50);
   EXPECT_EQ (h->GetHP ().armour (), 50);
@@ -93,8 +95,6 @@ class CanPlaceBuildingTests : public BuildingsTests
 
 protected:
 
-  ContextForTesting ctx;
-
   CanPlaceBuildingTests ()
   {}
 
@@ -106,7 +106,7 @@ protected:
   CanPlace (const std::string& type, const unsigned rot,
             const HexCoord& pos)
   {
-    DynObstacles dyn(db);
+    DynObstacles dyn(db, ctx);
     proto::ShapeTransformation trafo;
     trafo.set_rotation_steps (rot);
     return CanPlaceBuilding (type, trafo, pos, dyn, ctx);
@@ -169,7 +169,6 @@ class MaybeStartBuildingConstructionTests : public BuildingsTests
 
 protected:
 
-  ContextForTesting ctx;
   OngoingsTable ongoings;
 
   /** An example "huesli" building handle for use in this test.  */
@@ -267,7 +266,7 @@ protected:
   void
   ProcessEnter ()
   {
-    DynObstacles dyn(db);
+    DynObstacles dyn(db, ctx);
     ProcessEnter (dyn);
   }
 
@@ -278,7 +277,7 @@ protected:
   void
   ProcessEnter (DynObstacles& dyn)
   {
-    ProcessEnterBuildings (db, dyn);
+    ProcessEnterBuildings (db, dyn, ctx);
   }
 
 };
@@ -338,7 +337,7 @@ TEST_F (ProcessEnterBuildingsTests, EnteringEffects)
   c->MutableProto ().mutable_mining ()->set_active (true);
   c.reset ();
 
-  DynObstacles dyn(db);
+  DynObstacles dyn(db, ctx);
   ASSERT_FALSE (dyn.IsPassable (HexCoord (5, 0), Faction::RED));
 
   ProcessEnter (dyn);
@@ -390,13 +389,12 @@ protected:
   HexCoord::IntT radius;
 
   TestRandom rnd;
-  ContextForTesting ctx;
 
   LeaveBuildingTests ()
     : centre(10, 42)
   {
     const std::string type = "checkmark";
-    radius = RoConfig ().Building (type).enter_radius ();
+    radius = RoConfig (ctx.Chain ()).Building (type).enter_radius ();
 
     auto b = tbl.CreateNew (type, "", Faction::ANCIENT);
     CHECK_EQ (b->GetId (), 1);
@@ -416,7 +414,7 @@ protected:
   HexCoord
   Leave ()
   {
-    DynObstacles dyn(db);
+    DynObstacles dyn(db, ctx);
     return Leave (dyn);
   }
 
@@ -437,8 +435,8 @@ protected:
 
 TEST_F (LeaveBuildingTests, Basic)
 {
-  DynObstacles originalDyn(db);
-  DynObstacles dyn(db);
+  DynObstacles originalDyn(db, ctx);
+  DynObstacles dyn(db, ctx);
   const auto pos = Leave (dyn);
   EXPECT_TRUE (ctx.Map ().IsPassable (pos));
   EXPECT_TRUE (originalDyn.IsPassable (pos, Faction::RED));
@@ -451,7 +449,7 @@ TEST_F (LeaveBuildingTests, WhenAllBlocked)
   for (HexCoord::IntT r = 0; r <= radius; ++r)
     for (const auto& c : L1Ring (centre, r))
       characters.CreateNew ("domob", Faction::RED)->SetPosition (c);
-  DynObstacles originalDyn(db);
+  DynObstacles originalDyn(db, ctx);
 
   const auto pos = Leave ();
   EXPECT_TRUE (ctx.Map ().IsPassable (pos));
@@ -468,7 +466,7 @@ TEST_F (LeaveBuildingTests, FillingAreaUp)
       c->SetBuildingId (1);
       ids.push_back (c->GetId ());
     }
-  DynObstacles dyn(db);
+  DynObstacles dyn(db, ctx);
 
   /* If we leave with all the characters, it will fill up the general
      area around the building.  All should still work fine, including update
@@ -497,7 +495,7 @@ TEST_F (LeaveBuildingTests, PossibleLocations)
   for (HexCoord::IntT r = 0; r <= radius; ++r)
     for (const auto& c : L1Ring (centre, r))
       counts.emplace (c, 0);
-  for (const auto& c : GetBuildingShape (*tbl.GetById (1)))
+  for (const auto& c : GetBuildingShape (*tbl.GetById (1), ctx))
     counts.at (c) = -1;
 
   for (unsigned i = 0; i < trials; ++i)

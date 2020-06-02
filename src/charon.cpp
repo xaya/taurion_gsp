@@ -415,7 +415,7 @@ const std::map<std::string, RealCharonClient::RpcServer::NonStateMethod>
 RealCharonClient::RpcServer::RpcServer (RealCharonClient& p,
                                         jsonrpc::AbstractServerConnector& conn)
   : jsonrpc::AbstractServer<RpcServer> (conn, jsonrpc::JSONRPC_SERVER_V2),
-    parent(p), nonstate(nullConnector, map)
+    parent(p), nonstate(nullConnector, map, xaya::Chain::MAIN)
 {
   jsonrpc::Procedure stopProc("stop", jsonrpc::PARAMS_BY_POSITION, nullptr);
   bindAndAddNotification (stopProc, &RpcServer::stop);

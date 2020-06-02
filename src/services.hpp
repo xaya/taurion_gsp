@@ -28,6 +28,7 @@
 #include "database/inventory.hpp"
 #include "database/itemcounts.hpp"
 #include "database/ongoing.hpp"
+#include "proto/roconfig.hpp"
 
 #include <xayautil/random.hpp>
 
@@ -84,6 +85,9 @@ protected:
 
   /** Context for parameters and such.  */
   const Context& ctx;
+
+  /** RoConfig instance.  */
+  const RoConfig cfg;
 
   /** Database handle for upating building inventories (e.g. for refining).  */
   BuildingInventoriesTable& invTable;

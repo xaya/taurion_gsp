@@ -34,6 +34,7 @@
 #include "database/region.hpp"
 #include "mapdata/basemap.hpp"
 #include "proto/building.pb.h"
+#include "proto/roconfig.hpp"
 
 #include <xayautil/random.hpp>
 
@@ -97,6 +98,9 @@ protected:
 
   /** Processing context data.  */
   const Context& ctx;
+
+  /** RoConfig instance.  */
+  const RoConfig cfg;
 
   /**
    * The Database handle we use for making any changes (and looking up the
@@ -183,7 +187,7 @@ protected:
    * Parses and validates the content of a drop or pick-up character command.
    * Returns the fungible items and their quantities to drop or pick up.
    */
-  static FungibleAmountMap ParseDropPickupFungible (const Json::Value& cmd);
+  FungibleAmountMap ParseDropPickupFungible (const Json::Value& cmd) const;
 
   /**
    * Parses and verifies a potential prospecting command.  Returns true if the

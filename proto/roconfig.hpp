@@ -21,6 +21,8 @@
 
 #include "config.pb.h"
 
+#include <xayagame/gamelogic.hpp>
+
 namespace pxd
 {
 
@@ -58,7 +60,7 @@ public:
    * On the first call, this will also instantiate and set up the underlying
    * singleton instance with the real data.
    */
-  RoConfig ();
+  explicit RoConfig (xaya::Chain chain);
 
   RoConfig (const RoConfig&) = delete;
   void operator= (const RoConfig&) = delete;

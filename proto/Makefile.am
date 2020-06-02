@@ -43,8 +43,8 @@ CLEANFILES = \
   $(PROTOS:.proto=.pb.h) $(PROTOS:.proto=.pb.cc) \
   roconfig_gen.cpp roconfig.pb.text roconfig.pb
 
-libpxproto_la_CXXFLAGS = $(PROTOBUF_CFLAGS)
-libpxproto_la_LBADD = $(PROTOBUF_LIBS)
+libpxproto_la_CXXFLAGS = $(XAYAGAME_CFLAGS) $(PROTOBUF_CFLAGS)
+libpxproto_la_LBADD = $(XAYAGAME_LIBS) $(PROTOBUF_LIBS)
 libpxproto_la_SOURCES = \
   roconfig.cpp \
   \

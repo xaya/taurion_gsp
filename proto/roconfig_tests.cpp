@@ -28,27 +28,30 @@ namespace
 
 /* ************************************************************************** */
 
-TEST (RoConfigTests, Parses)
+TEST (RoConfigTests, ConstructionWorks)
 {
-  *RoConfig ();
+  *RoConfig (xaya::Chain::MAIN);
+  *RoConfig (xaya::Chain::TEST);
+  *RoConfig (xaya::Chain::REGTEST);
 }
 
 TEST (RoConfigTests, ProtoIsSingleton)
 {
-  const auto* ptr1 = &(*RoConfig ());
-  const auto* ptr2 = &(*RoConfig ());
+  const auto* ptr1 = &(*RoConfig (xaya::Chain::MAIN));
+  const auto* ptr2 = &(*RoConfig (xaya::Chain::MAIN));
   EXPECT_EQ (ptr1, ptr2);
 }
 
 TEST (RoConfigTests, HasData)
 {
-  EXPECT_GT (RoConfig ()->fungible_items ().size (), 0);
+  EXPECT_GT (RoConfig (xaya::Chain::MAIN)->fungible_items ().size (), 0);
 }
 
 TEST (RoConfigTests, Building)
 {
-  EXPECT_EQ (RoConfig ().BuildingOrNull ("invalid building"), nullptr);
-  EXPECT_GT (RoConfig ().Building ("ancient1").enter_radius (), 0);
+  const RoConfig cfg(xaya::Chain::REGTEST);
+  EXPECT_EQ (cfg.BuildingOrNull ("invalid building"), nullptr);
+  EXPECT_GT (cfg.Building ("ancient1").enter_radius (), 0);
 }
 
 /* ************************************************************************** */
@@ -59,6 +62,10 @@ class RoItemsTests : public testing::Test
 protected:
 
   RoConfig cfg;
+
+  RoItemsTests ()
+    : cfg(xaya::Chain::REGTEST)
+  {}
 
 };
 
@@ -261,7 +268,9 @@ RoConfigSanityTests::IsConfigValid (const RoConfig& cfg)
 
 TEST_F (RoConfigSanityTests, Valid)
 {
-  EXPECT_TRUE (IsConfigValid (RoConfig ()));
+  EXPECT_TRUE (IsConfigValid (RoConfig (xaya::Chain::MAIN)));
+  EXPECT_TRUE (IsConfigValid (RoConfig (xaya::Chain::TEST)));
+  EXPECT_TRUE (IsConfigValid (RoConfig (xaya::Chain::REGTEST)));
 }
 
 /* ************************************************************************** */

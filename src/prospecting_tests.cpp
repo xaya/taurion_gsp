@@ -287,9 +287,10 @@ TEST (PrizesTests, AllInItemConfig)
   for (const xaya::Chain c : {xaya::Chain::MAIN, xaya::Chain::TEST,
                               xaya::Chain::REGTEST})
     {
+      const RoConfig cfg(c);
       const Params params(c);
       for (const auto& p : params.ProspectingPrizes ())
-        ASSERT_NE (RoConfig ().ItemOrNull (p.name + " prize"), nullptr)
+        ASSERT_NE (cfg.ItemOrNull (p.name + " prize"), nullptr)
             << "Prize item not defined: " << p.name;
     }
 }

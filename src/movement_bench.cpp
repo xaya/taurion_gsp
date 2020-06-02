@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -110,7 +110,7 @@ MovementOneSegment (benchmark::State& state)
           for (unsigned i = 0; i < numWP; ++i)
             *wp->Add () = CoordToProto (HexCoord (numTiles, id));
         }
-      DynObstacles dyn(db);
+      DynObstacles dyn(db, ctx);
       state.ResumeTiming ();
 
       for (int i = 0; i < numTiles; ++i)
@@ -193,7 +193,7 @@ MovementLongHaul (benchmark::State& state)
             << "Using " << wp->size () << " waypoints to move " << total
             << " tiles with spacing of " << wpDist;
       }
-      DynObstacles dyn(db);
+      DynObstacles dyn(db, ctx);
       state.ResumeTiming ();
 
       do

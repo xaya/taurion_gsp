@@ -141,7 +141,7 @@ SpawnCharacter (const std::string& owner, const Faction f,
       break;
     }
 
-  DeriveCharacterStats (*c);
+  DeriveCharacterStats (*c, ctx);
 
   return c;
 }

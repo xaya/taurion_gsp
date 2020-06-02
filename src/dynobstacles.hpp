@@ -19,6 +19,8 @@
 #ifndef PXD_DYNOBSTACLES_HPP
 #define PXD_DYNOBSTACLES_HPP
 
+#include "context.hpp"
+
 #include "database/building.hpp"
 #include "database/database.hpp"
 #include "database/faction.hpp"
@@ -39,6 +41,9 @@ class DynObstacles
 {
 
 private:
+
+  /** Context (used for roconfig).  */
+  const Context& ctx;
 
   /** Vehicles of the red faction on the map.  */
   DynTiles<bool> red;
@@ -67,7 +72,7 @@ public:
    * Constructs an initialised instance with all vehicles and buildings
    * from the database.
    */
-  DynObstacles (Database& db);
+  DynObstacles (Database& db, const Context& c);
 
   DynObstacles () = delete;
   DynObstacles (const DynObstacles&) = delete;
