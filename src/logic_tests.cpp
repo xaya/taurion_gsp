@@ -802,8 +802,6 @@ TEST_F (PXLogicTests, MiningAndDropping)
 
 TEST_F (PXLogicTests, MiningWhenReprospected)
 {
-  ctx.SetChain (xaya::Chain::REGTEST);
-
   const HexCoord pos(5, 5);
   const auto region = ctx.Map ().Regions ().GetRegionId (pos);
 

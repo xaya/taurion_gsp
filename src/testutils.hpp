@@ -57,7 +57,7 @@ private:
 public:
 
   ContextForTesting ()
-    : Context(xaya::Chain::MAIN, map, 0, NO_TIMESTAMP)
+    : Context(xaya::Chain::REGTEST, map, 0, NO_TIMESTAMP)
   {
     /* Note that map will be constructed only after the superclass
        constructor, which stores a reference to it.  That is fine, though,

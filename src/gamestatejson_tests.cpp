@@ -1138,7 +1138,9 @@ protected:
 
   PrizesJsonTests ()
     : cnt(db)
-  {}
+  {
+    ctx.SetChain (xaya::Chain::MAIN);
+  }
 
 };
 

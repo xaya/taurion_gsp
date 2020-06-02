@@ -58,9 +58,7 @@ protected:
   CanProspectRegionTests ()
     : characters(db), regions(db, 1'042),
       pos(-10, 42), region(ctx.Map ().Regions ().GetRegionId (pos))
-  {
-    ctx.SetChain (xaya::Chain::REGTEST);
-  }
+  {}
 
 };
 
@@ -127,8 +125,6 @@ protected:
   FinishProspectingTests ()
     : characters(db), regions(db, 1'042)
   {
-    ctx.SetChain (xaya::Chain::REGTEST);
-
     const auto h = characters.CreateNew ("domob", Faction::RED);
     CHECK_EQ (h->GetId (), 1);
   }

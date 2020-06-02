@@ -655,10 +655,6 @@ protected:
 
   RevEngTests ()
   {
-    /* Regtest has better chances for reverse engineering (starting at 100%),
-       so that is more suitable for testing.  */
-    ctx.SetChain (xaya::Chain::REGTEST);
-
     inv.Get (ANCIENT_BUILDING, "domob")
         ->GetInventory ().AddFungibleCount ("test artefact", 3);
   }

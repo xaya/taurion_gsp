@@ -2481,8 +2481,6 @@ TEST_F (ProspectingMoveTests, Success)
 
 TEST_F (ProspectingMoveTests, Reprospecting)
 {
-  ctx.SetChain (xaya::Chain::REGTEST);
-
   auto r = regions.GetById (region);
   r->MutableProto ().mutable_prospection ()->set_height (10);
   r.reset ();
@@ -2533,9 +2531,11 @@ TEST_F (ProspectingMoveTests, Invalid)
 TEST_F (ProspectingMoveTests, CannotProspectRegion)
 {
   auto r = regions.GetById (region);
+  r->MutableProto ().mutable_prospection ()->set_height (10);
   r->MutableProto ().mutable_prospection ()->set_name ("foo");
   r.reset ();
 
+  ctx.SetHeight (11);
   Process (R"([
     {
       "name": "domob",
@@ -3038,9 +3038,7 @@ protected:
 
   GodModeTests ()
     : buildings(db), buildingInv(db), tbl(db), loot(db)
-  {
-    ctx.SetChain (xaya::Chain::REGTEST);
-  }
+  {}
 
 };
 
@@ -3359,16 +3357,15 @@ TEST_F (GodModeTests, GiftCoins)
  * Test fixture for god mode but set up on mainnet, so that god mode is
  * actually not allowed.
  */
-class GodModeDisabledTests : public MoveProcessorTests
+class GodModeDisabledTests : public GodModeTests
 {
 
 protected:
 
-  CharacterTable tbl;
-
   GodModeDisabledTests ()
-    : tbl(db)
-  {}
+  {
+    ctx.SetChain (xaya::Chain::MAIN);
+  }
 
 };
 
@@ -3395,7 +3392,7 @@ TEST_F (GodModeDisabledTests, SetHp)
   c.reset ();
 
   ProcessAdmin (R"([{"cmd": {
-    "god": {"sethp": {"1": {"a": 10}}}
+    "god": {"sethp": {"c": {"1": {"a": 10}}}}
   }}])");
 
   EXPECT_EQ (tbl.GetById (id)->GetHP ().armour (), 50);
