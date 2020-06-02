@@ -1,8 +1,3 @@
-# Some test buildings that can only be constructed through god mode or
-# in unit tests.  This is enforced by having them either be unconstructible
-# outright, or require test-resources (not available through normal
-# gameplay) for construction.
-
 building_types:
   {
     key: "checkmark"

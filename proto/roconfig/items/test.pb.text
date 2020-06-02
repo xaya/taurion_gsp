@@ -1,7 +1,3 @@
-# The following items are used only for tests.  They are defined also
-# in the real game, but since they are never generated (except through
-# god-mode or direct intervention in tests), that has no effect.
-
 fungible_items:
   {
     key: "foo"
