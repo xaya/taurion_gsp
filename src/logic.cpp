@@ -285,7 +285,7 @@ ValidateCharacterLimit (Database& db, const Context& ctx)
     {
       auto a = accounts.GetFromResult (res);
       CHECK_LE (characters.CountForOwner (a->GetName ()),
-                ctx.Params ().CharacterLimit ())
+                ctx.RoConfig ()->params ().character_limit ())
           << "Account " << a->GetName () << " has too many characters";
     }
 }

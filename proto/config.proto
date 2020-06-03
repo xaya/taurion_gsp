@@ -344,6 +344,9 @@ message Params
   /** The amount of CHI to be paid for a character.  */
   optional int64 character_cost = 1;
 
+  /** The maximum number of characters per account.  */
+  optional uint32 character_limit = 2;
+
 }
 
 /* ************************************************************************** */

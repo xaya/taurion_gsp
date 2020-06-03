@@ -716,7 +716,7 @@ TEST_F (PendingStateUpdaterTests, InvalidCreation)
   accounts.CreateNew ("domob", Faction::RED);
 
   accounts.CreateNew ("at limit", Faction::BLUE);
-  for (unsigned i = 0; i < ctx.Params ().CharacterLimit (); ++i)
+  for (unsigned i = 0; i < ctx.RoConfig ()->params ().character_limit (); ++i)
     characters.CreateNew ("at limit", Faction::BLUE)
         ->SetPosition (HexCoord (i, 1));
 

@@ -1,4 +1,5 @@
 params:
   {
     character_cost: 1
+    character_limit: 20
   }

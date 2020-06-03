@@ -84,11 +84,6 @@ public:
   std::string DeveloperAddress () const;
 
   /**
-   * Returns the maximum number of characters allowed per account.
-   */
-  unsigned CharacterLimit () const;
-
-  /**
    * Returns the maximum L1 distance between waypoints for movement.
    */
   HexCoord::IntT MaximumWaypointL1Distance () const;

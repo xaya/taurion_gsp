@@ -42,12 +42,6 @@ Params::DeveloperAddress () const
     }
 }
 
-unsigned
-Params::CharacterLimit () const
-{
-  return 20;
-}
-
 HexCoord::IntT
 Params::MaximumWaypointL1Distance () const
 {

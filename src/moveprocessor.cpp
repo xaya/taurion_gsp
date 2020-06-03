@@ -128,7 +128,8 @@ BaseMoveProcessor::TryCharacterCreation (const std::string& name,
           return;
         }
 
-      if (characters.CountForOwner (name) >= ctx.Params ().CharacterLimit ())
+      if (characters.CountForOwner (name)
+            >= ctx.RoConfig ()->params ().character_limit ())
         {
           LOG (WARNING)
               << "Account " << name << " has the maximum number of characters"
@@ -1144,7 +1145,8 @@ MoveProcessor::MaybeTransferCharacter (Character& c, const Json::Value& upd)
     return;
   const std::string sendTo = sendToVal.asString ();
 
-  if (characters.CountForOwner (sendTo) >= ctx.Params ().CharacterLimit ())
+  if (characters.CountForOwner (sendTo)
+        >= ctx.RoConfig ()->params ().character_limit ())
     {
       LOG (WARNING)
           << "Account " << sendTo << " already has the maximum number of"

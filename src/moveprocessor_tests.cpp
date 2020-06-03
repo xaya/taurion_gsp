@@ -482,11 +482,13 @@ TEST_F (CharacterCreationTests, Multiple)
 
 TEST_F (CharacterCreationTests, CharacterLimit)
 {
+  const unsigned limit = ctx.RoConfig ()->params ().character_limit ();
+
   accounts.CreateNew ("domob", Faction::RED);
-  for (unsigned i = 0; i < ctx.Params ().CharacterLimit () - 1; ++i)
+  for (unsigned i = 0; i < limit - 1; ++i)
     tbl.CreateNew ("domob", Faction::RED)->SetPosition (HexCoord (i, 0));
 
-  EXPECT_EQ (tbl.CountForOwner ("domob"), ctx.Params ().CharacterLimit () - 1);
+  EXPECT_EQ (tbl.CountForOwner ("domob"), limit - 1);
 
   ProcessWithDevPayment (R"([
     {
@@ -498,7 +500,7 @@ TEST_F (CharacterCreationTests, CharacterLimit)
     }
   ])", 2 * ctx.RoConfig ()->params ().character_cost () * COIN);
 
-  EXPECT_EQ (tbl.CountForOwner ("domob"), ctx.Params ().CharacterLimit ());
+  EXPECT_EQ (tbl.CountForOwner ("domob"), limit);
 }
 
 /* ************************************************************************** */
@@ -686,7 +688,7 @@ TEST_F (CharacterUpdateTests, ValidTransfer)
 TEST_F (CharacterUpdateTests, InvalidTransfer)
 {
   accounts.CreateNew ("at limit", Faction::RED);
-  for (unsigned i = 0; i < ctx.Params ().CharacterLimit (); ++i)
+  for (unsigned i = 0; i < ctx.RoConfig ()->params ().character_limit (); ++i)
     tbl.CreateNew ("at limit", Faction::RED)->SetPosition (HexCoord (i, 0));
 
   accounts.CreateNew ("wrong faction", Faction::GREEN);

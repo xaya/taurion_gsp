@@ -1011,7 +1011,7 @@ TEST_F (ValidateStateTests, CharacterLimit)
 {
   accounts.CreateNew ("domob", Faction::RED);
   accounts.CreateNew ("andy", Faction::GREEN);
-  for (unsigned i = 0; i < ctx.Params ().CharacterLimit (); ++i)
+  for (unsigned i = 0; i < ctx.RoConfig ()->params ().character_limit (); ++i)
     {
       characters.CreateNew ("domob", Faction::RED);
       characters.CreateNew ("andy", Faction::GREEN);
