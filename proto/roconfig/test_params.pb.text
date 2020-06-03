@@ -1,0 +1,7 @@
+# This gets merged in with the mainnet configuration, so we only need
+# to specify parameters that actually differ.
+
+params:
+  {
+    prospection_expiry_blocks: 100
+  }

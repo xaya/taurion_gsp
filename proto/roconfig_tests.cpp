@@ -58,6 +58,9 @@ TEST (RoConfigTests, ChainDependence)
   EXPECT_NE (regtest.BuildingOrNull ("ancient1"), nullptr);
   EXPECT_EQ (main.BuildingOrNull ("huesli"), nullptr);
   EXPECT_NE (regtest.BuildingOrNull ("huesli"), nullptr);
+
+  EXPECT_EQ (main->params ().prospection_expiry_blocks (), 5'000);
+  EXPECT_EQ (regtest->params ().prospection_expiry_blocks (), 100);
 }
 
 TEST (RoConfigTests, Building)

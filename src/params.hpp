@@ -84,12 +84,6 @@ public:
   std::string DeveloperAddress () const;
 
   /**
-   * Returns the number of blocks after which a region can be reprospected
-   * (if there are no other factors preventing it).
-   */
-  unsigned ProspectionExpiryBlocks () const;
-
-  /**
    * Returns the ordered list of available prizes for prospecting in the
    * demo competition.
    */

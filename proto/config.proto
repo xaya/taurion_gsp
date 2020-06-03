@@ -364,6 +364,12 @@ message Params
   /** The duration of prospecting in blocks.  */
   optional uint32 prospecting_blocks = 6;
 
+  /**
+   * The number of blocks after which a region can be reprospected (if there
+   * are no other factors preventing it).
+   */
+  optional uint32 prospection_expiry_blocks = 7;
+
 }
 
 /* ************************************************************************** */

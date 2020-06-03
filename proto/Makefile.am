@@ -19,6 +19,7 @@ ROCONFIG_TEXT_PROTOS = \
   roconfig/buildings/turrets.pb.text
 
 ROCONFIG_TEXT_PROTOS_REGTEST = \
+  roconfig/test_params.pb.text \
   roconfig/buildings/test.pb.text \
   roconfig/items/test.pb.text
 
