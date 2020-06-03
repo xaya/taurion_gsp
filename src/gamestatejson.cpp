@@ -497,19 +497,19 @@ GameStateJson::PrizeStats ()
   ItemCounts cnt(db);
 
   Json::Value res(Json::objectValue);
-  for (const auto& p : ctx.Params ().ProspectingPrizes ())
+  for (const auto& p : ctx.RoConfig ()->params ().prizes ())
     {
       Json::Value cur(Json::objectValue);
-      cur["number"] = p.number;
-      cur["probability"] = p.probability;
+      cur["number"] = p.number ();
+      cur["probability"] = p.probability ();
 
-      const unsigned found = cnt.GetFound (p.name + " prize");
-      CHECK_LE (found, p.number);
+      const unsigned found = cnt.GetFound (p.name () + " prize");
+      CHECK_LE (found, p.number ());
 
       cur["found"] = found;
-      cur["available"] = p.number - found;
+      cur["available"] = p.number () - found;
 
-      res[p.name] = cur;
+      res[p.name ()] = cur;
     }
 
   return res;

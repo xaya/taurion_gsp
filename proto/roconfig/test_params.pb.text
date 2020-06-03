@@ -6,4 +6,11 @@ params:
     prospection_expiry_blocks: 100
     dev_addr: "dHNvNaqcD7XPDnoRjAoyfcMpHRi5upJD7p"
     god_mode: true
+
+    # The list of prizes replaces the mainnet list (rather than being
+    # added to it).  The prizes here are easier to find and exhaust, so that
+    # we can do that in testing.
+    prizes: { name: "gold" number: 3 probability: 100 }
+    prizes: { name: "silver" number: 1000 probability: 10 }
+    prizes: { name: "bronze" number: 1 probability: 1 }
   }

@@ -49,26 +49,6 @@ private:
 public:
 
   /**
-   * Data defining one of the prospecting prize tiers.
-   */
-  struct PrizeData
-  {
-
-    /**
-     * The name of the prize as used in the JSON game state and for keying
-     * in the database.
-     */
-    std::string name;
-
-    /** Number of prizes of this type available.  */
-    unsigned number;
-
-    /** Probability to win this prize as 1 / N.  */
-    unsigned probability;
-
-  };
-
-  /**
    * Constructs an instance based on the given situation.
    */
   explicit Params (const xaya::Chain c)
@@ -78,12 +58,6 @@ public:
   Params () = delete;
   Params (const Params&) = delete;
   void operator= (const Params&) = delete;
-
-  /**
-   * Returns the ordered list of available prizes for prospecting in the
-   * demo competition.
-   */
-  const std::vector<PrizeData>& ProspectingPrizes () const;
 
   /**
    * Returns true if prizes should be won with lower probability.

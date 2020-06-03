@@ -74,6 +74,22 @@ TEST (RoConfigTests, ChainDependence)
   EXPECT_FALSE (main->params ().god_mode ());
   EXPECT_FALSE (test->params ().god_mode ());
   EXPECT_TRUE (regtest->params ().god_mode ());
+
+  EXPECT_GT (main->params ().prizes ().size (), 3);
+  EXPECT_EQ (test->params ().prizes ().size (),
+             main->params ().prizes ().size ());
+  EXPECT_EQ (regtest->params ().prizes ().size (), 3);
+  for (const auto* cfg : {&main, &test, &regtest})
+    {
+      EXPECT_EQ ((*cfg)->params ().prizes (0).name (), "gold");
+      EXPECT_EQ ((*cfg)->params ().prizes (1).name (), "silver");
+      EXPECT_EQ ((*cfg)->params ().prizes (2).name (), "bronze");
+    }
+
+  EXPECT_NE (main.ItemOrNull ("fake prize"), nullptr);
+  EXPECT_EQ (regtest.ItemOrNull ("fake prize"), nullptr);
+  EXPECT_NE (main.ItemOrNull ("bronze prize"), nullptr);
+  EXPECT_NE (regtest.ItemOrNull ("bronze prize"), nullptr);
 }
 
 TEST (RoConfigTests, Building)
@@ -126,6 +142,23 @@ TEST_F (RoItemsTests, Blueprints)
   EXPECT_EQ (copy.space (), 0);
   EXPECT_EQ (copy.is_blueprint ().for_item (), "bow");
   EXPECT_FALSE (copy.is_blueprint ().original ());
+}
+
+TEST_F (RoItemsTests, PrizeItems)
+{
+  ASSERT_EQ (cfg.ItemOrNull ("invalid prize"), nullptr);
+
+  for (const xaya::Chain c : {xaya::Chain::MAIN, xaya::Chain::TEST,
+                              xaya::Chain::REGTEST})
+    {
+      const RoConfig cfg(c);
+      for (const auto& p : cfg->params ().prizes ())
+        {
+          const auto* itm = cfg.ItemOrNull (p.name () + " prize");
+          ASSERT_NE (itm, nullptr) << "Prize item not defined: " << p.name ();
+          EXPECT_TRUE (itm->has_prize ()) << "Not a prize: " << p.name ();
+        }
+    }
 }
 
 /* ************************************************************************** */
@@ -233,6 +266,12 @@ RoConfigSanityTests::IsConfigValid (const RoConfig& cfg)
       if (i.has_is_blueprint ())
         {
           LOG (WARNING) << "Blueprint item defined: " << entry.first;
+          return false;
+        }
+
+      if (i.has_prize ())
+        {
+          LOG (WARNING) << "Prize item defined: " << entry.first;
           return false;
         }
 

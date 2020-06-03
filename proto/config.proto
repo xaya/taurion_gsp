@@ -69,6 +69,15 @@ message BlueprintData
 }
 
 /**
+ * Specific data for prize items.
+ */
+message PrizeData
+{
+  /* There is no specific data we need to define for prize items,
+     this is just a placeholder to mark them as prizes.  */
+}
+
+/**
  * Data about the ability to reverse-engineer an item to obtain blueprints.
  */
 message RevEngData
@@ -187,17 +196,20 @@ message ItemData
     /** If this is a blueprint, the associated data.  */
     BlueprintData is_blueprint = 102;
 
+    /** If this is a prize, the associated data.  */
+    PrizeData prize = 103;
+
     /**
      * If this can be reverse engineered (i.e. is an artefact), the
      * configuration data specifying the corresponding stats.
      */
-    RevEngData reveng = 103;
+    RevEngData reveng = 104;
 
     /** If this is a vehicle item, the specific stats for that.  */
-    VehicleData vehicle = 104;
+    VehicleData vehicle = 105;
 
     /** If this is a fitment, the specific stats for that.  */
-    FitmentData fitment = 105;
+    FitmentData fitment = 106;
 
   }
 
@@ -352,6 +364,26 @@ message SpawnArea
 }
 
 /**
+ * Definition of the configuration for one prospecting prize.
+ */
+message ProspectingPrize
+{
+
+  /**
+   * Name for the prize (used in the game state and also for constructing
+   * the item name by appending " prize").
+   */
+  optional string name = 1;
+
+  /** Number of prizes of this type available.  */
+  optional uint32 number = 2 ;
+
+  /** Probability to win this prize as 1 / N.  */
+  optional uint32 probability = 3;
+
+}
+
+/**
  * Basic parameters of the game.
  */
 message Params
@@ -412,6 +444,16 @@ message Params
 
   /** Spawn areas for the factions (with the "r", "g", "b" string as key).  */
   map<string, SpawnArea> spawn_areas = 16;
+
+  /**
+   * Prospecting prizes.  They are just a list and not a map, because the
+   * order matters (it is the order in which winning is checked).
+   *
+   * This field has a special rule when merging in the regtest configuration:
+   * It is replaced rather than concatenated (which would be the default
+   * behaviour for proto merge).
+   */
+  repeated ProspectingPrize prizes = 17;
 
 }
 

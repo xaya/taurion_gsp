@@ -123,7 +123,10 @@ RoConfig::RoConfig (const xaya::Chain chain)
       if (mergeTestnet)
         pb.MergeFrom (pb.testnet_merge ());
       if (mergeRegtest)
-        pb.MergeFrom (pb.regtest_merge ());
+        {
+          pb.mutable_params ()->clear_prizes ();
+          pb.MergeFrom (pb.regtest_merge ());
+        }
       pb.clear_testnet_merge ();
       pb.clear_regtest_merge ();
     }
@@ -174,6 +177,31 @@ constexpr const char* SUFFIX_BP_ORIGINAL = " bpo";
 /** Suffix for blueprint copies.  */
 constexpr const char* SUFFIX_BP_COPY = " bpc";
 
+/** Suffix for prize items.  */
+constexpr const char* SUFFIX_PRIZE = " prize";
+
+/**
+ * Tries to strip the given suffix of an item name.  Returns true and the
+ * base name (without suffix) if successful, and false otherwise (i.e. if
+ * the suffix is not there).
+ *
+ * This method does not assume that the base name is an item by itself.
+ */
+bool
+StripSuffix (const std::string& str, const std::string& suffix,
+             std::string& baseName)
+{
+  if (str.size () < suffix.size ())
+    return false;
+
+  const size_t baseLen = str.size () - suffix.size ();
+  if (str.substr (baseLen) != suffix)
+    return false;
+
+  baseName = str.substr (0, baseLen);
+  return true;
+}
+
 /**
  * Tries to strip the given suffix of an item name, and then look up the base
  * item data.  Returns that data if it exists and the suffix is there, and
@@ -188,14 +216,9 @@ LookupBase (const RoConfig& cfg,
             const std::string& str, const std::string& suffix,
             std::string& baseName)
 {
-  if (str.size () < suffix.size ())
+  if (!StripSuffix (str, suffix, baseName))
     return nullptr;
 
-  const size_t baseLen = str.size () - suffix.size ();
-  if (str.substr (baseLen) != suffix)
-    return nullptr;
-
-  baseName = str.substr (0, baseLen);
   return cfg.ItemOrNull (baseName);
 }
 
@@ -230,6 +253,22 @@ ConstructItemData (const RoConfig& cfg, const std::string& item)
       bp->set_for_item (baseName);
       bp->set_original (false);
       return res;
+    }
+
+  if (StripSuffix (item, SUFFIX_PRIZE, baseName))
+    {
+      /* We only allow prize items for prizes that are actually there
+         in our configuration map.  */
+      for (const auto& p : cfg->params ().prizes ())
+        {
+          if (p.name () != baseName)
+            continue;
+
+          auto res = std::make_unique<proto::ItemData> ();
+          res->set_space (0);
+          res->mutable_prize ();
+          return res;
+        }
     }
 
   return nullptr;

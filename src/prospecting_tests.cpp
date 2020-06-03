@@ -240,10 +240,11 @@ TEST_F (FinishProspectingTests, Prizes)
   c.reset ();
 
   ItemCounts cnt(db);
-  for (const auto& p : ctx.Params ().ProspectingPrizes ())
+  for (const auto& p : ctx.RoConfig ()->params ().prizes ())
     {
-      LOG (INFO) << "Found for prize " << p.name << ": " << foundMap[p.name];
-      EXPECT_EQ (cnt.GetFound (p.name + " prize"), foundMap[p.name]);
+      LOG (INFO)
+          << "Found for prize " << p.name () << ": " << foundMap[p.name ()];
+      EXPECT_EQ (cnt.GetFound (p.name () + " prize"), foundMap[p.name ()]);
     }
 
   /* We should have found all gold prizes (since there are only a few),
@@ -274,21 +275,6 @@ TEST_F (FinishProspectingTests, FewerPrizesInCentre)
   /* Expected value is 550.  */
   EXPECT_GE (silver, 500);
   EXPECT_LE (silver, 600);
-}
-
-/* ************************************************************************** */
-
-TEST (PrizesTests, AllInItemConfig)
-{
-  for (const xaya::Chain c : {xaya::Chain::MAIN, xaya::Chain::TEST,
-                              xaya::Chain::REGTEST})
-    {
-      const RoConfig cfg(c);
-      const Params params(c);
-      for (const auto& p : params.ProspectingPrizes ())
-        ASSERT_NE (cfg.ItemOrNull (p.name + " prize"), nullptr)
-            << "Prize item not defined: " << p.name;
-    }
 }
 
 /* ************************************************************************** */

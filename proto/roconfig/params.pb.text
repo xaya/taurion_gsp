@@ -50,4 +50,10 @@ params:
             radius: 50
           }
       }
+
+    # TODO: Adjust the prize list before the next competition.
+    prizes: { name: "gold" number: 3 probability: 200000 }
+    prizes: { name: "silver" number: 5 probability: 100000 }
+    prizes: { name: "bronze" number: 10 probability: 25000 }
+    prizes: { name: "fake" number: 1 probability: 1 }
   }

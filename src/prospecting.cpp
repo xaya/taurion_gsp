@@ -99,22 +99,22 @@ FinishProspecting (Character& c, Database& db, RegionsTable& regions,
   /* Check the prizes in order to see if we won any.  */
   const bool lowChance = ctx.Params ().IsLowPrizeZone (pos);
   ItemCounts cnt(db);
-  for (const auto& p : ctx.Params ().ProspectingPrizes ())
+  for (const auto& p : ctx.RoConfig ()->params ().prizes ())
     {
-      const std::string prizeItem = p.name + " prize";
+      const std::string prizeItem = p.name () + " prize";
       const unsigned found = cnt.GetFound (prizeItem);
-      CHECK_LE (found, p.number);
-      if (found == p.number)
+      CHECK_LE (found, p.number ());
+      if (found == p.number ())
         continue;
 
       /* If we are in the "low prize" zone, reduce odds for finding the
          specific prize by 45% (to 55% of what they were).  */
-      if (!rnd.ProbabilityRoll (lowChance ? 55 : 100, 100 * p.probability))
+      if (!rnd.ProbabilityRoll (lowChance ? 55 : 100, 100 * p.probability ()))
         continue;
 
       LOG (INFO)
         << "Character " << c.GetId ()
-        << " found a prize of tier " << p.name
+        << " found a prize of tier " << p.name ()
         << " prospecting region " << regionId;
       cnt.IncrementFound (prizeItem);
       c.GetInventory ().AddFungibleCount (prizeItem, 1);
