@@ -33,9 +33,10 @@ namespace pxd
 {
 
 /**
- * The basic parameters that determine the game rules.  Once constructed, an
- * instance of this class is immutable and can be used to retrieve the
- * parameters for a particular situation (e.g. chain).
+ * Some "parameters" for the game rules.  Instances of this class
+ * extend the very basic parameters in roconfig with more complex
+ * things, like "parameters" that are simple functions (but still
+ * just arbitrarily-chosen game configuration).
  */
 class Params
 {
