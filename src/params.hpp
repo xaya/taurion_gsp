@@ -100,11 +100,6 @@ public:
    */
   unsigned RevEngSuccessChance (unsigned existingBp) const;
 
-  /**
-   * Returns true if god-mode commands are allowed (on regtest).
-   */
-  bool GodModeEnabled () const;
-
 };
 
 } // namespace pxd

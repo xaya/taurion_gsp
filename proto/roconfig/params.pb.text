@@ -17,6 +17,8 @@ params:
     construction_cost: 100
     construction_blocks: 10
 
+    god_mode: false
+
     spawn_areas:
       {
         key: "r"

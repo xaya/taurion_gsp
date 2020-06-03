@@ -175,10 +175,4 @@ Params::RevEngSuccessChance (const unsigned existingBp) const
   return base;
 }
 
-bool
-Params::GodModeEnabled () const
-{
-  return chain == xaya::Chain::REGTEST;
-}
-
 } // namespace pxd

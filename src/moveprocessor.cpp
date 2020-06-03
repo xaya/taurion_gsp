@@ -1968,7 +1968,7 @@ MoveProcessor::HandleGodMode (const Json::Value& cmd)
   if (!cmd.isObject ())
     return;
 
-  if (!ctx.Params ().GodModeEnabled ())
+  if (!ctx.RoConfig ()->params ().god_mode ())
     {
       LOG (WARNING) << "God mode command ignored: " << cmd;
       return;
