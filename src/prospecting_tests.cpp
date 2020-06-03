@@ -279,19 +279,5 @@ TEST_F (FinishProspectingTests, FewerPrizesInCentre)
 
 /* ************************************************************************** */
 
-TEST (PrizesTests, AlltemsAvailable)
-{
-  for (const xaya::Chain c : {xaya::Chain::MAIN, xaya::Chain::TEST,
-                              xaya::Chain::REGTEST})
-    {
-      const RoConfig cfg(c);
-      for (const auto& p : cfg->params ().prizes ())
-        ASSERT_NE (cfg.ItemOrNull (p.name () + " prize"), nullptr)
-            << "Prize item not defined: " << p.name ();
-    }
-}
-
-/* ************************************************************************** */
-
 } // anonymous namespace
 } // namespace pxd
