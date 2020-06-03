@@ -101,11 +101,6 @@ public:
   unsigned RevEngSuccessChance (unsigned existingBp) const;
 
   /**
-   * Returns the spawn centre and radius for the given faction.
-   */
-  HexCoord SpawnArea (Faction f, HexCoord::IntT& radius) const;
-
-  /**
    * Returns true if god-mode commands are allowed (on regtest).
    */
   bool GodModeEnabled () const;

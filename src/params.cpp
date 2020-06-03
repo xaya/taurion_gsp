@@ -175,27 +175,6 @@ Params::RevEngSuccessChance (const unsigned existingBp) const
   return base;
 }
 
-HexCoord
-Params::SpawnArea (const Faction f, HexCoord::IntT& radius) const
-{
-  radius = 50;
-
-  switch (f)
-    {
-    case Faction::RED:
-      return HexCoord (1993, -2636);
-
-    case Faction::GREEN:
-      return HexCoord (-3430, 1793);
-
-    case Faction::BLUE:
-      return HexCoord (571, 2609);
-
-    default:
-      LOG (FATAL) << "Invalid faction: " << static_cast<int> (f);
-    }
-}
-
 bool
 Params::GodModeEnabled () const
 {

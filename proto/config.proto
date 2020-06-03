@@ -335,6 +335,22 @@ message ResourceDistribution
 
 }
 
+/* ************************************************************************** */
+
+/**
+ * Definition of a spawn area.
+ */
+message SpawnArea
+{
+
+  /** The centre of the area.  */
+  optional HexCoord centre = 1;
+
+  /** The L1 radius around the centre.  */
+  optional uint32 radius = 2;
+
+}
+
 /**
  * Basic parameters of the game.
  */
@@ -387,6 +403,9 @@ message Params
 
   /** Nubmer of blocks for constructing an item, per complexity.  */
   optional uint32 construction_blocks = 13;
+
+  /** Spawn areas for the factions (with the "r", "g", "b" string as key).  */
+  map<string, SpawnArea> spawn_areas = 14;
 
 }
 
