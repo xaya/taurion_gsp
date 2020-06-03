@@ -42,12 +42,6 @@ Params::DeveloperAddress () const
     }
 }
 
-Amount
-Params::CharacterCost () const
-{
-  return 1 * COIN;
-}
-
 unsigned
 Params::CharacterLimit () const
 {

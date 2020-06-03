@@ -335,6 +335,17 @@ message ResourceDistribution
 
 }
 
+/**
+ * Basic parameters of the game.
+ */
+message Params
+{
+
+  /** The amount of CHI to be paid for a character.  */
+  optional int64 character_cost = 1;
+
+}
+
 /* ************************************************************************** */
 
 /**
@@ -356,6 +367,9 @@ message ConfigData
 
   /** Distribution of resources for prospecting.  */
   optional ResourceDistribution resource_dist = 3;
+
+  /** Basic parameters.  */
+  optional Params params = 4;
 
   /**
    * The regtest-specific configuration data.  This is merged into the main

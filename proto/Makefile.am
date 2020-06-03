@@ -2,6 +2,7 @@ noinst_PROGRAMS = roconfig_gen
 noinst_LTLIBRARIES = libpxproto.la
 
 ROCONFIG_TEXT_PROTOS = \
+  roconfig/params.pb.text \
   roconfig/resourcedist.pb.text \
   \
   roconfig/items/fitments.pb.text \

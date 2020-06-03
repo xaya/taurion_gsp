@@ -84,11 +84,6 @@ public:
   std::string DeveloperAddress () const;
 
   /**
-   * Returns the amount of CHI to be paid for creation of a character.
-   */
-  Amount CharacterCost () const;
-
-  /**
    * Returns the maximum number of characters allowed per account.
    */
   unsigned CharacterLimit () const;

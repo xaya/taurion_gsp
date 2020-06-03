@@ -205,7 +205,7 @@ TEST_F (AccountUpdateTests, InitialisationAndCharacterCreation)
         "nc": [{}]
       }
     }
-  ])", ctx.Params ().CharacterCost ());
+  ])", ctx.RoConfig ()->params ().character_cost () * COIN);
 
   CharacterTable characters(db);
   auto c = characters.GetById (1);
@@ -388,7 +388,7 @@ TEST_F (CharacterCreationTests, InvalidCommands)
     {"name": "domob", "move": {}},
     {"name": "domob", "move": {"nc": 42}},
     {"name": "domob", "move": {"nc": [{"faction": "r"}]}}
-  ])", ctx.Params ().CharacterCost ());
+  ])", ctx.RoConfig ()->params ().character_cost () * COIN);
 
   auto res = tbl.QueryAll ();
   EXPECT_FALSE (res.Step ());
@@ -398,7 +398,7 @@ TEST_F (CharacterCreationTests, AccountNotInitialised)
 {
   ProcessWithDevPayment (R"([
     {"name": "domob", "move": {"nc": [{}]}}
-  ])", ctx.Params ().CharacterCost ());
+  ])", ctx.RoConfig ()->params ().character_cost () * COIN);
 
   auto res = tbl.QueryAll ();
   EXPECT_FALSE (res.Step ());
@@ -413,7 +413,7 @@ TEST_F (CharacterCreationTests, ValidCreation)
     {"name": "domob", "move": {"nc": []}},
     {"name": "domob", "move": {"nc": [{}]}},
     {"name": "andy", "move": {"nc": [{}]}}
-  ])", ctx.Params ().CharacterCost ());
+  ])", ctx.RoConfig ()->params ().character_cost () * COIN);
 
   auto res = tbl.QueryAll ();
 
@@ -440,10 +440,10 @@ TEST_F (CharacterCreationTests, DevPayment)
   ])");
   ProcessWithDevPayment (R"([
     {"name": "domob", "move": {"nc": [{}]}}
-  ])", ctx.Params ().CharacterCost () - 1);
+  ])", ctx.RoConfig ()->params ().character_cost () * COIN - 1);
   ProcessWithDevPayment (R"([
     {"name": "andy", "move": {"nc": [{}]}}
-  ])", ctx.Params ().CharacterCost () + 1);
+  ])", ctx.RoConfig ()->params ().character_cost () * COIN + 1);
 
   auto res = tbl.QueryAll ();
   ASSERT_TRUE (res.Step ());
@@ -465,7 +465,7 @@ TEST_F (CharacterCreationTests, Multiple)
           "nc": [{}, {}, {}]
         }
     }
-  ])", 2 * ctx.Params ().CharacterCost ());
+  ])", 2 * ctx.RoConfig ()->params ().character_cost () * COIN);
 
   auto res = tbl.QueryAll ();
 
@@ -496,7 +496,7 @@ TEST_F (CharacterCreationTests, CharacterLimit)
           "nc": [{}, {}]
         }
     }
-  ])", 2 * ctx.Params ().CharacterCost ());
+  ])", 2 * ctx.RoConfig ()->params ().character_cost () * COIN);
 
   EXPECT_EQ (tbl.CountForOwner ("domob"), ctx.Params ().CharacterLimit ());
 }
@@ -585,7 +585,7 @@ TEST_F (CharacterUpdateTests, CreationAndUpdate)
         "nc": [{}],
         "c": {"1": {"send": "daniel"}, "2": {"send": "andy"}}
       }
-  }])", ctx.Params ().CharacterCost ());
+  }])", ctx.RoConfig ()->params ().character_cost () * COIN);
 
   /* Transfer and creation should work fine together for two different
      characters (but in the same move).  The character created in the same
@@ -608,7 +608,7 @@ TEST_F (CharacterUpdateTests, AccountNotInitialised)
       {
         "c": {"10": {"send": "domob"}}
       }
-  }])", ctx.Params ().CharacterCost ());
+  }])", ctx.RoConfig ()->params ().character_cost () * COIN);
 
   ExpectCharacterOwners ({{10, "unknown account"}});
 }

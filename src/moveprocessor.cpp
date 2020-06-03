@@ -116,7 +116,8 @@ BaseMoveProcessor::TryCharacterCreation (const std::string& name,
         }
 
       VLOG (1) << "Trying to create character, amount paid left: " << paidToDev;
-      if (paidToDev < ctx.Params ().CharacterCost ())
+      const Amount cost = ctx.RoConfig ()->params ().character_cost () * COIN;
+      if (paidToDev < cost)
         {
           /* In this case, we can return rather than continue with the next
              iteration.  If all money paid is "used up" already, then it won't
@@ -136,7 +137,7 @@ BaseMoveProcessor::TryCharacterCreation (const std::string& name,
         }
 
       PerformCharacterCreation (name, faction);
-      paidToDev -= ctx.Params ().CharacterCost ();
+      paidToDev -= cost;
       VLOG (1) << "After character creation, paid to dev left: " << paidToDev;
     }
 }
