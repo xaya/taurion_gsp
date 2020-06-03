@@ -4,4 +4,6 @@ params:
     character_limit: 20
     max_waypoint_l1_dist: 100
     blocked_step_retries: 10
+    damage_list_blocks: 100
+    prospecting_blocks: 10
   }

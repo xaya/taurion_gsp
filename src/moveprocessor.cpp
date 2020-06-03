@@ -1244,7 +1244,8 @@ MoveProcessor::MaybeStartProspecting (Character& c, const Json::Value& upd)
 
   auto op = ongoings.CreateNew (ctx.Height ());
   c.MutableProto ().set_ongoing (op->GetId ());
-  op->SetHeight (ctx.Height () + ctx.Params ().ProspectingBlocks ());
+  op->SetHeight (
+      ctx.Height () + ctx.RoConfig ()->params ().prospecting_blocks ());
   op->SetCharacterId (c.GetId ());
   op->MutableProto ().mutable_prospection ();
 }

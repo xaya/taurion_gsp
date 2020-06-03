@@ -84,16 +84,6 @@ public:
   std::string DeveloperAddress () const;
 
   /**
-   * Returns the number of blocks for which a character stays on a damage list.
-   */
-  unsigned DamageListBlocks () const;
-
-  /**
-   * Returns the duration of prospecting in blocks.
-   */
-  unsigned ProspectingBlocks () const;
-
-  /**
    * Returns the number of blocks after which a region can be reprospected
    * (if there are no other factors preventing it).
    */

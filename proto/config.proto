@@ -358,6 +358,12 @@ message Params
    */
   optional uint32 blocked_step_retries = 4;
 
+  /** The number of blocks for which a character stays on a damage list.  */
+  optional uint32 damage_list_blocks = 5;
+
+  /** The duration of prospecting in blocks.  */
+  optional uint32 prospecting_blocks = 6;
+
 }
 
 /* ************************************************************************** */

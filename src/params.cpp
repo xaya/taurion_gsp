@@ -43,18 +43,6 @@ Params::DeveloperAddress () const
 }
 
 unsigned
-Params::DamageListBlocks () const
-{
-  return 100;
-}
-
-unsigned
-Params::ProspectingBlocks () const
-{
-  return 10;
-}
-
-unsigned
 Params::ProspectionExpiryBlocks () const
 {
   switch (chain)
