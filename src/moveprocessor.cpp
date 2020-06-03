@@ -75,9 +75,9 @@ BaseMoveProcessor::ExtractMoveBasics (const Json::Value& moveObj,
 
   paidToDev = 0;
   const auto& outVal = moveObj["out"];
-  if (outVal.isObject () && outVal.isMember (ctx.Params ().DeveloperAddress ()))
-    CHECK (AmountFromJson (outVal[ctx.Params ().DeveloperAddress ()],
-                           paidToDev));
+  const auto& devAddr = ctx.RoConfig ()->params ().dev_addr ();
+  if (outVal.isObject () && outVal.isMember (devAddr))
+    CHECK (AmountFromJson (outVal[devAddr], paidToDev));
 
   return true;
 }
@@ -116,7 +116,8 @@ BaseMoveProcessor::TryCharacterCreation (const std::string& name,
         }
 
       VLOG (1) << "Trying to create character, amount paid left: " << paidToDev;
-      if (paidToDev < ctx.Params ().CharacterCost ())
+      const Amount cost = ctx.RoConfig ()->params ().character_cost () * COIN;
+      if (paidToDev < cost)
         {
           /* In this case, we can return rather than continue with the next
              iteration.  If all money paid is "used up" already, then it won't
@@ -127,7 +128,8 @@ BaseMoveProcessor::TryCharacterCreation (const std::string& name,
           return;
         }
 
-      if (characters.CountForOwner (name) >= ctx.Params ().CharacterLimit ())
+      if (characters.CountForOwner (name)
+            >= ctx.RoConfig ()->params ().character_limit ())
         {
           LOG (WARNING)
               << "Account " << name << " has the maximum number of characters"
@@ -136,7 +138,7 @@ BaseMoveProcessor::TryCharacterCreation (const std::string& name,
         }
 
       PerformCharacterCreation (name, faction);
-      paidToDev -= ctx.Params ().CharacterCost ();
+      paidToDev -= cost;
       VLOG (1) << "After character creation, paid to dev left: " << paidToDev;
     }
 }
@@ -1143,7 +1145,8 @@ MoveProcessor::MaybeTransferCharacter (Character& c, const Json::Value& upd)
     return;
   const std::string sendTo = sendToVal.asString ();
 
-  if (characters.CountForOwner (sendTo) >= ctx.Params ().CharacterLimit ())
+  if (characters.CountForOwner (sendTo)
+        >= ctx.RoConfig ()->params ().character_limit ())
     {
       LOG (WARNING)
           << "Account " << sendTo << " already has the maximum number of"
@@ -1241,7 +1244,8 @@ MoveProcessor::MaybeStartProspecting (Character& c, const Json::Value& upd)
 
   auto op = ongoings.CreateNew (ctx.Height ());
   c.MutableProto ().set_ongoing (op->GetId ());
-  op->SetHeight (ctx.Height () + ctx.Params ().ProspectingBlocks ());
+  op->SetHeight (
+      ctx.Height () + ctx.RoConfig ()->params ().prospecting_blocks ());
   op->SetCharacterId (c.GetId ());
   op->MutableProto ().mutable_prospection ();
 }
@@ -1964,7 +1968,7 @@ MoveProcessor::HandleGodMode (const Json::Value& cmd)
   if (!cmd.isObject ())
     return;
 
-  if (!ctx.Params ().GodModeEnabled ())
+  if (!ctx.RoConfig ()->params ().god_mode ())
     {
       LOG (WARNING) << "God mode command ignored: " << cmd;
       return;

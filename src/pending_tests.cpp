@@ -657,6 +657,13 @@ protected:
 
   ContextForTesting ctx;
 
+  /** Cost of one character.  */
+  const Amount characterCost;
+
+  PendingStateUpdaterTests ()
+    : characterCost(ctx.RoConfig ()->params ().character_cost () * COIN)
+  {}
+
   /**
    * Processes a move for the given name and with the given move data, parsed
    * from JSON string.  If paidToDev is non-zero, then add an "out" entry
@@ -671,7 +678,7 @@ protected:
     moveObj["move"] = ParseJson (mvStr);
 
     if (paidToDev != 0)
-      moveObj["out"][ctx.Params ().DeveloperAddress ()]
+      moveObj["out"][ctx.RoConfig ()->params ().dev_addr ()]
           = AmountToJson (paidToDev);
 
     DynObstacles dyn(db, ctx);
@@ -693,7 +700,7 @@ protected:
 
 TEST_F (PendingStateUpdaterTests, AccountNotInitialised)
 {
-  ProcessWithDevPayment ("domob", ctx.Params ().CharacterCost (), R"({
+  ProcessWithDevPayment ("domob", characterCost, R"({
     "nc": [{}]
   })");
 
@@ -709,11 +716,11 @@ TEST_F (PendingStateUpdaterTests, InvalidCreation)
   accounts.CreateNew ("domob", Faction::RED);
 
   accounts.CreateNew ("at limit", Faction::BLUE);
-  for (unsigned i = 0; i < ctx.Params ().CharacterLimit (); ++i)
+  for (unsigned i = 0; i < ctx.RoConfig ()->params ().character_limit (); ++i)
     characters.CreateNew ("at limit", Faction::BLUE)
         ->SetPosition (HexCoord (i, 1));
 
-  ProcessWithDevPayment ("domob", ctx.Params ().CharacterCost (), R"(
+  ProcessWithDevPayment ("domob", characterCost, R"(
     {
       "nc": [{"faction": "r"}]
     }
@@ -723,7 +730,7 @@ TEST_F (PendingStateUpdaterTests, InvalidCreation)
       "nc": [{}]
     }
   )");
-  ProcessWithDevPayment ("at limit", ctx.Params ().CharacterCost (), R"(
+  ProcessWithDevPayment ("at limit", characterCost, R"(
     {
       "nc": [{}]
     }
@@ -741,10 +748,10 @@ TEST_F (PendingStateUpdaterTests, ValidCreations)
   accounts.CreateNew ("domob", Faction::RED);
   accounts.CreateNew ("andy", Faction::GREEN);
 
-  ProcessWithDevPayment ("domob", 2 * ctx.Params ().CharacterCost (), R"({
+  ProcessWithDevPayment ("domob", 2 * characterCost, R"({
     "nc": [{}, {}, {}]
   })");
-  ProcessWithDevPayment ("andy", ctx.Params ().CharacterCost (), R"({
+  ProcessWithDevPayment ("andy", characterCost, R"({
     "nc": [{}]
   })");
 
@@ -1258,7 +1265,7 @@ TEST_F (PendingStateUpdaterTests, CreationAndUpdateTogether)
 
   CHECK_EQ (characters.CreateNew ("domob", Faction::RED)->GetId (), 1);
 
-  ProcessWithDevPayment ("domob", ctx.Params ().CharacterCost (), R"({
+  ProcessWithDevPayment ("domob", characterCost, R"({
     "nc": [{}],
     "c": {"1": {"wp": []}}
   })");

@@ -44,8 +44,9 @@ CanProspectRegion (const Character& c, const Region& r, const Context& ctx)
   if (!rpb.has_prospection ())
     return true;
 
-  if (ctx.Height () < rpb.prospection ().height ()
-                        + ctx.Params ().ProspectionExpiryBlocks ())
+  const unsigned expiry
+      = ctx.RoConfig ()->params ().prospection_expiry_blocks ();
+  if (ctx.Height () < rpb.prospection ().height () + expiry)
     {
       LOG (WARNING)
           << "Height " << ctx.Height ()

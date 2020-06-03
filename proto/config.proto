@@ -18,10 +18,10 @@
 
 syntax = "proto2";
 
-import "character.proto";
-import "combat.proto";
-import "geometry.proto";
-import "modifier.proto";
+import "proto/character.proto";
+import "proto/combat.proto";
+import "proto/geometry.proto";
+import "proto/modifier.proto";
 
 package pxd.proto;
 
@@ -338,6 +338,86 @@ message ResourceDistribution
 /* ************************************************************************** */
 
 /**
+ * Definition of a spawn area.
+ */
+message SpawnArea
+{
+
+  /** The centre of the area.  */
+  optional HexCoord centre = 1;
+
+  /** The L1 radius around the centre.  */
+  optional uint32 radius = 2;
+
+}
+
+/**
+ * Basic parameters of the game.
+ */
+message Params
+{
+
+  /** The amount of CHI to be paid for a character.  */
+  optional int64 character_cost = 1;
+
+  /** The maximum number of characters per account.  */
+  optional uint32 character_limit = 2;
+
+  /** The maximum L1 distance between waypoints.  */
+  optional uint32 max_waypoint_l1_dist = 3;
+
+  /**
+   * Number of retries of a blocked movement step before the movement
+   * is cancelled completely.  Note that this is really the number of *retries*,
+   * meaning that movement is only cancelled after N+1 blocked turns if N is
+   * the value here.
+   */
+  optional uint32 blocked_step_retries = 4;
+
+  /** The number of blocks for which a character stays on a damage list.  */
+  optional uint32 damage_list_blocks = 5;
+
+  /** The duration of prospecting in blocks.  */
+  optional uint32 prospecting_blocks = 6;
+
+  /**
+   * The number of blocks after which a region can be reprospected (if there
+   * are no other factors preventing it).
+   */
+  optional uint32 prospection_expiry_blocks = 7;
+
+  /** The number of HP that can be repaired per block.  */
+  optional uint32 armour_repair_hp_per_block = 8;
+
+  /** Cost (in 1/1000 vCHI) for repairing one HP of armour.  */
+  optional uint32 armour_repair_cost_millis = 9;
+
+  /** Cost (in vCHI) for copying a blueprint, per complexity.  */
+  optional int64 bp_copy_cost = 10;
+
+  /** Number of blocks for copying a blueprint, per complexity.  */
+  optional uint32 bp_copy_blocks = 11;
+
+  /** Cost (in vCHI) for constructing an item, per complexity.  */
+  optional int64 construction_cost = 12;
+
+  /** Nubmer of blocks for constructing an item, per complexity.  */
+  optional uint32 construction_blocks = 13;
+
+  /** The address to which developer payments should be sent.  */
+  optional string dev_addr = 14;
+
+  /** Whether or not god mode is enabled.  */
+  optional bool god_mode = 15;
+
+  /** Spawn areas for the factions (with the "r", "g", "b" string as key).  */
+  map<string, SpawnArea> spawn_areas = 16;
+
+}
+
+/* ************************************************************************** */
+
+/**
  * The hardcoded "configuration data" for Taurion.  This includes all data
  * that describes read-only aspects of the game, like known item or vehicle
  * types and stats for them.
@@ -357,10 +437,19 @@ message ConfigData
   /** Distribution of resources for prospecting.  */
   optional ResourceDistribution resource_dist = 3;
 
+  /** Basic parameters.  */
+  optional Params params = 4;
+
   /**
-   * The regtest-specific configuration data.  This is merged into the main
-   * instance by the RoConfig-helper class when running on regtest.
+   * The testnet-specific configuration data.  This is merged into the main
+   * configuration when running on testnet or regtest.
    */
-  optional ConfigData regtest_merge = 100;
+  optional ConfigData testnet_merge = 100;
+
+  /**
+   * The regtest-specific configuration data.  This is merged into the testnet
+   * data by the RoConfig-helper class when running on regtest.
+   */
+  optional ConfigData regtest_merge = 101;
 
 }

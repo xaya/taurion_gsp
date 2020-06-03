@@ -1,0 +1,53 @@
+params:
+  {
+    character_cost: 1
+    character_limit: 20
+
+    max_waypoint_l1_dist: 100
+    blocked_step_retries: 10
+
+    damage_list_blocks: 100
+    prospecting_blocks: 10
+    prospection_expiry_blocks: 5000
+
+    armour_repair_hp_per_block: 100
+    armour_repair_cost_millis: 100  # 1 vCHI per 10 HP repair
+    bp_copy_cost: 100
+    bp_copy_blocks: 10
+    construction_cost: 100
+    construction_blocks: 10
+
+    # The address configured here (for mainnet) is the premine address of Xaya
+    # controlled by the Xaya team.  See also Xaya Core's src/chainparams.cpp.
+    dev_addr: "DHy2615XKevE23LVRVZVxGeqxadRGyiFW4"
+
+    god_mode: false
+
+    spawn_areas:
+      {
+        key: "r"
+        value:
+          {
+            centre: { x: 1993 y: -2636 }
+            radius: 50
+          }
+      }
+    spawn_areas:
+      {
+        key: "g"
+        value:
+          {
+            centre: { x: -3430 y: 1793 }
+            radius: 50
+          }
+      }
+    spawn_areas:
+      {
+        key: "b"
+        value:
+          {
+            centre: { x: 571 y: 2609 }
+            radius: 50
+          }
+      }
+  }

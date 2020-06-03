@@ -23,76 +23,6 @@
 namespace pxd
 {
 
-std::string
-Params::DeveloperAddress () const
-{
-  /* The address returned here is the premine address controlled by the Xaya
-     team for the various chains.  See also Xaya Core's src/chainparams.cpp.  */
-
-  switch (chain)
-    {
-    case xaya::Chain::MAIN:
-      return "DHy2615XKevE23LVRVZVxGeqxadRGyiFW4";
-    case xaya::Chain::TEST:
-      return "dSFDAWxovUio63hgtfYd3nz3ir61sJRsXn";
-    case xaya::Chain::REGTEST:
-      return "dHNvNaqcD7XPDnoRjAoyfcMpHRi5upJD7p";
-    default:
-      LOG (FATAL) << "Invalid chain value: " << static_cast<int> (chain);
-    }
-}
-
-Amount
-Params::CharacterCost () const
-{
-  return 1 * COIN;
-}
-
-unsigned
-Params::CharacterLimit () const
-{
-  return 20;
-}
-
-HexCoord::IntT
-Params::MaximumWaypointL1Distance () const
-{
-  return 100;
-}
-
-unsigned
-Params::BlockedStepRetries () const
-{
-  return 10;
-}
-
-unsigned
-Params::DamageListBlocks () const
-{
-  return 100;
-}
-
-unsigned
-Params::ProspectingBlocks () const
-{
-  return 10;
-}
-
-unsigned
-Params::ProspectionExpiryBlocks () const
-{
-  switch (chain)
-    {
-    case xaya::Chain::MAIN:
-    case xaya::Chain::TEST:
-      return 5'000;
-    case xaya::Chain::REGTEST:
-      return 100;
-    default:
-      LOG (FATAL) << "Invalid chain value: " << static_cast<int> (chain);
-    }
-}
-
 namespace
 {
 
@@ -187,19 +117,6 @@ Params::IsLowPrizeZone (const HexCoord& pos) const
 }
 
 unsigned
-Params::ArmourRepairHpPerBlock () const
-{
-  return 100;
-}
-
-Amount
-Params::ArmourRepairCostMillis () const
-{
-  /* The cost is 1 vCHI for 10 HP repair.  */
-  return 100;
-}
-
-unsigned
 Params::RevEngSuccessChance (const unsigned existingBp) const
 {
   constexpr uint64_t fpMultiple = 1'000'000;
@@ -237,57 +154,6 @@ Params::RevEngSuccessChance (const unsigned existingBp) const
   base /= fpMultiple;
 
   return base;
-}
-
-Amount
-Params::BlueprintCopyCost (const unsigned complexity) const
-{
-  return 100 * complexity;
-}
-
-unsigned
-Params::BlueprintCopyBlocks (const unsigned complexity) const
-{
-  return 10 * complexity;
-}
-
-Amount
-Params::ConstructionCost (const unsigned complexity) const
-{
-  return 100 * complexity;
-}
-
-unsigned
-Params::ConstructionBlocks (const unsigned complexity) const
-{
-  return 10 * complexity;
-}
-
-HexCoord
-Params::SpawnArea (const Faction f, HexCoord::IntT& radius) const
-{
-  radius = 50;
-
-  switch (f)
-    {
-    case Faction::RED:
-      return HexCoord (1993, -2636);
-
-    case Faction::GREEN:
-      return HexCoord (-3430, 1793);
-
-    case Faction::BLUE:
-      return HexCoord (571, 2609);
-
-    default:
-      LOG (FATAL) << "Invalid faction: " << static_cast<int> (f);
-    }
-}
-
-bool
-Params::GodModeEnabled () const
-{
-  return chain == xaya::Chain::REGTEST;
 }
 
 } // namespace pxd

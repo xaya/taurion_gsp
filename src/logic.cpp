@@ -71,7 +71,8 @@ void
 PXLogic::UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
                       const Context& ctx, const Json::Value& blockData)
 {
-  fame.GetDamageLists ().RemoveOld (ctx.Params ().DamageListBlocks ());
+  fame.GetDamageLists ().RemoveOld (
+      ctx.RoConfig ()->params ().damage_list_blocks ());
 
   AllHpUpdates (db, fame, rnd, ctx);
   ProcessAllOngoings (db, rnd, ctx);
@@ -285,7 +286,7 @@ ValidateCharacterLimit (Database& db, const Context& ctx)
     {
       auto a = accounts.GetFromResult (res);
       CHECK_LE (characters.CountForOwner (a->GetName ()),
-                ctx.Params ().CharacterLimit ())
+                ctx.RoConfig ()->params ().character_limit ())
           << "Account " << a->GetName () << " has too many characters";
     }
 }

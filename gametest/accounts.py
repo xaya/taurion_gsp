@@ -21,7 +21,7 @@
 Tests creation / initialisation of accounts.
 """
 
-from pxtest import PXTest, CHARACTER_COST
+from pxtest import PXTest
 
 
 class AccountsTest (PXTest):

@@ -19,6 +19,7 @@
 #include "spawn.hpp"
 
 #include "fitments.hpp"
+#include "protoutils.hpp"
 
 #include "hexagonal/coord.hpp"
 #include "hexagonal/ring.hpp"
@@ -114,10 +115,11 @@ SpawnCharacter (const std::string& owner, const Faction f,
       << "Spawning new character for " << owner
       << " in faction " << FactionToString (f) << "...";
 
-  HexCoord::IntT radius;
-  const HexCoord spawnCentre = ctx.Params ().SpawnArea (f, radius);
-  const HexCoord pos = ChooseSpawnLocation (spawnCentre, radius, f,
-                                            rnd, dyn, ctx.Map ());
+  const auto& spawn
+      = ctx.RoConfig ()->params ().spawn_areas ().at (FactionToString (f));
+  const HexCoord pos
+      = ChooseSpawnLocation (CoordFromProto (spawn.centre ()), spawn.radius (),
+                             f, rnd, dyn, ctx.Map ());
 
   auto c = tbl.CreateNew (owner, f);
   c->SetPosition (pos);

@@ -18,7 +18,7 @@
 
 syntax = "proto2";
 
-import "modifier.proto";
+import "proto/modifier.proto";
 
 package pxd.proto;
 

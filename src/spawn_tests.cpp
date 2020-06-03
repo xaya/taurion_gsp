@@ -18,6 +18,7 @@
 
 #include "spawn.hpp"
 
+#include "protoutils.hpp"
 #include "testutils.hpp"
 
 #include "database/dbtest.hpp"
@@ -147,10 +148,11 @@ TEST_F (SpawnLocationTests, NoObstaclesInSpawns)
 {
   for (const Faction f : {Faction::RED, Faction::GREEN, Faction::BLUE})
     {
-      HexCoord::IntT spawnRadius;
-      const auto spawnCentre = ctx.Params ().SpawnArea (f, spawnRadius);
+      const auto& spawn
+          = ctx.RoConfig ()->params ().spawn_areas ().at (FactionToString (f));
+      const auto spawnCentre = CoordFromProto (spawn.centre ());
 
-      for (HexCoord::IntT r = 0; r <= spawnRadius; ++r)
+      for (unsigned r = 0; r <= spawn.radius (); ++r)
         {
           const L1Ring ring(spawnCentre, r);
           for (const auto& pos : ring)
@@ -198,10 +200,10 @@ TEST_F (SpawnLocationTests, SpawnLocation)
 
 TEST_F (SpawnLocationTests, DynObstacles)
 {
-  constexpr Faction f = Faction::RED;
-
-  HexCoord::IntT spawnRadius;
-  const HexCoord spawnCentre = ctx.Params ().SpawnArea (f, spawnRadius);
+  const Faction f = Faction::RED;
+  const auto& spawn
+      = ctx.RoConfig ()->params ().spawn_areas ().at (FactionToString (f));
+  const HexCoord spawnCentre = CoordFromProto (spawn.centre ());
 
   /* The 50x50 spawn area has less than 10k tiles.  So if we create 10k
      characters, some will be displaced out of the spawn area.  It should
@@ -216,7 +218,8 @@ TEST_F (SpawnLocationTests, DynObstacles)
       auto c = Spawn ("domob", f);
       const auto& pos = c->GetPosition ();
 
-      if (HexCoord::DistanceL1 (pos, spawnCentre) > spawnRadius)
+      const unsigned dist = HexCoord::DistanceL1 (pos, spawnCentre);
+      if (dist > spawn.radius ())
         ++outside;
 
       const auto res = positions.insert (pos);
@@ -226,7 +229,7 @@ TEST_F (SpawnLocationTests, DynObstacles)
   LOG (INFO) << "Vehicles outside of spawn ring: " << outside;
 
   unsigned tilesInside = 0;
-  for (HexCoord::IntT r = 0; r <= spawnRadius; ++r)
+  for (unsigned r = 0; r <= spawn.radius (); ++r)
     {
       const L1Ring ring(spawnCentre, r);
       for (const auto& pos : ring)

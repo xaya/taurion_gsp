@@ -22,7 +22,7 @@ Runs tests about the basic handling of characters (creating them, transferring
 them and retrieving them through RPC).
 """
 
-from pxtest import PXTest, CHARACTER_COST
+from pxtest import PXTest
 
 
 class CharactersTest (PXTest):
@@ -45,11 +45,13 @@ class CharactersTest (PXTest):
   def run (self):
     self.collectPremine ()
 
+    cost = self.roConfig ().params.character_cost
+
     self.mainLogger.info ("Creating first character...")
     self.moveWithPayment ("adam", {
       "a": {"init": {"faction": "r"}},
       "nc": [{}],
-    }, CHARACTER_COST)
+    }, cost)
     self.generate (1)
     self.expectPartial ({
       "adam": {"owner": "adam", "faction": "r"},
@@ -116,7 +118,7 @@ class CharactersTest (PXTest):
 
     self.mainLogger.info ("Multiple creations in one transaction...")
     self.initAccount ("domob", "b")
-    self.moveWithPayment ("domob", {"nc": [{}, {}, {}]}, 2.5 * CHARACTER_COST)
+    self.moveWithPayment ("domob", {"nc": [{}, {}, {}]}, 2.5 * cost)
     self.generate (1)
     self.expectPartial ({
       "adam": {"owner": "adam"},

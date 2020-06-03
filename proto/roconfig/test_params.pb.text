@@ -1,0 +1,9 @@
+# This gets merged in with the mainnet configuration, so we only need
+# to specify parameters that actually differ.
+
+params:
+  {
+    prospection_expiry_blocks: 100
+    dev_addr: "dHNvNaqcD7XPDnoRjAoyfcMpHRi5upJD7p"
+    god_mode: true
+  }

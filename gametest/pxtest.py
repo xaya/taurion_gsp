@@ -16,14 +16,14 @@
 
 from xayagametest.testcase import XayaGameTest
 
+from proto import config_pb2
+
 import collections
 import os
 import os.path
 
 
 GAMEID = "tn"
-DEVADDR = "dHNvNaqcD7XPDnoRjAoyfcMpHRi5upJD7p"
-CHARACTER_COST = 1
 
 
 def offsetCoord (c, offs, inverse):
@@ -259,12 +259,24 @@ class PXTest (XayaGameTest):
   Integration test for the Tauron game daemon.
   """
 
+  cfg = None
+
   def __init__ (self):
-    top_builddir = os.getenv ("top_builddir")
-    if top_builddir is None:
-      top_builddir = ".."
-    binary = os.path.join (top_builddir, "src", "tauriond")
+    binary = self.getBuildPath ("src", "tauriond")
     super (PXTest, self).__init__ (GAMEID, binary)
+
+  def getBuildPath (self, *parts):
+    """
+    Returns the builddir (to get the GSP binary and roconfig file).
+    It retrieves what should be the top builddir and then adds on the parts
+    with os.path.join.
+    """
+
+    top = os.getenv ("top_builddir")
+    if top is None:
+      top = ".."
+
+    return os.path.join (top, *parts)
 
   def splitPremine (self):
     """
@@ -291,7 +303,23 @@ class PXTest (XayaGameTest):
     given payment to the developer address.
     """
 
-    return self.sendMove (name, move, {"sendCoins": {DEVADDR: devAmount}})
+    addr = self.roConfig ().params.dev_addr
+    return self.sendMove (name, move, {"sendCoins": {addr: devAmount}})
+
+  def roConfig (self):
+    """
+    Returns the roconfig protocol buffer.
+    """
+
+    if self.cfg is None:
+      self.cfg = config_pb2.ConfigData ()
+      with open (self.getBuildPath ("proto", "roconfig.pb"), "rb") as f:
+        self.cfg.ParseFromString (f.read ())
+      self.cfg.MergeFrom (self.cfg.regtest_merge)
+      self.cfg.ClearField ("regtest_merge")
+
+    assert self.cfg is not None
+    return self.cfg
 
   def initAccount (self, name, faction):
     """
@@ -315,8 +343,8 @@ class PXTest (XayaGameTest):
     Utility method to create multiple characters for a given owner.
     """
 
-    return self.moveWithPayment (owner, {"nc": [{}] * num},
-                                 num * CHARACTER_COST)
+    cost = self.roConfig ().params.character_cost
+    return self.moveWithPayment (owner, {"nc": [{}] * num}, num * cost)
 
   def getCharacters (self):
     """

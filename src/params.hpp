@@ -33,9 +33,10 @@ namespace pxd
 {
 
 /**
- * The basic parameters that determine the game rules.  Once constructed, an
- * instance of this class is immutable and can be used to retrieve the
- * parameters for a particular situation (e.g. chain).
+ * Some "parameters" for the game rules.  Instances of this class
+ * extend the very basic parameters in roconfig with more complex
+ * things, like "parameters" that are simple functions (but still
+ * just arbitrarily-chosen game configuration).
  */
 class Params
 {
@@ -79,50 +80,6 @@ public:
   void operator= (const Params&) = delete;
 
   /**
-   * Returns the address to which CHI for the developers should be paid.
-   */
-  std::string DeveloperAddress () const;
-
-  /**
-   * Returns the amount of CHI to be paid for creation of a character.
-   */
-  Amount CharacterCost () const;
-
-  /**
-   * Returns the maximum number of characters allowed per account.
-   */
-  unsigned CharacterLimit () const;
-
-  /**
-   * Returns the maximum L1 distance between waypoints for movement.
-   */
-  HexCoord::IntT MaximumWaypointL1Distance () const;
-
-  /**
-   * Number of retries of a blocked movement step before the movement
-   * is cancelled completely.  Note that this is really the numbef of *retries*,
-   * meaning that movement is only cancelled after N+1 blocked turns if N is
-   * the value returned from this function.
-   */
-  unsigned BlockedStepRetries () const;
-
-  /**
-   * Returns the number of blocks for which a character stays on a damage list.
-   */
-  unsigned DamageListBlocks () const;
-
-  /**
-   * Returns the duration of prospecting in blocks.
-   */
-  unsigned ProspectingBlocks () const;
-
-  /**
-   * Returns the number of blocks after which a region can be reprospected
-   * (if there are no other factors preventing it).
-   */
-  unsigned ProspectionExpiryBlocks () const;
-
-  /**
    * Returns the ordered list of available prizes for prospecting in the
    * demo competition.
    */
@@ -134,52 +91,10 @@ public:
   bool IsLowPrizeZone (const HexCoord& pos) const;
 
   /**
-   * Returns the maximum armour HP that can be repaired per block.
-   */
-  unsigned ArmourRepairHpPerBlock () const;
-
-  /**
-   * Returns the cost (in 1/1000 vCHI) for repairing one HP of armour.
-   */
-  Amount ArmourRepairCostMillis () const;
-
-  /**
    * Returns the chance for reverse-engineering success (as N in 1/N) based
    * on the already existing number of blueprints.
    */
   unsigned RevEngSuccessChance (unsigned existingBp) const;
-
-  /**
-   * Returns the cost for copying a blueprint of the given complexity.
-   */
-  Amount BlueprintCopyCost (unsigned complexity) const;
-
-  /**
-   * Returns the number of blocks for copying a blueprint of the given
-   * complexity.
-   */
-  unsigned BlueprintCopyBlocks (unsigned complexity) const;
-
-  /**
-   * Returns the cost in vCHI for constructing a given item complexity.
-   */
-  Amount ConstructionCost (unsigned complexity) const;
-
-  /**
-   * Returns the number of blocks for constructing an item of the
-   * given complexity.
-   */
-  unsigned ConstructionBlocks (unsigned complexity) const;
-
-  /**
-   * Returns the spawn centre and radius for the given faction.
-   */
-  HexCoord SpawnArea (Faction f, HexCoord::IntT& radius) const;
-
-  /**
-   * Returns true if god-mode commands are allowed (on regtest).
-   */
-  bool GodModeEnabled () const;
 
 };
 

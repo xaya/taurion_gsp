@@ -51,6 +51,9 @@ private:
    */
   static Data* mainnet;
 
+  /** The singleton instance for testnet.  */
+  static Data* testnet;
+
   /** The singleton instance for regtest.  */
   static Data* regtest;
 
