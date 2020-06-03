@@ -123,7 +123,10 @@ RoConfig::RoConfig (const xaya::Chain chain)
       if (mergeTestnet)
         pb.MergeFrom (pb.testnet_merge ());
       if (mergeRegtest)
-        pb.MergeFrom (pb.regtest_merge ());
+        {
+          pb.mutable_params ()->clear_prizes ();
+          pb.MergeFrom (pb.regtest_merge ());
+        }
       pb.clear_testnet_merge ();
       pb.clear_regtest_merge ();
     }

@@ -352,6 +352,26 @@ message SpawnArea
 }
 
 /**
+ * Definition of the configuration for one prospecting prize.
+ */
+message ProspectingPrize
+{
+
+  /**
+   * Name for the prize (used in the game state and also for constructing
+   * the item name by appending " prize").
+   */
+  optional string name = 1;
+
+  /** Number of prizes of this type available.  */
+  optional uint32 number = 2 ;
+
+  /** Probability to win this prize as 1 / N.  */
+  optional uint32 probability = 3;
+
+}
+
+/**
  * Basic parameters of the game.
  */
 message Params
@@ -412,6 +432,16 @@ message Params
 
   /** Spawn areas for the factions (with the "r", "g", "b" string as key).  */
   map<string, SpawnArea> spawn_areas = 16;
+
+  /**
+   * Prospecting prizes.  They are just a list and not a map, because the
+   * order matters (it is the order in which winning is checked).
+   *
+   * This field has a special rule when merging in the regtest configuration:
+   * It is replaced rather than concatenated (which would be the default
+   * behaviour for proto merge).
+   */
+  repeated ProspectingPrize prizes = 17;
 
 }
 

@@ -74,6 +74,17 @@ TEST (RoConfigTests, ChainDependence)
   EXPECT_FALSE (main->params ().god_mode ());
   EXPECT_FALSE (test->params ().god_mode ());
   EXPECT_TRUE (regtest->params ().god_mode ());
+
+  EXPECT_GT (main->params ().prizes ().size (), 3);
+  EXPECT_EQ (test->params ().prizes ().size (),
+             main->params ().prizes ().size ());
+  EXPECT_EQ (regtest->params ().prizes ().size (), 3);
+  for (const auto* cfg : {&main, &test, &regtest})
+    {
+      EXPECT_EQ ((*cfg)->params ().prizes (0).name (), "gold");
+      EXPECT_EQ ((*cfg)->params ().prizes (1).name (), "silver");
+      EXPECT_EQ ((*cfg)->params ().prizes (2).name (), "bronze");
+    }
 }
 
 TEST (RoConfigTests, Building)
