@@ -72,6 +72,7 @@ struct RoConfig::Data
 };
 
 RoConfig::Data* RoConfig::mainnet = nullptr;
+RoConfig::Data* RoConfig::testnet = nullptr;
 RoConfig::Data* RoConfig::regtest = nullptr;
 
 RoConfig::RoConfig (const xaya::Chain chain)
@@ -79,16 +80,22 @@ RoConfig::RoConfig (const xaya::Chain chain)
   std::lock_guard<std::mutex> lock(mutInstances);
 
   Data** instancePtr = nullptr;
-  bool mergeRegtest;
+  bool mergeTestnet, mergeRegtest;
   switch (chain)
     {
     case xaya::Chain::MAIN:
-    case xaya::Chain::TEST:
       instancePtr = &mainnet;
+      mergeTestnet = false;
+      mergeRegtest = false;
+      break;
+    case xaya::Chain::TEST:
+      instancePtr = &testnet;
+      mergeTestnet = true;
       mergeRegtest = false;
       break;
     case xaya::Chain::REGTEST:
       instancePtr = &regtest;
+      mergeTestnet = true;
       mergeRegtest = true;
       break;
     default:
@@ -107,9 +114,17 @@ RoConfig::RoConfig (const xaya::Chain chain)
       const auto* end = &blob_roconfig_end;
       CHECK (pb.ParseFromArray (begin, end - begin));
 
+      CHECK (!pb.testnet_merge ().has_testnet_merge ());
+      CHECK (!pb.testnet_merge ().has_regtest_merge ());
+
+      CHECK (!pb.regtest_merge ().has_testnet_merge ());
       CHECK (!pb.regtest_merge ().has_regtest_merge ());
+
+      if (mergeTestnet)
+        pb.MergeFrom (pb.testnet_merge ());
       if (mergeRegtest)
         pb.MergeFrom (pb.regtest_merge ());
+      pb.clear_testnet_merge ();
       pb.clear_regtest_merge ();
     }
 

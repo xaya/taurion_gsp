@@ -47,11 +47,14 @@ TEST (RoConfigTests, ProtoIsSingleton)
 TEST (RoConfigTests, ChainDependence)
 {
   const RoConfig main(xaya::Chain::MAIN);
+  const RoConfig test(xaya::Chain::TEST);
   const RoConfig regtest(xaya::Chain::REGTEST);
 
   EXPECT_NE (main.ItemOrNull ("raw a"), nullptr);
+  EXPECT_NE (test.ItemOrNull ("raw a"), nullptr);
   EXPECT_NE (regtest.ItemOrNull ("raw a"), nullptr);
   EXPECT_EQ (main.ItemOrNull ("bow"), nullptr);
+  EXPECT_EQ (test.ItemOrNull ("bow"), nullptr);
   EXPECT_NE (regtest.ItemOrNull ("bow"), nullptr);
 
   EXPECT_NE (main.BuildingOrNull ("ancient1"), nullptr);
@@ -60,9 +63,16 @@ TEST (RoConfigTests, ChainDependence)
   EXPECT_NE (regtest.BuildingOrNull ("huesli"), nullptr);
 
   EXPECT_EQ (main->params ().prospection_expiry_blocks (), 5'000);
+  EXPECT_EQ (test->params ().prospection_expiry_blocks (), 5'000);
   EXPECT_EQ (regtest->params ().prospection_expiry_blocks (), 100);
 
+  EXPECT_EQ (main->params ().dev_addr (), "DHy2615XKevE23LVRVZVxGeqxadRGyiFW4");
+  EXPECT_EQ (test->params ().dev_addr (), "dSFDAWxovUio63hgtfYd3nz3ir61sJRsXn");
+  EXPECT_EQ (regtest->params ().dev_addr (),
+             "dHNvNaqcD7XPDnoRjAoyfcMpHRi5upJD7p");
+
   EXPECT_FALSE (main->params ().god_mode ());
+  EXPECT_FALSE (test->params ().god_mode ());
   EXPECT_TRUE (regtest->params ().god_mode ());
 }
 
@@ -197,6 +207,12 @@ protected:
 bool
 RoConfigSanityTests::IsConfigValid (const RoConfig& cfg)
 {
+  if (cfg->has_testnet_merge () || cfg->has_regtest_merge ())
+    {
+      LOG (WARNING) << "Merge data still present";
+      return false;
+    }
+
   for (const auto& entry : cfg->fungible_items ())
     {
       const auto& i = entry.second;

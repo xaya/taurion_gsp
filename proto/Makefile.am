@@ -16,7 +16,9 @@ ROCONFIG_TEXT_PROTOS = \
   roconfig/buildings/obelisk1.pb.text \
   roconfig/buildings/obelisk2.pb.text \
   roconfig/buildings/obelisk3.pb.text \
-  roconfig/buildings/turrets.pb.text
+  roconfig/buildings/turrets.pb.text \
+  \
+  roconfig/testnet.pb.text
 
 ROCONFIG_TEXT_PROTOS_REGTEST = \
   roconfig/test_params.pb.text \

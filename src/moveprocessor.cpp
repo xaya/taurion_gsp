@@ -75,9 +75,9 @@ BaseMoveProcessor::ExtractMoveBasics (const Json::Value& moveObj,
 
   paidToDev = 0;
   const auto& outVal = moveObj["out"];
-  if (outVal.isObject () && outVal.isMember (ctx.Params ().DeveloperAddress ()))
-    CHECK (AmountFromJson (outVal[ctx.Params ().DeveloperAddress ()],
-                           paidToDev));
+  const auto& devAddr = ctx.RoConfig ()->params ().dev_addr ();
+  if (outVal.isObject () && outVal.isMember (devAddr))
+    CHECK (AmountFromJson (outVal[devAddr], paidToDev));
 
   return true;
 }

@@ -79,11 +79,6 @@ public:
   void operator= (const Params&) = delete;
 
   /**
-   * Returns the address to which CHI for the developers should be paid.
-   */
-  std::string DeveloperAddress () const;
-
-  /**
    * Returns the ordered list of available prizes for prospecting in the
    * demo competition.
    */

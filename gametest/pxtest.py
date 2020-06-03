@@ -24,7 +24,6 @@ import os.path
 
 
 GAMEID = "tn"
-DEVADDR = "dHNvNaqcD7XPDnoRjAoyfcMpHRi5upJD7p"
 
 
 def offsetCoord (c, offs, inverse):
@@ -304,7 +303,8 @@ class PXTest (XayaGameTest):
     given payment to the developer address.
     """
 
-    return self.sendMove (name, move, {"sendCoins": {DEVADDR: devAmount}})
+    addr = self.roConfig ().params.dev_addr
+    return self.sendMove (name, move, {"sendCoins": {addr: devAmount}})
 
   def roConfig (self):
     """

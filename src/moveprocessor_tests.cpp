@@ -84,7 +84,8 @@ protected:
   {
     Json::Value val = ParseJson (str);
     for (auto& entry : val)
-      entry["out"][ctx.Params ().DeveloperAddress ()] = AmountToJson (amount);
+      entry["out"][ctx.RoConfig ()->params ().dev_addr ()]
+          = AmountToJson (amount);
 
     DynObstacles dyn(db, ctx);
     MoveProcessor mvProc(db, dyn, rnd, ctx);
@@ -112,7 +113,7 @@ TEST_F (MoveProcessorTests, InvalidDataFromXaya)
 
   EXPECT_DEATH (Process (R"([{
     "name": "domob", "move": {},
-    "out": {")" + ctx.Params ().DeveloperAddress () + R"(": false}
+    "out": {")" + ctx.RoConfig ()->params ().dev_addr () + R"(": false}
   }])"), "JSON value for amount is not double");
 }
 

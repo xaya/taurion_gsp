@@ -4,5 +4,6 @@
 params:
   {
     prospection_expiry_blocks: 100
+    dev_addr: "dHNvNaqcD7XPDnoRjAoyfcMpHRi5upJD7p"
     god_mode: true
   }

@@ -678,7 +678,7 @@ protected:
     moveObj["move"] = ParseJson (mvStr);
 
     if (paidToDev != 0)
-      moveObj["out"][ctx.Params ().DeveloperAddress ()]
+      moveObj["out"][ctx.RoConfig ()->params ().dev_addr ()]
           = AmountToJson (paidToDev);
 
     DynObstacles dyn(db, ctx);

@@ -17,6 +17,10 @@ params:
     construction_cost: 100
     construction_blocks: 10
 
+    # The address configured here (for mainnet) is the premine address of Xaya
+    # controlled by the Xaya team.  See also Xaya Core's src/chainparams.cpp.
+    dev_addr: "DHy2615XKevE23LVRVZVxGeqxadRGyiFW4"
+
     god_mode: false
 
     spawn_areas:
