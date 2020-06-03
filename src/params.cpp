@@ -42,18 +42,6 @@ Params::DeveloperAddress () const
     }
 }
 
-HexCoord::IntT
-Params::MaximumWaypointL1Distance () const
-{
-  return 100;
-}
-
-unsigned
-Params::BlockedStepRetries () const
-{
-  return 10;
-}
-
 unsigned
 Params::DamageListBlocks () const
 {

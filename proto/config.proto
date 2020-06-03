@@ -347,6 +347,17 @@ message Params
   /** The maximum number of characters per account.  */
   optional uint32 character_limit = 2;
 
+  /** The maximum L1 distance between waypoints.  */
+  optional uint32 max_waypoint_l1_dist = 3;
+
+  /**
+   * Number of retries of a blocked movement step before the movement
+   * is cancelled completely.  Note that this is really the number of *retries*,
+   * meaning that movement is only cancelled after N+1 blocked turns if N is
+   * the value here.
+   */
+  optional uint32 blocked_step_retries = 4;
+
 }
 
 /* ************************************************************************** */

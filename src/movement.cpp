@@ -122,7 +122,8 @@ template <typename Fcn>
       VLOG (1)
           << "Incremented blocked turns counter to " << volMv.blocked_turns ();
 
-      if (volMv.blocked_turns () > ctx.Params ().BlockedStepRetries ())
+      if (volMv.blocked_turns ()
+            > ctx.RoConfig ()->params ().blocked_step_retries ())
         {
           VLOG (1)
               << "Too many blocked turns, stopping character " << c.GetId ();
@@ -218,8 +219,9 @@ template <typename Fcn>
     }
 
   PathFinder finder(wp);
-  const auto dist = finder.Compute (edges, pos,
-                                    ctx.Params ().MaximumWaypointL1Distance ());
+  const auto dist
+      = finder.Compute (edges, pos,
+                        ctx.RoConfig ()->params ().max_waypoint_l1_dist ());
   VLOG (1) << "Shortest path has length " << dist;
 
   if (dist == PathFinder::NO_CONNECTION)
