@@ -1,3 +1,6 @@
+AM_TESTS_ENVIRONMENT = \
+  PYTHONPATH=$(PYTHONPATH):$(top_srcdir)
+
 TEST_LIBRARY = \
   pxtest.py
 

@@ -7,3 +7,4 @@ tests
 *.trs
 *.pb.h
 *.pb.cc
+*_pb2.py

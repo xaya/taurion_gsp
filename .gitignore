@@ -11,6 +11,7 @@ libtool
 ltmain.sh
 m4
 missing
+py-compile
 stamp-h1
 test-driver
 

@@ -18,8 +18,8 @@
 
 syntax = "proto2";
 
-import "combat.proto";
-import "movement.proto";
+import "proto/combat.proto";
+import "proto/movement.proto";
 
 package pxd.proto;
 
