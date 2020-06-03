@@ -370,6 +370,24 @@ message Params
    */
   optional uint32 prospection_expiry_blocks = 7;
 
+  /** The number of HP that can be repaired per block.  */
+  optional uint32 armour_repair_hp_per_block = 8;
+
+  /** Cost (in 1/1000 vCHI) for repairing one HP of armour.  */
+  optional uint32 armour_repair_cost_millis = 9;
+
+  /** Cost (in vCHI) for copying a blueprint, per complexity.  */
+  optional int64 bp_copy_cost = 10;
+
+  /** Number of blocks for copying a blueprint, per complexity.  */
+  optional uint32 bp_copy_blocks = 11;
+
+  /** Cost (in vCHI) for constructing an item, per complexity.  */
+  optional int64 construction_cost = 12;
+
+  /** Nubmer of blocks for constructing an item, per complexity.  */
+  optional uint32 construction_blocks = 13;
+
 }
 
 /* ************************************************************************** */

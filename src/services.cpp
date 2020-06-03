@@ -359,8 +359,8 @@ RepairOperation::GetBaseCost () const
 {
   /* There is some configured cost per HP (possibly fractional), and we round
      up the total cost.  */
-  const Amount costMillis
-      = GetMissingHp () * ctx.Params ().ArmourRepairCostMillis ();
+  const Amount perHp = ctx.RoConfig ()->params ().armour_repair_cost_millis ();
+  const Amount costMillis = GetMissingHp () * perHp;
   const Amount res = (costMillis + 999) / 1'000;
 
   /* If there are no missing HP, then the operation is invalid.  But through
@@ -386,7 +386,8 @@ RepairOperation::ExecuteSpecific (xaya::Random& rnd)
 {
   LOG (INFO) << "Character " << ch->GetId () << " is repairing their armour";
 
-  const auto hpPerBlock = ctx.Params ().ArmourRepairHpPerBlock ();
+  const unsigned hpPerBlock
+      = ctx.RoConfig ()->params ().armour_repair_hp_per_block ();
   const auto blocksBusy = (GetMissingHp () + (hpPerBlock - 1)) / hpPerBlock;
   CHECK_GT (blocksBusy, 0);
 
@@ -605,7 +606,7 @@ protected:
   Amount
   GetBaseCost () const override
   {
-    const Amount one = ctx.Params ().BlueprintCopyCost (complexity);
+    const Amount one = ctx.RoConfig ()->params ().bp_copy_cost () * complexity;
     return Inventory::Product (num, one);
   }
 
@@ -705,7 +706,8 @@ BlueprintCopyOperation::ExecuteSpecific (xaya::Random& rnd)
   inv.AddFungibleCount (original, -1);
 
   auto op = CreateOngoing ();
-  const unsigned baseDuration = ctx.Params ().BlueprintCopyBlocks (complexity);
+  const unsigned baseDuration
+      = ctx.RoConfig ()->params ().bp_copy_blocks () * complexity;
   op->SetHeight (ctx.Height () + num * baseDuration);
   op->SetBuildingId (buildingId);
   auto& cp = *op->MutableProto ().mutable_blueprint_copy ();
@@ -752,8 +754,8 @@ protected:
   Amount
   GetBaseCost () const override
   {
-    const Amount one
-        = ctx.Params ().ConstructionCost (outputData->complexity ());
+    const Amount baseCost = ctx.RoConfig ()->params ().construction_cost ();
+    const Amount one = baseCost * outputData->complexity ();
     return Inventory::Product (num, one);
   }
 
@@ -894,8 +896,8 @@ ConstructionOperation::ExecuteSpecific (xaya::Random& rnd)
   /* When constructing from an original, the items have to be constructed
      in series.  With blueprint copies, we need to have as many copies as items
      anyway, and can construct the items in parallel.  */
-  const unsigned baseDuration
-      = ctx.Params ().ConstructionBlocks (outputData->complexity ());
+  unsigned baseDuration = ctx.RoConfig ()->params ().construction_blocks ();
+  baseDuration *= outputData->complexity ();
   if (fromOriginal)
     op->SetHeight (ctx.Height () + num * baseDuration);
   else

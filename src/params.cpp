@@ -136,19 +136,6 @@ Params::IsLowPrizeZone (const HexCoord& pos) const
 }
 
 unsigned
-Params::ArmourRepairHpPerBlock () const
-{
-  return 100;
-}
-
-Amount
-Params::ArmourRepairCostMillis () const
-{
-  /* The cost is 1 vCHI for 10 HP repair.  */
-  return 100;
-}
-
-unsigned
 Params::RevEngSuccessChance (const unsigned existingBp) const
 {
   constexpr uint64_t fpMultiple = 1'000'000;
@@ -186,30 +173,6 @@ Params::RevEngSuccessChance (const unsigned existingBp) const
   base /= fpMultiple;
 
   return base;
-}
-
-Amount
-Params::BlueprintCopyCost (const unsigned complexity) const
-{
-  return 100 * complexity;
-}
-
-unsigned
-Params::BlueprintCopyBlocks (const unsigned complexity) const
-{
-  return 10 * complexity;
-}
-
-Amount
-Params::ConstructionCost (const unsigned complexity) const
-{
-  return 100 * complexity;
-}
-
-unsigned
-Params::ConstructionBlocks (const unsigned complexity) const
-{
-  return 10 * complexity;
 }
 
 HexCoord

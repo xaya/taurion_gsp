@@ -95,42 +95,10 @@ public:
   bool IsLowPrizeZone (const HexCoord& pos) const;
 
   /**
-   * Returns the maximum armour HP that can be repaired per block.
-   */
-  unsigned ArmourRepairHpPerBlock () const;
-
-  /**
-   * Returns the cost (in 1/1000 vCHI) for repairing one HP of armour.
-   */
-  Amount ArmourRepairCostMillis () const;
-
-  /**
    * Returns the chance for reverse-engineering success (as N in 1/N) based
    * on the already existing number of blueprints.
    */
   unsigned RevEngSuccessChance (unsigned existingBp) const;
-
-  /**
-   * Returns the cost for copying a blueprint of the given complexity.
-   */
-  Amount BlueprintCopyCost (unsigned complexity) const;
-
-  /**
-   * Returns the number of blocks for copying a blueprint of the given
-   * complexity.
-   */
-  unsigned BlueprintCopyBlocks (unsigned complexity) const;
-
-  /**
-   * Returns the cost in vCHI for constructing a given item complexity.
-   */
-  Amount ConstructionCost (unsigned complexity) const;
-
-  /**
-   * Returns the number of blocks for constructing an item of the
-   * given complexity.
-   */
-  unsigned ConstructionBlocks (unsigned complexity) const;
 
   /**
    * Returns the spawn centre and radius for the given faction.

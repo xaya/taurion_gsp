@@ -7,4 +7,10 @@ params:
     damage_list_blocks: 100
     prospecting_blocks: 10
     prospection_expiry_blocks: 5000
+    armour_repair_hp_per_block: 100
+    armour_repair_cost_millis: 100  # 1 vCHI per 10 HP repair
+    bp_copy_cost: 100
+    bp_copy_blocks: 10
+    construction_cost: 100
+    construction_blocks: 10
   }
