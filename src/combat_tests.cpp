@@ -33,6 +33,7 @@
 #include <xayautil/hash.hpp>
 #include <xayautil/random.hpp>
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <glog/logging.h>
@@ -44,6 +45,8 @@ namespace pxd
 {
 namespace
 {
+
+using testing::ElementsAre;
 
 /* ************************************************************************** */
 
@@ -444,7 +447,7 @@ protected:
   /**
    * Finds combat targets and deals damage.
    */
-  std::vector<proto::TargetId>
+  std::set<TargetKey>
   FindTargetsAndDamage ()
   {
     FindCombatTargets (db, rnd);
@@ -730,15 +733,13 @@ TEST_F (DealDamageTests, Kills)
   SetHp (*c, 1, 1, 1, 1);
   c.reset ();
 
-  auto dead = FindTargetsAndDamage ();
-  ASSERT_EQ (dead.size (), 1);
-  EXPECT_EQ (dead[0].type (), proto::TargetId::TYPE_CHARACTER);
-  EXPECT_EQ (dead[0].id (), id1);
+  EXPECT_THAT (FindTargetsAndDamage (), ElementsAre (
+    TargetKey (proto::TargetId::TYPE_CHARACTER, id1)
+  ));
 
-  dead = FindTargetsAndDamage ();
-  ASSERT_EQ (dead.size (), 1);
-  EXPECT_EQ (dead[0].type (), proto::TargetId::TYPE_CHARACTER);
-  EXPECT_EQ (dead[0].id (), id2);
+  EXPECT_THAT (FindTargetsAndDamage (), ElementsAre (
+    TargetKey (proto::TargetId::TYPE_CHARACTER, id2)
+  ));
 }
 
 TEST_F (DealDamageTests, Effects)

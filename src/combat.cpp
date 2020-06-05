@@ -30,7 +30,7 @@
 
 #include <algorithm>
 #include <map>
-#include <utility>
+#include <vector>
 
 namespace pxd
 {
@@ -89,6 +89,22 @@ ComputeLowHpBoosts (const CombatEntity& f, CombatModifier& mod)
 }
 
 } // anonymous namespace
+
+TargetKey::TargetKey (const proto::TargetId& id)
+{
+  CHECK (id.has_id ());
+  first = id.type ();
+  second = id.id ();
+}
+
+proto::TargetId
+TargetKey::ToProto () const
+{
+  proto::TargetId res;
+  res.set_type (first);
+  res.set_id (second);
+  return res;
+}
 
 /* ************************************************************************** */
 
@@ -175,23 +191,6 @@ namespace
 {
 
 /**
- * Representation of a Target that can be used as key in a map.
- */
-class TargetKey : public std::pair<proto::TargetId::Type, Database::IdT>
-{
-
-public:
-
-  TargetKey (const proto::TargetId& id)
-  {
-    CHECK (id.has_id ());
-    first = id.type ();
-    second = id.id ();
-  }
-
-};
-
-/**
  * Helper class to perform the damage-dealing processing step.
  */
 class DamageProcessor
@@ -215,7 +214,7 @@ private:
   std::map<TargetKey, CombatModifier> modifiers;
 
   /** The list of kills being built up.  */
-  std::vector<proto::TargetId> dead;
+  std::set<TargetKey> dead;
 
   /**
    * Performs a random roll to determine the damage a particular attack does.
@@ -258,7 +257,7 @@ public:
   /**
    * Returns the list of killed fighters.
    */
-  const std::vector<proto::TargetId>&
+  const std::set<TargetKey>&
   GetDead () const
   {
     return dead;
@@ -316,7 +315,8 @@ DamageProcessor::ApplyDamage (unsigned dmg, const CombatEntity& attacker,
          partial HP).  Just make sure that the partial HP are not full yet
          due to some bug.  */
       CHECK_LT (hp.shield_mhp (), 1000);
-      dead.push_back (targetId);
+      CHECK (dead.insert (targetId).second)
+          << "Target is already dead:\n" << targetId.DebugString ();
     }
 }
 
@@ -408,7 +408,7 @@ DamageProcessor::Process ()
 
 } // anonymous namespace
 
-std::vector<proto::TargetId>
+std::set<TargetKey>
 DealCombatDamage (Database& db, DamageLists& dl, xaya::Random& rnd)
 {
   DamageProcessor proc(db, dl, rnd);
@@ -622,25 +622,25 @@ KillProcessor::ProcessBuilding (const Database::IdT id)
 
 void
 ProcessKills (Database& db, DamageLists& dl, GroundLootTable& loot,
-              const std::vector<proto::TargetId>& dead,
+              const std::set<TargetKey>& dead,
               xaya::Random& rnd, const Context& ctx)
 {
   KillProcessor proc(db, dl, loot, rnd, ctx);
 
   for (const auto& id : dead)
-    switch (id.type ())
+    switch (id.first)
       {
       case proto::TargetId::TYPE_CHARACTER:
-        proc.ProcessCharacter (id.id ());
+        proc.ProcessCharacter (id.second);
         break;
 
       case proto::TargetId::TYPE_BUILDING:
-        proc.ProcessBuilding (id.id ());
+        proc.ProcessBuilding (id.second);
         break;
 
       default:
         LOG (FATAL)
-            << "Invalid target type killed: " << static_cast<int> (id.type ());
+            << "Invalid target type killed: " << static_cast<int> (id.first);
       }
 }
 
@@ -707,7 +707,7 @@ AllHpUpdates (Database& db, FameUpdater& fame, xaya::Random& rnd,
   const auto dead = DealCombatDamage (db, fame.GetDamageLists (), rnd);
 
   for (const auto& id : dead)
-    fame.UpdateForKill (id);
+    fame.UpdateForKill (id.ToProto ());
 
   GroundLootTable loot(db);
   ProcessKills (db, fame.GetDamageLists (), loot, dead, rnd, ctx);

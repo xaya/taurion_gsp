@@ -30,10 +30,35 @@
 
 #include <xayautil/random.hpp>
 
-#include <vector>
+#include <set>
+#include <utility>
 
 namespace pxd
 {
+
+/**
+ * Representation of a Target that can be used as key in a map or as
+ * entry in a set.
+ */
+class TargetKey : public std::pair<proto::TargetId::Type, Database::IdT>
+{
+
+public:
+
+  TargetKey (const proto::TargetId::Type type, const Database::IdT id)
+  {
+    first = type;
+    second = id;
+  }
+
+  TargetKey (const proto::TargetId& id);
+
+  /**
+   * Converts the target back to proto format.
+   */
+  proto::TargetId ToProto () const;
+
+};
 
 /**
  * Finds combat targets for each fighter entity.
@@ -45,15 +70,15 @@ void FindCombatTargets (Database& db, xaya::Random& rnd);
  * that are now dead (and need to be handled accordingly).  This also
  * applies non-damage effects like slowing.
  */
-std::vector<proto::TargetId> DealCombatDamage (Database& db, DamageLists& dl,
-                                               xaya::Random& rnd);
+std::set<TargetKey> DealCombatDamage (Database& db, DamageLists& dl,
+                                      xaya::Random& rnd);
 
 /**
  * Processes killed fighers from the given list, actually performing the
  * necessary database changes for having them dead.
  */
 void ProcessKills (Database& db, DamageLists& dl, GroundLootTable& loot,
-                   const std::vector<proto::TargetId>& dead,
+                   const std::set<TargetKey>& dead,
                    xaya::Random& rnd, const Context& ctx);
 
 /**
