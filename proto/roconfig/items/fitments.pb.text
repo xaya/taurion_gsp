@@ -82,6 +82,26 @@ fungible_items:
 
 fungible_items:
   {
+    key: "selfdestruct"
+    value:
+      {
+        space: 1
+        complexity: 4
+        with_blueprint: true
+        fitment:
+          {
+            slot: "high"
+            self_destruct:
+              {
+                area: 10
+                damage: { min: 10 max: 30 }
+              }
+          }
+      }
+  }
+
+fungible_items:
+  {
     key: "expander"
     value:
       {

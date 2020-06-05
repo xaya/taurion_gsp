@@ -164,6 +164,9 @@ message FitmentData
   /** Low-HP-boost this fitment provides (if any).  */
   optional LowHpBoost low_hp_boost = 11;
 
+  /** Self-destruct ability of this fitment (if any).  */
+  optional SelfDestruct self_destruct = 12;
+
 }
 
 /**

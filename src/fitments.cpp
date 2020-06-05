@@ -124,6 +124,7 @@ ApplyFitments (Character& c, const Context& ctx)
   StatModifier range, damage;
 
   auto& pb = c.MutableProto ();
+  auto* cd = pb.mutable_combat_data ();
   for (const auto& f : pb.fitments ())
     {
       const auto fItemData = ctx.RoConfig ().Item (f);
@@ -132,10 +133,11 @@ ApplyFitments (Character& c, const Context& ctx)
       const auto& fitment = fItemData.fitment ();
 
       if (fitment.has_attack ())
-        *pb.mutable_combat_data ()->add_attacks () = fitment.attack ();
+        *cd->add_attacks () = fitment.attack ();
       if (fitment.has_low_hp_boost ())
-        *pb.mutable_combat_data ()->add_low_hp_boosts ()
-            = fitment.low_hp_boost ();
+        *cd->add_low_hp_boosts () = fitment.low_hp_boost ();
+      if (fitment.has_self_destruct ())
+        *cd->add_self_destructs () = fitment.self_destruct ();
 
       cargo += fitment.cargo_space ();
       speed += fitment.speed ();
@@ -155,7 +157,7 @@ ApplyFitments (Character& c, const Context& ctx)
   regen.set_shield_regeneration_mhp (
       shieldRegen (regen.shield_regeneration_mhp ()));
 
-  for (auto& a : *pb.mutable_combat_data ()->mutable_attacks ())
+  for (auto& a : *cd->mutable_attacks ())
     {
       /* Both the targeting range and size of AoE area (if applicable)
          are modified in the same way through the "range" modifier.  */
@@ -170,6 +172,15 @@ ApplyFitments (Character& c, const Context& ctx)
           dmg.set_min (damage (dmg.min ()));
           dmg.set_max (damage (dmg.max ()));
         }
+    }
+
+  for (auto& sd : *cd->mutable_self_destructs ())
+    {
+      sd.set_area (range (sd.area ()));
+
+      auto& dmg = *sd.mutable_damage ();
+      dmg.set_min (damage (dmg.min ()));
+      dmg.set_max (damage (dmg.max ()));
     }
 }
 
