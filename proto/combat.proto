@@ -110,6 +110,21 @@ message Attack
 }
 
 /**
+ * Stats for the self-destruct ability of an entity (when the entity is
+ * destroyed, AoE damage is dealt to enemies in range).
+ */
+message SelfDestruct
+{
+
+  /** The AoE range of the attack.  */
+  optional uint32 area = 1;
+
+  /** The damage done.  */
+  optional Attack.Damage damage = 2;
+
+}
+
+/**
  * Stats for a boost to combat stats that is in effect when a character
  * has low armour HP (i.e. "final breath" attack).
  */
@@ -181,5 +196,8 @@ message CombatData
 
   /** Any low-HP boosts for the fighter.  */
   repeated LowHpBoost low_hp_boosts = 2;
+
+  /** Any self-destruct attacks this fighter has.  */
+  repeated SelfDestruct self_destructs = 3;
 
 }

@@ -149,6 +149,25 @@ TEST_F (DeriveCharacterStatsTests, FitmentLowHpBoosts)
     }
 }
 
+TEST_F (DeriveCharacterStatsTests, FitmentSelfDestructs)
+{
+  auto c = Derive ("chariot",
+    {
+      "selfdestruct",
+      "selfdestruct",
+      "rangeext",
+      "dmgext",
+    });
+  const auto& sd = c->GetProto ().combat_data ().self_destructs ();
+  ASSERT_EQ (sd.size (), 2);
+  for (const auto& s : sd)
+    {
+      EXPECT_EQ (s.area (), 11);
+      EXPECT_EQ (s.damage ().min (), 11);
+      EXPECT_EQ (s.damage ().max (), 33);
+    }
+}
+
 TEST_F (DeriveCharacterStatsTests, CargoSpeed)
 {
   auto c = Derive ("chariot", {"turbo"});

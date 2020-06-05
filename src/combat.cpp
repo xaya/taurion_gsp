@@ -30,7 +30,7 @@
 
 #include <algorithm>
 #include <map>
-#include <utility>
+#include <vector>
 
 namespace pxd
 {
@@ -89,6 +89,22 @@ ComputeLowHpBoosts (const CombatEntity& f, CombatModifier& mod)
 }
 
 } // anonymous namespace
+
+TargetKey::TargetKey (const proto::TargetId& id)
+{
+  CHECK (id.has_id ());
+  first = id.type ();
+  second = id.id ();
+}
+
+proto::TargetId
+TargetKey::ToProto () const
+{
+  proto::TargetId res;
+  res.set_type (first);
+  res.set_id (second);
+  return res;
+}
 
 /* ************************************************************************** */
 
@@ -175,23 +191,6 @@ namespace
 {
 
 /**
- * Representation of a Target that can be used as key in a map.
- */
-class TargetKey : public std::pair<proto::TargetId::Type, Database::IdT>
-{
-
-public:
-
-  TargetKey (const proto::TargetId& id)
-  {
-    CHECK (id.has_id ());
-    first = id.type ();
-    second = id.id ();
-  }
-
-};
-
-/**
  * Helper class to perform the damage-dealing processing step.
  */
 class DamageProcessor
@@ -214,21 +213,27 @@ private:
    */
   std::map<TargetKey, CombatModifier> modifiers;
 
-  /** The list of kills being built up.  */
-  std::vector<proto::TargetId> dead;
+  /**
+   * The list of dead targets.  We use this to avoid giving out fame for
+   * kills of already-dead targets in later rounds of self-destruct.  The list
+   * being built up during a round of damage is a temporary, that gets put
+   * here only after the round.
+   */
+  std::set<TargetKey> alreadyDead;
 
   /**
    * Performs a random roll to determine the damage a particular attack does.
    * The min/max damage is modified according to the stats modifier.
    */
-  unsigned RollAttackDamage (const proto::Attack& attack,
+  unsigned RollAttackDamage (const proto::Attack::Damage& attack,
                              const StatModifier& mod);
 
   /**
-   * Applies a fixed given amount of damage to a given attack target.
+   * Applies a fixed given amount of damage to a given attack target.  Adds
+   * the target into newDead if it is now dead.
    */
   void ApplyDamage (unsigned dmg, const CombatEntity& attacker,
-                    CombatEntity& target);
+                    CombatEntity& target, std::set<TargetKey>& newDead);
 
   /**
    * Applies combat effects (non-damage) to a target.
@@ -239,7 +244,14 @@ private:
    * Deals damage for one fighter with a target to the respective target
    * (or any AoE targets).
    */
-  void DealDamage (FighterTable::Handle f);
+  void DealDamage (FighterTable::Handle f, std::set<TargetKey>& newDead);
+
+  /**
+   * Processes all damage the given fighter does due to self-destruct
+   * abilities when killed.
+   */
+  void ProcessSelfDestructs (FighterTable::Handle f,
+                             std::set<TargetKey>& newDead);
 
 public:
 
@@ -258,20 +270,18 @@ public:
   /**
    * Returns the list of killed fighters.
    */
-  const std::vector<proto::TargetId>&
+  const std::set<TargetKey>&
   GetDead () const
   {
-    return dead;
+    return alreadyDead;
   }
 
 };
 
 unsigned
-DamageProcessor::RollAttackDamage (const proto::Attack& attack,
+DamageProcessor::RollAttackDamage (const proto::Attack::Damage& dmg,
                                    const StatModifier& mod)
 {
-  CHECK (attack.has_damage ());
-  const auto& dmg = attack.damage ();
   const auto minDmg = mod (dmg.min ());
   const auto maxDmg = mod (dmg.max ());
 
@@ -282,12 +292,20 @@ DamageProcessor::RollAttackDamage (const proto::Attack& attack,
 
 void
 DamageProcessor::ApplyDamage (unsigned dmg, const CombatEntity& attacker,
-                              CombatEntity& target)
+                              CombatEntity& target,
+                              std::set<TargetKey>& newDead)
 {
   const auto targetId = target.GetIdAsTarget ();
   if (dmg == 0)
     {
       VLOG (1) << "No damage done to target:\n" << targetId.DebugString ();
+      return;
+    }
+  const TargetKey targetKey(targetId);
+  if (alreadyDead.count (targetKey) > 0)
+    {
+      VLOG (1)
+          << "Target is already dead from before:\n" << targetId.DebugString ();
       return;
     }
   VLOG (1)
@@ -315,8 +333,9 @@ DamageProcessor::ApplyDamage (unsigned dmg, const CombatEntity& attacker,
       /* Regenerated partial HP are ignored (i.e. you die even with 999/1000
          partial HP).  Just make sure that the partial HP are not full yet
          due to some bug.  */
-      CHECK_LT (hp.shield_mhp (), 1000);
-      dead.push_back (targetId);
+      CHECK_LT (hp.shield_mhp (), 1'000);
+      CHECK (newDead.insert (targetKey).second)
+          << "Target is already dead:\n" << targetId.DebugString ();
     }
 }
 
@@ -338,7 +357,8 @@ DamageProcessor::ApplyEffects (const proto::Attack& attack,
 }
 
 void
-DamageProcessor::DealDamage (FighterTable::Handle f)
+DamageProcessor::DealDamage (FighterTable::Handle f,
+                             std::set<TargetKey>& newDead)
 {
   const auto& cd = f->GetCombatData ();
   const auto& pos = f->GetCombatPosition ();
@@ -361,7 +381,7 @@ DamageProcessor::DealDamage (FighterTable::Handle f)
 
       unsigned dmg = 0;
       if (attack.has_damage ())
-        dmg = RollAttackDamage (attack, mod.damage);
+        dmg = RollAttackDamage (attack.damage (), mod.damage);
 
       if (attack.has_area ())
         {
@@ -376,16 +396,45 @@ DamageProcessor::DealDamage (FighterTable::Handle f)
             [&] (const HexCoord& c, const proto::TargetId& id)
             {
               auto t = fighters.GetForTarget (id);
-              ApplyDamage (dmg, *f, *t);
+              ApplyDamage (dmg, *f, *t, newDead);
               ApplyEffects (attack, *t);
             });
         }
       else
         {
           auto t = fighters.GetForTarget (f->GetTarget ());
-          ApplyDamage (dmg, *f, *t);
+          ApplyDamage (dmg, *f, *t, newDead);
           ApplyEffects (attack, *t);
         }
+    }
+}
+
+void
+DamageProcessor::ProcessSelfDestructs (FighterTable::Handle f,
+                                       std::set<TargetKey>& newDead)
+{
+  /* The killed fighter should have zero HP left, and thus also should get
+     all low-HP boosts now.  */
+  CHECK_EQ (f->GetHP ().armour (), 0);
+  CHECK_EQ (f->GetHP ().shield (), 0);
+  CombatModifier mod;
+  ComputeLowHpBoosts (*f, mod);
+
+  const auto& pos = f->GetCombatPosition ();
+  for (const auto& sd : f->GetCombatData ().self_destructs ())
+    {
+      const auto dmg = RollAttackDamage (sd.damage (), mod.damage);
+      VLOG (1)
+          << "Dealing " << dmg
+          << " of damage for self-destruct of "
+          << f->GetIdAsTarget ().DebugString ();
+
+      targets.ProcessL1Targets (pos, mod.range (sd.area ()), f->GetFaction (),
+        [&] (const HexCoord& c, const proto::TargetId& id)
+        {
+          auto t = fighters.GetForTarget (id);
+          ApplyDamage (dmg, *f, *t, newDead);
+        });
     }
 }
 
@@ -400,15 +449,38 @@ DamageProcessor::Process ()
       CHECK (modifiers.emplace (f->GetIdAsTarget (), std::move (mod)).second);
     });
 
+  std::set<TargetKey> newDead;
   fighters.ProcessWithTarget ([&] (FighterTable::Handle f)
     {
-      DealDamage (std::move (f));
+      DealDamage (std::move (f), newDead);
     });
+
+  /* After applying the base damage, we process all self-destruct actions
+     of kills.  This may lead to more damage and more kills, so we have
+     to process as many "rounds" of self-destructs as necessary before
+     no new kills are added.  */
+  while (!newDead.empty ())
+    {
+      /* The way we merge in the new elements here is not optimal, as one
+         could use a proper merge of sorted ranges instead.  But it is quite
+         straight-forward and easy to read, and most likely not performance
+         critical anyway.  */
+      for (const auto& n : newDead)
+        CHECK (alreadyDead.insert (n).second)
+            << "Target was already dead before:\n"
+            << n.ToProto ().DebugString ();
+
+      const auto toProcess = std::move (newDead);
+      CHECK (newDead.empty ());
+
+      for (const auto& d : toProcess)
+        ProcessSelfDestructs (fighters.GetForTarget (d.ToProto ()), newDead);
+    }
 }
 
 } // anonymous namespace
 
-std::vector<proto::TargetId>
+std::set<TargetKey>
 DealCombatDamage (Database& db, DamageLists& dl, xaya::Random& rnd)
 {
   DamageProcessor proc(db, dl, rnd);
@@ -622,25 +694,25 @@ KillProcessor::ProcessBuilding (const Database::IdT id)
 
 void
 ProcessKills (Database& db, DamageLists& dl, GroundLootTable& loot,
-              const std::vector<proto::TargetId>& dead,
+              const std::set<TargetKey>& dead,
               xaya::Random& rnd, const Context& ctx)
 {
   KillProcessor proc(db, dl, loot, rnd, ctx);
 
   for (const auto& id : dead)
-    switch (id.type ())
+    switch (id.first)
       {
       case proto::TargetId::TYPE_CHARACTER:
-        proc.ProcessCharacter (id.id ());
+        proc.ProcessCharacter (id.second);
         break;
 
       case proto::TargetId::TYPE_BUILDING:
-        proc.ProcessBuilding (id.id ());
+        proc.ProcessBuilding (id.second);
         break;
 
       default:
         LOG (FATAL)
-            << "Invalid target type killed: " << static_cast<int> (id.type ());
+            << "Invalid target type killed: " << static_cast<int> (id.first);
       }
 }
 
@@ -707,7 +779,7 @@ AllHpUpdates (Database& db, FameUpdater& fame, xaya::Random& rnd,
   const auto dead = DealCombatDamage (db, fame.GetDamageLists (), rnd);
 
   for (const auto& id : dead)
-    fame.UpdateForKill (id);
+    fame.UpdateForKill (id.ToProto ());
 
   GroundLootTable loot(db);
   ProcessKills (db, fame.GetDamageLists (), loot, dead, rnd, ctx);
