@@ -609,34 +609,6 @@ TEST_F (DealDamageTests, MixedAttacks)
   EXPECT_LE (hpFar, 9);
 }
 
-TEST_F (DealDamageTests, DamageLists)
-{
-  auto c = characters.CreateNew ("domob", Faction::RED);
-  const auto idAttacker = c->GetId ();
-  AddAttack (*c, 2, 1, 1);
-  c.reset ();
-
-  /* This character has no attack in range, so should not be put onto
-     the damage list.  */
-  c = characters.CreateNew ("domob", Faction::RED);
-  AddAttack (*c, 1, 1, 1);
-  c.reset ();
-
-  c = characters.CreateNew ("domob", Faction::GREEN);
-  const auto idTarget = c->GetId ();
-  c->SetPosition (HexCoord (2, 0));
-  NoAttacks (*c);
-  SetHp (*c, 0, 10, 0, 10);
-  c.reset ();
-
-  /* Add an existing dummy entry to verify it is kept.  */
-  dl.AddEntry (idTarget, 42);
-
-  FindTargetsAndDamage ();
-  EXPECT_EQ (dl.GetAttackers (idTarget),
-             DamageLists::Attackers ({42, idAttacker}));
-}
-
 TEST_F (DealDamageTests, RandomisedDamage)
 {
   constexpr unsigned minDmg = 5;
@@ -900,6 +872,92 @@ TEST_F (DealDamageTests, LowHpBoostBasedOnOriginalHp)
   FindTargetsAndDamage ();
   EXPECT_EQ (characters.GetById (id1)->GetHP ().armour (), 8);
   EXPECT_EQ (characters.GetById (id2)->GetHP ().armour (), 8);
+}
+
+/* ************************************************************************** */
+
+using DamageListTests = DealDamageTests;
+
+TEST_F (DamageListTests, Basic)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  const auto idAttacker = c->GetId ();
+  AddAttack (*c, 2, 1, 1);
+  c.reset ();
+
+  /* This character has no attack in range, so should not be put onto
+     the damage list.  */
+  c = characters.CreateNew ("domob", Faction::RED);
+  AddAttack (*c, 1, 1, 1);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", Faction::GREEN);
+  const auto idTarget = c->GetId ();
+  c->SetPosition (HexCoord (2, 0));
+  NoAttacks (*c);
+  SetHp (*c, 0, 10, 0, 10);
+  c.reset ();
+
+  /* Add an existing dummy entry to verify it is kept.  */
+  dl.AddEntry (idTarget, 42);
+
+  FindTargetsAndDamage ();
+  EXPECT_EQ (dl.GetAttackers (idTarget),
+             DamageLists::Attackers ({42, idAttacker}));
+}
+
+TEST_F (DamageListTests, ReciprocalKill)
+{
+  /* When two characters kill each other in one shot at the same time,
+     both should end up on each other's damage list.  */
+
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  const auto id1 = c->GetId ();
+  AddAttack (*c, 1, 1, 1);
+  SetHp (*c, 0, 1, 0, 1);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", Faction::GREEN);
+  const auto id2 = c->GetId ();
+  AddAttack (*c, 1, 1, 1);
+  SetHp (*c, 0, 1, 0, 1);
+  c.reset ();
+
+  EXPECT_THAT (FindTargetsAndDamage (), ElementsAre (
+    TargetKey (proto::TargetId::TYPE_CHARACTER, id1),
+    TargetKey (proto::TargetId::TYPE_CHARACTER, id2)
+  ));
+  EXPECT_EQ (dl.GetAttackers (id1), DamageLists::Attackers ({id2}));
+  EXPECT_EQ (dl.GetAttackers (id2), DamageLists::Attackers ({id1}));
+}
+
+TEST_F (DamageListTests, MultipleKillers)
+{
+  /* Even if some character is already dead from processing another attacker's
+     damage, later attackers (except in later self-destruct rounds) should still
+     be tracked on the damage list.  */
+
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  const auto idTarget = c->GetId ();
+  NoAttacks (*c);
+  SetHp (*c, 0, 1, 0, 1);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", Faction::GREEN);
+  const auto idAttacker1 = c->GetId ();
+  AddAttack (*c, 1, 1, 1);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", Faction::BLUE);
+  const auto idAttacker2 = c->GetId ();
+  AddAttack (*c, 1, 1, 1);
+  c.reset ();
+
+  EXPECT_THAT (FindTargetsAndDamage (), ElementsAre (
+    TargetKey (proto::TargetId::TYPE_CHARACTER, idTarget)
+  ));
+  EXPECT_EQ (dl.GetAttackers (idTarget),
+             DamageLists::Attackers ({idAttacker1, idAttacker2}));
 }
 
 /* ************************************************************************** */
