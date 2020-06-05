@@ -47,6 +47,7 @@ namespace
 {
 
 using testing::ElementsAre;
+using testing::ElementsAreArray;
 
 /* ************************************************************************** */
 
@@ -116,6 +117,20 @@ protected:
     boost.mutable_damage ()->set_percent (boostPercent);
 
     *c.MutableProto ().mutable_combat_data ()->add_low_hp_boosts () = boost;
+  }
+
+  /**
+   * Adds a self-destruct ability for the given character.
+   */
+  static void
+  AddSelfDestruct (Character& c, const unsigned area, const unsigned dmg)
+  {
+    proto::SelfDestruct sd;
+    sd.set_area (area);
+    sd.mutable_damage ()->set_min (dmg);
+    sd.mutable_damage ()->set_max (dmg);
+
+    *c.MutableProto ().mutable_combat_data ()->add_self_destructs () = sd;
   }
 
 };
@@ -792,7 +807,11 @@ TEST_F (DealDamageTests, EffectsAndDamageApplied)
   EXPECT_EQ (c->GetEffects ().speed ().percent (), -15);
 }
 
-TEST_F (DealDamageTests, LowHpBoostRangeAndDamage)
+/* ************************************************************************** */
+
+using LowHpBoostTests = DealDamageTests;
+
+TEST_F (LowHpBoostTests, RangeAndDamage)
 {
   auto c = characters.CreateNew ("red", Faction::RED);
   SetHp (*c, 0, 10, 0, 100);
@@ -820,7 +839,7 @@ TEST_F (DealDamageTests, LowHpBoostRangeAndDamage)
   EXPECT_EQ (characters.GetById (idArea)->GetHP ().armour (), 98);
 }
 
-TEST_F (DealDamageTests, LowHpBoostStacking)
+TEST_F (LowHpBoostTests, Stacking)
 {
   auto c = characters.CreateNew ("red", Faction::RED);
   SetHp (*c, 0, 10, 0, 100);
@@ -844,7 +863,7 @@ TEST_F (DealDamageTests, LowHpBoostStacking)
   EXPECT_EQ (characters.GetById (idTarget)->GetHP ().armour (), 96);
 }
 
-TEST_F (DealDamageTests, LowHpBoostBasedOnOriginalHp)
+TEST_F (LowHpBoostTests, BasedOnOriginalHp)
 {
   /* Two characters are attacking each other.  The low-HP boost should
      be determined based on the original HP before applying any damage,
@@ -873,6 +892,122 @@ TEST_F (DealDamageTests, LowHpBoostBasedOnOriginalHp)
   FindTargetsAndDamage ();
   EXPECT_EQ (characters.GetById (id1)->GetHP ().armour (), 8);
   EXPECT_EQ (characters.GetById (id2)->GetHP ().armour (), 8);
+}
+
+/* ************************************************************************** */
+
+using SelfDestructTests = DealDamageTests;
+
+TEST_F (SelfDestructTests, Basic)
+{
+  /* This sets up a basic situation with three characters:  One kills
+     the second, which self-destructs and inflicts damage back onto the
+     first.  We also have a third character, which we use to check that the
+     first character, which has self-destruct but is not killed, does not
+     apply extra self-destruct damage.  */
+
+  auto c = characters.CreateNew ("red", Faction::RED);
+  const auto idAlive = c->GetId ();
+  SetHp (*c, 0, 100, 0, 100);
+  AddAttack (*c, 5, 10, 10);
+  AddSelfDestruct (*c, 10, 80);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idDestructed = c->GetId ();
+  c->SetPosition (HexCoord (5, 0));
+  SetHp (*c, 0, 10, 0, 10);
+  AddSelfDestruct (*c, 5, 30);
+  c.reset ();
+
+  c = characters.CreateNew ("blue", Faction::BLUE);
+  const auto idStandby = c->GetId ();
+  c->SetPosition (HexCoord (-6, 0));
+  SetHp (*c, 0, 100, 0, 100);
+  NoAttacks (*c);
+  c.reset ();
+
+  EXPECT_THAT (FindTargetsAndDamage (), ElementsAre (
+    TargetKey (proto::TargetId::TYPE_CHARACTER, idDestructed)
+  ));
+  EXPECT_EQ (characters.GetById (idAlive)->GetHP ().armour (), 70);
+  EXPECT_EQ (characters.GetById (idStandby)->GetHP ().armour (), 100);
+}
+
+TEST_F (SelfDestructTests, StackingAndLowHpBoost)
+{
+  /* Even if a character is "one-shot" killed (had full HP before),
+     the low-HP boost should apply to its self-destruct.  */
+
+  auto c = characters.CreateNew ("red", Faction::RED);
+  const auto idAttacker = c->GetId ();
+  SetHp (*c, 0, 100, 0, 100);
+  AddAttack (*c, 100, 1, 1);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idDestructed = c->GetId ();
+  c->SetPosition (HexCoord (12, 0));
+  SetHp (*c, 0, 1, 0, 1);
+  AddSelfDestruct (*c, 10, 10);
+  AddSelfDestruct (*c, 10, 10);
+  AddLowHpBoost (*c, 1, 10);
+  AddLowHpBoost (*c, 0, 10);
+  c.reset ();
+
+  EXPECT_THAT (FindTargetsAndDamage (), ElementsAre (
+    TargetKey (proto::TargetId::TYPE_CHARACTER, idDestructed)
+  ));
+  EXPECT_EQ (characters.GetById (idAttacker)->GetHP ().armour (), 100 - 24);
+}
+
+TEST_F (SelfDestructTests, Chain)
+{
+  constexpr int length = 100;
+  static_assert (length % 2 == 0, "length should be even");
+
+  auto c = characters.CreateNew ("red", Faction::RED);
+  const auto idTrigger = c->GetId ();
+  SetHp (*c, 0, 100, 0, 100);
+  AddAttack (*c, 1, 1, 1);
+  c.reset ();
+
+  c = characters.CreateNew ("red", Faction::RED);
+  const auto idEnd = c->GetId ();
+  c->SetPosition (HexCoord (length + 1, 0));
+  SetHp (*c, 0, 100, 0, 100);
+  NoAttacks (*c);
+  c.reset ();
+
+  std::vector<TargetKey> expectedDead;
+  for (int i = 1; i <= length; i += 2)
+    {
+      /* We add a pair of blue/green characters to the chain at each step.
+         They are created in reversed order to their position, so that
+         we can also verify that the returned kills are sorted by TargetKey's
+         order and not by time.  */
+
+      c = characters.CreateNew ("green", Faction::GREEN);
+      const auto idLow = c->GetId ();
+      c->SetPosition (HexCoord (i + 1, 0));
+      SetHp (*c, 0, 1, 0, 1);
+      AddSelfDestruct (*c, 1, 1);
+      c.reset ();
+
+      c = characters.CreateNew ("blue", Faction::BLUE);
+      const auto idHigh = c->GetId ();
+      c->SetPosition (HexCoord (i, 0));
+      SetHp (*c, 0, 1, 0, 1);
+      AddSelfDestruct (*c, 1, 1);
+      c.reset ();
+
+      expectedDead.emplace_back (proto::TargetId::TYPE_CHARACTER, idLow);
+      expectedDead.emplace_back (proto::TargetId::TYPE_CHARACTER, idHigh);
+    }
+
+  EXPECT_THAT (FindTargetsAndDamage (), ElementsAreArray (expectedDead));
+  EXPECT_EQ (characters.GetById (idTrigger)->GetHP ().armour (), 99);
+  EXPECT_EQ (characters.GetById (idEnd)->GetHP ().armour (), 99);
 }
 
 /* ************************************************************************** */
@@ -959,6 +1094,42 @@ TEST_F (DamageListTests, MultipleKillers)
   ));
   EXPECT_EQ (dl.GetAttackers (idTarget),
              DamageLists::Attackers ({idAttacker1, idAttacker2}));
+}
+
+TEST_F (DamageListTests, WithSelfDestruct)
+{
+  /* Damage from self-destructs should be credited to the destructed character.
+     But if the self-destruct is triggered by another self-destruct, then
+     the already-dead character should not be credited to the later
+     self-destructor.  */
+
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  const auto idTrigger = c->GetId ();
+  AddAttack (*c, 10, 1, 1);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", Faction::GREEN);
+  const auto idDestruct1 = c->GetId ();
+  c->SetPosition (HexCoord (10, 0));
+  AddSelfDestruct (*c, 5, 1);
+  SetHp (*c, 0, 1, 0, 1);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", Faction::BLUE);
+  const auto idDestruct2 = c->GetId ();
+  c->SetPosition (HexCoord (15, 0));
+  AddSelfDestruct (*c, 5, 1);
+  SetHp (*c, 0, 1, 0, 1);
+  c.reset ();
+
+  EXPECT_THAT (FindTargetsAndDamage (), ElementsAre (
+    TargetKey (proto::TargetId::TYPE_CHARACTER, idDestruct1),
+    TargetKey (proto::TargetId::TYPE_CHARACTER, idDestruct2)
+  ));
+  EXPECT_EQ (dl.GetAttackers (idDestruct1),
+             DamageLists::Attackers ({idTrigger}));
+  EXPECT_EQ (dl.GetAttackers (idDestruct2),
+             DamageLists::Attackers ({idDestruct1}));
 }
 
 /* ************************************************************************** */
