@@ -48,7 +48,7 @@ Building::Building (Database& d, const Database::Result<BuildingResult>& res)
   pos = GetCoordFromColumn (res);
   data = res.GetProto<BuildingResult::proto> ();
 
-  VLOG (1) << "Fetched building with ID " << id << " from database result";
+  VLOG (2) << "Fetched building with ID " << id << " from database result";
 }
 
 Building::~Building ()
@@ -60,7 +60,7 @@ Building::~Building ()
   if (isNew || CombatEntity::IsDirtyFull () || CombatEntity::IsDirtyFields ()
         || dirtyFields || data.IsDirty ())
     {
-      VLOG (1)
+      VLOG (2)
           << "Building " << id << " has been modified, updating DB";
 
       auto stmt = db.Prepare (R"(
@@ -94,7 +94,7 @@ Building::~Building ()
       return;
     }
 
-  VLOG (1) << "Building " << id << " is not dirty, no update";
+  VLOG (2) << "Building " << id << " is not dirty, no update";
 }
 
 const std::string&

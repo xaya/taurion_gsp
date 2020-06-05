@@ -67,7 +67,7 @@ Character::Character (Database& d, const Database::Result<CharacterResult>& res)
   inv = res.GetProto<CharacterResult::inventory> ();
   data = res.GetProto<CharacterResult::proto> ();
 
-  VLOG (1) << "Fetched character with ID " << id << " from database result";
+  VLOG (2) << "Fetched character with ID " << id << " from database result";
   Validate ();
 }
 
@@ -78,7 +78,7 @@ Character::~Character ()
   if (isNew || CombatEntity::IsDirtyFull ()
         || inv.IsDirty () || effects.IsDirty () || data.IsDirty ())
     {
-      VLOG (1)
+      VLOG (2)
           << "Character " << id
           << " has been modified including proto data, updating DB";
       auto stmt = db.Prepare (R"(
@@ -122,7 +122,7 @@ Character::~Character ()
 
   if (dirtyFields || volatileMv.IsDirty () || CombatEntity::IsDirtyFields ())
     {
-      VLOG (1)
+      VLOG (2)
           << "Character " << id << " has been modified in the DB fields only,"
           << " updating those";
 
@@ -143,7 +143,7 @@ Character::~Character ()
       return;
     }
 
-  VLOG (1) << "Character " << id << " is not dirty, no update";
+  VLOG (2) << "Character " << id << " is not dirty, no update";
 }
 
 void
