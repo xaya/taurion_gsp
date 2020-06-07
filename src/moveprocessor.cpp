@@ -895,7 +895,16 @@ BaseMoveProcessor::ParseSetFitments (const Character& c, const Json::Value& upd,
         return false;
       }
 
-  return CheckVehicleFitments (c.GetProto ().vehicle (), fitments, ctx);
+  if (!CheckVehicleFitments (c.GetProto ().vehicle (), fitments, ctx))
+    {
+      LOG (WARNING)
+          << "Fitments for character " << c.GetId ()
+          << " on vehicle type " << c.GetProto ().vehicle ()
+          << " are not possible:\n" << cmd;
+      return false;
+    }
+
+  return true;
 }
 
 namespace
