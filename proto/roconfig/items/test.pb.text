@@ -1,3 +1,6 @@
+################################################################################
+# Resources and ores
+
 fungible_items:
   {
     key: "foo"
@@ -31,6 +34,9 @@ fungible_items:
           }
       }
   }
+
+################################################################################
+# Fitments and artefacts
 
 # These ones are dummy "weapons" that can be equipped and constructed
 # from dummy blueprints for testing purposes.
@@ -75,6 +81,9 @@ fungible_items:
       }
   }
 
+################################################################################
+# Vehicles
+
 # A test vehicle with some well-defined stats that can be used
 # also e.g. in tests for fitments.
 fungible_items:
@@ -108,6 +117,7 @@ fungible_items:
                   }
               }
             mining_rate: { min: 10 max: 100 }
+            prospecting_blocks: 10
             equipment_slots: { key: "high" value: 3 }
             equipment_slots: { key: "mid" value: 2 }
             equipment_slots: { key: "low" value: 1 }

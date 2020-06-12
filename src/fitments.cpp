@@ -102,11 +102,24 @@ void
 InitCharacterStats (Character& c, const proto::VehicleData& data)
 {
   auto& pb = c.MutableProto ();
+
   pb.set_cargo_space (data.cargo_space ());
   pb.set_speed (data.speed ());
   *pb.mutable_combat_data () = data.combat_data ();
   c.MutableRegenData () = data.regen_data ();
-  *pb.mutable_mining ()->mutable_rate () = data.mining_rate ();
+
+  if (data.has_mining_rate ())
+    *pb.mutable_mining ()->mutable_rate () = data.mining_rate ();
+  else
+    pb.clear_mining ();
+
+  if (data.has_prospecting_blocks ())
+    {
+      pb.set_prospecting_blocks (data.prospecting_blocks ());
+      CHECK_GT (pb.prospecting_blocks (), 0);
+    }
+  else
+    pb.clear_prospecting_blocks ();
 }
 
 /**

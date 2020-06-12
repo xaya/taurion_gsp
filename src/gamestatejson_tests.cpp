@@ -484,6 +484,29 @@ TEST_F (CharacterJsonTests, Mining)
   })");
 }
 
+TEST_F (CharacterJsonTests, ProspectingRate)
+{
+  tbl.CreateNew ("without prospecting", Faction::RED);
+
+  auto c = tbl.CreateNew ("with prospecting", Faction::RED);
+  c->MutableProto ().set_prospecting_blocks (42);
+  c.reset ();
+
+  ExpectStateJson (R"({
+    "characters":
+      [
+        {
+          "owner": "without prospecting",
+          "prospectingblocks": null
+        },
+        {
+          "owner": "with prospecting",
+          "prospectingblocks": 42
+        }
+      ]
+  })");
+}
+
 TEST_F (CharacterJsonTests, DamageLists)
 {
   const auto id1 = tbl.CreateNew ("domob", Faction::RED)->GetId ();

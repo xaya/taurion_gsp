@@ -294,6 +294,10 @@ template <>
   if (!mining.isNull ())
     res["mining"] = mining;
 
+  const auto& pb = c.GetProto ();
+  if (pb.has_prospecting_blocks ())
+    res["prospectingblocks"] = IntToJson (pb.prospecting_blocks ());
+
   return res;
 }
 

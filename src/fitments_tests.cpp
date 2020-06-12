@@ -116,6 +116,12 @@ TEST_F (DeriveCharacterStatsTests, BaseVehicleStats)
   EXPECT_EQ (c->GetRegenData ().shield_regeneration_mhp (), 10);
 }
 
+TEST_F (DeriveCharacterStatsTests, ProspectingRate)
+{
+  EXPECT_EQ (Derive ("chariot", {})->GetProto ().prospecting_blocks (), 10);
+  EXPECT_FALSE (Derive ("basetank", {})->GetProto ().has_prospecting_blocks ());
+}
+
 TEST_F (DeriveCharacterStatsTests, HpAreReset)
 {
   auto c = Derive ("chariot", {});

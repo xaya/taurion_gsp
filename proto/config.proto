@@ -115,13 +115,16 @@ message VehicleData
   /** Base mining speed for the vehicle.  */
   optional MiningData.Speed mining_rate = 5;
 
+  /** Base prospecting rate (if prospecting is possible).  */
+  optional uint32 prospecting_blocks = 6;
+
   /**
    * Number of equipment slots of each type.  The slot types are just strings
    * which have to be matched between here and the fitment configs.  The valid
    * values are "high", "mid" and "low".  Unfortunately we cannot use enum
    * values as they can't be keys in protocol buffer maps.
    */
-  map<string, uint32> equipment_slots = 6;
+  map<string, uint32> equipment_slots = 7;
 
 }
 
@@ -412,41 +415,38 @@ message Params
   /** The number of blocks for which a character stays on a damage list.  */
   optional uint32 damage_list_blocks = 5;
 
-  /** The duration of prospecting in blocks.  */
-  optional uint32 prospecting_blocks = 6;
-
   /**
    * The number of blocks after which a region can be reprospected (if there
    * are no other factors preventing it).
    */
-  optional uint32 prospection_expiry_blocks = 7;
+  optional uint32 prospection_expiry_blocks = 6;
 
   /** The number of HP that can be repaired per block.  */
-  optional uint32 armour_repair_hp_per_block = 8;
+  optional uint32 armour_repair_hp_per_block = 7;
 
   /** Cost (in 1/1000 vCHI) for repairing one HP of armour.  */
-  optional uint32 armour_repair_cost_millis = 9;
+  optional uint32 armour_repair_cost_millis = 8;
 
   /** Cost (in vCHI) for copying a blueprint, per complexity.  */
-  optional int64 bp_copy_cost = 10;
+  optional int64 bp_copy_cost = 9;
 
   /** Number of blocks for copying a blueprint, per complexity.  */
-  optional uint32 bp_copy_blocks = 11;
+  optional uint32 bp_copy_blocks = 10;
 
   /** Cost (in vCHI) for constructing an item, per complexity.  */
-  optional int64 construction_cost = 12;
+  optional int64 construction_cost = 11;
 
   /** Nubmer of blocks for constructing an item, per complexity.  */
-  optional uint32 construction_blocks = 13;
+  optional uint32 construction_blocks = 12;
 
   /** The address to which developer payments should be sent.  */
-  optional string dev_addr = 14;
+  optional string dev_addr = 13;
 
   /** Whether or not god mode is enabled.  */
-  optional bool god_mode = 15;
+  optional bool god_mode = 14;
 
   /** Spawn areas for the factions (with the "r", "g", "b" string as key).  */
-  map<string, SpawnArea> spawn_areas = 16;
+  map<string, SpawnArea> spawn_areas = 15;
 
   /**
    * Prospecting prizes.  They are just a list and not a map, because the

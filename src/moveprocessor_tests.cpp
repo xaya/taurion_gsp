@@ -764,6 +764,7 @@ TEST_F (CharacterUpdateTests, WhenBusy)
   auto h = GetTest ();
   h->MutableProto ().set_ongoing (42);
   h->MutableProto ().mutable_mining ();
+  h->MutableProto ().set_prospecting_blocks (10);
   h.reset ();
 
   Process (R"([
@@ -794,6 +795,7 @@ TEST_F (CharacterUpdateTests, InvalidWhenInsideBuilding)
   auto h = GetTest ();
   h->SetBuildingId (10);
   h->MutableProto ().mutable_mining ();
+  h->MutableProto ().set_prospecting_blocks (10);
   h.reset ();
 
   Process (R"([
@@ -2432,6 +2434,7 @@ protected:
   {
     ctx.SetHeight (1'042);
     GetTest ()->SetPosition (pos);
+    GetTest ()->MutableProto ().set_prospecting_blocks (10);
   }
 
 };
@@ -2554,6 +2557,18 @@ TEST_F (ProspectingMoveTests, CannotProspectRegion)
   EXPECT_EQ (r->GetProto ().prospection ().name (), "foo");
 }
 
+TEST_F (ProspectingMoveTests, NoProspectingAbility)
+{
+  GetTest ()->MutableProto ().clear_prospecting_blocks ();
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"prospect": {}}}}
+    }
+  ])");
+  EXPECT_FALSE (GetTest ()->IsBusy ());
+}
+
 TEST_F (ProspectingMoveTests, MultipleCharacters)
 {
   accounts.CreateNew ("foo", Faction::GREEN);
@@ -2561,6 +2576,7 @@ TEST_F (ProspectingMoveTests, MultipleCharacters)
   auto c = tbl.CreateNew ("foo", Faction::GREEN);
   ASSERT_EQ (c->GetId (), 2);
   c->SetPosition (pos);
+  c->MutableProto ().set_prospecting_blocks (10);
   c.reset ();
 
   Process (R"([
@@ -2592,8 +2608,16 @@ TEST_F (ProspectingMoveTests, OrderOfCharactersInAMove)
 
   /* Character 9 will be processed before character 10, since we order by
      ID and not by string.  */
-  SetupCharacter (9, "domob")->SetPosition (pos + HexCoord (1, 0));
-  SetupCharacter (10, "domob")->SetPosition (pos);
+
+  auto c = SetupCharacter (9, "domob");
+  c->SetPosition (pos + HexCoord (1, 0));
+  c->MutableProto ().set_prospecting_blocks (10);
+  c.reset ();
+
+  c = SetupCharacter (10, "domob");
+  c->SetPosition (pos);
+  c->MutableProto ().set_prospecting_blocks (10);
+  c.reset ();
 
   Process (R"([
     {

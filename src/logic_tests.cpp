@@ -565,6 +565,7 @@ TEST_F (PXLogicTests, ProspectingBeforeMovement)
   auto& pb = c->MutableProto ();
   pb.mutable_combat_data ();
   *pb.mutable_movement ()->add_waypoints () = CoordToProto (pos2);
+  pb.set_prospecting_blocks (10);
   c.reset ();
 
   UpdateState (R"([
@@ -593,12 +594,14 @@ TEST_F (PXLogicTests, ProspectingUserKilled)
   auto c = CreateCharacter ("domob", Faction::RED);
   ASSERT_EQ (c->GetId (), 1);
   c->SetPosition (pos);
+  c->MutableProto ().set_prospecting_blocks (10);
   AddUnityAttack (*c, 1);
   c.reset ();
 
   c = CreateCharacter ("andy", Faction::GREEN);
   ASSERT_EQ (c->GetId (), 2);
   c->SetPosition (pos);
+  c->MutableProto ().set_prospecting_blocks (10);
   c->MutableProto ().mutable_combat_data ();
   auto& regen = c->MutableRegenData ();
   regen.mutable_max_hp ()->set_shield (100);
@@ -657,6 +660,7 @@ TEST_F (PXLogicTests, FinishingProspecting)
   auto c = CreateCharacter ("domob", Faction::RED);
   ASSERT_EQ (c->GetId (), 1);
   c->SetPosition (pos);
+  c->MutableProto ().set_prospecting_blocks (10);
   c->MutableProto ().mutable_combat_data ();
   c->MutableProto ().set_speed (1000);
   c.reset ();
@@ -713,6 +717,7 @@ TEST_F (PXLogicTests, MiningRightAfterProspecting)
   c->MutableProto ().mutable_combat_data ();
   c->MutableProto ().mutable_mining ()->mutable_rate ()->set_min (1);
   c->MutableProto ().mutable_mining ()->mutable_rate ()->set_max (1);
+  c->MutableProto ().set_prospecting_blocks (10);
   c->MutableProto ().set_cargo_space (100);
   c.reset ();
 
@@ -812,6 +817,7 @@ TEST_F (PXLogicTests, MiningWhenReprospected)
   c->MutableProto ().mutable_mining ()->mutable_rate ()->set_min (1);
   c->MutableProto ().mutable_mining ()->mutable_rate ()->set_max (1);
   c->MutableProto ().mutable_mining ()->set_active (true);
+  c->MutableProto ().set_prospecting_blocks (10);
   c->MutableProto ().set_cargo_space (1000);
   c.reset ();
 

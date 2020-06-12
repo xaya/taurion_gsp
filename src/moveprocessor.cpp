@@ -639,6 +639,12 @@ BaseMoveProcessor::ParseCharacterProspecting (const Character& c,
       return false;
     }
 
+  if (!c.GetProto ().has_prospecting_blocks ())
+    {
+      LOG (WARNING) << "Character " << c.GetId () << " cannot prospect";
+      return false;
+    }
+
   if (c.IsBusy ())
     {
       LOG (WARNING)
@@ -1251,10 +1257,12 @@ MoveProcessor::MaybeStartProspecting (Character& c, const Json::Value& upd)
 
   StopCharacter (c);
 
+  const unsigned blocks = c.GetProto ().prospecting_blocks ();
+  CHECK_GT (blocks, 0);
+
   auto op = ongoings.CreateNew (ctx.Height ());
   c.MutableProto ().set_ongoing (op->GetId ());
-  op->SetHeight (
-      ctx.Height () + ctx.RoConfig ()->params ().prospecting_blocks ());
+  op->SetHeight (ctx.Height () + blocks);
   op->SetCharacterId (c.GetId ());
   op->MutableProto ().mutable_prospection ();
 }
