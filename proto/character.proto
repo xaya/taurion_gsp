@@ -86,11 +86,17 @@ message Character
   /** The character's mining data, if it can mine.  */
   optional MiningData mining = 6;
 
+  /**
+   * The character's prospecting rate, if it can prospect.  This is
+   * the number of blocks it takes them to finish prospection.
+   */
+  optional uint32 prospecting_blocks = 7;
+
   /** Movement speed of the character.  */
-  optional uint32 speed = 7;
+  optional uint32 speed = 8;
 
   /** Total cargo space the character has.  */
-  optional uint64 cargo_space = 8;
+  optional uint64 cargo_space = 9;
 
   /* Fields that are stored directly in the database and thus not part of the
      encoded protocol buffer:

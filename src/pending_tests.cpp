@@ -1015,18 +1015,26 @@ TEST_F (PendingStateUpdaterTests, Prospecting)
   auto h = characters.CreateNew ("domob", Faction::RED);
   ASSERT_EQ (h->GetId (), 1);
   h->SetPosition (pos);
+  h->MutableProto ().set_prospecting_blocks (10);
   h.reset ();
 
   h = characters.CreateNew ("domob", Faction::GREEN);
   ASSERT_EQ (h->GetId (), 2);
   h->MutableProto ().set_ongoing (42);
+  h->MutableProto ().set_prospecting_blocks (10);
+  h.reset ();
+
+  h = characters.CreateNew ("domob", Faction::BLUE);
+  ASSERT_EQ (h->GetId (), 3);
+  h->MutableProto ().clear_prospecting_blocks ();
   h.reset ();
 
   Process ("domob", R"({
     "c":
       {
         "1": {"prospect": {}},
-        "2": {"prospect": {}}
+        "2": {"prospect": {}},
+        "3": {"prospect": {}}
       }
   })");
 

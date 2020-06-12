@@ -1,3 +1,6 @@
+################################################################################
+# Resources and ores
+
 fungible_items:
   {
     key: "foo"
@@ -32,6 +35,9 @@ fungible_items:
       }
   }
 
+################################################################################
+# Fitments and artefacts
+
 # These ones are dummy "weapons" that can be equipped and constructed
 # from dummy blueprints for testing purposes.
 fungible_items:
@@ -39,8 +45,8 @@ fungible_items:
     key: "bow"
     value:
       {
-        space: 1,
-        complexity: 100,
+        space: 1
+        complexity: 100
         with_blueprint: true
         construction_resources: { key: "foo" value: 2 }
         construction_resources: { key: "bar" value: 1 }
@@ -52,11 +58,29 @@ fungible_items:
     key: "sword"
     value:
       {
-        space: 1,
-        complexity: 1,
+        space: 1
+        complexity: 1
         with_blueprint: true
         construction_resources: { key: "zerospace" value: 10 }
         fitment: { slot: "high" }
+      }
+  }
+
+# Strong reduction of prospecting time (more than any real item)
+# so that we can test the lower cap at one block.
+fungible_items:
+  {
+    key: "super scanner",
+    value:
+      {
+        space: 1
+        complexity: 1
+        with_blueprint: true
+        fitment:
+          {
+            slot: "high"
+            prospecting_blocks: { percent: -99 }
+          }
       }
   }
 
@@ -65,7 +89,7 @@ fungible_items:
     key: "test artefact"
     value:
       {
-        space: 0,
+        space: 0
         reveng:
           {
             cost: 10
@@ -74,6 +98,9 @@ fungible_items:
           }
       }
   }
+
+################################################################################
+# Vehicles
 
 # A test vehicle with some well-defined stats that can be used
 # also e.g. in tests for fitments.
@@ -108,6 +135,7 @@ fungible_items:
                   }
               }
             mining_rate: { min: 10 max: 100 }
+            prospecting_blocks: 10
             equipment_slots: { key: "high" value: 3 }
             equipment_slots: { key: "mid" value: 2 }
             equipment_slots: { key: "low" value: 1 }

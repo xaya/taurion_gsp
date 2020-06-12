@@ -102,11 +102,24 @@ void
 InitCharacterStats (Character& c, const proto::VehicleData& data)
 {
   auto& pb = c.MutableProto ();
+
   pb.set_cargo_space (data.cargo_space ());
   pb.set_speed (data.speed ());
   *pb.mutable_combat_data () = data.combat_data ();
   c.MutableRegenData () = data.regen_data ();
-  *pb.mutable_mining ()->mutable_rate () = data.mining_rate ();
+
+  if (data.has_mining_rate ())
+    *pb.mutable_mining ()->mutable_rate () = data.mining_rate ();
+  else
+    pb.clear_mining ();
+
+  if (data.has_prospecting_blocks ())
+    {
+      pb.set_prospecting_blocks (data.prospecting_blocks ());
+      CHECK_GT (pb.prospecting_blocks (), 0);
+    }
+  else
+    pb.clear_prospecting_blocks ();
 }
 
 /**
@@ -119,6 +132,7 @@ ApplyFitments (Character& c, const Context& ctx)
   /* Boosts from stat modifiers are not compounding.  Thus we total up
      each modifier first and only apply them at the end.  */
   StatModifier cargo, speed;
+  StatModifier prospecting, mining;
   StatModifier maxArmour, maxShield;
   StatModifier shieldRegen;
   StatModifier range, damage;
@@ -141,6 +155,8 @@ ApplyFitments (Character& c, const Context& ctx)
 
       cargo += fitment.cargo_space ();
       speed += fitment.speed ();
+      prospecting += fitment.prospecting_blocks ();
+      mining += fitment.mining_rate ();
       maxArmour += fitment.max_armour ();
       maxShield += fitment.max_shield ();
       shieldRegen += fitment.shield_regen ();
@@ -150,6 +166,23 @@ ApplyFitments (Character& c, const Context& ctx)
 
   pb.set_cargo_space (cargo (pb.cargo_space ()));
   pb.set_speed (speed (pb.speed ()));
+
+  if (pb.has_prospecting_blocks ())
+    {
+      int blocks = pb.prospecting_blocks ();
+      CHECK_GT (blocks, 0);
+      blocks = prospecting (blocks);
+      blocks = std::max (1, blocks);
+      CHECK_GT (blocks, 0);
+      pb.set_prospecting_blocks (blocks);
+    }
+
+  if (pb.has_mining ())
+    {
+      auto* rate = pb.mutable_mining ()->mutable_rate ();
+      rate->set_min (mining (rate->min ()));
+      rate->set_max (mining (rate->max ()));
+    }
 
   auto& regen = c.MutableRegenData ();
   regen.mutable_max_hp ()->set_armour (maxArmour (regen.max_hp ().armour ()));

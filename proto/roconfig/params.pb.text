@@ -7,7 +7,6 @@ params:
     blocked_step_retries: 10
 
     damage_list_blocks: 100
-    prospecting_blocks: 10
     prospection_expiry_blocks: 5000
 
     armour_repair_hp_per_block: 100
