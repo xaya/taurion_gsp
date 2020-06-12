@@ -183,6 +183,21 @@ TEST_F (DeriveCharacterStatsTests, CargoSpeed)
   EXPECT_EQ (c->GetProto ().cargo_space (), 1'100);
 }
 
+TEST_F (DeriveCharacterStatsTests, ProspectingMining)
+{
+  auto c = Derive ("chariot", {"scanner", "pick"});
+  EXPECT_EQ (c->GetProto ().prospecting_blocks (), 8);
+  EXPECT_EQ (c->GetProto ().mining ().rate ().min (), 12);
+  EXPECT_EQ (c->GetProto ().mining ().rate ().max (), 120);
+
+  c = Derive ("chariot", {"super scanner", "super scanner"});
+  EXPECT_EQ (c->GetProto ().prospecting_blocks (), 1);
+
+  c = Derive ("basetank", {"scanner", "pick"});
+  EXPECT_FALSE (c->GetProto ().has_prospecting_blocks ());
+  EXPECT_FALSE (c->GetProto ().has_mining ());
+}
+
 TEST_F (DeriveCharacterStatsTests, MaxHpRegen)
 {
   auto c = Derive ("chariot", {"plating", "shield"});

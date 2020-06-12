@@ -45,8 +45,8 @@ fungible_items:
     key: "bow"
     value:
       {
-        space: 1,
-        complexity: 100,
+        space: 1
+        complexity: 100
         with_blueprint: true
         construction_resources: { key: "foo" value: 2 }
         construction_resources: { key: "bar" value: 1 }
@@ -58,11 +58,29 @@ fungible_items:
     key: "sword"
     value:
       {
-        space: 1,
-        complexity: 1,
+        space: 1
+        complexity: 1
         with_blueprint: true
         construction_resources: { key: "zerospace" value: 10 }
         fitment: { slot: "high" }
+      }
+  }
+
+# Strong reduction of prospecting time (more than any real item)
+# so that we can test the lower cap at one block.
+fungible_items:
+  {
+    key: "super scanner",
+    value:
+      {
+        space: 1
+        complexity: 1
+        with_blueprint: true
+        fitment:
+          {
+            slot: "high"
+            prospecting_blocks: { percent: -99 }
+          }
       }
   }
 
@@ -71,7 +89,7 @@ fungible_items:
     key: "test artefact"
     value:
       {
-        space: 0,
+        space: 0
         reveng:
           {
             cost: 10

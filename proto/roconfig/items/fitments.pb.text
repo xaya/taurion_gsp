@@ -82,6 +82,38 @@ fungible_items:
 
 fungible_items:
   {
+    key: "scanner"
+    value:
+      {
+        space: 5
+        complexity: 4
+        with_blueprint: true
+        fitment:
+          {
+            slot: "high"
+            prospecting_blocks: { percent: -20 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "pick"
+    value:
+      {
+        space: 5
+        complexity: 4
+        with_blueprint: true
+        fitment:
+          {
+            slot: "high"
+            mining_rate: { percent: 20 }
+          }
+      }
+  }
+
+fungible_items:
+  {
     key: "selfdestruct"
     value:
       {
