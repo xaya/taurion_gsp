@@ -297,7 +297,7 @@ private:
 
 protected:
 
-  void PerformCharacterCreation (const std::string& name, Faction f) override;
+  void PerformCharacterCreation (Account& acc, Faction f) override;
   void PerformCharacterUpdate (Character& c, const Json::Value& upd) override;
   void PerformServiceOperation (ServiceOperation& op) override;
 

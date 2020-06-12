@@ -431,6 +431,21 @@ TEST_F (CharacterCreationTests, ValidCreation)
   EXPECT_FALSE (res.Step ());
 }
 
+TEST_F (CharacterCreationTests, VChiAirdrop)
+{
+  accounts.CreateNew ("domob", Faction::RED);
+  accounts.CreateNew ("andy", Faction::BLUE);
+
+  ProcessWithDevPayment (R"([
+    {"name": "domob", "move": {"nc": [{}, {}]}},
+    {"name": "andy", "move": {"nc": [{}]}},
+    {"name": "andy", "move": {"nc": [{}]}}
+  ])", 2 * ctx.RoConfig ()->params ().character_cost () * COIN);
+
+  EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 2'000);
+  EXPECT_EQ (accounts.GetByName ("andy")->GetBalance (), 2'000);
+}
+
 TEST_F (CharacterCreationTests, DevPayment)
 {
   accounts.CreateNew ("domob", Faction::RED);

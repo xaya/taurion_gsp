@@ -426,10 +426,9 @@ PendingState::ToJson () const
 /* ************************************************************************** */
 
 void
-PendingStateUpdater::PerformCharacterCreation (const std::string& name,
-                                               const Faction f)
+PendingStateUpdater::PerformCharacterCreation (Account& acc, const Faction f)
 {
-  state.AddCharacterCreation (name, f);
+  state.AddCharacterCreation (acc.GetName (), f);
 }
 
 void
