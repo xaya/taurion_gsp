@@ -43,6 +43,9 @@ namespace pxd
  */
 static constexpr unsigned MAX_SERVICE_FEE_PERCENT = 1'000;
 
+/** Airdrop of vCHI for each new character during testing.  */
+static constexpr Amount VCHI_AIRDROP = 1'000;
+
 /* ************************************************************************** */
 
 BaseMoveProcessor::BaseMoveProcessor (Database& d, DynObstacles& o,
@@ -137,7 +140,7 @@ BaseMoveProcessor::TryCharacterCreation (const std::string& name,
           return;
         }
 
-      PerformCharacterCreation (name, faction);
+      PerformCharacterCreation (*account, faction);
       paidToDev -= cost;
       VLOG (1) << "After character creation, paid to dev left: " << paidToDev;
     }
@@ -1105,10 +1108,15 @@ MoveProcessor::ProcessOne (const Json::Value& moveObj)
 }
 
 void
-MoveProcessor::PerformCharacterCreation (const std::string& name,
-                                         const Faction f)
+MoveProcessor::PerformCharacterCreation (Account& acc, const Faction f)
 {
-  SpawnCharacter (name, f, characters, dyn, rnd, ctx);
+  SpawnCharacter (acc.GetName (), f, characters, dyn, rnd, ctx);
+
+  /* FIXME: For the full game, remove this.  */
+  LOG (INFO)
+      << "Airdropping " << VCHI_AIRDROP << " to " << acc.GetName ()
+      << " for newly created character";
+  acc.AddBalance (VCHI_AIRDROP);
 }
 
 namespace

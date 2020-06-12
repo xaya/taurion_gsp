@@ -259,7 +259,7 @@ protected:
    * is valid and should be performed.
    */
   virtual void
-  PerformCharacterCreation (const std::string& name, Faction f)
+  PerformCharacterCreation (Account& acc, Faction f)
   {}
 
   /**
@@ -400,7 +400,7 @@ private:
 
 protected:
 
-  void PerformCharacterCreation (const std::string& name, Faction f) override;
+  void PerformCharacterCreation (Account& acc, Faction f) override;
   void PerformCharacterUpdate (Character& c, const Json::Value& mv) override;
   void PerformBuildingUpdate (Building& b, const Json::Value& mv) override;
   void PerformServiceOperation (ServiceOperation& op) override;
