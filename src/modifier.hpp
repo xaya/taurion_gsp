@@ -65,6 +65,11 @@ public:
   int64_t
   operator() (int64_t base) const
   {
+    /* The formula is designed so that it "sticks" to the current value
+       (both when increased and reduced).  In other words, only when the change
+       in each direction is large enough (at least one point) will it be
+       applied.  So doing -10% on a value of 5 does not reduce to 4 (as a
+       naive multiplication and flooring would).  */
     return base + (base * percent) / 100;
   }
 

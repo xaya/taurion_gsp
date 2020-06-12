@@ -69,8 +69,11 @@ TEST_F (StatModifierTests, Application)
 
   m = Modifier ("percent: -10");
   EXPECT_EQ (m (0), 0);
-  EXPECT_EQ (m (-100), -90);
+  EXPECT_EQ (m (9), 9);
   EXPECT_EQ (m (10), 9);
+  EXPECT_EQ (m (-100), -90);
+  EXPECT_EQ (m (-9), -9);
+  EXPECT_EQ (m (-10), -9);
 }
 
 TEST_F (StatModifierTests, Stacking)
