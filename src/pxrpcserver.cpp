@@ -20,6 +20,7 @@
 
 #include "buildings.hpp"
 #include "jsonutils.hpp"
+#include "movement.hpp"
 #include "services.hpp"
 
 #include "database/itemcounts.hpp"
@@ -102,6 +103,20 @@ CheckIntBounds (const std::string& name, const int value,
 
 /* ************************************************************************** */
 
+NonStateRpcServer::NonStateRpcServer (jsonrpc::AbstractServerConnector& conn,
+                                      const BaseMap& m, const xaya::Chain c)
+  : NonStateRpcServerStub(conn), chain(c), map(m)
+{
+  std::lock_guard<std::mutex> lock(mutDynObstacles);
+  InitDynObstacles ();
+}
+
+void
+NonStateRpcServer::InitDynObstacles ()
+{
+  dyn = std::make_shared<DynObstacles> (chain);
+}
+
 Json::Value
 NonStateRpcServer::findpath (const int l1range, const Json::Value& source,
                              const Json::Value& target, const int wpdist)
@@ -126,10 +141,24 @@ NonStateRpcServer::findpath (const int l1range, const Json::Value& source,
   CheckIntBounds ("l1range", l1range, 0, maxInt);
   CheckIntBounds ("wpdist", wpdist, 1, maxInt);
 
+  /* We do not want to keep a lock on the dyn mutex while the potentially
+     long call is running.  Instead, we just copy the shared pointer and
+     then release the lock again.  Once created, the DynObstacle instance
+     (inside the shared pointer) is immutable, so this is safe.  */
+  std::shared_ptr<const DynObstacles> dynCopy;
+  {
+    std::lock_guard<std::mutex> lock(mutDynObstacles);
+    dynCopy = dyn;
+  }
+  CHECK (dynCopy != nullptr);
+
   PathFinder finder(targetCoord);
-  const auto edges = [this] (const HexCoord& from, const HexCoord& to)
+  const auto edges = [this, &dynCopy] (const HexCoord& from, const HexCoord& to)
     {
-      return map.GetEdgeWeight (from, to);
+      /* The faction here does not matter, as we only have buildings
+         in the DynObstacles anyway (if at all).  We just need to pass
+         in some faction.  */
+      return MovementEdgeWeight (map, *dynCopy, Faction::RED, from, to);
     };
   const PathFinder::DistanceT dist = finder.Compute (edges, sourceCoord,
                                                      l1range);

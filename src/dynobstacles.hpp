@@ -27,6 +27,7 @@
 #include "hexagonal/coord.hpp"
 #include "mapdata/basemap.hpp"
 #include "mapdata/dyntiles.hpp"
+#include "proto/building.pb.h"
 
 namespace pxd
 {
@@ -42,8 +43,8 @@ class DynObstacles
 
 private:
 
-  /** Context (used for roconfig).  */
-  const Context& ctx;
+  /** Chain to extract the roconfig building shapes.  */
+  const xaya::Chain chain;
 
   /** Vehicles of the red faction on the map.  */
   DynTiles<bool> red;
@@ -67,6 +68,12 @@ private:
   }
 
 public:
+
+  /**
+   * Constructs an "empty" instance.  This is used by the non-state RPC
+   * server for "findpath".
+   */
+  DynObstacles (xaya::Chain c);
 
   /**
    * Constructs an initialised instance with all vehicles and buildings
@@ -99,6 +106,13 @@ public:
    * Removes a vehicle from the given position.
    */
   void RemoveVehicle (const HexCoord& c, Faction f);
+
+  /**
+   * Adds a building from the raw data (without requiring a Building instance).
+   */
+  void AddBuilding (const std::string& type,
+                    const proto::ShapeTransformation& trafo,
+                    const HexCoord& pos);
 
   /**
    * Adds a new building.

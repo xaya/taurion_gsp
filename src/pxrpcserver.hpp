@@ -22,6 +22,7 @@
 #include "rpc-stubs/nonstaterpcserverstub.h"
 #include "rpc-stubs/pxrpcserverstub.h"
 
+#include "dynobstacles.hpp"
 #include "logic.hpp"
 
 #include "mapdata/basemap.hpp"
@@ -30,6 +31,8 @@
 
 #include <json/json.h>
 #include <jsonrpccpp/server.h>
+
+#include <mutex>
 
 namespace pxd
 {
@@ -71,18 +74,38 @@ class NonStateRpcServer : public NonStateRpcServerStub
 
 private:
 
+  /** The chain this is running on.  */
+  const xaya::Chain chain;
+
   /** The basemap we use.  */
   const BaseMap& map;
 
-  /** The chain this is running on.  */
-  const xaya::Chain chain;
+  /**
+   * DynObstacles map used for findpath.  This is decoupled from the
+   * actual game state, so that it can be done even for Charon clients
+   * locally.  It contains a set of buildings, which are specified
+   * explicitly by the caller (with a separate RPC and then remembered
+   * in the server state at runtime).
+   *
+   * We use a shared_ptr here so that it can be "copied" when a call is made
+   * and then the instance itself does not need to be kept locked while the
+   * call is running.
+   */
+  std::shared_ptr<const DynObstacles> dyn;
+
+  /** Mutex for protecting dyn in concurrent calls.  */
+  std::mutex mutDynObstacles;
+
+  /**
+   * Initialises the dynamic obstacle map with a fresh instance.  This does
+   * not do any locking (callers must ensure synchronisation of dyn).
+   */
+  void InitDynObstacles ();
 
 public:
 
   explicit NonStateRpcServer (jsonrpc::AbstractServerConnector& conn,
-                              const BaseMap& m, const xaya::Chain c)
-    : NonStateRpcServerStub(conn), map(m), chain(c)
-  {}
+                              const BaseMap& m, const xaya::Chain c);
 
   Json::Value findpath (int l1range, const Json::Value& source,
                         const Json::Value& target, int wpdist) override;

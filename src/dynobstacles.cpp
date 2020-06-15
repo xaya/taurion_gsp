@@ -25,8 +25,13 @@
 namespace pxd
 {
 
-DynObstacles::DynObstacles (Database& db, const Context& c)
-  : ctx(c), red(false), green(false), blue(false), buildings(false)
+DynObstacles::DynObstacles (const xaya::Chain c)
+  : chain(c), red(false), green(false), blue(false), buildings(false)
+{}
+
+DynObstacles::DynObstacles (Database& db, const Context& ctx)
+  : chain(ctx.Chain ()),
+    red(false), green(false), blue(false), buildings(false)
 {
   {
     CharacterTable tbl(db);
@@ -46,14 +51,22 @@ DynObstacles::DynObstacles (Database& db, const Context& c)
 }
 
 void
-DynObstacles::AddBuilding (const Building& b)
+DynObstacles::AddBuilding (const std::string& type,
+                           const proto::ShapeTransformation& trafo,
+                           const HexCoord& pos)
 {
-  for (const auto& c : GetBuildingShape (b, ctx))
+  for (const auto& c : GetBuildingShape (type, trafo, pos, chain))
     {
       auto ref = buildings.Access (c);
       CHECK (!ref);
       ref = true;
     }
+}
+
+void
+DynObstacles::AddBuilding (const Building& b)
+{
+  AddBuilding (b.GetType (), b.GetProto ().shape_trafo (), b.GetCentre ());
 }
 
 } // namespace pxd
