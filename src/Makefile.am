@@ -53,7 +53,7 @@ libtaurionheaders = \
   logic.hpp \
   mining.hpp \
   modifier.hpp \
-  movement.hpp \
+  movement.hpp movement.tpp \
   moveprocessor.hpp \
   ongoings.hpp \
   params.hpp \

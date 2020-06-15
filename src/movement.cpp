@@ -253,24 +253,6 @@ template <typename Fcn>
 }
 
 template <typename Fcn>
-  inline PathFinder::DistanceT
-  EdgeWeight (const HexCoord& from, const HexCoord& to,
-              Fcn baseEdges, const DynObstacles& dyn, const Faction f)
-{
-  /* With dynamic obstacles, we do not handle the situation well if from and
-     to are the same location.  In that case, the vehicle itself will be
-     seen as obstacle (which it should not).  */
-  CHECK_NE (from, to);
-
-  const auto res = baseEdges (from, to);
-
-  if (res == PathFinder::NO_CONNECTION || !dyn.IsPassable (to, f))
-    return PathFinder::NO_CONNECTION;
-
-  return res;
-}
-
-template <typename Fcn>
   void
   CharacterMovement (Character& c, const Context& ctx, Fcn edges)
 {
@@ -329,15 +311,11 @@ ProcessAllMovement (Database& db, DynObstacles& dyn, const Context& ctx)
       const auto c = tbl.GetFromResult (res);
       MoveInDynObstacles dynMover(*c, dyn);
 
-      const auto baseEdges = [&ctx] (const HexCoord& from, const HexCoord& to)
-        {
-          return ctx.Map ().GetEdgeWeight (from, to);
-        };
       const Faction f = c->GetFaction ();
-      const auto edges = [&baseEdges, &dyn, f] (const HexCoord& from,
-                                                const HexCoord& to)
+      const auto edges = [&ctx, &dyn, f] (const HexCoord& from,
+                                          const HexCoord& to)
         {
-          return EdgeWeight (from, to, baseEdges, dyn, f);
+          return MovementEdgeWeight (ctx.Map (), dyn, f, from, to);
         };
 
       CharacterMovement (*c, ctx, edges);
@@ -367,11 +345,11 @@ namespace test
 {
 
 PathFinder::DistanceT
-MovementEdgeWeight (const HexCoord& from, const HexCoord& to,
-                    const EdgeWeightFcn& baseEdges, const DynObstacles& dyn,
-                    Faction f)
+MovementEdgeWeight (const EdgeWeightFcn& baseEdges, const DynObstacles& dyn,
+                    const Faction f,
+                    const HexCoord& from, const HexCoord& to)
 {
-  return EdgeWeight (from, to, baseEdges, dyn, f);
+  return InternalMovementEdgeWeight (baseEdges, dyn, f, from, to);
 }
 
 void

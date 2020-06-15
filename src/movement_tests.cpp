@@ -138,11 +138,11 @@ protected:
 TEST_F (MovementEdgeWeightTests, BaseEdgesPassedThrough)
 {
   const auto baseEdges = EdgesWithObstacle (42);
-  EXPECT_EQ (MovementEdgeWeight (HexCoord (0, 0), HexCoord (1, 0),
-                                 baseEdges, dyn, Faction::RED),
+  EXPECT_EQ (MovementEdgeWeight (baseEdges, dyn, Faction::RED,
+                                 HexCoord (0, 0), HexCoord (1, 0)),
              42);
-  EXPECT_EQ (MovementEdgeWeight (HexCoord (0, 0), HexCoord (-1, 0),
-                                 baseEdges, dyn, Faction::RED),
+  EXPECT_EQ (MovementEdgeWeight (baseEdges, dyn, Faction::RED,
+                                 HexCoord (0, 0), HexCoord (-1, 0)),
              PathFinder::NO_CONNECTION);
 }
 
@@ -151,11 +151,11 @@ TEST_F (MovementEdgeWeightTests, DynamicObstacle)
   const auto baseEdges = EdgeWeights (42);
   dyn.AddVehicle (HexCoord (0, 0), Faction::RED);
 
-  EXPECT_EQ (MovementEdgeWeight (HexCoord (1, 0), HexCoord (0, 0),
-                                 baseEdges, dyn, Faction::RED),
+  EXPECT_EQ (MovementEdgeWeight (baseEdges, dyn, Faction::RED,
+                                 HexCoord (1, 0), HexCoord (0, 0)),
              PathFinder::NO_CONNECTION);
-  EXPECT_EQ (MovementEdgeWeight (HexCoord (1, 0), HexCoord (0, 0),
-                                 baseEdges, dyn, Faction::GREEN),
+  EXPECT_EQ (MovementEdgeWeight (baseEdges, dyn, Faction::GREEN,
+                                 HexCoord (1, 0), HexCoord (0, 0)),
              42);
 }
 
