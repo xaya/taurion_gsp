@@ -108,13 +108,93 @@ NonStateRpcServer::NonStateRpcServer (jsonrpc::AbstractServerConnector& conn,
   : NonStateRpcServerStub(conn), chain(c), map(m)
 {
   std::lock_guard<std::mutex> lock(mutDynObstacles);
-  InitDynObstacles ();
+  dyn = InitDynObstacles ();
 }
 
-void
-NonStateRpcServer::InitDynObstacles ()
+std::shared_ptr<DynObstacles>
+NonStateRpcServer::InitDynObstacles () const
 {
-  dyn = std::make_shared<DynObstacles> (chain);
+  return std::make_shared<DynObstacles> (chain);
+}
+
+namespace
+{
+
+/**
+ * Processes a JSON array of building specifications and adds them
+ * to the given dynamic obstacle map.  Returns false if something
+ * goes wrong, e.g. the JSON format is invalid or some buildings overlap.
+ */
+bool
+AddBuildingsFromJson (const xaya::Chain chain, const Json::Value& buildings,
+                      DynObstacles& dyn)
+{
+  /* This is enforced already by libjson-rpc-cpp's stub generator.  */
+  CHECK (buildings.isArray ());
+
+  const RoConfig cfg(chain);
+  for (const auto& b : buildings)
+    {
+      if (!b.isObject ())
+        return false;
+
+      const auto& typeVal = b["type"];
+      if (!typeVal.isString ())
+        return false;
+      const std::string type = typeVal.asString ();
+      if (cfg.BuildingOrNull (type) == nullptr)
+        return false;
+
+      const auto& rotVal = b["rotationsteps"];
+      if (!rotVal.isInt64 ())
+        return false;
+      const int rot = rotVal.asInt64 ();
+      if (rot < 0 || rot > 5)
+        return false;
+      proto::ShapeTransformation trafo;
+      trafo.set_rotation_steps (rot);
+
+      HexCoord centre;
+      if (!CoordFromJson (b["centre"], centre))
+        return false;
+
+      if (!dyn.AddBuilding (type, trafo, centre))
+        {
+          LOG (WARNING) << "Adding the building failed\n" << b;
+          return false;
+        }
+    }
+
+  return true;
+}
+
+} // anonymous namespace
+
+bool
+NonStateRpcServer::setpathbuildings (const Json::Value& buildings)
+{
+  LOG (INFO)
+      << "RPC method called: setpathbuildings\n"
+      << "  buildings=" << buildings;
+
+  /* We first construct the full obstacle map, and only lock the mutex
+     later on when replacing the pointer in the instance.  This avoids
+     locking for a longer time while processing the buildings.  */
+
+  auto fresh = InitDynObstacles ();
+  if (!AddBuildingsFromJson (chain, buildings, *fresh))
+    ReturnError (ErrorCode::INVALID_ARGUMENT, "buildings is invalid");
+
+  {
+    std::lock_guard<std::mutex> lock(mutDynObstacles);
+    dyn = std::move (fresh);
+  }
+
+  /* The return value does not really mean anything.  But we can't nicely
+     tell libjson-rpc-cpp that the method returns null, and we can't make it
+     into a notification either, as the caller might want feedback on when
+     processing is done.  */
+  return true;
 }
 
 Json::Value

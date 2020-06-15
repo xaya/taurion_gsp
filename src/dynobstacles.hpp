@@ -109,13 +109,14 @@ public:
 
   /**
    * Adds a building from the raw data (without requiring a Building instance).
+   * Returns false if adding failed, e.g. because the buildings overlap.
    */
-  void AddBuilding (const std::string& type,
+  bool AddBuilding (const std::string& type,
                     const proto::ShapeTransformation& trafo,
                     const HexCoord& pos);
 
   /**
-   * Adds a new building.
+   * Adds a new building.  CHECK-fails if something goes wrong.
    */
   void AddBuilding (const Building& b);
 

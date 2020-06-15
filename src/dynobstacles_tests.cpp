@@ -106,6 +106,33 @@ TEST_F (DynObstaclesTests, Modifications)
   EXPECT_FALSE (dyn.IsPassable (HexCoord (1, 0), Faction::RED));
 }
 
+TEST_F (DynObstaclesTests, AddingBuildings)
+{
+  auto b1 = buildings.CreateNew ("checkmark", "", Faction::RED);
+  auto b2 = buildings.CreateNew ("checkmark", "", Faction::GREEN);
+  b2->SetCentre (HexCoord (10, 5));
+
+  {
+    DynObstacles dyn(db, ctx);
+    dyn.AddBuilding (*b1);
+    dyn.AddBuilding (*b2);
+    EXPECT_DEATH (dyn.AddBuilding (*b1), "Error adding building");
+  }
+
+  {
+    DynObstacles dyn(ctx.Chain ());
+    ASSERT_TRUE (dyn.AddBuilding (b1->GetType (),
+                                  b1->GetProto ().shape_trafo (),
+                                  b1->GetCentre ()));
+    ASSERT_TRUE (dyn.AddBuilding (b2->GetType (),
+                                  b2->GetProto ().shape_trafo (),
+                                  b2->GetCentre ()));
+    ASSERT_FALSE (dyn.AddBuilding (b1->GetType (),
+                                   b1->GetProto ().shape_trafo (),
+                                   b1->GetCentre ()));
+  }
+}
+
 TEST_F (DynObstaclesTests, IsFree)
 {
   auto b = buildings.CreateNew ("huesli", "", Faction::ANCIENT);

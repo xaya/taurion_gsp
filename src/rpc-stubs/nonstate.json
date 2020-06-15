@@ -1,5 +1,13 @@
 [
   {
+    "name": "setpathbuildings",
+    "params":
+      {
+        "buildings": []
+      },
+    "returns": true
+  },
+  {
     "name": "findpath",
     "params":
       {

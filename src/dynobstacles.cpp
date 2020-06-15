@@ -50,7 +50,7 @@ DynObstacles::DynObstacles (Database& db, const Context& ctx)
   }
 }
 
-void
+bool
 DynObstacles::AddBuilding (const std::string& type,
                            const proto::ShapeTransformation& trafo,
                            const HexCoord& pos)
@@ -58,15 +58,19 @@ DynObstacles::AddBuilding (const std::string& type,
   for (const auto& c : GetBuildingShape (type, trafo, pos, chain))
     {
       auto ref = buildings.Access (c);
-      CHECK (!ref);
+      if (ref)
+        return false;
       ref = true;
     }
+  return true;
 }
 
 void
 DynObstacles::AddBuilding (const Building& b)
 {
-  AddBuilding (b.GetType (), b.GetProto ().shape_trafo (), b.GetCentre ());
+  CHECK (AddBuilding (b.GetType (), b.GetProto ().shape_trafo (),
+                      b.GetCentre ()))
+      << "Error adding building " << b.GetId ();
 }
 
 } // namespace pxd

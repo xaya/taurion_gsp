@@ -407,6 +407,7 @@ public:
 const std::map<std::string, RealCharonClient::RpcServer::NonStateMethod>
     RealCharonClient::RpcServer::NONSTATE_METHODS =
   {
+    {"setpathbuildings", &NonStateRpcServer::setpathbuildingsI},
     {"findpath", &NonStateRpcServer::findpathI},
     {"getregionat", &NonStateRpcServer::getregionatI},
     {"getbuildingshape", &NonStateRpcServer::getbuildingshapeI},

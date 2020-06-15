@@ -97,16 +97,17 @@ private:
   std::mutex mutDynObstacles;
 
   /**
-   * Initialises the dynamic obstacle map with a fresh instance.  This does
-   * not do any locking (callers must ensure synchronisation of dyn).
+   * Constructs a fresh dynamic obstacles instance without any extra
+   * buildings added yet.
    */
-  void InitDynObstacles ();
+  std::shared_ptr<DynObstacles> InitDynObstacles () const;
 
 public:
 
   explicit NonStateRpcServer (jsonrpc::AbstractServerConnector& conn,
                               const BaseMap& m, const xaya::Chain c);
 
+  bool setpathbuildings (const Json::Value& buildings) override;
   Json::Value findpath (const std::string& faction,
                         int l1range, const Json::Value& source,
                         const Json::Value& target, int wpdist) override;
@@ -165,6 +166,12 @@ public:
 
   Json::Value getserviceinfo (const std::string& name,
                               const Json::Value& op) override;
+
+  bool
+  setpathbuildings (const Json::Value& buildings) override
+  {
+    return nonstate.setpathbuildings (buildings);
+  }
 
   Json::Value
   findpath (const std::string& faction,
