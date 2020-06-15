@@ -25,8 +25,9 @@ Tests the findpath RPC command.
 
 class FindPathTest (PXTest):
 
-  def call (self, source, target, l1range, wpdist):
+  def call (self, source, target, l1range, wpdist, faction="r"):
     return self.rpc.game.findpath (source=source, target=target,
+                                   faction=faction,
                                    l1range=l1range, wpdist=wpdist)
 
   def run (self):
@@ -43,23 +44,32 @@ class FindPathTest (PXTest):
 
     # Verify exceptions for invalid arguments.
     self.expectError (-1, "source is not a valid coordinate",
-                      findpath, source={}, target=a, l1range=10, wpdist=1)
+                      findpath, source={}, target=a, faction="r",
+                      l1range=10, wpdist=1)
     self.expectError (-1, "target is not a valid coordinate",
-                      findpath, source=a, target={}, l1range=10, wpdist=1)
+                      findpath, source=a, target={}, faction="r",
+                      l1range=10, wpdist=1)
     self.expectError (-1, "l1range is out of bounds",
-                      findpath, source=a, target=a, l1range=-1, wpdist=1)
+                      findpath, source=a, target=a, faction="r",
+                      l1range=-1, wpdist=1)
     self.expectError (-1, "wpdist is out of bounds",
-                      findpath, source=a, target=a, l1range=1, wpdist=0)
+                      findpath, source=a, target=a, faction="r",
+                      l1range=1, wpdist=0)
+    for f in ["a", "invalid"]:
+      self.expectError (-1, "faction is invalid",
+                        findpath, source=a, target=a, faction=f,
+                        l1range=1, wpdist=0)
 
     # Paths that yield no connection.
     self.expectError (1, "no connection",
-                      findpath, source=passable, target=obstacle,
+                      findpath, source=passable, target=obstacle, faction="r",
                       l1range=10, wpdist=1)
     self.expectError (1, "no connection",
-                      findpath, source=a, target=b, l1range=1, wpdist=1)
+                      findpath, source=a, target=b, faction="r",
+                      l1range=1, wpdist=1)
     outOfMap = {"x": 10000, "y": 0}
     self.expectError (1, "no connection",
-                      findpath, source=outOfMap, target=outOfMap,
+                      findpath, source=outOfMap, target=outOfMap, faction="r",
                       l1range=10, wpdist=1)
 
     # Basic path that is fine with wpdist=1 (every coordinate).

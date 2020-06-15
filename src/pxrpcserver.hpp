@@ -107,7 +107,8 @@ public:
   explicit NonStateRpcServer (jsonrpc::AbstractServerConnector& conn,
                               const BaseMap& m, const xaya::Chain c);
 
-  Json::Value findpath (int l1range, const Json::Value& source,
+  Json::Value findpath (const std::string& faction,
+                        int l1range, const Json::Value& source,
                         const Json::Value& target, int wpdist) override;
   Json::Value getregionat (const Json::Value& coord) override;
   Json::Value getbuildingshape (const Json::Value& centre, int rot,
@@ -166,10 +167,11 @@ public:
                               const Json::Value& op) override;
 
   Json::Value
-  findpath (int l1range, const Json::Value& source,
+  findpath (const std::string& faction,
+            int l1range, const Json::Value& source,
             const Json::Value& target, int wpdist) override
   {
-    return nonstate.findpath (l1range, source, target, wpdist);
+    return nonstate.findpath (faction, l1range, source, target, wpdist);
   }
 
   Json::Value

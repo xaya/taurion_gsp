@@ -118,12 +118,14 @@ NonStateRpcServer::InitDynObstacles ()
 }
 
 Json::Value
-NonStateRpcServer::findpath (const int l1range, const Json::Value& source,
+NonStateRpcServer::findpath (const std::string& faction,
+                             const int l1range, const Json::Value& source,
                              const Json::Value& target, const int wpdist)
 {
   LOG (INFO)
       << "RPC method called: findpath\n"
-      << "  l1range=" << l1range << ", wpdist=" << wpdist << ",\n"
+      << "  l1range=" << l1range << ", wpdist=" << wpdist
+      << ", faction=" << faction << "\n"
       << "  source=" << source << ",\n"
       << "  target=" << target;
 
@@ -136,6 +138,23 @@ NonStateRpcServer::findpath (const int l1range, const Json::Value& source,
   if (!CoordFromJson (target, targetCoord))
     ReturnError (ErrorCode::INVALID_ARGUMENT,
                  "target is not a valid coordinate");
+
+  const Faction f = FactionFromString (faction);
+  switch (f)
+    {
+    case Faction::INVALID:
+    case Faction::ANCIENT:
+      ReturnError (ErrorCode::INVALID_ARGUMENT, "faction is invalid");
+
+    case Faction::RED:
+    case Faction::GREEN:
+    case Faction::BLUE:
+      break;
+
+    default:
+      LOG (FATAL) << "Unexpected faction: " << static_cast<int> (f);
+      break;
+    }
 
   const int maxInt = std::numeric_limits<HexCoord::IntT>::max ();
   CheckIntBounds ("l1range", l1range, 0, maxInt);
@@ -153,12 +172,10 @@ NonStateRpcServer::findpath (const int l1range, const Json::Value& source,
   CHECK (dynCopy != nullptr);
 
   PathFinder finder(targetCoord);
-  const auto edges = [this, &dynCopy] (const HexCoord& from, const HexCoord& to)
+  const auto edges = [this, f, &dynCopy] (const HexCoord& from,
+                                          const HexCoord& to)
     {
-      /* The faction here does not matter, as we only have buildings
-         in the DynObstacles anyway (if at all).  We just need to pass
-         in some faction.  */
-      return MovementEdgeWeight (map, *dynCopy, Faction::RED, from, to);
+      return MovementEdgeWeight (map, *dynCopy, f, from, to);
     };
   const PathFinder::DistanceT dist = finder.Compute (edges, sourceCoord,
                                                      l1range);
