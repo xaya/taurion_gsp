@@ -20,6 +20,7 @@
 
 #include "buildings.hpp"
 #include "jsonutils.hpp"
+#include "movement.hpp"
 #include "services.hpp"
 
 #include "database/itemcounts.hpp"
@@ -102,13 +103,109 @@ CheckIntBounds (const std::string& name, const int value,
 
 /* ************************************************************************** */
 
+NonStateRpcServer::NonStateRpcServer (jsonrpc::AbstractServerConnector& conn,
+                                      const BaseMap& m, const xaya::Chain c)
+  : NonStateRpcServerStub(conn), chain(c), map(m)
+{
+  std::lock_guard<std::mutex> lock(mutDynObstacles);
+  dyn = InitDynObstacles ();
+}
+
+std::shared_ptr<DynObstacles>
+NonStateRpcServer::InitDynObstacles () const
+{
+  return std::make_shared<DynObstacles> (chain);
+}
+
+namespace
+{
+
+/**
+ * Processes a JSON array of building specifications and adds them
+ * to the given dynamic obstacle map.  Returns false if something
+ * goes wrong, e.g. the JSON format is invalid or some buildings overlap.
+ */
+bool
+AddBuildingsFromJson (const xaya::Chain chain, const Json::Value& buildings,
+                      DynObstacles& dyn)
+{
+  /* This is enforced already by libjson-rpc-cpp's stub generator.  */
+  CHECK (buildings.isArray ());
+
+  const RoConfig cfg(chain);
+  for (const auto& b : buildings)
+    {
+      if (!b.isObject ())
+        return false;
+
+      const auto& typeVal = b["type"];
+      if (!typeVal.isString ())
+        return false;
+      const std::string type = typeVal.asString ();
+      if (cfg.BuildingOrNull (type) == nullptr)
+        return false;
+
+      const auto& rotVal = b["rotationsteps"];
+      if (!rotVal.isInt64 ())
+        return false;
+      const int rot = rotVal.asInt64 ();
+      if (rot < 0 || rot > 5)
+        return false;
+      proto::ShapeTransformation trafo;
+      trafo.set_rotation_steps (rot);
+
+      HexCoord centre;
+      if (!CoordFromJson (b["centre"], centre))
+        return false;
+
+      if (!dyn.AddBuilding (type, trafo, centre))
+        {
+          LOG (WARNING) << "Adding the building failed\n" << b;
+          return false;
+        }
+    }
+
+  return true;
+}
+
+} // anonymous namespace
+
+bool
+NonStateRpcServer::setpathbuildings (const Json::Value& buildings)
+{
+  LOG (INFO)
+      << "RPC method called: setpathbuildings\n"
+      << "  buildings=" << buildings;
+
+  /* We first construct the full obstacle map, and only lock the mutex
+     later on when replacing the pointer in the instance.  This avoids
+     locking for a longer time while processing the buildings.  */
+
+  auto fresh = InitDynObstacles ();
+  if (!AddBuildingsFromJson (chain, buildings, *fresh))
+    ReturnError (ErrorCode::INVALID_ARGUMENT, "buildings is invalid");
+
+  {
+    std::lock_guard<std::mutex> lock(mutDynObstacles);
+    dyn = std::move (fresh);
+  }
+
+  /* The return value does not really mean anything.  But we can't nicely
+     tell libjson-rpc-cpp that the method returns null, and we can't make it
+     into a notification either, as the caller might want feedback on when
+     processing is done.  */
+  return true;
+}
+
 Json::Value
-NonStateRpcServer::findpath (const int l1range, const Json::Value& source,
+NonStateRpcServer::findpath (const std::string& faction,
+                             const int l1range, const Json::Value& source,
                              const Json::Value& target, const int wpdist)
 {
   LOG (INFO)
       << "RPC method called: findpath\n"
-      << "  l1range=" << l1range << ", wpdist=" << wpdist << ",\n"
+      << "  l1range=" << l1range << ", wpdist=" << wpdist
+      << ", faction=" << faction << "\n"
       << "  source=" << source << ",\n"
       << "  target=" << target;
 
@@ -122,14 +219,43 @@ NonStateRpcServer::findpath (const int l1range, const Json::Value& source,
     ReturnError (ErrorCode::INVALID_ARGUMENT,
                  "target is not a valid coordinate");
 
+  const Faction f = FactionFromString (faction);
+  switch (f)
+    {
+    case Faction::INVALID:
+    case Faction::ANCIENT:
+      ReturnError (ErrorCode::INVALID_ARGUMENT, "faction is invalid");
+
+    case Faction::RED:
+    case Faction::GREEN:
+    case Faction::BLUE:
+      break;
+
+    default:
+      LOG (FATAL) << "Unexpected faction: " << static_cast<int> (f);
+      break;
+    }
+
   const int maxInt = std::numeric_limits<HexCoord::IntT>::max ();
   CheckIntBounds ("l1range", l1range, 0, maxInt);
   CheckIntBounds ("wpdist", wpdist, 1, maxInt);
 
+  /* We do not want to keep a lock on the dyn mutex while the potentially
+     long call is running.  Instead, we just copy the shared pointer and
+     then release the lock again.  Once created, the DynObstacle instance
+     (inside the shared pointer) is immutable, so this is safe.  */
+  std::shared_ptr<const DynObstacles> dynCopy;
+  {
+    std::lock_guard<std::mutex> lock(mutDynObstacles);
+    dynCopy = dyn;
+  }
+  CHECK (dynCopy != nullptr);
+
   PathFinder finder(targetCoord);
-  const auto edges = [this] (const HexCoord& from, const HexCoord& to)
+  const auto edges = [this, f, &dynCopy] (const HexCoord& from,
+                                          const HexCoord& to)
     {
-      return map.GetEdgeWeight (from, to);
+      return MovementEdgeWeight (map, *dynCopy, f, from, to);
     };
   const PathFinder::DistanceT dist = finder.Compute (edges, sourceCoord,
                                                      l1range);

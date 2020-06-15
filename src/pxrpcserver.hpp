@@ -22,6 +22,7 @@
 #include "rpc-stubs/nonstaterpcserverstub.h"
 #include "rpc-stubs/pxrpcserverstub.h"
 
+#include "dynobstacles.hpp"
 #include "logic.hpp"
 
 #include "mapdata/basemap.hpp"
@@ -30,6 +31,8 @@
 
 #include <json/json.h>
 #include <jsonrpccpp/server.h>
+
+#include <mutex>
 
 namespace pxd
 {
@@ -71,20 +74,42 @@ class NonStateRpcServer : public NonStateRpcServerStub
 
 private:
 
+  /** The chain this is running on.  */
+  const xaya::Chain chain;
+
   /** The basemap we use.  */
   const BaseMap& map;
 
-  /** The chain this is running on.  */
-  const xaya::Chain chain;
+  /**
+   * DynObstacles map used for findpath.  This is decoupled from the
+   * actual game state, so that it can be done even for Charon clients
+   * locally.  It contains a set of buildings, which are specified
+   * explicitly by the caller (with a separate RPC and then remembered
+   * in the server state at runtime).
+   *
+   * We use a shared_ptr here so that it can be "copied" when a call is made
+   * and then the instance itself does not need to be kept locked while the
+   * call is running.
+   */
+  std::shared_ptr<const DynObstacles> dyn;
+
+  /** Mutex for protecting dyn in concurrent calls.  */
+  std::mutex mutDynObstacles;
+
+  /**
+   * Constructs a fresh dynamic obstacles instance without any extra
+   * buildings added yet.
+   */
+  std::shared_ptr<DynObstacles> InitDynObstacles () const;
 
 public:
 
   explicit NonStateRpcServer (jsonrpc::AbstractServerConnector& conn,
-                              const BaseMap& m, const xaya::Chain c)
-    : NonStateRpcServerStub(conn), map(m), chain(c)
-  {}
+                              const BaseMap& m, const xaya::Chain c);
 
-  Json::Value findpath (int l1range, const Json::Value& source,
+  bool setpathbuildings (const Json::Value& buildings) override;
+  Json::Value findpath (const std::string& faction,
+                        int l1range, const Json::Value& source,
                         const Json::Value& target, int wpdist) override;
   Json::Value getregionat (const Json::Value& coord) override;
   Json::Value getbuildingshape (const Json::Value& centre, int rot,
@@ -142,11 +167,18 @@ public:
   Json::Value getserviceinfo (const std::string& name,
                               const Json::Value& op) override;
 
+  bool
+  setpathbuildings (const Json::Value& buildings) override
+  {
+    return nonstate.setpathbuildings (buildings);
+  }
+
   Json::Value
-  findpath (int l1range, const Json::Value& source,
+  findpath (const std::string& faction,
+            int l1range, const Json::Value& source,
             const Json::Value& target, int wpdist) override
   {
-    return nonstate.findpath (l1range, source, target, wpdist);
+    return nonstate.findpath (faction, l1range, source, target, wpdist);
   }
 
   Json::Value

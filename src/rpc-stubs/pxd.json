@@ -83,11 +83,20 @@
   },
 
   {
+    "name": "setpathbuildings",
+    "params":
+      {
+        "buildings": []
+      },
+    "returns": true
+  },
+  {
     "name": "findpath",
     "params":
       {
         "source": {},
         "target": {},
+        "faction": "",
         "l1range": 100,
         "wpdist": 10
       },

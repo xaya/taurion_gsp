@@ -35,6 +35,15 @@ namespace pxd
 {
 
 /**
+ * Computes the edge weight used for movement of a given faction character
+ * on the map.  This is shared between the RPC server's findpath method
+ * and the actual GSP movement processing logic.
+ */
+inline PathFinder::DistanceT MovementEdgeWeight (
+    const BaseMap& map, const DynObstacles& dyn, Faction f,
+    const HexCoord& from, const HexCoord& to);
+
+/**
  * Clears all movement for the given character (stops its movement entirely).
  */
 void StopCharacter (Character& c);
@@ -85,9 +94,8 @@ using EdgeWeightFcn
  * and additionally excluding movement to locations where a dynamic obstacle is.
  */
 PathFinder::DistanceT MovementEdgeWeight (
-    const HexCoord& from, const HexCoord& to,
-    const EdgeWeightFcn& baseEdges, const DynObstacles& dyn,
-    Faction f);
+    const EdgeWeightFcn& baseEdges, const DynObstacles& dyn, Faction f,
+    const HexCoord& from, const HexCoord& to);
 
 /**
  * Processes movement (if any) for the given character handle and edge weights.
@@ -98,5 +106,7 @@ void ProcessCharacterMovement (Character& c, const Context& ctx,
 } // namespace test
 
 } // namespace pxd
+
+#include "movement.tpp"
 
 #endif // PXD_MOVEMENT_HPP
