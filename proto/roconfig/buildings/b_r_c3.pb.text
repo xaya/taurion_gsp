@@ -1,0 +1,60 @@
+building_types:
+{
+key: "b_r_c3"
+value:
+{
+enter_radius: 10
+offered_services:
+{
+
+}
+shape_tiles: { x: -3 y: 0 }
+shape_tiles: { x: -3 y: 1 }
+shape_tiles: { x: -4 y: 2 }
+shape_tiles: { x: -1 y: -2 }
+shape_tiles: { x: -1 y: -1 }
+shape_tiles: { x: -2 y: 0 }
+shape_tiles: { x: -2 y: 1 }
+shape_tiles: { x: -3 y: 2 }
+shape_tiles: { x: 0 y: -2 }
+shape_tiles: { x: 0 y: -1 }
+shape_tiles: { x: -1 y: 0 }
+shape_tiles: { x: -1 y: 1 }
+shape_tiles: { x: -2 y: 2 }
+shape_tiles: { x: 1 y: -2 }
+shape_tiles: { x: 1 y: -1 }
+shape_tiles: { x: 0 y: 0 }
+shape_tiles: { x: 0 y: 1 }
+shape_tiles: { x: -1 y: 2 }
+shape_tiles: { x: 2 y: -2 }
+shape_tiles: { x: 2 y: -1 }
+shape_tiles: { x: 1 y: 0 }
+shape_tiles: { x: 1 y: 1 }
+shape_tiles: { x: 0 y: 2 }
+shape_tiles: { x: 3 y: -2 }
+shape_tiles: { x: 3 y: -1 }
+shape_tiles: { x: 2 y: 0 }
+shape_tiles: { x: 2 y: 1 }
+foundation:
+{
+regen_data:
+{
+max_hp: { armour: 10 }
+}
+}
+full_building:
+{
+regen_data:
+{
+max_hp: { armour: 100 }
+}
+}
+construction:
+{
+foundation: { key: "foo" value: 2 }
+full_building: { key: "foo" value: 3 }
+full_building: { key: "zerospace" value: 10 }
+blocks: 10
+}
+}
+}

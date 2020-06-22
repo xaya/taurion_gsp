@@ -15,6 +15,62 @@ ROCONFIG_TEXT_PROTOS = \
   roconfig/buildings/obelisk1.pb.text \
   roconfig/buildings/obelisk2.pb.text \
   roconfig/buildings/obelisk3.pb.text \
+  roconfig/buildings/b_j_c1.pb.text \
+  roconfig/buildings/b_j_c2.pb.text \
+  roconfig/buildings/b_j_c3.pb.text \
+  roconfig/buildings/b_j_c4.pb.text \
+  roconfig/buildings/b_j_c5.pb.text \
+  roconfig/buildings/b_j_c6.pb.text \
+  roconfig/buildings/b_j_c7.pb.text \
+  roconfig/buildings/b_j_c8.pb.text \
+  roconfig/buildings/b_j_c9.pb.text \
+  roconfig/buildings/b_j_c10.pb.text \
+  roconfig/buildings/b_j_c11.pb.text \
+  roconfig/buildings/b_e_c1.pb.text \
+  roconfig/buildings/b_e_c2.pb.text \
+  roconfig/buildings/b_e_c3.pb.text \
+  roconfig/buildings/b_e_c4.pb.text \
+  roconfig/buildings/b_e_c5.pb.text \
+  roconfig/buildings/b_e_c6.pb.text \
+  roconfig/buildings/b_e_c7.pb.text \
+  roconfig/buildings/b_e_c8.pb.text \
+  roconfig/buildings/b_e_c9.pb.text \
+  roconfig/buildings/b_e_c10.pb.text \
+  roconfig/buildings/b_r_c1.pb.text \
+  roconfig/buildings/b_r_c2.pb.text \
+  roconfig/buildings/b_r_c3.pb.text \
+  roconfig/buildings/b_r_c4.pb.text \
+  roconfig/buildings/b_r_c5.pb.text \
+  roconfig/buildings/b_r_c6.pb.text \
+  roconfig/buildings/b_r_c7.pb.text \
+  roconfig/buildings/b_r_c8.pb.text \
+  roconfig/buildings/b_r_c9.pb.text \
+  roconfig/buildings/b_r_c10.pb.text \
+  roconfig/buildings/b_r_c11.pb.text \
+  roconfig/buildings/b_e_cc.pb.text \
+  roconfig/buildings/b_e_cf.pb.text \
+  roconfig/buildings/b_e_ep.pb.text \
+  roconfig/buildings/b_e_et.pb.text \
+  roconfig/buildings/b_e_r.pb.text \
+  roconfig/buildings/b_e_rf.pb.text \
+  roconfig/buildings/b_e_rt.pb.text \
+  roconfig/buildings/b_e_vb.pb.text \
+  roconfig/buildings/b_j_cc.pb.text \
+  roconfig/buildings/b_j_cf.pb.text \
+  roconfig/buildings/b_j_ep.pb.text \
+  roconfig/buildings/b_j_et.pb.text \
+  roconfig/buildings/b_j_r.pb.text \
+  roconfig/buildings/b_j_rf.pb.text \
+  roconfig/buildings/b_j_rt.pb.text \
+  roconfig/buildings/b_j_vb.pb.text \
+  roconfig/buildings/b_r_cc.pb.text \
+  roconfig/buildings/b_r_cf.pb.text \
+  roconfig/buildings/b_r_ep.pb.text \
+  roconfig/buildings/b_r_et.pb.text \
+  roconfig/buildings/b_r_r.pb.text \
+  roconfig/buildings/b_r_rf.pb.text \
+  roconfig/buildings/b_r_rt.pb.text \
+  roconfig/buildings/b_r_vb.pb.text \
   roconfig/buildings/turrets.pb.text \
   \
   roconfig/testnet.pb.text
@@ -42,11 +98,11 @@ EXTRA_DIST = \
 
 BUILT_SOURCES = \
   $(PROTOS:.proto=.pb.h) $(PROTOS:.proto=_pb2.py) \
-  roconfig_gen.cpp \
-  roconfig.pb.text roconfig.pb
+  roconfig_gen.cpp
+
 CLEANFILES = \
   $(PROTOS:.proto=.pb.h) $(PROTOS:.proto=.pb.cc) $(PROTOS:.proto=_pb2.py) \
-  roconfig_gen.cpp roconfig.pb.text roconfig.pb
+  roconfig_gen.cpp
 
 libpxproto_la_CXXFLAGS = \
   -I$(top_srcdir) \
@@ -96,9 +152,9 @@ tests_SOURCES = \
 
 roconfig_gen.cpp: roconfig_gen_head.cpp $(ROCONFIG_TEXT_PROTOS) roconfig_gen_mid.cpp $(ROCONFIG_TEXT_PROTOS_REGTEST) roconfig_gen_tail.cpp
 	cat $^ >$@
-
+	
 roconfig.pb roconfig.pb.text: $(builddir)/roconfig_gen
 	$(builddir)/roconfig_gen \
           --out_binary="$(builddir)/roconfig.pb" \
           --out_text="$(builddir)/roconfig.pb.text"
-	touch $(srcdir)/roconfig_blob.s
+	touch $(srcdir)/roconfig_blob.s	

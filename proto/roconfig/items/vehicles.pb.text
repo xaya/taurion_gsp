@@ -10,23 +10,16 @@ fungible_items:
         complexity: 1
         vehicle:
           {
-            cargo_space: 20
-            speed: 2100
+            cargo_space: 2
+            speed: 3000
             regen_data:
               {
                 max_hp: { armour: 75 shield: 30 }
                 shield_regeneration_mhp: 500
               }
-            combat_data:
-              {
-                attacks:
-                  {
-                    area: 7
-                    damage: { min: 1 max: 20 }
-                  }
-              }
-            mining_rate: { min: 0 max: 5 }
+            mining_rate: { min: 0 max: 1 }
             prospecting_blocks: 10
+			combat_data: {}
           }
       }
   }
@@ -40,23 +33,16 @@ fungible_items:
         complexity: 1
         vehicle:
           {
-            cargo_space: 30
-            speed: 2000
+            cargo_space: 2
+            speed: 3000
             regen_data:
               {
                 max_hp: { armour: 150 shield: 30 }
                 shield_regeneration_mhp: 200
               }
-            combat_data:
-              {
-                attacks:
-                  {
-                    range: 10
-                    damage: { min: 1 max: 20 }
-                  }
-              }
-            mining_rate: { min: 0 max: 5 }
+            mining_rate: { min: 0 max: 1 }
             prospecting_blocks: 10
+			combat_data: {}
           }
       }
   }
@@ -70,23 +56,907 @@ fungible_items:
         complexity: 1
         vehicle:
           {
-            cargo_space: 20
-            speed: 2200
+            cargo_space: 2
+            speed: 300
             regen_data:
               {
                 max_hp: { armour: 50 shield: 30 }
                 shield_regeneration_mhp: 1000
               }
-            combat_data:
-              {
-                attacks:
-                  {
-                    range: 10
-                    damage: { min: 1 max: 12 }
-                  }
-              }
-            mining_rate: { min: 0 max: 5 }
+            mining_rate: { min: 0 max: 1 }
             prospecting_blocks: 10
+			combat_data: {}
           }
       }
   }
+  
+fungible_items:
+  {
+    key: "rv sm"
+    value:
+      {
+        space: 100
+        complexity: 10
+		with_blueprint: true
+        vehicle:
+          {
+            cargo_space: 2
+            speed: 3000
+            regen_data:
+              {
+                max_hp: { armour: 20 shield: 50 }
+                shield_regeneration_mhp: 1
+              }
+            mining_rate: { min: 0 max: 2 }
+            prospecting_blocks: 9
+            combat_data: {}
+            equipment_slots: { key: "high" value: 1 }
+            equipment_slots: { key: "mid" value: 1 }
+            equipment_slots: { key: "low" value: 2 }			
+          }
+      }
+  } 
+
+fungible_items:
+  {
+    key: "gv sm"
+    value:
+      {
+        space: 100
+        complexity: 10
+		with_blueprint: true
+        vehicle:
+          {
+            cargo_space: 2
+            speed: 3000
+            regen_data:
+              {
+                max_hp: { armour: 20 shield: 50 }
+                shield_regeneration_mhp: 1
+              }
+            mining_rate: { min: 0 max: 2 }
+            prospecting_blocks: 9
+            combat_data: {}
+            equipment_slots: { key: "high" value: 1 }
+            equipment_slots: { key: "mid" value: 1 }
+            equipment_slots: { key: "low" value: 2 }			
+          }
+      }
+  }   
+  
+ fungible_items:
+  {
+    key: "bv sm"
+    value:
+      {
+        space: 100
+        complexity: 10
+		with_blueprint: true
+        vehicle:
+          {
+            cargo_space: 2
+            speed: 3000
+            regen_data:
+              {
+                max_hp: { armour: 20 shield: 50 }
+                shield_regeneration_mhp: 1
+              }
+            mining_rate: { min: 0 max: 2 }
+            prospecting_blocks: 9
+            combat_data: {}
+            equipment_slots: { key: "high" value: 1 }
+            equipment_slots: { key: "mid" value: 2 }
+            equipment_slots: { key: "low" value: 1 }			
+          }
+      }
+  }  
+
+ fungible_items:
+  {
+    key: "bv md"
+    value:
+      {
+        space: 150
+        complexity: 100
+		with_blueprint: true
+        vehicle:
+          {
+            cargo_space: 6
+            speed: 2000
+            regen_data:
+              {
+                max_hp: { armour: 100 shield: 200 }
+                shield_regeneration_mhp: 4
+              }
+            mining_rate: { min: 0 max: 4 }
+            prospecting_blocks: 8
+            combat_data: {}
+            equipment_slots: { key: "high" value: 3 }
+            equipment_slots: { key: "mid" value: 1 }
+            equipment_slots: { key: "low" value: 2 }			
+          }
+      }
+  }  
+  
+ fungible_items:
+  {
+    key: "gv md"
+    value:
+      {
+        space: 150
+        complexity: 100
+		with_blueprint: true
+        vehicle:
+          {
+            cargo_space: 6
+            speed: 2000
+            regen_data:
+              {
+                max_hp: { armour: 100 shield: 200 }
+                shield_regeneration_mhp: 4
+              }
+            mining_rate: { min: 0 max: 4 }
+            prospecting_blocks: 8
+            combat_data: {}
+            equipment_slots: { key: "high" value: 2 }
+            equipment_slots: { key: "mid" value: 1 }
+            equipment_slots: { key: "low" value: 3 }			
+          }
+      }
+  }    
+  
+ fungible_items:
+  {
+    key: "bv md"
+    value:
+      {
+        space: 150
+        complexity: 100
+		with_blueprint: true
+        vehicle:
+          {
+            cargo_space: 6
+            speed: 2000
+            regen_data:
+              {
+                max_hp: { armour: 100 shield: 200 }
+                shield_regeneration_mhp: 4
+              }
+            mining_rate: { min: 0 max: 4 }
+            prospecting_blocks: 8
+            combat_data: {}
+            equipment_slots: { key: "high" value: 2 }
+            equipment_slots: { key: "mid" value: 3 }
+            equipment_slots: { key: "low" value: 1 }			
+          }
+      }
+  }     
+  
+ fungible_items:
+  {
+    key: "rv la"
+    value:
+      {
+        space: 600
+        complexity: 500
+		with_blueprint: true
+        vehicle:
+          {
+            cargo_space: 17
+            speed: 1000
+            regen_data:
+              {
+                max_hp: { armour: 500 shield: 1000 }
+                shield_regeneration_mhp: 20
+              }
+            mining_rate: { min: 0 max: 4 }
+            prospecting_blocks: 7
+            combat_data: {}
+            equipment_slots: { key: "high" value: 4 }
+            equipment_slots: { key: "mid" value: 2 }
+            equipment_slots: { key: "low" value: 4 }			
+          }
+      }
+  }      
+  
+fungible_items:
+  {
+    key: "gv la"
+    value:
+      {
+        space: 600
+        complexity: 500
+		with_blueprint: true
+        vehicle:
+          {
+            cargo_space: 17
+            speed: 1000
+            regen_data:
+              {
+                max_hp: { armour: 500 shield: 1000 }
+                shield_regeneration_mhp: 20
+              }
+            mining_rate: { min: 0 max: 4 }
+            prospecting_blocks: 7
+            combat_data: {}
+            equipment_slots: { key: "high" value: 2 }
+            equipment_slots: { key: "mid" value: 3 }
+            equipment_slots: { key: "low" value: 5 }			
+          }
+      }
+  }        
+  
+fungible_items:
+  {
+    key: "bv la"
+    value:
+      {
+        space: 600
+        complexity: 500
+		with_blueprint: true
+        vehicle:
+          {
+            cargo_space: 17
+            speed: 1000
+            regen_data:
+              {
+                max_hp: { armour: 500 shield: 1000 }
+                shield_regeneration_mhp: 20
+              }
+            mining_rate: { min: 0 max: 4 }
+            prospecting_blocks: 7
+            combat_data: {}
+            equipment_slots: { key: "high" value: 3 }
+            equipment_slots: { key: "mid" value: 4 }
+            equipment_slots: { key: "low" value: 3 }			
+          }
+      }
+  }   
+  
+fungible_items:
+  {
+    key: "rv ss"
+    value:
+      {
+        space: 0
+        complexity: 30
+		with_blueprint: true
+        vehicle:
+          {
+            cargo_space: 0
+            speed: 4000
+            regen_data:
+              {
+                max_hp: { armour: 25 shield: 50 }
+                shield_regeneration_mhp: 1
+              }
+            mining_rate: { min: 0 max: 0 }
+            prospecting_blocks: 5
+            combat_data: {}
+            equipment_slots: { key: "high" value: 0 }
+            equipment_slots: { key: "mid" value: 1 }
+            equipment_slots: { key: "low" value: 2 }			
+          }
+      }
+  }   
+  
+fungible_items:
+  {
+    key: "gv ss"
+    value:
+      {
+        space: 0
+        complexity: 30
+		with_blueprint: true
+        vehicle:
+          {
+            cargo_space: 0
+            speed: 4000
+            regen_data:
+              {
+                max_hp: { armour: 25 shield: 50 }
+                shield_regeneration_mhp: 1
+              }
+            mining_rate: { min: 0 max: 0 }
+            prospecting_blocks: 5
+            combat_data: {}
+            equipment_slots: { key: "high" value: 0 }
+            equipment_slots: { key: "mid" value: 1 }
+            equipment_slots: { key: "low" value: 2 }			
+          }
+      }
+  }     
+  
+fungible_items:
+  {
+    key: "bv ss"
+    value:
+      {
+        space: 0
+        complexity: 30
+		with_blueprint: true
+        vehicle:
+          {
+            cargo_space: 0
+            speed: 4000
+            regen_data:
+              {
+                max_hp: { armour: 25 shield: 50 }
+                shield_regeneration_mhp: 1
+              }
+            mining_rate: { min: 0 max: 0 }
+            prospecting_blocks: 5
+            combat_data: {}
+            equipment_slots: { key: "high" value: 0 }
+            equipment_slots: { key: "mid" value: 2 }
+            equipment_slots: { key: "low" value: 1 }			
+          }
+      }
+  }      
+  
+fungible_items:
+  {
+    key: "rv mt"
+    value:
+      {
+        space: 1500
+        complexity: 100
+		with_blueprint: true
+        vehicle:
+          {
+            cargo_space: 31
+            speed: 2000
+            regen_data:
+              {
+                max_hp: { armour: 500 shield: 200 }
+                shield_regeneration_mhp: 4
+              }
+            mining_rate: { min: 0 max: 4 }
+            prospecting_blocks: 8
+            combat_data: {}
+            equipment_slots: { key: "high" value: 1 }
+            equipment_slots: { key: "mid" value: 1 }
+            equipment_slots: { key: "low" value: 2 }			
+          }
+      }
+  }  
+  
+fungible_items:
+  {
+    key: "gv mt"
+    value:
+      {
+        space: 1500
+        complexity: 100
+		with_blueprint: true
+        vehicle:
+          {
+            cargo_space: 31
+            speed: 2000
+            regen_data:
+              {
+                max_hp: { armour: 500 shield: 200 }
+                shield_regeneration_mhp: 4
+              }
+            mining_rate: { min: 0 max: 4 }
+            prospecting_blocks: 8
+            combat_data: {}
+            equipment_slots: { key: "high" value: 0 }
+            equipment_slots: { key: "mid" value: 1 }
+            equipment_slots: { key: "low" value: 3 }			
+          }
+      }
+  }    
+  
+ fungible_items:
+  {
+    key: "bv mt"
+    value:
+      {
+        space: 1500
+        complexity: 100
+		with_blueprint: true
+        vehicle:
+          {
+            cargo_space: 31
+            speed: 2000
+            regen_data:
+              {
+                max_hp: { armour: 500 shield: 200 }
+                shield_regeneration_mhp: 4
+              }
+            mining_rate: { min: 0 max: 4 }
+            prospecting_blocks: 8
+            combat_data: {}
+            equipment_slots: { key: "high" value: 1 }
+            equipment_slots: { key: "mid" value: 2 }
+            equipment_slots: { key: "low" value: 1 }			
+          }
+      }
+  } 
+  
+  fungible_items:
+  {
+    key: "rv lt"
+    value:
+      {
+        space: 5000
+        complexity: 500
+		with_blueprint: true
+        vehicle:
+          {
+            cargo_space: 87
+            speed: 1000
+            regen_data:
+              {
+                max_hp: { armour: 1000 shield: 300 }
+                shield_regeneration_mhp: 6
+              }
+            mining_rate: { min: 0 max: 4 }
+            prospecting_blocks: 7
+            combat_data: {}
+            equipment_slots: { key: "high" value: 1 }
+            equipment_slots: { key: "mid" value: 2 }
+            equipment_slots: { key: "low" value: 3 }			
+          }
+      }
+  }  
+  
+  fungible_items:
+  {
+    key: "gv lt"
+    value:
+      {
+        space: 5000
+        complexity: 500
+		with_blueprint: true
+        vehicle:
+          {
+            cargo_space: 87
+            speed: 1000
+            regen_data:
+              {
+                max_hp: { armour: 1000 shield: 300 }
+                shield_regeneration_mhp: 6
+              }
+            mining_rate: { min: 0 max: 4 }
+            prospecting_blocks: 7
+            combat_data: {}
+            equipment_slots: { key: "high" value: 0 }
+            equipment_slots: { key: "mid" value: 3 }
+            equipment_slots: { key: "low" value: 3 }			
+          }
+      }
+  }   
+  
+  fungible_items:
+  {
+    key: "bv lt"
+    value:
+      {
+        space: 5000
+        complexity: 500
+		with_blueprint: true
+        vehicle:
+          {
+            cargo_space: 87
+            speed: 1000
+            regen_data:
+              {
+                max_hp: { armour: 1000 shield: 300 }
+                shield_regeneration_mhp: 6
+              }
+            mining_rate: { min: 0 max: 4 }
+            prospecting_blocks: 7
+            combat_data: {}
+            equipment_slots: { key: "high" value: 1 }
+            equipment_slots: { key: "mid" value: 3 }
+            equipment_slots: { key: "low" value: 2 }			
+          }
+      }
+  }   
+
+  fungible_items:
+  {
+    key: "rv vt"
+    value:
+      {
+        space: 25000
+        complexity: 3000
+		with_blueprint: true
+        vehicle:
+          {
+            cargo_space: 484
+            speed: 500
+            regen_data:
+              {
+                max_hp: { armour: 500 shield: 500 }
+                shield_regeneration_mhp: 10
+              }
+            mining_rate: { min: 0 max: 4 }
+            prospecting_blocks: 6
+            combat_data: {}
+            equipment_slots: { key: "high" value: 2 }
+            equipment_slots: { key: "mid" value: 2 }
+            equipment_slots: { key: "low" value: 2 }			
+          }
+      }
+  }
+  
+  fungible_items:
+  {
+    key: "gv vt"
+    value:
+      {
+        space: 25000
+        complexity: 3000
+		with_blueprint: true
+        vehicle:
+          {
+            cargo_space: 484
+            speed: 500
+            regen_data:
+              {
+                max_hp: { armour: 500 shield: 500 }
+                shield_regeneration_mhp: 10
+              }
+            mining_rate: { min: 0 max: 4 }
+            prospecting_blocks: 6
+            combat_data: {}
+            equipment_slots: { key: "high" value: 1 }
+            equipment_slots: { key: "mid" value: 2 }
+            equipment_slots: { key: "low" value: 5 }			
+          }
+      }
+  }  
+
+  fungible_items:
+  {
+    key: "bv vt"
+    value:
+      {
+        space: 25000
+        complexity: 3000
+		with_blueprint: true
+        vehicle:
+          {
+            cargo_space: 484
+            speed: 500
+            regen_data:
+              {
+                max_hp: { armour: 500 shield: 500 }
+                shield_regeneration_mhp: 10
+              }
+            mining_rate: { min: 0 max: 4 }
+            prospecting_blocks: 6
+            combat_data: {}
+            equipment_slots: { key: "high" value: 1 }
+            equipment_slots: { key: "mid" value: 5 }
+            equipment_slots: { key: "low" value: 2 }			
+          }
+      }
+  }  
+
+  fungible_items:
+  {
+    key: "rv as"
+    value:
+      {
+        space: 30
+        complexity: 150
+		with_blueprint: true
+        vehicle:
+          {
+            cargo_space: 2
+            speed: 3000
+            regen_data:
+              {
+                max_hp: { armour: 50 shield: 250 }
+                shield_regeneration_mhp: 5
+              }
+            mining_rate: { min: 0 max: 4 }
+            prospecting_blocks: 5
+            combat_data: {}
+            equipment_slots: { key: "high" value: 3 }
+            equipment_slots: { key: "mid" value: 1 }
+            equipment_slots: { key: "low" value: 2 }			
+          }
+      }
+  } 
+  
+  fungible_items:
+  {
+    key: "gv as"
+    value:
+      {
+        space: 30
+        complexity: 150
+		with_blueprint: true
+        vehicle:
+          {
+            cargo_space: 2
+            speed: 3000
+            regen_data:
+              {
+                max_hp: { armour: 50 shield: 250 }
+                shield_regeneration_mhp: 5
+              }
+            mining_rate: { min: 0 max: 4 }
+            prospecting_blocks: 5
+            combat_data: {}
+            equipment_slots: { key: "high" value: 2 }
+            equipment_slots: { key: "mid" value: 2 }
+            equipment_slots: { key: "low" value: 2 }			
+          }
+      }
+  }
+
+  fungible_items:
+  {
+    key: "bv as"
+    value:
+      {
+        space: 30
+        complexity: 150
+		with_blueprint: true
+        vehicle:
+          {
+            cargo_space: 2
+            speed: 3000
+            regen_data:
+              {
+                max_hp: { armour: 50 shield: 250 }
+                shield_regeneration_mhp: 5
+              }
+            mining_rate: { min: 0 max: 4 }
+            prospecting_blocks: 5
+            combat_data: {}
+            equipment_slots: { key: "high" value: 4 }
+            equipment_slots: { key: "mid" value: 4 }
+            equipment_slots: { key: "low" value: 1 }			
+          }
+      }
+  }    
+  
+  fungible_items:
+  {
+    key: "rv am"
+    value:
+      {
+        space: 250
+        complexity: 300
+		with_blueprint: true
+        vehicle:
+          {
+            cargo_space: 5
+            speed: 2000
+            regen_data:
+              {
+                max_hp: { armour: 150 shield: 500 }
+                shield_regeneration_mhp: 10
+              }
+            mining_rate: { min: 0 max: 5 }
+            prospecting_blocks: 5
+            combat_data: {}
+            equipment_slots: { key: "high" value: 5 }
+            equipment_slots: { key: "mid" value: 2 }
+            equipment_slots: { key: "low" value: 2 }			
+          }
+      }
+  }    
+  
+  fungible_items:
+  {
+    key: "gv am"
+    value:
+      {
+        space: 250
+        complexity: 300
+		with_blueprint: true
+        vehicle:
+          {
+            cargo_space: 5
+            speed: 2000
+            regen_data:
+              {
+                max_hp: { armour: 150 shield: 500 }
+                shield_regeneration_mhp: 10
+              }
+            mining_rate: { min: 0 max: 5 }
+            prospecting_blocks: 5
+            combat_data: {}
+            equipment_slots: { key: "high" value: 3 }
+            equipment_slots: { key: "mid" value: 2 }
+            equipment_slots: { key: "low" value: 4 }			
+          }
+      }
+  }   
+  
+  fungible_items:
+  {
+    key: "bv am"
+    value:
+      {
+        space: 250
+        complexity: 300
+		with_blueprint: true
+        vehicle:
+          {
+            cargo_space: 5
+            speed: 2000
+            regen_data:
+              {
+                max_hp: { armour: 150 shield: 500 }
+                shield_regeneration_mhp: 10
+              }
+            mining_rate: { min: 0 max: 5 }
+            prospecting_blocks: 5
+            combat_data: {}
+            equipment_slots: { key: "high" value: 4 }
+            equipment_slots: { key: "mid" value: 4 }
+            equipment_slots: { key: "low" value: 1 }			
+          }
+      }
+  }   
+  
+  fungible_items:
+  {
+    key: "rv al"
+    value:
+      {
+        space: 1000
+        complexity: 2000
+		with_blueprint: true
+        vehicle:
+          {
+            cargo_space: 18
+            speed: 1500
+            regen_data:
+              {
+                max_hp: { armour: 750 shield: 2500 }
+                shield_regeneration_mhp: 50
+              }
+            mining_rate: { min: 0 max: 6 }
+            prospecting_blocks: 4
+            combat_data: {}
+            equipment_slots: { key: "high" value: 6 }
+            equipment_slots: { key: "mid" value: 4 }
+            equipment_slots: { key: "low" value: 4 }			
+          }
+      }
+  } 
+
+  fungible_items:
+  {
+    key: "gv al"
+    value:
+      {
+        space: 1000
+        complexity: 2000
+		with_blueprint: true
+        vehicle:
+          {
+            cargo_space: 18
+            speed: 1500
+            regen_data:
+              {
+                max_hp: { armour: 750 shield: 2500 }
+                shield_regeneration_mhp: 50
+              }
+            mining_rate: { min: 0 max: 6 }
+            prospecting_blocks: 4
+            combat_data: {}
+            equipment_slots: { key: "high" value: 5 }
+            equipment_slots: { key: "mid" value: 3 }
+            equipment_slots: { key: "low" value: 6 }			
+          }
+      }
+  }  
+
+  fungible_items:
+  {
+    key: "bv al"
+    value:
+      {
+        space: 1000
+        complexity: 2000
+		with_blueprint: true
+        vehicle:
+          {
+            cargo_space: 18
+            speed: 1500
+            regen_data:
+              {
+                max_hp: { armour: 750 shield: 2500 }
+                shield_regeneration_mhp: 50
+              }
+            mining_rate: { min: 0 max: 6 }
+            prospecting_blocks: 4
+            combat_data: {}
+            equipment_slots: { key: "high" value: 5 }
+            equipment_slots: { key: "mid" value: 6 }
+            equipment_slots: { key: "low" value: 3 }			
+          }
+      }
+  }   
+  
+  fungible_items:
+  {
+    key: "rv av"
+    value:
+      {
+        space: 2500
+        complexity: 5000
+		with_blueprint: true
+        vehicle:
+          {
+            cargo_space: 41
+            speed: 1000
+            regen_data:
+              {
+                max_hp: { armour: 1500 shield: 5000 }
+                shield_regeneration_mhp: 1000
+              }
+            mining_rate: { min: 0 max: 7 }
+            prospecting_blocks: 3
+            combat_data: {}
+            equipment_slots: { key: "high" value: 8 }
+            equipment_slots: { key: "mid" value: 6 }
+            equipment_slots: { key: "low" value: 6 }			
+          }
+      }
+  }   
+  
+  fungible_items:
+  {
+    key: "gv av"
+    value:
+      {
+        space: 2500
+        complexity: 5000
+		with_blueprint: true
+        vehicle:
+          {
+            cargo_space: 41
+            speed: 1000
+            regen_data:
+              {
+                max_hp: { armour: 1500 shield: 5000 }
+                shield_regeneration_mhp: 1000
+              }
+            mining_rate: { min: 0 max: 7 }
+            prospecting_blocks: 3
+            combat_data: {}
+            equipment_slots: { key: "high" value: 6 }
+            equipment_slots: { key: "mid" value: 5 }
+            equipment_slots: { key: "low" value: 8 }			
+          }
+      }
+  }  
+
+  fungible_items:
+  {
+    key: "bv av"
+    value:
+      {
+        space: 2500
+        complexity: 5000
+		with_blueprint: true
+        vehicle:
+          {
+            cargo_space: 41
+            speed: 1000
+            regen_data:
+              {
+                max_hp: { armour: 1500 shield: 5000 }
+                shield_regeneration_mhp: 1000
+              }
+            mining_rate: { min: 0 max: 7 }
+            prospecting_blocks: 3
+            combat_data: {}
+            equipment_slots: { key: "high" value: 7 }
+            equipment_slots: { key: "mid" value: 8 }
+            equipment_slots: { key: "low" value: 4 }			
+          }
+      }
+  }     
