@@ -337,6 +337,13 @@ RoConfigSanityTests::IsConfigValid (const RoConfig& cfg)
           return false;
         }
 
+  for (const auto& ib : cfg->initial_buildings ())
+    if (cfg.BuildingOrNull (ib.type ()) == nullptr)
+      {
+        LOG (WARNING) << "Invalid type for initial building: " << ib.type ();
+        return false;
+      }
+
   return true;
 }
 

@@ -102,20 +102,14 @@ InitialiseBuildings (Database& db, const xaya::Chain chain)
   LOG (INFO) << "Adding initial ancient buildings to the map...";
   BuildingsTable tbl(db);
 
-  auto h = tbl.CreateNew ("obelisk1", "", Faction::ANCIENT);
-  h->SetCentre (HexCoord (-125, 810));
-  UpdateBuildingStats (*h, chain);
-  h.reset ();
-
-  h = tbl.CreateNew ("obelisk2", "", Faction::ANCIENT);
-  h->SetCentre (HexCoord (-1'301, 902));
-  UpdateBuildingStats (*h, chain);
-  h.reset ();
-
-  h = tbl.CreateNew ("obelisk3", "", Faction::ANCIENT);
-  h->SetCentre (HexCoord (-637, -291));
-  UpdateBuildingStats (*h, chain);
-  h.reset ();
+  const RoConfig cfg(chain);
+  for (const auto& ib : cfg->initial_buildings ())
+    {
+      auto h = tbl.CreateNew (ib.type (), "", Faction::ANCIENT);
+      h->SetCentre (CoordFromProto (ib.centre ()));
+      *h->MutableProto ().mutable_shape_trafo () = ib.shape_trafo ();
+      UpdateBuildingStats (*h, chain);
+    }
 }
 
 void

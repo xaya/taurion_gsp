@@ -18,6 +18,7 @@
 
 syntax = "proto2";
 
+import "proto/building.proto";
 import "proto/character.proto";
 import "proto/combat.proto";
 import "proto/geometry.proto";
@@ -365,6 +366,26 @@ message ResourceDistribution
 /* ************************************************************************** */
 
 /**
+ * Data for a building that is initially on the map.  All of them are
+ * ancient and indestructible.
+ */
+message InitialBuilding
+{
+
+  /** Type of the building.  */
+  optional string type = 1;
+
+  /** Centre of the building.  */
+  optional HexCoord centre = 2;
+
+  /** Shape transformation of the building.  */
+  optional ShapeTransformation shape_trafo = 3;
+
+}
+
+/* ************************************************************************** */
+
+/**
  * Definition of a spawn area.
  */
 message SpawnArea
@@ -491,8 +512,11 @@ message ConfigData
   /** Distribution of resources for prospecting.  */
   optional ResourceDistribution resource_dist = 3;
 
+  /** Initial buildings (ancient buildings and starter zones).  */
+  repeated InitialBuilding initial_buildings = 4;
+
   /** Basic parameters.  */
-  optional Params params = 4;
+  optional Params params = 5;
 
   /**
    * The testnet-specific configuration data.  This is merged into the main
