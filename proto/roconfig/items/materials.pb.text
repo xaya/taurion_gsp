@@ -1,46 +1,210 @@
-# Raw resources in the game.
+################################################################################
+# Refined materials
+
+fungible_items:
+  {
+    key: "mat a"
+    value: { space: 1 }
+  }
+
+fungible_items:
+  {
+    key: "mat b"
+    value: { space: 1 }
+  }
+
+fungible_items:
+  {
+    key: "mat c"
+    value: { space: 1 }
+  }
+
+fungible_items:
+  {
+    key: "mat d"
+    value: { space: 1 }
+  }
+
+fungible_items:
+  {
+    key: "mat e"
+    value: { space: 1 }
+  }
+
+fungible_items:
+  {
+    key: "mat f"
+    value: { space: 1 }
+  }
+
+fungible_items:
+  {
+    key: "mat g"
+    value: { space: 1 }
+  }
+
+fungible_items:
+  {
+    key: "mat h"
+    value: { space: 1 }
+  }
+
+fungible_items:
+  {
+    key: "mat i"
+    value: { space: 1 }
+  }
+
+################################################################################
+# Raw resources (ores) in the game and what they refine to.
+
 fungible_items:
   {
     key: "raw a"
-    value: { space: 1 }
+    value:
+      {
+        space: 1
+        refines:
+          {
+            input_units: 10000
+            cost: 1
+            outputs: { key: "mat a" value: 1000 }
+            outputs: { key: "mat b" value: 300 }
+          }
+      }
   }
+
 fungible_items:
   {
     key: "raw b"
-    value: { space: 1 }
+    value:
+      {
+        space: 1
+        refines:
+          {
+            input_units: 10000
+            cost: 1
+            outputs: { key: "mat a" value: 200 }
+            outputs: { key: "mat b" value: 800 }
+          }
+      }
   }
+
 fungible_items:
   {
     key: "raw c"
-    value: { space: 1 }
+    value:
+      {
+        space: 1
+        refines:
+          {
+            input_units: 10000
+            cost: 1
+            outputs: { key: "mat c" value: 500 }
+            outputs: { key: "mat d" value: 20 }
+            outputs: { key: "mat e" value: 20 }
+          }
+      }
   }
+
 fungible_items:
   {
     key: "raw d"
-    value: { space: 1 }
+    value:
+      {
+        space: 1
+        refines:
+          {
+            input_units: 10000
+            cost: 1
+            outputs: { key: "mat c" value: 20 }
+            outputs: { key: "mat d" value: 500 }
+            outputs: { key: "mat e" value: 20 }
+          }
+      }
   }
+
 fungible_items:
   {
     key: "raw e"
-    value: { space: 1 }
+    value:
+      {
+        space: 1
+        refines:
+          {
+            input_units: 10000
+            cost: 1
+            outputs: { key: "mat c" value: 20 }
+            outputs: { key: "mat d" value: 20 }
+            outputs: { key: "mat e" value: 500 }
+          }
+      }
   }
+
 fungible_items:
   {
     key: "raw f"
-    value: { space: 1 }
+    value:
+      {
+        space: 1
+        refines:
+          {
+            input_units: 10000
+            cost: 1
+            outputs: { key: "mat f" value: 350 }
+          }
+      }
   }
+
 fungible_items:
   {
     key: "raw g"
-    value: { space: 1 }
+    value:
+      {
+        space: 1
+        refines:
+          {
+            input_units: 10000
+            cost: 1
+            outputs: { key: "mat f" value: 20 }
+            outputs: { key: "mat g" value: 300 }
+            outputs: { key: "mat h" value: 10 }
+            outputs: { key: "mat i" value: 1 }
+          }
+      }
   }
+
 fungible_items:
   {
     key: "raw h"
-    value: { space: 1 }
+    value:
+      {
+        space: 1
+        refines:
+          {
+            input_units: 10000
+            cost: 1
+            outputs: { key: "mat f" value: 10 }
+            outputs: { key: "mat g" value: 10 }
+            outputs: { key: "mat h" value: 250 }
+            outputs: { key: "mat i" value: 5 }
+          }
+      }
   }
+
 fungible_items:
   {
     key: "raw i"
-    value: { space: 1 }
+    value:
+      {
+        space: 1
+        refines:
+          {
+            input_units: 10000
+            cost: 1
+            outputs: { key: "mat g" value: 2 }
+            outputs: { key: "mat h" value: 25 }
+            outputs: { key: "mat i" value: 150 }
+          }
+      }
   }
