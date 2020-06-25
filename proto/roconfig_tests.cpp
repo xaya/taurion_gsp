@@ -212,8 +212,12 @@ private:
         return false;
       }
 
-    /* FIXME: Once we actually have added in stats for refining of the
-       raw materials (raw X), check that the item type has a refines entry.  */
+    if (!item->has_refines ())
+      {
+        LOG (WARNING) << "Item is not a raw material: " << type;
+        return false;
+      }
+
     return true;
   }
 
