@@ -16,6 +16,7 @@ libmapdata_la_CXXFLAGS = \
   $(GLOG_CFLAGS)
 libmapdata_la_LIBADD = \
   $(top_builddir)/hexagonal/libhexagonal.la \
+  $(top_builddir)/proto/libpxproto.la \
   $(GLOG_LIBS)
 libmapdata_la_SOURCES = \
   basemap.cpp \
@@ -42,6 +43,7 @@ tests_CXXFLAGS = \
 tests_LDADD = \
   $(builddir)/libmapdata.la \
   $(top_builddir)/hexagonal/libhexagonal.la \
+  $(top_builddir)/proto/libpxproto.la \
   $(GTEST_MAIN_LIBS) \
   $(GTEST_LIBS) $(GLOG_LIBS)
 tests_SOURCES = \
@@ -58,6 +60,7 @@ benchmarks_LDADD = \
   $(builddir)/libmapdata.la \
   $(top_builddir)/hexagonal/libbenchmain.la \
   $(top_builddir)/hexagonal/libhexagonal.la \
+  $(top_builddir)/proto/libpxproto.la \
   $(GLOG_LIBS) $(BENCHMARK_LIBS)
 benchmarks_SOURCES = \
   dyntiles_bench.cpp \

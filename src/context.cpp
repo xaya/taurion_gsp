@@ -23,9 +23,14 @@
 namespace pxd
 {
 
+Context::Context (const xaya::Chain c)
+  : map(nullptr), chain(c),
+    height(0), timestamp(NO_TIMESTAMP)
+{}
+
 Context::Context (const xaya::Chain c, const BaseMap& m,
                   const unsigned h, const int64_t ts)
-  : map(m), chain(c),
+  : map(&m), chain(c),
     params(new pxd::Params (chain)),
     cfg(new pxd::RoConfig (chain)),
     height(h), timestamp(ts)

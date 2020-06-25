@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,7 +21,8 @@
 namespace pxd
 {
 
-BaseMap::BaseMap ()
+BaseMap::BaseMap (const xaya::Chain c)
+  : cfg(c)
 {
   CHECK_EQ (&blob_obstacles_end - &blob_obstacles_start,
             tiledata::obstacles::bitDataSize);

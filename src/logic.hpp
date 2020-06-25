@@ -37,6 +37,7 @@
 #include <sqlite3.h>
 
 #include <functional>
+#include <memory>
 #include <string>
 
 namespace pxd
@@ -87,8 +88,11 @@ class PXLogic : public xaya::SQLiteGame
 
 private:
 
-  /** The underlying base map data.  */
-  const BaseMap map;
+  /**
+   * The underlying base map data.  It is constructed on first access, when
+   * the chain we are connected to is known.
+   */
+  std::unique_ptr<const BaseMap> map;
 
   /**
    * Handles the actual logic for the game-state update.  This is extracted
@@ -159,11 +163,7 @@ public:
    * Gives access to the underlying BaseMap instance (so that it can be reused
    * for other parts of the game like pending processing).
    */
-  const BaseMap&
-  GetBaseMap ()
-  {
-    return map;
-  }
+  const BaseMap& GetBaseMap ();
 
   /**
    * Returns custom game-state data as JSON, with a callback that

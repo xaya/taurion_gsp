@@ -144,7 +144,7 @@ public:
   explicit PXRpcServer (xaya::Game& g, PXLogic& l,
                         jsonrpc::AbstractServerConnector& conn)
     : PXRpcServerStub(conn), game(g), logic(l),
-      nonstate(nullConnector, logic.map, game.GetChain ())
+      nonstate(nullConnector, logic.GetBaseMap (), game.GetChain ())
   {}
 
   void stop () override;

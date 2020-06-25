@@ -21,9 +21,7 @@
 #include "protoutils.hpp"
 #include "testutils.hpp"
 
-#include "mapdata/basemap.hpp"
 #include "mapdata/tiledata.hpp"
-#include "proto/roconfig.hpp"
 
 #include <xayautil/hash.hpp>
 #include <xayautil/uint256.hpp>
@@ -101,6 +99,7 @@ class DetectResourceTests : public testing::Test
 protected:
 
   TestRandom rnd;
+  ContextForTesting ctx;
 
   /**
    * The resource distribution data that we pass to DetectResource.  It is
@@ -115,7 +114,7 @@ protected:
   Inventory::QuantityT amount;
 
   DetectResourceTests ()
-    : rd(RoConfig (xaya::Chain::REGTEST)->resource_dist ())
+    : rd(ctx.RoConfig ()->resource_dist ())
   {}
 
   /**
@@ -309,8 +308,6 @@ TEST_F (DetectResourceTests, DISABLED_AllPassableTiles)
 
   using namespace tiledata;
 
-  BaseMap map;
-
   unsigned all = 0;
   unsigned passable = 0;
   unsigned nothing = 0;
@@ -321,13 +318,13 @@ TEST_F (DetectResourceTests, DISABLED_AllPassableTiles)
       for (HexCoord::IntT x = minX[yInd]; x <= maxX[yInd]; ++x)
         {
           const HexCoord pos(x, y);
-          CHECK (map.IsOnMap (pos));
+          CHECK (ctx.Map ().IsOnMap (pos));
 
           ++all;
           if (all % 1'000'000 == 0)
             LOG (INFO) << "Tile " << all << " / " << numTiles << "...";
 
-          if (!map.IsPassable (pos))
+          if (!ctx.Map ().IsPassable (pos))
             continue;
           ++passable;
 

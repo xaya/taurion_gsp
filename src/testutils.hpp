@@ -52,16 +52,14 @@ class ContextForTesting : public Context
 private:
 
   /** The BaseMap instance used.  */
-  BaseMap map;
+  std::unique_ptr<const BaseMap> mapInstance;
 
 public:
 
   ContextForTesting ()
-    : Context(xaya::Chain::REGTEST, map, 0, NO_TIMESTAMP)
+    : Context(xaya::Chain::REGTEST)
   {
-    /* Note that map will be constructed only after the superclass
-       constructor, which stores a reference to it.  That is fine, though,
-       as it won't be accessed then.  */
+    SetChain (chain);
   }
 
   void SetChain (xaya::Chain c);

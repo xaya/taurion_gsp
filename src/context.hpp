@@ -42,7 +42,7 @@ class Context
 private:
 
   /** Reference to the used BaseMap instance.  */
-  const BaseMap& map;
+  const BaseMap* map;
 
   /** The chain we are on.  */
   xaya::Chain chain;
@@ -69,6 +69,12 @@ private:
    */
   int64_t timestamp;
 
+  /**
+   * Constructs an empty instance without setting any stuff yet.  This is
+   * used with ContextForTesting.
+   */
+  explicit Context (xaya::Chain c);
+
   friend class ContextForTesting;
 
 public:
@@ -93,7 +99,7 @@ public:
   const BaseMap&
   Map () const
   {
-    return map;
+    return *map;
   }
 
   const pxd::Params&
