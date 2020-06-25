@@ -404,6 +404,27 @@ message InitialBuilding
 
 }
 
+/**
+ * Data for a safe zone.  They represent both the general no-combat zones
+ * as well as the faction-specific starter areas.
+ */
+message SafeZone
+{
+
+  /** Centre of the zone.  */
+  optional HexCoord centre = 1;
+
+  /** L1 radius of the zone.  */
+  optional uint32 radius = 2;
+
+  /**
+   * If this is a faction starter zone, the faction as string ("r", "g" or "b").
+   * If this is a general no-combat zone, then the field is unset.
+   */
+  optional string faction = 3;
+
+}
+
 /* ************************************************************************** */
 
 /**
@@ -536,8 +557,11 @@ message ConfigData
   /** Initial buildings (ancient buildings and starter zones).  */
   repeated InitialBuilding initial_buildings = 4;
 
+  /** Safe and starter zones.  */
+  repeated SafeZone safe_zones = 5;
+
   /** Basic parameters.  */
-  optional Params params = 5;
+  optional Params params = 6;
 
   /**
    * The testnet-specific configuration data.  This is merged into the main

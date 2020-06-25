@@ -5,6 +5,7 @@ ROCONFIG_TEXT_PROTOS = \
   roconfig/initialbuildings.pb.text \
   roconfig/params.pb.text \
   roconfig/resourcedist.pb.text \
+  roconfig/safezones.pb.text \
   \
   roconfig/items/fitments.pb.text \
   roconfig/items/materials.pb.text \
@@ -23,6 +24,7 @@ ROCONFIG_TEXT_PROTOS = \
 
 ROCONFIG_TEXT_PROTOS_REGTEST = \
   roconfig/test_params.pb.text \
+  roconfig/test_safezones.pb.text \
   roconfig/buildings/test.pb.text \
   roconfig/items/test.pb.text
 

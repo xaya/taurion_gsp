@@ -1,0 +1,24 @@
+# The starter zones are located around the spawns.
+
+safe_zones:
+  {
+    centre: { x: 1993 y: -2636 }
+    radius: 300
+    faction: "r"
+  }
+
+safe_zones:
+  {
+    centre: { x: -3430 y: 1793 }
+    radius: 300
+    faction: "g"
+  }
+
+safe_zones:
+  {
+    centre: { x: 571 y: 2609 }
+    radius: 300
+    faction: "b"
+  }
+
+# TODO: Define the no-combat zones.
