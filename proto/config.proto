@@ -29,6 +29,18 @@ package pxd.proto;
 /* ************************************************************************** */
 
 /**
+ * Size of a vehicle.
+ */
+enum VehicleSize
+{
+  STARTER = 1;
+  LIGHT = 2;
+  MEDIUM = 3;
+  HEAVY = 4;
+  VERY_HEAVY = 5;
+}
+
+/**
  * Data about the ability to refine items of this type to other item types
  * (i.e. raw materials into refined resources).
  */
@@ -119,13 +131,16 @@ message VehicleData
   /** Base prospecting rate (if prospecting is possible).  */
   optional uint32 prospecting_blocks = 6;
 
+  /** Size of the vehicle for fitment purposes.  */
+  optional VehicleSize size = 7;
+
   /**
    * Number of equipment slots of each type.  The slot types are just strings
    * which have to be matched between here and the fitment configs.  The valid
    * values are "high", "mid" and "low".  Unfortunately we cannot use enum
    * values as they can't be keys in protocol buffer maps.
    */
-  map<string, uint32> equipment_slots = 7;
+  map<string, uint32> equipment_slots = 8;
 
 }
 
@@ -138,47 +153,53 @@ message FitmentData
   /** The type of slot this requires.  */
   optional string slot = 1;
 
+  /**
+   * If set, then this fitment can only be placed on a vehicle of the
+   * (exact) given size.
+   */
+  optional VehicleSize vehicle_size = 2;
+
   /** An attack this does.  */
-  optional Attack attack = 2;
+  optional Attack attack = 3;
 
   /** Modification to the cargo space.  */
-  optional StatModifier cargo_space = 3;
+  optional StatModifier cargo_space = 4;
 
   /** Modification to the movement speed.  */
-  optional StatModifier speed = 4;
+  optional StatModifier speed = 5;
 
   /** Modification to max armour HP.  */
-  optional StatModifier max_armour = 5;
+  optional StatModifier max_armour = 6;
 
   /** Modification to max shield HP.  */
-  optional StatModifier max_shield = 6;
+  optional StatModifier max_shield = 7;
 
   /** Modification to shield regeneration rate.  */
-  optional StatModifier shield_regen = 7;
+  optional StatModifier shield_regen = 8;
 
   /** Modification of all attack ranges (and AoE area sizes).  */
-  optional StatModifier range = 8;
+  optional StatModifier range = 9;
 
   /** Modification of all attack damages (min and max).  */
-  optional StatModifier damage = 9;
+  optional StatModifier damage = 10;
 
   /** Modification to the vehicle's allowed fitment complexity.  */
-  optional StatModifier complexity = 10;
+  optional StatModifier complexity = 11;
 
   /**
    * Modification to the vehicle's prospecting blocks.  Since a larger number
    * of blocks is worse, a fitment will likely have a negative modifier here.
    */
-  optional StatModifier prospecting_blocks = 11;
+  optional StatModifier prospecting_blocks = 12;
 
   /** MOdification to the vehicle's mining rate (min and max).  */
-  optional StatModifier mining_rate = 12;
+  optional StatModifier mining_rate = 13;
 
   /** Low-HP-boost this fitment provides (if any).  */
-  optional LowHpBoost low_hp_boost = 13;
+  optional LowHpBoost low_hp_boost = 14;
 
   /** Self-destruct ability of this fitment (if any).  */
-  optional SelfDestruct self_destruct = 14;
+  optional SelfDestruct self_destruct = 15;
 
 }
 

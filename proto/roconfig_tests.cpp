@@ -292,6 +292,12 @@ RoConfigSanityTests::IsConfigValid (const RoConfig& cfg)
             }
         }
 
+      if (i.has_vehicle () && !i.vehicle ().has_size ())
+        {
+          LOG (WARNING) << "Vehicle has no size defined: " << entry.first;
+          return false;
+        }
+
       for (const auto& s : i.vehicle ().equipment_slots ())
         if (!IsValidEquipmentSlot (s.first))
           {

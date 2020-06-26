@@ -27,6 +27,7 @@ fungible_items:
               }
             mining_rate: { min: 0 max: 5 }
             prospecting_blocks: 10
+            size: STARTER
           }
       }
   }
@@ -57,6 +58,7 @@ fungible_items:
               }
             mining_rate: { min: 0 max: 5 }
             prospecting_blocks: 10
+            size: STARTER
           }
       }
   }
@@ -87,6 +89,7 @@ fungible_items:
               }
             mining_rate: { min: 0 max: 5 }
             prospecting_blocks: 10
+            size: STARTER
           }
       }
   }
