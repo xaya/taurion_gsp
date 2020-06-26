@@ -66,6 +66,8 @@ class CharacterLimitTest (PXTest):
     self.mainLogger.info ("Killing some characters...")
     self.initAccount ("attacker", "g")
     self.createCharacters ("attacker")
+    self.generate (1)
+    self.changeCharacterVehicle ("attacker", "light attacker")
     self.setCharactersHP ({
       "domob 2": {"a": 1, "s": 0},
       "domob 5": {"a": 1, "s": 0},

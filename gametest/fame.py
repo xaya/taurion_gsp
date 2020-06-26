@@ -34,6 +34,8 @@ class FameTest (PXTest):
     self.initAccount ("bar", "g")
     self.createCharacters ("bar")
     self.generate (1)
+    self.changeCharacterVehicle ("foo", "light attacker")
+    self.changeCharacterVehicle ("bar", "light attacker")
     self.moveCharactersTo ({
       "foo": {"x": 0, "y": 0},
       "bar": {"x": 0, "y": 0},
@@ -60,6 +62,10 @@ class FameTest (PXTest):
     self.initAccount ("blue", "b")
     self.createCharacters ("blue")
     self.generate (1)
+    self.changeCharacterVehicle ("red", "light attacker")
+    self.changeCharacterVehicle ("red 2", "light attacker")
+    self.changeCharacterVehicle ("green", "light attacker")
+    self.changeCharacterVehicle ("blue", "light attacker")
     self.moveCharactersTo ({
       "blue": {"x": 0, "y": 0},
       "red": {"x": 5, "y": 0},
@@ -102,6 +108,8 @@ class FameTest (PXTest):
         suff = " %d" % (i + 1)
       mv["army" + suff] = {"x": 101, "y": i - armySize // 2}
       mv["other army" + suff] = {"x": -101, "y": i - armySize // 2}
+      self.changeCharacterVehicle ("army" + suff, "light attacker")
+      self.changeCharacterVehicle ("other army" + suff, "light attacker")
     self.moveCharactersTo (mv)
     self.setCharactersHP ({
       "target": {"a": 1, "s": 0},

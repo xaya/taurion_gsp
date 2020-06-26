@@ -50,6 +50,7 @@ class CombatDamageTest (PXTest):
     self.initAccount ("attacker", "r")
     self.createCharacters ("attacker", 2)
     self.generate (1)
+    self.changeCharacterVehicle ("attacker", "light attacker")
 
     # We use a known good position as offset for our test.
     self.offset = {"x": -1100, "y": 1042}

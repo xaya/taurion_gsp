@@ -114,6 +114,39 @@ fungible_items:
 ################################################################################
 # Vehicles
 
+# A test vehicle with some well-defined stats suitable for testing
+# basic combat in the integration tests.
+fungible_items:
+  {
+    key: "light attacker"
+    value:
+      {
+        space: 50
+        complexity: 100
+        vehicle:
+          {
+            cargo_space: 20
+            speed: 3000
+            regen_data:
+              {
+                max_hp: { armour: 100 shield: 30 }
+                shield_regeneration_mhp: 500
+              }
+            combat_data:
+              {
+                attacks:
+                  {
+                    range: 10
+                    damage: { min: 1 max: 10 }
+                  }
+              }
+            mining_rate: { min: 1 max: 1 }
+            prospecting_blocks: 10
+            size: LIGHT
+          }
+      }
+  }
+
 # A test vehicle with some well-defined stats that can be used
 # also e.g. in tests for fitments.
 fungible_items:

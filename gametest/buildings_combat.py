@@ -59,6 +59,7 @@ class BuildingsCombatTest (PXTest):
     self.generate (1)
     self.createCharacters ("attacker")
     self.generate (2)
+    self.changeCharacterVehicle ("attacker", "light attacker")
     reorgBlk = self.rpc.xaya.getbestblockhash ()
     self.moveCharactersTo ({"attacker": {"x": 1, "y": 0}})
 
