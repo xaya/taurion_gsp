@@ -40,6 +40,8 @@ class MiningTest (PXTest):
     self.initAccount ("domob", "r")
     self.createCharacters ("domob", 2)
     self.generate (1)
+    self.changeCharacterVehicle ("domob", "light attacker")
+    self.changeCharacterVehicle ("domob 2", "light attacker")
     self.moveCharactersTo ({
       "domob": self.pos[0],
       "domob 2": self.pos[1],

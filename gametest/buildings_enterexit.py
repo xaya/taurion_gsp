@@ -38,6 +38,7 @@ class BuildingsEnterExitTest (PXTest):
     self.initAccount ("domob", "r")
     self.createCharacters ("domob")
     self.generate (1)
+    self.changeCharacterVehicle ("domob", "light attacker")
     self.moveCharactersTo ({"domob": {"x": 20, "y": 0}})
     self.getCharacters ()["domob"].sendMove ({
       "wp": [{"x": 3, "y": 0}],
@@ -64,6 +65,7 @@ class BuildingsEnterExitTest (PXTest):
     self.initAccount ("andy", "g")
     self.createCharacters ("andy")
     self.generate (1)
+    self.changeCharacterVehicle ("andy", "light attacker")
     self.moveCharactersTo ({
       "domob": {"x": 5, "y": 0},
       "andy": {"x": 5, "y": 0},

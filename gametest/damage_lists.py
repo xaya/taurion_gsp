@@ -59,6 +59,9 @@ class DamageListsTest (PXTest):
     self.initAccount ("attacker", "r")
     self.createCharacters ("attacker", 2)
     self.generate (1)
+    self.changeCharacterVehicle ("target", "light attacker")
+    self.changeCharacterVehicle ("attacker", "light attacker")
+    self.changeCharacterVehicle ("attacker 2", "light attacker")
 
     # We use a known good position as offset and move the characters
     # nearby so they are attacking each other.

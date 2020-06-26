@@ -33,8 +33,8 @@ class BuildingsBasicTest (PXTest):
     self.initAccount ("domob", "r")
     self.createCharacters ("domob")
     self.generate (1)
-    self.moveCharactersTo ({"domob": {"x": -10, "y": 0}})
-    self.getCharacters ()["domob"].sendMove ({"wp": [{"x": 10, "y": 0}]})
+    self.moveCharactersTo ({"domob": {"x": -20, "y": 0}})
+    self.getCharacters ()["domob"].sendMove ({"wp": [{"x": 20, "y": 0}]})
     self.generate (3)
     reorgBlock = self.rpc.xaya.getbestblockhash ()
 
@@ -80,7 +80,7 @@ class BuildingsBasicTest (PXTest):
     self.assertEqual ([b.data for b in self.getBuildings ().values ()],
                       [b.data for b in self.ancientBuildings.values ()])
     self.assertEqual (self.getCharacters ()["domob"].getPosition (),
-                      {"x": 10, "y": 0})
+                      {"x": 20, "y": 0})
 
     self.rpc.xaya.reconsiderblock (blk)
     self.expectGameState (originalState)

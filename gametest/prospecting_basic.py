@@ -48,6 +48,8 @@ class BasicProspectingTest (PXTest):
     self.initAccount ("attacker 2", "g")
     self.createCharacters ("attacker 2")
     self.generate (1)
+    self.changeCharacterVehicle ("attacker 1", "light attacker")
+    self.changeCharacterVehicle ("attacker 2", "light attacker")
 
     # Set up known positions of the characters.  We use a known good position
     # as origin and move all attackers there.  The target will be moved to a
@@ -193,11 +195,11 @@ class BasicProspectingTest (PXTest):
     self.generate (100)
     self.createCharacters ("target", 1)
     self.generate (1)
-    self.moveCharactersTo ({
-      "target": self.offset,
-    })
     self.setCharactersHP ({
       "target": {"a": 1000, "s": 0},
+    })
+    self.moveCharactersTo ({
+      "target": self.offset,
     })
     r = self.getRegionAt (self.offset)
     c = self.getCharacters ()["target"]

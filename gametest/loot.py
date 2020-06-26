@@ -107,6 +107,7 @@ class LootTest (PXTest):
     self.dropLoot ({"x": 0, "y": 0}, {"foo": 10})
     self.createCharacters ("cargo", 1)
     self.generate (1)
+    self.changeCharacterVehicle ("cargo", "light attacker")
     self.moveCharactersTo ({"cargo": {"x": 0, "y": 0}})
     self.getCharacters ()["cargo"].sendMove ({"pu": {"f": {"foo": 100}}})
     self.generate (1)
@@ -150,6 +151,7 @@ class LootTest (PXTest):
     self.initAccount ("green", "g")
     self.createCharacters ("green")
     self.generate (1)
+    self.changeCharacterVehicle ("green", "light attacker")
     self.moveCharactersTo ({
       "red": {"x": 100, "y": 100},
       "green": {"x": 100, "y": 100},
