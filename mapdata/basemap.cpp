@@ -22,7 +22,7 @@ namespace pxd
 {
 
 BaseMap::BaseMap (const xaya::Chain c)
-  : cfg(c)
+  : cfg(c), sz(cfg)
 {
   CHECK_EQ (&blob_obstacles_end - &blob_obstacles_start,
             tiledata::obstacles::bitDataSize);

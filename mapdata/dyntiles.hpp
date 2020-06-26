@@ -32,6 +32,13 @@ namespace dyntiles
 {
 
 /**
+ * Computes the index into our abstract data vector at which a certain
+ * coordinate will be found.  The abstract data vector is the assumed
+ * array of all tiles, stored row-by-row.
+ */
+inline size_t GetIndex (const HexCoord& c);
+
+/**
  * Size of each "bucket" of values.  We use one array
  * for each bucket, and have a larger array of arrays.  That way,
  * we can initialise each bucket only when needed (i.e. it is changed

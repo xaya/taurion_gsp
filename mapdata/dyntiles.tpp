@@ -28,12 +28,7 @@ namespace pxd
 namespace dyntiles
 {
 
-/**
- * Computes the index into our abstract data vector at which a certain
- * coordinate will be found.  The abstract data vector is the assumed
- * array of all tiles, stored row-by-row.
- */
-inline size_t
+size_t
 GetIndex (const HexCoord& c)
 {
   const auto x = c.GetX ();

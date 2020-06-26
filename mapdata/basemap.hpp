@@ -20,6 +20,7 @@
 #define MAPDATA_BASEMAP_HPP
 
 #include "regionmap.hpp"
+#include "safezones.hpp"
 
 #include "hexagonal/coord.hpp"
 #include "hexagonal/pathfinder.hpp"
@@ -42,7 +43,10 @@ private:
   const RoConfig cfg;
 
   /** RegionMap instance that is exposed as part of the BaseMap.  */
-  RegionMap rm;
+  const RegionMap rm;
+
+  /** SafeZones instance used.  */
+  const pxd::SafeZones sz;
 
 public:
 
@@ -67,6 +71,12 @@ public:
   Regions () const
   {
     return rm;
+  }
+
+  const pxd::SafeZones&
+  SafeZones () const
+  {
+    return sz;
   }
 
   /**

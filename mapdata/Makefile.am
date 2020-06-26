@@ -15,12 +15,14 @@ libmapdata_la_CXXFLAGS = \
   -I$(top_srcdir) \
   $(GLOG_CFLAGS)
 libmapdata_la_LIBADD = \
+  $(top_builddir)/database/libdatabase.la \
   $(top_builddir)/hexagonal/libhexagonal.la \
   $(top_builddir)/proto/libpxproto.la \
   $(GLOG_LIBS)
 libmapdata_la_SOURCES = \
   basemap.cpp \
   regionmap.cpp \
+  safezones.cpp \
   tiledata.cpp \
   \
   blobs.s
@@ -28,6 +30,7 @@ noinst_HEADERS = \
   basemap.hpp basemap.tpp \
   dyntiles.hpp dyntiles.tpp \
   regionmap.hpp \
+  safezones.hpp safezones.tpp \
   tiledata.hpp \
   \
   benchutils.hpp \
@@ -42,6 +45,7 @@ tests_CXXFLAGS = \
   $(GTEST_CFLAGS) $(GLOG_CFLAGS)
 tests_LDADD = \
   $(builddir)/libmapdata.la \
+  $(top_builddir)/database/libdatabase.la \
   $(top_builddir)/hexagonal/libhexagonal.la \
   $(top_builddir)/proto/libpxproto.la \
   $(GTEST_MAIN_LIBS) \
@@ -50,6 +54,7 @@ tests_SOURCES = \
   basemap_tests.cpp \
   dyntiles_tests.cpp \
   regionmap_tests.cpp \
+  safezones_tests.cpp \
   \
   dataio.cpp
 
@@ -58,6 +63,7 @@ benchmarks_CXXFLAGS = \
   $(GLOG_CFLAGS) $(BENCHMARK_CFLAGS)
 benchmarks_LDADD = \
   $(builddir)/libmapdata.la \
+  $(top_builddir)/database/libdatabase.la \
   $(top_builddir)/hexagonal/libbenchmain.la \
   $(top_builddir)/hexagonal/libhexagonal.la \
   $(top_builddir)/proto/libpxproto.la \
