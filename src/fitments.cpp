@@ -32,6 +32,10 @@ CheckVehicleFitments (const std::string& vehicle,
                       const std::vector<std::string>& fitments,
                       const Context& ctx)
 {
+  const auto& vehicleData = ctx.RoConfig ().Item (vehicle);
+  CHECK (vehicleData.has_vehicle ())
+      << "Item type " << vehicle << " is not a vehicle";
+
   /* We first go through all fitments, and sum up what slots we need and
      what complexity is required.  We also keep track of any potential
      modification to the supported complexity.  */
@@ -43,18 +47,26 @@ CheckVehicleFitments (const std::string& vehicle,
       const auto& fitmentData = ctx.RoConfig ().Item (f);
       CHECK (fitmentData.has_fitment ())
           << "Item type " << f << " is not a fitment";
+      const auto& fitmentStats = fitmentData.fitment ();
 
       complexityRequired += fitmentData.complexity ();
-      ++slotsRequired[fitmentData.fitment ().slot ()];
+      ++slotsRequired[fitmentStats.slot ()];
 
-      vehicleComplexity += fitmentData.fitment ().complexity ();
+      vehicleComplexity += fitmentStats.complexity ();
+
+      if (fitmentStats.has_vehicle_size ()
+            && fitmentStats.vehicle_size () != vehicleData.vehicle ().size ())
+        {
+          VLOG (1)
+              << "Fitment " << f << " can only fit a vehicle of size "
+              << fitmentStats.vehicle_size ()
+              << ", but target " << vehicle << " has size "
+              << vehicleData.vehicle ().size ();
+          return false;
+        }
     }
 
   /* Now check up the required stats against the vehicle.  */
-  const auto& vehicleData = ctx.RoConfig ().Item (vehicle);
-  CHECK (vehicleData.has_vehicle ())
-      << "Item type " << vehicle << " is not a vehicle";
-
   const unsigned complexityAvailable
       = vehicleComplexity (vehicleData.complexity ());
   if (complexityRequired > complexityAvailable)

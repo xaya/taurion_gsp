@@ -66,6 +66,18 @@ fungible_items:
       }
   }
 
+# A size-restricted fitment.
+fungible_items:
+  {
+    key: "only medium"
+    value:
+      {
+        space: 1
+        complexity: 1
+        fitment: { slot: "high" vehicle_size: MEDIUM }
+      }
+  }
+
 # Strong reduction of prospecting time (more than any real item)
 # so that we can test the lower cap at one block.
 fungible_items:

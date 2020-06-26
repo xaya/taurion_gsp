@@ -67,6 +67,12 @@ TEST_F (CheckVehicleFitmentsTests, ComplexityMultiplier)
                                      ctx));
 }
 
+TEST_F (CheckVehicleFitmentsTests, VehicleSize)
+{
+  EXPECT_FALSE (CheckVehicleFitments ("basetank", {"only medium"}, ctx));
+  EXPECT_TRUE (CheckVehicleFitments ("chariot", {"only medium"}, ctx));
+}
+
 /* ************************************************************************** */
 
 class DeriveCharacterStatsTests : public DBTestWithSchema
