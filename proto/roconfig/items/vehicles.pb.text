@@ -1,31 +1,23 @@
 ################################################################################
-# Starter vehicles.
+# Starter vehicles
 
 fungible_items:
   {
     key: "rv st"
     value:
       {
-        space: 100
+        space: 4030000
         complexity: 1
         vehicle:
           {
-            cargo_space: 20
-            speed: 2100
+            cargo_space: 1008000
+            speed: 3000
             regen_data:
               {
-                max_hp: { armour: 75 shield: 30 }
-                shield_regeneration_mhp: 500
+                max_hp: { armour: 20 shield: 10 }
+                shield_regeneration_mhp: 1000
               }
-            combat_data:
-              {
-                attacks:
-                  {
-                    area: 7
-                    damage: { min: 1 max: 20 }
-                  }
-              }
-            mining_rate: { min: 0 max: 5 }
+            mining_rate: { min: 0 max: 2000000 }
             prospecting_blocks: 10
             size: STARTER
           }
@@ -37,26 +29,18 @@ fungible_items:
     key: "gv st"
     value:
       {
-        space: 100
+        space: 4030000
         complexity: 1
         vehicle:
           {
-            cargo_space: 30
-            speed: 2000
+            cargo_space: 1008000
+            speed: 3000
             regen_data:
               {
-                max_hp: { armour: 150 shield: 30 }
-                shield_regeneration_mhp: 200
+                max_hp: { armour: 20 shield: 10 }
+                shield_regeneration_mhp: 1000
               }
-            combat_data:
-              {
-                attacks:
-                  {
-                    range: 10
-                    damage: { min: 1 max: 20 }
-                  }
-              }
-            mining_rate: { min: 0 max: 5 }
+            mining_rate: { min: 0 max: 2000000 }
             prospecting_blocks: 10
             size: STARTER
           }
@@ -68,26 +52,18 @@ fungible_items:
     key: "bv st"
     value:
       {
-        space: 100
+        space: 4030000
         complexity: 1
         vehicle:
           {
-            cargo_space: 20
-            speed: 2200
+            cargo_space: 1008000
+            speed: 3000
             regen_data:
               {
-                max_hp: { armour: 50 shield: 30 }
+                max_hp: { armour: 20 shield: 10 }
                 shield_regeneration_mhp: 1000
               }
-            combat_data:
-              {
-                attacks:
-                  {
-                    range: 10
-                    damage: { min: 1 max: 12 }
-                  }
-              }
-            mining_rate: { min: 0 max: 5 }
+            mining_rate: { min: 0 max: 2000000 }
             prospecting_blocks: 10
             size: STARTER
           }
