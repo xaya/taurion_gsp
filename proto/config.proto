@@ -29,6 +29,18 @@ package pxd.proto;
 /* ************************************************************************** */
 
 /**
+ * Size of a vehicle.
+ */
+enum VehicleSize
+{
+  STARTER = 1;
+  LIGHT = 2;
+  MEDIUM = 3;
+  HEAVY = 4;
+  VERY_HEAVY = 5;
+}
+
+/**
  * Data about the ability to refine items of this type to other item types
  * (i.e. raw materials into refined resources).
  */
@@ -119,13 +131,16 @@ message VehicleData
   /** Base prospecting rate (if prospecting is possible).  */
   optional uint32 prospecting_blocks = 6;
 
+  /** Size of the vehicle for fitment purposes.  */
+  optional VehicleSize size = 7;
+
   /**
    * Number of equipment slots of each type.  The slot types are just strings
    * which have to be matched between here and the fitment configs.  The valid
    * values are "high", "mid" and "low".  Unfortunately we cannot use enum
    * values as they can't be keys in protocol buffer maps.
    */
-  map<string, uint32> equipment_slots = 7;
+  map<string, uint32> equipment_slots = 8;
 
 }
 

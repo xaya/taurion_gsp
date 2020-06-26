@@ -136,6 +136,7 @@ fungible_items:
               }
             mining_rate: { min: 10 max: 100 }
             prospecting_blocks: 10
+            size: MEDIUM
             equipment_slots: { key: "high" value: 3 }
             equipment_slots: { key: "mid" value: 2 }
             equipment_slots: { key: "low" value: 1 }
@@ -163,6 +164,7 @@ fungible_items:
                 shield_regeneration_mhp: 1000
               }
             combat_data: {}
+            size: HEAVY
             equipment_slots: { key: "high" value: 10 }
             equipment_slots: { key: "mid" value: 10 }
             equipment_slots: { key: "low" value: 10 }
