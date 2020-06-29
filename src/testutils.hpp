@@ -49,11 +49,6 @@ public:
 class ContextForTesting : public Context
 {
 
-private:
-
-  /** The BaseMap instance used.  */
-  std::unique_ptr<const BaseMap> mapInstance;
-
 public:
 
   ContextForTesting ()

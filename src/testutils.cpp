@@ -21,7 +21,10 @@
 #include <xayautil/hash.hpp>
 
 #include <glog/logging.h>
+#include <gtest/gtest.h>
 
+#include <map>
+#include <memory>
 #include <sstream>
 
 namespace pxd
@@ -34,13 +37,55 @@ TestRandom::TestRandom ()
   Seed (seed.Finalise ());
 }
 
+namespace
+{
+
+/**
+ * Global test environment that constructs BaseMap instances for all
+ * possible chains.  Since this construction takes some time (due to the
+ * SafeZones), we do it only once rather than in each test.
+ */
+class BaseMapInstances : public testing::Environment
+{
+
+private:
+
+  /** The instances for each of the chains.  */
+  std::unordered_map<xaya::Chain, std::unique_ptr<BaseMap>> instances;
+
+public:
+
+  BaseMapInstances ()
+  {
+    for (const auto c : {xaya::Chain::MAIN, xaya::Chain::TEST,
+                         xaya::Chain::REGTEST})
+      instances.emplace (c, std::make_unique<BaseMap> (c));
+  }
+
+  BaseMapInstances (const BaseMapInstances&) = delete;
+  void operator= (const BaseMapInstances&) = delete;
+
+  /**
+   * Returns the instance for the given chain.
+   */
+  const BaseMap&
+  Get (const xaya::Chain chain) const
+  {
+    return *instances.at (chain);
+  }
+
+};
+
+const auto* maps = testing::AddGlobalTestEnvironment (new BaseMapInstances ());
+
+} // anonymous namespace
+
 void
 ContextForTesting::SetChain (const xaya::Chain c)
 {
   LOG (INFO) << "Setting context chain to " << xaya::ChainToString (c);
   chain = c;
-  mapInstance = std::make_unique<BaseMap> (chain);
-  map = mapInstance.get ();
+  map = &dynamic_cast<const BaseMapInstances*> (maps)->Get (c);
   params = std::make_unique<pxd::Params> (chain);
   cfg = std::make_unique<pxd::RoConfig> (chain);
 }
