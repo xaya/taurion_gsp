@@ -103,7 +103,7 @@ UpdateHP (Database& db, xaya::Random& rnd, const Context& ctx)
   DamageLists dl(db, 0);
   GroundLootTable loot(db);
 
-  const auto dead = DealCombatDamage (db, dl, rnd);
+  const auto dead = DealCombatDamage (db, dl, rnd, ctx);
   ProcessKills (db, dl, loot, dead, rnd, ctx);
   RegenerateHP (db);
 }

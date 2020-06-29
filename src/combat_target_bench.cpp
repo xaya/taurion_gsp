@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,6 +17,8 @@
 */
 
 #include "combat.hpp"
+
+#include "testutils.hpp"
 
 #include "database/account.hpp"
 #include "database/character.hpp"
@@ -37,15 +39,15 @@ namespace
 
 /**
  * Creates test characters in the database.  We create "stacks" of k
- * characters each in a (rows x cols) grid.  The individual stacks are 100
+ * characters each in a (rows x cols) grid.  The individual stacks are 20
  * tiles apart from each other.
  */
 void
-InsertCharacters (Database& db, const Faction f,
+InsertCharacters (Database& db, const Context& ctx, const Faction f,
                   const unsigned k,
                   const unsigned rows, const unsigned cols)
 {
-  constexpr HexCoord::IntT spacing = 100;
+  constexpr HexCoord::IntT spacing = 20;
 
   AccountsTable acc(db);
   CharacterTable tbl(db);
@@ -57,6 +59,7 @@ InsertCharacters (Database& db, const Faction f,
     for (unsigned c = 0; c < cols; ++c)
       {
         const HexCoord pos(c * spacing, r * spacing);
+        CHECK (ctx.Map ().IsOnMap (pos)) << "Not on map: " << pos;
         for (unsigned i = 0; i < k; ++i)
           {
             auto c = tbl.CreateNew (nm, f);
@@ -81,6 +84,8 @@ InsertCharacters (Database& db, const Faction f,
 void
 TargetSelectionFriendly (benchmark::State& state)
 {
+  ContextForTesting ctx;
+
   TestDatabase db;
   SetupDatabaseSchema (db.GetHandle ());
 
@@ -99,10 +104,10 @@ TargetSelectionFriendly (benchmark::State& state)
       << " characters each";
   LOG (INFO) << "Total characters: " << (numStacks * perStack);
 
-  InsertCharacters (db, Faction::RED, perStack, rows, cols);
+  InsertCharacters (db, ctx, Faction::RED, perStack, rows, cols);
 
   for (auto _ : state)
-    FindCombatTargets (db, rnd);
+    FindCombatTargets (db, rnd, ctx);
 }
 BENCHMARK (TargetSelectionFriendly)
   ->Unit (benchmark::kMillisecond)
@@ -127,6 +132,8 @@ BENCHMARK (TargetSelectionFriendly)
 void
 TargetSelectionEnemies (benchmark::State& state)
 {
+  ContextForTesting ctx;
+
   TestDatabase db;
   SetupDatabaseSchema (db.GetHandle ());
 
@@ -146,11 +153,11 @@ TargetSelectionEnemies (benchmark::State& state)
   LOG (INFO) << "Total characters: " << (numStacks * perStack);
 
   CHECK_EQ (perStack % 2, 0);
-  InsertCharacters (db, Faction::RED, perStack / 2, rows, cols);
-  InsertCharacters (db, Faction::GREEN, perStack / 2, rows, cols);
+  InsertCharacters (db, ctx, Faction::RED, perStack / 2, rows, cols);
+  InsertCharacters (db, ctx, Faction::GREEN, perStack / 2, rows, cols);
 
   for (auto _ : state)
-    FindCombatTargets (db, rnd);
+    FindCombatTargets (db, rnd, ctx);
 }
 BENCHMARK (TargetSelectionEnemies)
   ->Unit (benchmark::kMillisecond)

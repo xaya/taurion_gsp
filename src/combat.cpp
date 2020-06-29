@@ -115,9 +115,18 @@ namespace
  * Runs target selection for one fighter entity.
  */
 void
-SelectTarget (TargetFinder& targets, xaya::Random& rnd, FighterTable::Handle f)
+SelectTarget (TargetFinder& targets, xaya::Random& rnd, const Context& ctx,
+              FighterTable::Handle f)
 {
   const HexCoord pos = f->GetCombatPosition ();
+  if (ctx.Map ().SafeZones ().IsNoCombat (pos))
+    {
+      VLOG (1)
+          << "Not selecting targets for fighter in no-combat zone:\n"
+          << f->GetIdAsTarget ().DebugString ();
+      f->ClearTarget ();
+      return;
+    }
 
   HexCoord::IntT range = f->GetAttackRange ();
   if (range == CombatEntity::NO_ATTACKS)
@@ -138,6 +147,14 @@ SelectTarget (TargetFinder& targets, xaya::Random& rnd, FighterTable::Handle f)
   targets.ProcessL1Targets (pos, range, f->GetFaction (),
     [&] (const HexCoord& c, const proto::TargetId& id)
     {
+      if (ctx.Map ().SafeZones ().IsNoCombat (c))
+        {
+          VLOG (2)
+              << "Ignoring fighter in no-combat zone for target selection:\n"
+              << id.DebugString ();
+          return;
+        }
+
       const HexCoord::IntT curDist = HexCoord::DistanceL1 (pos, c);
       if (closestTargets.empty () || curDist < closestRange)
         {
@@ -172,7 +189,7 @@ SelectTarget (TargetFinder& targets, xaya::Random& rnd, FighterTable::Handle f)
 } // anonymous namespace
 
 void
-FindCombatTargets (Database& db, xaya::Random& rnd)
+FindCombatTargets (Database& db, xaya::Random& rnd, const Context& ctx)
 {
   BuildingsTable buildings(db);
   CharacterTable characters(db);
@@ -181,7 +198,7 @@ FindCombatTargets (Database& db, xaya::Random& rnd)
 
   fighters.ProcessWithAttacks ([&] (FighterTable::Handle f)
     {
-      SelectTarget (targets, rnd, std::move (f));
+      SelectTarget (targets, rnd, ctx, std::move (f));
     });
 }
 
@@ -200,6 +217,7 @@ private:
 
   DamageLists& dl;
   xaya::Random& rnd;
+  const Context& ctx;
 
   BuildingsTable buildings;
   CharacterTable characters;
@@ -238,7 +256,7 @@ private:
   /**
    * Applies combat effects (non-damage) to a target.
    */
-  static void ApplyEffects (const proto::Attack& attack, CombatEntity& target);
+  void ApplyEffects (const proto::Attack& attack, CombatEntity& target) const;
 
   /**
    * Deals damage for one fighter with a target to the respective target
@@ -255,8 +273,9 @@ private:
 
 public:
 
-  explicit DamageProcessor (Database& db, DamageLists& lst, xaya::Random& r)
-    : dl(lst), rnd(r),
+  explicit DamageProcessor (Database& db, DamageLists& lst,
+                            xaya::Random& r, const Context& c)
+    : dl(lst), rnd(r), ctx(c),
       buildings(db), characters(db),
       fighters(buildings, characters),
       targets(db)
@@ -295,6 +314,8 @@ DamageProcessor::ApplyDamage (unsigned dmg, const CombatEntity& attacker,
                               CombatEntity& target,
                               std::set<TargetKey>& newDead)
 {
+  CHECK (!ctx.Map ().SafeZones ().IsNoCombat (target.GetCombatPosition ()));
+
   const auto targetId = target.GetIdAsTarget ();
   if (dmg == 0)
     {
@@ -341,8 +362,10 @@ DamageProcessor::ApplyDamage (unsigned dmg, const CombatEntity& attacker,
 
 void
 DamageProcessor::ApplyEffects (const proto::Attack& attack,
-                               CombatEntity& target)
+                               CombatEntity& target) const
 {
+  CHECK (!ctx.Map ().SafeZones ().IsNoCombat (target.GetCombatPosition ()));
+
   if (!attack.has_effects ())
     return;
 
@@ -362,6 +385,7 @@ DamageProcessor::DealDamage (FighterTable::Handle f,
 {
   const auto& cd = f->GetCombatData ();
   const auto& pos = f->GetCombatPosition ();
+  CHECK (!ctx.Map ().SafeZones ().IsNoCombat (pos));
 
   CHECK (f->HasTarget ());
   FighterTable::Handle tf = fighters.GetForTarget (f->GetTarget ());
@@ -396,6 +420,13 @@ DamageProcessor::DealDamage (FighterTable::Handle f,
             [&] (const HexCoord& c, const proto::TargetId& id)
             {
               auto t = fighters.GetForTarget (id);
+              if (ctx.Map ().SafeZones ().IsNoCombat (t->GetCombatPosition ()))
+                {
+                  VLOG (2)
+                      << "No AoE damage to fighter in safe zone:\n"
+                      << t->GetIdAsTarget ().DebugString ();
+                  return;
+                }
               ApplyDamage (dmg, *f, *t, newDead);
               ApplyEffects (attack, *t);
             });
@@ -413,6 +444,9 @@ void
 DamageProcessor::ProcessSelfDestructs (FighterTable::Handle f,
                                        std::set<TargetKey>& newDead)
 {
+  const auto& pos = f->GetCombatPosition ();
+  CHECK (!ctx.Map ().SafeZones ().IsNoCombat (pos));
+
   /* The killed fighter should have zero HP left, and thus also should get
      all low-HP boosts now.  */
   CHECK_EQ (f->GetHP ().armour (), 0);
@@ -420,7 +454,6 @@ DamageProcessor::ProcessSelfDestructs (FighterTable::Handle f,
   CombatModifier mod;
   ComputeLowHpBoosts (*f, mod);
 
-  const auto& pos = f->GetCombatPosition ();
   for (const auto& sd : f->GetCombatData ().self_destructs ())
     {
       const auto dmg = RollAttackDamage (sd.damage (), mod.damage);
@@ -433,6 +466,13 @@ DamageProcessor::ProcessSelfDestructs (FighterTable::Handle f,
         [&] (const HexCoord& c, const proto::TargetId& id)
         {
           auto t = fighters.GetForTarget (id);
+          if (ctx.Map ().SafeZones ().IsNoCombat (t->GetCombatPosition ()))
+            {
+              VLOG (2)
+                  << "No self-destruct damage to fighter in safe zone:\n"
+                  << t->GetIdAsTarget ().DebugString ();
+              return;
+            }
           ApplyDamage (dmg, *f, *t, newDead);
         });
     }
@@ -481,9 +521,10 @@ DamageProcessor::Process ()
 } // anonymous namespace
 
 std::set<TargetKey>
-DealCombatDamage (Database& db, DamageLists& dl, xaya::Random& rnd)
+DealCombatDamage (Database& db, DamageLists& dl,
+                  xaya::Random& rnd, const Context& ctx)
 {
-  DamageProcessor proc(db, dl, rnd);
+  DamageProcessor proc(db, dl, rnd, ctx);
   proc.Process ();
   return proc.GetDead ();
 }
@@ -776,7 +817,7 @@ void
 AllHpUpdates (Database& db, FameUpdater& fame, xaya::Random& rnd,
               const Context& ctx)
 {
-  const auto dead = DealCombatDamage (db, fame.GetDamageLists (), rnd);
+  const auto dead = DealCombatDamage (db, fame.GetDamageLists (), rnd, ctx);
 
   for (const auto& id : dead)
     fame.UpdateForKill (id.ToProto ());

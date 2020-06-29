@@ -107,7 +107,7 @@ PXLogic::UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
      entering a building won't be attacked any more.  */
   ProcessEnterBuildings (db, dyn, ctx);
 
-  FindCombatTargets (db, rnd);
+  FindCombatTargets (db, rnd, ctx);
 
   /* At the very end of processing this block, clear temporary combat effects
      again.  They only need to be present from when they are applied during
