@@ -159,6 +159,32 @@ TEST_F (MovementEdgeWeightTests, DynamicObstacle)
              42);
 }
 
+TEST_F (MovementEdgeWeightTests, StarterZones)
+{
+  const HexCoord redStarter(-2'042, 110);
+  const HexCoord outside(-2'042, 111);
+  ASSERT_TRUE (ctx.Map ().IsPassable (redStarter));
+  ASSERT_TRUE (ctx.Map ().IsPassable (outside));
+  ASSERT_EQ (ctx.Map ().SafeZones ().StarterFor (redStarter), Faction::RED);
+  ASSERT_EQ (ctx.Map ().SafeZones ().StarterFor (outside), Faction::INVALID);
+
+  /* Moving out of the starter zone does nothing special.  */
+  EXPECT_EQ (MovementEdgeWeight (ctx.Map (), dyn, Faction::RED,
+                                 redStarter, outside),
+             1'000);
+  EXPECT_EQ (MovementEdgeWeight (ctx.Map (), dyn, Faction::GREEN,
+                                 redStarter, outside),
+             1'000);
+
+  /* Into the starter zone changes the weights.  */
+  EXPECT_EQ (MovementEdgeWeight (ctx.Map (), dyn, Faction::RED,
+                                 outside, redStarter),
+             1'000 / 3);
+  EXPECT_EQ (MovementEdgeWeight (ctx.Map (), dyn, Faction::GREEN,
+                                 outside, redStarter),
+             PathFinder::NO_CONNECTION);
+}
+
 /* ************************************************************************** */
 
 /**

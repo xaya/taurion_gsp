@@ -16,7 +16,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-/* Template implementation code for movement.hpp.  */
+/* Inline implementation code for movement.hpp.  */
 
 #include <glog/logging.h>
 
@@ -56,9 +56,20 @@ PathFinder::DistanceT
 MovementEdgeWeight (const BaseMap& map, const DynObstacles& dyn,
                     const Faction f, const HexCoord& from, const HexCoord& to)
 {
-  const auto base = [&map] (const HexCoord& from, const HexCoord& to)
+  const auto base = [&map, f] (const HexCoord& from, const HexCoord& to)
     {
-      return map.GetEdgeWeight (from, to);
+      const auto baseWeight = map.GetEdgeWeight (from, to);
+      if (baseWeight == PathFinder::NO_CONNECTION)
+        return PathFinder::NO_CONNECTION;
+
+      /* Starter zones are obstacles to other factions, but allow 3x
+         faster movement to the matching faction.  */
+      const auto toStarter = map.SafeZones ().StarterFor (to);
+      if (toStarter == Faction::INVALID)
+        return baseWeight;
+      if (toStarter == f)
+        return baseWeight / 3;
+      return PathFinder::NO_CONNECTION;
     };
 
   return InternalMovementEdgeWeight (base, dyn, f, from, to);

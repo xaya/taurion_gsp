@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -76,7 +76,7 @@ inline PathFinder::DistanceT
 BaseMap::GetEdgeWeight (const HexCoord& from, const HexCoord& to) const
 {
   if (IsPassable (to))
-    return 1000;
+    return 1'000;
 
   return PathFinder::NO_CONNECTION;
 }
