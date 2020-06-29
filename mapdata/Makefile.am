@@ -71,6 +71,7 @@ benchmarks_LDADD = \
 benchmarks_SOURCES = \
   dyntiles_bench.cpp \
   regionmap_bench.cpp \
+  safezones_bench.cpp \
   \
   benchutils.cpp
 
