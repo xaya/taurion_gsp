@@ -29,6 +29,7 @@ noinst_HEADERS = \
   regionmap.hpp \
   tiledata.hpp \
   \
+  benchutils.hpp \
   dataio.hpp
 
 check_PROGRAMS = tests benchmarks
@@ -60,7 +61,9 @@ benchmarks_LDADD = \
   $(GLOG_LIBS) $(BENCHMARK_LIBS)
 benchmarks_SOURCES = \
   dyntiles_bench.cpp \
-  regionmap_bench.cpp
+  regionmap_bench.cpp \
+  \
+  benchutils.cpp
 
 procmap_CXXFLAGS = \
   -I$(top_srcdir) \

@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 
 #include "regionmap.hpp"
 
-#include "tiledata.hpp"
+#include "benchutils.hpp"
 
 #include "hexagonal/coord.hpp"
 
@@ -27,42 +27,11 @@
 #include <glog/logging.h>
 
 #include <cstdlib>
-#include <vector>
 
 namespace pxd
 {
 namespace
 {
-
-/**
- * Returns a hex coordinate on the map chosen (mostly) randomly.
- */
-HexCoord
-RandomCoord ()
-{
-  using namespace tiledata;
-
-  const int y = minY + std::rand () % (maxY - minY + 1);
-  const int yInd = y - minY;
-  const int x = minX[yInd] + std::rand () % (maxX[yInd] - minX[yInd] + 1);
-
-  return HexCoord (x, y);
-}
-
-/**
- * Constructs a vector of n "random" coordinates.
- */
-std::vector<HexCoord>
-RandomCoords (const unsigned n)
-{
-  std::vector<HexCoord> res;
-  res.reserve (n);
-
-  for (unsigned i = 0; i < n; ++i)
-    res.push_back (RandomCoord ());
-
-  return res;
-}
 
 /**
  * Benchmarks the lookup of the region ID from a coordinate.  Accepts one
