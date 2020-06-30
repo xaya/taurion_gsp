@@ -1,18 +1,41 @@
 fungible_items:
   {
-    key: "bomb"
+    key: "lf retarder"
     value:
       {
         space: 5
-        complexity: 4
+        complexity: 3
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 2500 }
+        construction_resources: { key: "mat b" value: 2500 }
+        fitment:
+          {
+            slot: "high"
+            attack:
+              {
+                area: 3
+                effects: { speed: { percent: -15 } }
+              }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "lf longretard"
+    value:
+      {
+        space: 5
+        complexity: 3
         with_blueprint: true
         fitment:
           {
             slot: "high"
             attack:
               {
+                range: 4
                 area: 2
-                damage: { min: 2 max: 5 }
+                effects: { speed: { percent: -10 } }
               }
           }
       }
@@ -20,20 +43,40 @@ fungible_items:
 
 fungible_items:
   {
-    key: "missile"
+    key: "lf bomb"
     value:
       {
         space: 5
-        complexity: 4
+        complexity: 2
         with_blueprint: true
         fitment:
           {
             slot: "high"
             attack:
               {
-                range: 5
+                area: 3
+                damage: { min: 3 max: 9 }
+              }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "lf missile"
+    value:
+      {
+        space: 5
+        complexity: 2
+        with_blueprint: true
+        fitment:
+          {
+            slot: "high"
+            attack:
+              {
+                range: 6
                 area: 2
-                damage: { min: 1 max: 3 }
+                damage: { min: 1 max: 5 }
               }
           }
       }
@@ -41,68 +84,11 @@ fungible_items:
 
 fungible_items:
   {
-    key: "retarder"
+    key: "lf pick"
     value:
       {
         space: 5
-        complexity: 4
-        with_blueprint: true
-        fitment:
-          {
-            slot: "high"
-            attack:
-              {
-                area: 5
-                effects: { speed: { percent: -25 } }
-              }
-          }
-      }
-  }
-
-fungible_items:
-  {
-    key: "longretard"
-    value:
-      {
-        space: 5
-        complexity: 4
-        with_blueprint: true
-        fitment:
-          {
-            slot: "high"
-            attack:
-              {
-                range: 10
-                area: 2
-                effects: { speed: { percent: -25 } }
-              }
-          }
-      }
-  }
-
-fungible_items:
-  {
-    key: "scanner"
-    value:
-      {
-        space: 5
-        complexity: 4
-        with_blueprint: true
-        fitment:
-          {
-            slot: "high"
-            prospecting_blocks: { percent: -20 }
-          }
-      }
-  }
-
-fungible_items:
-  {
-    key: "pick"
-    value:
-      {
-        space: 5
-        complexity: 4
+        complexity: 2
         with_blueprint: true
         fitment:
           {
@@ -114,19 +100,36 @@ fungible_items:
 
 fungible_items:
   {
-    key: "selfdestruct"
+    key: "lf scanner"
     value:
       {
-        space: 1
-        complexity: 4
+        space: 5
+        complexity: 2
         with_blueprint: true
         fitment:
           {
             slot: "high"
-            self_destruct:
+            prospecting_blocks: { percent: -20 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "lf laser"
+    value:
+      {
+        space: 5
+        complexity: 7
+        with_blueprint: true
+        fitment:
+          {
+            slot: "high"
+            attack:
               {
-                area: 10
-                damage: { min: 10 max: 30 }
+                range: 5
+                area: 3
+                damage: { min: 3 max: 3 }
               }
           }
       }
@@ -134,27 +137,82 @@ fungible_items:
 
 fungible_items:
   {
-    key: "expander"
+    key: "lf selfdestruct"
     value:
       {
         space: 1
-        complexity: 4
+        complexity: 5
         with_blueprint: true
         fitment:
           {
-            slot: "low"
-            cargo_space: { percent: 10 }
+            slot: "high"
+            self_destruct:
+              {
+                area: 5
+                damage: { min: 30 max: 50 }
+              }
           }
       }
   }
 
 fungible_items:
   {
-    key: "turbo"
+    key: "lf shield"
     value:
       {
         space: 1
-        complexity: 4
+        complexity: 2
+        with_blueprint: true
+        fitment:
+          {
+            slot: "mid"
+            vehicle_size: LIGHT
+            max_shield: { percent: 10 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "lf replenisher"
+    value:
+      {
+        space: 1
+        complexity: 2
+        with_blueprint: true
+        fitment:
+          {
+            slot: "mid"
+            vehicle_size: LIGHT
+            shield_regen: { percent: 15 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "lf rangeext"
+    value:
+      {
+        space: 1
+        complexity: 2
+        with_blueprint: true
+        fitment:
+          {
+            slot: "mid"
+            vehicle_size: LIGHT
+            range: { percent: 10 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "lf turbo"
+    value:
+      {
+        space: 1
+        complexity: 2
         with_blueprint: true
         fitment:
           {
@@ -166,19 +224,71 @@ fungible_items:
 
 fungible_items:
   {
-    key: "lowhpboost"
+    key: "lf expander"
     value:
       {
         space: 1
-        complexity: 4
+        complexity: 2
         with_blueprint: true
         fitment:
           {
             slot: "low"
+            vehicle_size: LIGHT
+            cargo_space: { percent: 10 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "lf dmgext"
+    value:
+      {
+        space: 1
+        complexity: 2
+        with_blueprint: true
+        fitment:
+          {
+            slot: "low"
+            vehicle_size: LIGHT
+            damage: { percent: 5 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "lf multiplier"
+    value:
+      {
+        space: 1
+        complexity: 2
+        with_blueprint: true
+        fitment:
+          {
+            slot: "low"
+            vehicle_size: LIGHT
+            complexity: { percent: 20 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "lf lowhpboost"
+    value:
+      {
+        space: 1
+        complexity: 2
+        with_blueprint: true
+        fitment:
+          {
+            slot: "low"
+            vehicle_size: LIGHT
             low_hp_boost:
               {
                 max_hp_percent: 10
-                damage: { percent: 50 }
+                damage: { percent: 20 }
                 range: { percent: 20 }
               }
           }
@@ -187,96 +297,17 @@ fungible_items:
 
 fungible_items:
   {
-    key: "plating"
+    key: "lf plating"
     value:
       {
         space: 1
-        complexity: 4
+        complexity: 2
         with_blueprint: true
         fitment:
           {
             slot: "low"
+            vehicle_size: LIGHT
             max_armour: { percent: 10 }
-          }
-      }
-  }
-
-fungible_items:
-  {
-    key: "shield"
-    value:
-      {
-        space: 1
-        complexity: 4
-        with_blueprint: true
-        fitment:
-          {
-            slot: "mid"
-            max_shield: { percent: 10 }
-          }
-      }
-  }
-
-fungible_items:
-  {
-    key: "replenisher"
-    value:
-      {
-        space: 1
-        complexity: 4
-        with_blueprint: true
-        fitment:
-          {
-            slot: "mid"
-            shield_regen: { percent: 10 }
-          }
-      }
-  }
-
-fungible_items:
-  {
-    key: "rangeext"
-    value:
-      {
-        space: 1
-        complexity: 4
-        with_blueprint: true
-        fitment:
-          {
-            slot: "mid"
-            range: { percent: 10 }
-          }
-      }
-  }
-
-fungible_items:
-  {
-    key: "dmgext"
-    value:
-      {
-        space: 1
-        complexity: 4
-        with_blueprint: true
-        fitment:
-          {
-            slot: "low"
-            damage: { percent: 10 }
-          }
-      }
-  }
-
-fungible_items:
-  {
-    key: "multiplier"
-    value:
-      {
-        space: 1
-        complexity: 1
-        with_blueprint: true
-        fitment:
-          {
-            slot: "low"
-            complexity: { percent: 10 }
           }
       }
   }
