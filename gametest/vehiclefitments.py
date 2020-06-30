@@ -38,8 +38,8 @@ class VehicleFitmentsTest (PXTest):
     self.generate (1)
     self.dropIntoBuilding (building, "domob", {
       "chariot": 1,
-      "plating": 1,
-      "bomb": 1,
+      "free plating": 1,
+      "lf bomb": 1,
     })
     self.createCharacters ("domob")
     self.generate (1)
@@ -61,11 +61,13 @@ class VehicleFitmentsTest (PXTest):
     self.assertEqual (len (c.data["combat"]["attacks"]), 2)
 
     self.mainLogger.info ("Adding fitments...")
-    self.getCharacters ()["domob"].sendMove ({"fit": ["plating", "bomb"]})
+    self.getCharacters ()["domob"].sendMove ({
+      "fit": ["free plating", "lf bomb"],
+    })
     self.generate (1)
     c = self.getCharacters ()["domob"]
     self.assertEqual (c.data["vehicle"], "chariot")
-    self.assertEqual (c.data["fitments"], ["plating", "bomb"])
+    self.assertEqual (c.data["fitments"], ["free plating", "lf bomb"])
     self.assertEqual (c.data["combat"]["hp"], {
       "current": {"armour": 1100, "shield": 100},
       "max": {"armour": 1100, "shield": 100},

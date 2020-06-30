@@ -496,7 +496,7 @@ TEST_F (PendingStateTests, Fitments)
 
   c = characters.CreateNew ("domob", Faction::RED);
   state.AddCharacterFitments (*c, {"sword"});
-  state.AddCharacterFitments (*c, {"bow", "expander"});
+  state.AddCharacterFitments (*c, {"bow", "super scanner"});
 
   c.reset ();
   ExpectStateJson (R"(
@@ -510,7 +510,7 @@ TEST_F (PendingStateTests, Fitments)
             "fitments": []
           },
           {
-            "fitments": ["bow", "expander"]
+            "fitments": ["bow", "super scanner"]
           }
         ]
     }
@@ -1217,7 +1217,7 @@ TEST_F (PendingStateUpdaterTests, Fitments)
   auto inv = buildingInv.Get (bId, "domob");
   inv->GetInventory ().AddFungibleCount ("bow", 2);
   inv->GetInventory ().AddFungibleCount ("sword", 1);
-  inv->GetInventory ().AddFungibleCount ("expander", 1);
+  inv->GetInventory ().AddFungibleCount ("super scanner", 1);
   inv.reset ();
 
   /* Invalid move format, no fitments will be pending.  */
@@ -1237,14 +1237,14 @@ TEST_F (PendingStateUpdaterTests, Fitments)
   Process ("domob", R"({
     "c":
       {
-        "1": {"fit": ["sword", "expander"]}
+        "1": {"fit": ["sword", "super scanner"]}
       }
   })");
   ExpectStateJson (R"(
     {
       "characters":
         [
-          {"fitments": ["sword", "expander"]}
+          {"fitments": ["sword", "super scanner"]}
         ]
     }
   )");
@@ -1261,7 +1261,7 @@ TEST_F (PendingStateUpdaterTests, Fitments)
     {
       "characters":
         [
-          {"fitments": ["sword", "expander"]}
+          {"fitments": ["sword", "super scanner"]}
         ]
     }
   )");
