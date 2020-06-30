@@ -1,0 +1,1062 @@
+fungible_items:
+  {
+    key: "rv s"
+    value:
+      {
+        space: 14452500
+        complexity: 10
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 52500 }
+        construction_resources: { key: "mat b" value: 22500 }
+        vehicle:
+          {
+            cargo_space: 1000000
+            speed: 3000
+            regen_data:
+              {
+                max_hp: { armour: 20 shield: 50 }
+                shield_regeneration_mhp: 2000
+              }
+            mining_rate: { min: 0 max: 4000000 }
+            prospecting_blocks: 9
+            size: LIGHT
+            equipment_slots: { key: "high" value: 1 }
+            equipment_slots: { key: "mid" value: 1 }
+            equipment_slots: { key: "low" value: 2 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "rv m"
+    value:
+      {
+        space: 77112000
+        complexity: 100
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 260000 }
+        construction_resources: { key: "mat b" value: 100000 }
+        construction_resources: { key: "mat c" value: 40000 }
+        vehicle:
+          {
+            cargo_space: 3600000
+            speed: 2000
+            regen_data:
+              {
+                max_hp: { armour: 100 shield: 200 }
+                shield_regeneration_mhp: 5000
+              }
+            mining_rate: { min: 0 max: 8000000 }
+            prospecting_blocks: 8
+            size: MEDIUM
+            equipment_slots: { key: "high" value: 3 }
+            equipment_slots: { key: "mid" value: 1 }
+            equipment_slots: { key: "low" value: 2 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "rv l"
+    value:
+      {
+        space: 184140000
+        complexity: 500
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 510000 }
+        construction_resources: { key: "mat b" value: 212500 }
+        construction_resources: { key: "mat c" value: 85000 }
+        construction_resources: { key: "mat f" value: 42500 }
+        vehicle:
+          {
+            cargo_space: 11500000
+            speed: 1000
+            regen_data:
+              {
+                max_hp: { armour: 500 shield: 1000 }
+                shield_regeneration_mhp: 20000
+              }
+            mining_rate: { min: 0 max: 8000000 }
+            prospecting_blocks: 7
+            size: HEAVY
+            equipment_slots: { key: "high" value: 4 }
+            equipment_slots: { key: "mid" value: 2 }
+            equipment_slots: { key: "low" value: 4 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "rv sc"
+    value:
+      {
+        space: 10816000
+        complexity: 30
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 56250 }
+        construction_resources: { key: "mat b" value: 18750 }
+        vehicle:
+          {
+            cargo_space: 27600000
+            speed: 4000
+            regen_data:
+              {
+                max_hp: { armour: 20 shield: 10 }
+                shield_regeneration_mhp: 1000
+              }
+            mining_rate: { min: 0 max: 0 }
+            prospecting_blocks: 5
+            size: LIGHT
+            equipment_slots: { key: "high" value: 0 }
+            equipment_slots: { key: "mid" value: 1 }
+            equipment_slots: { key: "low" value: 2 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "rv mt"
+    value:
+      {
+        space: 135600000
+        complexity: 100
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 550000 }
+        construction_resources: { key: "mat b" value: 350000 }
+        construction_resources: { key: "mat c" value: 100000 }
+        vehicle:
+          {
+            cargo_space: 0
+            speed: 2000
+            regen_data:
+              {
+                max_hp: { armour: 500 shield: 200 }
+                shield_regeneration_mhp: 4000
+              }
+            mining_rate: { min: 0 max: 2000000 }
+            prospecting_blocks: 8
+            size: MEDIUM
+            equipment_slots: { key: "high" value: 1 }
+            equipment_slots: { key: "mid" value: 1 }
+            equipment_slots: { key: "low" value: 2 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "rv lt"
+    value:
+      {
+        space: 386104000
+        complexity: 500
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 1530000 }
+        construction_resources: { key: "mat b" value: 1190000 }
+        construction_resources: { key: "mat c" value: 238000 }
+        construction_resources: { key: "mat d" value: 34000 }
+        construction_resources: { key: "mat e" value: 34000 }
+        construction_resources: { key: "mat f" value: 238000 }
+        construction_resources: { key: "mat g" value: 136000 }
+        vehicle:
+          {
+            cargo_space: 125000000
+            speed: 1000
+            regen_data:
+              {
+                max_hp: { armour: 1000 shield: 300 }
+                shield_regeneration_mhp: 6000
+              }
+            mining_rate: { min: 0 max: 2000000 }
+            prospecting_blocks: 7
+            size: HEAVY
+            equipment_slots: { key: "high" value: 1 }
+            equipment_slots: { key: "mid" value: 2 }
+            equipment_slots: { key: "low" value: 3 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "rv vlt"
+    value:
+      {
+        space: 2150610000
+        complexity: 3000
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 6000000 }
+        construction_resources: { key: "mat b" value: 4500000 }
+        construction_resources: { key: "mat c" value: 1500000 }
+        construction_resources: { key: "mat d" value: 300000 }
+        construction_resources: { key: "mat e" value: 300000 }
+        construction_resources: { key: "mat f" value: 1050000 }
+        construction_resources: { key: "mat g" value: 900000 }
+        construction_resources: { key: "mat h" value: 300000 }
+        construction_resources: { key: "mat i" value: 150000 }
+        vehicle:
+          {
+            cargo_space: 350000000
+            speed: 500
+            regen_data:
+              {
+                max_hp: { armour: 2000 shield: 500 }
+                shield_regeneration_mhp: 10000
+              }
+            mining_rate: { min: 0 max: 2000000 }
+            prospecting_blocks: 6
+            size: VERY_HEAVY
+            equipment_slots: { key: "high" value: 2 }
+            equipment_slots: { key: "mid" value: 2 }
+            equipment_slots: { key: "low" value: 2 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "rv sa"
+    value:
+      {
+        space: 18720000
+        complexity: 100
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 350000 }
+        construction_resources: { key: "mat b" value: 150000 }
+        vehicle:
+          {
+            cargo_space: 2600000000
+            speed: 3000
+            regen_data:
+              {
+                max_hp: { armour: 50 shield: 250 }
+                shield_regeneration_mhp: 5000
+              }
+            mining_rate: { min: 0 max: 8000000 }
+            prospecting_blocks: 5
+            size: LIGHT
+            equipment_slots: { key: "high" value: 3 }
+            equipment_slots: { key: "mid" value: 1 }
+            equipment_slots: { key: "low" value: 2 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "rv ma"
+    value:
+      {
+        space: 99750000
+        complexity: 300
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 2500000 }
+        construction_resources: { key: "mat b" value: 1500000 }
+        construction_resources: { key: "mat c" value: 500000 }
+        construction_resources: { key: "mat d" value: 100000 }
+        construction_resources: { key: "mat e" value: 100000 }
+        construction_resources: { key: "mat f" value: 150000 }
+        construction_resources: { key: "mat g" value: 150000 }
+        vehicle:
+          {
+            cargo_space: 5600000
+            speed: 2000
+            regen_data:
+              {
+                max_hp: { armour: 200 shield: 500 }
+                shield_regeneration_mhp: 15000
+              }
+            mining_rate: { min: 0 max: 10000000 }
+            prospecting_blocks: 5
+            size: MEDIUM
+            equipment_slots: { key: "high" value: 5 }
+            equipment_slots: { key: "mid" value: 2 }
+            equipment_slots: { key: "low" value: 2 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "rv la"
+    value:
+      {
+        space: 414720000
+        complexity: 1000
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 4000000 }
+        construction_resources: { key: "mat b" value: 3000000 }
+        construction_resources: { key: "mat c" value: 1000000 }
+        construction_resources: { key: "mat d" value: 300000 }
+        construction_resources: { key: "mat e" value: 300000 }
+        construction_resources: { key: "mat f" value: 600000 }
+        construction_resources: { key: "mat g" value: 500000 }
+        construction_resources: { key: "mat h" value: 200000 }
+        construction_resources: { key: "mat i" value: 100000 }
+        vehicle:
+          {
+            cargo_space: 25000000
+            speed: 1500
+            regen_data:
+              {
+                max_hp: { armour: 750 shield: 2500 }
+                shield_regeneration_mhp: 30000
+              }
+            mining_rate: { min: 0 max: 12000000 }
+            prospecting_blocks: 4
+            size: HEAVY
+            equipment_slots: { key: "high" value: 6 }
+            equipment_slots: { key: "mid" value: 4 }
+            equipment_slots: { key: "low" value: 4 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "rv vla"
+    value:
+      {
+        space: 1897245000
+        complexity: 4000
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 100000000 }
+        construction_resources: { key: "mat b" value: 62500000 }
+        construction_resources: { key: "mat c" value: 25000000 }
+        construction_resources: { key: "mat d" value: 10000000 }
+        construction_resources: { key: "mat e" value: 10000000 }
+        construction_resources: { key: "mat f" value: 15000000 }
+        construction_resources: { key: "mat g" value: 12500000 }
+        construction_resources: { key: "mat h" value: 10000000 }
+        construction_resources: { key: "mat i" value: 5000000 }
+        vehicle:
+          {
+            cargo_space: 105000000
+            speed: 1000
+            regen_data:
+              {
+                max_hp: { armour: 2000 shield: 5000 }
+                shield_regeneration_mhp: 35000
+              }
+            mining_rate: { min: 0 max: 14000000 }
+            prospecting_blocks: 3
+            size: VERY_HEAVY
+            equipment_slots: { key: "high" value: 8 }
+            equipment_slots: { key: "mid" value: 6 }
+            equipment_slots: { key: "low" value: 6 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "bv s"
+    value:
+      {
+        space: 14452500
+        complexity: 10
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 52500 }
+        construction_resources: { key: "mat b" value: 22500 }
+        vehicle:
+          {
+            cargo_space: 1000000
+            speed: 3000
+            regen_data:
+              {
+                max_hp: { armour: 20 shield: 50 }
+                shield_regeneration_mhp: 2000
+              }
+            mining_rate: { min: 0 max: 4000000 }
+            prospecting_blocks: 9
+            size: LIGHT
+            equipment_slots: { key: "high" value: 1 }
+            equipment_slots: { key: "mid" value: 2 }
+            equipment_slots: { key: "low" value: 1 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "bv m"
+    value:
+      {
+        space: 77112000
+        complexity: 100
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 260000 }
+        construction_resources: { key: "mat b" value: 100000 }
+        construction_resources: { key: "mat c" value: 40000 }
+        vehicle:
+          {
+            cargo_space: 3600000
+            speed: 2000
+            regen_data:
+              {
+                max_hp: { armour: 100 shield: 200 }
+                shield_regeneration_mhp: 5000
+              }
+            mining_rate: { min: 0 max: 8000000 }
+            prospecting_blocks: 8
+            size: MEDIUM
+            equipment_slots: { key: "high" value: 2 }
+            equipment_slots: { key: "mid" value: 3 }
+            equipment_slots: { key: "low" value: 1 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "bv l"
+    value:
+      {
+        space: 184140000
+        complexity: 500
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 510000 }
+        construction_resources: { key: "mat b" value: 212500 }
+        construction_resources: { key: "mat c" value: 85000 }
+        construction_resources: { key: "mat f" value: 42500 }
+        vehicle:
+          {
+            cargo_space: 11500000
+            speed: 1000
+            regen_data:
+              {
+                max_hp: { armour: 500 shield: 1000 }
+                shield_regeneration_mhp: 20000
+              }
+            mining_rate: { min: 0 max: 8000000 }
+            prospecting_blocks: 7
+            size: HEAVY
+            equipment_slots: { key: "high" value: 3 }
+            equipment_slots: { key: "mid" value: 4 }
+            equipment_slots: { key: "low" value: 3 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "bv sc"
+    value:
+      {
+        space: 10816000
+        complexity: 30
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 56250 }
+        construction_resources: { key: "mat b" value: 18750 }
+        vehicle:
+          {
+            cargo_space: 27600000
+            speed: 4000
+            regen_data:
+              {
+                max_hp: { armour: 20 shield: 10 }
+                shield_regeneration_mhp: 1000
+              }
+            mining_rate: { min: 0 max: 0 }
+            prospecting_blocks: 5
+            size: LIGHT
+            equipment_slots: { key: "high" value: 0 }
+            equipment_slots: { key: "mid" value: 2 }
+            equipment_slots: { key: "low" value: 1 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "bv mt"
+    value:
+      {
+        space: 135600000
+        complexity: 100
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 550000 }
+        construction_resources: { key: "mat b" value: 350000 }
+        construction_resources: { key: "mat c" value: 100000 }
+        vehicle:
+          {
+            cargo_space: 0
+            speed: 2000
+            regen_data:
+              {
+                max_hp: { armour: 500 shield: 200 }
+                shield_regeneration_mhp: 4000
+              }
+            mining_rate: { min: 0 max: 2000000 }
+            prospecting_blocks: 8
+            size: MEDIUM
+            equipment_slots: { key: "high" value: 1 }
+            equipment_slots: { key: "mid" value: 2 }
+            equipment_slots: { key: "low" value: 1 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "bv lt"
+    value:
+      {
+        space: 386104000
+        complexity: 500
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 1530000 }
+        construction_resources: { key: "mat b" value: 1190000 }
+        construction_resources: { key: "mat c" value: 238000 }
+        construction_resources: { key: "mat d" value: 34000 }
+        construction_resources: { key: "mat e" value: 34000 }
+        construction_resources: { key: "mat f" value: 238000 }
+        construction_resources: { key: "mat g" value: 136000 }
+        vehicle:
+          {
+            cargo_space: 125000000
+            speed: 1000
+            regen_data:
+              {
+                max_hp: { armour: 1000 shield: 300 }
+                shield_regeneration_mhp: 6000
+              }
+            mining_rate: { min: 0 max: 2000000 }
+            prospecting_blocks: 7
+            size: HEAVY
+            equipment_slots: { key: "high" value: 1 }
+            equipment_slots: { key: "mid" value: 3 }
+            equipment_slots: { key: "low" value: 2 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "bv vlt"
+    value:
+      {
+        space: 2150610000
+        complexity: 3000
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 6000000 }
+        construction_resources: { key: "mat b" value: 4500000 }
+        construction_resources: { key: "mat c" value: 1500000 }
+        construction_resources: { key: "mat d" value: 300000 }
+        construction_resources: { key: "mat e" value: 300000 }
+        construction_resources: { key: "mat f" value: 1050000 }
+        construction_resources: { key: "mat g" value: 900000 }
+        construction_resources: { key: "mat h" value: 300000 }
+        construction_resources: { key: "mat i" value: 150000 }
+        vehicle:
+          {
+            cargo_space: 350000000
+            speed: 500
+            regen_data:
+              {
+                max_hp: { armour: 2000 shield: 500 }
+                shield_regeneration_mhp: 10000
+              }
+            mining_rate: { min: 0 max: 2000000 }
+            prospecting_blocks: 6
+            size: VERY_HEAVY
+            equipment_slots: { key: "high" value: 1 }
+            equipment_slots: { key: "mid" value: 5 }
+            equipment_slots: { key: "low" value: 2 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "bv sa"
+    value:
+      {
+        space: 18720000
+        complexity: 100
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 350000 }
+        construction_resources: { key: "mat b" value: 150000 }
+        vehicle:
+          {
+            cargo_space: 2600000000
+            speed: 3000
+            regen_data:
+              {
+                max_hp: { armour: 50 shield: 250 }
+                shield_regeneration_mhp: 5000
+              }
+            mining_rate: { min: 0 max: 8000000 }
+            prospecting_blocks: 5
+            size: LIGHT
+            equipment_slots: { key: "high" value: 2 }
+            equipment_slots: { key: "mid" value: 3 }
+            equipment_slots: { key: "low" value: 1 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "bv ma"
+    value:
+      {
+        space: 99750000
+        complexity: 300
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 2500000 }
+        construction_resources: { key: "mat b" value: 1500000 }
+        construction_resources: { key: "mat c" value: 500000 }
+        construction_resources: { key: "mat d" value: 100000 }
+        construction_resources: { key: "mat e" value: 100000 }
+        construction_resources: { key: "mat f" value: 150000 }
+        construction_resources: { key: "mat g" value: 150000 }
+        vehicle:
+          {
+            cargo_space: 5600000
+            speed: 2000
+            regen_data:
+              {
+                max_hp: { armour: 200 shield: 500 }
+                shield_regeneration_mhp: 15000
+              }
+            mining_rate: { min: 0 max: 10000000 }
+            prospecting_blocks: 5
+            size: MEDIUM
+            equipment_slots: { key: "high" value: 4 }
+            equipment_slots: { key: "mid" value: 4 }
+            equipment_slots: { key: "low" value: 1 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "bv la"
+    value:
+      {
+        space: 414720000
+        complexity: 1000
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 4000000 }
+        construction_resources: { key: "mat b" value: 3000000 }
+        construction_resources: { key: "mat c" value: 1000000 }
+        construction_resources: { key: "mat d" value: 300000 }
+        construction_resources: { key: "mat e" value: 300000 }
+        construction_resources: { key: "mat f" value: 600000 }
+        construction_resources: { key: "mat g" value: 500000 }
+        construction_resources: { key: "mat h" value: 200000 }
+        construction_resources: { key: "mat i" value: 100000 }
+        vehicle:
+          {
+            cargo_space: 25000000
+            speed: 1500
+            regen_data:
+              {
+                max_hp: { armour: 750 shield: 2500 }
+                shield_regeneration_mhp: 30000
+              }
+            mining_rate: { min: 0 max: 12000000 }
+            prospecting_blocks: 4
+            size: HEAVY
+            equipment_slots: { key: "high" value: 5 }
+            equipment_slots: { key: "mid" value: 6 }
+            equipment_slots: { key: "low" value: 3 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "bv vla"
+    value:
+      {
+        space: 1897245000
+        complexity: 4000
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 100000000 }
+        construction_resources: { key: "mat b" value: 62500000 }
+        construction_resources: { key: "mat c" value: 25000000 }
+        construction_resources: { key: "mat d" value: 10000000 }
+        construction_resources: { key: "mat e" value: 10000000 }
+        construction_resources: { key: "mat f" value: 15000000 }
+        construction_resources: { key: "mat g" value: 12500000 }
+        construction_resources: { key: "mat h" value: 10000000 }
+        construction_resources: { key: "mat i" value: 5000000 }
+        vehicle:
+          {
+            cargo_space: 105000000
+            speed: 1000
+            regen_data:
+              {
+                max_hp: { armour: 2000 shield: 5000 }
+                shield_regeneration_mhp: 35000
+              }
+            mining_rate: { min: 0 max: 14000000 }
+            prospecting_blocks: 3
+            size: VERY_HEAVY
+            equipment_slots: { key: "high" value: 7 }
+            equipment_slots: { key: "mid" value: 8 }
+            equipment_slots: { key: "low" value: 4 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "gv s"
+    value:
+      {
+        space: 14452500
+        complexity: 10
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 52500 }
+        construction_resources: { key: "mat b" value: 22500 }
+        vehicle:
+          {
+            cargo_space: 1000000
+            speed: 3000
+            regen_data:
+              {
+                max_hp: { armour: 20 shield: 50 }
+                shield_regeneration_mhp: 2000
+              }
+            mining_rate: { min: 0 max: 4000000 }
+            prospecting_blocks: 9
+            size: LIGHT
+            equipment_slots: { key: "high" value: 1 }
+            equipment_slots: { key: "mid" value: 1 }
+            equipment_slots: { key: "low" value: 2 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "gv m"
+    value:
+      {
+        space: 77112000
+        complexity: 100
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 260000 }
+        construction_resources: { key: "mat b" value: 100000 }
+        construction_resources: { key: "mat c" value: 40000 }
+        vehicle:
+          {
+            cargo_space: 3600000
+            speed: 2000
+            regen_data:
+              {
+                max_hp: { armour: 100 shield: 200 }
+                shield_regeneration_mhp: 5000
+              }
+            mining_rate: { min: 0 max: 8000000 }
+            prospecting_blocks: 8
+            size: MEDIUM
+            equipment_slots: { key: "high" value: 2 }
+            equipment_slots: { key: "mid" value: 1 }
+            equipment_slots: { key: "low" value: 3 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "gv l"
+    value:
+      {
+        space: 184140000
+        complexity: 500
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 510000 }
+        construction_resources: { key: "mat b" value: 212500 }
+        construction_resources: { key: "mat c" value: 85000 }
+        construction_resources: { key: "mat f" value: 42500 }
+        vehicle:
+          {
+            cargo_space: 11500000
+            speed: 1000
+            regen_data:
+              {
+                max_hp: { armour: 500 shield: 1000 }
+                shield_regeneration_mhp: 20000
+              }
+            mining_rate: { min: 0 max: 8000000 }
+            prospecting_blocks: 7
+            size: HEAVY
+            equipment_slots: { key: "high" value: 2 }
+            equipment_slots: { key: "mid" value: 3 }
+            equipment_slots: { key: "low" value: 5 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "gv sc"
+    value:
+      {
+        space: 10816000
+        complexity: 30
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 56250 }
+        construction_resources: { key: "mat b" value: 18750 }
+        vehicle:
+          {
+            cargo_space: 27600000
+            speed: 4000
+            regen_data:
+              {
+                max_hp: { armour: 20 shield: 10 }
+                shield_regeneration_mhp: 1000
+              }
+            mining_rate: { min: 0 max: 0 }
+            prospecting_blocks: 5
+            size: LIGHT
+            equipment_slots: { key: "high" value: 0 }
+            equipment_slots: { key: "mid" value: 1 }
+            equipment_slots: { key: "low" value: 2 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "gv mt"
+    value:
+      {
+        space: 135600000
+        complexity: 100
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 550000 }
+        construction_resources: { key: "mat b" value: 350000 }
+        construction_resources: { key: "mat c" value: 100000 }
+        vehicle:
+          {
+            cargo_space: 0
+            speed: 2000
+            regen_data:
+              {
+                max_hp: { armour: 500 shield: 200 }
+                shield_regeneration_mhp: 4000
+              }
+            mining_rate: { min: 0 max: 2000000 }
+            prospecting_blocks: 8
+            size: MEDIUM
+            equipment_slots: { key: "high" value: 0 }
+            equipment_slots: { key: "mid" value: 1 }
+            equipment_slots: { key: "low" value: 3 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "gv lt"
+    value:
+      {
+        space: 386104000
+        complexity: 500
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 1530000 }
+        construction_resources: { key: "mat b" value: 1190000 }
+        construction_resources: { key: "mat c" value: 238000 }
+        construction_resources: { key: "mat d" value: 34000 }
+        construction_resources: { key: "mat e" value: 34000 }
+        construction_resources: { key: "mat f" value: 238000 }
+        construction_resources: { key: "mat g" value: 136000 }
+        vehicle:
+          {
+            cargo_space: 125000000
+            speed: 1000
+            regen_data:
+              {
+                max_hp: { armour: 1000 shield: 300 }
+                shield_regeneration_mhp: 6000
+              }
+            mining_rate: { min: 0 max: 2000000 }
+            prospecting_blocks: 7
+            size: HEAVY
+            equipment_slots: { key: "high" value: 0 }
+            equipment_slots: { key: "mid" value: 3 }
+            equipment_slots: { key: "low" value: 3 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "gv vlt"
+    value:
+      {
+        space: 2150610000
+        complexity: 3000
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 6000000 }
+        construction_resources: { key: "mat b" value: 4500000 }
+        construction_resources: { key: "mat c" value: 1500000 }
+        construction_resources: { key: "mat d" value: 300000 }
+        construction_resources: { key: "mat e" value: 300000 }
+        construction_resources: { key: "mat f" value: 1050000 }
+        construction_resources: { key: "mat g" value: 900000 }
+        construction_resources: { key: "mat h" value: 300000 }
+        construction_resources: { key: "mat i" value: 150000 }
+        vehicle:
+          {
+            cargo_space: 350000000
+            speed: 500
+            regen_data:
+              {
+                max_hp: { armour: 2000 shield: 500 }
+                shield_regeneration_mhp: 10000
+              }
+            mining_rate: { min: 0 max: 2000000 }
+            prospecting_blocks: 6
+            size: VERY_HEAVY
+            equipment_slots: { key: "high" value: 1 }
+            equipment_slots: { key: "mid" value: 2 }
+            equipment_slots: { key: "low" value: 5 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "gv sa"
+    value:
+      {
+        space: 18720000
+        complexity: 100
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 350000 }
+        construction_resources: { key: "mat b" value: 150000 }
+        vehicle:
+          {
+            cargo_space: 2600000000
+            speed: 3000
+            regen_data:
+              {
+                max_hp: { armour: 50 shield: 250 }
+                shield_regeneration_mhp: 5000
+              }
+            mining_rate: { min: 0 max: 8000000 }
+            prospecting_blocks: 5
+            size: LIGHT
+            equipment_slots: { key: "high" value: 2 }
+            equipment_slots: { key: "mid" value: 2 }
+            equipment_slots: { key: "low" value: 2 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "gv ma"
+    value:
+      {
+        space: 99750000
+        complexity: 300
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 2500000 }
+        construction_resources: { key: "mat b" value: 1500000 }
+        construction_resources: { key: "mat c" value: 500000 }
+        construction_resources: { key: "mat d" value: 100000 }
+        construction_resources: { key: "mat e" value: 100000 }
+        construction_resources: { key: "mat f" value: 150000 }
+        construction_resources: { key: "mat g" value: 150000 }
+        vehicle:
+          {
+            cargo_space: 5600000
+            speed: 2000
+            regen_data:
+              {
+                max_hp: { armour: 200 shield: 500 }
+                shield_regeneration_mhp: 15000
+              }
+            mining_rate: { min: 0 max: 10000000 }
+            prospecting_blocks: 5
+            size: MEDIUM
+            equipment_slots: { key: "high" value: 3 }
+            equipment_slots: { key: "mid" value: 2 }
+            equipment_slots: { key: "low" value: 4 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "gv la"
+    value:
+      {
+        space: 414720000
+        complexity: 1000
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 4000000 }
+        construction_resources: { key: "mat b" value: 3000000 }
+        construction_resources: { key: "mat c" value: 1000000 }
+        construction_resources: { key: "mat d" value: 300000 }
+        construction_resources: { key: "mat e" value: 300000 }
+        construction_resources: { key: "mat f" value: 600000 }
+        construction_resources: { key: "mat g" value: 500000 }
+        construction_resources: { key: "mat h" value: 200000 }
+        construction_resources: { key: "mat i" value: 100000 }
+        vehicle:
+          {
+            cargo_space: 25000000
+            speed: 1500
+            regen_data:
+              {
+                max_hp: { armour: 750 shield: 2500 }
+                shield_regeneration_mhp: 30000
+              }
+            mining_rate: { min: 0 max: 12000000 }
+            prospecting_blocks: 4
+            size: HEAVY
+            equipment_slots: { key: "high" value: 5 }
+            equipment_slots: { key: "mid" value: 3 }
+            equipment_slots: { key: "low" value: 6 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "gv vla"
+    value:
+      {
+        space: 1897245000
+        complexity: 4000
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 100000000 }
+        construction_resources: { key: "mat b" value: 62500000 }
+        construction_resources: { key: "mat c" value: 25000000 }
+        construction_resources: { key: "mat d" value: 10000000 }
+        construction_resources: { key: "mat e" value: 10000000 }
+        construction_resources: { key: "mat f" value: 15000000 }
+        construction_resources: { key: "mat g" value: 12500000 }
+        construction_resources: { key: "mat h" value: 10000000 }
+        construction_resources: { key: "mat i" value: 5000000 }
+        vehicle:
+          {
+            cargo_space: 105000000
+            speed: 1000
+            regen_data:
+              {
+                max_hp: { armour: 2000 shield: 5000 }
+                shield_regeneration_mhp: 35000
+              }
+            mining_rate: { min: 0 max: 14000000 }
+            prospecting_blocks: 3
+            size: VERY_HEAVY
+            equipment_slots: { key: "high" value: 6 }
+            equipment_slots: { key: "mid" value: 5 }
+            equipment_slots: { key: "low" value: 8 }
+          }
+      }
+  }
+

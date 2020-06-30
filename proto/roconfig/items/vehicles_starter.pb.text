@@ -1,0 +1,68 @@
+fungible_items:
+  {
+    key: "rv st"
+    value:
+      {
+        space: 4030000
+        complexity: 1
+        vehicle:
+          {
+            cargo_space: 1008000
+            speed: 3000
+            regen_data:
+              {
+                max_hp: { armour: 20 shield: 10 }
+                shield_regeneration_mhp: 1000
+              }
+            mining_rate: { min: 0 max: 2000000 }
+            prospecting_blocks: 10
+            size: STARTER
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "gv st"
+    value:
+      {
+        space: 4030000
+        complexity: 1
+        vehicle:
+          {
+            cargo_space: 1008000
+            speed: 3000
+            regen_data:
+              {
+                max_hp: { armour: 20 shield: 10 }
+                shield_regeneration_mhp: 1000
+              }
+            mining_rate: { min: 0 max: 2000000 }
+            prospecting_blocks: 10
+            size: STARTER
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "bv st"
+    value:
+      {
+        space: 4030000
+        complexity: 1
+        vehicle:
+          {
+            cargo_space: 1008000
+            speed: 3000
+            regen_data:
+              {
+                max_hp: { armour: 20 shield: 10 }
+                shield_regeneration_mhp: 1000
+              }
+            mining_rate: { min: 0 max: 2000000 }
+            prospecting_blocks: 10
+            size: STARTER
+          }
+      }
+  }

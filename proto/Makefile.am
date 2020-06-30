@@ -8,7 +8,8 @@ ROCONFIG_TEXT_PROTOS = \
   \
   roconfig/items/fitments.pb.text \
   roconfig/items/materials.pb.text \
-  roconfig/items/vehicles.pb.text \
+  roconfig/items/vehicles_others.pb.text \
+  roconfig/items/vehicles_starter.pb.text \
   \
   roconfig/buildings/ancient1.pb.text \
   roconfig/buildings/ancient2.pb.text \
