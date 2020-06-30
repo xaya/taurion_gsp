@@ -1,0 +1,17 @@
+# For testing, we use these additional safe zones which will remain
+# unchanged even if we decide to move around or tweak the safe zones
+# in the main game.
+
+safe_zones:
+  {
+    centre: { x: 2042 y: 0 }
+    radius: 10
+    # Neutral zone (no faction)
+  }
+
+safe_zones:
+  {
+    centre: { x: -2042 y: 100 }
+    radius: 10
+    faction: "r"
+  }

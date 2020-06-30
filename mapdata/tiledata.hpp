@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -53,7 +53,7 @@ extern const size_t offsetForY[];
  * std::array.  It is only checked against the actual data from the raw
  * map files using static_assert.
  */
-constexpr size_t numTiles = 66080641;
+constexpr size_t numTiles = 66'080'641;
 
 namespace obstacles
 {
@@ -109,6 +109,6 @@ extern const int16_t blob_region_xcoord_end;
 extern const unsigned char blob_region_ids_start;
 extern const unsigned char blob_region_ids_end;
 
-}
+} // extern C
 
 #endif // MAPDATA_TILEDATA_HPP

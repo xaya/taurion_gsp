@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,9 +20,11 @@
 #define MAPDATA_BASEMAP_HPP
 
 #include "regionmap.hpp"
+#include "safezones.hpp"
 
 #include "hexagonal/coord.hpp"
 #include "hexagonal/pathfinder.hpp"
+#include "proto/roconfig.hpp"
 
 namespace pxd
 {
@@ -37,13 +39,20 @@ class BaseMap
 
 private:
 
+  /** RoConfig data.  */
+  const RoConfig cfg;
+
   /** RegionMap instance that is exposed as part of the BaseMap.  */
-  RegionMap rm;
+  const RegionMap rm;
+
+  /** SafeZones instance used.  */
+  const pxd::SafeZones sz;
 
 public:
 
-  BaseMap ();
+  explicit BaseMap (const xaya::Chain c);
 
+  BaseMap () = delete;
   BaseMap (const BaseMap&) = delete;
   void operator= (const BaseMap&) = delete;
 
@@ -62,6 +71,12 @@ public:
   Regions () const
   {
     return rm;
+  }
+
+  const pxd::SafeZones&
+  SafeZones () const
+  {
+    return sz;
   }
 
   /**

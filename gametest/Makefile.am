@@ -36,6 +36,7 @@ REGTESTS = \
   prospecting_basic.py \
   prospecting_prizes.py \
   prospecting_resources.py \
+  safezones.py \
   services_bpcopy.py \
   services_construction.py \
   services_fees.py \

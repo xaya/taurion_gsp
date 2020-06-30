@@ -63,7 +63,7 @@ public:
 /**
  * Finds combat targets for each fighter entity.
  */
-void FindCombatTargets (Database& db, xaya::Random& rnd);
+void FindCombatTargets (Database& db, xaya::Random& rnd, const Context& ctx);
 
 /**
  * Deals damage from combat and returns the target IDs of all fighters
@@ -71,7 +71,7 @@ void FindCombatTargets (Database& db, xaya::Random& rnd);
  * applies non-damage effects like slowing.
  */
 std::set<TargetKey> DealCombatDamage (Database& db, DamageLists& dl,
-                                      xaya::Random& rnd);
+                                      xaya::Random& rnd, const Context& ctx);
 
 /**
  * Processes killed fighers from the given list, actually performing the

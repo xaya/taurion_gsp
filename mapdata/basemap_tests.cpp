@@ -42,6 +42,10 @@ protected:
 
   BaseMap map;
 
+  BaseMapTests ()
+    : map(xaya::Chain::REGTEST)
+  {}
+
 };
 
 TEST_F (BaseMapTests, IsOnMap)

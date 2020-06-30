@@ -49,6 +49,13 @@ namespace
 using testing::ElementsAre;
 using testing::ElementsAreArray;
 
+/** A coordinate that is a safe zone.  */
+const HexCoord SAFE(2'042, 10);
+/** A coordinate that is not safe (but next to the safe one).  */
+const HexCoord NOT_SAFE(2'042, 11);
+/** A coordinate that is not safe and a bit further away.  */
+const HexCoord NOT_SAFE_FURTHER(2'042, 15);
+
 /* ************************************************************************** */
 
 class CombatTests : public DBTestWithSchema
@@ -67,7 +74,14 @@ protected:
 
   CombatTests ()
     : buildings(db), inventories(db), characters(db), dl(db, 0)
-  {}
+  {
+    /* Ensure our hardcoded test data for safe zones is correct.  */
+    CHECK (ctx.Map ().SafeZones ().IsNoCombat (SAFE));
+    CHECK (!ctx.Map ().SafeZones ().IsNoCombat (NOT_SAFE));
+    CHECK (!ctx.Map ().SafeZones ().IsNoCombat (NOT_SAFE_FURTHER));
+    CHECK_EQ (HexCoord::DistanceL1 (SAFE, NOT_SAFE), 1);
+    CHECK_GT (HexCoord::DistanceL1 (NOT_SAFE, NOT_SAFE_FURTHER), 1);
+  }
 
   /**
    * Adds an attack without any more other stats to the combat entity and
@@ -164,7 +178,7 @@ TEST_F (TargetSelectionTests, NoTargets)
   AddAttack (*c).set_range (10);
   c.reset ();
 
-  FindCombatTargets (db, rnd);
+  FindCombatTargets (db, rnd, ctx);
 
   EXPECT_FALSE (characters.GetById (id1)->HasTarget ());
   EXPECT_FALSE (characters.GetById (id2)->HasTarget ());
@@ -194,7 +208,7 @@ TEST_F (TargetSelectionTests, ClosestTarget)
      that we always pick the same target (single closest one).  */
   for (unsigned i = 0; i < 100; ++i)
     {
-      FindCombatTargets (db, rnd);
+      FindCombatTargets (db, rnd, ctx);
 
       c = characters.GetById (idFighter);
       const auto& t = c->GetTarget ();
@@ -217,12 +231,12 @@ TEST_F (TargetSelectionTests, ZeroRange)
   NoAttacks (*c);
   c.reset ();
 
-  FindCombatTargets (db, rnd);
+  FindCombatTargets (db, rnd, ctx);
 
   EXPECT_FALSE (characters.GetById (idFighter)->HasTarget ());
   characters.GetById (idTarget)->SetPosition (HexCoord (0, 0));
 
-  FindCombatTargets (db, rnd);
+  FindCombatTargets (db, rnd, ctx);
 
   c = characters.GetById (idFighter);
   ASSERT_TRUE (c->HasTarget ());
@@ -257,7 +271,7 @@ TEST_F (TargetSelectionTests, WithBuildings)
   c->SetPosition (HexCoord (0, 3));
   c.reset ();
 
-  FindCombatTargets (db, rnd);
+  FindCombatTargets (db, rnd, ctx);
 
   c = characters.GetById (idChar);
   const auto* t = &c->GetTarget ();
@@ -291,10 +305,44 @@ TEST_F (TargetSelectionTests, InsideBuildings)
   AddAttack (*c).set_range (10);
   c.reset ();
 
-  FindCombatTargets (db, rnd);
+  FindCombatTargets (db, rnd, ctx);
 
   EXPECT_FALSE (characters.GetById (id1)->HasTarget ());
   EXPECT_FALSE (characters.GetById (id2)->HasTarget ());
+}
+
+TEST_F (TargetSelectionTests, SafeZone)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  const auto idSafe = c->GetId ();
+  c->SetPosition (SAFE);
+  proto::TargetId t;
+  t.set_id (42);
+  c->SetTarget (t);
+  AddAttack (*c).set_range (10);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", Faction::GREEN);
+  const auto idAttacker = c->GetId ();
+  c->SetPosition (NOT_SAFE);
+  AddAttack (*c).set_range (10);
+  c.reset ();
+
+  /* This one is not in a safe zone and thus a valid target for idAttacker.
+     It is further away than the one in the safe zone, so that it would
+     normally not be selected (if the safe zone weren't there).  */
+  c = characters.CreateNew ("domob", Faction::RED);
+  const auto idTarget = c->GetId ();
+  c->SetPosition (NOT_SAFE_FURTHER);
+  NoAttacks (*c);
+  c.reset ();
+
+  FindCombatTargets (db, rnd, ctx);
+
+  EXPECT_FALSE (characters.GetById (idSafe)->HasTarget ());
+  c = characters.GetById (idAttacker);
+  ASSERT_TRUE (c->HasTarget ());
+  EXPECT_EQ (c->GetTarget ().id (), idTarget);
 }
 
 TEST_F (TargetSelectionTests, MultipleAttacks)
@@ -312,7 +360,7 @@ TEST_F (TargetSelectionTests, MultipleAttacks)
   NoAttacks (*c);
   c.reset ();
 
-  FindCombatTargets (db, rnd);
+  FindCombatTargets (db, rnd, ctx);
 
   c = characters.GetById (id1);
   const auto& t = c->GetTarget ();
@@ -336,7 +384,7 @@ TEST_F (TargetSelectionTests, OnlyAreaAttacks)
   AddAttack (*c).set_area (6);
   c.reset ();
 
-  FindCombatTargets (db, rnd);
+  FindCombatTargets (db, rnd, ctx);
 
   c = characters.GetById (id1);
   const auto& t = c->GetTarget ();
@@ -372,7 +420,7 @@ TEST_F (TargetSelectionTests, Randomisation)
   std::vector<unsigned> cnt(nTargets);
   for (unsigned i = 0; i < rolls; ++i)
     {
-      FindCombatTargets (db, rnd);
+      FindCombatTargets (db, rnd, ctx);
 
       c = characters.GetById (idFighter);
       const auto& t = c->GetTarget ();
@@ -416,7 +464,7 @@ TEST_F (TargetSelectionTests, LowHpBoost)
   AddLowHpBoost (*c, 10, 10);
   c.reset ();
 
-  FindCombatTargets (db, rnd);
+  FindCombatTargets (db, rnd, ctx);
   EXPECT_FALSE (characters.GetById (idNormal)->HasTarget ());
   EXPECT_EQ (characters.GetById (idBoosted)->GetTarget ().id (), idNormal);
   EXPECT_EQ (characters.GetById (idArea)->GetTarget ().id (), idNormal);
@@ -465,8 +513,8 @@ protected:
   std::set<TargetKey>
   FindTargetsAndDamage ()
   {
-    FindCombatTargets (db, rnd);
-    return DealCombatDamage (db, dl, rnd);
+    FindCombatTargets (db, rnd, ctx);
+    return DealCombatDamage (db, dl, rnd, ctx);
   }
 
 };
@@ -625,6 +673,47 @@ TEST_F (DealDamageTests, MixedAttacks)
   EXPECT_LE (hpNear, 8);
   EXPECT_GE (hpFar, 8);
   EXPECT_LE (hpFar, 9);
+}
+
+TEST_F (DealDamageTests, SafeZone)
+{
+  /* One attacker has both area and normal attacks and also a slowing effect.
+     It is not in the safe zone.  A potential target is in the safe zone and
+     one outside.  The outside target should be hit by all attacks, and the
+     safe-zone character by none.  */
+
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  const auto idSafe = c->GetId ();
+  c->SetPosition (SAFE);
+  NoAttacks (*c);
+  SetHp (*c, 0, 10, 0, 10);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", Faction::GREEN);
+  c->SetPosition (NOT_SAFE);
+  AddAttack (*c, 10, 1, 1);
+  AddAreaAttack (*c, 10, 1, 1);
+  auto& attack = CombatTests::AddAttack (*c);
+  attack.set_area (10);
+  attack.mutable_effects ()->mutable_speed ()->set_percent (-50);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", Faction::RED);
+  const auto idTarget = c->GetId ();
+  c->SetPosition (NOT_SAFE_FURTHER);
+  NoAttacks (*c);
+  SetHp (*c, 0, 10, 0, 10);
+  c.reset ();
+
+  FindTargetsAndDamage ();
+
+  c = characters.GetById (idSafe);
+  EXPECT_EQ (c->GetHP ().armour (), 10);
+  EXPECT_EQ (c->GetEffects ().speed ().percent (), 0);
+
+  c = characters.GetById (idTarget);
+  EXPECT_EQ (c->GetHP ().armour (), 8);
+  EXPECT_EQ (c->GetEffects ().speed ().percent (), -50);
 }
 
 TEST_F (DealDamageTests, RandomisedDamage)
@@ -1008,6 +1097,40 @@ TEST_F (SelfDestructTests, Chain)
   EXPECT_THAT (FindTargetsAndDamage (), ElementsAreArray (expectedDead));
   EXPECT_EQ (characters.GetById (idTrigger)->GetHP ().armour (), 99);
   EXPECT_EQ (characters.GetById (idEnd)->GetHP ().armour (), 99);
+}
+
+TEST_F (SelfDestructTests, SafeZone)
+{
+  /* One character kills another to trigger self-destruct (both are not
+     in a safe zone).  The self-destruct should then hit back the
+     attacker, but should not affect another one close by in the safe zone.  */
+
+  auto c = characters.CreateNew ("red", Faction::RED);
+  const auto idAlive = c->GetId ();
+  c->SetPosition (NOT_SAFE);
+  AddAttack (*c, 10, 5, 5);
+  SetHp (*c, 0, 100, 0, 100);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idDestructed = c->GetId ();
+  c->SetPosition (NOT_SAFE_FURTHER);
+  SetHp (*c, 0, 1, 0, 1);
+  AddSelfDestruct (*c, 10, 10);
+  c.reset ();
+
+  c = characters.CreateNew ("blue", Faction::BLUE);
+  const auto idSafe = c->GetId ();
+  c->SetPosition (SAFE);
+  SetHp (*c, 0, 100, 0, 100);
+  NoAttacks (*c);
+  c.reset ();
+
+  EXPECT_THAT (FindTargetsAndDamage (), ElementsAre (
+    TargetKey (proto::TargetId::TYPE_CHARACTER, idDestructed)
+  ));
+  EXPECT_EQ (characters.GetById (idAlive)->GetHP ().armour (), 90);
+  EXPECT_EQ (characters.GetById (idSafe)->GetHP ().armour (), 100);
 }
 
 /* ************************************************************************** */

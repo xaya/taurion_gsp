@@ -47,6 +47,22 @@ SQLiteGameDatabase::GetNextId ()
   return game.Ids ("pxd").GetNext ();
 }
 
+const BaseMap&
+PXLogic::GetBaseMap ()
+{
+  if (map == nullptr)
+    {
+      const auto chain = GetChain ();
+      VLOG (1)
+          << "Constructing BaseMap instance for chain "
+          << static_cast<int> (chain);
+      map = std::make_unique<BaseMap> (chain);
+    }
+
+  CHECK (map != nullptr);
+  return *map;
+}
+
 void
 PXLogic::UpdateState (Database& db, xaya::Random& rnd,
                       const xaya::Chain chain, const BaseMap& map,
@@ -91,7 +107,7 @@ PXLogic::UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
      entering a building won't be attacked any more.  */
   ProcessEnterBuildings (db, dyn, ctx);
 
-  FindCombatTargets (db, rnd);
+  FindCombatTargets (db, rnd, ctx);
 
   /* At the very end of processing this block, clear temporary combat effects
      again.  They only need to be present from when they are applied during
@@ -160,14 +176,15 @@ void
 PXLogic::UpdateState (xaya::SQLiteDatabase& db, const Json::Value& blockData)
 {
   SQLiteGameDatabase dbObj(db, *this);
-  UpdateState (dbObj, GetContext ().GetRandom (), GetChain (), map, blockData);
+  UpdateState (dbObj, GetContext ().GetRandom (),
+               GetChain (), GetBaseMap (), blockData);
 }
 
 Json::Value
 PXLogic::GetStateAsJson (const xaya::SQLiteDatabase& db)
 {
   SQLiteGameDatabase dbObj(const_cast<xaya::SQLiteDatabase&> (db), *this);
-  const Context ctx(GetChain (), map,
+  const Context ctx(GetChain (), GetBaseMap (),
                     Context::NO_HEIGHT, Context::NO_TIMESTAMP);
   GameStateJson gsj(dbObj, ctx);
 
@@ -194,7 +211,7 @@ PXLogic::GetCustomStateData (xaya::Game& game,
   return GetCustomStateData (game,
     [this, &cb] (Database& db, const xaya::uint256& hash, const unsigned height)
         {
-          const Context ctx(GetChain (), map,
+          const Context ctx(GetChain (), GetBaseMap (),
                             Context::NO_HEIGHT, Context::NO_TIMESTAMP);
           GameStateJson gsj(db, ctx);
           return cb (gsj, hash, height);
