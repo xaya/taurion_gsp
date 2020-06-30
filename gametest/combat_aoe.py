@@ -62,8 +62,8 @@ class CombatAoETest (PXTest):
     self.generate (1)
     self.changeCharacterVehicle ("attacker", "basetank")
 
-    # We set up four potential targets:  Two within the "bomb" range
-    # of 2 (a closer and b further).  Then one within the "missile" area
+    # We set up four potential targets:  Two within the "lf bomb" range
+    # of 3 (a closer and b further).  Then one within the "missile" area
     # around each of those (c for a and d for b).
     self.targetNames = ["a", "b", "c", "d"]
     for nm in self.targetNames:
@@ -71,21 +71,21 @@ class CombatAoETest (PXTest):
       self.createCharacters (nm)
     self.generate (1)
     self.moveCharactersTo ({
-      "a": {"x": 1, "y": 0},
-      "b": {"x": -2, "y": 0},
-      "c": {"x": 1, "y": 2},
-      "d": {"x": -2, "y": -2},
+      "a": {"x": 2, "y": 0},
+      "b": {"x": -3, "y": 0},
+      "c": {"x": 2, "y": 2},
+      "d": {"x": -3, "y": -2},
     })
 
     self.mainLogger.info ("Testing AoE centred on attacker...")
-    self.changeCharacterVehicle ("attacker", "basetank", ["bomb"])
+    self.changeCharacterVehicle ("attacker", "basetank", ["lf bomb"])
     self.resetHP ()
     self.moveCharactersTo ({"attacker": {"x": 0, "y": 0}})
     self.generate (2)
     self.expectDamaged (["a", "b"])
 
     self.mainLogger.info ("Testing AoE centred on target...")
-    self.changeCharacterVehicle ("attacker", "basetank", ["missile"])
+    self.changeCharacterVehicle ("attacker", "basetank", ["lf missile"])
     self.resetHP ()
     self.moveCharactersTo ({"attacker": {"x": 0, "y": 0}})
     self.generate (2)

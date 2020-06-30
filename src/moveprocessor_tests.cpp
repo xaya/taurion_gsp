@@ -1201,41 +1201,38 @@ TEST_F (FitmentMoveTests, InvalidFitments)
 TEST_F (FitmentMoveTests, ValidUpdate)
 {
   SetVehicle ("chariot", {"bow"});
-  GetBuildingInv ()->GetInventory ().AddFungibleCount ("plating", 2);
+  GetBuildingInv ()->GetInventory ().AddFungibleCount ("super scanner", 2);
 
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"fit": ["plating"]}}}
+      "move": {"c": {"1": {"fit": ["super scanner"]}}}
     }
   ])");
 
-  ExpectFitments ({"plating"});
+  ExpectFitments ({"super scanner"});
   auto inv = GetBuildingInv ();
   EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow"), 1);
-  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("plating"), 1);
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("super scanner"), 1);
   auto c = GetTest ();
-  EXPECT_EQ (c->GetRegenData ().max_hp ().armour (), 1'100);
-  EXPECT_EQ (c->GetRegenData ().max_hp ().shield (), 100);
-  EXPECT_EQ (c->GetHP ().armour (), 1'100);
-  EXPECT_EQ (c->GetHP ().shield (), 100);
+  EXPECT_EQ (c->GetProto ().prospecting_blocks (), 1);
 }
 
 TEST_F (FitmentMoveTests, ExistingFitmentsReused)
 {
-  SetVehicle ("chariot", {"expander", "expander"});
+  SetVehicle ("chariot", {"super scanner", "super scanner"});
   GetBuildingInv ()->GetInventory ().AddFungibleCount ("sword", 1);
 
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"fit": ["sword", "expander"]}}}
+      "move": {"c": {"1": {"fit": ["sword", "super scanner"]}}}
     }
   ])");
 
-  ExpectFitments ({"sword", "expander"});
+  ExpectFitments ({"sword", "super scanner"});
   auto inv = GetBuildingInv ();
-  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("expander"), 1);
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("super scanner"), 1);
   EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("sword"), 0);
 }
 

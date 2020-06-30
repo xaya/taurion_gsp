@@ -38,7 +38,7 @@ class CombatEffectsTest (PXTest):
     self.generate (1)
 
     self.mainLogger.info ("Setting up basic situation...")
-    self.changeCharacterVehicle ("attacker", "basetank", ["retarder"])
+    self.changeCharacterVehicle ("attacker", "basetank", ["lf retarder"])
     self.changeCharacterVehicle ("target", "basetank", [])
     self.changeCharacterVehicle ("friendly", "basetank", [])
     self.moveCharactersTo ({
@@ -54,7 +54,7 @@ class CombatEffectsTest (PXTest):
     self.generate (100)
     c = self.getCharacters ()
     self.assertEqual (c["friendly"].getPosition (), {"x": 50, "y": 0})
-    self.assertEqual (c["target"].getPosition (), {"x": 46, "y": 0})
+    self.assertEqual (c["target"].getPosition (), {"x": 48, "y": 0})
 
 
 if __name__ == "__main__":

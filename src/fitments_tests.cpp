@@ -50,20 +50,20 @@ TEST_F (CheckVehicleFitmentsTests, Slots)
 {
   EXPECT_FALSE (CheckVehicleFitments ("rv st", {"sword"}, ctx));
   EXPECT_FALSE (CheckVehicleFitments ("chariot",
-                                      {"bomb", "bomb", "bomb", "bomb"},
+                                      {"sword", "sword", "sword", "sword"},
                                       ctx));
   EXPECT_TRUE (CheckVehicleFitments ("chariot", {
-      "bomb", "bomb", "bomb",
-      "turbo", "turbo",
-      "expander",
+      "sword", "sword", "sword",
+      "mid fitment", "mid fitment",
+      "low fitment",
   }, ctx));
 }
 
 TEST_F (CheckVehicleFitmentsTests, ComplexityMultiplier)
 {
-  EXPECT_FALSE (CheckVehicleFitments ("chariot", {"bow", "turbo"}, ctx));
+  EXPECT_FALSE (CheckVehicleFitments ("chariot", {"bow", "bow"}, ctx));
   EXPECT_TRUE (CheckVehicleFitments ("chariot",
-                                     {"bow", "turbo", "multiplier"},
+                                     {"bow", "bow", "super multiplier"},
                                      ctx));
 }
 
@@ -140,23 +140,23 @@ TEST_F (DeriveCharacterStatsTests, HpAreReset)
 
 TEST_F (DeriveCharacterStatsTests, FitmentAttacks)
 {
-  auto c = Derive ("chariot", {"bomb"});
+  auto c = Derive ("chariot", {"lf bomb"});
   const auto& attacks = c->GetProto ().combat_data ().attacks ();
   ASSERT_EQ (attacks.size (), 3);
   EXPECT_EQ (attacks[0].range (), 100);
   EXPECT_EQ (attacks[1].area (), 10);
-  EXPECT_EQ (attacks[2].area (), 2);
+  EXPECT_EQ (attacks[2].area (), 3);
 }
 
 TEST_F (DeriveCharacterStatsTests, FitmentLowHpBoosts)
 {
-  auto c = Derive ("chariot", {"lowhpboost", "lowhpboost"});
+  auto c = Derive ("chariot", {"lf lowhpboost", "lf lowhpboost"});
   const auto& boosts = c->GetProto ().combat_data ().low_hp_boosts ();
   ASSERT_EQ (boosts.size (), 2);
   for (const auto& b : boosts)
     {
       EXPECT_EQ (b.max_hp_percent (), 10);
-      EXPECT_EQ (b.damage ().percent (), 50);
+      EXPECT_EQ (b.damage ().percent (), 20);
       EXPECT_EQ (b.range ().percent (), 20);
     }
 }
@@ -165,33 +165,34 @@ TEST_F (DeriveCharacterStatsTests, FitmentSelfDestructs)
 {
   auto c = Derive ("chariot",
     {
-      "selfdestruct",
-      "selfdestruct",
-      "rangeext",
-      "dmgext",
+      "lf selfdestruct",
+      "lf selfdestruct",
+      "lf rangeext",
+      "lf rangeext",
+      "lf dmgext",
     });
   const auto& sd = c->GetProto ().combat_data ().self_destructs ();
   ASSERT_EQ (sd.size (), 2);
   for (const auto& s : sd)
     {
-      EXPECT_EQ (s.area (), 11);
-      EXPECT_EQ (s.damage ().min (), 11);
-      EXPECT_EQ (s.damage ().max (), 33);
+      EXPECT_EQ (s.area (), 6);
+      EXPECT_EQ (s.damage ().min (), 31);
+      EXPECT_EQ (s.damage ().max (), 52);
     }
 }
 
 TEST_F (DeriveCharacterStatsTests, CargoSpeed)
 {
-  auto c = Derive ("chariot", {"turbo"});
+  auto c = Derive ("chariot", {"lf turbo"});
   EXPECT_EQ (c->GetProto ().speed (), 1'100);
 
-  c = Derive ("chariot", {"expander"});
+  c = Derive ("chariot", {"lf expander"});
   EXPECT_EQ (c->GetProto ().cargo_space (), 1'100);
 }
 
 TEST_F (DeriveCharacterStatsTests, ProspectingMining)
 {
-  auto c = Derive ("chariot", {"scanner", "pick"});
+  auto c = Derive ("chariot", {"lf scanner", "lf pick"});
   EXPECT_EQ (c->GetProto ().prospecting_blocks (), 8);
   EXPECT_EQ (c->GetProto ().mining ().rate ().min (), 12);
   EXPECT_EQ (c->GetProto ().mining ().rate ().max (), 120);
@@ -199,24 +200,24 @@ TEST_F (DeriveCharacterStatsTests, ProspectingMining)
   c = Derive ("chariot", {"super scanner", "super scanner"});
   EXPECT_EQ (c->GetProto ().prospecting_blocks (), 1);
 
-  c = Derive ("basetank", {"scanner", "pick"});
+  c = Derive ("basetank", {"lf scanner", "lf pick"});
   EXPECT_FALSE (c->GetProto ().has_prospecting_blocks ());
   EXPECT_FALSE (c->GetProto ().has_mining ());
 }
 
 TEST_F (DeriveCharacterStatsTests, MaxHpRegen)
 {
-  auto c = Derive ("chariot", {"plating", "shield"});
+  auto c = Derive ("chariot", {"lf plating", "lf shield"});
   EXPECT_EQ (c->GetRegenData ().max_hp ().armour (), 1'100);
   EXPECT_EQ (c->GetRegenData ().max_hp ().shield (), 110);
 
-  c = Derive ("chariot", {"replenisher"});
+  c = Derive ("chariot", {"lf replenisher"});
   EXPECT_EQ (c->GetRegenData ().shield_regeneration_mhp (), 11);
 }
 
 TEST_F (DeriveCharacterStatsTests, RangeDamage)
 {
-  auto c = Derive ("chariot", {"rangeext", "dmgext"});
+  auto c = Derive ("chariot", {"lf rangeext", "lf dmgext", "lf dmgext"});
 
   const auto* a = &c->GetProto ().combat_data ().attacks (0);
   EXPECT_FALSE (a->has_area ());
@@ -231,15 +232,19 @@ TEST_F (DeriveCharacterStatsTests, RangeDamage)
 
 TEST_F (DeriveCharacterStatsTests, StackingButNotCompounding)
 {
-  auto c = Derive ("chariot", {"turbo", "turbo", "turbo"});
+  auto c = Derive ("chariot", {"lf turbo", "lf turbo", "lf turbo"});
   EXPECT_EQ (c->GetProto ().speed (), 1'300);
 }
 
 TEST_F (DeriveCharacterStatsTests, FitmentAttacksAlsoBoosted)
 {
-  auto c = Derive ("chariot", {"bomb", "dmgext", "dmgext"});
+  auto c = Derive ("chariot",
+    {
+      "lf bomb",
+      "lf dmgext", "lf dmgext", "lf dmgext",
+    });
   const auto& a = c->GetProto ().combat_data ().attacks (2);
-  EXPECT_EQ (a.damage ().max (), 6);
+  EXPECT_EQ (a.damage ().max (), 10);
 }
 
 /* ************************************************************************** */

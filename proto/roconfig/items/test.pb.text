@@ -66,6 +66,28 @@ fungible_items:
       }
   }
 
+# Fitments of mid / low slots for testing slot restrictions.
+fungible_items:
+  {
+    key: "mid fitment"
+    value:
+      {
+        space: 1
+        complexity: 1
+        fitment: { slot: "mid" }
+      }
+  }
+fungible_items:
+  {
+    key: "low fitment"
+    value:
+      {
+        space: 1
+        complexity: 1
+        fitment: { slot: "low" }
+      }
+  }
+
 # A size-restricted fitment.
 fungible_items:
   {
@@ -75,6 +97,22 @@ fungible_items:
         space: 1
         complexity: 1
         fitment: { slot: "high" vehicle_size: MEDIUM }
+      }
+  }
+
+# Strong complexity multiplier for testing its effect.
+fungible_items:
+  {
+    key: "super multiplier"
+    value:
+      {
+        space: 1
+        complexity: 1
+        fitment:
+          {
+            slot: "low"
+            complexity: { percent: 200 }
+          }
       }
   }
 
@@ -92,6 +130,23 @@ fungible_items:
           {
             slot: "high"
             prospecting_blocks: { percent: -99 }
+          }
+      }
+  }
+
+# Armour increase (but without size or other restrictions like the normal
+# plating fitments).
+fungible_items:
+  {
+    key: "free plating"
+    value:
+      {
+        space: 1
+        complexity: 1
+        fitment:
+          {
+            slot: "low"
+            max_armour: { percent: 10 }
           }
       }
   }
