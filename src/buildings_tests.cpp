@@ -75,7 +75,7 @@ TEST_F (BuildingsTests, GetBuildingShape)
 
 TEST_F (BuildingsTests, UpdateBuildingStats)
 {
-  auto h = tbl.CreateNew ("r_rt", "domob", Faction::RED);
+  auto h = tbl.CreateNew ("r rt", "domob", Faction::RED);
   UpdateBuildingStats (*h, ctx.Chain ());
   EXPECT_EQ (h->GetProto ().combat_data ().attacks_size (), 1);
   EXPECT_EQ (h->GetRegenData ().max_hp ().armour (), 1'000);

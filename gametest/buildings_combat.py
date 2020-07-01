@@ -42,9 +42,9 @@ class BuildingsCombatTest (PXTest):
 
     self.mainLogger.info ("Placing a turret...")
     self.generate (1)
-    self.build ("r_rt", "domob", {"x": 0, "y": 0}, rot=0)
+    self.build ("r rt", "domob", {"x": 0, "y": 0}, rot=0)
     self.building = 1002
-    self.assertEqual (self.getBuildings ()[self.building].getType (), "r_rt")
+    self.assertEqual (self.getBuildings ()[self.building].getType (), "r rt")
 
     # Enter turret with a character, to test that it will get killed
     # correctly when the turret is destroyed.
