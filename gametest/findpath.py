@@ -179,16 +179,16 @@ class FindPathTest (PXTest):
     # longA to longB further.  We use the output of getbuildings itself, to
     # ensure that it can be passed directly back to setpathbuildings.
     buildings = [[]]
-    self.build ("r_rt", None,
+    self.build ("r rt", None,
                 offsetCoord (longA, {"x": 1, "y": 0}, False), rot=0)
-    self.build ("r_rt", None,
+    self.build ("r rt", None,
                 offsetCoord (longA, {"x": 1, "y": -1}, False), rot=0)
-    self.build ("r_rt", None,
+    self.build ("r rt", None,
                 offsetCoord (longA, {"x": 0, "y": 1}, False), rot=0)
     buildings.append (self.getRpc ("getbuildings"))
-    self.build ("r_rt", None,
+    self.build ("r rt", None,
                 offsetCoord (longA, {"x": 0, "y": -1}, False), rot=0)
-    self.build ("r_rt", None,
+    self.build ("r rt", None,
                 offsetCoord (longA, {"x": -1, "y": 1}, False), rot=0)
     buildings.append (self.getRpc ("getbuildings"))
 

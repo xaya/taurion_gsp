@@ -1,0 +1,124 @@
+building_types: {
+    key: "g cc"
+    value: {
+        enter_radius: 10
+        offered_services: {
+            refining: true
+            armour_repair: true
+            reverse_engineering: true
+            blueprint_copy: true
+            item_construction: true
+            vehicle_construction: true
+        }
+        shape_tiles: {
+            x: -1 y: -1
+        }
+        shape_tiles: {
+            x: -3 y: 0
+        }
+        shape_tiles: {
+            x: -1 y: -2
+        }
+        shape_tiles: {
+            x: 0 y: -1
+        }
+        shape_tiles: {
+            x: -2 y: 0
+        }
+        shape_tiles: {
+            x: -1 y: 1
+        }
+        shape_tiles: {
+            x: 2 y: -3
+        }
+        shape_tiles: {
+            x: 0 y: -2
+        }
+        shape_tiles: {
+            x: 1 y: -1
+        }
+        shape_tiles: {
+            x: -1 y: 0
+        }
+        shape_tiles: {
+            x: 0 y: 1
+        }
+        shape_tiles: {
+            x: -2 y: 2
+        }
+        shape_tiles: {
+            x: 3 y: -3
+        }
+        shape_tiles: {
+            x: 1 y: -2
+        }
+        shape_tiles: {
+            x: 2 y: -1
+        }
+        shape_tiles: {
+            x: 0 y: 0
+        }
+        shape_tiles: {
+            x: 1 y: 1
+        }
+        shape_tiles: {
+            x: -1 y: 2
+        }
+        shape_tiles: {
+            x: 2 y: -2
+        }
+        shape_tiles: {
+            x: 3 y: -1
+        }
+        shape_tiles: {
+            x: 1 y: 0
+        }
+        shape_tiles: {
+            x: 2 y: 1
+        }
+        shape_tiles: {
+            x: 0 y: 2
+        }
+        shape_tiles: {
+            x: 3 y: -2
+        }
+        shape_tiles: {
+            x: 4 y: -1
+        }
+        shape_tiles: {
+            x: 2 y: 0
+        }
+        shape_tiles: {
+            x: 3 y: 1
+        }
+        foundation: {
+            regen_data: {
+                max_hp: {
+                    armour: 10
+                }
+            }
+        }
+        full_building: {
+            regen_data: {
+                max_hp: {
+                    armour: 100
+                }
+            }
+        }
+        construction: {
+            foundation: {
+                key: "mat a" value: 32000000
+            }
+            foundation: {
+                key: "mat b" value: 8000000
+            }
+            full_building: {
+                key: "mat a" value: 640000000
+            }
+            full_building: {
+                key: "mat b" value: 160000000
+            }
+            blocks: 10
+        }
+    }
+}

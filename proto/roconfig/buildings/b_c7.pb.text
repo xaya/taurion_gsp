@@ -1,0 +1,52 @@
+building_types: {
+    key: "b c7"
+    value: {
+        enter_radius: 8
+        offered_services: {}
+        shape_tiles: {
+            x: 0 y: -2
+        }
+        shape_tiles: {
+            x: -1 y: -1
+        }
+        shape_tiles: {
+            x: -1 y: 0
+        }
+        shape_tiles: {
+            x: -2 y: 1
+        }
+        shape_tiles: {
+            x: 1 y: -3
+        }
+        shape_tiles: {
+            x: 1 y: -2
+        }
+        shape_tiles: {
+            x: 0 y: -1
+        }
+        shape_tiles: {
+            x: 0 y: 0
+        }
+        shape_tiles: {
+            x: -1 y: 1
+        }
+        shape_tiles: {
+            x: -1 y: 2
+        }
+        shape_tiles: {
+            x: 2 y: -2
+        }
+        shape_tiles: {
+            x: 1 y: -1
+        }
+        shape_tiles: {
+            x: 1 y: 0
+        }
+        shape_tiles: {
+            x: 0 y: 1
+        }
+        shape_tiles: {
+            x: 0 y: 2
+        }
+    }
+}

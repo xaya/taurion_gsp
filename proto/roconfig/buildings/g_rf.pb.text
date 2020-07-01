@@ -1,0 +1,54 @@
+building_types: {
+    key: "g rf"
+    value: {
+        enter_radius: 7
+        offered_services: {
+            blueprint_copy: true
+            reverse_engineering: true
+        }
+        shape_tiles: {
+            x: -1 y: 0
+        }
+        shape_tiles: {
+            x: 2 y: -1
+        }
+        shape_tiles: {
+            x: 0 y: 0
+        }
+        shape_tiles: {
+            x: 1 y: 1
+        }
+        shape_tiles: {
+            x: 1 y: 0
+        }
+        foundation: {
+            regen_data: {
+                max_hp: {
+                    armour: 10
+                }
+            }
+        }
+        full_building: {
+            regen_data: {
+                max_hp: {
+                    armour: 100
+                }
+            }
+        }
+        construction: {
+            foundation: {
+                key: "mat a" value: 12800000
+            }
+            foundation: {
+                key: "mat b" value: 4000000
+            }
+            full_building: {
+                key: "mat a" value: 256000000
+            }
+            full_building: {
+                key: "mat b" value: 3200000
+            }
+            blocks: 10
+        }
+    }
+}
