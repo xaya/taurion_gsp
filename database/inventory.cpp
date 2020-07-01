@@ -23,11 +23,99 @@
 namespace pxd
 {
 
+/* ************************************************************************** */
+
 /* Make sure that the product of item quantity and dual value (according to
    the respective limits) can be computed safely.  */
 static_assert ((MAX_ITEM_QUANTITY * MAX_ITEM_DUAL) / MAX_ITEM_DUAL
                   == MAX_ITEM_QUANTITY,
                "item quantity and dual limits overflow multiplication");
+
+namespace
+{
+
+/**
+ * Sets an mpz value from a Quantity.  The predefined conversion functions
+ * work on longs and not the types like int64_t.
+ */
+void
+MpzFromQuantity (mpz_t& out, Quantity q)
+{
+  const bool neg = (q < 0);
+  if (neg)
+    q = -q;
+  CHECK_GE (q, 0);
+
+  mpz_import (out, 1, 1, sizeof (q), 0, 0, &q);
+  if (neg)
+    mpz_neg (out, out);
+}
+
+} // anonymous namespace
+
+QuantityProduct::QuantityProduct ()
+{
+  mpz_init (total);
+}
+
+QuantityProduct::QuantityProduct (const Quantity a, const Quantity b)
+{
+  mpz_init (total);
+  AddProduct (a, b);
+}
+
+QuantityProduct::~QuantityProduct ()
+{
+  mpz_clear (total);
+}
+
+void
+QuantityProduct::AddProduct (const Quantity a, const Quantity b)
+{
+  mpz_t aa, bb;
+  mpz_inits (aa, bb, nullptr);
+
+  MpzFromQuantity (aa, a);
+  MpzFromQuantity (bb, b);
+
+  mpz_addmul (total, aa, bb);
+
+  mpz_clears (aa, bb, nullptr);
+}
+
+bool
+QuantityProduct::operator<= (const uint64_t lim) const
+{
+  mpz_t ll;
+  mpz_init (ll);
+
+  mpz_import (ll, 1, 1, sizeof (lim), 0, 0, &lim);
+  const int cmp = mpz_cmp (total, ll);
+
+  mpz_clear (ll);
+
+  return cmp <= 0;
+}
+
+int64_t
+QuantityProduct::Extract () const
+{
+  const int64_t sgn = mpz_sgn (total);
+  if (sgn == 0)
+    return 0;
+
+  /* Make sure the value actually fits, and leave some bits open just in case
+     (and so there is no issue with the sign).  We won't reach the limit in
+     practice anyway, so it is fine if we are a bit more strict here.  */
+  CHECK_LE (mpz_sizeinbase (total, 2), 60) << "QuantityProduct is too large";
+
+  uint64_t abs;
+  size_t count;
+  mpz_export (&abs, &count, 1, sizeof (abs), 0, 0, total);
+  CHECK_EQ (count, 1);
+
+  return sgn * abs;
+}
 
 /* ************************************************************************** */
 

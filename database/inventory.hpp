@@ -27,12 +27,16 @@
 
 #include <google/protobuf/map.h>
 
+#include <gmp.h>
+
 #include <cstdint>
 #include <memory>
 #include <string>
 
 namespace pxd
 {
+
+/* ************************************************************************** */
 
 /**
  * The maximum valid value for an item quantity.  If a move contains a number
@@ -59,6 +63,65 @@ static constexpr int64_t MAX_ITEM_DUAL = 1'000'000'000;
 
 /** Type for the quantity of an item.  */
 using Quantity = int64_t;
+
+/**
+ * Helper class to compute the inner product of vectors of quantities
+ * (e.g. total weight of an inventory, or price of some order).  It uses
+ * GMP bignum's internally, so that we do not run into any overflows while
+ * multiplying two Quantity values.  (In the end all such products should
+ * fit into 64 bits anyway, but this way we can enforce it.)
+ *
+ * All products of Quantity values should be computed with this class
+ * rather than direct integer math.
+ */
+class QuantityProduct
+{
+
+private:
+
+  /** Underlying GMP value for the running sum.  */
+  mpz_t total;
+
+public:
+
+  /**
+   * Starts with a zero value.
+   */
+  QuantityProduct ();
+
+  /**
+   * Initialises the value to the product of both numbers.
+   */
+  explicit QuantityProduct (Quantity a, Quantity b);
+
+  ~QuantityProduct ();
+
+  /**
+   * Adds a product of two values to the running total.
+   */
+  void AddProduct (Quantity a, Quantity b);
+
+  /**
+   * Checks that the value is less-or-equal a given int value, e.g. to
+   * compare to the total cargo space or available funds.
+   */
+  bool operator<= (uint64_t limit) const;
+
+  inline bool
+  operator> (uint64_t limit) const
+  {
+    return !(*this <= limit);
+  }
+
+  /**
+   * Extracts the value as 64-bit integer.  CHECK-fails if it does not
+   * fit (so only use this when it is guaranteed to fit, e.g. because
+   * the inputs are known to fit always or because <= has been used already
+   * to check the size).
+   */
+  int64_t Extract () const;
+
+};
 
 /* ************************************************************************** */
 

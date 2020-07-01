@@ -24,6 +24,7 @@
 
 #include <gtest/gtest.h>
 
+#include <limits>
 #include <map>
 
 namespace pxd
@@ -32,6 +33,59 @@ namespace
 {
 
 using google::protobuf::TextFormat;
+
+/* ************************************************************************** */
+
+TEST (QuantityProductTests, Initialisation)
+{
+  EXPECT_EQ (QuantityProduct ().Extract (), 0);
+  EXPECT_EQ (QuantityProduct (1, 0).Extract (), 0);
+  EXPECT_EQ (QuantityProduct (6, 7).Extract (), 42);
+  EXPECT_EQ (QuantityProduct (-5, 4).Extract (), -20);
+  EXPECT_EQ (QuantityProduct (1'000'000'000'000ll, -2).Extract (),
+             -2'000'000'000'000ll);
+}
+
+TEST (QuantityProductTests, AddProduct)
+{
+  QuantityProduct total;
+  total.AddProduct (6, 7);
+  total.AddProduct (-2, 5);
+  total.AddProduct (1'000'000'000, 1'000'000'000);
+  EXPECT_EQ (total.Extract (), 42 - 10 + 1'000'000'000'000'000'000ll);
+}
+
+TEST (QuantityProductTests, Comparison)
+{
+  QuantityProduct pos(10, 10);
+  EXPECT_TRUE (pos <= 100);
+  EXPECT_TRUE (pos <= 1'000'000'000'000);
+  EXPECT_FALSE (pos <= 99);
+  EXPECT_FALSE (pos > 100);
+  EXPECT_TRUE (pos > 99);
+
+  QuantityProduct zero;
+  EXPECT_TRUE (zero <= 0);
+  EXPECT_TRUE (zero <= 100);
+
+  QuantityProduct neg(-1, 1);
+  EXPECT_TRUE (neg <= 0);
+  EXPECT_TRUE (neg <= 100);
+}
+
+TEST (QuantityProductTests, Overflows)
+{
+  QuantityProduct pos(std::numeric_limits<int64_t>::max (),
+                      std::numeric_limits<int64_t>::max ());
+  EXPECT_FALSE (pos <= std::numeric_limits<int64_t>::max ());
+  EXPECT_DEATH (pos.Extract (), "is too large");
+
+  QuantityProduct neg(std::numeric_limits<int64_t>::max (),
+                      -std::numeric_limits<int64_t>::max ());
+  EXPECT_TRUE (neg <= 0);
+  EXPECT_TRUE (neg <= std::numeric_limits<int64_t>::max ());
+  EXPECT_DEATH (neg.Extract (), "is too large");
+}
 
 /* ************************************************************************** */
 
