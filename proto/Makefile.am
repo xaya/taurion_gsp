@@ -18,7 +18,65 @@ ROCONFIG_TEXT_PROTOS = \
   roconfig/buildings/obelisk1.pb.text \
   roconfig/buildings/obelisk2.pb.text \
   roconfig/buildings/obelisk3.pb.text \
-  roconfig/buildings/turrets.pb.text \
+  \
+  roconfig/buildings/r_c1.pb.text \
+  roconfig/buildings/r_c2.pb.text \
+  roconfig/buildings/r_c3.pb.text \
+  roconfig/buildings/r_c4.pb.text \
+  roconfig/buildings/r_c5.pb.text \
+  roconfig/buildings/r_c6.pb.text \
+  roconfig/buildings/r_c7.pb.text \
+  roconfig/buildings/r_c8.pb.text \
+  roconfig/buildings/r_c9.pb.text \
+  roconfig/buildings/r_c10.pb.text \
+  roconfig/buildings/r_c11.pb.text \
+  roconfig/buildings/r_cc.pb.text \
+  roconfig/buildings/r_cf.pb.text \
+  roconfig/buildings/r_et.pb.text \
+  roconfig/buildings/r_ep.pb.text \
+  roconfig/buildings/r_rf.pb.text \
+  roconfig/buildings/r_r.pb.text \
+  roconfig/buildings/r_rt.pb.text \
+  roconfig/buildings/r_vb.pb.text \
+  \
+  roconfig/buildings/g_c1.pb.text \
+  roconfig/buildings/g_c2.pb.text \
+  roconfig/buildings/g_c3.pb.text \
+  roconfig/buildings/g_c4.pb.text \
+  roconfig/buildings/g_c5.pb.text \
+  roconfig/buildings/g_c6.pb.text \
+  roconfig/buildings/g_c7.pb.text \
+  roconfig/buildings/g_c8.pb.text \
+  roconfig/buildings/g_c9.pb.text \
+  roconfig/buildings/g_c10.pb.text \
+  roconfig/buildings/g_cc.pb.text \
+  roconfig/buildings/g_cf.pb.text \
+  roconfig/buildings/g_et.pb.text \
+  roconfig/buildings/g_ep.pb.text \
+  roconfig/buildings/g_rf.pb.text \
+  roconfig/buildings/g_r.pb.text \
+  roconfig/buildings/g_rt.pb.text \
+  roconfig/buildings/g_vb.pb.text \
+  \
+  roconfig/buildings/b_c1.pb.text \
+  roconfig/buildings/b_c2.pb.text \
+  roconfig/buildings/b_c3.pb.text \
+  roconfig/buildings/b_c4.pb.text \
+  roconfig/buildings/b_c5.pb.text \
+  roconfig/buildings/b_c6.pb.text \
+  roconfig/buildings/b_c7.pb.text \
+  roconfig/buildings/b_c8.pb.text \
+  roconfig/buildings/b_c9.pb.text \
+  roconfig/buildings/b_c10.pb.text \
+  roconfig/buildings/b_c11.pb.text \
+  roconfig/buildings/b_cc.pb.text \
+  roconfig/buildings/b_cf.pb.text \
+  roconfig/buildings/b_et.pb.text \
+  roconfig/buildings/b_ep.pb.text \
+  roconfig/buildings/b_rf.pb.text \
+  roconfig/buildings/b_r.pb.text \
+  roconfig/buildings/b_rt.pb.text \
+  roconfig/buildings/b_vb.pb.text \
   \
   roconfig/testnet.pb.text
 
