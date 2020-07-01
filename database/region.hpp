@@ -64,7 +64,7 @@ private:
   RegionMap::IdT id;
 
   /** The amount of mine-able resources left.  */
-  Inventory::QuantityT resourceLeft;
+  Quantity resourceLeft;
 
   /** Generic data stored in the proto BLOB.  */
   LazyProto<proto::RegionData> data;
@@ -123,13 +123,13 @@ public:
    * only be called when the region has been prospected already.  The type of
    * resource can be found in the proto data.
    */
-  Inventory::QuantityT GetResourceLeft () const;
+  Quantity GetResourceLeft () const;
 
   /**
    * Sets the amount of mine-able resource left.  This must only be called
    * when the region has been prospected.
    */
-  void SetResourceLeft (Inventory::QuantityT value);
+  void SetResourceLeft (Quantity value);
 
 };
 

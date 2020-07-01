@@ -558,7 +558,7 @@ namespace
  * Parses a JSON dictionary giving fungible items and their quantities
  * into a std::map.  This will contain all item names and quantities
  * for "valid" entries, i.e. entries with a uint64 value that is within
- * the range [0, MAX_ITEM_QUANTITY].
+ * the range (0, MAX_ITEM_QUANTITY].
  */
 FungibleAmountMap
 ParseFungibleQuantities (const Context& ctx, const Json::Value& obj)
@@ -584,7 +584,7 @@ ParseFungibleQuantities (const Context& ctx, const Json::Value& obj)
               << "Invalid fungible amount for item " << key << ": " << *it;
           continue;
         }
-      const Inventory::QuantityT cnt = it->asUInt64 ();
+      const Quantity cnt = it->asUInt64 ();
 
       CHECK_GE (cnt, 0);
       if (cnt == 0 || cnt > MAX_ITEM_QUANTITY)
@@ -889,7 +889,7 @@ BaseMoveProcessor::ParseSetFitments (const Character& c, const Json::Value& upd,
   /* Make sure the user has the required items in their inventory.  Existing
      fitments from the character are also fine, as they will be removed
      before being added back.  */
-  std::unordered_map<std::string, Inventory::QuantityT> items;
+  std::unordered_map<std::string, Quantity> items;
   for (const auto& f : fitments)
     ++items[f];
   for (const auto& f : c.GetProto ().fitments ())
@@ -1423,7 +1423,7 @@ MoveFungibleBetweenInventories (const Context& ctx,
   for (const auto& entry : items)
     {
       const auto available = from.GetFungibleCount (entry.first);
-      Inventory::QuantityT cnt = entry.second;
+      Quantity cnt = entry.second;
       if (cnt > available)
         {
           LOG (WARNING)

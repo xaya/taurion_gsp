@@ -74,7 +74,7 @@ ProcessAllMining (Database& db, xaya::Random& rnd, const Context& ctx)
 
       const auto& type = r->GetProto ().prospection ().resource ();
       const auto& rate = pb.mining ().rate ();
-      Inventory::QuantityT mined
+      Quantity mined
           = rate.min () + rnd.NextInt (rate.max () - rate.min () + 1);
       CHECK_GE (mined, 0);
       VLOG (1) << "Trying to mine " << mined << " of " << type;
@@ -86,7 +86,7 @@ ProcessAllMining (Database& db, xaya::Random& rnd, const Context& ctx)
         continue;
 
       /* Restrict the quantity by what is left in the region.  */
-      Inventory::QuantityT left = r->GetResourceLeft ();
+      Quantity left = r->GetResourceLeft ();
       CHECK_GE (left, 0);
       if (mined > left)
         {

@@ -115,8 +115,7 @@ struct AvailableResource
 
 void
 DetectResource (const HexCoord& pos, const proto::ResourceDistribution& rd,
-                xaya::Random& rnd,
-                std::string& type, Inventory::QuantityT& amount)
+                xaya::Random& rnd, std::string& type, Quantity& amount)
 {
   VLOG (1) << "Detecting prospected resources at " << pos << "...";
 

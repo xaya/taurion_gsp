@@ -64,7 +64,7 @@ static constexpr unsigned MAX_CHOSEN_SPEED = 1'000'000;
 static constexpr Amount MAX_COIN_AMOUNT = 1'000'000'000;
 
 /** Amounts of fungible items.  */
-using FungibleAmountMap = std::map<std::string, Inventory::QuantityT>;
+using FungibleAmountMap = std::map<std::string, Quantity>;
 
 /**
  * Raw data for a coin transfer and burn command.

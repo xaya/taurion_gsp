@@ -99,7 +99,7 @@ Inventory::IsEmpty () const
   return Get ().fungible ().empty ();
 }
 
-Inventory::QuantityT
+Quantity
 Inventory::GetFungibleCount (const std::string& type) const
 {
   const auto& fungible = Get ().fungible ();
@@ -117,7 +117,7 @@ Inventory::GetProtoForBinding () const
 }
 
 void
-Inventory::SetFungibleCount (const std::string& type, const QuantityT count)
+Inventory::SetFungibleCount (const std::string& type, const Quantity count)
 {
   CHECK_GE (count, 0);
   CHECK_LE (count, MAX_ITEM_QUANTITY);
@@ -131,7 +131,7 @@ Inventory::SetFungibleCount (const std::string& type, const QuantityT count)
 }
 
 void
-Inventory::AddFungibleCount (const std::string& type, const QuantityT count)
+Inventory::AddFungibleCount (const std::string& type, const Quantity count)
 {
   CHECK_GE (count, -MAX_ITEM_QUANTITY);
   CHECK_LE (count, MAX_ITEM_QUANTITY);
@@ -155,7 +155,7 @@ Inventory::operator+= (const Inventory& other)
 }
 
 int64_t
-Inventory::Product (const QuantityT amount, const int64_t dual)
+Inventory::Product (const Quantity amount, const int64_t dual)
 {
   CHECK_GE (amount, -MAX_ITEM_QUANTITY);
   CHECK_LE (amount, MAX_ITEM_QUANTITY);

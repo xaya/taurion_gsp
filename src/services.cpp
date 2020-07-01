@@ -101,7 +101,7 @@ private:
   const std::string type;
 
   /** The amount of raw resource being refined.  */
-  const Inventory::QuantityT amount;
+  const Quantity amount;
 
   /**
    * The refining data for the resource type.  May be null if the item
@@ -141,15 +141,13 @@ protected:
 public:
 
   explicit RefiningOperation (Account& a, BuildingsTable::Handle b,
-                              const std::string& t,
-                              const Inventory::QuantityT am,
+                              const std::string& t, const Quantity am,
                               const ContextRefs& refs);
 
 };
 
 RefiningOperation::RefiningOperation (Account& a, BuildingsTable::Handle b,
-                                      const std::string& t,
-                                      const Inventory::QuantityT am,
+                                      const std::string& t, const Quantity am,
                                       const ContextRefs& refs)
   : ServiceOperation(a, std::move (b), refs),
     type(t), amount(am)
@@ -431,7 +429,7 @@ private:
   const std::string type;
 
   /** The number of artefacts to reverse engineer in this operation.  */
-  const Inventory::QuantityT num;
+  const Quantity num;
 
   /**
    * The reveng data for the artefact type.  May be null if the item
@@ -461,15 +459,13 @@ protected:
 public:
 
   explicit RevEngOperation (Account& a, BuildingsTable::Handle b,
-                            const std::string& t,
-                            const Inventory::QuantityT n,
+                            const std::string& t, const Quantity n,
                             const ContextRefs& refs);
 
 };
 
 RevEngOperation::RevEngOperation (Account& a, BuildingsTable::Handle b,
-                                  const std::string& t,
-                                  const Inventory::QuantityT n,
+                                  const std::string& t, const Quantity n,
                                   const ContextRefs& refs)
   : ServiceOperation(a, std::move (b), refs),
     type(t), num(n)
@@ -583,7 +579,7 @@ private:
   const std::string original;
 
   /** The number of copies to make.  */
-  const Inventory::QuantityT num;
+  const Quantity num;
 
   /**
    * The type of copies being produced.  This may be the empty string if the
@@ -617,15 +613,14 @@ protected:
 public:
 
   explicit BlueprintCopyOperation (Account& a, BuildingsTable::Handle b,
-                                   const std::string& o,
-                                   const Inventory::QuantityT n,
+                                   const std::string& o, const Quantity n,
                                    const ContextRefs& refs);
 
 };
 
 BlueprintCopyOperation::BlueprintCopyOperation (
       Account& a, BuildingsTable::Handle b,
-      const std::string& o, const Inventory::QuantityT n,
+      const std::string& o, const Quantity n,
       const ContextRefs& refs)
   : ServiceOperation(a, std::move (b), refs),
     original(o), num(n)
@@ -733,7 +728,7 @@ private:
   const std::string blueprint;
 
   /** The number of items to construct.  */
-  const Inventory::QuantityT num;
+  const Quantity num;
 
   /**
    * The output item's config data.  May be null if the operation is
@@ -766,15 +761,14 @@ protected:
 public:
 
   explicit ConstructionOperation (Account& a, BuildingsTable::Handle b,
-                                  const std::string& bp,
-                                  const Inventory::QuantityT n,
+                                  const std::string& bp, const Quantity n,
                                   const ContextRefs& refs);
 
 };
 
 ConstructionOperation::ConstructionOperation (
       Account& a, BuildingsTable::Handle b,
-      const std::string& bp, const Inventory::QuantityT n,
+      const std::string& bp, const Quantity n,
       const ContextRefs& refs)
   : ServiceOperation(a, std::move (b), refs),
     blueprint(bp), num(n)
@@ -836,7 +830,7 @@ ConstructionOperation::IsValid () const
     }
 
   const auto bpBalance = inv->GetInventory ().GetFungibleCount (blueprint);
-  Inventory::QuantityT bpRequired;
+  Quantity bpRequired;
   if (fromOriginal)
     bpRequired = 1;
   else

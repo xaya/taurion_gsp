@@ -702,8 +702,8 @@ KillProcessor::ProcessBuilding (const Database::IdT id)
      random rolls depend on the other, make sure to explicitly sort the
      the list of inventory positions.  */
   const auto& protoInvMap = totalInv.GetFungible ();
-  const std::map<std::string, Inventory::QuantityT> invItems (
-      protoInvMap.begin (), protoInvMap.end ());
+  const std::map<std::string, Quantity> invItems (protoInvMap.begin (),
+                                                  protoInvMap.end ());
 
   auto lootHandle = loot.GetByCoord (b->GetCentre ());
   b.reset ();

@@ -111,7 +111,7 @@ protected:
   /** Output variable for the detected type of resource.  */
   std::string type;
   /** Output variable for the detected amount.  */
-  Inventory::QuantityT amount;
+  Quantity amount;
 
   DetectResourceTests ()
     : rd(ctx.RoConfig ()->resource_dist ())
@@ -220,7 +220,7 @@ TEST_F (DetectResourceTests, RandomAmount)
   rd.clear_base_amounts ();
   rd.mutable_base_amounts ()->insert ({"raw g", baseAmount});
 
-  std::map<Inventory::QuantityT, unsigned> counts;
+  std::map<Quantity, unsigned> counts;
   for (unsigned i = 0; i < trials; ++i)
     {
       Detect (HexCoord (0, 0));
@@ -234,7 +234,7 @@ TEST_F (DetectResourceTests, RandomAmount)
         << entry.second << " times";
 
   ASSERT_EQ (counts.size (), baseAmount + 1);
-  for (Inventory::QuantityT i = baseAmount; i <= 2 * baseAmount; ++i)
+  for (Quantity i = baseAmount; i <= 2 * baseAmount; ++i)
     EXPECT_GE (counts[i], threshold);
 }
 
@@ -247,7 +247,7 @@ TEST_F (DetectResourceTests, MinimumAmount)
   rd.clear_base_amounts ();
   rd.mutable_base_amounts ()->insert ({"raw g", 2});
 
-  std::map<Inventory::QuantityT, unsigned> counts;
+  std::map<Quantity, unsigned> counts;
   for (unsigned i = 0; i < trials; ++i)
     {
       Detect (HexCoord (900, 0));
@@ -271,7 +271,7 @@ TEST_F (DetectResourceTests, AmountPerType)
   rd.mutable_base_amounts ()->insert ({"raw a", 1'000});
   rd.mutable_base_amounts ()->insert ({"raw i", 50});
 
-  std::map<std::string, Inventory::QuantityT> amounts;
+  std::map<std::string, Quantity> amounts;
   for (unsigned i = 0; i < trials; ++i)
     {
       Detect (HexCoord (0, 0));
@@ -281,7 +281,7 @@ TEST_F (DetectResourceTests, AmountPerType)
   for (const auto& entry : amounts)
     LOG (INFO) << "Found total " << entry.second << " of " << entry.first;
 
-  const std::map<std::string, Inventory::QuantityT> expected =
+  const std::map<std::string, Quantity> expected =
     {
       {"raw a", 1'500 * trials * 2 / 3},
       {"raw i", 75 / 2 * trials * 1 / 3},

@@ -1469,7 +1469,7 @@ TEST_F (ProcessKillsBuildingTests, MayDropAnyInventoryItem)
   constexpr unsigned trials = 100;
   const HexCoord pos(10, 20);
 
-  const std::map<std::string, Inventory::QuantityT> expectedAmounts =
+  const std::map<std::string, Quantity> expectedAmounts =
     {
       {"foo", 5},
       {"bar", 100},

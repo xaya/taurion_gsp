@@ -35,8 +35,7 @@ namespace pxd
  * be found by prospecting in the given coordinate.
  */
 void DetectResource (const HexCoord& pos, const proto::ResourceDistribution& rd,
-                     xaya::Random& rnd,
-                     std::string& type, Inventory::QuantityT& amount);
+                     xaya::Random& rnd, std::string& type, Quantity& amount);
 
 namespace internal
 {

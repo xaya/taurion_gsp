@@ -2010,7 +2010,7 @@ protected:
    */
   static void
   SetInventoryItems (Inventory& inv,
-                     const std::map<std::string, Inventory::QuantityT>& items)
+                     const std::map<std::string, Quantity>& items)
   {
     for (const auto& entry : items)
       inv.SetFungibleCount (entry.first, entry.second);
@@ -2021,9 +2021,8 @@ protected:
    * any more).
    */
   void
-  ExpectInventoryItems (
-      Inventory& inv,
-      const std::map<std::string, Inventory::QuantityT>& expected)
+  ExpectInventoryItems (Inventory& inv,
+                        const std::map<std::string, Quantity>& expected)
   {
     const auto& actual = inv.GetFungible ();
     ASSERT_EQ (actual.size (), expected.size ());

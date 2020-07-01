@@ -94,7 +94,7 @@ Region::~Region ()
   VLOG (1) << "Region " << id << " is not dirty, no update";
 }
 
-Inventory::QuantityT
+Quantity
 Region::GetResourceLeft () const
 {
   CHECK (GetProto ().has_prospection ())
@@ -103,7 +103,7 @@ Region::GetResourceLeft () const
 }
 
 void
-Region::SetResourceLeft (const Inventory::QuantityT value)
+Region::SetResourceLeft (const Quantity value)
 {
   CHECK (GetProto ().has_prospection ())
       << "Region " << id << " has not been prospected yet";

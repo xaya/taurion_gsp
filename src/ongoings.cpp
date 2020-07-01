@@ -56,8 +56,7 @@ FinishBuildingConstruction (Building& b, const Context& ctx,
   auto& pb = b.MutableProto ();
   Inventory cInv(*pb.mutable_construction_inventory ());
   for (const auto& entry : roData.construction ().full_building ())
-    cInv.AddFungibleCount (entry.first,
-                           -static_cast<Inventory::QuantityT> (entry.second));
+    cInv.AddFungibleCount (entry.first, -static_cast<Quantity> (entry.second));
 
   /* All resources not used for the actual construction go to the owner's
      account inside the new building.  */

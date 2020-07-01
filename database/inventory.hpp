@@ -57,6 +57,9 @@ static constexpr int64_t MAX_ITEM_QUANTITY = 1'000'000'000;
  */
 static constexpr int64_t MAX_ITEM_DUAL = 1'000'000'000;
 
+/** Type for the quantity of an item.  */
+using Quantity = int64_t;
+
 /* ************************************************************************** */
 
 /**
@@ -91,9 +94,6 @@ private:
   proto::Inventory& Mutable ();
 
 public:
-
-  /** Type for the quantity of an item.  */
-  using QuantityT = int64_t;
 
   /**
    * Constructs an instance representing an empty inventory (that can then
@@ -143,18 +143,18 @@ public:
    * Returns the number of fungible items with the given key in the inventory.
    * Returns zero for non-existant items.
    */
-  QuantityT GetFungibleCount (const std::string& type) const;
+  Quantity GetFungibleCount (const std::string& type) const;
 
   /**
    * Sets the number of fungible items with the given key in the inventory.
    */
-  void SetFungibleCount (const std::string& type, QuantityT count);
+  void SetFungibleCount (const std::string& type, Quantity count);
 
   /**
    * Updates the number of fungible items with the given key by adding
    * the given (positive or negative) amount.
    */
-  void AddFungibleCount (const std::string& type, QuantityT count);
+  void AddFungibleCount (const std::string& type, Quantity count);
 
   /**
    * Adds in all items from a given second inventory.
@@ -183,7 +183,7 @@ public:
    * must be within the limits, or else the function CHECK-fails.  They may
    * be signed, though.
    */
-  static int64_t Product (QuantityT amount, int64_t dual);
+  static int64_t Product (Quantity amount, int64_t dual);
 
 };
 

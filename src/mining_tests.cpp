@@ -179,7 +179,7 @@ TEST_F (MiningTests, ZeroRolls)
   rate->set_max (1);
   c.reset ();
 
-  Inventory::QuantityT last = 0;
+  Quantity last = 0;
   while (true)
     {
       ProcessAllMining (db, rnd, ctx);
