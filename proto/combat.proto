@@ -99,6 +99,16 @@ message Attack
        chosen uniformly from the both-inclusive range.  */
     optional uint32 min = 1;
     optional uint32 max = 2;
+
+    /**
+     * If this is set, it specifies the factor (as percent) that the attack
+     * does damage to armour specifically.  If not, 100% (no modification)
+     * is assumed.
+     */
+    optional uint32 armour_percent = 3;
+
+    /** The factor (as percent) that this attack does damage to shields.  */
+    optional uint32 shield_percent = 4;
   }
 
   /** If this attack does damage, the stats for it.  */
