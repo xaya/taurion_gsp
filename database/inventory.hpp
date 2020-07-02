@@ -39,19 +39,19 @@ namespace pxd
 /* ************************************************************************** */
 
 /**
- * The maximum valid value for an item quantity.  If a move contains a number
+ * The maximum valid value for an item quantity or dual value (such as e.g. the
+ * per-unit price in a market order).  If a move contains a number
  * larger than this, it is considered invalid.  This is consensus relevant.
- * Through this limit, we ensure that values are "sane" and avoid potential
- * overflows when working with them.
  *
  * But this is not only applied to moves, but checked in general for any
  * item quantity.  So it should really be the total supply limit of anything
  * in the game.
  *
- * A value of one billion allows multiplication with another value in that
- * range (e.g. cargo per item or price per unit) without overflowing 64 bits.
+ * The value chosen here should be large enough for any practical need.  It is
+ * still significantly below full 64 bits, though, to give us some extra
+ * headway against overflows just in case.
  */
-static constexpr int64_t MAX_ITEM_QUANTITY = 1'000'000'000;
+static constexpr int64_t MAX_QUANTITY = (1ll << 50);
 
 /** Type for the quantity of an item.  */
 using Quantity = int64_t;
