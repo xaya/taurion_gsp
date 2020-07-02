@@ -100,7 +100,7 @@ fungible_items:
         construction_resources: { key: "mat b" value: 18750 }
         vehicle:
           {
-            cargo_space: 27600000
+            cargo_space: 0
             speed: 4000
             regen_data:
               {
@@ -454,7 +454,7 @@ fungible_items:
         construction_resources: { key: "mat b" value: 18750 }
         vehicle:
           {
-            cargo_space: 27600000
+            cargo_space: 0
             speed: 4000
             regen_data:
               {
@@ -808,7 +808,7 @@ fungible_items:
         construction_resources: { key: "mat b" value: 18750 }
         vehicle:
           {
-            cargo_space: 27600000
+            cargo_space: 0
             speed: 4000
             regen_data:
               {
