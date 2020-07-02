@@ -209,13 +209,6 @@ TEST_F (InventoryTests, ProtoRef)
   EXPECT_DEATH (ro.AddFungibleCount ("foo", 1), "non-mutable");
 }
 
-TEST_F (InventoryTests, DualProduct)
-{
-  const auto val = Inventory::Product (MAX_ITEM_QUANTITY, -MAX_ITEM_DUAL);
-  EXPECT_EQ (val % MAX_ITEM_DUAL, 0);
-  EXPECT_EQ (val / MAX_ITEM_QUANTITY, -MAX_ITEM_DUAL);
-}
-
 /* ************************************************************************** */
 
 struct CountResult : public Database::ResultType

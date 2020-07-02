@@ -25,12 +25,6 @@ namespace pxd
 
 /* ************************************************************************** */
 
-/* Make sure that the product of item quantity and dual value (according to
-   the respective limits) can be computed safely.  */
-static_assert ((MAX_ITEM_QUANTITY * MAX_ITEM_DUAL) / MAX_ITEM_DUAL
-                  == MAX_ITEM_QUANTITY,
-               "item quantity and dual limits overflow multiplication");
-
 namespace
 {
 
@@ -240,18 +234,6 @@ Inventory::operator+= (const Inventory& other)
     AddFungibleCount (entry.first, entry.second);
 
   return *this;
-}
-
-int64_t
-Inventory::Product (const Quantity amount, const int64_t dual)
-{
-  CHECK_GE (amount, -MAX_ITEM_QUANTITY);
-  CHECK_LE (amount, MAX_ITEM_QUANTITY);
-
-  CHECK_GE (dual, -MAX_ITEM_DUAL);
-  CHECK_LE (dual, MAX_ITEM_DUAL);
-
-  return amount * dual;
 }
 
 /* ************************************************************************** */

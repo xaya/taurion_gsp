@@ -1418,8 +1418,10 @@ MoveFungibleBetweenInventories (const Context& ctx,
                                 Inventory& from, Inventory& to,
                                 const std::string& fromName,
                                 const std::string& toName,
-                                int64_t maxSpace = -1)
+                                const int64_t maxSpace = -1)
 {
+  QuantityProduct usedSpace;
+
   for (const auto& entry : items)
     {
       const auto available = from.GetFungibleCount (entry.first);
@@ -1439,20 +1441,22 @@ MoveFungibleBetweenInventories (const Context& ctx,
 
           if (itemSpace > 0)
             {
-              const auto maxForSpace = maxSpace / itemSpace;
+              const auto available = maxSpace - usedSpace.Extract ();
+              CHECK_GE (available, 0);
+              const auto maxForSpace = available / itemSpace;
               if (cnt > maxForSpace)
                 {
                   LOG (WARNING)
                       << "Only moving " << maxForSpace << " of " << entry.first
                       << " instead of " << cnt
-                      << " for lack of space (only " << maxSpace << " free)";
+                      << " for lack of space (only " << available << " free)";
                   cnt = maxForSpace;
                 }
 
-              maxSpace -= Inventory::Product (cnt, itemSpace);
+              usedSpace.AddProduct (cnt, itemSpace);
             }
 
-          CHECK_GE (maxSpace, 0);
+          CHECK (usedSpace <= maxSpace);
         }
 
       /* Avoid making the inventories dirty if we do not move anything.  */
@@ -1467,6 +1471,8 @@ MoveFungibleBetweenInventories (const Context& ctx,
           << " from " << fromName << " to " << toName;
       to.AddFungibleCount (entry.first, cnt);
     }
+
+  CHECK (maxSpace == -1 || usedSpace <= maxSpace);
 }
 
 } // anonymous namespace
