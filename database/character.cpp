@@ -229,14 +229,14 @@ Character::IsBusy () const
 uint64_t
 Character::UsedCargoSpace (const RoConfig& cfg) const
 {
-  uint64_t res = 0;
+  QuantityProduct res;
   for (const auto& entry : inv.GetFungible ())
     {
       const auto& ro = cfg.Item (entry.first);
-      res += Inventory::Product (entry.second, ro.space ());
+      res.AddProduct (entry.second, ro.space ());
     }
 
-  return res;
+  return res.Extract ();
 }
 
 proto::TargetId

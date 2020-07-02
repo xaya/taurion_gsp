@@ -2061,7 +2061,7 @@ TEST_F (DropPickupMoveTests, InvalidDrop)
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"drop": {"f": {"foo": 1000000001}}}}}
+      "move": {"c": {"1": {"drop": {"f": {"foo": 10000000000000000}}}}}
     }
   ])");
 
@@ -2092,7 +2092,7 @@ TEST_F (DropPickupMoveTests, InvalidPickUp)
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"pu": {"f": {"foo": 1000000001}}}}}
+      "move": {"c": {"1": {"pu": {"f": {"foo": 10000000000000000}}}}}
     }
   ])");
 
@@ -3289,7 +3289,7 @@ TEST_F (GodModeTests, InvalidDropLoot)
             },
             {
               "pos": {"x": 1, "y": 2},
-              "fungible": {"foo": 1000000001}
+              "fungible": {"foo": 10000000000000000}
             },
             {
               "fungible": {"foo": 10}
@@ -3332,7 +3332,7 @@ TEST_F (GodModeTests, ValidDropLoot)
             },
             {
               "pos": {"x": 1, "y": 2},
-              "fungible": {"foo": 10, "bar": 1000000000}
+              "fungible": {"foo": 10, "bar": 1000000}
             },
             {
               "building": {"id": 100, "a": "domob"},
@@ -3344,7 +3344,7 @@ TEST_F (GodModeTests, ValidDropLoot)
 
   auto h = loot.GetByCoord (pos);
   EXPECT_EQ (h->GetInventory ().GetFungibleCount ("foo"), 20);
-  EXPECT_EQ (h->GetInventory ().GetFungibleCount ("bar"), MAX_ITEM_QUANTITY);
+  EXPECT_EQ (h->GetInventory ().GetFungibleCount ("bar"), 1'000'000);
   auto i = buildingInv.Get (100, "domob");
   EXPECT_EQ (i->GetInventory ().GetFungibleCount ("foo"), 42);
 }

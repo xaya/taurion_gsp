@@ -27,6 +27,8 @@
 
 #include <google/protobuf/map.h>
 
+#include <gmp.h>
+
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -34,31 +36,84 @@
 namespace pxd
 {
 
+/* ************************************************************************** */
+
 /**
- * The maximum valid value for an item quantity.  If a move contains a number
+ * The maximum valid value for an item quantity or dual value (such as e.g. the
+ * per-unit price in a market order).  If a move contains a number
  * larger than this, it is considered invalid.  This is consensus relevant.
- * Through this limit, we ensure that values are "sane" and avoid potential
- * overflows when working with them.
  *
  * But this is not only applied to moves, but checked in general for any
  * item quantity.  So it should really be the total supply limit of anything
  * in the game.
  *
- * A value of one billion allows multiplication with another value in that
- * range (e.g. cargo per item or price per unit) without overflowing 64 bits.
+ * The value chosen here should be large enough for any practical need.  It is
+ * still significantly below full 64 bits, though, to give us some extra
+ * headway against overflows just in case.
  */
-static constexpr int64_t MAX_ITEM_QUANTITY = 1'000'000'000;
-
-/**
- * The maximum value any "dual variables" for item quantities can have.
- * These are things that are multiplied with them, for instance per-unit
- * value/weight or cost.  By limiting this value, we ensure that the product
- * can always be safely computed in 64 bits.
- */
-static constexpr int64_t MAX_ITEM_DUAL = 1'000'000'000;
+static constexpr int64_t MAX_QUANTITY = (1ll << 50);
 
 /** Type for the quantity of an item.  */
 using Quantity = int64_t;
+
+/**
+ * Helper class to compute the inner product of vectors of quantities
+ * (e.g. total weight of an inventory, or price of some order).  It uses
+ * GMP bignum's internally, so that we do not run into any overflows while
+ * multiplying two Quantity values.  (In the end all such products should
+ * fit into 64 bits anyway, but this way we can enforce it.)
+ *
+ * All products of Quantity values should be computed with this class
+ * rather than direct integer math.
+ */
+class QuantityProduct
+{
+
+private:
+
+  /** Underlying GMP value for the running sum.  */
+  mpz_t total;
+
+public:
+
+  /**
+   * Starts with a zero value.
+   */
+  QuantityProduct ();
+
+  /**
+   * Initialises the value to the product of both numbers.
+   */
+  explicit QuantityProduct (Quantity a, Quantity b);
+
+  ~QuantityProduct ();
+
+  /**
+   * Adds a product of two values to the running total.
+   */
+  void AddProduct (Quantity a, Quantity b);
+
+  /**
+   * Checks that the value is less-or-equal a given int value, e.g. to
+   * compare to the total cargo space or available funds.
+   */
+  bool operator<= (uint64_t limit) const;
+
+  inline bool
+  operator> (uint64_t limit) const
+  {
+    return !(*this <= limit);
+  }
+
+  /**
+   * Extracts the value as 64-bit integer.  CHECK-fails if it does not
+   * fit (so only use this when it is guaranteed to fit, e.g. because
+   * the inputs are known to fit always or because <= has been used already
+   * to check the size).
+   */
+  int64_t Extract () const;
+
+};
 
 /* ************************************************************************** */
 
@@ -177,13 +232,6 @@ public:
    * Gives access to the underlying lazy proto for binding purposes.
    */
   const LazyProto<proto::Inventory>& GetProtoForBinding () const;
-
-  /**
-   * Computes the product of a quantity value with a dual value.  Both
-   * must be within the limits, or else the function CHECK-fails.  They may
-   * be signed, though.
-   */
-  static int64_t Product (Quantity amount, int64_t dual);
 
 };
 

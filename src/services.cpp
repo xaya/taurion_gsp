@@ -449,7 +449,7 @@ protected:
   Amount
   GetBaseCost () const override
   {
-    return Inventory::Product (num, revEngData->cost ());
+    return QuantityProduct (num, revEngData->cost ()).Extract ();
   }
 
   bool IsValid () const override;
@@ -603,7 +603,7 @@ protected:
   GetBaseCost () const override
   {
     const Amount one = ctx.RoConfig ()->params ().bp_copy_cost () * complexity;
-    return Inventory::Product (num, one);
+    return QuantityProduct (num, one).Extract ();
   }
 
   bool IsValid () const override;
@@ -751,7 +751,7 @@ protected:
   {
     const Amount baseCost = ctx.RoConfig ()->params ().construction_cost ();
     const Amount one = baseCost * outputData->complexity ();
-    return Inventory::Product (num, one);
+    return QuantityProduct (num, one).Extract ();
   }
 
   bool IsValid () const override;
@@ -816,15 +816,15 @@ ConstructionOperation::IsValid () const
   const auto inv = invTable.Get (buildingId, name);
   for (const auto& entry : outputData->construction_resources ())
     {
+      const QuantityProduct required(num, entry.second);
       const auto balance = inv->GetInventory ().GetFungibleCount (entry.first);
-      const auto required = Inventory::Product (num, entry.second);
       if (required > balance)
         {
           LOG (WARNING)
               << "Can't construct " << num << " " << output
               << " as " << name << " in building " << buildingId
               << " has only " << balance << " " << entry.first
-              << " while the construction needs " << required;
+              << " while the construction needs " << required.Extract ();
           return false;
         }
     }
@@ -875,8 +875,8 @@ ConstructionOperation::ExecuteSpecific (xaya::Random& rnd)
   auto& inv = invHandle->GetInventory ();
   for (const auto& entry : outputData->construction_resources ())
     {
-      const auto required = Inventory::Product (num, entry.second);
-      inv.AddFungibleCount (entry.first, -required);
+      const QuantityProduct required(num, entry.second);
+      inv.AddFungibleCount (entry.first, -required.Extract ());
     }
 
   if (fromOriginal)

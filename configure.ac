@@ -54,6 +54,13 @@ PKG_CONFIG="${PKG_CONFIG} --static"
 PKG_CHECK_MODULES([BENCHMARK], [benchmark])
 PKG_CHECK_MODULES([GFLAGS], [gflags])
 
+# It seems that GMP does not support pkg-config, so we have to check for it
+# and set up the variables manually.
+AC_CHECK_LIB(gmp, __gmpz_init, ,
+  [AC_MSG_ERROR([GNU MP not found, see https://gmplib.org/])])
+AC_SUBST(GMP_CFLAGS, )
+AC_SUBST(GMP_LIBS, -lgmp)
+
 AC_CONFIG_FILES([
   Makefile \
   database/Makefile \
