@@ -133,13 +133,13 @@ TEST_F (RoItemsTests, Blueprints)
 
   const auto& orig = cfg.Item ("bow bpo");
   ASSERT_TRUE (orig.has_is_blueprint ());
-  EXPECT_EQ (orig.space (), 0);
+  EXPECT_EQ (orig.space (), 1);
   EXPECT_EQ (orig.is_blueprint ().for_item (), "bow");
   EXPECT_TRUE (orig.is_blueprint ().original ());
 
   const auto& copy = cfg.Item ("bow bpc");
   ASSERT_TRUE (copy.has_is_blueprint ());
-  EXPECT_EQ (copy.space (), 0);
+  EXPECT_EQ (copy.space (), 1);
   EXPECT_EQ (copy.is_blueprint ().for_item (), "bow");
   EXPECT_FALSE (copy.is_blueprint ().original ());
 }
@@ -157,6 +157,7 @@ TEST_F (RoItemsTests, PrizeItems)
           const auto* itm = cfg.ItemOrNull (p.name () + " prize");
           ASSERT_NE (itm, nullptr) << "Prize item not defined: " << p.name ();
           EXPECT_TRUE (itm->has_prize ()) << "Not a prize: " << p.name ();
+          EXPECT_EQ (itm->space (), 0);
         }
     }
 }

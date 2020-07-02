@@ -1,0 +1,66 @@
+fungible_items:
+  {
+    key: "art c"
+    value:
+      {
+        space: 1
+        reveng:
+          {
+            cost: 1
+            possible_outputs: "rv s bpo"
+            possible_outputs: "gv s bpo"
+            possible_outputs: "bv s bpo"
+            possible_outputs: "lf retarder bpo"
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "art uc"
+    value:
+      {
+        space: 1
+        reveng:
+          {
+            cost: 1
+            possible_outputs: "rv lt bpo"
+            possible_outputs: "gv lt bpo"
+            possible_outputs: "bv lt bpo"
+            possible_outputs: "hf longretard bpo"
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "art r"
+    value:
+      {
+        space: 1
+        reveng:
+          {
+            cost: 1
+            possible_outputs: "rv ma bpo"
+            possible_outputs: "gv ma bpo"
+            possible_outputs: "bv ma bpo"
+            possible_outputs: "vhf missile bpo"
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "art ur"
+    value:
+      {
+        space: 1
+        reveng:
+          {
+            cost: 1
+            possible_outputs: "rv vla bpo"
+            possible_outputs: "gv vla bpo"
+            possible_outputs: "bv vla bpo"
+          }
+      }
+  }

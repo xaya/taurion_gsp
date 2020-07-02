@@ -180,6 +180,9 @@ constexpr const char* SUFFIX_BP_COPY = " bpc";
 /** Suffix for prize items.  */
 constexpr const char* SUFFIX_PRIZE = " prize";
 
+/** Space usage of a blueprint.  */
+constexpr const unsigned BLUEPRINT_SPACE = 1;
+
 /**
  * Tries to strip the given suffix of an item name.  Returns true and the
  * base name (without suffix) if successful, and false otherwise (i.e. if
@@ -237,7 +240,7 @@ ConstructItemData (const RoConfig& cfg, const std::string& item)
   if (base != nullptr && base->with_blueprint ())
     {
       auto res = std::make_unique<proto::ItemData> ();
-      res->set_space (0);
+      res->set_space (BLUEPRINT_SPACE);
       auto* bp = res->mutable_is_blueprint ();
       bp->set_for_item (baseName);
       bp->set_original (true);
@@ -248,7 +251,7 @@ ConstructItemData (const RoConfig& cfg, const std::string& item)
   if (base != nullptr && base->with_blueprint ())
     {
       auto res = std::make_unique<proto::ItemData> ();
-      res->set_space (0);
+      res->set_space (BLUEPRINT_SPACE);
       auto* bp = res->mutable_is_blueprint ();
       bp->set_for_item (baseName);
       bp->set_original (false);
