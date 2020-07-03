@@ -21,7 +21,7 @@ resource_dist:
 
     possible_artefacts:
       {
-        key: "raw b"
+        key: "raw f"
         value:
           {
             # This allows us to test randomisation (as well as checking

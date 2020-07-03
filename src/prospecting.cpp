@@ -70,6 +70,59 @@ CanProspectRegion (const Character& c, const Region& r, const Context& ctx)
   return true;
 }
 
+namespace
+{
+
+/**
+ * Checks to see if an artefact is found by the given character.  If it is,
+ * it is given to it or dropped on the ground (if cargo is full).
+ */
+void
+MaybeFindArtefact (Character& c, const std::string& ore,
+                   Database& db, xaya::Random& rnd, const Context& ctx)
+{
+  const auto& arts = ctx.RoConfig ()->resource_dist ().possible_artefacts ();
+  const auto mit = arts.find (ore);
+  if (mit == arts.end ())
+    {
+      LOG (WARNING) << "No artefacts can be found with resource " << ore;
+      return;
+    }
+
+  const auto& pos = c.GetPosition ();
+  for (const auto& entry : mit->second.entries ())
+    {
+      if (!rnd.ProbabilityRoll (1, entry.probability ()))
+        continue;
+
+      LOG (INFO)
+          << "Character " << c.GetId ()
+          << " found an artefact prospecting in " << pos
+          << ": " << entry.artefact ();
+      const auto& itm = ctx.RoConfig ().Item (entry.artefact ());
+
+      /* If the item still fits into cargo, the character gets it.
+         Otherwise it is placed on the ground at its position instead.  */
+      const auto freeCargo = c.FreeCargoSpace (ctx.RoConfig ());
+      if (itm.space () <= freeCargo)
+        c.GetInventory ().AddFungibleCount (entry.artefact (), 1);
+      else
+        {
+          LOG (INFO)
+              << "Inventory of " << c.GetId ()
+              << " is full, dropping " << entry.artefact ()
+              << " on the ground at " << pos;
+
+          GroundLootTable lootTable(db);
+          auto loot = lootTable.GetByCoord (pos);
+          loot->GetInventory ().AddFungibleCount (entry.artefact (), 1);
+        }
+      break;
+    }
+}
+
+} // anonymous namespace
+
 void
 FinishProspecting (Character& c, Database& db, RegionsTable& regions,
                    xaya::Random& rnd, const Context& ctx)
@@ -95,6 +148,9 @@ FinishProspecting (Character& c, Database& db, RegionsTable& regions,
   DetectResource (pos, ctx.RoConfig ()->resource_dist (), rnd, type, amount);
   prosp->set_resource (type);
   r->SetResourceLeft (amount);
+
+  /* See if we found an ancient artefact.  */
+  MaybeFindArtefact (c, type, db, rnd, ctx);
 
   /* Check the prizes in order to see if we won any.  */
   const bool lowChance = ctx.Params ().IsLowPrizeZone (pos);
