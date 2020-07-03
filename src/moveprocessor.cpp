@@ -1534,9 +1534,7 @@ MoveProcessor::MaybePickupLoot (Character& c, const Json::Value& cmd)
   std::ostringstream toName;
   toName << "character " << c.GetId ();
 
-  const int64_t freeCargo
-      = c.GetProto ().cargo_space () - c.UsedCargoSpace (ctx.RoConfig ());
-  CHECK_GE (freeCargo, 0);
+  const auto freeCargo = c.FreeCargoSpace (ctx.RoConfig ());
   VLOG (1)
       << "Character " << c.GetId () << " has " << freeCargo
       << " free cargo space before picking loot up with " << cmd;

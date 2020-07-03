@@ -95,15 +95,12 @@ ProcessAllMining (Database& db, xaya::Random& rnd, const Context& ctx)
         }
 
       /* Restrict the quantity by cargo space.  */
-      const int64_t freeCargo
-          = pb.cargo_space () - c->UsedCargoSpace (ctx.RoConfig ());
-      CHECK_GE (freeCargo, 0);
-
+      const auto freeCargo = c->FreeCargoSpace (ctx.RoConfig ());
       const auto itemSpace = ctx.RoConfig ().Item (type).space ();
       CHECK_GT (itemSpace, 0)
           << "Minable resource " << type << " has zero space";
 
-      const auto maxForSpace = freeCargo / itemSpace;
+      const int64_t maxForSpace = freeCargo / itemSpace;
       if (mined > maxForSpace)
         {
           VLOG (1)

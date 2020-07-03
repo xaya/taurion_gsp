@@ -293,6 +293,11 @@ public:
    */
   uint64_t UsedCargoSpace (const RoConfig& cfg) const;
 
+  /**
+   * Returns the free (available) cargo space.
+   */
+  uint64_t FreeCargoSpace (const RoConfig& cfg) const;
+
   proto::TargetId GetIdAsTarget () const override;
 
   const HexCoord&

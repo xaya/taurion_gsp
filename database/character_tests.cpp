@@ -259,11 +259,12 @@ TEST_F (CharacterTests, UsedCargoSpace)
   const RoConfig cfg(xaya::Chain::REGTEST);
 
   auto c = tbl.CreateNew ("domob", Faction::RED);
-  c->MutableProto ().set_cargo_space (1000);
+  c->MutableProto ().set_cargo_space (1'000);
   c->GetInventory ().SetFungibleCount ("foo", 10);
   c->GetInventory ().SetFungibleCount ("bar", 3);
 
   EXPECT_EQ (c->UsedCargoSpace (cfg), 100 + 60);
+  EXPECT_EQ (c->FreeCargoSpace (cfg), 1'000 - 160);
 }
 
 /* ************************************************************************** */

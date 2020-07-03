@@ -239,6 +239,15 @@ Character::UsedCargoSpace (const RoConfig& cfg) const
   return res.Extract ();
 }
 
+uint64_t
+Character::FreeCargoSpace (const RoConfig& cfg) const
+{
+  const auto available = GetProto ().cargo_space ();
+  const auto used = UsedCargoSpace (cfg);
+  CHECK_LE (used, available);
+  return available - used;
+}
+
 proto::TargetId
 Character::GetIdAsTarget () const
 {
