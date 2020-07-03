@@ -8,9 +8,31 @@ fungible_items:
           {
             cost: 1
             possible_outputs: "rv s bpo"
-            possible_outputs: "gv s bpo"
+            possible_outputs: "rv sc bpo"
+            possible_outputs: "rv sa bpo"
             possible_outputs: "bv s bpo"
+            possible_outputs: "bv sc bpo"
+            possible_outputs: "bv sa bpo"
+            possible_outputs: "gv s bpo"
+            possible_outputs: "gv sc bpo"
+            possible_outputs: "gv sa bpo"
             possible_outputs: "lf retarder bpo"
+            possible_outputs: "lf longretard bpo"
+            possible_outputs: "lf bomb bpo"
+            possible_outputs: "lf missile bpo"
+            possible_outputs: "lf pick bpo"
+            possible_outputs: "lf scanner bpo"
+            possible_outputs: "lf laser bpo"
+            possible_outputs: "lf selfdestruct bpo"
+            possible_outputs: "lf shield bpo"
+            possible_outputs: "lf replenisher bpo"
+            possible_outputs: "lf rangeext bpo"
+            possible_outputs: "lf turbo bpo"
+            possible_outputs: "lf expander bpo"
+            possible_outputs: "lf dmgext bpo"
+            possible_outputs: "lf multiplier bpo"
+            possible_outputs: "lf lowhpboost bpo"
+            possible_outputs: "lf plating bpo"
           }
       }
   }
@@ -24,10 +46,30 @@ fungible_items:
         reveng:
           {
             cost: 1
-            possible_outputs: "rv lt bpo"
-            possible_outputs: "gv lt bpo"
-            possible_outputs: "bv lt bpo"
-            possible_outputs: "hf longretard bpo"
+            possible_outputs: "rv m bpo"
+            possible_outputs: "rv mt bpo"
+            possible_outputs: "rv ma bpo"
+            possible_outputs: "bv m bpo"
+            possible_outputs: "bv mt bpo"
+            possible_outputs: "bv ma bpo"
+            possible_outputs: "gv m bpo"
+            possible_outputs: "gv mt bpo"
+            possible_outputs: "gv ma bpo"
+            possible_outputs: "mf retarder bpo"
+            possible_outputs: "mf longretard bpo"
+            possible_outputs: "mf bomb bpo"
+            possible_outputs: "mf missile bpo"
+            possible_outputs: "mf laser bpo"
+            possible_outputs: "mf selfdestruct bpo"
+            possible_outputs: "mf shield bpo"
+            possible_outputs: "mf replenisher bpo"
+            possible_outputs: "mf rangeext bpo"
+            possible_outputs: "mf turbo bpo"
+            possible_outputs: "mf expander bpo"
+            possible_outputs: "mf dmgext bpo"
+            possible_outputs: "mf multiplier bpo"
+            possible_outputs: "mf lowhpboost bpo"
+            possible_outputs: "mf plating bpo"
           }
       }
   }
@@ -41,10 +83,30 @@ fungible_items:
         reveng:
           {
             cost: 1
-            possible_outputs: "rv ma bpo"
-            possible_outputs: "gv ma bpo"
-            possible_outputs: "bv ma bpo"
-            possible_outputs: "vhf missile bpo"
+            possible_outputs: "rv l bpo"
+            possible_outputs: "rv lt bpo"
+            possible_outputs: "rv la bpo"
+            possible_outputs: "bv l bpo"
+            possible_outputs: "bv lt bpo"
+            possible_outputs: "bv la bpo"
+            possible_outputs: "gv l bpo"
+            possible_outputs: "gv lt bpo"
+            possible_outputs: "gv la bpo"
+            possible_outputs: "hf retarder bpo"
+            possible_outputs: "hf longretard bpo"
+            possible_outputs: "hf bomb bpo"
+            possible_outputs: "hf missile bpo"
+            possible_outputs: "hf laser bpo"
+            possible_outputs: "hf selfdestruct bpo"
+            possible_outputs: "hf shield bpo"
+            possible_outputs: "hf replenisher bpo"
+            possible_outputs: "hf rangeext bpo"
+            possible_outputs: "hf turbo bpo"
+            possible_outputs: "hf expander bpo"
+            possible_outputs: "hf dmgext bpo"
+            possible_outputs: "hf multiplier bpo"
+            possible_outputs: "hf lowhpboost bpo"
+            possible_outputs: "hf plating bpo"
           }
       }
   }
@@ -58,9 +120,27 @@ fungible_items:
         reveng:
           {
             cost: 1
+            possible_outputs: "rv vlt bpo"
             possible_outputs: "rv vla bpo"
-            possible_outputs: "gv vla bpo"
+            possible_outputs: "bv vlt bpo"
             possible_outputs: "bv vla bpo"
+            possible_outputs: "gv vlt bpo"
+            possible_outputs: "gv vla bpo"
+            possible_outputs: "vhf retarder bpo"
+            possible_outputs: "vhf longretard bpo"
+            possible_outputs: "vhf bomb bpo"
+            possible_outputs: "vhf missile bpo"
+            possible_outputs: "vhf laser bpo"
+            possible_outputs: "vhf selfdestruct bpo"
+            possible_outputs: "vhf shield bpo"
+            possible_outputs: "vhf replenisher bpo"
+            possible_outputs: "vhf rangeext bpo"
+            possible_outputs: "vhf turbo bpo"
+            possible_outputs: "vhf expander bpo"
+            possible_outputs: "vhf dmgext bpo"
+            possible_outputs: "vhf multiplier bpo"
+            possible_outputs: "vhf lowhpboost bpo"
+            possible_outputs: "vhf plating bpo"
           }
       }
   }
