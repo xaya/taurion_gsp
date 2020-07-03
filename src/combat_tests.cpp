@@ -772,22 +772,47 @@ TEST_F (DealDamageTests, HpReduction)
     unsigned hpBeforeArmour;
     unsigned hpAfterShield;
     unsigned hpAfterArmour;
+    unsigned shieldPercent;
+    unsigned armourPercent;
   };
   const TestCase tests[] = {
-    {0, 5, 5, 5, 5},
-    {1, 1, 10, 0, 10},
-    {1, 0, 10, 0, 9},
-    {2, 1, 10, 0, 9},
-    {2, 0, 1, 0, 0},
-    {3, 1, 1, 0, 0},
-    {1, 0, 0, 0, 0},
+    {0, 5, 5, 5, 5, 100, 100},
+    {1, 1, 10, 0, 10, 100, 100},
+    {1, 0, 10, 0, 9, 100, 100},
+    {2, 1, 10, 0, 9, 100, 100},
+    {2, 0, 1, 0, 0, 100, 100},
+    {3, 1, 1, 0, 0, 100, 100},
+    {1, 0, 0, 0, 0, 100, 100},
+
+    /* Damage-type percentages */
+    {24, 12, 100, 0, 91, 200, 50},
+    {24, 6, 100, 0, 100 - 24, 50, 200},
+    {10, 100, 100, 80, 100, 200, 50},
+    {10, 100, 100, 95, 100, 50, 200},
+    {10, 0, 100, 0, 95, 200, 50},
+    {10, 0, 100, 0, 80, 50, 200},
+    {1, 1, 1, 1, 1, 50, 200},
+    {1, 0, 1, 0, 0, 50, 200},
+    {10, 100, 100, 100, 100, 0, 100},
+    {10, 0, 100, 0, 90, 0, 100},
+    {10, 100, 100, 90, 100, 100, 0},
+    {10, 5, 100, 0, 100, 100, 0},
+
+    /* Rounding with damage-type percentages */
+    {10, 100, 100, 97, 100, 30, 100},
+    {10, 0, 100, 0, 97, 100, 30},
+    {10, 1, 100, 0, 93, 30, 100},
   };
 
   for (const auto t : tests)
     {
       c = characters.GetById (idAttacker);
       c->MutableProto ().clear_combat_data ();
-      AddAttack (*c, 1, t.dmg, t.dmg);
+      auto& a = AddAttack (*c, 1, t.dmg, t.dmg);
+      if (t.shieldPercent != 100)
+        a.mutable_damage ()->set_shield_percent (t.shieldPercent);
+      if (t.armourPercent != 100)
+        a.mutable_damage ()->set_armour_percent (t.armourPercent);
       c.reset ();
 
       c = characters.GetById (idTarget);
@@ -799,10 +824,7 @@ TEST_F (DealDamageTests, HpReduction)
       FindTargetsAndDamage ();
 
       c = characters.GetById (idTarget);
-      EXPECT_GE (c->GetHP ().shield_mhp (), 999);
-      EXPECT_GE (c->GetHP ().shield (), t.hpAfterShield);
-      EXPECT_GE (c->GetHP ().armour (), t.hpAfterArmour);
-
+      EXPECT_EQ (c->GetHP ().shield_mhp (), 999);
       EXPECT_EQ (c->GetHP ().shield (), t.hpAfterShield);
       EXPECT_EQ (c->GetHP ().armour (), t.hpAfterArmour);
     }

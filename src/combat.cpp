@@ -251,6 +251,7 @@ private:
    * the target into newDead if it is now dead.
    */
   void ApplyDamage (unsigned dmg, const CombatEntity& attacker,
+                    const proto::Attack::Damage& pb,
                     CombatEntity& target, std::set<TargetKey>& newDead);
 
   /**
@@ -309,8 +310,69 @@ DamageProcessor::RollAttackDamage (const proto::Attack::Damage& dmg,
   return minDmg + rnd.NextInt (n);
 }
 
+namespace
+{
+
+/**
+ * Computes the damage done vs shield and armour, given the total
+ * damage roll and the remaining shield and armour of the target.
+ * The Damage proto is used for the shield/armour damage percentages
+ * (if there are any).
+ */
+proto::HP
+ComputeDamage (unsigned dmg, const proto::Attack::Damage& pb,
+               const proto::HP& hp)
+{
+  proto::HP done;
+
+  const unsigned shieldPercent
+      = (pb.has_shield_percent () ? pb.shield_percent () : 100);
+  const unsigned armourPercent
+      = (pb.has_armour_percent () ? pb.armour_percent () : 100);
+
+  /* To take the shield vs armour percentages into account, we first
+     multiply the base damage with the corresponding fraction, then deduct
+     it from the shield, and then divide the damage done by the fraction again
+     to determine how much base damage (if any) is left to apply to the armour.
+     There we do the same.
+
+     In the integer math, we always round down; this ensures that we will
+     never get more than the original base damage as "damage done".  */
+
+  const unsigned availableForShield = (dmg * shieldPercent) / 100;
+  done.set_shield (std::min (availableForShield, hp.shield ()));
+
+  /* If we did not yet exhaust the shield, do not try to damage the armour
+     even if some "base damage" is left.  This can happen for instance if
+     the shield damage was discounted heavily by the shield percent.  */
+  CHECK_LE (done.shield (), hp.shield ());
+  if (done.shield () < hp.shield ())
+    return done;
+
+  if (done.shield () > 0)
+    {
+      const unsigned baseDoneShield = (done.shield () * 100) / shieldPercent;
+      CHECK_LE (baseDoneShield, dmg);
+      dmg -= baseDoneShield;
+    }
+
+  const unsigned availableForArmour = (dmg * armourPercent) / 100;
+  done.set_armour (std::min (availableForArmour, hp.armour ()));
+
+  if (done.armour () > 0)
+    {
+      const unsigned baseDoneArmour = (done.armour () * 100) / armourPercent;
+      CHECK_LE (baseDoneArmour, dmg);
+    }
+
+  return done;
+}
+
+} // anonymous namespace
+
 void
-DamageProcessor::ApplyDamage (unsigned dmg, const CombatEntity& attacker,
+DamageProcessor::ApplyDamage (const unsigned dmg, const CombatEntity& attacker,
+                              const proto::Attack::Damage& pb,
                               CombatEntity& target,
                               std::set<TargetKey>& newDead)
 {
@@ -338,18 +400,14 @@ DamageProcessor::ApplyDamage (unsigned dmg, const CombatEntity& attacker,
     dl.AddEntry (targetId.id (), attackerId.id ());
 
   auto& hp = target.MutableHP ();
+  const auto done = ComputeDamage (dmg, pb, hp);
 
-  const unsigned shieldDmg = std::min (dmg, hp.shield ());
-  hp.set_shield (hp.shield () - shieldDmg);
-  dmg -= shieldDmg;
+  hp.set_shield (hp.shield () - done.shield ());
+  hp.set_armour (hp.armour () - done.armour ());
 
-  const unsigned armourDmg = std::min (dmg, hp.armour ());
-  hp.set_armour (hp.armour () - armourDmg);
-  dmg -= armourDmg;
-
-  VLOG (1) << "Total damage done: " << (shieldDmg + armourDmg);
+  VLOG (1) << "Total damage done: " << (done.shield () + done.armour ());
   VLOG (1) << "Remaining total HP: " << (hp.armour () + hp.shield ());
-  if (shieldDmg + armourDmg > 0 && hp.armour () + hp.shield () == 0)
+  if (done.shield () + done.armour () > 0 && hp.armour () + hp.shield () == 0)
     {
       /* Regenerated partial HP are ignored (i.e. you die even with 999/1000
          partial HP).  Just make sure that the partial HP are not full yet
@@ -427,14 +485,14 @@ DamageProcessor::DealDamage (FighterTable::Handle f,
                       << t->GetIdAsTarget ().DebugString ();
                   return;
                 }
-              ApplyDamage (dmg, *f, *t, newDead);
+              ApplyDamage (dmg, *f, attack.damage (), *t, newDead);
               ApplyEffects (attack, *t);
             });
         }
       else
         {
           auto t = fighters.GetForTarget (f->GetTarget ());
-          ApplyDamage (dmg, *f, *t, newDead);
+          ApplyDamage (dmg, *f, attack.damage (), *t, newDead);
           ApplyEffects (attack, *t);
         }
     }
@@ -473,7 +531,7 @@ DamageProcessor::ProcessSelfDestructs (FighterTable::Handle f,
                   << t->GetIdAsTarget ().DebugString ();
               return;
             }
-          ApplyDamage (dmg, *f, *t, newDead);
+          ApplyDamage (dmg, *f, sd.damage (), *t, newDead);
         });
     }
 }
