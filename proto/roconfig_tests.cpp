@@ -90,6 +90,14 @@ TEST (RoConfigTests, ChainDependence)
   EXPECT_EQ (regtest.ItemOrNull ("fake prize"), nullptr);
   EXPECT_NE (main.ItemOrNull ("bronze prize"), nullptr);
   EXPECT_NE (regtest.ItemOrNull ("bronze prize"), nullptr);
+
+  /* possible_artefacts is overridden as proto map in the regtest config.  */
+  EXPECT_NE (main->resource_dist ().possible_artefacts ()
+                .at ("raw a").entries (0).artefact (),
+             "art r");
+  EXPECT_EQ (regtest->resource_dist ().possible_artefacts ()
+                .at ("raw a").entries (0).artefact (),
+             "art r");
 }
 
 TEST (RoConfigTests, Building)
@@ -347,6 +355,31 @@ RoConfigSanityTests::IsConfigValid (const RoConfig& cfg)
           LOG (WARNING) << "Invalid resource areas for distribution";
           return false;
         }
+
+  for (const auto& pArt : cfg->resource_dist ().possible_artefacts ())
+    {
+      if (!IsRawMaterial (cfg, pArt.first))
+        {
+          LOG (WARNING) << "Invalid key in possible artefacts";
+          return false;
+        }
+
+      for (const auto& entry : pArt.second.entries ())
+        {
+          const auto* itm = cfg.ItemOrNull (entry.artefact ());
+          if (itm == nullptr)
+            {
+              LOG (WARNING)
+                  << "Invalid item as possible artefact: " << entry.artefact ();
+              return false;
+            }
+          if (!itm->has_reveng ())
+            {
+              LOG (WARNING) << "Item is not an artefact: " << entry.artefact ();
+              return false;
+            }
+        }
+    }
 
   for (const auto& ib : cfg->initial_buildings ())
     if (cfg.BuildingOrNull (ib.type ()) == nullptr)

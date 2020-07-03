@@ -382,6 +382,36 @@ message ResourceDistribution
   /** Resource areas.  */
   repeated Area areas = 2;
 
+  /**
+   * Data specifying the artefacts found together with a particular
+   * ore in a region.
+   */
+  message PossibleArtefacts
+  {
+
+    /**
+     * Entry for one artefact with its chance of finding it.
+     */
+    message Entry
+    {
+      /** The artefact's item name.  */
+      optional string artefact = 1;
+      /** The chance as 1 / N.  */
+      optional uint32 probability = 2;
+    }
+
+    /**
+     * Entries for all the artefacts that can be found with a given ore
+     * in a region.  They are checked in order until the end or the first
+     * artefact is discovered.
+     */
+    repeated Entry entries = 1;
+
+  }
+
+  /** The artefacts that can be found with each ore type.  */
+  map<string, PossibleArtefacts> possible_artefacts = 3;
+
 }
 
 /* ************************************************************************** */

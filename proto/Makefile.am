@@ -83,6 +83,7 @@ ROCONFIG_TEXT_PROTOS = \
 
 ROCONFIG_TEXT_PROTOS_REGTEST = \
   roconfig/test_params.pb.text \
+  roconfig/test_resourcedist.pb.text \
   roconfig/test_safezones.pb.text \
   roconfig/buildings/test.pb.text \
   roconfig/items/test.pb.text

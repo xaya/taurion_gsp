@@ -1,66 +1,100 @@
-#   GSP for the Taurion blockchain game
-#   Copyright (C) 2019  Autonomous Worlds Ltd
-#
-#   This program is free software: you can redistribute it and/or modify
-#   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation, either version 3 of the License, or
-#   (at your option) any later version.
-#
-#   This program is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU General Public License for more details.
-#
-#   You should have received a copy of the GNU General Public License
-#   along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
 resource_dist:
 {
 
-base_amounts:
+base_amounts: { key: "raw a" value: 7 }
+base_amounts: { key: "raw b" value: 7 }
+base_amounts: { key: "raw c" value: 7 }
+base_amounts: { key: "raw d" value: 7 }
+base_amounts: { key: "raw e" value: 7 }
+base_amounts: { key: "raw f" value: 7 }
+base_amounts: { key: "raw g" value: 7 }
+base_amounts: { key: "raw h" value: 7 }
+base_amounts: { key: "raw i" value: 7 }
+
+possible_artefacts:
   {
     key: "raw a"
-    value: 7
+    value:
+      {
+        entries: { artefact: "art c" probability: 20 }
+      }
   }
-base_amounts:
+possible_artefacts:
   {
     key: "raw b"
-    value: 7
+    value:
+      {
+        entries: { artefact: "art c" probability: 20 }
+      }
   }
-base_amounts:
+possible_artefacts:
   {
     key: "raw c"
-    value: 7
+    value:
+      {
+        entries: { artefact: "art c" probability: 20 }
+        entries: { artefact: "art uc" probability: 50 }
+      }
   }
-base_amounts:
+possible_artefacts:
   {
     key: "raw d"
-    value: 7
+    value:
+      {
+        entries: { artefact: "art c" probability: 20 }
+        entries: { artefact: "art uc" probability: 50 }
+      }
   }
-base_amounts:
+possible_artefacts:
   {
     key: "raw e"
-    value: 7
+    value:
+      {
+        entries: { artefact: "art c" probability: 20 }
+        entries: { artefact: "art uc" probability: 50 }
+      }
   }
-base_amounts:
+possible_artefacts:
   {
     key: "raw f"
-    value: 7
+    value:
+      {
+        entries: { artefact: "art c" probability: 20 }
+        entries: { artefact: "art uc" probability: 50 }
+        entries: { artefact: "art r" probability: 100 }
+      }
   }
-base_amounts:
+possible_artefacts:
   {
     key: "raw g"
-    value: 7
+    value:
+      {
+        entries: { artefact: "art c" probability: 20 }
+        entries: { artefact: "art uc" probability: 50 }
+        entries: { artefact: "art r" probability: 100 }
+      }
   }
-base_amounts:
+possible_artefacts:
   {
     key: "raw h"
-    value: 7
+    value:
+      {
+        entries: { artefact: "art c" probability: 20 }
+        entries: { artefact: "art uc" probability: 50 }
+        entries: { artefact: "art r" probability: 100 }
+        entries: { artefact: "art ur" probability: 200 }
+      }
   }
-base_amounts:
+possible_artefacts:
   {
     key: "raw i"
-    value: 7
+    value:
+      {
+        entries: { artefact: "art c" probability: 20 }
+        entries: { artefact: "art uc" probability: 50 }
+        entries: { artefact: "art r" probability: 100 }
+        entries: { artefact: "art ur" probability: 200 }
+      }
   }
 
 areas:
