@@ -42,7 +42,7 @@ Params::RevEngSuccessChance (const unsigned existingBp) const
     {
     case xaya::Chain::MAIN:
     case xaya::Chain::TEST:
-      base = 2'000;
+      base = 10;
       break;
     case xaya::Chain::REGTEST:
       base = 1;

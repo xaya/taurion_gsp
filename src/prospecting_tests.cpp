@@ -275,6 +275,97 @@ TEST_F (FinishProspectingTests, FewerPrizesInCentre)
   EXPECT_LE (silver, 600);
 }
 
+using ProspectingArtefactsTests = FinishProspectingTests;
+
+TEST_F (ProspectingArtefactsTests, ProcessedInOrder)
+{
+  constexpr unsigned trials = 10;
+
+  /* At this spot, there is only raw a available.  In the regtest
+     config, this means that we will always get art r as artefact
+     (and never the second-listed art c).  */
+  const HexCoord pos(-3'456, -1'215);
+
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  const auto id = c->GetId ();
+  c->MutableProto ().set_cargo_space (1'000'000);
+  c.reset ();
+
+  for (unsigned i = 0; i < trials; ++i)
+    {
+      ProspectAndClear (characters.GetById (id), pos);
+
+      c = characters.GetById (id);
+      EXPECT_EQ (c->GetInventory ().GetFungibleCount ("art r"), 1);
+      EXPECT_EQ (c->GetInventory ().GetFungibleCount ("art c"), 0);
+      c->GetInventory ().Clear ();
+      c.reset ();
+    }
+}
+
+TEST_F (ProspectingArtefactsTests, Randomisation)
+{
+  constexpr unsigned trials = 100;
+  constexpr unsigned eps = (trials * 5) / 100;
+
+  /* At this spot, there is only raw f available.  In the regtest
+     config, this yields art c with 50% chance and then
+     art r with also 50% chance.  */
+  const HexCoord pos(-876, -2'015);
+
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  const auto id = c->GetId ();
+  c->MutableProto ().set_cargo_space (1'000'000);
+  c.reset ();
+
+  Inventory total;
+  bool foundEmpty = false;
+  for (unsigned i = 0; i < trials; ++i)
+    {
+      ProspectAndClear (characters.GetById (id), pos);
+
+      c = characters.GetById (id);
+      if (c->GetInventory ().IsEmpty ())
+        foundEmpty = true;
+      total += c->GetInventory ();
+      c->GetInventory ().Clear ();
+      c.reset ();
+    }
+  ASSERT_TRUE (foundEmpty);
+
+  for (const auto& entry : total.GetFungible ())
+    LOG (INFO) << "Total " << entry.first << ": " << entry.second;
+
+  ASSERT_GE (total.GetFungible ().size (), 2);
+  EXPECT_GE (total.GetFungibleCount ("art c"), (50 * trials) / 100 - eps);
+  EXPECT_LE (total.GetFungibleCount ("art c"), (50 * trials) / 100 + eps);
+  EXPECT_GE (total.GetFungibleCount ("art r"), (25 * trials) / 100 - eps);
+  EXPECT_LE (total.GetFungibleCount ("art r"), (25 * trials) / 100 + eps);
+}
+
+TEST_F (ProspectingArtefactsTests, CargoFull)
+{
+  /* At this spot, there is only raw a available, so art r will be found
+     with 100% certainty.  */
+  const HexCoord pos(-3'456, -1'215);
+
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  const auto id = c->GetId ();
+  const auto itemSpace = ctx.RoConfig ().Item ("art r").space ();
+  c->MutableProto ().set_cargo_space (5 * itemSpace);
+  c.reset ();
+
+  for (unsigned i = 0; i < 8; ++i)
+    ProspectAndClear (characters.GetById (id), pos);
+
+  c = characters.GetById (id);
+  EXPECT_EQ (c->GetInventory ().GetFungibleCount ("art r"), 5);
+
+  GroundLootTable lootTable(db);
+  auto loot = lootTable.GetByCoord (pos);
+  EXPECT_EQ (loot->GetInventory ().GetFungibleCount ("art r"), 3);
+}
+
 /* ************************************************************************** */
 
 } // anonymous namespace

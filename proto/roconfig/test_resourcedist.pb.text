@@ -1,0 +1,34 @@
+resource_dist:
+  {
+
+    # For testing, we overwrite the artefact chances in the base
+    # resource distribution.  This is a proto map, which means that when
+    # merging, later keys (i.e. from here) override previous values (from
+    # the main configuration).
+
+    possible_artefacts:
+      {
+        key: "raw a"
+        value:
+          {
+            # This list allows us to test that we always work through the
+            # checks in order.  We will get art r all the time, and art c
+            # never.
+            entries: { artefact: "art r" probability: 1 }
+            entries: { artefact: "art c" probability: 1 }
+          }
+      }
+
+    possible_artefacts:
+      {
+        key: "raw f"
+        value:
+          {
+            # This allows us to test randomisation (as well as checking
+            # that sometimes nothing is found).
+            entries: { artefact: "art c" probability: 2 }
+            entries: { artefact: "art r" probability: 2 }
+          }
+      }
+
+  }
