@@ -276,10 +276,11 @@ protected:
 
 TEST_F (MovementTests, Basic)
 {
-  SetWaypoints ({HexCoord (10, 2), HexCoord (10, 5)});
+  SetWaypoints ({HexCoord (0, 2), HexCoord (10, 2), HexCoord (10, 5)});
   ExpectSteps (1, EdgeWeights (1),
     {
-      {12, HexCoord (10, 2)},
+      {2, HexCoord (0, 2)},
+      {10, HexCoord (10, 2)},
       {3, HexCoord (10, 5)},
     });
 }
@@ -375,48 +376,29 @@ TEST_F (MovementTests, DuplicateWaypoints)
     });
 }
 
-TEST_F (MovementTests, WaypointsTooFar)
+TEST_F (MovementTests, WaypointsNotInPrincipalDirection)
 {
-  SetWaypoints ({HexCoord (100, 0), HexCoord (201, 0)});
+  SetWaypoints ({HexCoord (10, 0), HexCoord (11, 1)});
   ExpectSteps (1, EdgeWeights (10),
     {
-      {1000, HexCoord (100, 0)},
+      {100, HexCoord (10, 0)},
     });
 }
 
-TEST_F (MovementTests, ObstacleInWaypoints)
+TEST_F (MovementTests, Obstacle)
 {
-  SetWaypoints ({HexCoord (0, 5), HexCoord (-2, 5)});
+  SetWaypoints ({HexCoord (0, 5), HexCoord (2, 5), HexCoord (-2, 5)});
   ExpectSteps (1, EdgesWithObstacle (1),
     {
       {5, HexCoord (0, 5)},
-    });
-}
+      {2, HexCoord (2, 5)},
+      {2, HexCoord (0, 5)},
 
-TEST_F (MovementTests, ObstacleInSteps)
-{
-  SetWaypoints ({HexCoord (5, 0), HexCoord (-10, 0)});
-
-  /* Step first without the obstacle, so that the final steps are already
-     planned through where it will be later on.  */
-  StepCharacter (1, EdgeWeights (1), 7);
-  EXPECT_TRUE (IsMoving ());
-  auto h = GetTest ();
-  EXPECT_EQ (h->GetPosition (), HexCoord (3, 0));
-  const auto& mv = h->GetProto ().movement ();
-  EXPECT_EQ (mv.waypoints_size (), 1);
-  EXPECT_GT (mv.steps_size (), 0);
-
-  /* Now let the obstacle appear.  This should move the character right up to
-     it, retry there for a couple blocks, and then stop.  */
-  ExpectSteps (1, EdgesWithObstacle (1),
-    {
-      /* After three blocks we reach the obstacle.  */
-      {3, HexCoord (0, 0)},
-
-      /* After ten more blocks we stop retrying.  */
-      {9, HexCoord (0, 0)},
-      {1, HexCoord (0, 0)},
+      /* After using up all movement points, we still try the next step
+         already (e.g. in case it would be zero distance).  This will
+         have incremented the blocked-turn counter by one already.  Ten more
+         trials will stop movement.  */
+      {10, HexCoord (0, 5)},
     });
 }
 
@@ -424,21 +406,23 @@ TEST_F (MovementTests, BlockedTurns)
 {
   SetWaypoints ({HexCoord (5, 0), HexCoord (-10, 0)});
 
-  /* Step first without the obstacle, so that the final steps are already
-     planned through where it will be later on.  */
-  StepCharacter (1, EdgeWeights (1), 10);
+  /* Move through the first waypoint and until we are up against the obstacle.
+     After the last successful step, we already try stepping into the obstacle
+     (even with zero movement points left), and thus increment the blocked-turn
+     counter right then.  */
+  StepCharacter (1, EdgesWithObstacle (1), 10);
   EXPECT_TRUE (IsMoving ());
   auto h = GetTest ();
   EXPECT_EQ (h->GetPosition (), HexCoord (0, 0));
   const auto& mv = h->GetProto ().movement ();
   EXPECT_EQ (mv.waypoints_size (), 1);
-  EXPECT_GT (mv.steps_size (), 0);
-  EXPECT_FALSE (h->GetVolatileMv ().has_blocked_turns ());
+  EXPECT_EQ (h->GetVolatileMv ().has_blocked_turns (), 1);
+  h.reset ();
 
   /* Try stepping into the obstacle, which should increment the blocked turns
      counter and reset any partial step progress.  */
   GetTest ()->MutableVolatileMv ().set_partial_step (500);
-  StepCharacter (1, EdgesWithObstacle (1000), 10);
+  StepCharacter (1, EdgesWithObstacle (1000), 9);
   EXPECT_EQ (GetTest ()->GetPosition (), HexCoord (0, 0));
   EXPECT_TRUE (IsMoving ());
   EXPECT_FALSE (GetTest ()->GetVolatileMv ().has_partial_step ());
@@ -468,7 +452,7 @@ TEST_F (MovementTests, CharacterInObstacle)
   SetWaypoints ({HexCoord (10, 0)});
   ExpectSteps (1, EdgesWithObstacle (1),
     {
-      {1, HexCoord (-1, 0)},
+      {11, HexCoord (-1, 0)},
     });
 }
 
@@ -539,7 +523,6 @@ TEST_F (AllMovementTests, OtherVehicles)
 
       auto* mv = c->MutableProto ().mutable_movement ();
       *mv->add_waypoints () = CoordToProto (HexCoord (0, 0));
-      *mv->add_steps () = CoordToProto (c->GetPosition ());
 
       return c->GetId ();
     };

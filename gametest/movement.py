@@ -40,6 +40,15 @@ class MovementTest (PXTest):
     c = self.getCharacters ()[owner]
     return c.sendMove ({"wp": self.offsetWaypoints (wp)})
 
+  def moveTowards (self, owner, target):
+    """
+    Moves the character of the given owner towards the given target (offset
+    by self.offset), using findpath rather than direct waypoints.
+    """
+
+    c = self.getCharacters ()[owner]
+    return c.moveTowards (offsetCoord (target, self.offset, False))
+
   def getMovement (self, owner):
     """
     Retrieves the movement structure of the given character from the current
@@ -108,11 +117,13 @@ class MovementTest (PXTest):
     self.mainLogger.info ("Setting basic path for character...")
     wp = [
       {"x": 9, "y": 0},
-      {"x": 3, "y": 3},
-      {"x": 3, "y": 3},
+      {"x": 6, "y": 3},
+      {"x": 6, "y": 3},
+      {"x": 0, "y": 3},
       {"x": 0, "y": 0},
-      {"x": -9, "y": -6},
-      {"x": -9, "y": -6},
+      {"x": -3, "y": 0},
+      {"x": -9, "y": 6},
+      {"x": -9, "y": 6},
     ]
     self.setWaypoints ("domob", wp)
     self.generate (1)
@@ -125,7 +136,7 @@ class MovementTest (PXTest):
     self.expectMovement ("domob", wp)
 
     self.mainLogger.info ("Testing empty waypoints...")
-    self.setWaypoints ("domob", [{"x": 5, "y": 7}])
+    self.moveTowards ("domob", {"x": 5, "y": 7})
     self.generate (1)
     correctPos, mv = self.getMovement ("domob")
     assert mv is not None
@@ -134,16 +145,16 @@ class MovementTest (PXTest):
     pos, mv = self.getMovement ("domob")
     self.assertEqual ((pos, mv), (correctPos, None))
 
-    self.mainLogger.info ("Testing path with too far waypoints...")
+    self.mainLogger.info ("Testing path with invalid waypoints...")
     wp = [
       {"x": 0, "y": 0},
-      {"x": 99, "y": 1},
-      {"x": 0, "y": -1},
+      {"x": 200, "y": 0},
+      {"x": 201, "y": 1},
     ]
     self.setWaypoints ("domob", wp)
-    self.generate (200)
+    self.generate (300)
     pos, mv = self.getMovement ("domob")
-    self.assertEqual (pos, {"x": 99, "y": 1})
+    self.assertEqual (pos, {"x": 200, "y": 0})
     assert mv is None
 
     self.testChosenSpeed ()
@@ -225,9 +236,8 @@ class MovementTest (PXTest):
       "blocker": offsetCoord ({"x": 50, "y": 1}, self.offset, False),
     })
 
-    # Calculate the steps and then block the path.
+    # Set waypoints across a blocked path.
     self.setWaypoints ("domob", [{"x": 0, "y": 0}])
-    self.generate (3)
     self.setWaypoints ("blocker", [{"x": 50, "y": 0}])
     self.generate (10)
 
@@ -253,8 +263,12 @@ class MovementTest (PXTest):
     self.assertEqual (pos, {"x": 31, "y": 0})
     self.assertEqual (mv, None)
 
-    # Doing another path finding should work around it.
-    self.setWaypoints ("domob", [{"x": 0, "y": 0}])
+    # Move around the obstacle.
+    self.setWaypoints ("domob", [
+      {"x": 31, "y": 1},
+      {"x": 0, "y": 1},
+      {"x": 0, "y": 0},
+    ])
     self.generate (100)
     pos, mv = self.getMovement ("domob")
     self.assertEqual (pos, {"x": 0, "y": 0})
@@ -273,7 +287,7 @@ class MovementTest (PXTest):
     self.rpc.xaya.invalidateblock (self.reorgBlock)
 
     wp = [
-      {"x": -1, "y": 5},
+      {"x": -5, "y": 5},
     ]
     self.setWaypoints ("domob", wp)
     self.expectMovement ("domob", wp)

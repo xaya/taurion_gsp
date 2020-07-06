@@ -513,8 +513,8 @@ TEST_F (PXLogicTests, CombatEffectRetarder)
   c->MutableProto ().mutable_combat_data ();
   c->MutableProto ().set_speed (2'000);
   *c->MutableProto ().mutable_movement ()->add_waypoints ()
-      = CoordToProto (HexCoord (20, 0));
-  c->SetPosition (HexCoord (-20, 0));
+      = CoordToProto (HexCoord (20, 1));
+  c->SetPosition (HexCoord (-20, 1));
   c.reset ();
 
   for (unsigned i = 0; i < 5; ++i)
@@ -522,11 +522,11 @@ TEST_F (PXLogicTests, CombatEffectRetarder)
   EXPECT_EQ (characters.GetById (idTarget)->GetPosition (), HexCoord (-10, 0));
   UpdateState ("[]");
   EXPECT_EQ (characters.GetById (idTarget)->GetPosition (), HexCoord (-9, 0));
-  EXPECT_EQ (characters.GetById (idFriendly)->GetPosition (), HexCoord (-8, 0));
+  EXPECT_EQ (characters.GetById (idFriendly)->GetPosition (), HexCoord (-8, 1));
   for (unsigned i = 0; i < 21; ++i)
     UpdateState ("[]");
   EXPECT_EQ (characters.GetById (idTarget)->GetPosition (), HexCoord (12, 0));
-  EXPECT_EQ (characters.GetById (idFriendly)->GetPosition (), HexCoord (20, 0));
+  EXPECT_EQ (characters.GetById (idFriendly)->GetPosition (), HexCoord (20, 1));
   UpdateState ("[]");
   EXPECT_EQ (characters.GetById (idTarget)->GetPosition (), HexCoord (14, 0));
   for (unsigned i = 0; i < 3; ++i)
@@ -693,7 +693,7 @@ TEST_F (PXLogicTests, FinishingProspecting)
   UpdateState (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"wp": [{"x": 0, "y": 0}]}}}
+      "move": {"c": {"1": {"wp": [{"x": 0, "y": 5}]}}}
     }
   ])");
 

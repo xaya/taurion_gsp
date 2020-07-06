@@ -842,7 +842,6 @@ TEST_F (CharacterUpdateTests, BasicWaypoints)
   h->MutableVolatileMv ().set_partial_step (42);
   auto* mv = h->MutableProto ().mutable_movement ();
   mv->mutable_waypoints ()->Add ();
-  mv->mutable_steps ()->Add ();
   h.reset ();
 
   /* Run some moves that are invalid one way or another.  */
@@ -870,7 +869,6 @@ TEST_F (CharacterUpdateTests, BasicWaypoints)
   h = GetTest ();
   EXPECT_EQ (h->GetVolatileMv ().partial_step (), 42);
   EXPECT_EQ (h->GetProto ().movement ().waypoints_size (), 1);
-  EXPECT_EQ (h->GetProto ().movement ().steps_size (), 1);
   h.reset ();
 
   /* Process a valid waypoints update move.  */
@@ -882,7 +880,6 @@ TEST_F (CharacterUpdateTests, BasicWaypoints)
   /* Verify that the valid move had the expected effect.  */
   h = GetTest ();
   EXPECT_FALSE (h->GetVolatileMv ().has_partial_step ());
-  EXPECT_EQ (h->GetProto ().movement ().steps_size (), 0);
   const auto& wp = h->GetProto ().movement ().waypoints ();
   ASSERT_EQ (wp.size (), 2);
   EXPECT_EQ (CoordFromProto (wp.Get (0)), HexCoord (-3, 4));

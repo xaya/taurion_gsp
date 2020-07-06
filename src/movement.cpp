@@ -35,9 +35,6 @@ StopCharacter (Character& c)
 namespace
 {
 
-constexpr bool PROCESSING_DONE = true;
-constexpr bool CONTINUE_PROCESSING = false;
-
 /**
  * Returns the actual movement speed to use for a character.  This handles
  * a chosen speed reduction if any, as well as combat effects that slow
@@ -62,53 +59,30 @@ GetCharacterSpeed (const Character& c)
 }
 
 /**
- * Try to step along the precomputed path of the given character.  Returns true
- * if movement is done for this character and this block and false if there
- * is potentially more processing (e.g. a second step or computing the
- * next path).
+ * Tries to step the given character for one hex into the given direction.
+ * Returns true if that has been done successfully, and false if it wasn't
+ * possible (e.g. because there's an obstacle there or because the
+ * remaining movement points do not suffice).
  */
 template <typename Fcn>
   bool
-  StepAlongPrecomputed (Character& c, const Context& ctx, Fcn edges)
+  StepCharacter (Character& c, const HexCoord& dir,
+                 const Context& ctx, Fcn edges)
 {
-  VLOG (1) << "We have a precomputed path, trying to step it...";
+  const auto& pos = c.GetPosition ();
+  const HexCoord dest(pos + dir);
 
-  const auto& mv = c.GetProto ().movement ();
-  CHECK_GT (mv.waypoints_size (), 0);
-
-  int stepInd;
-  for (stepInd = 0; stepInd < mv.steps_size (); ++stepInd)
-    if (CoordFromProto (mv.steps (stepInd)) == c.GetPosition ())
-      {
-        VLOG (1) << "Found position in step list at index " << stepInd;
-        break;
-      }
-  CHECK_LT (stepInd, mv.steps_size ());
-
-  HexCoord dest;
-  bool finishedSteps;
-  if (stepInd + 1 < mv.steps_size ())
-    {
-      dest = CoordFromProto (mv.steps (stepInd + 1));
-      finishedSteps = false;
-    }
-  else
-    {
-      dest = CoordFromProto (mv.waypoints (0));
-      finishedSteps = true;
-    }
-  CHECK_EQ (HexCoord::DistanceL1 (c.GetPosition (), dest), 1);
-  const auto dist = edges (c.GetPosition (), dest);
+  CHECK_EQ (HexCoord::DistanceL1 (pos, dest), 1);
+  const auto dist = edges (pos, dest);
   VLOG (1)
-      << "Current step from " << c.GetPosition () << " to " << dest
-      << ": distance " << dist;
+      << "Current step from " << pos << " to " << dest << ": distance " << dist;
 
   if (dist == PathFinder::NO_CONNECTION)
     {
       LOG (WARNING)
           << "Character " << c.GetId ()
           << " is stepping into obstacle from "
-          << c.GetPosition () << " to " << dest;
+          << pos << " to " << dest;
 
       /* When the step is blocked, we set all partial steps to zero and stop
          processing for now.  However, we keep retrying that step a couple of
@@ -130,7 +104,7 @@ template <typename Fcn>
           StopCharacter (c);
         }
 
-      return PROCESSING_DONE;
+      return false;
     }
 
   /* If the way is free (independent of whether or not we can step there),
@@ -147,109 +121,13 @@ template <typename Fcn>
   if (dist > volMv.partial_step ())
     {
       VLOG (1) << "Next step is too far, waiting for now";
-      return PROCESSING_DONE;
+      return false;
     }
 
   VLOG (1) << "Performing this step now...";
   c.MutableVolatileMv ().set_partial_step (volMv.partial_step () - dist);
   c.SetPosition (dest);
-
-  if (finishedSteps)
-    {
-      VLOG (1) << "Reached first waypoint";
-
-      auto* mutableMv = c.MutableProto ().mutable_movement ();
-      mutableMv->clear_steps ();
-
-      CHECK_EQ (c.GetPosition (), CoordFromProto (mv.waypoints (0)));
-      auto* wp = mutableMv->mutable_waypoints ();
-      wp->erase (wp->begin ());
-
-      if (wp->empty ())
-        {
-          VLOG (1) << "Movement is finished";
-          StopCharacter (c);
-          return PROCESSING_DONE;
-        }
-    }
-
-  return CONTINUE_PROCESSING;
-}
-
-/**
- * Precomputes the path steps to the next waypoint.  Returns true if the
- * processing is now done for this block and false if more needs to be done
- * (e.g. potentially already stepping along that segment).
- */
-template <typename Fcn>
-  bool
-  PrecomputeNextSegment (Character& c, const Context& ctx, Fcn edges)
-{
-  VLOG (1) << "Trying to precompute path to the next waypoint...";
-
-  const auto& mv = c.GetProto ().movement ();
-  CHECK_EQ (mv.steps_size (), 0);
-  CHECK_GT (mv.waypoints_size (), 0);
-
-  const HexCoord pos = c.GetPosition ();
-  const HexCoord wp = CoordFromProto (mv.waypoints (0));
-  VLOG (1) << "That path will be from " << pos << " to " << wp;
-
-  if (pos == wp)
-    {
-      /* We have to handle this special case here rather than computing an
-         empty path and letting path stepping handle it since that always
-         assumes that we step to a neighbour tile.  Thus it won't work
-         correctly if the "step" would be zero-distance to the same tile.  */
-
-      LOG (WARNING)
-          << "Next waypoint equals current position of " << c.GetId ();
-
-      auto* wp = c.MutableProto ().mutable_movement ()->mutable_waypoints ();
-      wp->erase (wp->begin ());
-
-      if (wp->empty ())
-        {
-          VLOG (1) << "No more waypoints";
-          StopCharacter (c);
-          return PROCESSING_DONE;
-        }
-
-      return CONTINUE_PROCESSING;
-    }
-
-  PathFinder finder(wp);
-  const auto dist
-      = finder.Compute (edges, pos,
-                        ctx.RoConfig ()->params ().max_waypoint_l1_dist ());
-  VLOG (1) << "Shortest path has length " << dist;
-
-  if (dist == PathFinder::NO_CONNECTION)
-    {
-      LOG (WARNING)
-          << "Character " << c.GetId () << " cannot reach next waypoint "
-          << wp << " from current position " << pos;
-      StopCharacter (c);
-      return PROCESSING_DONE;
-    }
-
-  auto path = finder.StepPath (pos);
-  CHECK_EQ (path.GetPosition (), pos);
-  CHECK (path.HasMore ());
-  auto* stepsPb = c.MutableProto ().mutable_movement ()->mutable_steps ();
-  while (true)
-    {
-      *stepsPb->Add () = CoordToProto (path.GetPosition ());
-      path.Next ();
-      if (!path.HasMore ())
-        {
-          CHECK_EQ (path.GetPosition (), wp);
-          break;
-        }
-    }
-  VLOG (1) << "Precomputed path with " << stepsPb->size () << " steps";
-
-  return CONTINUE_PROCESSING;
+  return true;
 }
 
 template <typename Fcn>
@@ -280,21 +158,47 @@ template <typename Fcn>
 
   while (true)
     {
-      const auto& mv = pb.movement ();
-      CHECK_GT (mv.waypoints_size (), 0)
+      CHECK_GT (pb.movement ().waypoints_size (), 0)
           << "Character " << c.GetId ()
           << " has active movement but no waypoints";
+      HexCoord nextWp = CoordFromProto (pb.movement ().waypoints (0));
 
-      /* If we have a precomputed path, try to do one step along it.  */
-      if (mv.steps_size () > 0)
+      /* Check this here rather than after stepping, so that we correctly
+         handle (i.e. ignore) duplicate waypoints specified for a character.  */
+      while (c.GetPosition () == nextWp)
         {
-          if (StepAlongPrecomputed (c, ctx, edges) == PROCESSING_DONE)
-            break;
-          continue;
+          VLOG (1)
+              << "Character " << c.GetId () << " reached waypoint " << nextWp;
+          auto& wp
+              = *c.MutableProto ().mutable_movement ()->mutable_waypoints ();
+          wp.erase (wp.begin ());
+
+          if (wp.empty ())
+            {
+              VLOG (1) << "No more waypoints";
+              StopCharacter (c);
+              return;
+            }
+
+          nextWp = CoordFromProto (wp[0]);
         }
 
-      /* Else, we need to precompute the next segment of the path.  */
-      if (PrecomputeNextSegment (c, ctx, edges) == PROCESSING_DONE)
+      HexCoord dir;
+      {
+        const auto& pos = c.GetPosition ();
+        HexCoord::IntT steps;
+        if (!pos.IsPrincipalDirectionTo (nextWp, dir, steps))
+          {
+            LOG (WARNING)
+                << "Character " << c.GetId ()
+                << " is at " << pos << " with next waypoint " << nextWp
+                << ", which is not in principal direction";
+            StopCharacter (c);
+            return;
+          }
+      }
+
+      if (!StepCharacter (c, dir, ctx, edges))
         break;
     }
 }
