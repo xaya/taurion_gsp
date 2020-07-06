@@ -54,11 +54,11 @@ private:
 
 public:
 
-  explicit HexCoord (const IntT xx, const IntT yy)
+  explicit constexpr HexCoord (const IntT xx, const IntT yy)
     : x(xx), y(yy)
   {}
 
-  HexCoord ()
+  constexpr HexCoord ()
     : x(0), y(0)
   {}
 
@@ -71,26 +71,26 @@ public:
 
   friend std::ostream& operator<< (std::ostream& out, const HexCoord& c);
 
-  IntT
+  constexpr IntT
   GetX () const
   {
     return x;
   }
 
-  IntT
+  constexpr IntT
   GetY () const
   {
     return y;
   }
 
   void operator+= (const HexCoord& delta);
-  friend HexCoord operator* (const IntT f, const HexCoord& c);
-  friend HexCoord operator+ (const HexCoord& a, const HexCoord& b);
+  friend constexpr HexCoord operator* (const IntT f, const HexCoord& c);
+  friend constexpr HexCoord operator+ (const HexCoord& a, const HexCoord& b);
 
   /**
    * Computes and returns the matching z coordinate in cubic hex coordinates.
    */
-  IntT GetZ () const;
+  constexpr IntT GetZ () const;
 
   /**
    * Rotates the coordinate clock-wise for n steps of 60 degrees around the

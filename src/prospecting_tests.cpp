@@ -36,9 +36,9 @@ namespace
 {
 
 /** Position where prizes are won with normal chance.  */
-const HexCoord POS_NORMAL_PRIZES(4'000, 0);
+constexpr HexCoord POS_NORMAL_PRIZES(4'000, 0);
 /** Position with low chance for prizes.  */
-const HexCoord POS_LOW_PRIZES(1'000, 500);
+constexpr HexCoord POS_LOW_PRIZES(1'000, 500);
 
 /* ************************************************************************** */
 
@@ -284,7 +284,7 @@ TEST_F (ProspectingArtefactsTests, ProcessedInOrder)
   /* At this spot, there is only raw a available.  In the regtest
      config, this means that we will always get art r as artefact
      (and never the second-listed art c).  */
-  const HexCoord pos(-3'456, -1'215);
+  constexpr HexCoord pos(-3'456, -1'215);
 
   auto c = characters.CreateNew ("domob", Faction::RED);
   const auto id = c->GetId ();
@@ -311,7 +311,7 @@ TEST_F (ProspectingArtefactsTests, Randomisation)
   /* At this spot, there is only raw f available.  In the regtest
      config, this yields art c with 50% chance and then
      art r with also 50% chance.  */
-  const HexCoord pos(-876, -2'015);
+  constexpr HexCoord pos(-876, -2'015);
 
   auto c = characters.CreateNew ("domob", Faction::RED);
   const auto id = c->GetId ();
@@ -347,7 +347,7 @@ TEST_F (ProspectingArtefactsTests, CargoFull)
 {
   /* At this spot, there is only raw a available, so art r will be found
      with 100% certainty.  */
-  const HexCoord pos(-3'456, -1'215);
+  constexpr HexCoord pos(-3'456, -1'215);
 
   auto c = characters.CreateNew ("domob", Faction::RED);
   const auto id = c->GetId ();

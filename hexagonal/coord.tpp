@@ -60,19 +60,19 @@ HexCoord::operator+= (const HexCoord& delta)
   y += delta.GetY ();
 }
 
-inline HexCoord
+inline constexpr HexCoord
 operator* (const HexCoord::IntT f, const HexCoord& c)
 {
   return HexCoord (f * c.GetX (), f * c.GetY ());
 }
 
-inline HexCoord
+inline constexpr HexCoord
 operator+ (const HexCoord& a, const HexCoord& b)
 {
   return HexCoord (a.GetX () + b.GetX (), a.GetY () + b.GetY ());
 }
 
-inline HexCoord::IntT
+inline constexpr HexCoord::IntT
 HexCoord::GetZ () const
 {
   return -x - y;

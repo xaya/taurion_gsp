@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -50,12 +50,12 @@ namespace
  * Direction from the centre of a ring where the starting point of the
  * iteration is located.
  */
-const HexCoord RING_START_DIRECTION(1, 0);
+constexpr HexCoord RING_START_DIRECTION(1, 0);
 
 /**
  * The direction vectors of the six sides along which we iterate in order.
  */
-const std::array<HexCoord, 6> RING_SIDE_DIRECTIONS =
+constexpr std::array<HexCoord, 6> RING_SIDE_DIRECTIONS =
   {
     HexCoord (0, -1),
     HexCoord (-1, 0),
