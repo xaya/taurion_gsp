@@ -239,6 +239,21 @@ private:
     return str == "high" || str == "mid" || str == "low";
   }
 
+  /**
+   * Checks if a given Attack proto is valid.
+   */
+  static bool
+  IsValidAttack (const proto::Attack& attack)
+  {
+    if (!attack.has_range () && !attack.has_area ())
+      {
+        LOG (WARNING) << "Attack has neither range nor area";
+        return false;
+      }
+
+    return true;
+  }
+
 protected:
 
   /**
@@ -321,6 +336,14 @@ RoConfigSanityTests::IsConfigValid (const RoConfig& cfg)
           LOG (WARNING)
               << "Fitment " << entry.first
               << " uses invalid slot " << i.fitment ().slot ();
+          return false;
+        }
+
+      if (i.fitment ().has_attack () && !IsValidAttack (i.fitment ().attack ()))
+        {
+          LOG (WARNING)
+              << "Fitment " << entry.first
+              << " does not specify a valid attack";
           return false;
         }
     }

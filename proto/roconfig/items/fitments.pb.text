@@ -548,6 +548,8 @@ fungible_items:
             slot: "high"
             attack:
               {
+                range: 5
+                area: 3
                 damage: { min: 8 max: 12 }
               }
           }
@@ -572,6 +574,8 @@ fungible_items:
             slot: "high"
             attack:
               {
+                range: 5
+                area: 3
                 damage: { min: 15 max: 25 }
               }
           }
@@ -601,6 +605,8 @@ fungible_items:
             slot: "high"
             attack:
               {
+                range: 5
+                area: 3
                 damage: { min: 30 max: 60 }
               }
           }
