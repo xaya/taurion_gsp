@@ -110,7 +110,7 @@ public:
   bool setpathbuildings (const Json::Value& buildings) override;
   Json::Value findpath (const std::string& faction,
                         int l1range, const Json::Value& source,
-                        const Json::Value& target, int wpdist) override;
+                        const Json::Value& target) override;
   Json::Value getregionat (const Json::Value& coord) override;
   Json::Value getbuildingshape (const Json::Value& centre, int rot,
                                 const std::string& type) override;
@@ -176,9 +176,9 @@ public:
   Json::Value
   findpath (const std::string& faction,
             int l1range, const Json::Value& source,
-            const Json::Value& target, int wpdist) override
+            const Json::Value& target) override
   {
-    return nonstate.findpath (faction, l1range, source, target, wpdist);
+    return nonstate.findpath (faction, l1range, source, target);
   }
 
   Json::Value

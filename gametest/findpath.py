@@ -54,10 +54,9 @@ class AsyncFindPath (threading.Thread):
 
 class FindPathTest (PXTest):
 
-  def call (self, source, target, l1range, wpdist, faction="r"):
+  def call (self, source, target, l1range, faction="r"):
     return self.rpc.game.findpath (source=source, target=target,
-                                   faction=faction,
-                                   l1range=l1range, wpdist=wpdist)
+                                   faction=faction, l1range=l1range)
 
   def run (self):
     self.collectPremine ()
@@ -70,63 +69,50 @@ class FindPathTest (PXTest):
     obstacle = {"x": 0, "y": 505}
     passable = {"x": 0, "y": 504}
 
-    # Two coordinates between which a direct path is passable.
+    # Coordinates between which paths are possible.
     a = {"x": 0, "y": 1}
     b = {"x": 3, "y": 1}
+    c = {"x": 3, "y": 2}
 
     # Verify exceptions for invalid arguments.
     self.expectError (-1, "source is not a valid coordinate",
-                      findpath, source={}, target=a, faction="r",
-                      l1range=10, wpdist=1)
+                      findpath, source={}, target=a, faction="r", l1range=10)
     self.expectError (-1, "target is not a valid coordinate",
-                      findpath, source=a, target={}, faction="r",
-                      l1range=10, wpdist=1)
+                      findpath, source=a, target={}, faction="r", l1range=10)
     self.expectError (-1, "l1range is out of bounds",
-                      findpath, source=a, target=a, faction="r",
-                      l1range=-1, wpdist=1)
-    self.expectError (-1, "wpdist is out of bounds",
-                      findpath, source=a, target=a, faction="r",
-                      l1range=1, wpdist=0)
+                      findpath, source=a, target=a, faction="r", l1range=-1)
     for f in ["a", "invalid"]:
       self.expectError (-1, "faction is invalid",
-                        findpath, source=a, target=a, faction=f,
-                        l1range=1, wpdist=0)
+                        findpath, source=a, target=a, faction=f, l1range=1)
 
     # Paths that yield no connection.
     self.expectError (1, "no connection",
                       findpath, source=passable, target=obstacle, faction="r",
-                      l1range=10, wpdist=1)
+                      l1range=10)
     self.expectError (1, "no connection",
-                      findpath, source=a, target=b, faction="r",
-                      l1range=1, wpdist=1)
+                      findpath, source=a, target=b, faction="r", l1range=1)
     outOfMap = {"x": 10000, "y": 0}
     self.expectError (1, "no connection",
                       findpath, source=outOfMap, target=outOfMap, faction="r",
-                      l1range=10, wpdist=1)
+                      l1range=10)
 
-    # Basic path that is fine with wpdist=1 (every coordinate).
-    self.assertEqual (self.call (a, b, l1range=10, wpdist=1),
-      {
-        "dist": 3000,
-        "wp": [a, {"x": 1, "y": 1}, {"x": 2, "y": 1}, b],
-      })
-
-    # Path with wpdist=2 (one intermediate point expected).
-    self.assertEqual (self.call (a, b, l1range=10, wpdist=2),
-      {
-        "dist": 3000,
-        "wp": [a, {"x": 2, "y": 1}, b],
-      })
-
-    # With large wpdist, we expect to get at least start and end.
-    self.assertEqual (self.call (a, b, l1range=10, wpdist=10),
+    # Basic path that is fine and along a single principal direction.
+    self.assertEqual (self.call (a, b, l1range=10),
       {
         "dist": 3000,
         "wp": [a, b],
       })
 
+    # Path which needs a waypoint (because there is no principal direction
+    # between start and end).
+    self.assertEqual (self.call (a, c, l1range=10),
+      {
+        "dist": 4000,
+        "wp": [a, b, c],
+      })
+
     # Test a path with source=target.
-    self.assertEqual (self.call (a, a, l1range=0, wpdist=1),
+    self.assertEqual (self.call (a, a, l1range=0),
       {
         "dist": 0,
         "wp": [a],
@@ -167,7 +153,6 @@ class FindPathTest (PXTest):
       "target": longB,
       "faction": "r",
       "l1range": 8000,
-      "wpdist": 8000,
     }
     before = time.clock_gettime (time.CLOCK_MONOTONIC)
     baseLen = findpath (**kwargs)["dist"]
