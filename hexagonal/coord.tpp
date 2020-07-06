@@ -20,6 +20,7 @@
 
 #include <glog/logging.h>
 
+#include <array>
 #include <cmath>
 #include <limits>
 
@@ -151,43 +152,26 @@ HexCoord::NeighbourList::ConstIterator::operator++ ()
 inline HexCoord
 HexCoord::NeighbourList::ConstIterator::operator* () const
 {
-  /* In cubic coordinates, we find the neighbours by picking two out of the
-     three coordinates and then incrementing one and decrementing the other
-     (for a total of six potential choices / neighbours).
-
-     So in axial coordinates, we can pick x/y as the first and z as the second,
-     in which case we simply increment/decrement x or y and are done (as z is
-     implicit and thus does not need to be changed.
-
-     Or we can pick x and y as the two, in which case we have to increment
-     one and decrement the other explicitly.  */
-
-  switch (next)
+  /* The six principal directions that we have.  The order here is important,
+     as it e.g. also specifies how neighbours are enumerated and thus how
+     the path finder orders paths of the same length.  */
+  constexpr std::array<HexCoord, 6> dirs =
     {
-    /* Choice is x and z.  */
-    case 0:
-      return HexCoord (centre.x + 1, centre.y);
-    case 1:
-      return HexCoord (centre.x - 1, centre.y);
+      HexCoord (1, 0),
+      HexCoord (-1, 0),
+      HexCoord (0, 1),
+      HexCoord (0, -1),
+      HexCoord (1, -1),
+      HexCoord (-1, 1),
+    };
 
-    /* Choice is y and z.  */
-    case 2:
-      return HexCoord (centre.x, centre.y + 1);
-    case 3:
-      return HexCoord (centre.x, centre.y - 1);
+  if (next >= 0 && next < dirs.size ())
+    return centre + dirs[next];
 
-    /* Choice is x and y.  */
-    case 4:
-      return HexCoord (centre.x + 1, centre.y - 1);
-    case 5:
-      return HexCoord (centre.x - 1, centre.y + 1);
+  if (next == 6)
+    LOG (FATAL) << "Cannot dereference iterator at the end";
 
-    /* Fail for invalid states of the iterator.  */
-    case 6:
-      LOG (FATAL) << "Cannot dereference iterator at the end";
-    default:
-      LOG (FATAL) << "Unexpected value of 'next': " << next;
-    }
+  LOG (FATAL) << "Unexpected value of 'next': " << next;
 }
 
 } // namespace pxd
