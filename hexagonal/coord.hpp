@@ -99,6 +99,14 @@ public:
   HexCoord RotateCW (int steps) const;
 
   /**
+   * Returns true if it is a principal direction from the current instance
+   * to the given target.  In this case, the direction itself and the number
+   * of steps are filled in.
+   */
+  bool IsPrincipalDirectionTo (const HexCoord& target,
+                               HexCoord& dir, IntT& steps) const;
+
+  /**
    * Returns an "opaque" object that can be iterated over to yield the
    * neighbouring hex cells.
    */

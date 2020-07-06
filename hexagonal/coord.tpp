@@ -114,6 +114,29 @@ HexCoord::RotateCW (int steps) const
     }
 }
 
+inline bool
+HexCoord::IsPrincipalDirectionTo (const HexCoord& target,
+                                  HexCoord& dir, IntT& steps) const
+{
+  const HexCoord diff(target.GetX () - GetX (), target.GetY () - GetY ());
+  steps = -1;
+
+  if (diff.GetX () == 0)
+    steps = std::abs (diff.GetY ());
+  else if (diff.GetY () == 0)
+    steps = std::abs (diff.GetX ());
+  else if (diff.GetX () + diff.GetY () == 0)
+    steps = std::abs (diff.GetX ());
+
+  if (steps == -1 || steps == 0)
+    return false;
+
+  CHECK_GT (steps, 0);
+  dir.x = diff.GetX () / steps;
+  dir.y = diff.GetY () / steps;
+  return true;
+}
+
 inline HexCoord::IntT
 HexCoord::DistanceL1 (const HexCoord& a, const HexCoord& b)
 {

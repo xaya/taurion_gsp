@@ -167,6 +167,49 @@ TEST_F (CoordTests, Neighbours)
     EXPECT_EQ (HexCoord::DistanceL1 (centre, n), 1);
 }
 
+TEST_F (CoordTests, IsPrincipalDirectionTo)
+{
+  constexpr HexCoord base(42, -10);
+
+  constexpr HexCoord nonPrincipal[] =
+    {
+      HexCoord (1, 1),
+      HexCoord (-1, -1),
+      HexCoord (2, 3),
+      HexCoord (-5, -5),
+      HexCoord (3, 10),
+      HexCoord (0, 0),
+      base + HexCoord (1, 0),
+    };
+  for (const auto& dir : nonPrincipal)
+    {
+      HexCoord d;
+      HexCoord::IntT steps;
+      ASSERT_FALSE (base.IsPrincipalDirectionTo (base + dir, d, steps));
+    }
+
+  constexpr HexCoord isPrincipal[] =
+    {
+      HexCoord (-1, 0),
+      HexCoord (1, 0),
+      HexCoord (0, -1),
+      HexCoord (0, 1),
+      HexCoord (-1, 1),
+      HexCoord (1, -1),
+      HexCoord (10, -10),
+      HexCoord (0, 42),
+      HexCoord (100, 0),
+    };
+  for (const auto& dir : isPrincipal)
+    {
+      HexCoord d;
+      HexCoord::IntT steps;
+      ASSERT_TRUE (base.IsPrincipalDirectionTo (base + dir, d, steps));
+      ASSERT_EQ (steps * d, dir);
+      ASSERT_EQ (HexCoord::DistanceL1 (HexCoord (), d), 1);
+    }
+}
+
 TEST_F (CoordTests, StreamOutput)
 {
   std::ostringstream out;
