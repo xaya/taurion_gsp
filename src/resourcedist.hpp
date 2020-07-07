@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@ namespace pxd
  * Determines the type and initial amount of resource mine-able that should
  * be found by prospecting in the given coordinate.
  */
-void DetectResource (const HexCoord& pos, const proto::ResourceDistribution& rd,
+void DetectResource (const HexCoord& pos, const proto::ConfigData& cfg,
                      xaya::Random& rnd, std::string& type, Quantity& amount);
 
 namespace internal

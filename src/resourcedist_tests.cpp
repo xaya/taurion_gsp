@@ -102,11 +102,11 @@ protected:
   ContextForTesting ctx;
 
   /**
-   * The resource distribution data that we pass to DetectResource.  It is
+   * The configuration proto that we pass to DetectResource.  It is
    * set to the official config data initially, but tests may modify it as
    * they need for their setup.
    */
-  proto::ResourceDistribution rd;
+  proto::ConfigData cfg;
 
   /** Output variable for the detected type of resource.  */
   std::string type;
@@ -114,7 +114,7 @@ protected:
   Quantity amount;
 
   DetectResourceTests ()
-    : rd(ctx.RoConfig ()->resource_dist ())
+    : cfg(*ctx.RoConfig ())
   {}
 
   /**
@@ -123,7 +123,7 @@ protected:
   void
   Detect (const HexCoord& pos)
   {
-    DetectResource (pos, rd, rnd, type, amount);
+    DetectResource (pos, cfg, rnd, type, amount);
   }
 
   /**
@@ -132,7 +132,7 @@ protected:
   void
   AddArea (const HexCoord& centre, const std::vector<std::string>& types)
   {
-    auto* area = rd.add_areas ();
+    auto* area = cfg.mutable_resource_dist ()->add_areas ();
     *area->mutable_centre () = CoordToProto (centre);
     for (const auto& t : types)
       area->add_resources (t);
@@ -142,7 +142,7 @@ protected:
 
 TEST_F (DetectResourceTests, NothingAvailable)
 {
-  rd.clear_areas ();
+  cfg.mutable_resource_dist ()->clear_areas ();
   AddArea (HexCoord (2000, -3000), {"raw i"});
 
   Detect (HexCoord (0, 0));
@@ -155,7 +155,7 @@ TEST_F (DetectResourceTests, RandomType)
   constexpr unsigned trials = 100'000;
   constexpr unsigned eps = trials / 100;
 
-  rd.clear_areas ();
+  cfg.mutable_resource_dist ()->clear_areas ();
   AddArea (HexCoord (0, 0), {"raw a", "raw b"});
   AddArea (HexCoord (0, 700), {"raw a"});
   AddArea (HexCoord (700, 0), {"raw i"});
@@ -192,14 +192,14 @@ TEST_F (DetectResourceTests, TypeOrderDeterministic)
 {
   const xaya::uint256 seed = xaya::SHA256::Hash ("seed");
 
-  rd.clear_areas ();
+  cfg.mutable_resource_dist ()->clear_areas ();
   AddArea (HexCoord (0, 0), {"raw a", "raw b"});
   rnd.Seed (seed);
   Detect (HexCoord (0, 0));
   const std::string firstType = type;
   LOG (INFO) << "First attempt detected " << firstType;
 
-  rd.clear_areas ();
+  cfg.mutable_resource_dist ()->clear_areas ();
   AddArea (HexCoord (0, 0), {"raw b", "raw a"});
   rnd.Seed (seed);
   Detect (HexCoord (0, 0));
@@ -211,14 +211,15 @@ TEST_F (DetectResourceTests, TypeOrderDeterministic)
 
 TEST_F (DetectResourceTests, RandomAmount)
 {
-  constexpr unsigned trials = 1'000;
-  constexpr unsigned baseAmount = 3;
-  constexpr unsigned threshold = (trials * 90) / (100 * (baseAmount + 1));
+  constexpr unsigned trials = 10'000;
+  constexpr unsigned min = 5;
+  constexpr unsigned max = 20;
+  constexpr unsigned threshold = (trials * 90) / (100 * (max - min + 1));
 
-  rd.clear_areas ();
+  cfg.mutable_resource_dist ()->clear_areas ();
   AddArea (HexCoord (0, 0), {"raw g"});
-  rd.clear_base_amounts ();
-  rd.mutable_base_amounts ()->insert ({"raw g", baseAmount});
+  cfg.mutable_params ()->set_min_region_ore (min);
+  cfg.mutable_params ()->set_max_region_ore (max);
 
   std::map<Quantity, unsigned> counts;
   for (unsigned i = 0; i < trials; ++i)
@@ -233,69 +234,25 @@ TEST_F (DetectResourceTests, RandomAmount)
         << "Found " << entry.first << " units : "
         << entry.second << " times";
 
-  ASSERT_EQ (counts.size (), baseAmount + 1);
-  for (Quantity i = baseAmount; i <= 2 * baseAmount; ++i)
+  ASSERT_EQ (counts.size (), max - min + 1);
+  for (Quantity i = min; i <= max; ++i)
     EXPECT_GE (counts[i], threshold);
 }
 
 TEST_F (DetectResourceTests, MinimumAmount)
 {
-  constexpr unsigned trials = 100'000;
+  constexpr unsigned trials = 1'000;
 
-  rd.clear_areas ();
+  cfg.mutable_resource_dist ()->clear_areas ();
   AddArea (HexCoord (0, 0), {"raw g"});
-  rd.clear_base_amounts ();
-  rd.mutable_base_amounts ()->insert ({"raw g", 2});
+  cfg.mutable_params ()->set_min_region_ore (2);
+  cfg.mutable_params ()->set_max_region_ore (2);
 
-  std::map<Quantity, unsigned> counts;
   for (unsigned i = 0; i < trials; ++i)
     {
       Detect (HexCoord (900, 0));
       ASSERT_EQ (type, "raw g");
-      ++counts[amount];
-    }
-
-  ASSERT_EQ (counts.size (), 2);
-  EXPECT_GT (counts[1], 0);
-  EXPECT_GT (counts[2], 0);
-}
-
-TEST_F (DetectResourceTests, AmountPerType)
-{
-  constexpr unsigned trials = 100'000;
-
-  rd.clear_areas ();
-  AddArea (HexCoord (0, 0), {"raw a"});
-  AddArea (HexCoord (700, 0), {"raw i"});
-  rd.clear_base_amounts ();
-  rd.mutable_base_amounts ()->insert ({"raw a", 1'000});
-  rd.mutable_base_amounts ()->insert ({"raw i", 50});
-
-  std::map<std::string, Quantity> amounts;
-  for (unsigned i = 0; i < trials; ++i)
-    {
-      Detect (HexCoord (0, 0));
-      amounts[type] += amount;
-    }
-
-  for (const auto& entry : amounts)
-    LOG (INFO) << "Found total " << entry.second << " of " << entry.first;
-
-  const std::map<std::string, Quantity> expected =
-    {
-      {"raw a", 1'500 * trials * 2 / 3},
-      {"raw i", 75 / 2 * trials * 1 / 3},
-    };
-
-  ASSERT_EQ (amounts.size (), 2);
-  for (const auto& entry : amounts)
-    {
-      const auto mit = expected.find (entry.first);
-      ASSERT_TRUE (mit != expected.end ())
-          << "Unexpected type: " << entry.first;
-
-      EXPECT_GE (entry.second, mit->second * 95 / 100);
-      EXPECT_LE (entry.second, mit->second * 105 / 100);
+      ASSERT_EQ (amount, 1);
     }
 }
 

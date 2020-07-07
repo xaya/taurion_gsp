@@ -15,6 +15,9 @@ params:
     construction_cost: 1
     construction_blocks: 1
 
+    min_region_ore: 2000000
+    max_region_ore: 100000000
+
     # The address configured here (for mainnet) is the premine address of Xaya
     # controlled by the Xaya team.  See also Xaya Core's src/chainparams.cpp.
     dev_addr: "DHy2615XKevE23LVRVZVxGeqxadRGyiFW4"

@@ -365,12 +365,6 @@ RoConfigSanityTests::IsConfigValid (const RoConfig& cfg)
         }
     }
 
-  for (const auto& entry : cfg->resource_dist ().base_amounts ())
-    if (!IsRawMaterial (cfg, entry.first))
-      {
-        LOG (WARNING) << "Invalid base amounts in resource dist";
-        return false;
-      }
   for (const auto& area : cfg->resource_dist ().areas ())
     for (const auto& type : area.resources ())
       if (!IsRawMaterial (cfg, type))
