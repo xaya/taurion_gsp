@@ -10,6 +10,11 @@ params:
     construction_cost: 100
     construction_blocks: 10
 
+    # We have tests that use up all materials (and then reprospect a region),
+    # so that we need lower limits than on mainnet.
+    min_region_ore: 10
+    max_region_ore: 20
+
     dev_addr: "dHNvNaqcD7XPDnoRjAoyfcMpHRi5upJD7p"
     god_mode: true
 

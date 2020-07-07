@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -114,7 +114,7 @@ struct AvailableResource
 } // anonymous namespace
 
 void
-DetectResource (const HexCoord& pos, const proto::ResourceDistribution& rd,
+DetectResource (const HexCoord& pos, const proto::ConfigData& cfg,
                 xaya::Random& rnd, std::string& type, Quantity& amount)
 {
   VLOG (1) << "Detecting prospected resources at " << pos << "...";
@@ -125,7 +125,7 @@ DetectResource (const HexCoord& pos, const proto::ResourceDistribution& rd,
      keys).  This ensures a deterministic order beyond what order the areas
      and resource types are in in the config proto.  */
   std::set<AvailableResource, AvailableResource::Comparator> availableSet;
-  for (const auto& a : rd.areas ())
+  for (const auto& a : cfg.resource_dist ().areas ())
     {
       AvailableResource cur;
       cur.centre = CoordFromProto (a.centre ());
@@ -152,7 +152,7 @@ DetectResource (const HexCoord& pos, const proto::ResourceDistribution& rd,
   const std::vector<AvailableResource> available(availableSet.begin (),
                                                  availableSet.end ());
 
-  /* If there is nothing available, just return zero Agarite.  */
+  /* If there is nothing available, just return zero of the A ore.  */
   if (available.empty ())
     {
       type = "raw a";
@@ -169,15 +169,14 @@ DetectResource (const HexCoord& pos, const proto::ResourceDistribution& rd,
   type = picked.type;
   VLOG (1) << "Picked resource type: " << type;
 
-  /* Determine the amount we find.  This is based on the type, a fall-off
-     and a random choice.  */
-  const auto mit = rd.base_amounts ().find (type);
-  CHECK (mit != rd.base_amounts ().end ())
-      << "Base amount for " << type << " is not defined";
-  const auto baseAmount = internal::FallOff (picked.dist, mit->second);
-  VLOG (1) << "Base amount: " << baseAmount;
-  amount = baseAmount + rnd.NextInt (baseAmount + 1);
-  VLOG (1) << "Chosen actual amount: " << amount;
+  /* Determine the amount we find.  This is based on a random choice between
+     parameter min/max values and then the fall-off.  */
+  const auto minAmount = cfg.params ().min_region_ore ();
+  const auto maxAmount = cfg.params ().max_region_ore ();
+  const auto baseAmount = minAmount + rnd.NextInt (maxAmount - minAmount + 1);
+  VLOG (1) << "Chosen base amount: " << baseAmount;
+  amount = internal::FallOff (picked.dist, baseAmount);
+  VLOG (1) << "Actual amount after fall-off: " << amount;
 }
 
 } // namespace pxd

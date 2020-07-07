@@ -1,16 +1,6 @@
 resource_dist:
 {
 
-base_amounts: { key: "raw a" value: 7 }
-base_amounts: { key: "raw b" value: 7 }
-base_amounts: { key: "raw c" value: 7 }
-base_amounts: { key: "raw d" value: 7 }
-base_amounts: { key: "raw e" value: 7 }
-base_amounts: { key: "raw f" value: 7 }
-base_amounts: { key: "raw g" value: 7 }
-base_amounts: { key: "raw h" value: 7 }
-base_amounts: { key: "raw i" value: 7 }
-
 possible_artefacts:
   {
     key: "raw a"
