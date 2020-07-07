@@ -103,7 +103,7 @@ class CombatTargetTest (PXTest):
     assert self.getTargetCharacter ("green") is None
     # Note that we can move a directly to the offset coordinate (where also
     # b is), since a and b are of different factions.
-    c.sendMove ({"wp": [self.offset]})
+    c.moveTowards (self.offset)
     self.generate (1)
     self.assertEqual (self.getCharacters ()["red"].getPosition (),
                       offsetCoord ({"x": 10, "y": 0}, self.offset, False))

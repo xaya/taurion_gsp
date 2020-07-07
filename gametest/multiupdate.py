@@ -40,8 +40,8 @@ class MultiUpdateTest (PXTest):
 
     self.mainLogger.info ("Multiple movement commands in a block...")
     c = self.getCharacters ()["domob"]
-    c.sendMove ({"wp": [offsetCoord ({"x": 10, "y": 0}, self.offset, False)]})
-    c.sendMove ({"wp": [offsetCoord ({"x": 0, "y": 10}, self.offset, False)]})
+    c.moveTowards (offsetCoord ({"x": 10, "y": 0}, self.offset, False))
+    c.moveTowards (offsetCoord ({"x": 0, "y": 10}, self.offset, False))
     self.generate (1)
     c = self.getCharacters ()["domob"]
     expected = {"x": 0, "y": c.getSpeed () // 1000}

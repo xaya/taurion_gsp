@@ -50,7 +50,7 @@ class CombatEffectsTest (PXTest):
     self.mainLogger.info ("Moving through retarding area...")
     c = self.getCharacters ()
     for key in ["target", "friendly"]:
-      c[key].sendMove ({"wp": [{"x": 50, "y": 0}]})
+      c[key].moveTowards ({"x": 50, "y": 0})
     self.generate (100)
     c = self.getCharacters ()
     self.assertEqual (c["friendly"].getPosition (), {"x": 50, "y": 0})

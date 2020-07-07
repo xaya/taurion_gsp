@@ -124,6 +124,18 @@ class Character (object):
     idStr = self.getIdStr ()
     return self.test.sendMove (self.data["owner"], {"c": {idStr: mv}})
 
+  def moveTowards (self, target):
+    """
+    Sends a move with waypoints matching the findpath output from the
+    current position to target.
+    """
+
+    path = self.test.rpc.game.findpath (source=self.getPosition (),
+                                        target=target,
+                                        faction=self.data["faction"],
+                                        l1range=1000)
+    return self.sendMove ({"wp": path["wp"]})
+
   def expectPartial (self, expected):
     """
     Expects that the data matches the values in the expected dictionary.

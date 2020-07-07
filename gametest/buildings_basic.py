@@ -34,7 +34,7 @@ class BuildingsBasicTest (PXTest):
     self.createCharacters ("domob")
     self.generate (1)
     self.moveCharactersTo ({"domob": {"x": -20, "y": 0}})
-    self.getCharacters ()["domob"].sendMove ({"wp": [{"x": 20, "y": 0}]})
+    self.getCharacters ()["domob"].moveTowards ({"x": 20, "y": 0})
     self.generate (3)
     reorgBlock = self.rpc.xaya.getbestblockhash ()
 
