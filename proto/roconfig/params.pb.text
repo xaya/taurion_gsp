@@ -10,10 +10,10 @@ params:
 
     armour_repair_hp_per_block: 100
     armour_repair_cost_millis: 100  # 1 vCHI per 10 HP repair
-    bp_copy_cost: 100
-    bp_copy_blocks: 10
-    construction_cost: 100
-    construction_blocks: 10
+    bp_copy_cost: 1
+    bp_copy_blocks: 1
+    construction_cost: 1
+    construction_blocks: 1
 
     # The address configured here (for mainnet) is the premine address of Xaya
     # controlled by the Xaya team.  See also Xaya Core's src/chainparams.cpp.
