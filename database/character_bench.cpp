@@ -230,9 +230,9 @@ CharacterProtoUpdate (benchmark::State& state)
       {
         const auto h = tbl.GetById (charIds[i]);
         auto* mv = h->MutableProto ().mutable_movement ();
-        if (mv->steps_size () == 0)
-          mv->mutable_steps ()->Add ();
-        mv->mutable_steps (0)->set_x (cnt++);
+        if (mv->waypoints_size () == 0)
+          mv->mutable_waypoints ()->Add ();
+        mv->mutable_waypoints (0)->set_x (cnt++);
       }
 }
 BENCHMARK (CharacterProtoUpdate)

@@ -74,8 +74,8 @@ class SafeZonesTest (PXTest):
       "green": relativePos (-15, 0),
     })
     chars = self.getCharacters ()
-    chars["red"].sendMove ({"wp": [relativePos (15, 11)]})
-    chars["green"].sendMove ({"wp": [relativePos (15, 0)]})
+    chars["red"].moveTowards (relativePos (15, 11))
+    chars["green"].moveTowards (relativePos (15, 0))
     self.generate (9)
     c = self.getCharacters ()["red"]
     self.assertEqual (c.isMoving (), False)
@@ -92,7 +92,7 @@ class SafeZonesTest (PXTest):
       "red": {"ma": 100, "a": 100, "ms": 100, "s": 100},
       "green": {"ma": 100, "a": 100, "ms": 100, "s": 100},
     })
-    self.getCharacters ()["red"].sendMove ({"wp": [relativePos (0, 7)]})
+    self.getCharacters ()["red"].moveTowards (relativePos (0, 7))
     self.generate (2)
     c = self.getCharacters ()["red"]
     assert c.data["combat"]["hp"]["current"]["shield"] < 100

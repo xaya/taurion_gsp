@@ -97,8 +97,7 @@
         "source": {},
         "target": {},
         "faction": "",
-        "l1range": 100,
-        "wpdist": 10
+        "l1range": 100
       },
     "returns": {}
   },

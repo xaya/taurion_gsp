@@ -108,31 +108,6 @@ GetMovementJsonObject (const Character& c)
         wp.append (CoordToJson (CoordFromProto (entry)));
       if (wp.size () > 0)
         res["waypoints"] = wp;
-
-      /* The precomputed path is processed (rather than just translated from
-         proto to JSON):  We strip off already visited points from it, and
-         we "shift" it by one so that the points represent destinations
-         and it is easier to understand.  */
-      Json::Value path(Json::arrayValue);
-      bool foundPosition = false;
-      for (const auto& s : mvProto.steps ())
-        {
-          const HexCoord from = CoordFromProto (s);
-          if (from == c.GetPosition ())
-            {
-              CHECK (!foundPosition);
-              foundPosition = true;
-            }
-          else if (foundPosition)
-            path.append (CoordToJson (from));
-        }
-      CHECK (foundPosition || mvProto.steps_size () == 0);
-      if (foundPosition)
-        {
-          CHECK (wp.size () > 0);
-          path.append (wp[0]);
-          res["steps"] = path;
-        }
     }
 
   return res;

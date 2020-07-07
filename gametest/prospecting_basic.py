@@ -65,7 +65,7 @@ class BasicProspectingTest (PXTest):
     # Further movements should be ignored.  Verify the prospection effects.
     self.mainLogger.info ("Basic prospecting and movement...")
 
-    self.getCharacters ()["target"].sendMove ({"wp": [self.offset]})
+    self.getCharacters ()["target"].moveTowards (self.offset)
     self.generate (2)
     c = self.getCharacters ()["target"]
     pos = c.getPosition ()
@@ -86,7 +86,7 @@ class BasicProspectingTest (PXTest):
     })
     self.assertEqual (region.data["prospection"], {"inprogress": c.getId ()})
 
-    c.sendMove ({"wp": [self.offset]})
+    c.moveTowards (self.offset)
     self.generate (1)
     c = self.getCharacters ()["target"]
     self.assertEqual (c.getPosition (), pos)

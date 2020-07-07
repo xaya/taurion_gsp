@@ -200,12 +200,11 @@ NonStateRpcServer::setpathbuildings (const Json::Value& buildings)
 Json::Value
 NonStateRpcServer::findpath (const std::string& faction,
                              const int l1range, const Json::Value& source,
-                             const Json::Value& target, const int wpdist)
+                             const Json::Value& target)
 {
   LOG (INFO)
       << "RPC method called: findpath\n"
-      << "  l1range=" << l1range << ", wpdist=" << wpdist
-      << ", faction=" << faction << "\n"
+      << "  l1range=" << l1range << ", faction=" << faction << "\n"
       << "  source=" << source << ",\n"
       << "  target=" << target;
 
@@ -238,7 +237,6 @@ NonStateRpcServer::findpath (const std::string& faction,
 
   const int maxInt = std::numeric_limits<HexCoord::IntT>::max ();
   CheckIntBounds ("l1range", l1range, 0, maxInt);
-  CheckIntBounds ("wpdist", wpdist, 1, maxInt);
 
   /* We do not want to keep a lock on the dyn mutex while the potentially
      long call is running.  Instead, we just copy the shared pointer and
@@ -265,17 +263,26 @@ NonStateRpcServer::findpath (const std::string& faction,
                  "no connection between source and target"
                  " within the given l1range");
 
+  /* Now step the path and construct waypoints, so that it is a principal
+     direction between each of them.  */
   Json::Value wp(Json::arrayValue);
   PathFinder::Stepper path = finder.StepPath (sourceCoord);
   HexCoord lastWp = path.GetPosition ();
   wp.append (CoordToJson (lastWp));
-  for (; path.HasMore (); path.Next ())
+  HexCoord prev = lastWp;
+  while (path.HasMore ())
     {
-      if (HexCoord::DistanceL1 (lastWp, path.GetPosition ()) >= wpdist)
+      path.Next ();
+
+      HexCoord dir;
+      HexCoord::IntT steps;
+      if (!lastWp.IsPrincipalDirectionTo (path.GetPosition (), dir, steps))
         {
-          lastWp = path.GetPosition ();
-          wp.append (CoordToJson (lastWp));
+          wp.append (CoordToJson (prev));
+          lastWp = prev;
         }
+
+      prev = path.GetPosition ();
     }
   if (lastWp != path.GetPosition ())
     wp.append (CoordToJson (path.GetPosition ()));

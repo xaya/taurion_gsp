@@ -43,7 +43,7 @@ namespace
  * The speed of characters used in the benchmark.  We want to move one
  * tile per block.
  */
-constexpr PathFinder::DistanceT SPEED = 1000;
+constexpr PathFinder::DistanceT SPEED = 1'000;
 
 /**
  * Initialises the test account in the database.
@@ -68,84 +68,10 @@ CreateCharacter (CharacterTable& tbl)
 }
 
 /**
- * Benchmarks movement along one segment (path finding and then stepping).
- * One iteration of the benchmark corresponds to moving for N blocks,
- * where N is the distance used between waypoints.
+ * Benchmarks moving a single character a long way.  This gives us an idea of
+ * how costly long-haul travel is in general.
  *
- * The benchmark accepts the following arguments:
- *  - The distance to use between waypoints
- *  - The number of characters to move around
- *  - The number of waypoints to set for each character (this only affects
- *    the size of the protocol buffer data)
- */
-void
-MovementOneSegment (benchmark::State& state)
-{
-  TestDatabase db;
-  SetupDatabaseSchema (db.GetHandle ());
-
-  ContextForTesting ctx;
-
-  const HexCoord::IntT numTiles = state.range (0);
-  const unsigned numMoving = state.range (1);
-  const unsigned numWP = state.range (2);
-
-  InitialiseAccount (db);
-
-  CharacterTable tbl(db);
-  std::vector<Database::IdT> charIds;
-  for (unsigned i = 0; i < numMoving; ++i)
-    charIds.push_back (CreateCharacter (tbl)->GetId ());
-
-  for (auto _ : state)
-    {
-      state.PauseTiming ();
-      for (const auto id : charIds)
-        {
-          const auto h = tbl.GetById (id);
-          StopCharacter (*h);
-          h->SetPosition (HexCoord (0, id));
-          auto* mv = h->MutableProto ().mutable_movement ();
-          auto* wp = mv->mutable_waypoints ();
-          for (unsigned i = 0; i < numWP; ++i)
-            *wp->Add () = CoordToProto (HexCoord (numTiles, id));
-        }
-      DynObstacles dyn(db, ctx);
-      state.ResumeTiming ();
-
-      for (int i = 0; i < numTiles; ++i)
-        ProcessAllMovement (db, dyn, ctx);
-
-      /* Make sure that we moved exactly the first part of the path.  This
-         verifies that the benchmark is actually set up correctly, and ensures
-         that we are not measuring something we don't want to measure.  */
-      state.PauseTiming ();
-      for (const auto id : charIds)
-        {
-          const auto h = tbl.GetById (id);
-          CHECK (!h->GetProto ().has_movement ());
-          CHECK_EQ (h->GetPosition (), HexCoord (numTiles, id));
-        }
-      state.ResumeTiming ();
-    }
-}
-BENCHMARK (MovementOneSegment)
-  ->Unit (benchmark::kMillisecond)
-  ->Args ({10, 1, 1})
-  ->Args ({10, 10, 1})
-  ->Args ({10, 1, 100})
-  ->Args ({100, 1, 1})
-  ->Args ({100, 10, 1})
-  ->Args ({100, 1, 100});
-
-/**
- * Benchmarks moving a single character a long way, including over multiple
- * way segments.  This gives us an idea of how costly long-haul travel is
- * in general.
- *
- * Arguments are:
- *  - Distance between waypoints
- *  - Total distance travelled
+ * The total distance travelled is passed as argument.
  */
 void
 MovementLongHaul (benchmark::State& state)
@@ -155,8 +81,7 @@ MovementLongHaul (benchmark::State& state)
 
   ContextForTesting ctx;
 
-  const HexCoord::IntT wpDist = state.range (0);
-  const HexCoord::IntT total = state.range (1);
+  const HexCoord::IntT dist = state.range (0);
 
   InitialiseAccount (db);
 
@@ -166,7 +91,7 @@ MovementLongHaul (benchmark::State& state)
   /* We start travelling from a non-zero origin.  The coordinate is chosen
      such that movement from it in positive x direction is free for a long
      enough path.  */
-  const HexCoord origin(1000, -2636);
+  const HexCoord origin(1'000, -2'636);
 
   for (auto _ : state)
     {
@@ -177,21 +102,7 @@ MovementLongHaul (benchmark::State& state)
         h->SetPosition (origin);
         auto* mv = h->MutableProto ().mutable_movement ();
         auto* wp = mv->mutable_waypoints ();
-
-        HexCoord::IntT lastX = 0;
-        while (lastX != total)
-          {
-            lastX += wpDist;
-            if (lastX > total)
-              lastX = total;
-
-            HexCoord nextWp(lastX, 0);
-            nextWp += origin;
-            *wp->Add () = CoordToProto (nextWp);
-          }
-        LOG (INFO)
-            << "Using " << wp->size () << " waypoints to move " << total
-            << " tiles with spacing of " << wpDist;
+        *wp->Add () = CoordToProto (origin + HexCoord (dist, 0));
       }
       DynObstacles dyn(db, ctx);
       state.ResumeTiming ();
@@ -203,18 +114,15 @@ MovementLongHaul (benchmark::State& state)
       while (tbl.GetById (id)->GetProto ().has_movement ());
 
       state.PauseTiming ();
-      HexCoord expected(total, 0);
-      expected += origin;
-      CHECK_EQ (tbl.GetById (id)->GetPosition (), expected);
+      CHECK_EQ (tbl.GetById (id)->GetPosition (), HexCoord (dist, 0) + origin);
       state.ResumeTiming ();
     }
 }
 BENCHMARK (MovementLongHaul)
   ->Unit (benchmark::kMillisecond)
-  ->Args ({10, 100})
-  ->Args ({10, 1000})
-  ->Args ({100, 100})
-  ->Args ({100, 1000});
+  ->Args ({10})
+  ->Args ({100})
+  ->Args ({1'000});
 
 } // anonymous namespace
 } // namespace pxd
