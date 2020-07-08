@@ -117,6 +117,14 @@ message Attack
   /** If this attack has non-damage effects, the stats for it.  */
   optional CombatEffects effects = 4;
 
+  /**
+   * If true, then HP drained through this attack's damage will be given
+   * back to the attacker (if any).  This works per HP type, i.e. shield
+   * HP drained are added to the shield (if not full) and armour HP are
+   * added to the armour (if not full).
+   */
+  optional bool gain_hp = 5;
+
 }
 
 /**
