@@ -232,6 +232,24 @@ private:
   std::map<TargetKey, CombatModifier> modifiers;
 
   /**
+   * For each target that was attacked with a gain_hp attack, we store all
+   * attackers and how many HP they drained.  We give them those HP back
+   * only later, after processing all damage and kills (i.e. HP you gained
+   * in one round do not prevent you from dying in that round).  Also, if
+   * a single target was drained by more than one attacker and ends up with
+   * no HP left, noone gets any of them.
+   *
+   * DealDamage fills this in whenever it processes an attack that has
+   * gain_hp set.
+   *
+   * This system ensures that processing is independent of the order in which
+   * the individual attackers are handled; if two people drained the same
+   * target and it ends up without HP (so that the order might have mattered),
+   * then noone gets any.
+   */
+  std::map<TargetKey, std::map<TargetKey, proto::HP>> gainHpDrained;
+
+  /**
    * The list of dead targets.  We use this to avoid giving out fame for
    * kills of already-dead targets in later rounds of self-destruct.  The list
    * being built up during a round of damage is a temporary, that gets put
@@ -248,10 +266,21 @@ private:
 
   /**
    * Applies a fixed given amount of damage to a given attack target.  Adds
-   * the target into newDead if it is now dead.
+   * the target into newDead if it is now dead.  This is a more low-level
+   * variant that does not handle gain_hp.  Returns the damage actually
+   * done to the target's shield and armour.
+   */
+  proto::HP ApplyDamage (unsigned dmg, const CombatEntity& attacker,
+                         const proto::Attack::Damage& pb,
+                         CombatEntity& target, std::set<TargetKey>& newDead);
+
+  /**
+   * Applies a fixed amount of damage to a given target.  This is the
+   * high-level variant that also handles gain_hp and is used for real attacks,
+   * but not self-destruct damage.
    */
   void ApplyDamage (unsigned dmg, const CombatEntity& attacker,
-                    const proto::Attack::Damage& pb,
+                    const proto::Attack& attack,
                     CombatEntity& target, std::set<TargetKey>& newDead);
 
   /**
@@ -261,9 +290,11 @@ private:
 
   /**
    * Deals damage for one fighter with a target to the respective target
-   * (or any AoE targets).
+   * (or any AoE targets).  Only processes attacks with gain_hp equal to
+   * the argument value passed in.
    */
-  void DealDamage (FighterTable::Handle f, std::set<TargetKey>& newDead);
+  void DealDamage (FighterTable::Handle f, bool forGainHp,
+                   std::set<TargetKey>& newDead);
 
   /**
    * Processes all damage the given fighter does due to self-destruct
@@ -370,7 +401,7 @@ ComputeDamage (unsigned dmg, const proto::Attack::Damage& pb,
 
 } // anonymous namespace
 
-void
+proto::HP
 DamageProcessor::ApplyDamage (const unsigned dmg, const CombatEntity& attacker,
                               const proto::Attack::Damage& pb,
                               CombatEntity& target,
@@ -382,14 +413,14 @@ DamageProcessor::ApplyDamage (const unsigned dmg, const CombatEntity& attacker,
   if (dmg == 0)
     {
       VLOG (1) << "No damage done to target:\n" << targetId.DebugString ();
-      return;
+      return proto::HP ();
     }
   const TargetKey targetKey(targetId);
   if (alreadyDead.count (targetKey) > 0)
     {
       VLOG (1)
           << "Target is already dead from before:\n" << targetId.DebugString ();
-      return;
+      return proto::HP ();
     }
   VLOG (1)
       << "Dealing " << dmg << " damage to target:\n" << targetId.DebugString ();
@@ -416,6 +447,31 @@ DamageProcessor::ApplyDamage (const unsigned dmg, const CombatEntity& attacker,
       CHECK (newDead.insert (targetKey).second)
           << "Target is already dead:\n" << targetId.DebugString ();
     }
+
+  return done;
+}
+
+void
+DamageProcessor::ApplyDamage (const unsigned dmg, const CombatEntity& attacker,
+                              const proto::Attack& attack,
+                              CombatEntity& target,
+                              std::set<TargetKey>& newDead)
+{
+  const auto done
+      = ApplyDamage (dmg, attacker, attack.damage (), target, newDead);
+
+  /* If this is a gain_hp attack, record the drained HP in the map of
+     drain attacks done so we can later process the potential HP gains
+     for the attackers.  */
+  if (attack.gain_hp ())
+    {
+      const TargetKey targetId(target.GetIdAsTarget ());
+      const TargetKey attackerId(attacker.GetIdAsTarget ());
+
+      auto& drained = gainHpDrained[targetId][attackerId];
+      drained.set_armour (drained.armour () + done.armour ());
+      drained.set_shield (drained.shield () + done.shield ());
+    }
 }
 
 void
@@ -438,7 +494,7 @@ DamageProcessor::ApplyEffects (const proto::Attack& attack,
 }
 
 void
-DamageProcessor::DealDamage (FighterTable::Handle f,
+DamageProcessor::DealDamage (FighterTable::Handle f, const bool forGainHp,
                              std::set<TargetKey>& newDead)
 {
   const auto& cd = f->GetCombatData ();
@@ -455,6 +511,9 @@ DamageProcessor::DealDamage (FighterTable::Handle f,
 
   for (const auto& attack : cd.attacks ())
     {
+      if (attack.gain_hp () != forGainHp)
+        continue;
+
       /* If this is not a centred-on-attacker AoE attack, check that
          the target is actually within range of this attack.  */
       if (attack.has_range ()
@@ -485,14 +544,14 @@ DamageProcessor::DealDamage (FighterTable::Handle f,
                       << t->GetIdAsTarget ().DebugString ();
                   return;
                 }
-              ApplyDamage (dmg, *f, attack.damage (), *t, newDead);
+              ApplyDamage (dmg, *f, attack, *t, newDead);
               ApplyEffects (attack, *t);
             });
         }
       else
         {
           auto t = fighters.GetForTarget (f->GetTarget ());
-          ApplyDamage (dmg, *f, attack.damage (), *t, newDead);
+          ApplyDamage (dmg, *f, attack, *t, newDead);
           ApplyEffects (attack, *t);
         }
     }
@@ -548,9 +607,65 @@ DamageProcessor::Process ()
     });
 
   std::set<TargetKey> newDead;
+
+  /* We first process all attacks with gain_hp, and only later all without.
+     This ensures that normal attacks against shields do not remove the HP
+     first before they can be drained by a syphon.  */
   fighters.ProcessWithTarget ([&] (FighterTable::Handle f)
     {
-      DealDamage (std::move (f), newDead);
+      DealDamage (std::move (f), true, newDead);
+    });
+
+  /* Reconcile the set of HP gained by attackers now (before normal attacks
+     may bring shields down to zero when they aren't yet, for instance).  */
+  std::map<TargetKey, proto::HP> gainedHp;
+  for (const auto& targetEntry : gainHpDrained)
+    {
+      CHECK (!targetEntry.second.empty ());
+
+      const auto tf = fighters.GetForTarget (targetEntry.first.ToProto ());
+      const auto& tHp = tf->GetHP ();
+
+      for (const auto& attackEntry : targetEntry.second)
+        {
+          /* While most of the code here is written to support both armour
+             and shield drains, we only actually need shield in the game
+             (for the syphon fitment).  Supporting both types also leads to
+             more issues with processing order, as the order may e.g. determine
+             the split between shield and armour for a general attack.
+             Thus we disallow this for simplicity (but we could probably
+             work out some rules that make it work).  */
+          CHECK_EQ (attackEntry.second.armour (), 0)
+              << "Armour drain is not supported";
+          CHECK_GT (attackEntry.second.shield (), 0);
+
+          proto::HP gained;
+
+          /* The attacker only gains HP if either noone else drained the
+             target in question, or there are HP left (so everyone can indeed
+             get what they drained).  */
+          if (tHp.armour () > 0 || targetEntry.second.size () == 1)
+            gained.set_armour (attackEntry.second.armour ());
+          if (tHp.shield () > 0 || targetEntry.second.size () == 1)
+            gained.set_shield (attackEntry.second.shield ());
+
+          if (gained.armour () > 0 || gained.shield () > 0)
+            {
+              auto& gainedEntry = gainedHp[attackEntry.first];
+              gainedEntry.set_armour (gainedEntry.armour () + gained.armour ());
+              gainedEntry.set_shield (gainedEntry.shield () + gained.shield ());
+              VLOG (2)
+                  << "Fighter " << attackEntry.first.ToProto ().DebugString ()
+                  << " gained HP from "
+                  << targetEntry.first.ToProto ().DebugString ()
+                  << ":\n" << gained.DebugString ();
+            }
+        }
+    }
+
+  fighters.ProcessWithTarget ([&] (FighterTable::Handle f)
+    {
+      DealDamage (std::move (f), false, newDead);
     });
 
   /* After applying the base damage, we process all self-destruct actions
@@ -573,6 +688,30 @@ DamageProcessor::Process ()
 
       for (const auto& d : toProcess)
         ProcessSelfDestructs (fighters.GetForTarget (d.ToProto ()), newDead);
+    }
+
+  /* Credit gained HP to everyone who is not dead.  */
+  for (const auto& entry : gainedHp)
+    {
+      if (alreadyDead.count (entry.first) > 0)
+        {
+          VLOG (1)
+              << "Fighter " << entry.first.ToProto ().DebugString ()
+              << " was killed, not crediting gained HP";
+          continue;
+        }
+
+      VLOG (1)
+          << "Fighter " << entry.first.ToProto ().DebugString ()
+          << " gained HP:\n" << entry.second.DebugString ();
+
+      const auto f = fighters.GetForTarget (entry.first.ToProto ());
+      const auto& maxHp = f->GetRegenData ().max_hp ();
+      auto& hp = f->MutableHP ();
+      hp.set_armour (std::min (hp.armour () + entry.second.armour (),
+                               maxHp.armour ()));
+      hp.set_shield (std::min (hp.shield () + entry.second.shield (),
+                               maxHp.shield ()));
     }
 }
 

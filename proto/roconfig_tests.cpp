@@ -251,6 +251,18 @@ private:
         return false;
       }
 
+    if (!attack.has_damage () && !attack.has_effects ())
+      {
+        LOG (WARNING) << "Attack has neither damage nor effect";
+        return false;
+      }
+
+    if (attack.gain_hp () && !attack.has_damage ())
+      {
+        LOG (WARNING) << "Attack has gain_hp but no damage";
+        return false;
+      }
+
     return true;
   }
 
