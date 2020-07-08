@@ -48,6 +48,7 @@ namespace
 
 using testing::ElementsAre;
 using testing::ElementsAreArray;
+using testing::IsEmpty;
 
 /** A coordinate that is a safe zone.  */
 const HexCoord SAFE(2'042, 10);
@@ -916,6 +917,206 @@ TEST_F (DealDamageTests, EffectsAndDamageApplied)
   c = characters.GetById (idTarget);
   EXPECT_EQ (c->GetHP ().armour (), 99);
   EXPECT_EQ (c->GetEffects ().speed ().percent (), -15);
+}
+
+/* ************************************************************************** */
+
+using GainHpTests = DealDamageTests;
+
+TEST_F (GainHpTests, Basic)
+{
+  auto c = characters.CreateNew ("red", Faction::RED);
+  const auto idAttacker = c->GetId ();
+  SetHp (*c, 10, 10, 100, 100);
+  AddAttack (*c, 1, 10, 10).set_gain_hp (true);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idTarget = c->GetId ();
+  SetHp (*c, 3, 0, 100, 100);
+  NoAttacks (*c);
+  c.reset ();
+
+  EXPECT_THAT (FindTargetsAndDamage (), ElementsAre (
+    TargetKey (proto::TargetId::TYPE_CHARACTER, idTarget)
+  ));
+
+  c = characters.GetById (idAttacker);
+  EXPECT_EQ (c->GetHP ().shield (), 13);
+  EXPECT_EQ (c->GetHP ().armour (), 10);
+}
+
+TEST_F (GainHpTests, CappedAtMax)
+{
+  auto c = characters.CreateNew ("red", Faction::RED);
+  const auto idAttacker = c->GetId ();
+  SetHp (*c, 99, 99, 100, 100);
+  AddAttack (*c, 1, 10, 10).set_gain_hp (true);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idTarget = c->GetId ();
+  SetHp (*c, 100, 100, 100, 100);
+  NoAttacks (*c);
+  c.reset ();
+
+  EXPECT_THAT (FindTargetsAndDamage (), IsEmpty ());
+
+  c = characters.GetById (idTarget);
+  EXPECT_EQ (c->GetHP ().shield (), 90);
+  EXPECT_EQ (c->GetHP ().armour (), 100);
+
+  c = characters.GetById (idAttacker);
+  EXPECT_EQ (c->GetHP ().shield (), 100);
+  EXPECT_EQ (c->GetHP ().armour (), 99);
+}
+
+TEST_F (GainHpTests, BeforeOtherAttacks)
+{
+  auto c = characters.CreateNew ("red", Faction::RED);
+  const auto idAttacker = c->GetId ();
+  SetHp (*c, 10, 10, 100, 100);
+  AddAttack (*c, 1, 10, 10);
+  AddAttack (*c, 1, 1, 1).set_gain_hp (true);
+  AddAttack (*c, 1, 2, 2).set_gain_hp (true);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idTarget = c->GetId ();
+  SetHp (*c, 5, 100, 100, 100);
+  NoAttacks (*c);
+  c.reset ();
+
+  EXPECT_THAT (FindTargetsAndDamage (), IsEmpty ());
+
+  c = characters.GetById (idTarget);
+  EXPECT_EQ (c->GetHP ().shield (), 0);
+  EXPECT_EQ (c->GetHP ().armour (), 92);
+
+  c = characters.GetById (idAttacker);
+  EXPECT_EQ (c->GetHP ().shield (), 13);
+  EXPECT_EQ (c->GetHP ().armour (), 10);
+}
+
+TEST_F (GainHpTests, DoesNotPreventDeath)
+{
+  auto c = characters.CreateNew ("red", Faction::RED);
+  const auto idGainer = c->GetId ();
+  SetHp (*c, 1, 0, 100, 100);
+  AddAttack (*c, 1, 10, 10).set_gain_hp (true);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  SetHp (*c, 100, 100, 100, 100);
+  AddAttack (*c, 1, 10, 10);
+  c.reset ();
+
+  EXPECT_THAT (FindTargetsAndDamage (), ElementsAre (
+    TargetKey (proto::TargetId::TYPE_CHARACTER, idGainer)
+  ));
+}
+
+TEST_F (GainHpTests, CreditedAfterOtherAttacks)
+{
+  /* Gained HP are credited after all attacks are deducted (if the character
+     is then still alive).  This means that independent of in which order
+     the characters are processed below, they will always deduct the gained
+     HP first, then take some damage, and then get the gained HP credited back
+     in full.  If one were processed before the other, then that one would
+     not get any credits as it would be already at the max still.  */
+
+  auto c = characters.CreateNew ("red", Faction::RED);
+  const auto id1 = c->GetId ();
+  SetHp (*c, 10, 100, 100, 100);
+  AddAttack (*c, 1, 9, 9).set_gain_hp (true);
+  AddAttack (*c, 1, 10, 10);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto id2 = c->GetId ();
+  SetHp (*c, 10, 100, 100, 100);
+  AddAttack (*c, 1, 9, 9).set_gain_hp (true);
+  AddAttack (*c, 1, 10, 10);
+  c.reset ();
+
+  EXPECT_THAT (FindTargetsAndDamage (), IsEmpty ());
+  for (const Database::IdT id : {id1, id2})
+    {
+      c = characters.GetById (id);
+      EXPECT_EQ (c->GetHP ().shield (), 9);
+      EXPECT_EQ (c->GetHP ().armour (), 91);
+    }
+}
+
+TEST_F (GainHpTests, MultipleAttackers)
+{
+  auto c = characters.CreateNew ("red", Faction::RED);
+  const auto idGainer1 = c->GetId ();
+  SetHp (*c, 0, 10, 100, 100);
+  AddAttack (*c, 1, 10, 10).set_gain_hp (true);
+  /* Even if we use up the shield completely with another attack (that is
+     not drain), the drain still works fine.  */
+  AddAttack (*c, 1, 100, 100);
+  c.reset ();
+
+  c = characters.CreateNew ("red", Faction::RED);
+  const auto idGainer2 = c->GetId ();
+  SetHp (*c, 0, 10, 100, 100);
+  AddAttack (*c, 1, 10, 10).set_gain_hp (true);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idTarget = c->GetId ();
+  SetHp (*c, 100, 0, 100, 100);
+  NoAttacks (*c);
+  c.reset ();
+
+  EXPECT_THAT (FindTargetsAndDamage (), ElementsAre (
+    TargetKey (proto::TargetId::TYPE_CHARACTER, idTarget)
+  ));
+
+  c = characters.GetById (idGainer1);
+  EXPECT_EQ (c->GetHP ().shield (), 10);
+  EXPECT_EQ (c->GetHP ().armour (), 10);
+
+  c = characters.GetById (idGainer2);
+  EXPECT_EQ (c->GetHP ().shield (), 10);
+  EXPECT_EQ (c->GetHP ().armour (), 10);
+}
+
+TEST_F (GainHpTests, MultipleAttackersCompleteDrain)
+{
+  auto c = characters.CreateNew ("red", Faction::RED);
+  const auto idGainer1 = c->GetId ();
+  SetHp (*c, 0, 10, 100, 100);
+  AddAttack (*c, 1, 10, 10).set_gain_hp (true);
+  c.reset ();
+
+  c = characters.CreateNew ("red", Faction::RED);
+  const auto idGainer2 = c->GetId ();
+  SetHp (*c, 0, 10, 100, 100);
+  AddAttack (*c, 1, 10, 10).set_gain_hp (true);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idTarget = c->GetId ();
+  SetHp (*c, 20, 10, 100, 100);
+  NoAttacks (*c);
+  c.reset ();
+
+  EXPECT_THAT (FindTargetsAndDamage (), IsEmpty ());
+
+  c = characters.GetById (idTarget);
+  EXPECT_EQ (c->GetHP ().shield (), 0);
+  EXPECT_EQ (c->GetHP ().armour (), 10);
+
+  c = characters.GetById (idGainer1);
+  EXPECT_EQ (c->GetHP ().shield (), 0);
+  EXPECT_EQ (c->GetHP ().armour (), 10);
+
+  c = characters.GetById (idGainer2);
+  EXPECT_EQ (c->GetHP ().shield (), 0);
+  EXPECT_EQ (c->GetHP ().armour (), 10);
 }
 
 /* ************************************************************************** */
