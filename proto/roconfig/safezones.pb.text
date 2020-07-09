@@ -2,21 +2,21 @@
 
 safe_zones:
   {
-    centre: { x: 1993 y: -2636 }
+    centre: { x: 1960 y: -2601 }
     radius: 300
     faction: "r"
   }
 
 safe_zones:
   {
-    centre: { x: -3430 y: 1793 }
+    centre: { x: -3472 y: 1824 }
     radius: 300
     faction: "g"
   }
 
 safe_zones:
   {
-    centre: { x: 571 y: 2609 }
+    centre: { x: 547 y: 2497 }
     radius: 300
     faction: "b"
   }
