@@ -62,9 +62,15 @@ TEST_F (StatModifierTests, IsNeutral)
 {
   StatModifier m;
   EXPECT_TRUE (m.IsNeutral ());
+
   m += Modifier ("percent: 10");
   EXPECT_FALSE (m.IsNeutral ());
   m += Modifier ("percent: -10");
+  EXPECT_TRUE (m.IsNeutral ());
+
+  m += Modifier ("absolute: 10");
+  EXPECT_FALSE (m.IsNeutral ());
+  m += Modifier ("absolute: -10");
   EXPECT_TRUE (m.IsNeutral ());
 }
 
@@ -84,6 +90,16 @@ TEST_F (StatModifierTests, Application)
   EXPECT_EQ (m (-100), -90);
   EXPECT_EQ (m (-9), -9);
   EXPECT_EQ (m (-10), -9);
+
+  m = Modifier ("absolute: 2");
+  EXPECT_EQ (m (0), 2);
+  EXPECT_EQ (m (10), 12);
+  EXPECT_EQ (m (-10), -8);
+
+  m = Modifier ("absolute: -2");
+  EXPECT_EQ (m (0), -2);
+  EXPECT_EQ (m (10), 8);
+  EXPECT_EQ (m (-10), -12);
 }
 
 TEST_F (StatModifierTests, Stacking)
@@ -97,17 +113,32 @@ TEST_F (StatModifierTests, Stacking)
   EXPECT_EQ (m (100), 300);
 }
 
+TEST_F (StatModifierTests, RelativeAndAbsolute)
+{
+  const StatModifier m = Modifier (R"(
+    percent: 200
+    absolute: 10
+  )");
+  EXPECT_EQ (m (100), 310);
+}
+
 TEST_F (StatModifierTests, ToProto)
 {
-  const auto pb = Modifier ("percent: -42").ToProto ();
+  auto pb = Modifier ("percent: -42 absolute: 10").ToProto ();
   EXPECT_EQ (pb.percent (), -42);
+  EXPECT_EQ (pb.absolute (), 10);
+
+  pb = Modifier ("percent: 0 absolute: 0").ToProto ();
+  EXPECT_FALSE (pb.has_percent ());
+  EXPECT_FALSE (pb.has_absolute ());
 }
 
 TEST_F (StatModifierTests, ProtoAdd)
 {
   auto pb = Modifier ("percent: 10").ToProto ();
-  pb += Modifier ("percent: -5").ToProto ();
+  pb += Modifier ("percent: -5 absolute: 1").ToProto ();
   EXPECT_EQ (pb.percent (), 5);
+  EXPECT_EQ (pb.absolute (), 1);
 }
 
 } // anonymous namespace

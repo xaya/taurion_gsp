@@ -33,4 +33,9 @@ message StatModifier
    */
   optional sint32 percent = 1;
 
+  /**
+   * Absolute change to the base value.
+   */
+  optional sint32 absolute = 2;
+
 }
