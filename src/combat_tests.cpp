@@ -676,6 +676,32 @@ TEST_F (DealDamageTests, MixedAttacks)
   EXPECT_LE (hpFar, 9);
 }
 
+TEST_F (DealDamageTests, ReceivedDamageModifier)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  /* The modifier is applied to each attack individually, and (like all
+     StatModifier's) only takes effect if the reduction is actually
+     at least a full HP.  So all single-HP attacks do full damage, but the
+     one with larger amount of damage is reduced.  */
+  for (unsigned i = 0; i < 10; ++i)
+    AddAttack (*c, 1, 1, 1);
+  AddAttack (*c, 1, 10, 10);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", Faction::GREEN);
+  const auto idTarget = c->GetId ();
+  NoAttacks (*c);
+  SetHp (*c, 7, 100, 0, 100);
+  auto* cd = c->MutableProto ().mutable_combat_data ();
+  cd->mutable_received_damage_modifier ()->set_percent (-50);
+  c.reset ();
+
+  FindTargetsAndDamage ();
+  c = characters.GetById (idTarget);
+  EXPECT_EQ (c->GetHP ().shield (), 0);
+  EXPECT_EQ (c->GetHP ().armour (), 92);
+}
+
 TEST_F (DealDamageTests, SafeZone)
 {
   /* One attacker has both area and normal attacks and also a slowing effect.
