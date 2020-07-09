@@ -402,7 +402,7 @@ ComputeDamage (unsigned dmg, const proto::Attack::Damage& pb,
 } // anonymous namespace
 
 proto::HP
-DamageProcessor::ApplyDamage (const unsigned dmg, const CombatEntity& attacker,
+DamageProcessor::ApplyDamage (unsigned dmg, const CombatEntity& attacker,
                               const proto::Attack::Damage& pb,
                               CombatEntity& target,
                               std::set<TargetKey>& newDead)
@@ -410,6 +410,22 @@ DamageProcessor::ApplyDamage (const unsigned dmg, const CombatEntity& attacker,
   CHECK (!ctx.Map ().SafeZones ().IsNoCombat (target.GetCombatPosition ()));
 
   const auto targetId = target.GetIdAsTarget ();
+  const auto& targetData = target.GetCombatData ();
+  const StatModifier recvDamage(targetData.received_damage_modifier ());
+  const auto updatedDamage = recvDamage (dmg);
+  CHECK_GE (updatedDamage, 0);
+  if (updatedDamage != dmg)
+    {
+      VLOG (1)
+          << "Damage modifier for " << targetId.DebugString ()
+          << " changed " << dmg << " to " << updatedDamage;
+      dmg = updatedDamage;
+    }
+
+  /* Handle cases when we exit early and don't even account for the attack
+     in the damage lists:  No damage done at all (e.g. after modifier)
+     and the target is already dead from a previous round of self-destructs
+     or attacks.  */
   if (dmg == 0)
     {
       VLOG (1) << "No damage done to target:\n" << targetId.DebugString ();

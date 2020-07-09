@@ -167,7 +167,7 @@ message LowHpBoost
 message HP
 {
 
-  /** The "permanent" armour based HP.  */
+  /** The "permanent" armour-based HP.  */
   optional uint32 armour = 1;
 
   /** The regenerating, shield-based HP.  */
@@ -178,7 +178,7 @@ message HP
    * so that the shield is incremented by one when this reaches 1000.
    *
    * This field is only present for the current HP of a fighter, not the
-   * maximum HP in its CombatData.
+   * maximum HP in its RegenData.
    */
   optional uint32 shield_mhp = 3;
 
@@ -217,5 +217,11 @@ message CombatData
 
   /** Any self-destruct attacks this fighter has.  */
   repeated SelfDestruct self_destructs = 3;
+
+  /**
+   * Reduction applied to any damage received (e.g. from the "armour hardener"
+   * upgrade fitment).
+   */
+  optional StatModifier received_damage_modifier = 4;
 
 }
