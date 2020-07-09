@@ -13,7 +13,6 @@ building_types: {
                 max_hp: {
                     armour: 50 shield: 0
                 }
-                shield_regeneration_mhp: 0
             }
         }
 
@@ -30,7 +29,7 @@ building_types: {
                 max_hp: {
                     armour: 1000 shield: 200
                 }
-                shield_regeneration_mhp: 500
+                regeneration_mhp: { shield: 500 }
             }
         }
 

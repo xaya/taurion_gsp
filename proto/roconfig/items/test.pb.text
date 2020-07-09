@@ -185,7 +185,7 @@ fungible_items:
             regen_data:
               {
                 max_hp: { armour: 100 shield: 30 }
-                shield_regeneration_mhp: 500
+                regeneration_mhp: { shield: 500 }
               }
             combat_data:
               {
@@ -219,7 +219,7 @@ fungible_items:
             regen_data:
               {
                 max_hp: { armour: 1000 shield: 100 }
-                shield_regeneration_mhp: 10
+                regeneration_mhp: { shield: 10 }
               }
             combat_data:
               {
@@ -261,7 +261,7 @@ fungible_items:
             regen_data:
               {
                 max_hp: { armour: 1000 shield: 100 }
-                shield_regeneration_mhp: 1000
+                regeneration_mhp: { shield: 1000 }
               }
             combat_data: {}
             size: HEAVY
