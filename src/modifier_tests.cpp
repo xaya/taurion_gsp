@@ -58,6 +58,16 @@ TEST_F (StatModifierTests, Default)
   EXPECT_EQ (m (1'000), 1'000);
 }
 
+TEST_F (StatModifierTests, IsNeutral)
+{
+  StatModifier m;
+  EXPECT_TRUE (m.IsNeutral ());
+  m += Modifier ("percent: 10");
+  EXPECT_FALSE (m.IsNeutral ());
+  m += Modifier ("percent: -10");
+  EXPECT_TRUE (m.IsNeutral ());
+}
+
 TEST_F (StatModifierTests, Application)
 {
   StatModifier m = Modifier ("percent: 50");

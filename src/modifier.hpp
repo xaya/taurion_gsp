@@ -50,6 +50,15 @@ public:
   {}
 
   /**
+   * Returns true if this modifier has no effect.
+   */
+  bool
+  IsNeutral () const
+  {
+    return percent == 0;
+  }
+
+  /**
    * Adds another modifier "on top of" the current one.
    */
   StatModifier&
