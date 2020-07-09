@@ -177,32 +177,35 @@ message FitmentData
   /** Modification to shield regeneration rate.  */
   optional StatModifier shield_regen = 8;
 
+  /** Modification to armour regeneration rate.  */
+  optional StatModifier armour_regen = 9;
+
   /** Modification of all attack ranges (and AoE area sizes).  */
-  optional StatModifier range = 9;
+  optional StatModifier range = 10;
 
   /** Modification of all attack damages (min and max).  */
-  optional StatModifier damage = 10;
+  optional StatModifier damage = 11;
 
   /** Modification to the received damage (e.g. armour hardening).  */
-  optional StatModifier received_damage = 11;
+  optional StatModifier received_damage = 12;
 
   /** Modification to the vehicle's allowed fitment complexity.  */
-  optional StatModifier complexity = 12;
+  optional StatModifier complexity = 13;
 
   /**
    * Modification to the vehicle's prospecting blocks.  Since a larger number
    * of blocks is worse, a fitment will likely have a negative modifier here.
    */
-  optional StatModifier prospecting_blocks = 13;
+  optional StatModifier prospecting_blocks = 14;
 
   /** MOdification to the vehicle's mining rate (min and max).  */
-  optional StatModifier mining_rate = 14;
+  optional StatModifier mining_rate = 15;
 
   /** Low-HP-boost this fitment provides (if any).  */
-  optional LowHpBoost low_hp_boost = 15;
+  optional LowHpBoost low_hp_boost = 16;
 
   /** Self-destruct ability of this fitment (if any).  */
-  optional SelfDestruct self_destruct = 16;
+  optional SelfDestruct self_destruct = 17;
 
 }
 

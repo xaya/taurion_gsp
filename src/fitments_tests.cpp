@@ -214,6 +214,11 @@ TEST_F (DeriveCharacterStatsTests, MaxHpRegen)
 
   c = Derive ("chariot", {"lf replenisher"});
   EXPECT_EQ (c->GetRegenData ().regeneration_mhp ().shield (), 11);
+  EXPECT_EQ (c->GetRegenData ().regeneration_mhp ().armour (), 0);
+
+  c = Derive ("chariot", {"lf armourregen"});
+  EXPECT_EQ (c->GetRegenData ().regeneration_mhp ().shield (), 10);
+  EXPECT_EQ (c->GetRegenData ().regeneration_mhp ().armour (), 2'000);
 }
 
 TEST_F (DeriveCharacterStatsTests, RangeDamage)

@@ -146,7 +146,7 @@ ApplyFitments (Character& c, const Context& ctx)
   StatModifier cargo, speed;
   StatModifier prospecting, mining;
   StatModifier maxArmour, maxShield;
-  StatModifier shieldRegen;
+  StatModifier shieldRegen, armourRegen;
   StatModifier range, damage;
   StatModifier recvDamage;
 
@@ -173,6 +173,7 @@ ApplyFitments (Character& c, const Context& ctx)
       maxArmour += fitment.max_armour ();
       maxShield += fitment.max_shield ();
       shieldRegen += fitment.shield_regen ();
+      armourRegen += fitment.armour_regen ();
       range += fitment.range ();
       damage += fitment.damage ();
       recvDamage += fitment.received_damage ();
@@ -206,8 +207,10 @@ ApplyFitments (Character& c, const Context& ctx)
   auto& regen = c.MutableRegenData ();
   regen.mutable_max_hp ()->set_armour (maxArmour (regen.max_hp ().armour ()));
   regen.mutable_max_hp ()->set_shield (maxShield (regen.max_hp ().shield ()));
-  regen.mutable_regeneration_mhp ()->set_shield (
-      shieldRegen (regen.regeneration_mhp ().shield ()));
+
+  auto* regenMhp = regen.mutable_regeneration_mhp ();
+  regenMhp->set_shield (shieldRegen (regenMhp->shield ()));
+  regenMhp->set_armour (armourRegen (regenMhp->armour ()));
 
   for (auto& a : *cd->mutable_attacks ())
     {
