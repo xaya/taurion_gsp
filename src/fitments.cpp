@@ -148,6 +148,7 @@ ApplyFitments (Character& c, const Context& ctx)
   StatModifier maxArmour, maxShield;
   StatModifier shieldRegen;
   StatModifier range, damage;
+  StatModifier recvDamage;
 
   auto& pb = c.MutableProto ();
   auto* cd = pb.mutable_combat_data ();
@@ -174,7 +175,13 @@ ApplyFitments (Character& c, const Context& ctx)
       shieldRegen += fitment.shield_regen ();
       range += fitment.range ();
       damage += fitment.damage ();
+      recvDamage += fitment.received_damage ();
     }
+
+  if (recvDamage.IsNeutral ())
+    cd->clear_received_damage_modifier ();
+  else
+    *cd->mutable_received_damage_modifier () = recvDamage.ToProto ();
 
   pb.set_cargo_space (cargo (pb.cargo_space ()));
   pb.set_speed (speed (pb.speed ()));

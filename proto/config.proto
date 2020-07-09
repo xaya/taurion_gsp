@@ -183,23 +183,26 @@ message FitmentData
   /** Modification of all attack damages (min and max).  */
   optional StatModifier damage = 10;
 
+  /** Modification to the received damage (e.g. armour hardening).  */
+  optional StatModifier received_damage = 11;
+
   /** Modification to the vehicle's allowed fitment complexity.  */
-  optional StatModifier complexity = 11;
+  optional StatModifier complexity = 12;
 
   /**
    * Modification to the vehicle's prospecting blocks.  Since a larger number
    * of blocks is worse, a fitment will likely have a negative modifier here.
    */
-  optional StatModifier prospecting_blocks = 12;
+  optional StatModifier prospecting_blocks = 13;
 
   /** MOdification to the vehicle's mining rate (min and max).  */
-  optional StatModifier mining_rate = 13;
+  optional StatModifier mining_rate = 14;
 
   /** Low-HP-boost this fitment provides (if any).  */
-  optional LowHpBoost low_hp_boost = 14;
+  optional LowHpBoost low_hp_boost = 15;
 
   /** Self-destruct ability of this fitment (if any).  */
-  optional SelfDestruct self_destruct = 15;
+  optional SelfDestruct self_destruct = 16;
 
 }
 
