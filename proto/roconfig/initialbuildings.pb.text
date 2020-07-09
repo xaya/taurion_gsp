@@ -18,3 +18,164 @@ initial_buildings:
     centre: { x: -637 y: -291 }
     shape_trafo: { rotation_steps: 0 }
   }
+
+initial_buildings:
+  {
+    type: "g ss"
+    centre: { x: -3489 y: 1823 }
+    shape_trafo: { rotation_steps: 0 }
+  }
+
+initial_buildings:
+  {
+    type: "b ss"
+    centre: { x: 636 y: 2446 }
+    shape_trafo: { rotation_steps: 0 }
+  }
+
+initial_buildings:
+  {
+    type: "r ss"
+    centre: { x: 1919 y: -2605 }
+    shape_trafo: { rotation_steps: 0 }
+  }
+
+initial_buildings:
+  {
+    type: "g c1"
+    centre: { x: 2140 y: 3247 }
+    shape_trafo: { rotation_steps: 0 }
+  }
+
+initial_buildings:
+  {
+    type: "g c2"
+    centre: { x: 4472 y: -2132 }
+    shape_trafo: { rotation_steps: 0 }
+  }
+
+initial_buildings:
+  {
+    type: "g c3"
+    centre: { x: 3479 y: -184 }
+    shape_trafo: { rotation_steps: 0 }
+  }
+
+initial_buildings:
+  {
+    type: "g c4"
+    centre: { x: 235 y:3030 }
+    shape_trafo: { rotation_steps: 0 }
+  }
+
+initial_buildings:
+  {
+    type: "g c6"
+    centre: { x: -873 y:2106 }
+    shape_trafo: { rotation_steps: 0 }
+  }
+
+initial_buildings:
+  {
+    type: "g c7"
+    centre: { x: 1702 y: -125 }
+    shape_trafo: { rotation_steps: 0 }
+  }
+
+initial_buildings:
+  {
+    type: "g c8"
+    centre: { x: 2372 y: -2349 }
+    shape_trafo: { rotation_steps: 0 }
+  }
+
+initial_buildings:
+  {
+    type: "r c1"
+    centre: { x: 2264 y: -3621 }
+    shape_trafo: { rotation_steps: 0 }
+  }
+
+initial_buildings:
+  {
+    type: "r c2"
+    centre: { x: 495 y: -1163 }
+    shape_trafo: { rotation_steps: 0 }
+  }
+
+initial_buildings:
+  {
+    type: "r c3"
+    centre: { x: -448 y: 704 }
+    shape_trafo: { rotation_steps: 0 }
+  }
+
+initial_buildings:
+  {
+    type: "r c4"
+    centre: { x: -2077 y: -2404 }
+    shape_trafo: { rotation_steps: 0 }
+  }
+
+initial_buildings:
+  {
+    type: "r c5"
+    centre: { x: -4620 y: 2187 }
+    shape_trafo: { rotation_steps: 0 }
+  }
+
+initial_buildings:
+  {
+    type: "r c6"
+    centre: { x: -2861 y: 1594 }
+    shape_trafo: { rotation_steps: 0 }
+  }
+
+initial_buildings:
+  {
+    type: "r c7"
+    centre: { x: 1600 y: -699 }
+    shape_trafo: { rotation_steps: 0 }
+  }
+
+initial_buildings:
+  {
+    type: "b c1"
+    centre: { x: -991 y: 704 }
+    shape_trafo: { rotation_steps: 0 }
+  }
+
+initial_buildings:
+  {
+    type: "b c2"
+    centre: { x: 1609 y: -2941 }
+    shape_trafo: { rotation_steps: 0 }
+  }
+
+initial_buildings:
+  {
+    type: "b c3"
+    centre: { x: -195 y: 2629 }
+    shape_trafo: { rotation_steps: 0 }
+  }
+
+initial_buildings:
+  {
+    type: "b c4"
+    centre: { x: -100 y: 605 }
+    shape_trafo: { rotation_steps: 0 }
+  }
+
+initial_buildings:
+  {
+    type: "b c5"
+    centre: { x: -3309 y: 318 }
+    shape_trafo: { rotation_steps: 0 }
+  }
+
+initial_buildings:
+  {
+    type: "b c6"
+    centre: { x: 1236 y: -3342 }
+    shape_trafo: { rotation_steps: 0 }
+  }
