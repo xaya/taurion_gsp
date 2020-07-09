@@ -57,7 +57,7 @@ TEST_F (CharacterTests, Creation)
   c->SetPosition (pos);
   c->SetEnterBuilding (10);
   c->MutableHP ().set_armour (10);
-  c->MutableRegenData ().set_shield_regeneration_mhp (1234);
+  c->MutableRegenData ().mutable_regeneration_mhp ()->set_shield (1'234);
   c.reset ();
 
   c = tbl.CreateNew ("domob", Faction::GREEN);
@@ -77,7 +77,7 @@ TEST_F (CharacterTests, Creation)
   EXPECT_EQ (c->GetPosition (), pos);
   EXPECT_EQ (c->GetEnterBuilding (), 10);
   EXPECT_EQ (c->GetHP ().armour (), 10);
-  EXPECT_EQ (c->GetRegenData ().shield_regeneration_mhp (), 1234);
+  EXPECT_EQ (c->GetRegenData ().regeneration_mhp ().shield (), 1'234);
   EXPECT_FALSE (c->GetProto ().has_movement ());
 
   ASSERT_TRUE (res.Step ());
@@ -88,7 +88,7 @@ TEST_F (CharacterTests, Creation)
   ASSERT_TRUE (c->IsInBuilding ());
   EXPECT_EQ (c->GetBuildingId (), 100);
   EXPECT_EQ (c->GetEnterBuilding (), Database::EMPTY_ID);
-  EXPECT_FALSE (c->GetRegenData ().has_shield_regeneration_mhp ());
+  EXPECT_FALSE (c->GetRegenData ().has_regeneration_mhp ());
   EXPECT_TRUE (c->GetProto ().has_movement ());
 
   ASSERT_FALSE (res.Step ());
@@ -114,7 +114,7 @@ TEST_F (CharacterTests, ModificationWithProto)
   c->SetPosition (pos);
   c->MutableVolatileMv ().set_partial_step (10);
   c->MutableHP ().set_shield (5);
-  c->MutableRegenData ().set_shield_regeneration_mhp (1234);
+  c->MutableRegenData ().mutable_regeneration_mhp ()->set_shield (1'234);
   c->MutableProto ().set_ongoing (105);
   c.reset ();
 
@@ -126,7 +126,7 @@ TEST_F (CharacterTests, ModificationWithProto)
   EXPECT_EQ (c->GetPosition (), pos);
   EXPECT_EQ (c->GetVolatileMv ().partial_step (), 10);
   EXPECT_EQ (c->GetHP ().shield (), 5);
-  EXPECT_EQ (c->GetRegenData ().shield_regeneration_mhp (), 1234);
+  EXPECT_EQ (c->GetRegenData ().regeneration_mhp ().shield (), 1'234);
   EXPECT_TRUE (c->IsBusy ());
   ASSERT_FALSE (res.Step ());
 }
@@ -365,12 +365,21 @@ TEST_F (CharacterTableTests, QueryWithAttacks)
  * Utility function that sets regeneration-related data on a character.
  */
 void
-SetRegenData (Character& c, const unsigned rate,
+SetRegenData (Character& c, const bool armour, const unsigned rate,
               const unsigned maxHp, const unsigned hp)
 {
-  c.MutableRegenData ().set_shield_regeneration_mhp (rate);
-  c.MutableRegenData ().mutable_max_hp ()->set_shield (maxHp);
-  c.MutableHP ().set_shield (hp);
+  if (armour)
+    {
+      c.MutableRegenData ().mutable_regeneration_mhp ()->set_armour (rate);
+      c.MutableRegenData ().mutable_max_hp ()->set_armour (maxHp);
+      c.MutableHP ().set_armour (hp);
+    }
+  else
+    {
+      c.MutableRegenData ().mutable_regeneration_mhp ()->set_shield (rate);
+      c.MutableRegenData ().mutable_max_hp ()->set_shield (maxHp);
+      c.MutableHP ().set_shield (hp);
+    }
 }
 
 TEST_F (CharacterTableTests, QueryForRegen)
@@ -379,36 +388,52 @@ TEST_F (CharacterTableTests, QueryForRegen)
      Either immediately on creation, or because we updated them later on
      in a way that removed the need.  */
 
-  SetRegenData (*tbl.CreateNew ("no regen", Faction::RED), 0, 10, 5);
+  SetRegenData (*tbl.CreateNew ("no regen", Faction::RED), false, 0, 10, 5);
 
   auto c = tbl.CreateNew ("no regen", Faction::RED);
   Database::IdT id = c->GetId ();
-  SetRegenData (*c, 100, 10, 5);
+  SetRegenData (*c, false, 100, 10, 5);
   c.reset ();
   tbl.GetById (id)->MutableHP ().set_shield (10);
 
   c = tbl.CreateNew ("no regen", Faction::RED);
   id = c->GetId ();
-  SetRegenData (*c, 100, 10, 5);
+  SetRegenData (*c, false, 100, 10, 5);
   c.reset ();
-  tbl.GetById (id)->MutableRegenData ().set_shield_regeneration_mhp (0);
+  tbl.GetById (id)
+      ->MutableRegenData ().mutable_regeneration_mhp ()->set_shield (0);
+
+  c = tbl.CreateNew ("no regen", Faction::RED);
+  id = c->GetId ();
+  SetRegenData (*c, true, 100, 10, 10);
+  c.reset ();
+
+  c = tbl.CreateNew ("no regen", Faction::RED);
+  id = c->GetId ();
+  SetRegenData (*c, true, 0, 10, 5);
+  c.reset ();
 
   /* Set up characters that need regeneration.  Again either immediately
      or from updates.  */
 
-  SetRegenData (*tbl.CreateNew ("needs from start", Faction::RED), 100, 10, 5);
+  SetRegenData (*tbl.CreateNew ("needs from start", Faction::RED),
+                false, 100, 10, 5);
 
   c = tbl.CreateNew ("hp update", Faction::RED);
   id = c->GetId ();
-  SetRegenData (*c, 100, 10, 10);
+  SetRegenData (*c, false, 100, 10, 10);
   c.reset ();
   tbl.GetById (id)->MutableHP ().set_shield (5);
 
   c = tbl.CreateNew ("rate update", Faction::RED);
   id = c->GetId ();
-  SetRegenData (*c, 0, 10, 5);
+  SetRegenData (*c, false, 0, 10, 5);
   c.reset ();
-  tbl.GetById (id)->MutableRegenData ().set_shield_regeneration_mhp (100);
+  tbl.GetById (id)
+      ->MutableRegenData ().mutable_regeneration_mhp ()->set_shield (100);
+
+  SetRegenData (*tbl.CreateNew ("armour", Faction::RED),
+                true, 100, 10, 5);
 
   /* Iterate over all characters and do unrelated updates.  This ensures
      that the carrying over of the old "canregen" field works.  */
@@ -421,8 +446,12 @@ TEST_F (CharacterTableTests, QueryForRegen)
   res = tbl.QueryForRegen ();
   while (res.Step ())
     regenOwners.push_back (tbl.GetFromResult (res)->GetOwner ());
-  EXPECT_THAT (regenOwners,
-               ElementsAre ("needs from start", "hp update", "rate update"));
+  EXPECT_THAT (regenOwners, ElementsAre (
+    "needs from start",
+    "hp update",
+    "rate update",
+    "armour"
+  ));
 }
 
 TEST_F (CharacterTableTests, QueryWithTarget)

@@ -355,7 +355,7 @@ TEST_F (PXLogicTests, DamageKillsRegeneration)
   c = characters.GetById (idTarget);
   ASSERT_TRUE (c != nullptr);
   auto& regen = c->MutableRegenData ();
-  regen.set_shield_regeneration_mhp (2000);
+  regen.mutable_regeneration_mhp ()->set_shield (2'000);
   regen.mutable_max_hp ()->set_shield (100);
   c->MutableHP ().set_shield (1);
   c->MutableHP ().set_armour (0);

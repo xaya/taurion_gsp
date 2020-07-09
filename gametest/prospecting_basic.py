@@ -196,7 +196,7 @@ class BasicProspectingTest (PXTest):
     self.createCharacters ("target", 1)
     self.generate (1)
     self.setCharactersHP ({
-      "target": {"a": 1000, "s": 0},
+      "target": {"a": 1000, "ma": 1000, "s": 0, "ms": 100},
     })
     self.moveCharactersTo ({
       "target": self.offset,

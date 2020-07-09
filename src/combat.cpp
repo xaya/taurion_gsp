@@ -459,7 +459,8 @@ DamageProcessor::ApplyDamage (unsigned dmg, const CombatEntity& attacker,
       /* Regenerated partial HP are ignored (i.e. you die even with 999/1000
          partial HP).  Just make sure that the partial HP are not full yet
          due to some bug.  */
-      CHECK_LT (hp.shield_mhp (), 1'000);
+      CHECK_LT (hp.mhp ().shield (), 1'000);
+      CHECK_LT (hp.mhp ().armour (), 1'000);
       CHECK (newDead.insert (targetKey).second)
           << "Target is already dead:\n" << targetId.DebugString ();
     }
@@ -976,6 +977,32 @@ namespace
 {
 
 /**
+ * Performs the regeneration logic for one type of HP (armour or shield).
+ * Returns the new "full" and "milli" HP value in the output variables,
+ * and true iff something changed.
+ */
+bool
+RegenerateHpType (const unsigned max, const unsigned mhpRate,
+                  const unsigned oldCur, const unsigned oldMilli,
+                  unsigned& newCur, unsigned& newMilli)
+{
+  CHECK (oldCur < max || (oldCur == max && oldMilli == 0));
+
+  newMilli = oldMilli + mhpRate;
+  newCur = oldCur + newMilli / 1'000;
+  newMilli %= 1'000;
+
+  if (newCur >= max)
+    {
+      newCur = max;
+      newMilli = 0;
+    }
+
+  CHECK (newCur > oldCur || (newCur == oldCur && newMilli >= oldMilli));
+  return newCur != oldCur || newMilli != oldMilli;
+}
+
+/**
  * Applies HP regeneration (if any) to a given fighter.
  */
 void
@@ -984,29 +1011,23 @@ RegenerateFighterHP (FighterTable::Handle f)
   const auto& regen = f->GetRegenData ();
   const auto& hp = f->GetHP ();
 
-  /* Make sure to return early if there is no regeneration at all.  This
-     ensures that we are not doing unnecessary database updates triggered
-     through MutableHP().  */
-  if (regen.shield_regeneration_mhp () == 0
-        || hp.shield () == regen.max_hp ().shield ())
-    return;
+  unsigned cur, milli;
 
-  unsigned shield = hp.shield ();
-  unsigned mhp = hp.shield_mhp ();
-
-  mhp += regen.shield_regeneration_mhp ();
-  shield += mhp / 1000;
-  mhp %= 1000;
-
-  if (shield >= regen.max_hp ().shield ())
+  if (RegenerateHpType (
+          regen.max_hp ().armour (), regen.regeneration_mhp ().armour (),
+          hp.armour (), hp.mhp ().armour (), cur, milli))
     {
-      shield = regen.max_hp ().shield ();
-      mhp = 0;
+      f->MutableHP ().set_armour (cur);
+      f->MutableHP ().mutable_mhp ()->set_armour (milli);
     }
 
-  auto& mutableHP = f->MutableHP ();
-  mutableHP.set_shield (shield);
-  mutableHP.set_shield_mhp (mhp);
+  if (RegenerateHpType (
+          regen.max_hp ().shield (), regen.regeneration_mhp ().shield (),
+          hp.shield (), hp.mhp ().shield (), cur, milli))
+    {
+      f->MutableHP ().set_shield (cur);
+      f->MutableHP ().mutable_mhp ()->set_shield (milli);
+    }
 }
 
 } // anonymous namespace

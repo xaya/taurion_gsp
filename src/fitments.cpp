@@ -206,8 +206,8 @@ ApplyFitments (Character& c, const Context& ctx)
   auto& regen = c.MutableRegenData ();
   regen.mutable_max_hp ()->set_armour (maxArmour (regen.max_hp ().armour ()));
   regen.mutable_max_hp ()->set_shield (maxShield (regen.max_hp ().shield ()));
-  regen.set_shield_regeneration_mhp (
-      shieldRegen (regen.shield_regeneration_mhp ()));
+  regen.mutable_regeneration_mhp ()->set_shield (
+      shieldRegen (regen.regeneration_mhp ().shield ()));
 
   for (auto& a : *cd->mutable_attacks ())
     {

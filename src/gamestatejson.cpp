@@ -64,20 +64,27 @@ TargetIdToJson (const proto::TargetId& target)
 }
 
 /**
+ * Converts an HP value (composed of full base HP and millis) to
+ * the corresponding JSON representation.
+ */
+Json::Value
+HpValueToJson (const unsigned full, const unsigned millis)
+{
+  if (millis == 0)
+    return IntToJson (full);
+
+  return full + millis / 1'000.0;
+}
+
+/**
  * Converts an HP proto to a JSON form.
  */
 Json::Value
 HpProtoToJson (const proto::HP& hp)
 {
   Json::Value res(Json::objectValue);
-  res["armour"] = IntToJson (hp.armour ());
-
-  const int baseShield = hp.shield ();
-  if (hp.shield_mhp () == 0)
-    res["shield"] = baseShield;
-  else
-    res["shield"] = baseShield + hp.shield_mhp () / 1000.0;
-
+  res["armour"] = HpValueToJson (hp.armour (), hp.mhp ().armour ());
+  res["shield"] = HpValueToJson (hp.shield (), hp.mhp ().shield ());
   return res;
 }
 
@@ -151,7 +158,11 @@ GetCombatJsonObject (const CombatEntity& h)
   Json::Value hp(Json::objectValue);
   hp["max"] = HpProtoToJson (regen.max_hp ());
   hp["current"] = HpProtoToJson (h.GetHP ());
-  hp["regeneration"] = regen.shield_regeneration_mhp () / 1000.0;
+
+  proto::HP fakeRegen;
+  *fakeRegen.mutable_mhp () = regen.regeneration_mhp ();
+  hp["regeneration"] = HpProtoToJson (fakeRegen);
+
   res["hp"] = hp;
 
   return res;

@@ -109,10 +109,15 @@ bool
 CombatEntity::ComputeCanRegen (const proto::HP& hp,
                                const proto::RegenData& regen)
 {
-  if (regen.shield_regeneration_mhp () == 0)
-    return false;
+  if (regen.regeneration_mhp ().shield () > 0
+        && hp.shield () < regen.max_hp ().shield ())
+    return true;
 
-  return hp.shield () < regen.max_hp ().shield ();
+  if (regen.regeneration_mhp ().armour () > 0
+        && hp.armour () < regen.max_hp ().armour ())
+    return true;
+
+  return false;
 }
 
 HexCoord::IntT

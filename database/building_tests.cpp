@@ -132,11 +132,11 @@ TEST_F (BuildingTests, CombatFields)
 
   h = tbl.GetById (id);
   EXPECT_EQ (h->GetHP ().armour (), 10);
-  h->MutableRegenData ().set_shield_regeneration_mhp (42);
+  h->MutableRegenData ().mutable_regeneration_mhp ()->set_shield (42);
   h.reset ();
 
   h = tbl.GetById (id);
-  EXPECT_EQ (h->GetRegenData ().shield_regeneration_mhp (), 42);
+  EXPECT_EQ (h->GetRegenData ().regeneration_mhp ().shield (), 42);
   EXPECT_FALSE (h->HasTarget ());
   proto::TargetId t;
   t.set_id (50);
@@ -210,7 +210,7 @@ TEST_F (BuildingsTableTests, QueryForRegen)
   auto h = tbl.CreateNew ("checkmark", "can regen", Faction::RED);
   h->MutableHP ().set_shield (10);
   h->MutableRegenData ().mutable_max_hp ()->set_shield (100);
-  h->MutableRegenData ().set_shield_regeneration_mhp (1);
+  h->MutableRegenData ().mutable_regeneration_mhp ()->set_shield (1);
   h.reset ();
 
   auto res = tbl.QueryForRegen ();

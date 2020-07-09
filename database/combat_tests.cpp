@@ -60,36 +60,50 @@ TEST_F (ComputeCanRegenTests, CanRegenerate)
     shield: 0
   )", R"(
     max_hp: { armour: 10 shield: 10 }
-    shield_regeneration_mhp: 100
+    regeneration_mhp: { shield: 100 }
+  )"));
+
+  EXPECT_TRUE (CanRegen (R"(
+    armour: 0
+    shield: 10
+  )", R"(
+    max_hp: { armour: 10 shield: 10 }
+    regeneration_mhp: { armour: 100 }
   )"));
 }
 
 TEST_F (ComputeCanRegenTests, NoRegeneration)
 {
   EXPECT_FALSE (CanRegen (R"(
-    armour: 10
+    armour: 0
     shield: 0
   )", R"(
     max_hp: { armour: 10 shield: 10 }
-    shield_regeneration_mhp: 0
   )"));
 }
 
-TEST_F (ComputeCanRegenTests, FullShield)
+TEST_F (ComputeCanRegenTests, FullHp)
 {
   EXPECT_FALSE (CanRegen (R"(
     armour: 1
     shield: 10
   )", R"(
     max_hp: { armour: 10 shield: 10 }
-    shield_regeneration_mhp: 100
+    regeneration_mhp: { shield: 100 }
   )"));
   EXPECT_FALSE (CanRegen (R"(
     armour: 1
     shield: 0
   )", R"(
     max_hp: { armour: 10 shield: 0 }
-    shield_regeneration_mhp: 100
+    regeneration_mhp: { shield: 100 }
+  )"));
+  EXPECT_FALSE (CanRegen (R"(
+    armour: 10
+    shield: 1
+  )", R"(
+    max_hp: { armour: 10 shield: 10 }
+    regeneration_mhp: { armour: 100 }
   )"));
 }
 

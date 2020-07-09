@@ -280,11 +280,12 @@ TEST_F (CharacterJsonTests, HP)
   auto c = tbl.CreateNew ("domob", Faction::RED);
   c->MutableHP ().set_armour (42);
   c->MutableHP ().set_shield (5);
-  c->MutableHP ().set_shield_mhp (1);
+  c->MutableHP ().mutable_mhp ()->set_shield (1);
   auto& regen = c->MutableRegenData ();
   regen.mutable_max_hp ()->set_armour (100);
   regen.mutable_max_hp ()->set_shield (10);
-  regen.set_shield_regeneration_mhp (1001);
+  regen.mutable_regeneration_mhp ()->set_shield (1'001);
+  regen.mutable_regeneration_mhp ()->set_armour (42);
   c.reset ();
 
   ExpectStateJson (R"({
@@ -297,7 +298,7 @@ TEST_F (CharacterJsonTests, HP)
                 {
                   "max": {"armour": 100, "shield": 10},
                   "current": {"armour": 42, "shield": 5.001},
-                  "regeneration": 1.001
+                  "regeneration": {"shield": 1.001, "armour": 0.042}
                 }
             }
         }
@@ -710,9 +711,9 @@ TEST_F (BuildingJsonTests, CombatData)
   att->mutable_damage ()->set_min (1);
   att->mutable_damage ()->set_max (2);
   h->MutableHP ().set_armour (42);
-  h->MutableHP ().set_shield_mhp (1);
+  h->MutableHP ().mutable_mhp ()->set_shield (1);
   auto& regen = h->MutableRegenData ();
-  regen.set_shield_regeneration_mhp (1'001);
+  regen.mutable_regeneration_mhp ()->set_shield (1'001);
   regen.mutable_max_hp ()->set_armour (100);
   regen.mutable_max_hp ()->set_shield (50);
   proto::TargetId t;
@@ -736,7 +737,7 @@ TEST_F (BuildingJsonTests, CombatData)
                 {
                   "max": {"armour": 100, "shield": 50},
                   "current": {"armour": 42, "shield": 0.001},
-                  "regeneration": 1.001
+                  "regeneration": {"shield": 1.001, "armour": 0}
                 },
               "attacks":
                 [
