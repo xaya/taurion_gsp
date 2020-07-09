@@ -70,7 +70,7 @@ InsertCharacters (Database& db, const unsigned numIdle,
       auto c = tbl.CreateNew ("green", Faction::GREEN);
       const auto id = c->GetId ();
       auto& regen = c->MutableRegenData ();
-      regen.set_shield_regeneration_mhp (1000);
+      regen.mutable_regeneration_mhp ()->set_shield (1'000);
       regen.mutable_max_hp ()->set_armour (targetHP);
       c->MutableHP ().set_armour (targetHP);
       c.reset ();

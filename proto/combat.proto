@@ -174,13 +174,13 @@ message HP
   optional uint32 shield = 2;
 
   /**
-   * Partially regnerated shield HP.  This is in units of 1/1000 HP point,
-   * so that the shield is incremented by one when this reaches 1000.
+   * Partially regenerated HP in 1/1000 HP units.  When it reaches
+   * 1000 for shield or armour, the "actual" HP are incremented accordingly.
    *
    * This field is only present for the current HP of a fighter, not the
    * maximum HP in its RegenData.
    */
-  optional uint32 shield_mhp = 3;
+  optional HP mhp = 3;
 
 }
 
@@ -195,8 +195,8 @@ message RegenData
   /** Maximum HP of the fighter.  */
   optional HP max_hp = 1;
 
-  /** Regeneration rate of shield HP in "milli HP per block".  */
-  optional uint32 shield_regeneration_mhp = 2;
+  /** Regeneration rate of HPs in "milli HP per block".  */
+  optional HP regeneration_mhp = 2;
 
 }
 

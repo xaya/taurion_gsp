@@ -62,7 +62,7 @@ class GodModeTest (PXTest):
             {
               "current": {"armour": 0, "shield": 0},
               "max": {"armour": 0, "shield": 0},
-              "regeneration": 0.0,
+              "regeneration": {"armour": 0.0, "shield": 0.0},
             },
         },
       "inventories": {},
@@ -88,7 +88,7 @@ class GodModeTest (PXTest):
             {
               "current": {"armour": 0, "shield": 0},
               "max": {"armour": 0, "shield": 0},
-              "regeneration": 0.0,
+              "regeneration": {"armour": 0.0, "shield": 0.0},
             },
         },
       "inventories": {},

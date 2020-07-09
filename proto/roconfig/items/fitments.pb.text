@@ -1419,6 +1419,26 @@ fungible_items:
 
 fungible_items:
 {
+    key: "lf armourregen"
+    value:
+	{
+        space: 1000
+        complexity: 2
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 2500 }
+        construction_resources: { key: "mat b" value: 2500 }
+        fitment:
+          {
+            slot: "low"
+            vehicle_size: LIGHT
+            armour_regen: { absolute: 2000 }
+          }
+      }
+  }
+
+
+fungible_items:
+{
     key: "lf lowhpboost"
     value:
 	{

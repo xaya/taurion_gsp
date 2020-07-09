@@ -25,7 +25,12 @@ proto::StatModifier
 StatModifier::ToProto () const
 {
   proto::StatModifier res;
-  res.set_percent (percent);
+
+  if (percent != 0)
+    res.set_percent (percent);
+
+  if (absolute != 0)
+    res.set_absolute (absolute);
 
   return res;
 }

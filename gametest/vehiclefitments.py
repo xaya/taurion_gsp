@@ -56,7 +56,7 @@ class VehicleFitmentsTest (PXTest):
     self.assertEqual (c.data["combat"]["hp"], {
       "current": {"armour": 1000, "shield": 100},
       "max": {"armour": 1000, "shield": 100},
-      "regeneration": 0.01,
+      "regeneration": {"armour": 0.0, "shield": 0.01},
     })
     self.assertEqual (len (c.data["combat"]["attacks"]), 2)
 
@@ -71,7 +71,7 @@ class VehicleFitmentsTest (PXTest):
     self.assertEqual (c.data["combat"]["hp"], {
       "current": {"armour": 1100, "shield": 100},
       "max": {"armour": 1100, "shield": 100},
-      "regeneration": 0.01,
+      "regeneration": {"armour": 0.0, "shield": 0.01},
     })
     self.assertEqual (len (c.data["combat"]["attacks"]), 3)
 
@@ -84,7 +84,7 @@ class VehicleFitmentsTest (PXTest):
     self.assertEqual (c.data["combat"]["hp"], {
       "current": {"armour": 1000, "shield": 100},
       "max": {"armour": 1000, "shield": 100},
-      "regeneration": 0.01,
+      "regeneration": {"armour": 0.0, "shield": 0.01},
     })
     self.assertEqual (len (c.data["combat"]["attacks"]), 2)
 

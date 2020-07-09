@@ -36,6 +36,9 @@ private:
   /** Increase (or decrease if negative) of the base number as percent.  */
   int64_t percent = 0;
 
+  /** Absolute change in value.  */
+  int64_t absolute = 0;
+
 public:
 
   StatModifier () = default;
@@ -46,7 +49,7 @@ public:
    * Converts from the roconfig proto form to the instance.
    */
   StatModifier (const proto::StatModifier& pb)
-    : percent(pb.percent ())
+    : percent(pb.percent ()), absolute(pb.absolute ())
   {}
 
   /**
@@ -55,7 +58,7 @@ public:
   bool
   IsNeutral () const
   {
-    return percent == 0;
+    return percent == 0 && absolute == 0;
   }
 
   /**
@@ -65,6 +68,7 @@ public:
   operator+= (const StatModifier& m)
   {
     percent += m.percent;
+    absolute += m.absolute;
     return *this;
   }
 
@@ -72,14 +76,19 @@ public:
    * Applies this modifier to a given base value.
    */
   int64_t
-  operator() (int64_t base) const
+  operator() (const int64_t base) const
   {
     /* The formula is designed so that it "sticks" to the current value
        (both when increased and reduced).  In other words, only when the change
        in each direction is large enough (at least one point) will it be
        applied.  So doing -10% on a value of 5 does not reduce to 4 (as a
-       naive multiplication and flooring would).  */
-    return base + (base * percent) / 100;
+       naive multiplication and flooring would).
+
+       Also note that if we have both relative and absolute changes, then
+       the relative change does not apply to the absolute one (only to the
+       original base value).  */
+
+    return base + (base * percent) / 100 + absolute;
   }
 
   /**

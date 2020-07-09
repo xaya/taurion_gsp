@@ -132,14 +132,14 @@ TEST_F (FighterTableTests, ProcessForRegen)
   const auto idChar = c->GetId ();
   c->MutableHP ().set_shield (2);
   c->MutableRegenData ().mutable_max_hp ()->set_shield (10);
-  c->MutableRegenData ().set_shield_regeneration_mhp (1);
+  c->MutableRegenData ().mutable_regeneration_mhp ()->set_shield (1);
   c.reset ();
 
   auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
   const auto idBuilding = b->GetId ();
   b->MutableHP ().set_shield (2);
   b->MutableRegenData ().mutable_max_hp ()->set_shield (10);
-  b->MutableRegenData ().set_shield_regeneration_mhp (1);
+  b->MutableRegenData ().mutable_regeneration_mhp ()->set_shield (1);
   b.reset ();
 
   unsigned cnt = 0;

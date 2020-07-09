@@ -15,7 +15,7 @@ fungible_items:
             regen_data:
               {
                 max_hp: { armour: 20 shield: 50 }
-                shield_regeneration_mhp: 2000
+                regeneration_mhp: { shield: 2000 }
               }
             mining_rate: { min: 0 max: 4000000 }
             prospecting_blocks: 9
@@ -45,7 +45,7 @@ fungible_items:
             regen_data:
               {
                 max_hp: { armour: 100 shield: 200 }
-                shield_regeneration_mhp: 5000
+                regeneration_mhp: { shield: 5000 }
               }
             mining_rate: { min: 0 max: 8000000 }
             prospecting_blocks: 8
@@ -76,7 +76,7 @@ fungible_items:
             regen_data:
               {
                 max_hp: { armour: 500 shield: 1000 }
-                shield_regeneration_mhp: 20000
+                regeneration_mhp: { shield: 20000 }
               }
             mining_rate: { min: 0 max: 8000000 }
             prospecting_blocks: 7
@@ -105,7 +105,7 @@ fungible_items:
             regen_data:
               {
                 max_hp: { armour: 20 shield: 10 }
-                shield_regeneration_mhp: 1000
+                regeneration_mhp: { shield: 1000 }
               }
             mining_rate: { min: 0 max: 0 }
             prospecting_blocks: 5
@@ -135,7 +135,7 @@ fungible_items:
             regen_data:
               {
                 max_hp: { armour: 500 shield: 200 }
-                shield_regeneration_mhp: 4000
+                regeneration_mhp: { shield: 4000 }
               }
             mining_rate: { min: 0 max: 2000000 }
             prospecting_blocks: 8
@@ -169,7 +169,7 @@ fungible_items:
             regen_data:
               {
                 max_hp: { armour: 1000 shield: 300 }
-                shield_regeneration_mhp: 6000
+                regeneration_mhp: { shield: 6000 }
               }
             mining_rate: { min: 0 max: 2000000 }
             prospecting_blocks: 7
@@ -205,7 +205,7 @@ fungible_items:
             regen_data:
               {
                 max_hp: { armour: 2000 shield: 500 }
-                shield_regeneration_mhp: 10000
+                regeneration_mhp: { shield: 10000 }
               }
             mining_rate: { min: 0 max: 2000000 }
             prospecting_blocks: 6
@@ -234,7 +234,7 @@ fungible_items:
             regen_data:
               {
                 max_hp: { armour: 50 shield: 250 }
-                shield_regeneration_mhp: 5000
+                regeneration_mhp: { shield: 5000 }
               }
             mining_rate: { min: 0 max: 8000000 }
             prospecting_blocks: 5
@@ -268,7 +268,7 @@ fungible_items:
             regen_data:
               {
                 max_hp: { armour: 200 shield: 500 }
-                shield_regeneration_mhp: 15000
+                regeneration_mhp: { shield: 15000 }
               }
             mining_rate: { min: 0 max: 10000000 }
             prospecting_blocks: 5
@@ -304,7 +304,7 @@ fungible_items:
             regen_data:
               {
                 max_hp: { armour: 750 shield: 2500 }
-                shield_regeneration_mhp: 30000
+                regeneration_mhp: { shield: 30000 }
               }
             mining_rate: { min: 0 max: 12000000 }
             prospecting_blocks: 4
@@ -340,7 +340,7 @@ fungible_items:
             regen_data:
               {
                 max_hp: { armour: 2000 shield: 5000 }
-                shield_regeneration_mhp: 35000
+                regeneration_mhp: { shield: 35000 }
               }
             mining_rate: { min: 0 max: 14000000 }
             prospecting_blocks: 3
@@ -369,7 +369,7 @@ fungible_items:
             regen_data:
               {
                 max_hp: { armour: 20 shield: 50 }
-                shield_regeneration_mhp: 2000
+                regeneration_mhp: { shield: 2000 }
               }
             mining_rate: { min: 0 max: 4000000 }
             prospecting_blocks: 9
@@ -399,7 +399,7 @@ fungible_items:
             regen_data:
               {
                 max_hp: { armour: 100 shield: 200 }
-                shield_regeneration_mhp: 5000
+                regeneration_mhp: { shield: 5000 }
               }
             mining_rate: { min: 0 max: 8000000 }
             prospecting_blocks: 8
@@ -430,7 +430,7 @@ fungible_items:
             regen_data:
               {
                 max_hp: { armour: 500 shield: 1000 }
-                shield_regeneration_mhp: 20000
+                regeneration_mhp: { shield: 20000 }
               }
             mining_rate: { min: 0 max: 8000000 }
             prospecting_blocks: 7
@@ -459,7 +459,7 @@ fungible_items:
             regen_data:
               {
                 max_hp: { armour: 20 shield: 10 }
-                shield_regeneration_mhp: 1000
+                regeneration_mhp: { shield: 1000 }
               }
             mining_rate: { min: 0 max: 0 }
             prospecting_blocks: 5
@@ -489,7 +489,7 @@ fungible_items:
             regen_data:
               {
                 max_hp: { armour: 500 shield: 200 }
-                shield_regeneration_mhp: 4000
+                regeneration_mhp: { shield: 4000 }
               }
             mining_rate: { min: 0 max: 2000000 }
             prospecting_blocks: 8
@@ -523,7 +523,7 @@ fungible_items:
             regen_data:
               {
                 max_hp: { armour: 1000 shield: 300 }
-                shield_regeneration_mhp: 6000
+                regeneration_mhp: { shield: 6000 }
               }
             mining_rate: { min: 0 max: 2000000 }
             prospecting_blocks: 7
@@ -559,7 +559,7 @@ fungible_items:
             regen_data:
               {
                 max_hp: { armour: 2000 shield: 500 }
-                shield_regeneration_mhp: 10000
+                regeneration_mhp: { shield: 10000 }
               }
             mining_rate: { min: 0 max: 2000000 }
             prospecting_blocks: 6
@@ -588,7 +588,7 @@ fungible_items:
             regen_data:
               {
                 max_hp: { armour: 50 shield: 250 }
-                shield_regeneration_mhp: 5000
+                regeneration_mhp: { shield: 5000 }
               }
             mining_rate: { min: 0 max: 8000000 }
             prospecting_blocks: 5
@@ -622,7 +622,7 @@ fungible_items:
             regen_data:
               {
                 max_hp: { armour: 200 shield: 500 }
-                shield_regeneration_mhp: 15000
+                regeneration_mhp: { shield: 15000 }
               }
             mining_rate: { min: 0 max: 10000000 }
             prospecting_blocks: 5
@@ -658,7 +658,7 @@ fungible_items:
             regen_data:
               {
                 max_hp: { armour: 750 shield: 2500 }
-                shield_regeneration_mhp: 30000
+                regeneration_mhp: { shield: 30000 }
               }
             mining_rate: { min: 0 max: 12000000 }
             prospecting_blocks: 4
@@ -694,7 +694,7 @@ fungible_items:
             regen_data:
               {
                 max_hp: { armour: 2000 shield: 5000 }
-                shield_regeneration_mhp: 35000
+                regeneration_mhp: { shield: 35000 }
               }
             mining_rate: { min: 0 max: 14000000 }
             prospecting_blocks: 3
@@ -723,7 +723,7 @@ fungible_items:
             regen_data:
               {
                 max_hp: { armour: 20 shield: 50 }
-                shield_regeneration_mhp: 2000
+                regeneration_mhp: { shield: 2000 }
               }
             mining_rate: { min: 0 max: 4000000 }
             prospecting_blocks: 9
@@ -753,7 +753,7 @@ fungible_items:
             regen_data:
               {
                 max_hp: { armour: 100 shield: 200 }
-                shield_regeneration_mhp: 5000
+                regeneration_mhp: { shield: 5000 }
               }
             mining_rate: { min: 0 max: 8000000 }
             prospecting_blocks: 8
@@ -784,7 +784,7 @@ fungible_items:
             regen_data:
               {
                 max_hp: { armour: 500 shield: 1000 }
-                shield_regeneration_mhp: 20000
+                regeneration_mhp: { shield: 20000 }
               }
             mining_rate: { min: 0 max: 8000000 }
             prospecting_blocks: 7
@@ -813,7 +813,7 @@ fungible_items:
             regen_data:
               {
                 max_hp: { armour: 20 shield: 10 }
-                shield_regeneration_mhp: 1000
+                regeneration_mhp: { shield: 1000 }
               }
             mining_rate: { min: 0 max: 0 }
             prospecting_blocks: 5
@@ -843,7 +843,7 @@ fungible_items:
             regen_data:
               {
                 max_hp: { armour: 500 shield: 200 }
-                shield_regeneration_mhp: 4000
+                regeneration_mhp: { shield: 4000 }
               }
             mining_rate: { min: 0 max: 2000000 }
             prospecting_blocks: 8
@@ -877,7 +877,7 @@ fungible_items:
             regen_data:
               {
                 max_hp: { armour: 1000 shield: 300 }
-                shield_regeneration_mhp: 6000
+                regeneration_mhp: { shield: 6000 }
               }
             mining_rate: { min: 0 max: 2000000 }
             prospecting_blocks: 7
@@ -913,7 +913,7 @@ fungible_items:
             regen_data:
               {
                 max_hp: { armour: 2000 shield: 500 }
-                shield_regeneration_mhp: 10000
+                regeneration_mhp: { shield: 10000 }
               }
             mining_rate: { min: 0 max: 2000000 }
             prospecting_blocks: 6
@@ -942,7 +942,7 @@ fungible_items:
             regen_data:
               {
                 max_hp: { armour: 50 shield: 250 }
-                shield_regeneration_mhp: 5000
+                regeneration_mhp: { shield: 5000 }
               }
             mining_rate: { min: 0 max: 8000000 }
             prospecting_blocks: 5
@@ -976,7 +976,7 @@ fungible_items:
             regen_data:
               {
                 max_hp: { armour: 200 shield: 500 }
-                shield_regeneration_mhp: 15000
+                regeneration_mhp: { shield: 15000 }
               }
             mining_rate: { min: 0 max: 10000000 }
             prospecting_blocks: 5
@@ -1012,7 +1012,7 @@ fungible_items:
             regen_data:
               {
                 max_hp: { armour: 750 shield: 2500 }
-                shield_regeneration_mhp: 30000
+                regeneration_mhp: { shield: 30000 }
               }
             mining_rate: { min: 0 max: 12000000 }
             prospecting_blocks: 4
@@ -1048,7 +1048,7 @@ fungible_items:
             regen_data:
               {
                 max_hp: { armour: 2000 shield: 5000 }
-                shield_regeneration_mhp: 35000
+                regeneration_mhp: { shield: 35000 }
               }
             mining_rate: { min: 0 max: 14000000 }
             prospecting_blocks: 3

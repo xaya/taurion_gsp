@@ -843,7 +843,8 @@ TEST_F (DealDamageTests, HpReduction)
       c.reset ();
 
       c = characters.GetById (idTarget);
-      c->MutableHP ().set_shield_mhp (999);
+      c->MutableHP ().mutable_mhp ()->set_shield (999);
+      c->MutableHP ().mutable_mhp ()->set_armour (999);
       c->MutableHP ().set_shield (t.hpBeforeShield);
       c->MutableHP ().set_armour (t.hpBeforeArmour);
       c.reset ();
@@ -851,7 +852,8 @@ TEST_F (DealDamageTests, HpReduction)
       FindTargetsAndDamage ();
 
       c = characters.GetById (idTarget);
-      EXPECT_EQ (c->GetHP ().shield_mhp (), 999);
+      EXPECT_EQ (c->GetHP ().mhp ().shield (), 999);
+      EXPECT_EQ (c->GetHP ().mhp ().armour (), 999);
       EXPECT_EQ (c->GetHP ().shield (), t.hpAfterShield);
       EXPECT_EQ (c->GetHP ().armour (), t.hpAfterArmour);
     }
@@ -876,7 +878,8 @@ TEST_F (DealDamageTests, Kills)
   const auto id1 = c->GetId ();
   NoAttacks (*c);
   SetHp (*c, 0, 1, 1, 1);
-  c->MutableHP ().set_shield_mhp (999);
+  c->MutableHP ().mutable_mhp ()->set_shield (999);
+  c->MutableHP ().mutable_mhp ()->set_armour (999);
   c.reset ();
 
   c = characters.CreateNew ("domob", Faction::GREEN);
@@ -1983,15 +1986,16 @@ TEST_F (RegenerateHpTests, Works)
   const auto id = c->GetId ();
   auto* regen = &c->MutableRegenData ();
   regen->mutable_max_hp ()->set_shield (100);
+  regen->mutable_max_hp ()->set_armour (100);
   c.reset ();
 
   struct TestCase
   {
     unsigned mhpRegen;
-    unsigned mhpShieldBefore;
-    unsigned shieldBefore;
-    unsigned mhpShieldAfter;
-    unsigned shieldAfter;
+    unsigned mhpBefore;
+    unsigned fullBefore;
+    unsigned mhpAfter;
+    unsigned fullAfter;
   };
   const TestCase tests[] = {
     {0, 100, 50, 100, 50},
@@ -2006,18 +2010,27 @@ TEST_F (RegenerateHpTests, Works)
 
   for (const auto& t : tests)
     {
-      c = characters.GetById (id);
-      c->MutableHP ().set_shield (t.shieldBefore);
-      c->MutableHP ().set_shield_mhp (t.mhpShieldBefore);
-      regen = &c->MutableRegenData ();
-      regen->set_shield_regeneration_mhp (t.mhpRegen);
-      c.reset ();
+#define DO_TEST(type, other) \
+  c = characters.GetById (id); \
+  c->MutableHP ().set_ ## other (42); \
+  c->MutableHP ().set_ ## type (t.fullBefore); \
+  c->MutableHP ().mutable_mhp ()->set_ ## other (42); \
+  c->MutableHP ().mutable_mhp ()->set_ ## type (t.mhpBefore); \
+  regen = &c->MutableRegenData (); \
+  regen->clear_regeneration_mhp (); \
+  regen->mutable_regeneration_mhp ()->set_ ## type (t.mhpRegen); \
+  c.reset (); \
+  RegenerateHP (db); \
+  c = characters.GetById (id); \
+  EXPECT_EQ (c->GetHP ().other (), 42); \
+  EXPECT_EQ (c->GetHP ().mhp ().other (), 42); \
+  EXPECT_EQ (c->GetHP ().type (), t.fullAfter); \
+  EXPECT_EQ (c->GetHP ().mhp ().type (), t.mhpAfter);
 
-      RegenerateHP (db);
+      DO_TEST(shield, armour)
+      DO_TEST(armour, shield)
 
-      c = characters.GetById (id);
-      EXPECT_EQ (c->GetHP ().shield (), t.shieldAfter);
-      EXPECT_EQ (c->GetHP ().shield_mhp (), t.mhpShieldAfter);
+#undef DO_TEST
     }
 }
 
@@ -2028,7 +2041,7 @@ TEST_F (RegenerateHpTests, BuildingsRegenerate)
   b->MutableHP ().set_shield (10);
   auto& regen = b->MutableRegenData ();
   regen.mutable_max_hp ()->set_shield (100);
-  regen.set_shield_regeneration_mhp (1000);
+  regen.mutable_regeneration_mhp ()->set_shield (1'000);
   b.reset ();
 
   RegenerateHP (db);
@@ -2045,7 +2058,7 @@ TEST_F (RegenerateHpTests, InsideBuilding)
   c->MutableHP ().set_shield (10);
   auto* regen = &c->MutableRegenData ();
   regen->mutable_max_hp ()->set_shield (100);
-  regen->set_shield_regeneration_mhp (1000);
+  regen->mutable_regeneration_mhp ()->set_shield (1'000);
   c.reset ();
 
   RegenerateHP (db);

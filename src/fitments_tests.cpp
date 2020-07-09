@@ -119,7 +119,8 @@ TEST_F (DeriveCharacterStatsTests, BaseVehicleStats)
   EXPECT_EQ (pb.mining ().rate ().max (), 100);
   EXPECT_EQ (c->GetRegenData ().max_hp ().armour (), 1'000);
   EXPECT_EQ (c->GetRegenData ().max_hp ().shield (), 1'00);
-  EXPECT_EQ (c->GetRegenData ().shield_regeneration_mhp (), 10);
+  EXPECT_EQ (c->GetRegenData ().regeneration_mhp ().armour (), 0);
+  EXPECT_EQ (c->GetRegenData ().regeneration_mhp ().shield (), 10);
 }
 
 TEST_F (DeriveCharacterStatsTests, ProspectingRate)
@@ -212,7 +213,12 @@ TEST_F (DeriveCharacterStatsTests, MaxHpRegen)
   EXPECT_EQ (c->GetRegenData ().max_hp ().shield (), 110);
 
   c = Derive ("chariot", {"lf replenisher"});
-  EXPECT_EQ (c->GetRegenData ().shield_regeneration_mhp (), 11);
+  EXPECT_EQ (c->GetRegenData ().regeneration_mhp ().shield (), 11);
+  EXPECT_EQ (c->GetRegenData ().regeneration_mhp ().armour (), 0);
+
+  c = Derive ("chariot", {"lf armourregen"});
+  EXPECT_EQ (c->GetRegenData ().regeneration_mhp ().shield (), 10);
+  EXPECT_EQ (c->GetRegenData ().regeneration_mhp ().armour (), 2'000);
 }
 
 TEST_F (DeriveCharacterStatsTests, RangeDamage)
