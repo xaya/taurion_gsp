@@ -909,6 +909,8 @@ TEST_F (DealDamageTests, Effects)
 
   c = characters.CreateNew ("green", Faction::GREEN);
   const auto idTarget = c->GetId ();
+  /* This will get reset and replaced by the effects accumulated
+     over this round of damage.  */
   c->MutableEffects ().mutable_speed ()->set_percent (50);
   NoAttacks (*c);
   c.reset ();
@@ -916,7 +918,7 @@ TEST_F (DealDamageTests, Effects)
   FindTargetsAndDamage ();
 
   c = characters.GetById (idTarget);
-  EXPECT_EQ (c->GetEffects ().speed ().percent (), 40);
+  EXPECT_EQ (c->GetEffects ().speed ().percent (), -10);
 }
 
 TEST_F (DealDamageTests, EffectsAndDamageApplied)
@@ -946,6 +948,31 @@ TEST_F (DealDamageTests, EffectsAndDamageApplied)
   c = characters.GetById (idTarget);
   EXPECT_EQ (c->GetHP ().armour (), 99);
   EXPECT_EQ (c->GetEffects ().speed ().percent (), -15);
+}
+
+TEST_F (DealDamageTests, EffectsOkOnKilledCharacter)
+{
+  /* Make sure that it is ok to apply effects on a character that will
+     be killed (e.g. that this does not try to write to a non-existing
+     database entry).  */
+
+  auto c = characters.CreateNew ("red", Faction::RED);
+  AddAttack (*c, 5, 1, 1);
+  auto& attack = CombatTests::AddAttack (*c);
+  attack.set_range (5);
+  attack.mutable_effects ()->mutable_speed ()->set_percent (-10);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idTarget = c->GetId ();
+  c->MutableEffects ().mutable_speed ()->set_percent (50);
+  SetHp (*c, 1, 0, 100, 100);
+  NoAttacks (*c);
+  c.reset ();
+
+  EXPECT_THAT (FindTargetsAndDamage (), ElementsAre (
+    TargetKey (proto::TargetId::TYPE_CHARACTER, idTarget)
+  ));
 }
 
 /* ************************************************************************** */

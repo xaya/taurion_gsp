@@ -70,7 +70,11 @@ CREATE TABLE IF NOT EXISTS `characters` (
   `target` BLOB NULL,
 
   -- Any combat effects that apply to the character (or NULL if none).
-  -- This is a serialised CombatEffects protocol buffer.
+  -- This is a serialised CombatEffects protocol buffer.  The effects
+  -- are set by the combat damaging phase, and then in effect until
+  -- after the next block's damaging phase (so that e.g. range effects
+  -- stay active through targeting and when that target gets actually
+  -- affected next block).
   `effects` BLOB NULL,
 
   -- Flag indicating if the character is currently moving.  This is set
