@@ -87,6 +87,8 @@ ComputeModifier (const CombatEntity& f, CombatModifier& mod)
       mod.damage += b.damage ();
       mod.range += b.range ();
     }
+
+  mod.range += f.GetEffects ().range ();
 }
 
 } // anonymous namespace
@@ -523,6 +525,8 @@ DamageProcessor::ApplyEffects (const proto::Attack& attack,
 
   if (attackEffects.has_speed ())
     *targetEffects.mutable_speed () += attackEffects.speed ();
+  if (attackEffects.has_range ())
+    *targetEffects.mutable_range () += attackEffects.range ();
 }
 
 void

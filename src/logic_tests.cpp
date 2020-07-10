@@ -366,6 +366,53 @@ TEST_F (PXLogicTests, DamageKillsRegeneration)
   EXPECT_TRUE (characters.GetById (idTarget) == nullptr);
 }
 
+TEST_F (PXLogicTests, RangeReduction)
+{
+  /* Place two range reducers just in range of each other.  Due to the delay
+     with which the effect is done (targeting first, effect next), this will
+     lead to alternation of them hitting each other and the effect being on
+     and they being out of range.  */
+
+  auto c = CreateCharacter ("domob", Faction::RED);
+  const auto id1 = c->GetId ();
+  c->SetPosition (HexCoord (0, 0));
+  auto* attack = c->MutableProto ().mutable_combat_data ()->add_attacks ();
+  attack->set_area (10);
+  attack->mutable_effects ()->mutable_range ()->set_percent (-10);
+  c.reset ();
+
+  c = CreateCharacter ("andy", Faction::GREEN);
+  const auto id2 = c->GetId ();
+  c->SetPosition (HexCoord (10, 0));
+  attack = c->MutableProto ().mutable_combat_data ()->add_attacks ();
+  attack->set_area (10);
+  attack->mutable_effects ()->mutable_range ()->set_percent (-10);
+  c.reset ();
+
+  /* Process one initial round for targeting (the effect is off), which
+     brings us into the cycle that will then be repeated.  */
+  UpdateState ("[]");
+
+  for (unsigned i = 0; i < 10; ++i)
+    {
+      UpdateState ("[]");
+      for (const auto id : {id1, id2})
+        {
+          c = characters.GetById (id);
+          EXPECT_TRUE (c->GetEffects ().has_range ());
+          EXPECT_FALSE (c->HasTarget ());
+        }
+
+      UpdateState ("[]");
+      for (const auto id : {id1, id2})
+        {
+          c = characters.GetById (id);
+          EXPECT_FALSE (c->GetEffects ().has_range ());
+          EXPECT_TRUE (c->HasTarget ());
+        }
+    }
+}
+
 TEST_F (PXLogicTests, PickUpDeadDrop)
 {
   const HexCoord pos(10, 20);
