@@ -754,7 +754,7 @@ DamageProcessor::Process ()
      here, so it is right after that whole "combat block" for the rest
      of processing (e.g. movement or regeneration) and also the next
      combat block.  */
-  characters.ClearAllEffects ();
+  fighters.ClearAllEffects ();
   for (auto& entry : newEffects)
     {
       auto f = fighters.GetForTarget (entry.first.ToProto ());

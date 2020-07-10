@@ -164,6 +164,10 @@ CREATE TABLE IF NOT EXISTS `buildings` (
   -- The attacked target (if any), as a serialised TargetId proto.
   `target` BLOB NULL,
 
+  -- Any combat effects that apply to the building (or NULL if none).
+  -- This is a serialised CombatEffects protocol buffer.
+  `effects` BLOB NULL,
+
   -- The range of the longest attack this building has or NULL if there
   -- is no attack at all.
   `attackrange` INTEGER NULL,
@@ -181,6 +185,7 @@ CREATE INDEX IF NOT EXISTS `buildings_attackrange`
   ON `buildings` (`attackrange`);
 CREATE INDEX IF NOT EXISTS `buildings_canregen` ON `buildings` (`canregen`);
 CREATE INDEX IF NOT EXISTS `buildings_target` ON `buildings` (`target`);
+CREATE INDEX IF NOT EXISTS `buildings_effects` ON `buildings` (`effects`);
 
 -- =============================================================================
 

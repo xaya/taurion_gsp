@@ -152,11 +152,20 @@ TEST_F (BuildingTests, CombatFields)
   EXPECT_FALSE (tbl.GetById (id)->HasTarget ());
 }
 
-TEST_F (BuildingTests, DummyCombatEffects)
+TEST_F (BuildingTests, CombatEffects)
 {
-  auto h = tbl.CreateNew ("checkmark", "andy", Faction::RED);
-  h->MutableEffects ().mutable_speed ()->set_percent (42);
-  EXPECT_FALSE (h->GetEffects ().has_speed ());
+  auto b = tbl.CreateNew ("checkmark", "domob", Faction::RED);
+  const auto id = b->GetId ();
+  EXPECT_FALSE (b->GetEffects ().has_speed ());
+  b.reset ();
+
+  b = tbl.GetById (id);
+  EXPECT_FALSE (b->GetEffects ().has_speed ());
+  b->MutableEffects ().mutable_speed ()->set_percent (42);
+  EXPECT_EQ (b->GetEffects ().speed ().percent (), 42);
+  b.reset ();
+
+  EXPECT_EQ (tbl.GetById (id)->GetEffects ().speed ().percent (), 42);
 }
 
 /* ************************************************************************** */
@@ -256,6 +265,18 @@ TEST_F (BuildingsTableTests, DeleteById)
   auto h = tbl.GetById (id1);
   ASSERT_NE (h, nullptr);
   EXPECT_EQ (h->GetOwner (), "domob");
+}
+
+TEST_F (BuildingsTableTests, ClearAllEffects)
+{
+  auto b = tbl.CreateNew ("checkmark", "domob", Faction::RED);
+  const auto id = b->GetId ();
+  b->MutableEffects ().mutable_speed ()->set_percent (10);
+  b.reset ();
+
+  tbl.ClearAllEffects ();
+
+  EXPECT_FALSE (tbl.GetById (id)->GetEffects ().has_speed ());
 }
 
 /* ************************************************************************** */

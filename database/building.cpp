@@ -31,6 +31,7 @@ Building::Building (Database& d, const std::string& t,
   VLOG (1)
       << "Created new building with ID " << id << ": "
       << "type=" << type << ", owner=" << owner;
+  effects.SetToDefault ();
   data.SetToDefault ();
 
   if (f == Faction::ANCIENT)
@@ -46,6 +47,12 @@ Building::Building (Database& d, const Database::Result<BuildingResult>& res)
   if (faction != Faction::ANCIENT)
     owner = res.Get<BuildingResult::owner> ();
   pos = GetCoordFromColumn (res);
+
+  if (res.IsNull<BuildingResult::effects> ())
+    effects.SetToDefault ();
+  else
+    effects = res.GetProto<BuildingResult::effects> ();
+
   data = res.GetProto<BuildingResult::proto> ();
 
   VLOG (2) << "Fetched building with ID " << id << " from database result";
@@ -58,7 +65,7 @@ Building::~Building ()
      to specifically handle that case.  */
 
   if (isNew || CombatEntity::IsDirtyFull () || CombatEntity::IsDirtyFields ()
-        || dirtyFields || data.IsDirty ())
+        || dirtyFields || effects.IsDirty () || data.IsDirty ())
     {
       VLOG (2)
           << "Building " << id << " has been modified, updating DB";
@@ -69,13 +76,13 @@ Building::~Building ()
            `faction`, `owner`, `x`, `y`,
            `hp`, `regendata`, `target`,
            `attackrange`, `canregen`,
-           `proto`)
+           `effects`, `proto`)
           VALUES
           (?1, ?2,
            ?3, ?4, ?5, ?6,
            ?7, ?8, ?9,
            ?10, ?11,
-           ?12)
+           ?12, ?13)
       )");
 
       stmt.Bind (1, id);
@@ -88,7 +95,13 @@ Building::~Building ()
       BindCoordParameter (stmt, 5, 6, pos);
       CombatEntity::BindFields (stmt, 7, 11);
       CombatEntity::BindFullFields (stmt, 8, 9, 10);
-      stmt.BindProto (12, data);
+
+      if (effects.IsEmpty ())
+        stmt.BindNull (12);
+      else
+        stmt.BindProto (12, effects);
+
+      stmt.BindProto (13, data);
       stmt.Execute ();
 
       return;
@@ -126,28 +139,6 @@ Building::GetIdAsTarget () const
   res.set_type (proto::TargetId::TYPE_BUILDING);
   res.set_id (id);
   return res;
-}
-
-const proto::CombatEffects&
-Building::GetEffects () const
-{
-  /* Buildings do not support effects, so we just return a
-     default proto.  */
-  return proto::CombatEffects::default_instance ();
-}
-
-proto::CombatEffects&
-Building::MutableEffects ()
-{
-  /* Buildings do not support effects, so we just return a mutable
-     dummy proto that can be freely modified (without affecting the
-     outcome of anything else).
-
-     We use a thread-local variable to avoid situations where two threads
-     try to access and modify the same dummy proto at the same time in
-     case we multi-thread some game logic later on.  */
-  thread_local proto::CombatEffects dummy;
-  return dummy;
 }
 
 BuildingsTable::Handle
@@ -231,6 +222,19 @@ BuildingsTable::QueryWithTarget ()
       ORDER BY `id`
   )");
   return stmt.Query<BuildingResult> ();
+}
+
+void
+BuildingsTable::ClearAllEffects ()
+{
+  VLOG (1) << "Clearing all combat effects on buildings";
+
+  auto stmt = db.Prepare (R"(
+    UPDATE `buildings`
+      SET `effects` = NULL
+      WHERE `effects` IS NOT NULL
+  )");
+  stmt.Execute ();
 }
 
 } // namespace pxd
