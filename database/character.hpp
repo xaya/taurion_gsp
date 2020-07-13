@@ -258,12 +258,6 @@ public:
     return inv;
   }
 
-  bool
-  HasEffects () const
-  {
-    return !effects.IsEmpty ();
-  }
-
   const proto::CombatEffects&
   GetEffects () const override
   {

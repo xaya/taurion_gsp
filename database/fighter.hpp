@@ -89,6 +89,11 @@ public:
    */
   void ProcessWithTarget (const Callback& cb);
 
+  /**
+   * Removes all combat effects in the database.
+   */
+  void ClearAllEffects ();
+
 };
 
 } // namespace pxd

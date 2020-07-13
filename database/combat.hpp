@@ -249,16 +249,12 @@ public:
   virtual const proto::CombatData& GetCombatData () const = 0;
 
   /**
-   * Returns the combat effects applied to this entity (or a default
-   * proto if the entity does not support effects, like buildings).
+   * Returns the combat effects applied to this entity.
    */
   virtual const proto::CombatEffects& GetEffects () const = 0;
 
   /**
-   * Returns a mutable reference to the effects proto.  If this entity
-   * does not support effects, this must still return a mutable reference,
-   * but its value is not defined and it may be freely modified without
-   * any effects.
+   * Returns a mutable reference to the effects proto.
    */
   virtual proto::CombatEffects& MutableEffects () = 0;
 

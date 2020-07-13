@@ -471,6 +471,27 @@ TEST_F (TargetSelectionTests, LowHpBoost)
   EXPECT_EQ (characters.GetById (idArea)->GetTarget ().id (), idNormal);
 }
 
+TEST_F (TargetSelectionTests, CombatEffect)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  const auto id1 = c->GetId ();
+  c->SetPosition (HexCoord (0, 0));
+  c->MutableEffects ().mutable_range ()->set_percent (-10);
+  AddAttack (*c).set_range (10);
+  c.reset ();
+
+  c = characters.CreateNew ("andy", Faction::GREEN);
+  const auto id2 = c->GetId ();
+  c->SetPosition (HexCoord (10, 0));
+  c->MutableEffects ().mutable_range ()->set_percent (100);
+  AddAttack (*c).set_range (5);
+  c.reset ();
+
+  FindCombatTargets (db, rnd, ctx);
+  EXPECT_FALSE (characters.GetById (id1)->HasTarget ());
+  EXPECT_EQ (characters.GetById (id2)->GetTarget ().id (), id1);
+}
+
 /* ************************************************************************** */
 
 class DealDamageTests : public CombatTests
@@ -702,6 +723,44 @@ TEST_F (DealDamageTests, ReceivedDamageModifier)
   EXPECT_EQ (c->GetHP ().armour (), 92);
 }
 
+TEST_F (DealDamageTests, ModifiedRange)
+{
+  /* The original range modifier should be used for the range, area
+     and area around target, even if another attack in the same round
+     applies a different range modifier.  */
+
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  c->MutableEffects ().mutable_range ()->set_percent (200);
+  AddAttack (*c, 5, 1, 1);
+  AddAreaAttack (*c, 2, 1, 1).set_range (5);
+  c.reset ();
+
+  c = characters.CreateNew ("target", Faction::GREEN);
+  const auto idTarget1 = c->GetId ();
+  c->SetPosition (HexCoord (10, 0));
+  SetHp (*c, 0, 100, 0, 100);
+  auto& attack = CombatTests::AddAttack (*c);
+  attack.set_area (10);
+  attack.mutable_effects ()->mutable_speed ()->set_percent (-50);
+  c.reset ();
+
+  c = characters.CreateNew ("target", Faction::GREEN);
+  const auto idTarget2 = c->GetId ();
+  c->SetPosition (HexCoord (14, 0));
+  SetHp (*c, 0, 100, 0, 100);
+  NoAttacks (*c);
+  c.reset ();
+
+  FindTargetsAndDamage ();
+  EXPECT_EQ (characters.GetById (idTarget1)->GetHP ().armour (), 98);
+  EXPECT_EQ (characters.GetById (idTarget2)->GetHP ().armour (), 99);
+
+  /* Now the changed range modifier should take effect.  */
+  FindTargetsAndDamage ();
+  EXPECT_EQ (characters.GetById (idTarget1)->GetHP ().armour (), 98);
+  EXPECT_EQ (characters.GetById (idTarget2)->GetHP ().armour (), 99);
+}
+
 TEST_F (DealDamageTests, SafeZone)
 {
   /* One attacker has both area and normal attacks and also a slowing effect.
@@ -902,13 +961,19 @@ TEST_F (DealDamageTests, Effects)
 {
   auto c = characters.CreateNew ("red", Faction::RED);
   AddAttack (*c, 5, 1, 1);
-  auto& attack = CombatTests::AddAttack (*c);
-  attack.set_range (5);
-  attack.mutable_effects ()->mutable_speed ()->set_percent (-10);
+  for (unsigned i = 0; i < 2; ++i)
+    {
+      auto& attack = CombatTests::AddAttack (*c);
+      attack.set_range (5);
+      attack.mutable_effects ()->mutable_speed ()->set_percent (-10);
+      attack.mutable_effects ()->mutable_range ()->set_percent (-15);
+    }
   c.reset ();
 
   c = characters.CreateNew ("green", Faction::GREEN);
   const auto idTarget = c->GetId ();
+  /* This will get reset and replaced by the effects accumulated
+     over this round of damage.  */
   c->MutableEffects ().mutable_speed ()->set_percent (50);
   NoAttacks (*c);
   c.reset ();
@@ -916,7 +981,8 @@ TEST_F (DealDamageTests, Effects)
   FindTargetsAndDamage ();
 
   c = characters.GetById (idTarget);
-  EXPECT_EQ (c->GetEffects ().speed ().percent (), 40);
+  EXPECT_EQ (c->GetEffects ().speed ().percent (), -20);
+  EXPECT_EQ (c->GetEffects ().range ().percent (), -30);
 }
 
 TEST_F (DealDamageTests, EffectsAndDamageApplied)
@@ -946,6 +1012,31 @@ TEST_F (DealDamageTests, EffectsAndDamageApplied)
   c = characters.GetById (idTarget);
   EXPECT_EQ (c->GetHP ().armour (), 99);
   EXPECT_EQ (c->GetEffects ().speed ().percent (), -15);
+}
+
+TEST_F (DealDamageTests, EffectsOkOnKilledCharacter)
+{
+  /* Make sure that it is ok to apply effects on a character that will
+     be killed (e.g. that this does not try to write to a non-existing
+     database entry).  */
+
+  auto c = characters.CreateNew ("red", Faction::RED);
+  AddAttack (*c, 5, 1, 1);
+  auto& attack = CombatTests::AddAttack (*c);
+  attack.set_range (5);
+  attack.mutable_effects ()->mutable_speed ()->set_percent (-10);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idTarget = c->GetId ();
+  c->MutableEffects ().mutable_speed ()->set_percent (50);
+  SetHp (*c, 1, 0, 100, 100);
+  NoAttacks (*c);
+  c.reset ();
+
+  EXPECT_THAT (FindTargetsAndDamage (), ElementsAre (
+    TargetKey (proto::TargetId::TYPE_CHARACTER, idTarget)
+  ));
 }
 
 /* ************************************************************************** */
@@ -1300,6 +1391,35 @@ TEST_F (SelfDestructTests, StackingAndLowHpBoost)
     TargetKey (proto::TargetId::TYPE_CHARACTER, idDestructed)
   ));
   EXPECT_EQ (characters.GetById (idAttacker)->GetHP ().armour (), 100 - 24);
+}
+
+TEST_F (SelfDestructTests, CombatEffects)
+{
+  /* The original combat effects (e.g. range modifier) will be taken into
+     account also for self-destructs, even if the effects are changed
+     by an attack in the current round.  */
+
+  auto c = characters.CreateNew ("red", Faction::RED);
+  const auto idAttacker = c->GetId ();
+  SetHp (*c, 0, 100, 0, 100);
+  AddAttack (*c, 100, 1, 1);
+  auto& attack = CombatTests::AddAttack (*c);
+  attack.set_area (100);
+  attack.mutable_effects ()->mutable_range ()->set_percent (-50);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idDestructed = c->GetId ();
+  c->SetPosition (HexCoord (10, 0));
+  c->MutableEffects ().mutable_range ()->set_percent (200);
+  SetHp (*c, 0, 1, 0, 1);
+  AddSelfDestruct (*c, 5, 10);
+  c.reset ();
+
+  EXPECT_THAT (FindTargetsAndDamage (), ElementsAre (
+    TargetKey (proto::TargetId::TYPE_CHARACTER, idDestructed)
+  ));
+  EXPECT_EQ (characters.GetById (idAttacker)->GetHP ().armour (), 90);
 }
 
 TEST_F (SelfDestructTests, Chain)

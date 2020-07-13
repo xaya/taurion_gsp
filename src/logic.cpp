@@ -109,13 +109,6 @@ PXLogic::UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
 
   FindCombatTargets (db, rnd, ctx);
 
-  /* At the very end of processing this block, clear temporary combat effects
-     again.  They only need to be present from when they are applied during
-     combat damage until all other processing based on stats (including
-     targeting) has been done.  There is no need to persist them in the
-     actual game state between blocks.  */
-  CharacterTable (db).ClearAllEffects ();
-
 #ifdef ENABLE_SLOW_ASSERTS
   ValidateStateSlow (db, ctx);
 #endif // ENABLE_SLOW_ASSERTS

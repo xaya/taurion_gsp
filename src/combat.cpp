@@ -65,10 +65,11 @@ struct CombatModifier
 };
 
 /**
- * Computes the low-HP boosts to damage and range for the given entity.
+ * Computes the modifier to apply for a given entity (composed of low-HP boosts
+ * and effects).
  */
 void
-ComputeLowHpBoosts (const CombatEntity& f, CombatModifier& mod)
+ComputeModifier (const CombatEntity& f, CombatModifier& mod)
 {
   mod.damage = StatModifier ();
   mod.range = StatModifier ();
@@ -86,6 +87,8 @@ ComputeLowHpBoosts (const CombatEntity& f, CombatModifier& mod)
       mod.damage += b.damage ();
       mod.range += b.range ();
     }
+
+  mod.range += f.GetEffects ().range ();
 }
 
 } // anonymous namespace
@@ -136,10 +139,12 @@ SelectTarget (TargetFinder& targets, xaya::Random& rnd, const Context& ctx,
     }
   CHECK_GE (range, 0);
 
-  /* Apply the low-HP boost to range (if any).  */
-  CombatModifier lowHpMod;
-  ComputeLowHpBoosts (*f, lowHpMod);
-  range = lowHpMod.range (range);
+  /* Apply the modifier to range (if any).  */
+  {
+    CombatModifier mod;
+    ComputeModifier (*f, mod);
+    range = mod.range (range);
+  }
 
   HexCoord::IntT closestRange;
   std::vector<proto::TargetId> closestTargets;
@@ -227,9 +232,20 @@ private:
   /**
    * Modifiers to combat stats for all fighters that will deal damage.  This
    * is filled in (e.g. from their low-HP boosts) before actual damaging starts,
-   * and is used to make the damaging independent of processing order.
+   * and is used to make the damaging independent of processing order.  This is
+   * especially important so that HP changes do not influence low-HP boosts.
    */
   std::map<TargetKey, CombatModifier> modifiers;
+
+  /**
+   * Combat effects that are being applied by this round of damage to
+   * the given targets.  This is accumulated here so that the original
+   * effects are unaffected, and only later written back to the fighters
+   * after all damaging is done.  This ensures that we do not take current
+   * changes into effect right now in a messy way, e.g. for self-destruct
+   * rounds (which do not rely on "modifiers" but recompute them).
+   */
+  std::map<TargetKey, proto::CombatEffects> newEffects;
 
   /**
    * For each target that was attacked with a gain_hp attack, we store all
@@ -284,9 +300,10 @@ private:
                     CombatEntity& target, std::set<TargetKey>& newDead);
 
   /**
-   * Applies combat effects (non-damage) to a target.
+   * Applies combat effects (non-damage) to a target.  They are not saved
+   * directly to the target for now, but accumulated in newEffects.
    */
-  void ApplyEffects (const proto::Attack& attack, CombatEntity& target) const;
+  void ApplyEffects (const proto::Attack& attack, const CombatEntity& target);
 
   /**
    * Deals damage for one fighter with a target to the respective target
@@ -493,7 +510,7 @@ DamageProcessor::ApplyDamage (const unsigned dmg, const CombatEntity& attacker,
 
 void
 DamageProcessor::ApplyEffects (const proto::Attack& attack,
-                               CombatEntity& target) const
+                               const CombatEntity& target)
 {
   CHECK (!ctx.Map ().SafeZones ().IsNoCombat (target.GetCombatPosition ()));
 
@@ -503,11 +520,13 @@ DamageProcessor::ApplyEffects (const proto::Attack& attack,
   const auto targetId = target.GetIdAsTarget ();
   VLOG (1) << "Applying combat effects to " << targetId.DebugString ();
 
-  const auto& effects = attack.effects ();
-  auto& pb = target.MutableEffects ();
+  const auto& attackEffects = attack.effects ();
+  auto& targetEffects = newEffects[targetId];
 
-  if (effects.has_speed ())
-    *pb.mutable_speed () += effects.speed ();
+  if (attackEffects.has_speed ())
+    *targetEffects.mutable_speed () += attackEffects.speed ();
+  if (attackEffects.has_range ())
+    *targetEffects.mutable_range () += attackEffects.range ();
 }
 
 void
@@ -586,7 +605,7 @@ DamageProcessor::ProcessSelfDestructs (FighterTable::Handle f,
   CHECK_EQ (f->GetHP ().armour (), 0);
   CHECK_EQ (f->GetHP ().shield (), 0);
   CombatModifier mod;
-  ComputeLowHpBoosts (*f, mod);
+  ComputeModifier (*f, mod);
 
   for (const auto& sd : f->GetCombatData ().self_destructs ())
     {
@@ -619,7 +638,7 @@ DamageProcessor::Process ()
   fighters.ProcessWithTarget ([&] (FighterTable::Handle f)
     {
       CombatModifier mod;
-      ComputeLowHpBoosts (*f, mod);
+      ComputeModifier (*f, mod);
       CHECK (modifiers.emplace (f->GetIdAsTarget (), std::move (mod)).second);
     });
 
@@ -729,6 +748,21 @@ DamageProcessor::Process ()
                                maxHp.armour ()));
       hp.set_shield (std::min (hp.shield () + entry.second.shield (),
                                maxHp.shield ()));
+    }
+
+  /* Update combat effects on fighters (clear all previous effects in the
+     database, and put back in those that are accumulated in newEffects).
+
+     Conceptually, target finding, waiting for the new block, and then
+     applying damaging is "one thing".  Swapping over the effects is done
+     here, so it is right after that whole "combat block" for the rest
+     of processing (e.g. movement or regeneration) and also the next
+     combat block.  */
+  fighters.ClearAllEffects ();
+  for (auto& entry : newEffects)
+    {
+      auto f = fighters.GetForTarget (entry.first.ToProto ());
+      f->MutableEffects () = std::move (entry.second);
     }
 }
 

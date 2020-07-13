@@ -213,5 +213,39 @@ TEST_F (FighterTableTests, ProcessWithTarget)
   EXPECT_EQ (cnt, 2);
 }
 
+TEST_F (FighterTableTests, Effects)
+{
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  const auto bId = b->GetId ();
+  b->MutableEffects ().mutable_speed ()->set_percent (10);
+  b.reset ();
+
+  auto c = characters.CreateNew ("domob", Faction::GREEN);
+  const auto cId = c->GetId ();
+  c->MutableEffects ().mutable_speed ()->set_percent (20);
+  c.reset ();
+
+  proto::TargetId targetId;
+  targetId.set_type (proto::TargetId::TYPE_BUILDING);
+  targetId.set_id (bId);
+  auto f = tbl.GetForTarget(targetId);
+  EXPECT_EQ (f->GetEffects ().speed ().percent (), 10);
+
+  targetId.set_type (proto::TargetId::TYPE_CHARACTER);
+  targetId.set_id (cId);
+  f = tbl.GetForTarget(targetId);
+  EXPECT_EQ (f->GetEffects ().speed ().percent (), 20);
+
+  tbl.ClearAllEffects ();
+
+  targetId.set_type (proto::TargetId::TYPE_BUILDING);
+  targetId.set_id (bId);
+  EXPECT_FALSE (tbl.GetForTarget (targetId)->GetEffects ().has_speed ());
+
+  targetId.set_type (proto::TargetId::TYPE_CHARACTER);
+  targetId.set_id (cId);
+  EXPECT_FALSE (tbl.GetForTarget (targetId)->GetEffects ().has_speed ());
+}
+
 } // anonymous namespace
 } // namespace pxd

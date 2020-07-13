@@ -212,22 +212,16 @@ TEST_F (CharacterTests, CombatEffects)
 {
   auto h = tbl.CreateNew ("domob", Faction::RED);
   const auto id = h->GetId ();
-  EXPECT_FALSE (h->HasEffects ());
   EXPECT_FALSE (h->GetEffects ().has_speed ());
   h.reset ();
 
   h = tbl.GetById (id);
-  EXPECT_FALSE (h->HasEffects ());
   EXPECT_FALSE (h->GetEffects ().has_speed ());
   h->MutableEffects ().mutable_speed ()->set_percent (42);
-  EXPECT_TRUE (h->HasEffects ());
   EXPECT_EQ (h->GetEffects ().speed ().percent (), 42);
   h.reset ();
 
-  h = tbl.GetById (id);
-  EXPECT_TRUE (h->HasEffects ());
-  EXPECT_EQ (h->GetEffects ().speed ().percent (), 42);
-  h.reset ();
+  EXPECT_EQ (tbl.GetById (id)->GetEffects ().speed ().percent (), 42);
 }
 
 TEST_F (CharacterTests, AttackRange)
@@ -576,7 +570,6 @@ TEST_F (CharacterTableTests, ClearAllEffects)
 
   c = tbl.GetById (id);
   EXPECT_EQ (c->GetProto ().speed (), 123);
-  EXPECT_FALSE (c->HasEffects ());
   EXPECT_FALSE (c->GetEffects ().has_speed ());
 }
 

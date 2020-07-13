@@ -61,6 +61,9 @@ message CombatEffects
   /** Modification to the speed.  */
   optional StatModifier speed = 1;
 
+  /** Modification to the range.  */
+  optional StatModifier range = 2;
+
 }
 
 /**

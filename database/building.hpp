@@ -39,7 +39,8 @@ struct BuildingResult : public ResultWithFaction, public ResultWithCoord,
   RESULT_COLUMN (int64_t, id, 1);
   RESULT_COLUMN (std::string, type, 2);
   RESULT_COLUMN (std::string, owner, 3);
-  RESULT_COLUMN (pxd::proto::Building, proto, 4);
+  RESULT_COLUMN (pxd::proto::CombatEffects, effects, 4);
+  RESULT_COLUMN (pxd::proto::Building, proto, 5);
 };
 
 /**
@@ -67,6 +68,9 @@ private:
 
   /** The building's centre position.  */
   HexCoord pos;
+
+  /** The combat effects.  */
+  LazyProto<proto::CombatEffects> effects;
 
   /** Generic data stored in the proto BLOB.  */
   LazyProto<proto::Building> data;
@@ -151,6 +155,18 @@ public:
    */
   void SetCentre (const HexCoord& c);
 
+  const proto::CombatEffects&
+  GetEffects () const override
+  {
+    return effects.Get ();
+  }
+
+  proto::CombatEffects&
+  MutableEffects () override
+  {
+    return effects.Mutable ();
+  }
+
   const proto::Building&
   GetProto () const
   {
@@ -176,9 +192,6 @@ public:
   {
     return data.Get ().combat_data ();
   }
-
-  const proto::CombatEffects& GetEffects () const override;
-  proto::CombatEffects& MutableEffects () override;
 
 };
 
@@ -252,6 +265,11 @@ public:
    * Deletes the row for a given building ID.
    */
   void DeleteById (Database::IdT id);
+
+  /**
+   * Clears the "effects" column for all buildings.
+   */
+  void ClearAllEffects ();
 
 };
 

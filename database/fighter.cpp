@@ -87,4 +87,11 @@ FighterTable::ProcessWithTarget (const Callback& cb)
   }
 }
 
+void
+FighterTable::ClearAllEffects ()
+{
+  buildings.ClearAllEffects ();
+  characters.ClearAllEffects ();
+}
+
 } // namespace pxd
