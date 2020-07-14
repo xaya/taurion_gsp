@@ -487,6 +487,8 @@ PendingStateUpdater::PerformCharacterUpdate (Character& c,
   std::vector<std::string> fitments;
   if (ParseSetFitments (c, upd, fitments))
     state.AddCharacterFitments (c, fitments);
+
+  TryMobileRefining (c, upd);
 }
 
 void

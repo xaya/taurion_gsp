@@ -24,7 +24,7 @@ fungible_items:
     key: "test ore"
     value:
       {
-        space: 10
+        space: 15
         refines:
           {
             input_units: 3
@@ -252,7 +252,7 @@ fungible_items:
     value:
       {
         space: 50
-        complexity: 100
+        complexity: 10000
         with_blueprint: true
         vehicle:
           {

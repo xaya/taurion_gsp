@@ -22,10 +22,14 @@
 
 #include "proto/roconfig.hpp"
 
+#include <google/protobuf/util/message_differencer.h>
+
 #include <map>
 
 namespace pxd
 {
+
+using google::protobuf::util::MessageDifferencer;
 
 bool
 CheckVehicleFitments (const std::string& vehicle,
@@ -132,6 +136,9 @@ InitCharacterStats (Character& c, const proto::VehicleData& data)
     }
   else
     pb.clear_prospecting_blocks ();
+
+  /* By default, no vehicle can refine (without a fitment).  */
+  pb.clear_refining ();
 }
 
 /**
@@ -150,6 +157,10 @@ ApplyFitments (Character& c, const Context& ctx)
   StatModifier range, damage;
   StatModifier recvDamage;
 
+  /* Mobile refinery (if any).  */
+  bool hasRefinery = false;
+  proto::MobileRefinery refinery;
+
   auto& pb = c.MutableProto ();
   auto* cd = pb.mutable_combat_data ();
   for (const auto& f : pb.fitments ())
@@ -165,6 +176,23 @@ ApplyFitments (Character& c, const Context& ctx)
         *cd->add_low_hp_boosts () = fitment.low_hp_boost ();
       if (fitment.has_self_destruct ())
         *cd->add_self_destructs () = fitment.self_destruct ();
+
+      if (fitment.has_refining ())
+        {
+          /* There is only one type of refinery in the game.  Thus if
+             the character has one fitted already, it should be the same
+             one, and in that case there is no effect of the second one.  */
+          if (hasRefinery)
+            CHECK (MessageDifferencer::Equals (refinery, fitment.refining ()))
+                << "Multiple, different refineries defined:\n"
+                << refinery.DebugString () << "\n  vs\n"
+                << fitment.refining ().DebugString ();
+          else
+            {
+              hasRefinery = true;
+              refinery = fitment.refining ();
+            }
+        }
 
       cargo += fitment.cargo_space ();
       speed += fitment.speed ();
@@ -203,6 +231,9 @@ ApplyFitments (Character& c, const Context& ctx)
       rate->set_min (mining (rate->min ()));
       rate->set_max (mining (rate->max ()));
     }
+
+  if (hasRefinery)
+    *pb.mutable_refining () = refinery;
 
   auto& regen = c.MutableRegenData ();
   regen.mutable_max_hp ()->set_armour (maxArmour (regen.max_hp ().armour ()));

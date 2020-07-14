@@ -1984,6 +1984,123 @@ TEST_F (ExitBuildingMoveTests, InventoryBeforeExit)
 
 /* ************************************************************************** */
 
+class MobileRefiningMoveTests : public CharacterUpdateTests
+{
+
+private:
+
+  GroundLootTable loot;
+  const HexCoord pos;
+
+protected:
+
+  MobileRefiningMoveTests ()
+    : loot(db), pos(1, 2)
+  {
+    SetupCharacter (1, "domob");
+    auto t = GetTest ();
+
+    accounts.GetByName (t->GetOwner ())->AddBalance (100);
+
+    auto& pb = t->MutableProto ();
+    pb.set_cargo_space (1'000);
+    pb.mutable_refining ()->mutable_input ()->set_percent (100);
+
+    t->GetInventory ().AddFungibleCount ("test ore", 20);
+    t->SetPosition (pos);
+  }
+
+  /**
+   * Returns an inventory handle for the ground loot at the test position.
+   * We use this in tests about dropping / picking stuff up (i.e. order
+   * of that relative to mobile refining).
+   */
+  GroundLootTable::Handle
+  GetLoot ()
+  {
+    return loot.GetByCoord (pos);
+  }
+
+};
+
+TEST_F (MobileRefiningMoveTests, Invalid)
+{
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"ref": {}}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"ref": {"i": "test ore", "n": 10}}}}
+    }
+  ])");
+  EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 100);
+  EXPECT_EQ (GetTest ()->GetInventory ().GetFungibleCount ("test ore"), 20);
+}
+
+TEST_F (MobileRefiningMoveTests, Works)
+{
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"ref": {"i": "test ore", "n": 12}}}}
+    }
+  ])");
+  EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 80);
+  EXPECT_EQ (GetTest ()->GetInventory ().GetFungibleCount ("test ore"), 8);
+  EXPECT_EQ (GetTest ()->GetInventory ().GetFungibleCount ("bar"), 4);
+  EXPECT_EQ (GetTest ()->GetInventory ().GetFungibleCount ("zerospace"), 2);
+}
+
+TEST_F (MobileRefiningMoveTests, BeforePickup)
+{
+  /* Refining one step uses up 6 "test ore" of total space 90, and
+     yields outputs of total size 40.  This is done before processing a pickup
+     action, which will then have free cargo available.  */
+
+  auto c = GetTest ();
+  c->MutableProto ().set_cargo_space (300);
+  EXPECT_EQ (c->FreeCargoSpace (ctx.RoConfig ()), 0);
+  c.reset ();
+
+  GetLoot ()->GetInventory ().AddFungibleCount ("foo", 10);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {
+        "pu": {"f": {"foo": 10}},
+        "ref": {"i": "test ore", "n": 6}
+      }}}
+    }
+  ])");
+
+  EXPECT_EQ (GetTest ()->GetInventory ().GetFungibleCount ("foo"), 5);
+}
+
+TEST_F (MobileRefiningMoveTests, BeforeDrop)
+{
+  /* Refining is done before drop during move processing, so that it will
+     be possible to drop the refining outputs right away, and only the
+     not-yet-used-up inputs can be dropped.  */
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"1": {
+        "drop": {"f": {"bar": 100, "test ore": 100}},
+        "ref": {"i": "test ore", "n": 6}
+      }}}
+    }
+  ])");
+
+  EXPECT_EQ (GetLoot ()->GetInventory ().GetFungibleCount ("bar"), 2);
+  EXPECT_EQ (GetLoot ()->GetInventory ().GetFungibleCount ("test ore"), 14);
+}
+
+/* ************************************************************************** */
+
 class DropPickupMoveTests : public CharacterUpdateTests
 {
 

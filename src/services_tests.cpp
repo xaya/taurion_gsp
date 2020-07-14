@@ -38,6 +38,17 @@ private:
 
   TestRandom rnd;
 
+  /**
+   * Parses an operation for the given account and from JSON.
+   */
+  std::unique_ptr<ServiceOperation>
+  ParseOp (Account& a, const std::string& dataStr)
+  {
+    return ServiceOperation::Parse (a, ParseJson (dataStr),
+                                    ctx, accounts, buildings,
+                                    inv, characters, itemCounts, ongoings);
+  }
+
 protected:
 
   /** ID of an ancient building with all services.  */
@@ -70,17 +81,24 @@ protected:
   }
 
   /**
-   * Calls TryServiceOperation with the given account and data parsed from
-   * a JSON literal string.  Returns true if the operation was valid.
+   * Tries to parse, validate and execute a service operation with the given
+   * account and data parsed from a JSON literal string.  Returns true if the
+   * operation was valid.
    */
   bool
   Process (const std::string& name, const std::string& dataStr)
   {
     auto a = accounts.GetByName (name);
-    auto op = ServiceOperation::Parse (*a, ParseJson (dataStr),
-                                       ctx, accounts, buildings,
-                                       inv, characters, itemCounts, ongoings);
+    return Process (ParseOp (*a, dataStr));
+  }
 
+  /**
+   * Validates and (if valid) executes a given service operation handle.
+   * Returns true if it was valid and has been executed.
+   */
+  bool
+  Process (std::unique_ptr<ServiceOperation> op)
+  {
     if (op == nullptr || !op->IsFullyValid ())
       return false;
 
@@ -95,9 +113,7 @@ protected:
   GetPendingJson (const std::string& name, const std::string& dataStr)
   {
     auto a = accounts.GetByName (name);
-    auto op = ServiceOperation::Parse (*a, ParseJson (dataStr),
-                                       ctx, accounts, buildings,
-                                       inv, characters, itemCounts, ongoings);
+    auto op = ParseOp (*a, dataStr);
     CHECK (op != nullptr);
     return op->ToPendingJson ();
   }
@@ -470,6 +486,182 @@ TEST_F (RefiningTests, PendingJson)
     "type": "refining",
     "input": {"test ore": 6},
     "output": {"bar": 4, "zerospace": 2}
+  })")));
+}
+
+class MobileRefiningTests : public RefiningTests
+{
+
+private:
+
+  /**
+   * Parses a JSON string into an operation and returns it.
+   */
+  std::unique_ptr<ServiceOperation>
+  ParseOp (Account& a, const std::string& dataStr)
+  {
+    return ServiceOperation::ParseMobileRefining (
+              a, *character, ParseJson (dataStr),
+              ctx, accounts, inv, itemCounts, ongoings);
+  }
+
+protected:
+
+  /**
+   * The character used in tests to do the refining with.  By default it
+   * has a mobile refinery, but tests may want to disable it instead.
+   */
+  CharacterTable::Handle character;
+
+  MobileRefiningTests ()
+  {
+    character = characters.CreateNew ("domob", Faction::RED);
+    character->MutableProto ()
+        .mutable_refining ()->mutable_input ()->set_percent (100);
+
+    /* Also add some test ore for simplicity.  */
+    character->GetInventory ().AddFungibleCount ("test ore", 20);
+  }
+
+  /**
+   * Tries to parse and process a given refining operation from JSON.
+   */
+  bool
+  Process (const std::string& dataStr)
+  {
+    auto a = accounts.GetByName (character->GetOwner ());
+    return RefiningTests::Process (ParseOp (*a, dataStr));
+  }
+
+  /**
+   * Returns the pending JSON of the operation parsed from JSON.
+   */
+  Json::Value
+  GetPendingJson (const std::string& dataStr)
+  {
+    auto a = accounts.GetByName (character->GetOwner ());
+    auto op = ParseOp (*a, dataStr);
+    CHECK (op != nullptr);
+    return op->ToPendingJson ();
+  }
+
+};
+
+TEST_F (MobileRefiningTests, InvalidFormat)
+{
+  EXPECT_FALSE (Process (R"([1, 2, 3])"));
+  EXPECT_FALSE (Process (R"("test")"));
+  EXPECT_FALSE (Process (R"({})"));
+  EXPECT_FALSE (Process (R"({
+    "x": "foo",
+    "i": "test ore",
+    "n": 6
+  })"));
+  EXPECT_FALSE (Process (R"({
+    "i": 42,
+    "n": 6
+  })"));
+  EXPECT_FALSE (Process (R"({
+    "i": "test ore",
+    "n": "6"
+  })"));
+  EXPECT_FALSE (Process (R"({
+    "i": "test ore"
+  })"));
+  EXPECT_FALSE (Process (R"({
+    "n": 3
+  })"));
+}
+
+TEST_F (MobileRefiningTests, MultipleSteps)
+{
+  ASSERT_TRUE (Process (R"({
+    "i": "test ore",
+    "n": 18
+  })"));
+
+  EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 70);
+  EXPECT_EQ (character->GetInventory ().GetFungibleCount ("test ore"), 2);
+  EXPECT_EQ (character->GetInventory ().GetFungibleCount ("bar"), 6);
+  EXPECT_EQ (character->GetInventory ().GetFungibleCount ("zerospace"), 3);
+}
+
+TEST_F (MobileRefiningTests, RefiningNotSupported)
+{
+  character->MutableProto ().clear_refining ();
+  EXPECT_FALSE (Process (R"({
+    "i": "test ore",
+    "n": 6
+  })"));
+}
+
+TEST_F (MobileRefiningTests, InsufficientFunds)
+{
+  accounts.GetByName (character->GetOwner ())->AddBalance (-91);
+  EXPECT_FALSE (Process (R"({
+    "i": "test ore",
+    "n": 6
+  })"));
+}
+
+TEST_F (MobileRefiningTests, InvalidOrUnsupportedItem)
+{
+  character->GetInventory ().AddFungibleCount ("foo", 20);
+  EXPECT_FALSE (Process (R"({
+    "i": "invalid item",
+    "n": 6
+  })"));
+  EXPECT_FALSE (Process (R"({
+    "i": "foo",
+    "n": 6
+  })"));
+}
+
+TEST_F (MobileRefiningTests, InvalidAmount)
+{
+  EXPECT_FALSE (Process (R"({
+    "i": "test ore",
+    "n": -3
+  })"));
+  EXPECT_FALSE (Process (R"({
+    "i": "test ore",
+    "n": 0
+  })"));
+  EXPECT_FALSE (Process (R"({
+    "i": "test ore",
+    "n": 10
+  })"));
+  EXPECT_FALSE (Process (R"({
+    "i": "test ore",
+    "n": 3
+  })"));
+}
+
+TEST_F (MobileRefiningTests, TooMuch)
+{
+  EXPECT_FALSE (Process (R"({
+    "i": "test ore",
+    "n": 60
+  })"));
+}
+
+TEST_F (MobileRefiningTests, PendingJson)
+{
+  ASSERT_EQ (character->GetId (), 101);
+  EXPECT_TRUE (PartialJsonEqual (GetPendingJson (R"({
+    "i": "test ore",
+    "n": 6
+  })"), ParseJson (R"({
+    "building": null,
+    "character": 101,
+    "cost":
+      {
+        "base": 10,
+        "fee": 0
+      },
+    "type": "refining",
+    "input": {"test ore": 6},
+    "output": {"bar": 2, "zerospace": 1}
   })")));
 }
 

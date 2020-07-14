@@ -19,6 +19,7 @@
 syntax = "proto2";
 
 import "proto/combat.proto";
+import "proto/modifier.proto";
 import "proto/movement.proto";
 
 package pxd.proto;
@@ -49,6 +50,22 @@ message MiningData
 
   /** Set to true if the character is currently mining.  */
   optional bool active = 2;
+
+}
+
+/**
+ * Data about mobile refining capabilities of a character.
+ */
+message MobileRefinery
+{
+
+  /**
+   * The "inefficiency factor" of mobile refining.  Refining in a mobile
+   * refinery costs the same vCHI fee and produces the same outputs as a
+   * normal refining step, but uses up more input ore per step.  This is
+   * specified by the modifier here.
+   */
+  optional StatModifier input = 1;
 
 }
 
@@ -97,6 +114,12 @@ message Character
 
   /** Total cargo space the character has.  */
   optional uint64 cargo_space = 9;
+
+  /**
+   * If this is set, the character can do mobile refining (and the stats for
+   * it are given here).
+   */
+  optional MobileRefinery refining = 10;
 
   /* Fields that are stored directly in the database and thus not part of the
      encoded protocol buffer:

@@ -1661,3 +1661,27 @@ fungible_items:
   }
 
 
+fungible_items:
+{
+    key: "vhf refinery"
+    value:
+	{
+        space: 1000
+        complexity: 2000
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 36000 }
+        construction_resources: { key: "mat b" value: 36000 }
+        construction_resources: { key: "mat c" value: 6000 }
+        construction_resources: { key: "mat d" value: 6000 }
+        construction_resources: { key: "mat e" value: 6000 }
+        construction_resources: { key: "mat f" value: 18000 }
+        construction_resources: { key: "mat g" value: 6000 }
+        construction_resources: { key: "mat h" value: 4800 }
+        construction_resources: { key: "mat i" value: 1200 }
+        fitment:
+          {
+            slot: "low"
+            refining: { input: { percent: 100 } }
+          }
+      }
+  }

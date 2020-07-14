@@ -99,12 +99,23 @@ protected:
           const std::vector<std::string>& fitments)
   {
     auto c = characters.CreateNew ("domob", Faction::RED);
-    c->MutableProto ().set_vehicle (vehicle);
-    for (const auto& f : fitments)
-      c->MutableProto ().add_fitments (f);
-
-    DeriveCharacterStats (*c, ctx);
+    UpdateStats (*c, vehicle, fitments);
     return c;
+  }
+
+  /**
+   * Re-derives the stats of the given character.
+   */
+  void
+  UpdateStats (Character& c, const std::string& vehicle,
+               const std::vector<std::string>& fitments)
+  {
+    c.MutableProto ().set_vehicle (vehicle);
+    c.MutableProto ().clear_fitments ();
+    for (const auto& f : fitments)
+      c.MutableProto ().add_fitments (f);
+
+    DeriveCharacterStats (c, ctx);
   }
 
 };
@@ -261,6 +272,15 @@ TEST_F (DeriveCharacterStatsTests, FitmentAttacksAlsoBoosted)
     });
   const auto& a = c->GetProto ().combat_data ().attacks (2);
   EXPECT_EQ (a.damage ().max (), 10);
+}
+
+TEST_F (DeriveCharacterStatsTests, MobileRefinery)
+{
+  auto c = Derive ("chariot", {"vhf refinery", "vhf refinery"});
+  EXPECT_EQ (c->GetProto ().refining ().input ().percent (), 100);
+
+  UpdateStats (*c, "chariot", {});
+  EXPECT_FALSE (c->GetProto ().has_refining ());
 }
 
 /* ************************************************************************** */
