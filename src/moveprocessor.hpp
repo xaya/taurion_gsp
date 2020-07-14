@@ -248,6 +248,12 @@ protected:
   void TryBuildingUpdates (const std::string& name, const Json::Value& mv);
 
   /**
+   * Parses and handles a potential character update that triggers
+   * mobile refining.
+   */
+  void TryMobileRefining (Character& c, const Json::Value& upd);
+
+  /**
    * Parses and handles a potential move with requested service operations.
    * Each valid operation will be passed to PerformServiceOperation for
    * either execution or recording in the pending state.

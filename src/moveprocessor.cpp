@@ -293,6 +293,22 @@ BaseMoveProcessor::TryBuildingUpdates (const std::string& name,
 }
 
 void
+BaseMoveProcessor::TryMobileRefining (Character& c, const Json::Value& upd)
+{
+  CHECK (upd.isObject ());
+  const auto& ref = upd["ref"];
+  if (ref.isNull ())
+    return;
+
+  auto a = accounts.GetByName (c.GetOwner ());
+  auto op = ServiceOperation::ParseMobileRefining (*a, c, ref, ctx,
+                                                   accounts, buildingInv,
+                                                   itemCounts, ongoings);
+  if (op != nullptr && op->IsFullyValid ())
+    PerformServiceOperation (*op);
+}
+
+void
 BaseMoveProcessor::TryServiceOperations (const std::string& name,
                                          const Json::Value& mv)
 {
@@ -1606,6 +1622,11 @@ MoveProcessor::PerformCharacterUpdate (Character& c, const Json::Value& upd)
      They may want to then drop resources there (for further construction),
      and/or exit immediately again.  */
   MaybeFoundBuilding (c, upd);
+
+  /* Mobile refining is done before drop (and pickup).  This allows to drop
+     the refined materials if desired right away, and also may free up
+     cargo space for pickups.  */
+  TryMobileRefining (c, upd);
 
   /* Dropping items is done before trying to pick items up.  This allows
      a player to drop stuff (and thus free cargo) before picking up something

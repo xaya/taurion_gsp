@@ -1380,6 +1380,46 @@ TEST_F (PendingStateUpdaterTests, ServiceOperations)
   )");
 }
 
+TEST_F (PendingStateUpdaterTests, MobileRefining)
+{
+  accounts.CreateNew ("domob", Faction::RED)->AddBalance (100);
+
+  db.SetNextId (101);
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  c->GetInventory ().AddFungibleCount ("test ore", 20);
+  auto& pb = c->MutableProto ();
+  pb.set_cargo_space (1000);
+  pb.mutable_refining ()->mutable_input ()->set_percent (100);
+  c.reset ();
+
+  Process ("domob", R"({
+    "c": {"101": {"ref": {"i": "test ore", "n": 6}}}
+  })");
+  Process ("domob", R"({
+    "c": {"101": {"ref": {"i": "test ore", "n": 7}}}
+  })");
+
+  ExpectStateJson (R"(
+    {
+      "accounts":
+        [
+          {
+            "name": "domob",
+            "serviceops":
+              [
+                {
+                  "building": null,
+                  "character": 101,
+                  "type": "refining",
+                  "input": {"test ore": 6}
+                }
+              ]
+          }
+        ]
+    }
+  )");
+}
+
 /* ************************************************************************** */
 
 } // anonymous namespace
