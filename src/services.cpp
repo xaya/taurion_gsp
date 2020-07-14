@@ -22,7 +22,7 @@
 
 #include <glog/logging.h>
 
-#include <string>
+#include <sstream>
 
 namespace pxd
 {
@@ -187,17 +187,13 @@ RefiningOperation::IsValid () const
       return false;
     }
 
-  const auto buildingId = GetBuilding ().GetId ();
-  const auto& name = GetAccount ().GetName ();
-
-  const auto inv = invTable.Get (buildingId, name);
-  const auto balance = inv->GetInventory ().GetFungibleCount (type);
+  const auto balance = GetBaseInventory ().GetFungibleCount (type);
   if (amount > balance)
     {
       LOG (WARNING)
           << "Can't refine " << amount << " " << type
-          << " as balance of " << name << " in building " << buildingId
-          << " is only " << balance;
+          << " with " << GetLocationInfo ()
+          << " as balance is only " << balance;
       return false;
     }
 
@@ -228,15 +224,11 @@ RefiningOperation::SpecificToPendingJson () const
 void
 RefiningOperation::ExecuteSpecific (xaya::Random& rnd)
 {
-  const auto buildingId = GetBuilding ().GetId ();
-  const auto& name = GetAccount ().GetName ();
-
   LOG (INFO)
-      << name << " in building " << buildingId
+      << GetLocationInfo ()
       << " refines " << amount << " " << type;
 
-  auto invHandle = invTable.Get (buildingId, name);
-  auto& inv = invHandle->GetInventory ();
+  auto& inv = GetBaseInventory ();
   inv.AddFungibleCount (type, -amount);
 
   const unsigned steps = GetSteps ();
@@ -497,17 +489,13 @@ RevEngOperation::IsValid () const
   if (num <= 0)
     return false;
 
-  const auto buildingId = GetBuilding ().GetId ();
-  const auto& name = GetAccount ().GetName ();
-
-  const auto inv = invTable.Get (buildingId, name);
-  const auto balance = inv->GetInventory ().GetFungibleCount (type);
+  const auto balance = GetBaseInventory ().GetFungibleCount (type);
   if (num > balance)
     {
       LOG (WARNING)
           << "Can't reveng " << num << " " << type
-          << " as balance of " << name << " in building " << buildingId
-          << " is only " << balance;
+          << " with " << GetLocationInfo ()
+          << " as balance is only " << balance;
       return false;
     }
 
@@ -530,15 +518,11 @@ RevEngOperation::SpecificToPendingJson () const
 void
 RevEngOperation::ExecuteSpecific (xaya::Random& rnd)
 {
-  const auto buildingId = GetBuilding ().GetId ();
-  const auto& name = GetAccount ().GetName ();
-
   LOG (INFO)
-      << name << " in building " << buildingId
+      << GetLocationInfo ()
       << " reverse engineers " << num << " " << type;
 
-  auto invHandle = invTable.Get (buildingId, name);
-  auto& inv = invHandle->GetInventory ();
+  auto& inv = GetBaseInventory ();
   inv.AddFungibleCount (type, -num);
 
   const size_t numOptions = revEngData->possible_outputs_size ();
@@ -654,17 +638,13 @@ BlueprintCopyOperation::IsValid () const
   if (num <= 0)
     return false;
 
-  const auto buildingId = GetBuilding ().GetId ();
-  const auto& name = GetAccount ().GetName ();
-
-  const auto inv = invTable.Get (buildingId, name);
-  const auto balance = inv->GetInventory ().GetFungibleCount (original);
+  const auto balance = GetBaseInventory ().GetFungibleCount (original);
   if (balance == 0)
     {
       LOG (WARNING)
           << "Can't copy blueprint " << original
-          << " as " << name
-          << " does not own any in building " << buildingId;
+          << " with " << GetLocationInfo ()
+          << " as there is none";
       return false;
     }
   CHECK_GT (balance, 0);
@@ -689,24 +669,20 @@ BlueprintCopyOperation::SpecificToPendingJson () const
 void
 BlueprintCopyOperation::ExecuteSpecific (xaya::Random& rnd)
 {
-  const auto buildingId = GetBuilding ().GetId ();
-  const auto& name = GetAccount ().GetName ();
-
   LOG (INFO)
-      << name << " in building " << buildingId
+      << GetLocationInfo ()
       << " copies " << original << " " << num << " times";
 
-  auto invHandle = invTable.Get (buildingId, name);
-  auto& inv = invHandle->GetInventory ();
+  auto& inv = GetBaseInventory ();
   inv.AddFungibleCount (original, -1);
 
   auto op = CreateOngoing ();
   const unsigned baseDuration
       = ctx.RoConfig ()->params ().bp_copy_blocks () * complexity;
   op->SetHeight (ctx.Height () + num * baseDuration);
-  op->SetBuildingId (buildingId);
+  op->SetBuildingId (GetBuilding ().GetId ());
   auto& cp = *op->MutableProto ().mutable_blueprint_copy ();
-  cp.set_account (name);
+  cp.set_account (GetAccount ().GetName ());
   cp.set_original_type (original);
   cp.set_copy_type (copy);
   cp.set_num_copies (num);
@@ -810,26 +786,23 @@ ConstructionOperation::IsValid () const
   if (num <= 0)
     return false;
 
-  const auto buildingId = GetBuilding ().GetId ();
-  const auto& name = GetAccount ().GetName ();
-
-  const auto inv = invTable.Get (buildingId, name);
+  auto& inv = GetBaseInventory ();
   for (const auto& entry : outputData->construction_resources ())
     {
       const QuantityProduct required(num, entry.second);
-      const auto balance = inv->GetInventory ().GetFungibleCount (entry.first);
+      const auto balance = inv.GetFungibleCount (entry.first);
       if (required > balance)
         {
           LOG (WARNING)
               << "Can't construct " << num << " " << output
-              << " as " << name << " in building " << buildingId
-              << " has only " << balance << " " << entry.first
+              << " with " << GetLocationInfo ()
+              << " as there is only " << balance << " " << entry.first
               << " while the construction needs " << required.Extract ();
           return false;
         }
     }
 
-  const auto bpBalance = inv->GetInventory ().GetFungibleCount (blueprint);
+  const auto bpBalance = inv.GetFungibleCount (blueprint);
   Quantity bpRequired;
   if (fromOriginal)
     bpRequired = 1;
@@ -839,8 +812,8 @@ ConstructionOperation::IsValid () const
     {
       LOG (WARNING)
           << "Can't construct " << num << " items from " << blueprint
-          << " as " << name << " in building " << buildingId
-          << " has only " << bpBalance;
+          << " with " << GetLocationInfo ()
+          << " as as there are only " << bpBalance << " blueprints";
       return false;
     }
 
@@ -864,15 +837,11 @@ ConstructionOperation::SpecificToPendingJson () const
 void
 ConstructionOperation::ExecuteSpecific (xaya::Random& rnd)
 {
-  const auto buildingId = GetBuilding ().GetId ();
-  const auto& name = GetAccount ().GetName ();
-
   LOG (INFO)
-      << name << " in building " << buildingId
+      << GetLocationInfo ()
       << " constructs " << num << " " << output;
 
-  auto invHandle = invTable.Get (buildingId, name);
-  auto& inv = invHandle->GetInventory ();
+  auto& inv = GetBaseInventory ();
   for (const auto& entry : outputData->construction_resources ())
     {
       const QuantityProduct required(num, entry.second);
@@ -885,7 +854,7 @@ ConstructionOperation::ExecuteSpecific (xaya::Random& rnd)
     inv.AddFungibleCount (blueprint, -num);
 
   auto op = CreateOngoing ();
-  op->SetBuildingId (buildingId);
+  op->SetBuildingId (GetBuilding ().GetId ());
 
   /* When constructing from an original, the items have to be constructed
      in series.  With blueprint copies, we need to have as many copies as items
@@ -898,7 +867,7 @@ ConstructionOperation::ExecuteSpecific (xaya::Random& rnd)
     op->SetHeight (ctx.Height () + baseDuration);
 
   auto& c = *op->MutableProto ().mutable_item_construction ();
-  c.set_account (name);
+  c.set_account (GetAccount ().GetName ());
   c.set_output_type (output);
   c.set_num_items (num);
   if (fromOriginal)
@@ -911,10 +880,18 @@ ConstructionOperation::ExecuteSpecific (xaya::Random& rnd)
 
 ServiceOperation::ServiceOperation (Account& a, BuildingsTable::Handle b,
                                     const ContextRefs& refs)
-  : accounts(refs.accounts), ongoings(refs.ongoings),
-    acc(a), building(std::move (b)),
-    ctx(refs.ctx),
-    invTable(refs.invTable), itemCounts(refs.cnt)
+  : accounts(refs.accounts), invTable(refs.invTable), ongoings(refs.ongoings),
+    acc(a), building(std::move (b)), character(nullptr),
+    ctx(refs.ctx), itemCounts(refs.cnt)
+{
+  buildingInv = invTable.Get (building->GetId (), acc.GetName ());
+}
+
+ServiceOperation::ServiceOperation (Account& a, Character& c,
+                                    const ContextRefs& refs)
+  : accounts(refs.accounts), invTable(refs.invTable), ongoings(refs.ongoings),
+    acc(a), character(&c),
+    ctx(refs.ctx), itemCounts(refs.cnt)
 {}
 
 void
@@ -922,6 +899,14 @@ ServiceOperation::GetCosts (Amount& base, Amount& fee) const
 {
   base = GetBaseCost ();
   CHECK_GE (base, 0);
+
+  /* If this is not happening inside a building (but instead with a character),
+     there is no service fee.  */
+  if (building == nullptr)
+    {
+      fee = 0;
+      return;
+    }
 
   /* Service is free if the building is an ancient one or if the owner is
      using their own building.  Even though they would get the fee back in
@@ -941,10 +926,50 @@ ServiceOperation::GetCosts (Amount& base, Amount& fee) const
   fee = (base * building->GetProto ().service_fee_percent () + 99) / 100;
 }
 
+std::string
+ServiceOperation::GetLocationInfo () const
+{
+  std::ostringstream out;
+
+  if (building != nullptr)
+    out << acc.GetName () << " in building " << building->GetId ();
+  else
+    {
+      CHECK (character != nullptr);
+      out << "character " << character->GetId ();
+    }
+
+  return out.str ();
+}
+
+const Inventory&
+ServiceOperation::GetBaseInventory () const
+{
+  return const_cast<ServiceOperation*> (this)->GetBaseInventory ();
+}
+
+Inventory&
+ServiceOperation::GetBaseInventory ()
+{
+  if (buildingInv != nullptr)
+    return buildingInv->GetInventory ();
+
+  CHECK (character != nullptr)
+      << "Service operation has neither building inventory nor character";
+  return character->GetInventory ();
+}
+
 OngoingsTable::Handle
 ServiceOperation::CreateOngoing ()
 {
   return ongoings.CreateNew (ctx.Height ());
+}
+
+const Building&
+ServiceOperation::GetBuilding () const
+{
+  CHECK (building != nullptr);
+  return *building;
 }
 
 bool
@@ -956,10 +981,20 @@ ServiceOperation::IsFullyValid () const
       return false;
     }
 
-  if (!IsSupported (GetBuilding ()))
+  CHECK (building != nullptr || character != nullptr);
+
+  if (building != nullptr && !IsSupported (GetBuilding ()))
     {
       LOG (WARNING)
           << "Building " << GetBuilding ().GetId ()
+          << " does not support service operation: " << rawMove;
+      return false;
+    }
+
+  if (character != nullptr && !IsSupported (*character))
+    {
+      LOG (WARNING)
+          << "Character " << character->GetId ()
           << " does not support service operation: " << rawMove;
       return false;
     }
@@ -984,7 +1019,10 @@ ServiceOperation::ToPendingJson () const
   Json::Value res = SpecificToPendingJson ();
   CHECK (res.isObject ());
 
-  res["building"] = IntToJson (building->GetId ());
+  if (building != nullptr)
+    res["building"] = IntToJson (building->GetId ());
+  if (character != nullptr)
+    res["character"] = IntToJson (character->GetId ());
 
   Amount base, fee;
   GetCosts (base, fee);
@@ -1007,6 +1045,7 @@ ServiceOperation::Execute (xaya::Random& rnd)
   CHECK_GE (fee, 0);
   if (fee > 0)
     {
+      CHECK (building != nullptr);
       auto owner = accounts.GetByName (building->GetOwner ());
       CHECK (owner != nullptr);
       CHECK_NE (owner->GetName (), acc.GetName ());

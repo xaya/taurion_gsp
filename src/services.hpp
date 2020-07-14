@@ -35,6 +35,7 @@
 #include <json/json.h>
 
 #include <memory>
+#include <string>
 
 namespace pxd
 {
@@ -55,14 +56,34 @@ private:
    */
   AccountsTable& accounts;
 
+  /** Database handle for upating building inventories (e.g. for refining).  */
+  BuildingInventoriesTable& invTable;
+
   /** Database table for ongoing operations.  */
   OngoingsTable& ongoings;
 
   /** The account triggering the service operation.  */
   Account& acc;
 
-  /** The building in which the operation is happening.  */
+  /**
+   * The building in which the operation is happening.  Might be null if
+   * it is e.g. a mobile refinery operation.
+   */
   BuildingsTable::Handle building;
+
+  /**
+   * The character that is doing the operation if it is a mobile refinery
+   * (and not inside a building).  This is just a reference and not a handle,
+   * as it will be used from within character processing where an instance
+   * already exists on the outside.
+   */
+  Character* character;
+
+  /**
+   * If this is inside a building, the handle to the account's inventory
+   * inside the building.
+   */
+  BuildingInventoriesTable::Handle buildingInv;
 
   /** The operation's raw move JSON (used for logs and error reporting).  */
   Json::Value rawMove;
@@ -86,14 +107,41 @@ protected:
   /** Context for parameters and such.  */
   const Context& ctx;
 
-  /** Database handle for upating building inventories (e.g. for refining).  */
-  BuildingInventoriesTable& invTable;
-
   /** Database handle for item-count tables.  */
   ItemCounts& itemCounts;
 
+  /**
+   * Constructs an instance for an operation happening inside a building.
+   */
   explicit ServiceOperation (Account& a, BuildingsTable::Handle b,
                              const ContextRefs& refs);
+
+  /**
+   * Constructs an instance for an operation happening by a character
+   * (e.g. mobile refinery).
+   */
+  explicit ServiceOperation (Account& a, Character& c,
+                             const ContextRefs& refs);
+
+  /**
+   * Returns a basic string representation of this operation's "location"
+   * for log messages; this is either the account name and building, or
+   * the character doing it.
+   */
+  std::string GetLocationInfo () const;
+
+  /**
+   * Returns the inventory to use for operations.
+   */
+  const Inventory& GetBaseInventory () const;
+
+  /**
+   * Returns the inventory to use for operations that work with inventories.
+   * This is the account's building inventory for operations inside buildings,
+   * and the character inventory for stand-alone operations like mobile
+   * refining.
+   */
+  Inventory& GetBaseInventory ();
 
   /**
    * Creates a new ongoing operation entry and also sets the (mandatory)
@@ -105,6 +153,17 @@ protected:
    * Returns true if the service is supported by the given building.
    */
   virtual bool IsSupported (const Building& b) const = 0;
+
+  /**
+   * Returns true if the operation is supported by the given character
+   * (e.g. mobile refinery) if done outside a building.  By default this
+   * returns false, as that is what most operations need.
+   */
+  virtual bool
+  IsSupported (const Character& c) const
+  {
+    return false;
+  }
 
   /**
    * Returns true if the operation is actually valid according to game
@@ -135,13 +194,10 @@ public:
   virtual ~ServiceOperation () = default;
 
   /**
-   * Returns the building the operation is happening in.
+   * Returns the building the operation is happening in.  Must only be
+   * called if it is in a building.
    */
-  const Building&
-  GetBuilding () const
-  {
-    return *building;
-  }
+  const Building& GetBuilding () const;
 
   /**
    * Returns the account requesting this operation.
