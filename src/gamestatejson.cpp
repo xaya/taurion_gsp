@@ -20,6 +20,7 @@
 
 #include "buildings.hpp"
 #include "jsonutils.hpp"
+#include "modifier.hpp"
 #include "protoutils.hpp"
 
 #include "database/account.hpp"
@@ -283,6 +284,14 @@ template <>
   const auto& pb = c.GetProto ();
   if (pb.has_prospecting_blocks ())
     res["prospectingblocks"] = IntToJson (pb.prospecting_blocks ());
+
+  if (pb.has_refining ())
+    {
+      Json::Value ref(Json::objectValue);
+      const StatModifier inputMod(pb.refining ().input ());
+      ref["inefficiency"] = IntToJson (inputMod (100));
+      res["refining"] = ref;
+    }
 
   return res;
 }

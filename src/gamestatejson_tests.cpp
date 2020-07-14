@@ -432,6 +432,29 @@ TEST_F (CharacterJsonTests, ProspectingRate)
   })");
 }
 
+TEST_F (CharacterJsonTests, MobileRefinery)
+{
+  tbl.CreateNew ("no refining", Faction::RED);
+
+  auto c = tbl.CreateNew ("has refinery", Faction::RED);
+  c->MutableProto ().mutable_refining ()->mutable_input ()->set_percent (100);
+  c.reset ();
+
+  ExpectStateJson (R"({
+    "characters":
+      [
+        {
+          "owner": "no refining",
+          "refining": null
+        },
+        {
+          "owner": "has refinery",
+          "refining": {"inefficiency": 200}
+        }
+      ]
+  })");
+}
+
 TEST_F (CharacterJsonTests, DamageLists)
 {
   const auto id1 = tbl.CreateNew ("domob", Faction::RED)->GetId ();

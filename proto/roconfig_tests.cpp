@@ -374,6 +374,16 @@ RoConfigSanityTests::IsConfigValid (const RoConfig& cfg)
               << " does not specify a valid attack";
           return false;
         }
+
+      if (i.fitment ().has_refining ())
+        {
+          const auto& ref = i.fitment ().refining ();
+          if (!ref.input ().has_percent () || ref.input ().has_absolute ())
+            {
+              LOG (WARNING) << "Invalid refinery stats: " << ref.DebugString ();
+              return false;
+            }
+        }
     }
 
   for (const auto& entry : cfg->building_types ())

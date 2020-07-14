@@ -207,6 +207,9 @@ message FitmentData
   /** Self-destruct ability of this fitment (if any).  */
   optional SelfDestruct self_destruct = 17;
 
+  /** If this is a mobile refinery, the stats for it.  */
+  optional MobileRefinery refining = 18;
+
 }
 
 /**
