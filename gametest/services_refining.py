@@ -20,7 +20,7 @@
 Tests basic refining service operations.
 """
 
-from pxtest import PXTest
+from pxtest import PXTest, offsetCoord
 
 
 class ServicesRefiningTest (PXTest):
@@ -62,8 +62,46 @@ class ServicesRefiningTest (PXTest):
       "test ore": 3,
     })
 
+    self.testMobileRefinery (buildings[0])
+
     self.generate (20)
     self.testReorg (reorgBlk, buildings)
+
+  def testMobileRefinery (self, bId):
+    self.mainLogger.info ("Testing mobile refinery...")
+
+    self.initAccount ("andy", "g")
+    self.generate (1)
+    # Due to the airdrop of vCHI, the new account will have 1000 coins
+    # before we do the operation.
+    self.dropIntoBuilding (bId, "andy", {"test ore": 6})
+
+    self.createCharacters ("andy")
+    self.generate (1)
+    self.changeCharacterVehicle ("andy", "basetank", ["vhf refinery"])
+
+    # We test refining with the mobile refinery inside a building, which
+    # should still work (although it may not make too much sense in this
+    # situation).
+    b = self.getBuildings ()[bId]
+    self.moveCharactersTo ({
+      "andy": offsetCoord (b.getCentre (), {"x": -30, "y": 0}, False),
+    })
+    self.getCharacters ()["andy"].sendMove ({"eb": bId})
+    self.generate (1)
+    c = self.getCharacters ()["andy"]
+    self.assertEqual (c.getBuildingId (), bId)
+
+    c.sendMove ({"pu": {"f": {"test ore": 6}}})
+    self.generate (1)
+    self.getCharacters ()["andy"].sendMove ({"ref": {"i": "test ore", "n": 6}})
+    self.generate (1)
+
+    self.assertEqual (self.getAccounts ()["andy"].getBalance (), 990)
+    self.assertEqual (self.getCharacters ()["andy"].getFungibleInventory (), {
+      "bar": 2,
+      "zerospace": 1,
+    })
 
   def testReorg (self, blk, buildings):
     self.mainLogger.info ("Testing reorg...")

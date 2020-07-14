@@ -252,7 +252,7 @@ fungible_items:
     value:
       {
         space: 50
-        complexity: 100
+        complexity: 10000
         with_blueprint: true
         vehicle:
           {
