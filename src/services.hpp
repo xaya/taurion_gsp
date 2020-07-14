@@ -238,6 +238,18 @@ public:
       ItemCounts& cnt,
       OngoingsTable& ong);
 
+  /**
+   * Tries to parse and return a refining operation on a character, i.e.
+   * using a mobile refinery.
+   */
+  static std::unique_ptr<ServiceOperation> ParseMobileRefining (
+      Account& acc, Character& c, const Json::Value& data,
+      const Context& ctx,
+      AccountsTable& accounts,
+      BuildingInventoriesTable& inv,
+      ItemCounts& cnt,
+      OngoingsTable& ong);
+
 };
 
 } // namespace pxd

@@ -18,6 +18,7 @@
 
 #include "services.hpp"
 
+#include "modifier.hpp"
 #include "jsonutils.hpp"
 
 #include <glog/logging.h>
@@ -103,11 +104,29 @@ private:
   /** The amount of raw resource being refined.  */
   const Quantity amount;
 
+  /** The efficiency modifier for the input requirement of each step.  */
+  const StatModifier inputModifier;
+
   /**
    * The refining data for the resource type.  May be null if the item
    * type is invalid or it can't be refined.
    */
   const proto::RefiningData* refData;
+
+  /**
+   * Initialises the refData by looking up the item.  This is code
+   * shared between the two constructors.
+   */
+  void InitialiseItemData ();
+
+  /**
+   * Returns the input units per step, adjusted for efficiency.
+   */
+  Quantity
+  InputUnitsPerStep () const
+  {
+    return inputModifier (refData->input_units ());
+  }
 
   /**
    * Returns the number of refining steps this operation represents.  Assumes
@@ -116,7 +135,7 @@ private:
   unsigned
   GetSteps () const
   {
-    return amount / refData->input_units ();
+    return amount / InputUnitsPerStep ();
   }
 
 protected:
@@ -126,6 +145,12 @@ protected:
   {
     return ctx.RoConfig ().Building (b.GetType ())
         .offered_services ().refining ();
+  }
+
+  bool
+  IsSupported (const Character& c) const override
+  {
+    return c.GetProto ().has_refining ();
   }
 
   Amount
@@ -140,7 +165,17 @@ protected:
 
 public:
 
+  /**
+   * Buildings a normal refining operation inside a building.
+   */
   explicit RefiningOperation (Account& a, BuildingsTable::Handle b,
+                              const std::string& t, const Quantity am,
+                              const ContextRefs& refs);
+
+  /**
+   * Buildings a refining operation with mobile refinery.
+   */
+  explicit RefiningOperation (Account& a, Character& c,
                               const std::string& t, const Quantity am,
                               const ContextRefs& refs);
 
@@ -150,7 +185,24 @@ RefiningOperation::RefiningOperation (Account& a, BuildingsTable::Handle b,
                                       const std::string& t, const Quantity am,
                                       const ContextRefs& refs)
   : ServiceOperation(a, std::move (b), refs),
-    type(t), amount(am)
+    type(t), amount(am),
+    inputModifier()
+{
+  InitialiseItemData ();
+}
+
+RefiningOperation::RefiningOperation (Account& a, Character& c,
+                                      const std::string& t, const Quantity am,
+                                      const ContextRefs& refs)
+  : ServiceOperation(a, c, refs),
+    type(t), amount(am),
+    inputModifier(c.GetProto ().refining ().input ())
+{
+  InitialiseItemData ();
+}
+
+void
+RefiningOperation::InitialiseItemData ()
 {
   const auto* itemData = ctx.RoConfig ().ItemOrNull (type);
   if (itemData == nullptr)
@@ -179,11 +231,11 @@ RefiningOperation::IsValid () const
   if (amount <= 0)
     return false;
 
-  if (amount % refData->input_units () != 0)
+  if (amount % InputUnitsPerStep () != 0)
     {
       LOG (WARNING)
           << "Invalid refinement input of " << amount << " " << type
-          << ", the input for one step is " << refData->input_units ();
+          << ", the input for one step is " << InputUnitsPerStep ();
       return false;
     }
 
@@ -227,6 +279,11 @@ RefiningOperation::ExecuteSpecific (xaya::Random& rnd)
   LOG (INFO)
       << GetLocationInfo ()
       << " refines " << amount << " " << type;
+
+  /* Note that refining always produces less cargo volume.  So by first
+     subtracting the inputs and then adding back the outputs, it is guaranteed
+     that a character's cargo space is never exceeded (in case this is
+     a mobile refinery).  */
 
   auto& inv = GetBaseInventory ();
   inv.AddFungibleCount (type, -amount);
@@ -1126,6 +1183,40 @@ ServiceOperation::Parse (Account& acc, const Json::Value& data,
       LOG (WARNING) << "Failed to parse service operation: " << data;
       return nullptr;
     }
+
+  op->rawMove = data;
+  return op;
+}
+
+std::unique_ptr<ServiceOperation>
+ServiceOperation::ParseMobileRefining (Account& acc, Character& c,
+                                       const Json::Value& data,
+                                       const Context& ctx,
+                                       AccountsTable& accounts,
+                                       BuildingInventoriesTable& inv,
+                                       ItemCounts& cnt,
+                                       OngoingsTable& ong)
+{
+  if (!data.isObject () || data.size () != 2)
+    {
+      LOG (WARNING) << "Invalid service operation: " << data;
+      return nullptr;
+    }
+
+  const ContextRefs refs(ctx, accounts, inv, cnt, ong);
+
+  const auto& item = data["i"];
+  if (!item.isString ())
+    return nullptr;
+
+  const auto& amount = data["n"];
+  if (!amount.isUInt64 ())
+    return nullptr;
+
+  auto op = std::make_unique<RefiningOperation> (
+      acc, c,
+      item.asString (), amount.asUInt64 (),
+      refs);
 
   op->rawMove = data;
   return op;
