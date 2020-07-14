@@ -297,10 +297,26 @@ RoConfigSanityTests::IsConfigValid (const RoConfig& cfg)
           return false;
         }
 
-      if (!IsValidMaterialMap (cfg, i.refines ().outputs ()))
+      if (i.has_refines ())
         {
-          LOG (WARNING) << "Refines-to data is invalid for " << entry.first;
-          return false;
+          const auto& ref = i.refines ();
+          if (!IsValidMaterialMap (cfg, ref.outputs ()))
+            {
+              LOG (WARNING) << "Refines-to data is invalid for " << entry.first;
+              return false;
+            }
+
+          const unsigned inputSpace = ref.input_units () * i.space ();
+          unsigned outputSpace = 0;
+          for (const auto& out : ref.outputs ())
+            outputSpace += out.second * cfg.Item (out.first).space ();
+          if (outputSpace >= inputSpace)
+            {
+              LOG (WARNING)
+                  << "Refining " << entry.first
+                  << " does not reduce cargo space";
+              return false;
+            }
         }
 
       if (i.has_is_blueprint ())

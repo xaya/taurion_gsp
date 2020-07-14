@@ -24,7 +24,7 @@ fungible_items:
     key: "test ore"
     value:
       {
-        space: 10
+        space: 15
         refines:
           {
             input_units: 3
