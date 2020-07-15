@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -56,6 +56,7 @@ InsertTestCharacters (Database& db, const unsigned n,
  *  - Characters in range
  *  - Characters outside range but on same x coordinate
  *  - Characters outside range but on same y coordinate
+ *  - Friendly characters on same position
  */
 void
 TargetFinding (benchmark::State& state)
@@ -67,10 +68,12 @@ TargetFinding (benchmark::State& state)
   const unsigned inRange = state.range (1);
   const unsigned sameX = state.range (2);
   const unsigned sameY = state.range (3);
+  const unsigned friendly = state.range (4);
 
   InsertTestCharacters (db, inRange, HexCoord (0, 0), Faction::GREEN);
   InsertTestCharacters (db, sameX, HexCoord (0, 2 * range), Faction::GREEN);
   InsertTestCharacters (db, sameY, HexCoord (2 * range, 0), Faction::GREEN);
+  InsertTestCharacters (db, friendly, HexCoord (0, 0), Faction::RED);
 
   TargetFinder finder(db);
   for (auto _ : state)
@@ -82,21 +85,25 @@ TargetFinding (benchmark::State& state)
           ++cnt;
         };
 
-      finder.ProcessL1Targets (HexCoord (0, 0), range, Faction::RED, cb);
+      finder.ProcessL1Targets (HexCoord (0, 0), range,
+                               Faction::RED, true, false,
+                               cb);
 
       CHECK_EQ (cnt, inRange);
     }
 }
 BENCHMARK (TargetFinding)
   ->Unit (benchmark::kMicrosecond)
-  ->Args ({10, 1, 0, 0})
-  ->Args ({10, 100, 0, 0})
-  ->Args ({10, 10000, 0, 0})
-  ->Args ({100, 1, 0, 0})
-  ->Args ({100, 100, 0, 0})
-  ->Args ({100, 10000, 0, 0})
-  ->Args ({10, 100, 10000, 0})
-  ->Args ({10, 100, 0, 10000});
+  ->Args ({10, 1, 0, 0, 0})
+  ->Args ({10, 100, 0, 0, 0})
+  ->Args ({10, 10000, 0, 0, 0})
+  ->Args ({100, 1, 0, 0, 0})
+  ->Args ({100, 100, 0, 0, 0})
+  ->Args ({100, 10000, 0, 0, 0})
+  ->Args ({100, 100, 0, 0, 100})
+  ->Args ({100, 100, 0, 0, 1000})
+  ->Args ({10, 100, 10000, 0, 0})
+  ->Args ({10, 100, 0, 10000, 0});
 
 } // anonymous namespace
 } // namespace pxd

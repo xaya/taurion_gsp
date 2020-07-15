@@ -38,22 +38,41 @@ void
 TargetFinder::ProcessL1Targets (const HexCoord& centre,
                                 const HexCoord::IntT l1range,
                                 const Faction faction,
+                                const bool enemies, const bool friendlies,
                                 const ProcessingFcn& cb)
 {
+  CHECK (enemies || friendlies)
+      << "Neither enemy nor friendly targets requested?";
+
+  std::string characterCond = "TRUE";
+  std::string buildingCond = "`faction` != 4";
+  if (!friendlies)
+    {
+      characterCond += " AND `faction` != ?5";
+      buildingCond += " AND `faction` != ?5";
+    }
+  if (!enemies)
+    {
+      characterCond += " AND `faction` = ?5";
+      buildingCond += " AND `faction` = ?5";
+    }
+
   /* Note that the "between" statement is automatically false for NULL values,
      hence characters in buildings are ignored (as they should).  */
-  auto stmt = db.Prepare (R"(
+  std::ostringstream sql;
+  sql << R"(
     SELECT `x`, `y`, `id`, 'character' AS `type`
       FROM `characters`
-      WHERE (`x` BETWEEN ?1 AND ?2) AND (`y` BETWEEN ?3 AND ?4)
-              AND `faction` != ?5
+      WHERE (`x` BETWEEN ?1 AND ?2) AND (`y` BETWEEN ?3 AND ?4) AND
+  )" << characterCond << R"(
     UNION ALL
     SELECT `x`, `y`, `id`, 'building' AS `type`
       FROM `buildings`
-      WHERE (`x` BETWEEN ?1 AND ?2) AND (`y` BETWEEN ?3 AND ?4)
-              AND `faction` != ?5 AND `faction` != 4
+      WHERE (`x` BETWEEN ?1 AND ?2) AND (`y` BETWEEN ?3 AND ?4) AND
+  )" << buildingCond << R"(
     ORDER BY `type`, `id`
-  )");
+  )";
+  auto stmt = db.Prepare (sql.str ());
 
   /* The query is actually about an L-infinity range, since that is easy
      to formulate in the database.  This certainly includes the L1 range.  */
@@ -62,7 +81,8 @@ TargetFinder::ProcessL1Targets (const HexCoord& centre,
   stmt.Bind (3, centre.GetY () - l1range);
   stmt.Bind (4, centre.GetY () + l1range);
 
-  BindFactionParameter (stmt, 5, faction);
+  if (!friendlies || !enemies)
+    BindFactionParameter (stmt, 5, faction);
 
   auto res = stmt.Query<TargetResult> ();
   while (res.Step ())

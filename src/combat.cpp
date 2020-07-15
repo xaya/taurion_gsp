@@ -149,7 +149,7 @@ SelectTarget (TargetFinder& targets, xaya::Random& rnd, const Context& ctx,
   HexCoord::IntT closestRange;
   std::vector<proto::TargetId> closestTargets;
 
-  targets.ProcessL1Targets (pos, range, f->GetFaction (),
+  targets.ProcessL1Targets (pos, range, f->GetFaction (), true, false,
     [&] (const HexCoord& c, const proto::TargetId& id)
     {
       if (ctx.Map ().SafeZones ().IsNoCombat (c))
@@ -569,7 +569,7 @@ DamageProcessor::DealDamage (FighterTable::Handle f, const bool forGainHp,
             centre = pos;
 
           targets.ProcessL1Targets (centre, mod.range (attack.area ()),
-                                    f->GetFaction (),
+                                    f->GetFaction (), true, false,
             [&] (const HexCoord& c, const proto::TargetId& id)
             {
               auto t = fighters.GetForTarget (id);
@@ -615,7 +615,8 @@ DamageProcessor::ProcessSelfDestructs (FighterTable::Handle f,
           << " of damage for self-destruct of "
           << f->GetIdAsTarget ().DebugString ();
 
-      targets.ProcessL1Targets (pos, mod.range (sd.area ()), f->GetFaction (),
+      targets.ProcessL1Targets (pos, mod.range (sd.area ()),
+                                f->GetFaction (), true, false,
         [&] (const HexCoord& c, const proto::TargetId& id)
         {
           auto t = fighters.GetForTarget (id);
