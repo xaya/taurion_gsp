@@ -492,6 +492,79 @@ TEST_F (TargetSelectionTests, CombatEffect)
   EXPECT_EQ (characters.GetById (id2)->GetTarget ().id (), id1);
 }
 
+TEST_F (TargetSelectionTests, NoRandomNumbersRequested)
+{
+  /* Target finding for none of the following situations should request
+     any random numbers.  */
+
+  auto c = characters.CreateNew ("no attacks", Faction::RED);
+  c->SetPosition (HexCoord (0, 0));
+  NoAttacks (*c);
+  c.reset ();
+
+  c = characters.CreateNew ("no attacks 2", Faction::GREEN);
+  c->SetPosition (HexCoord (0, 0));
+  NoAttacks (*c);
+  c.reset ();
+
+  c = characters.CreateNew ("in building", Faction::RED);
+  c->SetBuildingId (100);
+  AddAttack (*c).set_range (10);
+  c.reset ();
+
+  c = characters.CreateNew ("in building 2", Faction::GREEN);
+  c->SetBuildingId (100);
+  AddAttack (*c).set_range (10);
+  c.reset ();
+
+  c = characters.CreateNew ("safe zone", Faction::RED);
+  c->SetPosition (SAFE);
+  AddAttack (*c).set_range (10);
+  c.reset ();
+
+  c = characters.CreateNew ("no enemy in range 1", Faction::GREEN);
+  c->SetPosition (NOT_SAFE);
+  AddAttack (*c).set_range (10);
+  c.reset ();
+
+  c = characters.CreateNew ("no enemy in range 2", Faction::GREEN);
+  c->SetPosition (NOT_SAFE);
+  AddAttack (*c).set_range (10);
+  c.reset ();
+
+  auto branched = rnd.BranchOff ("branch");
+  FindCombatTargets (db, branched, ctx);
+
+  auto original = rnd.BranchOff ("branch");
+  EXPECT_EQ (branched.Next<uint64_t> (), original.Next<uint64_t> ());
+}
+
+TEST_F (TargetSelectionTests, RandomNumbersRequested)
+{
+  /* All of the following characters will look up a random number
+     during target finding.  Note that there is a very small chance that
+     the NextInt call will actually retrieve more than one uint64_t from
+     the Random instance, but we ignore that as it is negligible.  */
+
+  auto c = characters.CreateNew ("only one target", Faction::RED);
+  c->SetPosition (HexCoord (0, 0));
+  AddAttack (*c).set_range (10);
+  c.reset ();
+
+  c = characters.CreateNew ("only area attack", Faction::GREEN);
+  c->SetPosition (HexCoord (0, 0));
+  AddAttack (*c).set_area (10);
+  c.reset ();
+
+  auto branched = rnd.BranchOff ("branch");
+  FindCombatTargets (db, branched, ctx);
+
+  auto original = rnd.BranchOff ("branch");
+  for (unsigned i = 0; i < 2; ++i)
+    original.Next<uint64_t> ();
+  EXPECT_EQ (branched.Next<uint64_t> (), original.Next<uint64_t> ());
+}
+
 /* ************************************************************************** */
 
 class DealDamageTests : public CombatTests
