@@ -263,6 +263,17 @@ private:
         return false;
       }
 
+    if (attack.friendlies () && attack.has_range ())
+      {
+        LOG (WARNING) << "Friendly-attack must not have a range";
+        return false;
+      }
+    if (attack.friendlies () && attack.has_damage ())
+      {
+        LOG (WARNING) << "Friendly-attack must not have any damage";
+        return false;
+      }
+
     return true;
   }
 

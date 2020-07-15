@@ -141,6 +141,8 @@ GetCombatJsonObject (const CombatEntity& h)
         obj["range"] = IntToJson (attack.range ());
       if (attack.has_area ())
         obj["area"] = IntToJson (attack.area ());
+      if (attack.friendlies ())
+        obj["friendlies"] = true;
 
       if (attack.has_damage ())
         {

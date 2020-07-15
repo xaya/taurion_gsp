@@ -242,14 +242,21 @@ TEST_F (CharacterJsonTests, Attacks)
 {
   auto c = tbl.CreateNew ("domob", Faction::RED);
   auto* cd = c->MutableProto ().mutable_combat_data ();
+
   auto* attack = cd->add_attacks ();
   attack->set_range (5);
   attack->mutable_damage ()->set_min (2);
   attack->mutable_damage ()->set_max (10);
+
   attack = cd->add_attacks ();
   attack->set_area (1);
   attack->mutable_damage ()->set_min (0);
   attack->mutable_damage ()->set_max (1);
+
+  attack = cd->add_attacks ();
+  attack->set_area (10);
+  attack->set_friendlies (true);
+
   c.reset ();
 
   ExpectStateJson (R"({
@@ -266,7 +273,12 @@ TEST_F (CharacterJsonTests, Attacks)
                   },
                   {
                     "area": 1,
+                    "friendlies": null,
                     "damage": {"min": 0, "max": 1}
+                  },
+                  {
+                    "area": 10,
+                    "friendlies": true
                   }
                 ]
             }
