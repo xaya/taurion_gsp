@@ -2260,6 +2260,23 @@ TEST_F (RegenerateHpTests, InsideBuilding)
   EXPECT_EQ (c->GetHP ().shield (), 11);
 }
 
+TEST_F (RegenerateHpTests, RateModifierEffect)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  const auto id = c->GetId ();
+  c->MutableHP ().set_shield (10);
+  auto* regen = &c->MutableRegenData ();
+  regen->mutable_max_hp ()->set_shield (100);
+  regen->mutable_regeneration_mhp ()->set_shield (10'000);
+  c->MutableEffects ().mutable_shield_regen ()->set_percent (50);
+  c.reset ();
+
+  RegenerateHP (db);
+
+  c = characters.GetById (id);
+  EXPECT_EQ (c->GetHP ().shield (), 10 + 15);
+}
+
 /* ************************************************************************** */
 
 } // anonymous namespace

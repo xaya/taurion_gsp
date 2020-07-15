@@ -1056,8 +1056,12 @@ RegenerateFighterHP (FighterTable::Handle f)
       f->MutableHP ().mutable_mhp ()->set_armour (milli);
     }
 
+  const StatModifier shieldRegenMod(f->GetEffects ().shield_regen ());
+  const unsigned shieldRate
+      = shieldRegenMod (regen.regeneration_mhp ().shield ());
+
   if (RegenerateHpType (
-          regen.max_hp ().shield (), regen.regeneration_mhp ().shield (),
+          regen.max_hp ().shield (), shieldRate,
           hp.shield (), hp.mhp ().shield (), cur, milli))
     {
       f->MutableHP ().set_shield (cur);
