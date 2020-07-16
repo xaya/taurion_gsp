@@ -251,7 +251,14 @@ NonStateRpcServer::findpath (const std::string& faction,
   const auto edges = [this, f, &dynCopy] (const HexCoord& from,
                                           const HexCoord& to)
     {
-      return MovementEdgeWeight (map, dynCopy->obstacles, f, from, to);
+      const auto base = MovementEdgeWeight (map, f, from, to);
+      if (base == PathFinder::NO_CONNECTION)
+        return PathFinder::NO_CONNECTION;
+
+      if (!dynCopy->obstacles.IsPassable (to, f))
+        return PathFinder::NO_CONNECTION;
+
+      return base;
     };
   const PathFinder::DistanceT dist = finder.Compute (edges, sourceCoord,
                                                      l1range);
