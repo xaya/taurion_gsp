@@ -121,15 +121,16 @@ TEST_F (DynObstaclesTests, AddingBuildings)
 
   {
     DynObstacles dyn(ctx.Chain ());
+    std::vector<HexCoord> shape;
     ASSERT_TRUE (dyn.AddBuilding (b1->GetType (),
                                   b1->GetProto ().shape_trafo (),
-                                  b1->GetCentre ()));
+                                  b1->GetCentre (), shape));
     ASSERT_TRUE (dyn.AddBuilding (b2->GetType (),
                                   b2->GetProto ().shape_trafo (),
-                                  b2->GetCentre ()));
+                                  b2->GetCentre (), shape));
     ASSERT_FALSE (dyn.AddBuilding (b1->GetType (),
                                    b1->GetProto ().shape_trafo (),
-                                   b1->GetCentre ()));
+                                   b1->GetCentre (), shape));
   }
 }
 

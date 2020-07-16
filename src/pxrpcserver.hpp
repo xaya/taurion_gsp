@@ -32,6 +32,7 @@
 #include <json/json.h>
 #include <jsonrpccpp/server.h>
 
+#include <map>
 #include <mutex>
 
 namespace pxd
@@ -81,7 +82,29 @@ private:
   const BaseMap& map;
 
   /**
-   * DynObstacles map used for findpath.  This is decoupled from the
+   * Data relevant for findpath about the set of buildings on the map.
+   */
+  struct BuildingsData
+  {
+
+    /** DynObstacles instance with all those buildings added.  */
+    DynObstacles obstacles;
+
+    /**
+     * Map from coordinate to the corresponding building ID.  We use that
+     * to selectively exclude buildings by ID from the obstacle map, e.g.
+     * when pathing "to" a building to enter it.
+     */
+    std::unordered_map<HexCoord, Database::IdT> buildingIds;
+
+    explicit BuildingsData (const xaya::Chain c)
+      : obstacles(c)
+    {}
+
+  };
+
+  /**
+   * Building data used for findpath.  This is decoupled from the
    * actual game state, so that it can be done even for Charon clients
    * locally.  It contains a set of buildings, which are specified
    * explicitly by the caller (with a separate RPC and then remembered
@@ -91,16 +114,24 @@ private:
    * and then the instance itself does not need to be kept locked while the
    * call is running.
    */
-  std::shared_ptr<const DynObstacles> dyn;
+  std::shared_ptr<const BuildingsData> dyn;
 
   /** Mutex for protecting dyn in concurrent calls.  */
   std::mutex mutDynObstacles;
 
   /**
-   * Constructs a fresh dynamic obstacles instance without any extra
+   * Constructs a fresh BuildingsData instance without any extra
    * buildings added yet.
    */
-  std::shared_ptr<DynObstacles> InitDynObstacles () const;
+  std::shared_ptr<BuildingsData> InitBuildingsData () const;
+
+  /**
+   * Processes a JSON array of building specifications and adds them
+   * to the given dynamic obstacle map.  Returns false if something
+   * goes wrong, e.g. the JSON format is invalid or some buildings overlap.
+   */
+  bool AddBuildingsFromJson (const Json::Value& buildings,
+                             BuildingsData& dyn) const;
 
 public:
 

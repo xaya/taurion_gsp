@@ -62,7 +62,6 @@ class FindPathTest (PXTest):
     self.collectPremine ()
 
     findpath = self.rpc.game.findpath
-    setpathbuildings = self.rpc.game.setpathbuildings
 
     # Pair of coordinates that are next to each other, but where one
     # is an obstacle.
@@ -120,28 +119,32 @@ class FindPathTest (PXTest):
 
     # Invalid building specs for setpathbuildings.
     self.expectError (-32602, ".*Invalid method parameters.*",
-                      setpathbuildings, buildings={})
+                      self.rpc.game.setpathbuildings, buildings={})
+    coord = {"x": 1, "y": 2}
     for specs in [
       [42],
       ["foo"],
       [{}],
-      [{"rotationsteps": 0, "centre": {"x": 1, "y": 2}}],
-      [{"type": 42, "rotationsteps": 0, "centre": {"x": 1, "y": 2}}],
-      [{"type": "invalid", "rotationsteps": 0, "centre": {"x": 1, "y": 2}}],
-      [{"type": "checkmark", "centre": {"x": 1, "y": 2}}],
-      [{"type": "checkmark", "rotationsteps": "0", "centre": {"x": 1, "y": 2}}],
-      [{"type": "checkmark", "rotationsteps": -1, "centre": {"x": 1, "y": 2}}],
-      [{"type": "checkmark", "rotationsteps": 6, "centre": {"x": 1, "y": 2}}],
-      [{"type": "checkmark", "rotationsteps": 0}],
-      [{"type": "checkmark", "rotationsteps": 0, "centre": "(0, 0)"}],
-      [{"type": "checkmark", "rotationsteps": 0, "centre": {"x": 1}}],
+      [{"type": "checkmark", "rotationsteps": 0, "centre": coord}],
+      [{"id": -5, "type": "checkmark", "rotationsteps": 0, "centre": coord}],
+      [{"id": 0, "type": "checkmark", "rotationsteps": 0, "centre": coord}],
+      [{"id": 10, "rotationsteps": 0, "centre": coord}],
+      [{"id": 10, "type": 42, "rotationsteps": 0, "centre": coord}],
+      [{"id": 10, "type": "invalid", "rotationsteps": 0, "centre": coord}],
+      [{"id": 10, "type": "checkmark", "centre": coord}],
+      [{"id": 10, "type": "checkmark", "rotationsteps": "0", "centre": coord}],
+      [{"id": 10, "type": "checkmark", "rotationsteps": -1, "centre": coord}],
+      [{"id": 10, "type": "checkmark", "rotationsteps": 6, "centre": coord}],
+      [{"id": 10, "type": "checkmark", "rotationsteps": 0}],
+      [{"id": 10, "type": "checkmark", "rotationsteps": 0, "centre": "(0, 0)"}],
+      [{"id": 10, "type": "checkmark", "rotationsteps": 0, "centre": {"x": 1}}],
       [
-        {"type": "checkmark", "rotationsteps": 0, "centre": {"x": 1, "y": 0}},
-        {"type": "checkmark", "rotationsteps": 0, "centre": {"x": 1, "y": 0}},
+        {"id": 10, "type": "checkmark", "rotationsteps": 0, "centre": coord},
+        {"id": 10, "type": "checkmark", "rotationsteps": 0, "centre": coord},
       ],
     ]:
       self.expectError (-1, "buildings is invalid",
-                        setpathbuildings, buildings=specs)
+                        self.rpc.game.setpathbuildings, buildings=specs)
 
     # This is a very long path, which takes a non-negligible amount of time
     # to compute.  We use this later to ensure that multiple calls are
