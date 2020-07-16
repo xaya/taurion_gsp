@@ -37,15 +37,22 @@ void
 CombatEntity::BindFullFields (Database::Statement& stmt,
                               const unsigned indRegenData,
                               const unsigned indTarget,
-                              const unsigned indAttackRange) const
+                              const unsigned indAttackRange,
+                              const unsigned indFriendlyRange) const
 {
   stmt.BindProto (indRegenData, regenData);
 
-  const auto range = FindAttackRange (GetCombatData ());
-  if (range == NO_ATTACKS)
+  const auto attackRange = FindAttackRange (GetCombatData (), false);
+  if (attackRange == NO_ATTACKS)
     stmt.BindNull (indAttackRange);
   else
-    stmt.Bind (indAttackRange, range);
+    stmt.Bind (indAttackRange, attackRange);
+
+  const auto friendlyRange = FindAttackRange (GetCombatData (), true);
+  if (friendlyRange == NO_ATTACKS)
+    stmt.BindNull (indFriendlyRange);
+  else
+    stmt.Bind (indFriendlyRange, friendlyRange);
 
   if (HasTarget ())
     stmt.BindProto (indTarget, target);
@@ -71,7 +78,10 @@ CombatEntity::Validate () const
 #ifdef ENABLE_SLOW_ASSERTS
 
   if (!isNew && !IsDirtyCombatData ())
-    CHECK_EQ (oldAttackRange, FindAttackRange (pb.combat_data ()));
+    {
+      CHECK_EQ (oldAttackRange, FindAttackRange (pb.combat_data (), false));
+      CHECK_EQ (oldFriendlyRange, FindAttackRange (pb.combat_data (), true));
+    }
 
 #endif // ENABLE_SLOW_ASSERTS
 }
@@ -98,11 +108,12 @@ CombatEntity::SetTarget (const proto::TargetId& t)
 }
 
 HexCoord::IntT
-CombatEntity::GetAttackRange () const
+CombatEntity::GetAttackRange (const bool friendly) const
 {
   CHECK (!isNew);
   CHECK (!IsDirtyCombatData ());
-  return oldAttackRange;
+
+  return friendly ? oldFriendlyRange : oldAttackRange;
 }
 
 bool
@@ -121,11 +132,14 @@ CombatEntity::ComputeCanRegen (const proto::HP& hp,
 }
 
 HexCoord::IntT
-CombatEntity::FindAttackRange (const proto::CombatData& cd)
+CombatEntity::FindAttackRange (const proto::CombatData& cd, const bool friendly)
 {
   HexCoord::IntT res = NO_ATTACKS;
   for (const auto& attack : cd.attacks ())
     {
+      if (attack.friendlies () != friendly)
+        continue;
+
       HexCoord::IntT cur;
       if (attack.has_range ())
         cur = attack.range ();

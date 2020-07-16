@@ -246,7 +246,7 @@ public:
   Database::Result<BuildingResult> QueryAll ();
 
   /**
-   * Queries for all buildings with attacks.
+   * Queries for all buildings with attacks (including friendly ones).
    */
   Database::Result<BuildingResult> QueryWithAttacks ();
 

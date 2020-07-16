@@ -39,7 +39,8 @@ struct ResultWithCombat : public Database::ResultType
   RESULT_COLUMN (pxd::proto::RegenData, regendata, 54);
   RESULT_COLUMN (pxd::proto::TargetId, target, 55);
   RESULT_COLUMN (int64_t, attackrange, 56);
-  RESULT_COLUMN (bool, canregen, 57);
+  RESULT_COLUMN (int64_t, friendlyrange, 57);
+  RESULT_COLUMN (bool, canregen, 58);
 };
 
 /**
@@ -80,10 +81,16 @@ private:
   LazyProto<proto::TargetId> target;
 
   /**
-   * The longest attack or zero if there are none.  This field is loaded
+   * The longest attack or NO_ATTACKS if there are none.  This field is loaded
    * from the database but never updated.
    */
   HexCoord::IntT oldAttackRange;
+
+  /**
+   * The longest friendly attack range or NO_ATTACKS if there is none.  This is
+   * loaded from the database but never updated.
+   */
+  HexCoord::IntT oldFriendlyRange;
 
   /**
    * Stores the canregen flag from the database.  We only update it if
@@ -99,10 +106,13 @@ private:
                                const proto::RegenData& regen);
 
   /**
-   * Computes the attack range of a fighter with the given combat data.
+   * Computes the attack range of a fighter with the given combat data,
+   * or the range of the longest friendly attack.
+   *
    * Returns NO_ATTACKS if there are no attacks at all.
    */
-  static HexCoord::IntT FindAttackRange (const proto::CombatData& cd);
+  static HexCoord::IntT FindAttackRange (const proto::CombatData& cd,
+                                         bool friendly);
 
   friend class ComputeCanRegenTests;
   friend class FindAttackRangeTests;
@@ -146,7 +156,8 @@ protected:
    */
   void
   BindFullFields (Database::Statement& stmt, unsigned indRegenData,
-                  unsigned indTarget, unsigned indAttackRange) const;
+                  unsigned indTarget, unsigned indAttackRange,
+                  unsigned indFriendlyRange) const;
 
   /**
    * Binds statement parameters for updating the small / fast changing
@@ -224,8 +235,11 @@ public:
    * The attack range returned is just based on the base stats of the entity.
    * It does not take combat effects, low-HP-boosts or things like that
    * into account.
+   *
+   * If friendly is true, it returns the longest attack affecting friendlies
+   * instead of the normal attack range.
    */
-  HexCoord::IntT GetAttackRange () const;
+  HexCoord::IntT GetAttackRange (bool friendly) const;
 
   /**
    * Returns this entity's target ID as a proto.

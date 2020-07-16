@@ -89,7 +89,7 @@ Character::~Character ()
            `volatilemv`, `hp`,
            `canregen`,
            `faction`,
-           `ismoving`, `ismining`, `attackrange`,
+           `ismoving`, `ismining`, `attackrange`, `friendlyrange`,
            `regendata`, `target`, `inventory`, `effects`, `proto`)
           VALUES
           (?1,
@@ -98,23 +98,23 @@ Character::~Character ()
            ?7, ?8,
            ?9,
            ?101,
-           ?102, ?103, ?104,
-           ?105, ?106, ?107, ?108, ?109)
+           ?102, ?103, ?104, ?105,
+           ?106, ?107, ?108, ?109, ?110)
       )");
 
       BindFieldValues (stmt);
-      CombatEntity::BindFullFields (stmt, 105, 106, 104);
+      CombatEntity::BindFullFields (stmt, 106, 107, 104, 105);
 
       if (effects.IsEmpty ())
-        stmt.BindNull (108);
+        stmt.BindNull (109);
       else
-        stmt.BindProto (108, effects);
+        stmt.BindProto (109, effects);
 
       BindFactionParameter (stmt, 101, faction);
       stmt.Bind (102, data.Get ().has_movement ());
       stmt.Bind (103, data.Get ().mining ().active ());
-      stmt.BindProto (107, inv.GetProtoForBinding ());
-      stmt.BindProto (109, data);
+      stmt.BindProto (108, inv.GetProtoForBinding ());
+      stmt.BindProto (110, data);
       stmt.Execute ();
 
       return;
@@ -337,7 +337,8 @@ CharacterTable::QueryWithAttacks ()
   auto stmt = db.Prepare (R"(
     SELECT *
       FROM `characters`
-      WHERE `attackrange` IS NOT NULL AND `inBuilding` IS NULL
+      WHERE ((`attackrange` IS NOT NULL) OR (`friendlyrange` IS NOT NULL))
+          AND `inBuilding` IS NULL
       ORDER BY `id`
   )");
   return stmt.Query<CharacterResult> ();

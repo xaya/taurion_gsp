@@ -43,6 +43,11 @@ template <typename T>
   else
     oldAttackRange = res.template Get<typename T::attackrange> ();
 
+  if (res.template IsNull<typename T::friendlyrange> ())
+    oldFriendlyRange = NO_ATTACKS;
+  else
+    oldFriendlyRange = res.template Get<typename T::friendlyrange> ();
+
   oldCanRegen = res.template Get<typename T::canregen> ();
 }
 

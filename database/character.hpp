@@ -383,8 +383,9 @@ public:
   Database::Result<CharacterResult> QueryMining ();
 
   /**
-   * Queries for all characters with attacks.  This only includes characters
-   * on the map, as characters in buildings can't attack anyway.
+   * Queries for all characters with attacks (including friendly ones).
+   * This only includes characters on the map, as characters in buildings
+   * can't attack anyway.
    */
   Database::Result<CharacterResult> QueryWithAttacks ();
 

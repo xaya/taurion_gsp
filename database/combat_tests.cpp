@@ -118,12 +118,12 @@ protected:
    * Calls FindAttackRange based on the combat data given as text proto.
    */
   static HexCoord::IntT
-  FindRange (const std::string str)
+  FindRange (const bool friendly, const std::string str)
   {
     proto::CombatData pb;
     CHECK (TextFormat::ParseFromString (str, &pb));
 
-    return CombatEntity::FindAttackRange (pb);
+    return CombatEntity::FindAttackRange (pb, friendly);
   }
 
 };
@@ -133,12 +133,13 @@ namespace
 
 TEST_F (FindAttackRangeTests, NoAttacks)
 {
-  EXPECT_EQ (FindRange (""), CombatEntity::NO_ATTACKS);
+  EXPECT_EQ (FindRange (false, ""), CombatEntity::NO_ATTACKS);
+  EXPECT_EQ (FindRange (true, ""), CombatEntity::NO_ATTACKS);
 }
 
 TEST_F (FindAttackRangeTests, MaximumRange)
 {
-  EXPECT_EQ (FindRange (R"(
+  EXPECT_EQ (FindRange (false, R"(
     attacks: { range: 5 }
     attacks: { range: 42 }
     attacks: { range: 1 }
@@ -147,19 +148,31 @@ TEST_F (FindAttackRangeTests, MaximumRange)
 
 TEST_F (FindAttackRangeTests, AreaAttacks)
 {
-  EXPECT_EQ (FindRange (R"(
+  EXPECT_EQ (FindRange (false, R"(
     attacks: { range: 5 area: 2 }
   )"), 5);
-  EXPECT_EQ (FindRange (R"(
+  EXPECT_EQ (FindRange (false, R"(
     attacks: { area: 3 }
   )"), 3);
 }
 
 TEST_F (FindAttackRangeTests, ZeroRange)
 {
-  EXPECT_EQ (FindRange (R"(
+  EXPECT_EQ (FindRange (false, R"(
     attacks: { range: 0 }
   )"), 0);
+}
+
+TEST_F (FindAttackRangeTests, Friendly)
+{
+  EXPECT_EQ (FindRange (false, R"(
+    attacks: { range: 1 }
+    attacks: { range: 2 friendlies: true }
+  )"), 1);
+  EXPECT_EQ (FindRange (true, R"(
+    attacks: { range: 1 }
+    attacks: { range: 2 friendlies: true }
+  )"), 2);
 }
 
 } // anonymous namespace

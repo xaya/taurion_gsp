@@ -74,7 +74,9 @@ public:
 
   /**
    * Retrieves all fighters from the database that have an attack and runs
-   * the callback on each one.
+   * the callback on each one.  This includes fighters with only friendly
+   * attacks, and hence essentially means "process everyone that needs it
+   * for target finding".
    */
   void ProcessWithAttacks (const Callback& cb);
 

@@ -75,14 +75,14 @@ Building::~Building ()
           (`id`, `type`,
            `faction`, `owner`, `x`, `y`,
            `hp`, `regendata`, `target`,
-           `attackrange`, `canregen`,
+           `attackrange`, `friendlyrange`, `canregen`,
            `effects`, `proto`)
           VALUES
           (?1, ?2,
            ?3, ?4, ?5, ?6,
            ?7, ?8, ?9,
-           ?10, ?11,
-           ?12, ?13)
+           ?10, ?11, ?12,
+           ?13, ?14)
       )");
 
       stmt.Bind (1, id);
@@ -93,15 +93,15 @@ Building::~Building ()
       else
         stmt.Bind (4, owner);
       BindCoordParameter (stmt, 5, 6, pos);
-      CombatEntity::BindFields (stmt, 7, 11);
-      CombatEntity::BindFullFields (stmt, 8, 9, 10);
+      CombatEntity::BindFields (stmt, 7, 12);
+      CombatEntity::BindFullFields (stmt, 8, 9, 10, 11);
 
       if (effects.IsEmpty ())
-        stmt.BindNull (12);
+        stmt.BindNull (13);
       else
-        stmt.BindProto (12, effects);
+        stmt.BindProto (13, effects);
 
-      stmt.BindProto (13, data);
+      stmt.BindProto (14, data);
       stmt.Execute ();
 
       return;
@@ -194,7 +194,7 @@ BuildingsTable::QueryWithAttacks ()
   auto stmt = db.Prepare (R"(
     SELECT *
       FROM `buildings`
-      WHERE `attackrange` IS NOT NULL
+      WHERE (`attackrange` IS NOT NULL) OR (`friendlyrange` IS NOT NULL)
       ORDER BY `id`
   )");
   return stmt.Query<BuildingResult> ();

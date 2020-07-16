@@ -131,7 +131,7 @@ SelectTarget (TargetFinder& targets, xaya::Random& rnd, const Context& ctx,
       return;
     }
 
-  HexCoord::IntT range = f->GetAttackRange ();
+  HexCoord::IntT range = f->GetAttackRange (false);
   if (range == CombatEntity::NO_ATTACKS)
     {
       VLOG (1) << "Fighter at " << pos << " has no attacks";
