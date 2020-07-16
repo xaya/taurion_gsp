@@ -169,18 +169,18 @@ TEST_F (MovementEdgeWeightTests, StarterZones)
   ASSERT_EQ (ctx.Map ().SafeZones ().StarterFor (outside), Faction::INVALID);
 
   /* Moving out of the starter zone does nothing special.  */
-  EXPECT_EQ (MovementEdgeWeight (ctx.Map (), dyn, Faction::RED,
+  EXPECT_EQ (MovementEdgeWeight (ctx.Map (), Faction::RED,
                                  redStarter, outside),
              1'000);
-  EXPECT_EQ (MovementEdgeWeight (ctx.Map (), dyn, Faction::GREEN,
+  EXPECT_EQ (MovementEdgeWeight (ctx.Map (), Faction::GREEN,
                                  redStarter, outside),
              1'000);
 
   /* Into the starter zone changes the weights.  */
-  EXPECT_EQ (MovementEdgeWeight (ctx.Map (), dyn, Faction::RED,
+  EXPECT_EQ (MovementEdgeWeight (ctx.Map (), Faction::RED,
                                  outside, redStarter),
              1'000 / 3);
-  EXPECT_EQ (MovementEdgeWeight (ctx.Map (), dyn, Faction::GREEN,
+  EXPECT_EQ (MovementEdgeWeight (ctx.Map (), Faction::GREEN,
                                  outside, redStarter),
              PathFinder::NO_CONNECTION);
 }

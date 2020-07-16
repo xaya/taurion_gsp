@@ -53,9 +53,11 @@ DynObstacles::DynObstacles (Database& db, const Context& ctx)
 bool
 DynObstacles::AddBuilding (const std::string& type,
                            const proto::ShapeTransformation& trafo,
-                           const HexCoord& pos)
+                           const HexCoord& pos,
+                           std::vector<HexCoord>& shape)
 {
-  for (const auto& c : GetBuildingShape (type, trafo, pos, chain))
+  shape = GetBuildingShape (type, trafo, pos, chain);
+  for (const auto& c : shape)
     {
       auto ref = buildings.Access (c);
       if (ref)
@@ -68,8 +70,9 @@ DynObstacles::AddBuilding (const std::string& type,
 void
 DynObstacles::AddBuilding (const Building& b)
 {
+  std::vector<HexCoord> shape;
   CHECK (AddBuilding (b.GetType (), b.GetProto ().shape_trafo (),
-                      b.GetCentre ()))
+                      b.GetCentre (), shape))
       << "Error adding building " << b.GetId ();
 }
 

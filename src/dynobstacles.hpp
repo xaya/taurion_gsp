@@ -109,11 +109,13 @@ public:
 
   /**
    * Adds a building from the raw data (without requiring a Building instance).
+   * Also exposes the building's shape to the caller for further processing.
    * Returns false if adding failed, e.g. because the buildings overlap.
    */
   bool AddBuilding (const std::string& type,
                     const proto::ShapeTransformation& trafo,
-                    const HexCoord& pos);
+                    const HexCoord& pos,
+                    std::vector<HexCoord>& shape);
 
   /**
    * Adds a new building.  CHECK-fails if something goes wrong.

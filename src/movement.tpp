@@ -18,61 +18,25 @@
 
 /* Inline implementation code for movement.hpp.  */
 
-#include <glog/logging.h>
-
 namespace pxd
 {
 
-namespace
+PathFinder::DistanceT
+MovementEdgeWeight (const BaseMap& map, const Faction f,
+                    const HexCoord& from, const HexCoord& to)
 {
-
-/**
- * Generalised function for the edge weight, which does not rely on a real
- * BaseMap for the base edges.  This is useful (with non-BaseMap edges)
- * for testing.
- */
-template <typename Fcn>
-  inline PathFinder::DistanceT
-  InternalMovementEdgeWeight (const Fcn& baseEdges, const DynObstacles& dyn,
-                              const Faction f,
-                              const HexCoord& from, const HexCoord& to)
-{
-  /* With dynamic obstacles, we do not handle the situation well if from and
-     to are the same location.  In that case, the vehicle itself will be
-     seen as obstacle (which it should not).  */
-  CHECK_NE (from, to);
-
-  const auto res = baseEdges (from, to);
-
-  if (res == PathFinder::NO_CONNECTION || !dyn.IsPassable (to, f))
+  const auto baseWeight = map.GetEdgeWeight (from, to);
+  if (baseWeight == PathFinder::NO_CONNECTION)
     return PathFinder::NO_CONNECTION;
 
-  return res;
-}
-
-} // anonymous namespace
-
-PathFinder::DistanceT
-MovementEdgeWeight (const BaseMap& map, const DynObstacles& dyn,
-                    const Faction f, const HexCoord& from, const HexCoord& to)
-{
-  const auto base = [&map, f] (const HexCoord& from, const HexCoord& to)
-    {
-      const auto baseWeight = map.GetEdgeWeight (from, to);
-      if (baseWeight == PathFinder::NO_CONNECTION)
-        return PathFinder::NO_CONNECTION;
-
-      /* Starter zones are obstacles to other factions, but allow 3x
-         faster movement to the matching faction.  */
-      const auto toStarter = map.SafeZones ().StarterFor (to);
-      if (toStarter == Faction::INVALID)
-        return baseWeight;
-      if (toStarter == f)
-        return baseWeight / 3;
-      return PathFinder::NO_CONNECTION;
-    };
-
-  return InternalMovementEdgeWeight (base, dyn, f, from, to);
+  /* Starter zones are obstacles to other factions, but allow 3x
+     faster movement to the matching faction.  */
+  const auto toStarter = map.SafeZones ().StarterFor (to);
+  if (toStarter == Faction::INVALID)
+    return baseWeight;
+  if (toStarter == f)
+    return baseWeight / 3;
+  return PathFinder::NO_CONNECTION;
 }
 
 } // namespace pxd

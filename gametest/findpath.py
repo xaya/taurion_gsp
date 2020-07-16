@@ -54,15 +54,13 @@ class AsyncFindPath (threading.Thread):
 
 class FindPathTest (PXTest):
 
-  def call (self, source, target, l1range, faction="r"):
+  def call (self, source, target, l1range, faction="r", exbuildings=[]):
     return self.rpc.game.findpath (source=source, target=target,
-                                   faction=faction, l1range=l1range)
+                                   faction=faction, l1range=l1range,
+                                   exbuildings=exbuildings)
 
   def run (self):
     self.collectPremine ()
-
-    findpath = self.rpc.game.findpath
-    setpathbuildings = self.rpc.game.setpathbuildings
 
     # Pair of coordinates that are next to each other, but where one
     # is an obstacle.
@@ -76,25 +74,23 @@ class FindPathTest (PXTest):
 
     # Verify exceptions for invalid arguments.
     self.expectError (-1, "source is not a valid coordinate",
-                      findpath, source={}, target=a, faction="r", l1range=10)
+                      self.call, source={}, target=a, l1range=10)
     self.expectError (-1, "target is not a valid coordinate",
-                      findpath, source=a, target={}, faction="r", l1range=10)
+                      self.call, source=a, target={}, l1range=10)
     self.expectError (-1, "l1range is out of bounds",
-                      findpath, source=a, target=a, faction="r", l1range=-1)
+                      self.call, source=a, target=a, l1range=-1)
     for f in ["a", "invalid"]:
       self.expectError (-1, "faction is invalid",
-                        findpath, source=a, target=a, faction=f, l1range=1)
+                        self.call, source=a, target=a, faction=f, l1range=1)
 
     # Paths that yield no connection.
     self.expectError (1, "no connection",
-                      findpath, source=passable, target=obstacle, faction="r",
-                      l1range=10)
+                      self.call, source=passable, target=obstacle, l1range=10)
     self.expectError (1, "no connection",
-                      findpath, source=a, target=b, faction="r", l1range=1)
+                      self.call, source=a, target=b, l1range=1)
     outOfMap = {"x": 10000, "y": 0}
     self.expectError (1, "no connection",
-                      findpath, source=outOfMap, target=outOfMap, faction="r",
-                      l1range=10)
+                      self.call, source=outOfMap, target=outOfMap, l1range=10)
 
     # Basic path that is fine and along a single principal direction.
     self.assertEqual (self.call (a, b, l1range=10),
@@ -118,30 +114,61 @@ class FindPathTest (PXTest):
         "wp": [a],
       })
 
+    self.testWithBuildings ()
+
+  def testWithBuildings (self):
+    self.mainLogger.info ("Testing with buildings...")
+
+    # Invalid exbuildings arguments.
+    a = {"x": -10, "y": 0}
+    b = {"x": 10, "y": 0}
+    self.expectError (-32602, ".*Invalid method parameters.*",
+                      self.call, source=a, target=b, l1range=100,
+                      exbuildings=42)
+    for exb in [[0], ["foo"], [5, -42]]:
+      self.expectError (-1, "exbuildings is not valid",
+                        self.call, source=a, target=b, l1range=100,
+                        exbuildings=exb)
+
+    # Apply exbuildings to path to a building.
+    self.build ("checkmark", None, b, rot=0)
+    buildings = self.getRpc ("getbuildings")
+    bId = buildings[-1]["id"]
+    self.rpc.game.setpathbuildings (buildings=buildings)
+    self.expectError (1, "no connection",
+                      self.call, source=a, target=b, l1range=100)
+    self.assertEqual (self.call (source=a, target=b, l1range=100,
+                                 exbuildings=[bId, bId, 123456])["dist"],
+                      20 * 1000)
+
     # Invalid building specs for setpathbuildings.
     self.expectError (-32602, ".*Invalid method parameters.*",
-                      setpathbuildings, buildings={})
+                      self.rpc.game.setpathbuildings, buildings={})
+    coord = {"x": 1, "y": 2}
     for specs in [
       [42],
       ["foo"],
       [{}],
-      [{"rotationsteps": 0, "centre": {"x": 1, "y": 2}}],
-      [{"type": 42, "rotationsteps": 0, "centre": {"x": 1, "y": 2}}],
-      [{"type": "invalid", "rotationsteps": 0, "centre": {"x": 1, "y": 2}}],
-      [{"type": "checkmark", "centre": {"x": 1, "y": 2}}],
-      [{"type": "checkmark", "rotationsteps": "0", "centre": {"x": 1, "y": 2}}],
-      [{"type": "checkmark", "rotationsteps": -1, "centre": {"x": 1, "y": 2}}],
-      [{"type": "checkmark", "rotationsteps": 6, "centre": {"x": 1, "y": 2}}],
-      [{"type": "checkmark", "rotationsteps": 0}],
-      [{"type": "checkmark", "rotationsteps": 0, "centre": "(0, 0)"}],
-      [{"type": "checkmark", "rotationsteps": 0, "centre": {"x": 1}}],
+      [{"type": "checkmark", "rotationsteps": 0, "centre": coord}],
+      [{"id": -5, "type": "checkmark", "rotationsteps": 0, "centre": coord}],
+      [{"id": 0, "type": "checkmark", "rotationsteps": 0, "centre": coord}],
+      [{"id": 10, "rotationsteps": 0, "centre": coord}],
+      [{"id": 10, "type": 42, "rotationsteps": 0, "centre": coord}],
+      [{"id": 10, "type": "invalid", "rotationsteps": 0, "centre": coord}],
+      [{"id": 10, "type": "checkmark", "centre": coord}],
+      [{"id": 10, "type": "checkmark", "rotationsteps": "0", "centre": coord}],
+      [{"id": 10, "type": "checkmark", "rotationsteps": -1, "centre": coord}],
+      [{"id": 10, "type": "checkmark", "rotationsteps": 6, "centre": coord}],
+      [{"id": 10, "type": "checkmark", "rotationsteps": 0}],
+      [{"id": 10, "type": "checkmark", "rotationsteps": 0, "centre": "(0, 0)"}],
+      [{"id": 10, "type": "checkmark", "rotationsteps": 0, "centre": {"x": 1}}],
       [
-        {"type": "checkmark", "rotationsteps": 0, "centre": {"x": 1, "y": 0}},
-        {"type": "checkmark", "rotationsteps": 0, "centre": {"x": 1, "y": 0}},
+        {"id": 10, "type": "checkmark", "rotationsteps": 0, "centre": coord},
+        {"id": 10, "type": "checkmark", "rotationsteps": 0, "centre": coord},
       ],
     ]:
       self.expectError (-1, "buildings is invalid",
-                        setpathbuildings, buildings=specs)
+                        self.rpc.game.setpathbuildings, buildings=specs)
 
     # This is a very long path, which takes a non-negligible amount of time
     # to compute.  We use this later to ensure that multiple calls are
@@ -153,9 +180,10 @@ class FindPathTest (PXTest):
       "target": longB,
       "faction": "r",
       "l1range": 8000,
+      "exbuildings": [],
     }
     before = time.clock_gettime (time.CLOCK_MONOTONIC)
-    baseLen = findpath (**kwargs)["dist"]
+    baseLen = self.call (**kwargs)["dist"]
     after = time.clock_gettime (time.CLOCK_MONOTONIC)
     baseDuration = after - before
     self.log.info ("Duration for single call: %.3f s" % baseDuration)

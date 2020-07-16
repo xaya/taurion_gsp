@@ -108,26 +108,18 @@ NonStateRpcServer::NonStateRpcServer (jsonrpc::AbstractServerConnector& conn,
   : NonStateRpcServerStub(conn), chain(c), map(m)
 {
   std::lock_guard<std::mutex> lock(mutDynObstacles);
-  dyn = InitDynObstacles ();
+  dyn = InitBuildingsData ();
 }
 
-std::shared_ptr<DynObstacles>
-NonStateRpcServer::InitDynObstacles () const
+std::shared_ptr<NonStateRpcServer::BuildingsData>
+NonStateRpcServer::InitBuildingsData () const
 {
-  return std::make_shared<DynObstacles> (chain);
+  return std::make_shared<BuildingsData> (chain);
 }
 
-namespace
-{
-
-/**
- * Processes a JSON array of building specifications and adds them
- * to the given dynamic obstacle map.  Returns false if something
- * goes wrong, e.g. the JSON format is invalid or some buildings overlap.
- */
 bool
-AddBuildingsFromJson (const xaya::Chain chain, const Json::Value& buildings,
-                      DynObstacles& dyn)
+NonStateRpcServer::AddBuildingsFromJson (const Json::Value& buildings,
+                                         BuildingsData& dyn) const
 {
   /* This is enforced already by libjson-rpc-cpp's stub generator.  */
   CHECK (buildings.isArray ());
@@ -136,6 +128,10 @@ AddBuildingsFromJson (const xaya::Chain chain, const Json::Value& buildings,
   for (const auto& b : buildings)
     {
       if (!b.isObject ())
+        return false;
+
+      Database::IdT id;
+      if (!IdFromJson (b["id"], id))
         return false;
 
       const auto& typeVal = b["type"];
@@ -158,17 +154,19 @@ AddBuildingsFromJson (const xaya::Chain chain, const Json::Value& buildings,
       if (!CoordFromJson (b["centre"], centre))
         return false;
 
-      if (!dyn.AddBuilding (type, trafo, centre))
+      std::vector<HexCoord> shape;
+      if (!dyn.obstacles.AddBuilding (type, trafo, centre, shape))
         {
           LOG (WARNING) << "Adding the building failed\n" << b;
           return false;
         }
+
+      for (const auto& tile : shape)
+        CHECK (dyn.buildingIds.emplace (tile, id).second);
     }
 
   return true;
 }
-
-} // anonymous namespace
 
 bool
 NonStateRpcServer::setpathbuildings (const Json::Value& buildings)
@@ -181,8 +179,8 @@ NonStateRpcServer::setpathbuildings (const Json::Value& buildings)
      later on when replacing the pointer in the instance.  This avoids
      locking for a longer time while processing the buildings.  */
 
-  auto fresh = InitDynObstacles ();
-  if (!AddBuildingsFromJson (chain, buildings, *fresh))
+  auto fresh = InitBuildingsData ();
+  if (!AddBuildingsFromJson (buildings, *fresh))
     ReturnError (ErrorCode::INVALID_ARGUMENT, "buildings is invalid");
 
   {
@@ -198,7 +196,8 @@ NonStateRpcServer::setpathbuildings (const Json::Value& buildings)
 }
 
 Json::Value
-NonStateRpcServer::findpath (const std::string& faction,
+NonStateRpcServer::findpath (const Json::Value& exbuildings,
+                             const std::string& faction,
                              const int l1range, const Json::Value& source,
                              const Json::Value& target)
 {
@@ -206,7 +205,8 @@ NonStateRpcServer::findpath (const std::string& faction,
       << "RPC method called: findpath\n"
       << "  l1range=" << l1range << ", faction=" << faction << "\n"
       << "  source=" << source << ",\n"
-      << "  target=" << target;
+      << "  target=" << target << ",\n"
+      << "  exbuildings=" << exbuildings;
 
   HexCoord sourceCoord;
   if (!CoordFromJson (source, sourceCoord))
@@ -238,11 +238,21 @@ NonStateRpcServer::findpath (const std::string& faction,
   const int maxInt = std::numeric_limits<HexCoord::IntT>::max ();
   CheckIntBounds ("l1range", l1range, 0, maxInt);
 
+  std::unordered_set<Database::IdT> exBuildingIds;
+  CHECK (exbuildings.isArray ());
+  for (const auto& entry : exbuildings)
+    {
+      Database::IdT id;
+      if (!IdFromJson (entry, id))
+        ReturnError (ErrorCode::INVALID_ARGUMENT, "exbuildings is not valid");
+      exBuildingIds.insert (id);
+    }
+
   /* We do not want to keep a lock on the dyn mutex while the potentially
      long call is running.  Instead, we just copy the shared pointer and
      then release the lock again.  Once created, the DynObstacle instance
      (inside the shared pointer) is immutable, so this is safe.  */
-  std::shared_ptr<const DynObstacles> dynCopy;
+  std::shared_ptr<const BuildingsData> dynCopy;
   {
     std::lock_guard<std::mutex> lock(mutDynObstacles);
     dynCopy = dyn;
@@ -250,10 +260,25 @@ NonStateRpcServer::findpath (const std::string& faction,
   CHECK (dynCopy != nullptr);
 
   PathFinder finder(targetCoord);
-  const auto edges = [this, f, &dynCopy] (const HexCoord& from,
-                                          const HexCoord& to)
+  const auto edges = [this, f, &dynCopy, &exBuildingIds] (const HexCoord& from,
+                                                          const HexCoord& to)
     {
-      return MovementEdgeWeight (map, *dynCopy, f, from, to);
+      const auto base = MovementEdgeWeight (map, f, from, to);
+      if (base == PathFinder::NO_CONNECTION)
+        return PathFinder::NO_CONNECTION;
+
+      if (dynCopy->obstacles.IsPassable (to, f))
+        return base;
+
+      /* If the path is blocked by a dynamic obstacle (building), look
+         closer to see if it is one of the buildings we want to ignore
+         or not.  */
+      const auto mitTiles = dynCopy->buildingIds.find (to);
+      if (mitTiles != dynCopy->buildingIds.end ()
+            && exBuildingIds.count (mitTiles->second) > 0)
+        return base;
+
+      return PathFinder::NO_CONNECTION;
     };
   const PathFinder::DistanceT dist = finder.Compute (edges, sourceCoord,
                                                      l1range);

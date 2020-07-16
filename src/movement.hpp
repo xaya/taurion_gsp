@@ -36,12 +36,12 @@ namespace pxd
 
 /**
  * Computes the edge weight used for movement of a given faction character
- * on the map.  This is shared between the RPC server's findpath method
- * and the actual GSP movement processing logic.
+ * on the map, not including dynamic obstacles.  This is shared between the
+ * RPC server's findpath method and the actual GSP movement processing logic.
  */
-inline PathFinder::DistanceT MovementEdgeWeight (
-    const BaseMap& map, const DynObstacles& dyn, Faction f,
-    const HexCoord& from, const HexCoord& to);
+inline PathFinder::DistanceT MovementEdgeWeight (const BaseMap& map, Faction f,
+                                                 const HexCoord& from,
+                                                 const HexCoord& to);
 
 /**
  * Clears all movement for the given character (stops its movement entirely).

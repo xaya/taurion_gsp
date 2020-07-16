@@ -21,6 +21,8 @@
 #include "modifier.hpp"
 #include "protoutils.hpp"
 
+#include <glog/logging.h>
+
 namespace pxd
 {
 
@@ -34,6 +36,29 @@ StopCharacter (Character& c)
 
 namespace
 {
+
+/**
+ * Computes full movement edge weights, using a "base" function and the
+ * dynamic obstacle map.
+ */
+template <typename Fcn>
+  inline PathFinder::DistanceT
+  FullMovementEdgeWeight (const Fcn& baseEdges, const DynObstacles& dyn,
+                          const Faction f,
+                          const HexCoord& from, const HexCoord& to)
+{
+  /* With dynamic obstacles, we do not handle the situation well if from and
+     to are the same location.  In that case, the vehicle itself will be
+     seen as obstacle (which it should not).  */
+  CHECK_NE (from, to);
+
+  const auto res = baseEdges (from, to);
+
+  if (res == PathFinder::NO_CONNECTION || !dyn.IsPassable (to, f))
+    return PathFinder::NO_CONNECTION;
+
+  return res;
+}
 
 /**
  * Returns the actual movement speed to use for a character.  This handles
@@ -216,10 +241,16 @@ ProcessAllMovement (Database& db, DynObstacles& dyn, const Context& ctx)
       MoveInDynObstacles dynMover(*c, dyn);
 
       const Faction f = c->GetFaction ();
-      const auto edges = [&ctx, &dyn, f] (const HexCoord& from,
-                                          const HexCoord& to)
+      const auto baseEdges = [&ctx, f] (const HexCoord& from,
+                                        const HexCoord& to)
         {
-          return MovementEdgeWeight (ctx.Map (), dyn, f, from, to);
+          return MovementEdgeWeight (ctx.Map (), f, from, to);
+        };
+      const auto edges = [&ctx, &dyn, f, &baseEdges] (const HexCoord& from,
+                                                      const HexCoord& to)
+        {
+
+          return FullMovementEdgeWeight (baseEdges, dyn, f, from, to);
         };
 
       CharacterMovement (*c, ctx, edges);
@@ -253,7 +284,7 @@ MovementEdgeWeight (const EdgeWeightFcn& baseEdges, const DynObstacles& dyn,
                     const Faction f,
                     const HexCoord& from, const HexCoord& to)
 {
-  return InternalMovementEdgeWeight (baseEdges, dyn, f, from, to);
+  return FullMovementEdgeWeight (baseEdges, dyn, f, from, to);
 }
 
 void
