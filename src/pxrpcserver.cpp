@@ -196,7 +196,8 @@ NonStateRpcServer::setpathbuildings (const Json::Value& buildings)
 }
 
 Json::Value
-NonStateRpcServer::findpath (const std::string& faction,
+NonStateRpcServer::findpath (const Json::Value& exbuildings,
+                             const std::string& faction,
                              const int l1range, const Json::Value& source,
                              const Json::Value& target)
 {
@@ -204,7 +205,8 @@ NonStateRpcServer::findpath (const std::string& faction,
       << "RPC method called: findpath\n"
       << "  l1range=" << l1range << ", faction=" << faction << "\n"
       << "  source=" << source << ",\n"
-      << "  target=" << target;
+      << "  target=" << target << ",\n"
+      << "  exbuildings=" << exbuildings;
 
   HexCoord sourceCoord;
   if (!CoordFromJson (source, sourceCoord))
@@ -236,6 +238,16 @@ NonStateRpcServer::findpath (const std::string& faction,
   const int maxInt = std::numeric_limits<HexCoord::IntT>::max ();
   CheckIntBounds ("l1range", l1range, 0, maxInt);
 
+  std::unordered_set<Database::IdT> exBuildingIds;
+  CHECK (exbuildings.isArray ());
+  for (const auto& entry : exbuildings)
+    {
+      Database::IdT id;
+      if (!IdFromJson (entry, id))
+        ReturnError (ErrorCode::INVALID_ARGUMENT, "exbuildings is not valid");
+      exBuildingIds.insert (id);
+    }
+
   /* We do not want to keep a lock on the dyn mutex while the potentially
      long call is running.  Instead, we just copy the shared pointer and
      then release the lock again.  Once created, the DynObstacle instance
@@ -248,17 +260,25 @@ NonStateRpcServer::findpath (const std::string& faction,
   CHECK (dynCopy != nullptr);
 
   PathFinder finder(targetCoord);
-  const auto edges = [this, f, &dynCopy] (const HexCoord& from,
-                                          const HexCoord& to)
+  const auto edges = [this, f, &dynCopy, &exBuildingIds] (const HexCoord& from,
+                                                          const HexCoord& to)
     {
       const auto base = MovementEdgeWeight (map, f, from, to);
       if (base == PathFinder::NO_CONNECTION)
         return PathFinder::NO_CONNECTION;
 
-      if (!dynCopy->obstacles.IsPassable (to, f))
-        return PathFinder::NO_CONNECTION;
+      if (dynCopy->obstacles.IsPassable (to, f))
+        return base;
 
-      return base;
+      /* If the path is blocked by a dynamic obstacle (building), look
+         closer to see if it is one of the buildings we want to ignore
+         or not.  */
+      const auto mitTiles = dynCopy->buildingIds.find (to);
+      if (mitTiles != dynCopy->buildingIds.end ()
+            && exBuildingIds.count (mitTiles->second) > 0)
+        return base;
+
+      return PathFinder::NO_CONNECTION;
     };
   const PathFinder::DistanceT dist = finder.Compute (edges, sourceCoord,
                                                      l1range);

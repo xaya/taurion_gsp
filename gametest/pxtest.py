@@ -133,7 +133,8 @@ class Character (object):
     path = self.test.rpc.game.findpath (source=self.getPosition (),
                                         target=target,
                                         faction=self.data["faction"],
-                                        l1range=1000)
+                                        l1range=1000,
+                                        exbuildings=[])
     return self.sendMove ({"wp": path["wp"]})
 
   def expectPartial (self, expected):

@@ -14,7 +14,8 @@
         "source": {},
         "target": {},
         "faction": "",
-        "l1range": 100
+        "l1range": 100,
+        "exbuildings": [1, 2, 3]
       },
     "returns": {}
   },

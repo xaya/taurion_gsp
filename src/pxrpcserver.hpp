@@ -139,7 +139,8 @@ public:
                               const BaseMap& m, const xaya::Chain c);
 
   bool setpathbuildings (const Json::Value& buildings) override;
-  Json::Value findpath (const std::string& faction,
+  Json::Value findpath (const Json::Value& exbuildings,
+                        const std::string& faction,
                         int l1range, const Json::Value& source,
                         const Json::Value& target) override;
   Json::Value getregionat (const Json::Value& coord) override;
@@ -205,11 +206,11 @@ public:
   }
 
   Json::Value
-  findpath (const std::string& faction,
+  findpath (const Json::Value& exbuildings, const std::string& faction,
             int l1range, const Json::Value& source,
             const Json::Value& target) override
   {
-    return nonstate.findpath (faction, l1range, source, target);
+    return nonstate.findpath (exbuildings, faction, l1range, source, target);
   }
 
   Json::Value

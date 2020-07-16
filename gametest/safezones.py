@@ -50,7 +50,8 @@ class SafeZonesTest (PXTest):
 
     self.mainLogger.info ("Testing findpath...")
     def findpath (**kwargs):
-      path = self.rpc.game.findpath (l1range=1000, wpdist=1000, **kwargs)
+      path = self.rpc.game.findpath (exbuildings=[], l1range=1000, wpdist=1000,
+                                     **kwargs)
       return path["dist"]
     self.expectError (1, "no connection",
                       findpath, faction="g",
