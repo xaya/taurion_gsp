@@ -25,6 +25,9 @@
 #include "database/dbtest.hpp"
 #include "hexagonal/coord.hpp"
 
+#include <xayautil/base64.hpp>
+#include <xayautil/compression.hpp>
+
 #include <gtest/gtest.h>
 
 #include <glog/logging.h>
@@ -40,6 +43,97 @@ namespace test
 {
 namespace
 {
+
+/* ************************************************************************** */
+
+using WaypointEncodingTests = testing::Test;
+
+TEST_F (WaypointEncodingTests, Roundtrip)
+{
+  std::vector<HexCoord> wp =
+    {
+      HexCoord (0, 0),
+      HexCoord (10, -10),
+      HexCoord (0, 0),
+      HexCoord (123, 0),
+      HexCoord (123, 456),
+      HexCoord (-123, 456),
+      HexCoord (-123, -456),
+      HexCoord (-123, 0),
+      HexCoord (0, 0),
+    };
+  for (unsigned i = 0; i < 10'000; ++i)
+    {
+      wp.push_back (HexCoord (1'000, 0));
+      wp.push_back (HexCoord (-1'000, 0));
+    }
+
+  Json::Value jsonWp;
+  std::string encoded;
+  ASSERT_TRUE (EncodeWaypoints (wp, jsonWp, encoded));
+  EXPECT_EQ (jsonWp.size (), wp.size ());
+
+  std::vector<HexCoord> recovered;
+  ASSERT_TRUE (DecodeWaypoints (encoded, recovered));
+  EXPECT_EQ (recovered, wp);
+}
+
+TEST_F (WaypointEncodingTests, EmptyList)
+{
+  const std::vector<HexCoord> wp;
+
+  Json::Value jsonWp;
+  std::string encoded;
+  ASSERT_TRUE (EncodeWaypoints (wp, jsonWp, encoded));
+  EXPECT_EQ (jsonWp.size (), 0);
+
+  std::vector<HexCoord> recovered;
+  ASSERT_TRUE (DecodeWaypoints (encoded, recovered));
+  EXPECT_TRUE (recovered.empty ());
+}
+
+TEST_F (WaypointEncodingTests, TooLargeForEncoding)
+{
+  std::vector<HexCoord> wp = {HexCoord (0, 0)};
+  for (unsigned i = 0; i < 100'000; ++i)
+    {
+      wp.push_back (HexCoord (1'000, 0));
+      wp.push_back (HexCoord (-1'000, 0));
+    }
+
+  Json::Value jsonWp;
+  std::string encoded;
+  ASSERT_FALSE (EncodeWaypoints (wp, jsonWp, encoded));
+}
+
+TEST_F (WaypointEncodingTests, InvalidDataForDecode)
+{
+  std::ostringstream tooLarge;
+  tooLarge << R"([{"x":0,"y":0})";
+  for (unsigned i = 0; i < 100'000; ++i)
+    tooLarge
+        << R"(,{"x":1000,"y":0})"
+        << R"(,{"x":-1000,"y":0})";
+  tooLarge << "]";
+
+  const std::string tests[] =
+    {
+      "{}",
+      "invalid json",
+      "42",
+      "[] junk",
+      R"([{"x": 10, "y": "foo"}])",
+      R"([{"x": 10, "y": 20, "z": ["too deep"]}])",
+      tooLarge.str (),
+    };
+
+  for (const auto& t : tests)
+    {
+      const std::string encoded = xaya::EncodeBase64 (xaya::CompressData (t));
+      std::vector<HexCoord> recovered;
+      ASSERT_FALSE (DecodeWaypoints (encoded, recovered));
+    }
+}
 
 /* ************************************************************************** */
 

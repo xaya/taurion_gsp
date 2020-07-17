@@ -29,10 +29,31 @@
 #include "hexagonal/coord.hpp"
 #include "hexagonal/pathfinder.hpp"
 
+#include <json/json.h>
+
 #include <functional>
 
 namespace pxd
 {
+
+/**
+ * Encodes a list of hex coordinates (waypoints) into a compressed string
+ * that is used for moves.  Returns true on success, and false if it failed.
+ * This may be the case e.g. when the final size is too large for our
+ * maximum uncompressed size.
+ *
+ * The format is to write out the waypoints as JSON array, serialise it,
+ * compress is using libxayautil, and then base64 encode.  But that is
+ * an implementation detail.
+ */
+bool EncodeWaypoints (const std::vector<HexCoord>& wp,
+                      Json::Value& jsonWp, std::string& encoded);
+
+/**
+ * Tries to decode an encoded list of waypoints.  Returns true on success
+ * and false if they were completely invalid (e.g. malformed).
+ */
+bool DecodeWaypoints (const std::string& encoded, std::vector<HexCoord>& wp);
 
 /**
  * Computes the edge weight used for movement of a given faction character

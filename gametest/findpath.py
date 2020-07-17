@@ -22,6 +22,7 @@ Tests the findpath RPC command.
 
 from pxtest import PXTest, offsetCoord
 
+import json
 import threading
 import time
 
@@ -59,6 +60,17 @@ class FindPathTest (PXTest):
                                    faction=faction, l1range=l1range,
                                    exbuildings=exbuildings)
 
+  def strip (self, val):
+    """
+    Strips a findpath result (in particular, removes the "encoded" path),
+    so that it can easily be compared against golden data.
+    """
+
+    assert "encoded" in val
+    del val["encoded"]
+
+    return val
+
   def run (self):
     self.collectPremine ()
 
@@ -93,7 +105,7 @@ class FindPathTest (PXTest):
                       self.call, source=outOfMap, target=outOfMap, l1range=10)
 
     # Basic path that is fine and along a single principal direction.
-    self.assertEqual (self.call (a, b, l1range=10),
+    self.assertEqual (self.strip (self.call (a, b, l1range=10)),
       {
         "dist": 3000,
         "wp": [a, b],
@@ -101,14 +113,14 @@ class FindPathTest (PXTest):
 
     # Path which needs a waypoint (because there is no principal direction
     # between start and end).
-    self.assertEqual (self.call (a, c, l1range=10),
+    self.assertEqual (self.strip (self.call (a, c, l1range=10)),
       {
         "dist": 4000,
         "wp": [a, b, c],
       })
 
     # Test a path with source=target.
-    self.assertEqual (self.call (a, a, l1range=0),
+    self.assertEqual (self.strip (self.call (a, a, l1range=0)),
       {
         "dist": 0,
         "wp": [a],
@@ -183,10 +195,18 @@ class FindPathTest (PXTest):
       "exbuildings": [],
     }
     before = time.clock_gettime (time.CLOCK_MONOTONIC)
-    baseLen = self.call (**kwargs)["dist"]
+    path = self.call (**kwargs)
     after = time.clock_gettime (time.CLOCK_MONOTONIC)
     baseDuration = after - before
     self.log.info ("Duration for single call: %.3f s" % baseDuration)
+    baseLen = path["dist"]
+
+    # This is a very long path.  Make sure its encoded form is relatively
+    # small, though.
+    assert len (path["wp"]) > 100
+    assert len (path["encoded"]) < 750
+    serialised = json.dumps (path["wp"], separators=(",", ":"))
+    assert len (serialised) > 3000
 
     # Now place buildings in two steps on the map, which make the path from
     # longA to longB further.  We use the output of getbuildings itself, to

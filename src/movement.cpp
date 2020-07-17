@@ -18,13 +18,96 @@
 
 #include "movement.hpp"
 
+#include "jsonutils.hpp"
 #include "modifier.hpp"
 #include "protoutils.hpp"
+
+#include <xayautil/compression.hpp>
 
 #include <glog/logging.h>
 
 namespace pxd
 {
+
+/* ************************************************************************** */
+
+namespace
+{
+
+/**
+ * The maximum size of uncompressed serialised waypoints.  This is used when
+ * uncompressing data using libxayautil to ensure there is no DDoS attack
+ * vector on memory (zip bomb).  It is consensus relevant, as it may mean some
+ * waypoint moves are invalid.  The number is so high that it should not matter
+ * in practice, though.  "Normal paths" moving all across the map are only
+ * about 3-4 KiB in size.
+ */
+constexpr size_t MAX_WAYPOINT_SIZE = (1 << 20);
+
+} // anonymous namespace
+
+bool
+EncodeWaypoints (const std::vector<HexCoord>& wp,
+                 Json::Value& jsonWp, std::string& encoded)
+{
+  jsonWp = Json::Value (Json::arrayValue);
+  for (const auto& c : wp)
+    jsonWp.append (CoordToJson (c));
+
+  std::string serialised;
+  CHECK (xaya::CompressJson (jsonWp, encoded, serialised));
+  if (serialised.size () > MAX_WAYPOINT_SIZE)
+    {
+      LOG (WARNING)
+          << "Serialised waypoints JSON is too large (" << serialised.size ()
+          << " vs maximum allowed length " << MAX_WAYPOINT_SIZE << ")";
+      return false;
+    }
+
+  VLOG (1)
+      << "Encoded " << wp.size () << " waypoints;"
+      << " the serialised size is " << serialised.size ()
+      << ", the encoded size is " << encoded.size ();
+
+  return true;
+}
+
+bool
+DecodeWaypoints (const std::string& encoded, std::vector<HexCoord>& wp)
+{
+  Json::Value jsonWp;
+  std::string uncompressed;
+  if (!xaya::UncompressJson (encoded, MAX_WAYPOINT_SIZE, 3,
+                             jsonWp, uncompressed))
+    {
+      LOG (WARNING)
+          << "Failed to decode waypoint string:\n"
+          << encoded.substr (0, 1'024);
+      return false;
+    }
+
+  if (!jsonWp.isArray ())
+    {
+      LOG (WARNING) << "Decoded waypoints are not an array:\n" << jsonWp;
+      return false;
+    }
+
+  wp.clear ();
+  for (const auto& entry : jsonWp)
+    {
+      HexCoord c;
+      if (!CoordFromJson (entry, c))
+        {
+          LOG (WARNING) << "Invalid waypoint: " << entry;
+          return false;
+        }
+      wp.push_back (c);
+    }
+
+  return true;
+}
+
+/* ************************************************************************** */
 
 void
 StopCharacter (Character& c)
@@ -293,6 +376,8 @@ ProcessCharacterMovement (Character& c, const Context& ctx,
 {
   return CharacterMovement (c, ctx, edges);
 }
+
+/* ************************************************************************** */
 
 } // namespace test
 
