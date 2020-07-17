@@ -135,7 +135,7 @@ class Character (object):
                                         faction=self.data["faction"],
                                         l1range=1000,
                                         exbuildings=[])
-    return path["wp"]
+    return path["encoded"]
 
   def moveTowards (self, target):
     """

@@ -785,7 +785,7 @@ TEST_F (CharacterUpdateTests, WhenBusy)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"wp": [{"x": -3, "y": 4}]}}}
+      "move": {"c": {"1": {"wp": )" + WpStr ({HexCoord (-3, 4)}) + R"(}}}
     },
     {
       "name": "domob",
@@ -816,7 +816,7 @@ TEST_F (CharacterUpdateTests, InvalidWhenInsideBuilding)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"wp": [{"x": -3, "y": 4}]}}}
+      "move": {"c": {"1": {"wp": )" + WpStr ({HexCoord (-3, 4)}) + R"(}}}
     },
     {
       "name": "domob",
@@ -852,15 +852,23 @@ TEST_F (CharacterUpdateTests, BasicWaypoints)
     },
     {
       "name": "domob",
+      "move": {"c": {"1": {"wp": []}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {}}}
+    },
+    {
+      "name": "domob",
       "move": {"c": {"1": {"wp": {"x": 4, "y": 3}}}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"wp": [{"x": 4.5, "y": 3}]}}}
+      "move": {"c": {"1": {"wp": [{"x": 4, "y": 3}]}}}
     },
     {
       "name": "andy",
-      "move": {"c": {"1": {"wp": [{"x": 4, "y": 3}]}}}
+      "move": {"c": {"1": {"wp": 42}}}
     }
   ])");
 
@@ -874,7 +882,8 @@ TEST_F (CharacterUpdateTests, BasicWaypoints)
   /* Process a valid waypoints update move.  */
   Process (R"([{
     "name": "domob",
-    "move": {"c": {"1": {"wp": [{"x": -3, "y": 4}, {"x": 5, "y": 0}]}}}
+    "move": {"c": {"1": {"wp": )"
+        + WpStr ({HexCoord (-3, 4), HexCoord (5, 0)}) + R"(}}}
   }])");
 
   /* Verify that the valid move had the expected effect.  */
@@ -897,7 +906,7 @@ TEST_F (CharacterUpdateTests, EmptyWaypoints)
   GetTest ()->MutableVolatileMv ().set_partial_step (42);
   Process (R"([{
     "name": "domob",
-    "move": {"c": {"1": {"wp": []}}}
+    "move": {"c": {"1": {"wp": null}}}
   }])");
 
   h = GetTest ();
@@ -916,7 +925,7 @@ TEST_F (CharacterUpdateTests, WaypointsWithZeroSpeed)
   GetTest ()->MutableVolatileMv ().set_partial_step (42);
   Process (R"([{
     "name": "domob",
-    "move": {"c": {"1": {"wp": [{"x": -3, "y": 100}]}}}
+    "move": {"c": {"1": {"wp": )" + WpStr ({HexCoord (-3, 100)}) + R"(}}}
   }])");
 
   /* With zero speed of the character, we should just "stop" it but not
@@ -945,7 +954,9 @@ TEST_F (CharacterUpdateTests, ChosenSpeedWorks)
 
   Process (R"([{
     "name": "domob",
-    "move": {"c": {"1": {"wp": [{"x": 5, "y": 1}], "speed": 1000000}}}
+    "move": {"c": {"1": {"wp": )"
+        + WpStr ({HexCoord (5, 1)})
+        + R"(, "speed": 1000000}}}
   }])");
   EXPECT_EQ (GetTest ()->GetProto ().movement ().chosen_speed (), 1000000);
 
@@ -961,7 +972,9 @@ TEST_F (CharacterUpdateTests, ChosenSpeedInvalid)
   GetTest ()->MutableProto ().set_speed (1000);
   Process (R"([{
     "name": "domob",
-    "move": {"c": {"1": {"wp": [{"x": 5, "y": 1}], "speed": 1000}}}
+    "move": {"c": {"1": {"wp": )"
+        + WpStr ({HexCoord (5, 1)})
+        + R"(, "speed": 1000}}}
   }])");
 
   /* All of them are invalid in one way or another.  */
@@ -2589,7 +2602,7 @@ TEST_F (ProspectingMoveTests, Success)
     {
       "name": "domob",
       "move": {"c": {"1": {
-        "wp": [{"x": 5, "y": -2}],
+        "wp": )" + WpStr ({HexCoord (5, -2)}) + R"(,
         "prospect": {}
       }}}
     }
@@ -2812,7 +2825,7 @@ TEST_F (MiningMoveTests, WaypointsStopMining)
     {
       "name": "domob",
       "move": {"c": {
-        "1": {"wp": []}
+        "1": {"wp": null}
       }}
     }
   ])");
@@ -2830,7 +2843,7 @@ TEST_F (MiningMoveTests, WaypointsNoMiningData)
     {
       "name": "domob",
       "move": {"c": {
-        "1": {"wp": []}
+        "1": {"wp": null}
       }}
     }
   ])");
@@ -2907,7 +2920,7 @@ TEST_F (MiningMoveTests, MiningAndWaypointsInSameMove)
     {
       "name": "domob",
       "move": {"c": {
-        "1": {"wp": [{"x": 5, "y": 10}], "mine": {}}
+        "1": {"wp": )" + WpStr ({HexCoord (5, 10)}) + R"(, "mine": {}}
       }}
     }
   ])");

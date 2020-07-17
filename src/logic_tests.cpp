@@ -200,7 +200,7 @@ TEST_F (PXLogicTests, WaypointsBeforeMovement)
   UpdateState (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"wp": [{"x": -1, "y": 0}]}}}
+      "move": {"c": {"1": {"wp": )" + WpStr ({HexCoord (-1, 0)}) + R"(}}}
     }
   ])");
 
@@ -278,7 +278,7 @@ TEST_F (PXLogicTests, KilledVehicleNoLongerBlocks)
   UpdateState (R"([
     {
       "name": "moving",
-      "move": {"c": {"3": {"wp": [{"x": 10, "y": 0}]}}}
+      "move": {"c": {"3": {"wp": )" + WpStr ({HexCoord (10, 0)}) + R"(}}}
     }
   ])");
 
@@ -306,7 +306,7 @@ TEST_F (PXLogicTests, NewBuildingBlocksMovement)
   UpdateState (R"([
     {
       "name": "moving",
-      "move": {"c": {"2": {"wp": [{"x": 0, "y": 0}]}}}
+      "move": {"c": {"2": {"wp": )" + WpStr ({HexCoord (0, 0)}) + R"(}}}
     },
     {
       "name": "builder",
@@ -740,7 +740,7 @@ TEST_F (PXLogicTests, FinishingProspecting)
   UpdateState (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"wp": [{"x": 0, "y": 5}]}}}
+      "move": {"c": {"1": {"wp": )" + WpStr ({HexCoord (0, 5)}) + R"(}}}
     }
   ])");
 

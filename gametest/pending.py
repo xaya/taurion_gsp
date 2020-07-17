@@ -86,7 +86,7 @@ class PendingTest (PXTest):
     self.mainLogger.info ("Performing pending updates...")
     self.createCharacters ("domob")
     c1 = self.getCharacters ()["domob"]
-    c1.sendMove ({"wp": []})
+    c1.sendMove ({"wp": None})
 
     sleepSome ()
     self.assertEqual (self.getPendingState (), {

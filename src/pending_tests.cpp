@@ -787,13 +787,13 @@ TEST_F (PendingStateUpdaterTests, InvalidUpdate)
   CHECK_EQ (characters.CreateNew ("domob", Faction::RED)->GetId (), 1);
 
   Process ("andy", R"({
-    "c": {"1": {"wp": []}}
+    "c": {"1": {"wp": null}}
   })");
   Process ("domob", R"({
-    "c": {" 1 ": {"wp": []}}
+    "c": {" 1 ": {"wp": null}}
   })");
   Process ("domob", R"({
-    "c": {"42": {"wp": []}}
+    "c": {"42": {"wp": null}}
   })");
 
   ExpectStateJson (R"(
@@ -811,13 +811,10 @@ TEST_F (PendingStateUpdaterTests, Waypoints)
   characters.CreateNew ("domob", Faction::RED)->SetPosition (HexCoord (0, 2));
   characters.CreateNew ("domob", Faction::RED)->SetPosition (HexCoord (0, 3));
 
-  /* Some invalid updates that will just not show up (i.e. ID 1 will have no
+  /* An invalid update that will just not show up (i.e. ID 1 will have no
      pending updates later on).  */
   Process ("domob", R"({
     "c": {"1": {"wp": "foo"}}
-  })");
-  Process ("domob", R"({
-    "c": {"1": {"wp": {"x": 4.5, "y": 3.141}}}
   })");
 
   /* Perform valid updates.  Only the waypoints updates will be tracked, and
@@ -825,12 +822,12 @@ TEST_F (PendingStateUpdaterTests, Waypoints)
   Process ("domob", R"({
     "c":
       {
-        "2": {"wp": [{"x": 0, "y": 100}]},
-        "3": {"wp": [{"x": 1, "y": -2}]}
+        "2": {"wp": )" + WpStr ({HexCoord (0, 100)}) + R"(},
+        "3": {"wp": )" + WpStr ({HexCoord (1, -2)}) + R"(}
       }
   })");
   Process ("domob", R"({
-    "c": {"2": {"wp": []}}
+    "c": {"2": {"wp": null}}
   })");
   Process ("domob", R"({
     "c": {"2": {"send": "andy"}}
@@ -1275,7 +1272,7 @@ TEST_F (PendingStateUpdaterTests, CreationAndUpdateTogether)
 
   ProcessWithDevPayment ("domob", characterCost, R"({
     "nc": [{}],
-    "c": {"1": {"wp": []}}
+    "c": {"1": {"wp": null}}
   })");
 
   ExpectStateJson (R"(

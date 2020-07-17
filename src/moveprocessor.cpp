@@ -434,9 +434,24 @@ BaseMoveProcessor::ParseCharacterWaypoints (const Character& c,
                                             std::vector<HexCoord>& wp)
 {
   CHECK (upd.isObject ());
-  const auto& wpArr = upd["wp"];
-  if (!wpArr.isArray ())
+  if (!upd.isMember ("wp"))
     return false;
+
+  const auto& wpVal = upd["wp"];
+
+  /* Special case:  If an explicit null is set, we interpret that as
+     empty waypoints, i.e. stop movement.  */
+  if (wpVal.isNull ())
+    {
+      wp.clear ();
+      return true;
+    }
+
+  if (!wpVal.isString ())
+    {
+      LOG (WARNING) << "Expected string for encoded waypoints: " << upd;
+      return false;
+    }
 
   if (c.IsBusy ())
     {
@@ -453,17 +468,12 @@ BaseMoveProcessor::ParseCharacterWaypoints (const Character& c,
       return false;
     }
 
-  for (const auto& entry : wpArr)
+  if (!DecodeWaypoints (wpVal.asString (), wp))
     {
-      HexCoord coord;
-      if (!CoordFromJson (entry, coord))
-        {
-          LOG (WARNING)
-              << "Invalid waypoints given for character " << c.GetId ()
-              << ", not updating movement";
-          return false;
-        }
-      wp.push_back (coord);
+      LOG (WARNING)
+          << "Invalid waypoints given for character " << c.GetId ()
+          << ", not updating movement";
+      return false;
     }
 
   return true;
