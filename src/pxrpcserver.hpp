@@ -226,6 +226,8 @@ public:
     return nonstate.getbuildingshape (centre, rot, type);
   }
 
+  std::string encodewaypoints (const Json::Value& wp) override;
+
 };
 
 } // namespace pxd

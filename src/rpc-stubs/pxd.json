@@ -119,5 +119,14 @@
         "rot": 42
       },
     "returns": []
+  },
+
+  {
+    "name": "encodewaypoints",
+    "params":
+      {
+        "wp": [{"x": 1, "y": 2}]
+      },
+    "returns": "encoded"
   }
 ]

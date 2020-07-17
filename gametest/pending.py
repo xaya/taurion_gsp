@@ -108,7 +108,7 @@ class PendingTest (PXTest):
 
     self.createCharacters ("domob")
     self.createCharacters ("andy")
-    c1.sendMove ({"wp": [{"x": 5, "y": -5}]})
+    c1.sendMove ({"wp": self.rpc.game.encodewaypoints (wp=[{"x": 5, "y": -5}])})
     c1.sendMove ({"pu": {"f": {"foo": 2}}})
 
     cb1 = self.getCharacters ()["inbuilding"]

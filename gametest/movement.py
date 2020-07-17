@@ -32,7 +32,10 @@ class MovementTest (PXTest):
 
     c = self.getCharacters ()[owner]
     offset = [offsetCoord (p, self.offset, False) for p in wp]
-    return c.sendMove ({"wp": offset})
+
+    encoded = self.rpc.game.encodewaypoints (wp=offset)
+
+    return c.sendMove ({"wp": encoded})
 
   def moveTowards (self, owner, target):
     """
@@ -165,7 +168,8 @@ class MovementTest (PXTest):
     # Move the character with reduced speed.
     c = self.getCharacters ()["domob"]
     wp = [offsetCoord ({"x": 100, "y": 0}, self.offset, False)]
-    c.sendMove ({"wp": wp, "speed": 1000})
+    encoded = self.rpc.game.encodewaypoints (wp=wp)
+    c.sendMove ({"wp": encoded, "speed": 1000})
     self.generate (10)
     pos, mv = self.getMovement ("domob")
     self.assertEqual (pos, {"x": 10, "y": 0})
@@ -183,7 +187,7 @@ class MovementTest (PXTest):
     # Sending another movement in-between without speed will revert it to
     # the default one.
     c = self.getCharacters ()["domob"]
-    c.sendMove ({"wp": wp, "speed": 1000})
+    c.sendMove ({"wp": encoded, "speed": 1000})
     self.generate (10)
     pos, _ = self.getMovement ("domob")
     self.assertEqual (pos, {"x": 50, "y": 0})
@@ -196,7 +200,7 @@ class MovementTest (PXTest):
     # Letting the movement finish and then sending a new movement will also
     # revert to intrinsic speed.
     c = self.getCharacters ()["domob"]
-    c.sendMove ({"wp": wp, "speed": 1000})
+    c.sendMove ({"wp": encoded, "speed": 1000})
     self.generate (10)
     pos, _ = self.getMovement ("domob")
     self.assertEqual (pos, {"x": 30, "y": 0})
