@@ -25,20 +25,14 @@ from pxtest import PXTest, offsetCoord
 
 class MovementTest (PXTest):
 
-  def offsetWaypoints (self, wp):
-    """
-    Returns the waypoints, transformed by applying our coordinate offset.
-    """
-
-    return [offsetCoord (p, self.offset, False) for p in wp]
-
   def setWaypoints (self, owner, wp):
     """
     Sends a move to update the waypoints of the character with the given owner.
     """
 
     c = self.getCharacters ()[owner]
-    return c.sendMove ({"wp": self.offsetWaypoints (wp)})
+    offset = [offsetCoord (p, self.offset, False) for p in wp]
+    return c.sendMove ({"wp": offset})
 
   def moveTowards (self, owner, target):
     """
@@ -170,7 +164,7 @@ class MovementTest (PXTest):
 
     # Move the character with reduced speed.
     c = self.getCharacters ()["domob"]
-    wp = self.offsetWaypoints ([{"x": 100, "y": 0}])
+    wp = [offsetCoord ({"x": 100, "y": 0}, self.offset, False)]
     c.sendMove ({"wp": wp, "speed": 1000})
     self.generate (10)
     pos, mv = self.getMovement ("domob")

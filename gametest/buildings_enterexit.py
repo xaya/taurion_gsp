@@ -40,8 +40,9 @@ class BuildingsEnterExitTest (PXTest):
     self.generate (1)
     self.changeCharacterVehicle ("domob", "light attacker")
     self.moveCharactersTo ({"domob": {"x": 20, "y": 0}})
-    self.getCharacters ()["domob"].sendMove ({
-      "wp": [{"x": 3, "y": 0}],
+    c = self.getCharacters ()["domob"]
+    c.sendMove ({
+      "wp": c.findPath ({"x": 3, "y": 0}),
       "eb": building
     })
     self.generate (2)
