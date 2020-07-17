@@ -26,7 +26,9 @@ namespace pxd
 constexpr HexCoord::IntT CombatEntity::NO_ATTACKS;
 
 CombatEntity::CombatEntity (Database& d)
-  : db(d), isNew(true), oldCanRegen(false)
+  : db(d), isNew(true),
+    friendlyTargets(false), oldCanRegen(false),
+    isDirty(true)
 {
   hp.SetToDefault ();
   regenData.SetToDefault ();
@@ -62,6 +64,7 @@ CombatEntity::BindFullFields (Database::Statement& stmt,
 
 void
 CombatEntity::BindFields (Database::Statement& stmt, const unsigned indHp,
+                          const unsigned indFriendlyTargets,
                           const unsigned indCanRegen) const
 {
   bool canRegen = oldCanRegen;
@@ -69,6 +72,7 @@ CombatEntity::BindFields (Database::Statement& stmt, const unsigned indHp,
     canRegen = ComputeCanRegen (hp.Get (), regenData.Get ());
 
   stmt.BindProto (indHp, hp);
+  stmt.Bind (indFriendlyTargets, friendlyTargets);
   stmt.Bind (indCanRegen, canRegen);
 }
 

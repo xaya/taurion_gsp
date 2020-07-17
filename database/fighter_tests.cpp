@@ -200,6 +200,11 @@ TEST_F (FighterTableTests, ProcessWithTarget)
   b->SetTarget (t);
   b.reset ();
 
+  c = characters.CreateNew ("daniel", Faction::RED);
+  const auto idFriendly = c->GetId ();
+  c->SetFriendlyTargets (true);
+  c.reset ();
+
   unsigned cnt = 0;
   tbl.ProcessWithTarget ([&] (FighterTable::Handle f)
     {
@@ -218,12 +223,18 @@ TEST_F (FighterTableTests, ProcessWithTarget)
           EXPECT_EQ (f->GetIdAsTarget ().id (), idChar);
           break;
 
+        case 3:
+          EXPECT_EQ (f->GetIdAsTarget ().type (),
+                     proto::TargetId::TYPE_CHARACTER);
+          EXPECT_EQ (f->GetIdAsTarget ().id (), idFriendly);
+          break;
+
         default:
           FAIL () << "Too many targets returned";
           break;
         }
     });
-  EXPECT_EQ (cnt, 2);
+  EXPECT_EQ (cnt, 3);
 }
 
 TEST_F (FighterTableTests, Effects)

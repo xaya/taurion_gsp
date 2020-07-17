@@ -87,7 +87,7 @@ Character::~Character ()
            `owner`, `x`, `y`,
            `inbuilding`, `enterbuilding`,
            `volatilemv`, `hp`,
-           `canregen`,
+           `canregen`, `friendlytargets`,
            `faction`,
            `ismoving`, `ismining`, `attackrange`, `friendlyrange`,
            `regendata`, `target`, `inventory`, `effects`, `proto`)
@@ -96,7 +96,7 @@ Character::~Character ()
            ?2, ?3, ?4,
            ?5, ?6,
            ?7, ?8,
-           ?9,
+           ?9, ?10,
            ?101,
            ?102, ?103, ?104, ?105,
            ?106, ?107, ?108, ?109, ?110)
@@ -134,7 +134,8 @@ Character::~Character ()
               `enterbuilding` = ?6,
               `volatilemv` = ?7,
               `hp` = ?8,
-              `canregen` = ?9
+              `canregen` = ?9,
+              `friendlytargets` = ?10
           WHERE `id` = ?1
       )");
 
@@ -179,7 +180,7 @@ Character::Validate () const
 void
 Character::BindFieldValues (Database::Statement& stmt) const
 {
-  CombatEntity::BindFields (stmt, 8, 9);
+  CombatEntity::BindFields (stmt, 8, 10, 9);
 
   stmt.Bind (1, id);
   stmt.Bind (2, owner);
@@ -359,7 +360,7 @@ CharacterTable::QueryWithTarget ()
   auto stmt = db.Prepare (R"(
     SELECT *
       FROM `characters`
-      WHERE `target` IS NOT NULL
+      WHERE (`target` IS NOT NULL) OR `friendlytargets`
       ORDER BY `id`
   )");
   return stmt.Query<CharacterResult> ();

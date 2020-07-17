@@ -396,7 +396,8 @@ public:
 
   /**
    * Queries for all characters that have a combat target and thus need
-   * to be processed for damage.
+   * to be processed for damage.  This also includes ones that have
+   * just a friendly target.
    */
   Database::Result<CharacterResult> QueryWithTarget ();
 

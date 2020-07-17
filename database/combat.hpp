@@ -38,9 +38,10 @@ struct ResultWithCombat : public Database::ResultType
   RESULT_COLUMN (pxd::proto::HP, hp, 53);
   RESULT_COLUMN (pxd::proto::RegenData, regendata, 54);
   RESULT_COLUMN (pxd::proto::TargetId, target, 55);
-  RESULT_COLUMN (int64_t, attackrange, 56);
-  RESULT_COLUMN (int64_t, friendlyrange, 57);
-  RESULT_COLUMN (bool, canregen, 58);
+  RESULT_COLUMN (bool, friendlytargets, 56);
+  RESULT_COLUMN (int64_t, attackrange, 57);
+  RESULT_COLUMN (int64_t, friendlyrange, 58);
+  RESULT_COLUMN (bool, canregen, 59);
 };
 
 /**
@@ -81,6 +82,13 @@ private:
   LazyProto<proto::TargetId> target;
 
   /**
+   * Whether or not friendly targets are in range.  This is set accordingly
+   * by the target finding phase, and will be used to determine whether or
+   * not we need to process them.
+   */
+  bool friendlyTargets;
+
+  /**
    * The longest attack or NO_ATTACKS if there are none.  This field is loaded
    * from the database but never updated.
    */
@@ -97,6 +105,9 @@ private:
    * the RegenData or HP have been modified.
    */
   bool oldCanRegen;
+
+  /** Set to true if non-proto fields have been changed.  */
+  bool isDirty;
 
   /**
    * Computes (from HP and RegenData protos) whether or not an entity
@@ -147,7 +158,7 @@ protected:
   bool
   IsDirtyFields () const
   {
-    return hp.IsDirty ();
+    return isDirty || hp.IsDirty ();
   }
 
   /**
@@ -165,10 +176,10 @@ protected:
    */
   void
   BindFields (Database::Statement& stmt, unsigned indHp,
-              unsigned indCanRegen) const;
+              unsigned indFriendlyTargets, unsigned indCanRegen) const;
 
   /**
-   * Validates the character state for consistency.  CHECK-fails if there
+   * Validates the state for consistency.  CHECK-fails if there
    * is any mismatch in the fields.
    */
   virtual void Validate () const;
@@ -224,6 +235,20 @@ public:
 
   void ClearTarget ();
   void SetTarget (const proto::TargetId& t);
+
+  bool
+  HasFriendlyTargets () const
+  {
+    return friendlyTargets;
+  }
+
+  void
+  SetFriendlyTargets (const bool val)
+  {
+    if (friendlyTargets != val)
+      isDirty = true;
+    friendlyTargets = val;
+  }
 
   /**
    * Returns the entity's attack range or NO_ATTACKS if there are no attacks.

@@ -143,18 +143,24 @@ TEST_F (BuildingTests, CombatFields)
   h = tbl.GetById (id);
   EXPECT_EQ (h->GetRegenData ().regeneration_mhp ().shield (), 42);
   EXPECT_FALSE (h->HasTarget ());
+  EXPECT_FALSE (h->HasFriendlyTargets ());
   proto::TargetId t;
   t.set_id (50);
   h->SetTarget (t);
+  h->SetFriendlyTargets (true);
   h.reset ();
 
   h = tbl.GetById (id);
   ASSERT_TRUE (h->HasTarget ());
   EXPECT_EQ (h->GetTarget ().id (), 50);
+  EXPECT_TRUE (h->HasFriendlyTargets ());
   h->ClearTarget ();
+  h->SetFriendlyTargets (false);
   h.reset ();
 
-  EXPECT_FALSE (tbl.GetById (id)->HasTarget ());
+  h = tbl.GetById (id);
+  EXPECT_FALSE (h->HasTarget ());
+  EXPECT_FALSE (h->HasFriendlyTargets ());
 }
 
 TEST_F (BuildingTests, CombatEffects)
@@ -262,6 +268,14 @@ TEST_F (BuildingsTableTests, QueryWithTarget)
   res = tbl.QueryWithTarget ();
   ASSERT_TRUE (res.Step ());
   EXPECT_EQ (tbl.GetFromResult (res)->GetOwner (), "andy");
+  ASSERT_FALSE (res.Step ());
+
+  tbl.GetById (id1)->SetFriendlyTargets (true);
+  tbl.GetById (id2)->ClearTarget ();
+
+  res = tbl.QueryWithTarget ();
+  ASSERT_TRUE (res.Step ());
+  EXPECT_EQ (tbl.GetFromResult (res)->GetOwner (), "domob");
   ASSERT_FALSE (res.Step ());
 }
 

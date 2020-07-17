@@ -87,7 +87,8 @@ public:
 
   /**
    * Retrieves and processes all fighers that have a target, i.e. for whom
-   * we need to deal damage.
+   * we need to deal damage.  This includes fighters that have only
+   * friendlies in range but a friendly attack.
    */
   void ProcessWithTarget (const Callback& cb);
 

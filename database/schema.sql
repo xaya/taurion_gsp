@@ -69,6 +69,11 @@ CREATE TABLE IF NOT EXISTS `characters` (
   -- as we later on only process attacks of characters with a selected target.
   `target` BLOB NULL,
 
+  -- Whether or not friendlies are in range of a friendly attack, which
+  -- indicates that this character needs to be processed for "dealing damage"
+  -- next time a block is processed.
+  `friendlytargets` INTEGER NOT NULL,
+
   -- Any combat effects that apply to the character (or NULL if none).
   -- This is a serialised CombatEffects protocol buffer.  The effects
   -- are set by the combat damaging phase, and then in effect until
@@ -125,6 +130,8 @@ CREATE INDEX IF NOT EXISTS `characters_friendlyrange`
   ON `characters` (`friendlyrange`);
 CREATE INDEX IF NOT EXISTS `characters_canregen` ON `characters` (`canregen`);
 CREATE INDEX IF NOT EXISTS `characters_target` ON `characters` (`target`);
+CREATE INDEX IF NOT EXISTS `characters_friendlytargets`
+  ON `characters` (`friendlytargets`);
 CREATE INDEX IF NOT EXISTS `characters_effects` ON `characters` (`effects`);
 
 -- =============================================================================
@@ -170,6 +177,9 @@ CREATE TABLE IF NOT EXISTS `buildings` (
   -- The attacked target (if any), as a serialised TargetId proto.
   `target` BLOB NULL,
 
+  -- Whether or not friendlies are in range and processing needs to happen.
+  `friendlytargets` INTEGER NOT NULL,
+
   -- Any combat effects that apply to the building (or NULL if none).
   -- This is a serialised CombatEffects protocol buffer.
   `effects` BLOB NULL,
@@ -194,6 +204,8 @@ CREATE INDEX IF NOT EXISTS `buildings_friendlyrange`
   ON `buildings` (`friendlyrange`);
 CREATE INDEX IF NOT EXISTS `buildings_canregen` ON `buildings` (`canregen`);
 CREATE INDEX IF NOT EXISTS `buildings_target` ON `buildings` (`target`);
+CREATE INDEX IF NOT EXISTS `buildings_friendlytargets`
+  ON `buildings` (`friendlytargets`);
 CREATE INDEX IF NOT EXISTS `buildings_effects` ON `buildings` (`effects`);
 
 -- =============================================================================

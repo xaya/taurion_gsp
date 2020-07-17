@@ -190,6 +190,25 @@ TEST_F (CharacterTests, Target)
   EXPECT_FALSE (tbl.GetById (id)->HasTarget ());
 }
 
+TEST_F (CharacterTests, FriendlyTargets)
+{
+  auto c = tbl.CreateNew ("domob", Faction::RED);
+  const auto id = c->GetId ();
+  c.reset ();
+
+  c = tbl.GetById (id);
+  EXPECT_FALSE (c->HasFriendlyTargets ());
+  c->SetFriendlyTargets (true);
+  c.reset ();
+
+  c = tbl.GetById (id);
+  EXPECT_TRUE (c->HasFriendlyTargets ());
+  c->SetFriendlyTargets (false);
+  c.reset ();
+
+  EXPECT_FALSE (tbl.GetById (id)->HasFriendlyTargets ());
+}
+
 TEST_F (CharacterTests, Inventory)
 {
   auto h = tbl.CreateNew ("domob", Faction::RED);
@@ -486,6 +505,14 @@ TEST_F (CharacterTableTests, QueryWithTarget)
   res = tbl.QueryWithTarget ();
   ASSERT_TRUE (res.Step ());
   EXPECT_EQ (tbl.GetFromResult (res)->GetOwner (), "andy");
+  ASSERT_FALSE (res.Step ());
+
+  tbl.GetById (id1)->SetFriendlyTargets (true);
+  tbl.GetById (id2)->ClearTarget ();
+
+  res = tbl.QueryWithTarget ();
+  ASSERT_TRUE (res.Step ());
+  EXPECT_EQ (tbl.GetFromResult (res)->GetOwner (), "domob");
   ASSERT_FALSE (res.Step ());
 }
 

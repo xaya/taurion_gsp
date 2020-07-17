@@ -25,7 +25,7 @@ namespace pxd
 
 template <typename T>
   CombatEntity::CombatEntity (Database& d, const Database::Result<T>& res)
-    : db(d), isNew(false)
+    : db(d), isNew(false), isDirty(false)
 {
   static_assert (std::is_base_of<ResultWithCombat, T>::value,
                  "CombatEntity needs a ResultWithCombat");
@@ -49,6 +49,7 @@ template <typename T>
     oldFriendlyRange = res.template Get<typename T::friendlyrange> ();
 
   oldCanRegen = res.template Get<typename T::canregen> ();
+  friendlyTargets = res.template Get<typename T::friendlytargets> ();
 }
 
 } // namespace pxd

@@ -74,15 +74,15 @@ Building::~Building ()
         INSERT OR REPLACE INTO `buildings`
           (`id`, `type`,
            `faction`, `owner`, `x`, `y`,
-           `hp`, `regendata`, `target`,
+           `hp`, `regendata`, `target`, `friendlytargets`,
            `attackrange`, `friendlyrange`, `canregen`,
            `effects`, `proto`)
           VALUES
           (?1, ?2,
            ?3, ?4, ?5, ?6,
-           ?7, ?8, ?9,
-           ?10, ?11, ?12,
-           ?13, ?14)
+           ?7, ?8, ?9, ?10,
+           ?11, ?12, ?13,
+           ?14, ?15)
       )");
 
       stmt.Bind (1, id);
@@ -93,15 +93,15 @@ Building::~Building ()
       else
         stmt.Bind (4, owner);
       BindCoordParameter (stmt, 5, 6, pos);
-      CombatEntity::BindFields (stmt, 7, 12);
-      CombatEntity::BindFullFields (stmt, 8, 9, 10, 11);
+      CombatEntity::BindFields (stmt, 7, 10, 13);
+      CombatEntity::BindFullFields (stmt, 8, 9, 11, 12);
 
       if (effects.IsEmpty ())
-        stmt.BindNull (13);
+        stmt.BindNull (14);
       else
-        stmt.BindProto (13, effects);
+        stmt.BindProto (14, effects);
 
-      stmt.BindProto (14, data);
+      stmt.BindProto (15, data);
       stmt.Execute ();
 
       return;
@@ -218,7 +218,7 @@ BuildingsTable::QueryWithTarget ()
   auto stmt = db.Prepare (R"(
     SELECT *
       FROM `buildings`
-      WHERE `target` IS NOT NULL
+      WHERE (`target` IS NOT NULL) OR `friendlytargets`
       ORDER BY `id`
   )");
   return stmt.Query<BuildingResult> ();
