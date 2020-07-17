@@ -25,20 +25,17 @@ from pxtest import PXTest, offsetCoord
 
 class MovementTest (PXTest):
 
-  def offsetWaypoints (self, wp):
-    """
-    Returns the waypoints, transformed by applying our coordinate offset.
-    """
-
-    return [offsetCoord (p, self.offset, False) for p in wp]
-
   def setWaypoints (self, owner, wp):
     """
     Sends a move to update the waypoints of the character with the given owner.
     """
 
     c = self.getCharacters ()[owner]
-    return c.sendMove ({"wp": self.offsetWaypoints (wp)})
+    offset = [offsetCoord (p, self.offset, False) for p in wp]
+
+    encoded = self.rpc.game.encodewaypoints (wp=offset)
+
+    return c.sendMove ({"wp": encoded})
 
   def moveTowards (self, owner, target):
     """
@@ -170,8 +167,9 @@ class MovementTest (PXTest):
 
     # Move the character with reduced speed.
     c = self.getCharacters ()["domob"]
-    wp = self.offsetWaypoints ([{"x": 100, "y": 0}])
-    c.sendMove ({"wp": wp, "speed": 1000})
+    wp = [offsetCoord ({"x": 100, "y": 0}, self.offset, False)]
+    encoded = self.rpc.game.encodewaypoints (wp=wp)
+    c.sendMove ({"wp": encoded, "speed": 1000})
     self.generate (10)
     pos, mv = self.getMovement ("domob")
     self.assertEqual (pos, {"x": 10, "y": 0})
@@ -189,7 +187,7 @@ class MovementTest (PXTest):
     # Sending another movement in-between without speed will revert it to
     # the default one.
     c = self.getCharacters ()["domob"]
-    c.sendMove ({"wp": wp, "speed": 1000})
+    c.sendMove ({"wp": encoded, "speed": 1000})
     self.generate (10)
     pos, _ = self.getMovement ("domob")
     self.assertEqual (pos, {"x": 50, "y": 0})
@@ -202,7 +200,7 @@ class MovementTest (PXTest):
     # Letting the movement finish and then sending a new movement will also
     # revert to intrinsic speed.
     c = self.getCharacters ()["domob"]
-    c.sendMove ({"wp": wp, "speed": 1000})
+    c.sendMove ({"wp": encoded, "speed": 1000})
     self.generate (10)
     pos, _ = self.getMovement ("domob")
     self.assertEqual (pos, {"x": 30, "y": 0})

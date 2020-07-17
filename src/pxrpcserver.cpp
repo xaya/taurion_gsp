@@ -63,6 +63,7 @@ enum class ErrorCode
 
   /* Specific errors with findpath.  */
   FINDPATH_NO_CONNECTION = 1,
+  FINDPATH_ENCODE_FAILED = 4,
 
   /* Specific errors with getregionat.  */
   REGIONAT_OUT_OF_MAP = 2,
@@ -290,31 +291,34 @@ NonStateRpcServer::findpath (const Json::Value& exbuildings,
 
   /* Now step the path and construct waypoints, so that it is a principal
      direction between each of them.  */
-  Json::Value wp(Json::arrayValue);
+  std::vector<HexCoord> wp;
   PathFinder::Stepper path = finder.StepPath (sourceCoord);
-  HexCoord lastWp = path.GetPosition ();
-  wp.append (CoordToJson (lastWp));
-  HexCoord prev = lastWp;
+  wp.push_back (path.GetPosition ());
+  HexCoord prev = wp.back ();
   while (path.HasMore ())
     {
       path.Next ();
 
       HexCoord dir;
       HexCoord::IntT steps;
-      if (!lastWp.IsPrincipalDirectionTo (path.GetPosition (), dir, steps))
-        {
-          wp.append (CoordToJson (prev));
-          lastWp = prev;
-        }
+      if (!wp.back ().IsPrincipalDirectionTo (path.GetPosition (), dir, steps))
+        wp.push_back (prev);
 
       prev = path.GetPosition ();
     }
-  if (lastWp != path.GetPosition ())
-    wp.append (CoordToJson (path.GetPosition ()));
+  if (wp.back () != path.GetPosition ())
+    wp.push_back (path.GetPosition ());
+
+  Json::Value jsonWp;
+  std::string encoded;
+  if (!EncodeWaypoints (wp, jsonWp, encoded))
+    ReturnError (ErrorCode::FINDPATH_ENCODE_FAILED,
+                 "could not encode waypoints");
 
   Json::Value res(Json::objectValue);
   res["dist"] = dist;
-  res["wp"] = wp;
+  res["wp"] = jsonWp;
+  res["encoded"] = encoded;
 
   return res;
 }
@@ -561,6 +565,35 @@ PXRpcServer::getserviceinfo (const std::string& name, const Json::Value& op)
 
       return res;
     });
+}
+
+std::string
+PXRpcServer::encodewaypoints (const Json::Value& wp)
+{
+  LOG (INFO) << "RPC method called: encodewaypoints\n" << wp;
+
+  /* This method does not use any game state (as it just exposes the
+     JSON compression code).  But since it is only really needed for testing,
+     there is no use in exposing it for the nonstate RPC server as well.  */
+
+  CHECK (wp.isArray ());
+
+  std::vector<HexCoord> wpArr;
+  for (const auto& entry : wp)
+    {
+      HexCoord c;
+      if (!CoordFromJson (entry, c))
+        ReturnError (ErrorCode::INVALID_ARGUMENT, "invalid waypoints");
+      wpArr.push_back (c);
+    }
+
+  Json::Value jsonWp;
+  std::string encoded;
+  if (!EncodeWaypoints (wpArr, jsonWp, encoded))
+    ReturnError (ErrorCode::FINDPATH_ENCODE_FAILED,
+                 "could not encode waypoints");
+
+  return encoded;
 }
 
 /* ************************************************************************** */

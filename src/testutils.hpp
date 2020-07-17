@@ -76,6 +76,14 @@ Json::Value ParseJson (const std::string& str);
  */
 bool PartialJsonEqual (const Json::Value& actual, const Json::Value& expected);
 
+/**
+ * Encodes one or more waypoints for a "wp" move.  This is a wrapper around
+ * the main encoding function, which asserts that encoding was successful
+ * and also adds quotes around the string so it can be concat directly
+ * with others into a JSON literal.
+ */
+std::string WpStr (const std::vector<HexCoord>& wp);
+
 } // namespace pxd
 
 #endif // PXD_TESTUTILS_HPP

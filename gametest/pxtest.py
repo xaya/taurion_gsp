@@ -124,10 +124,10 @@ class Character (object):
     idStr = self.getIdStr ()
     return self.test.sendMove (self.data["owner"], {"c": {idStr: mv}})
 
-  def moveTowards (self, target):
+  def findPath (self, target):
     """
-    Sends a move with waypoints matching the findpath output from the
-    current position to target.
+    Computes the findpath output from the current position to the given
+    target, and returns it as encoded string suitable for a "wp" move.
     """
 
     path = self.test.rpc.game.findpath (source=self.getPosition (),
@@ -135,7 +135,15 @@ class Character (object):
                                         faction=self.data["faction"],
                                         l1range=1000,
                                         exbuildings=[])
-    return self.sendMove ({"wp": path["wp"]})
+    return path["encoded"]
+
+  def moveTowards (self, target):
+    """
+    Sends a move with waypoints matching the findpath output from the
+    current position to target.
+    """
+
+    return self.sendMove ({"wp": self.findPath (target)})
 
   def expectPartial (self, expected):
     """

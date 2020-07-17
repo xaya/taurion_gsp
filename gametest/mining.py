@@ -78,7 +78,7 @@ class MiningTest (PXTest):
     self.assertEqual (self.isMining ("domob 2"), False)
 
     self.mainLogger.info ("Movement stops mining...")
-    self.getCharacters ()["domob"].sendMove ({"wp": []})
+    self.getCharacters ()["domob"].sendMove ({"wp": None})
     self.generate (1)
     self.assertEqual (self.isMining ("domob"), False)
     self.assertEqual (self.isMining ("domob 2"), False)

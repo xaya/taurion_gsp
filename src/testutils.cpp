@@ -18,6 +18,8 @@
 
 #include "testutils.hpp"
 
+#include "movement.hpp"
+
 #include <xayautil/hash.hpp>
 
 #include <glog/logging.h>
@@ -197,6 +199,15 @@ PartialJsonEqual (const Json::Value& actual, const Json::Value& expected)
     }
 
   return true;
+}
+
+std::string
+WpStr (const std::vector<HexCoord>& wp)
+{
+  Json::Value jsonWp;
+  std::string encoded;
+  CHECK (EncodeWaypoints (wp, jsonWp, encoded));
+  return "\"" + encoded + "\"";
 }
 
 } // namespace pxd

@@ -108,7 +108,7 @@ class SafeZonesTest (PXTest):
     # Move out of the safe zone.  After the first block, we are still in
     # and there should not be any combat.  After that, we are out and combat
     # will resume.
-    c.sendMove ({"wp": [relativePos (0, 12)], "speed": 1000})
+    c.sendMove ({"wp": c.findPath (relativePos (0, 12)), "speed": 1000})
     self.generate (1)
     chars = self.getCharacters ()
     c = chars["red"]
