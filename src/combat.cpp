@@ -42,7 +42,7 @@ namespace
  * Chance (in percent) that an inventory position inside a destroyed building
  * will drop on the ground instead of being destroyed.
  */
-constexpr const unsigned BUILDING_INVENTORY_DROP_PERCENT = 30;
+constexpr unsigned BUILDING_INVENTORY_DROP_PERCENT = 30;
 
 /**
  * Modifications to combat-related stats.
@@ -115,41 +115,29 @@ namespace
 {
 
 /**
- * Runs target selection for one fighter entity.
+ * Runs target finding for the normal attacks, setting (or clearing)
+ * the target field.
  */
 void
-SelectTarget (TargetFinder& targets, xaya::Random& rnd, const Context& ctx,
-              FighterTable::Handle f)
+SelectNormalTarget (TargetFinder& targets, xaya::Random& rnd,
+                    const Context& ctx, const CombatModifier& mod,
+                    CombatEntity& f)
 {
-  const HexCoord pos = f->GetCombatPosition ();
-  if (ctx.Map ().SafeZones ().IsNoCombat (pos))
-    {
-      VLOG (1)
-          << "Not selecting targets for fighter in no-combat zone:\n"
-          << f->GetIdAsTarget ().DebugString ();
-      f->ClearTarget ();
-      return;
-    }
+  const HexCoord pos = f.GetCombatPosition ();
 
-  HexCoord::IntT range = f->GetAttackRange (false);
+  HexCoord::IntT range = f.GetAttackRange (false);
   if (range == CombatEntity::NO_ATTACKS)
     {
       VLOG (1) << "Fighter at " << pos << " has no attacks";
       return;
     }
   CHECK_GE (range, 0);
-
-  /* Apply the modifier to range (if any).  */
-  {
-    CombatModifier mod;
-    ComputeModifier (*f, mod);
-    range = mod.range (range);
-  }
+  range = mod.range (range);
 
   HexCoord::IntT closestRange;
   std::vector<proto::TargetId> closestTargets;
 
-  targets.ProcessL1Targets (pos, range, f->GetFaction (), true, false,
+  targets.ProcessL1Targets (pos, range, f.GetFaction (), true, false,
     [&] (const HexCoord& c, const proto::TargetId& id)
     {
       if (ctx.Map ().SafeZones ().IsNoCombat (c))
@@ -183,12 +171,86 @@ SelectTarget (TargetFinder& targets, xaya::Random& rnd, const Context& ctx,
 
   if (closestTargets.empty ())
     {
-      f->ClearTarget ();
+      f.ClearTarget ();
       return;
     }
 
   const unsigned ind = rnd.NextInt (closestTargets.size ());
-  f->SetTarget (closestTargets[ind]);
+  f.SetTarget (closestTargets[ind]);
+}
+
+/**
+ * Runs target finding for friendlies in range of a friendly attack, if any.
+ * This sets (or unsets) the friendly-targets flag.
+ */
+void
+SelectFriendlyTargets (TargetFinder& targets, const Context& ctx,
+                       const CombatModifier& mod, CombatEntity& f)
+{
+  const HexCoord pos = f.GetCombatPosition ();
+  const TargetKey myId(f.GetIdAsTarget ());
+
+  HexCoord::IntT range = f.GetAttackRange (true);
+  if (range == CombatEntity::NO_ATTACKS)
+    {
+      VLOG (2) << "Fighter at " << pos << " has no friendly attacks";
+      return;
+    }
+  CHECK_GE (range, 0);
+  range = mod.range (range);
+
+  bool found = false;
+  targets.ProcessL1Targets (pos, range, f.GetFaction (), false, true,
+    [&] (const HexCoord& c, const proto::TargetId& id)
+    {
+      if (ctx.Map ().SafeZones ().IsNoCombat (c))
+        {
+          VLOG (2)
+              << "Ignoring friendly in no-combat zone for target selection:\n"
+              << id.DebugString ();
+          return;
+        }
+
+      if (myId == TargetKey (id))
+        return;
+
+      found = true;
+    });
+
+  f.SetFriendlyTargets (found);
+
+  if (found)
+    VLOG (1)
+        << "Found at least one friendly target in range for "
+        << myId.ToProto ().DebugString ();
+  else
+    VLOG (1)
+        << "No friendlies in range for " << myId.ToProto ().DebugString ();
+}
+
+/**
+ * Runs target selection for one fighter entity.  This clears or sets
+ * the fighter's target and friendly-targets fields accordingly.
+ */
+void
+SelectTarget (TargetFinder& targets, xaya::Random& rnd, const Context& ctx,
+              FighterTable::Handle f)
+{
+  if (ctx.Map ().SafeZones ().IsNoCombat (f->GetCombatPosition ()))
+    {
+      VLOG (1)
+          << "Not selecting targets for fighter in no-combat zone:\n"
+          << f->GetIdAsTarget ().DebugString ();
+      f->ClearTarget ();
+      f->SetFriendlyTargets (false);
+      return;
+    }
+
+  CombatModifier mod;
+  ComputeModifier (*f, mod);
+
+  SelectNormalTarget (targets, rnd, ctx, mod, *f);
+  SelectFriendlyTargets (targets, ctx, mod, *f);
 }
 
 } // anonymous namespace

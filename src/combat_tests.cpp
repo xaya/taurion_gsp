@@ -96,6 +96,19 @@ protected:
   }
 
   /**
+   * Adds a friendly attack without any more other stats to the combat entity
+   * and returns a reference to it for further customisation.
+   */
+  template <typename T>
+    static proto::Attack&
+    AddFriendlyAttack (T& h)
+  {
+    auto* res = h.MutableProto ().mutable_combat_data ()->add_attacks ();
+    res->set_friendlies (true);
+    return *res;
+  }
+
+  /**
    * Initialises the combat data proto so that it is "valid" but has
    * no attacks.
    */
@@ -246,6 +259,42 @@ TEST_F (TargetSelectionTests, ZeroRange)
   EXPECT_EQ (t.id (), idTarget);
 }
 
+TEST_F (TargetSelectionTests, FrienlyAttacks)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  const auto idNoAttacks = c->GetId ();
+  AddAttack (*c).set_area (10);
+  // No friendly attack.
+  c.reset ();
+
+  c = characters.CreateNew ("domob", Faction::RED);
+  const auto idWithAttacks = c->GetId ();
+  c->SetPosition (HexCoord (1, 0));
+  AddFriendlyAttack (*c).set_area (10);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", Faction::RED);
+  const auto idOutOfRange = c->GetId ();
+  c->SetPosition (HexCoord (100, 0));
+  AddAttack (*c).set_range (10);
+  AddFriendlyAttack (*c).set_area (10);
+  c.reset ();
+
+  c = characters.CreateNew ("andy", Faction::GREEN);
+  c->SetPosition (HexCoord (100, 0));
+  NoAttacks (*c);
+  c.reset ();
+
+  FindCombatTargets (db, rnd, ctx);
+
+  EXPECT_FALSE (characters.GetById (idNoAttacks)->HasFriendlyTargets ());
+  EXPECT_TRUE (characters.GetById (idWithAttacks)->HasFriendlyTargets ());
+
+  c = characters.GetById (idOutOfRange);
+  EXPECT_FALSE (c->HasFriendlyTargets ());
+  EXPECT_TRUE (c->HasTarget ());
+}
+
 TEST_F (TargetSelectionTests, WithBuildings)
 {
   auto c = characters.CreateNew ("domob", Faction::RED);
@@ -320,13 +369,21 @@ TEST_F (TargetSelectionTests, SafeZone)
   proto::TargetId t;
   t.set_id (42);
   c->SetTarget (t);
+  c->SetFriendlyTargets (true);
   AddAttack (*c).set_range (10);
+  AddFriendlyAttack (*c).set_area (10);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", Faction::GREEN);
+  c->SetPosition (SAFE);
+  NoAttacks (*c);
   c.reset ();
 
   c = characters.CreateNew ("domob", Faction::GREEN);
   const auto idAttacker = c->GetId ();
   c->SetPosition (NOT_SAFE);
   AddAttack (*c).set_range (10);
+  AddFriendlyAttack (*c).set_area (10);
   c.reset ();
 
   /* This one is not in a safe zone and thus a valid target for idAttacker.
@@ -340,10 +397,14 @@ TEST_F (TargetSelectionTests, SafeZone)
 
   FindCombatTargets (db, rnd, ctx);
 
-  EXPECT_FALSE (characters.GetById (idSafe)->HasTarget ());
+  c = characters.GetById (idSafe);
+  EXPECT_FALSE (c->HasTarget ());
+  EXPECT_FALSE (c->HasFriendlyTargets ());
+
   c = characters.GetById (idAttacker);
   ASSERT_TRUE (c->HasTarget ());
   EXPECT_EQ (c->GetTarget ().id (), idTarget);
+  EXPECT_FALSE (c->HasFriendlyTargets ());
 }
 
 TEST_F (TargetSelectionTests, MultipleAttacks)
@@ -497,7 +558,7 @@ TEST_F (TargetSelectionTests, NoRandomNumbersRequested)
   /* Target finding for none of the following situations should request
      any random numbers.  */
 
-  auto c = characters.CreateNew ("no attacks", Faction::RED);
+  auto c = characters.CreateNew ("no attacks 1", Faction::RED);
   c->SetPosition (HexCoord (0, 0));
   NoAttacks (*c);
   c.reset ();
@@ -505,6 +566,11 @@ TEST_F (TargetSelectionTests, NoRandomNumbersRequested)
   c = characters.CreateNew ("no attacks 2", Faction::GREEN);
   c->SetPosition (HexCoord (0, 0));
   NoAttacks (*c);
+  c.reset ();
+
+  c = characters.CreateNew ("friendly attacks", Faction::GREEN);
+  c->SetPosition (HexCoord (0, 0));
+  AddFriendlyAttack (*c).set_area (10);
   c.reset ();
 
   c = characters.CreateNew ("in building", Faction::RED);
