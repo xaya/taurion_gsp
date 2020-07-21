@@ -1178,6 +1178,36 @@ fungible_items:
 
 fungible_items:
 {
+    key: "vhf mentecon"
+    value:
+	{
+        space: 1000
+        complexity: 500
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 36000 }
+        construction_resources: { key: "mat b" value: 36000 }
+        construction_resources: { key: "mat c" value: 6000 }
+        construction_resources: { key: "mat d" value: 6000 }
+        construction_resources: { key: "mat e" value: 6000 }
+        construction_resources: { key: "mat f" value: 18000 }
+        construction_resources: { key: "mat g" value: 6000 }
+        construction_resources: { key: "mat h" value: 4800 }
+        construction_resources: { key: "mat i" value: 1200 }
+        fitment:
+          {
+            slot: "mid"
+            attack:
+              {
+                range: 4
+                effects: { mentecon: true }
+              }
+          }
+      }
+  }
+
+
+fungible_items:
+{
     key: "lf expander"
     value:
 	{

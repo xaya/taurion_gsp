@@ -1142,7 +1142,23 @@ TEST_F (DealDamageTests, Kills)
 
 TEST_F (DealDamageTests, Effects)
 {
-  auto c = characters.CreateNew ("red", Faction::RED);
+  auto c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idTarget = c->GetId ();
+  /* This will get reset and replaced by the effects accumulated
+     over this round of damage.  */
+  c->MutableEffects ().mutable_speed ()->set_percent (50);
+  NoAttacks (*c);
+  c.reset ();
+
+  /* This should just clear all effects.  */
+  FindTargetsAndDamage ();
+  c = characters.GetById (idTarget);
+  EXPECT_FALSE (c->GetEffects ().has_speed ());
+  EXPECT_FALSE (c->GetEffects ().has_range ());
+  EXPECT_FALSE (c->GetEffects ().has_shield_regen ());
+  EXPECT_FALSE (c->GetEffects ().mentecon ());
+
+  c = characters.CreateNew ("red", Faction::RED);
   AddAttack (*c, 5, 1, 1);
   for (unsigned i = 0; i < 2; ++i)
     {
@@ -1151,23 +1167,21 @@ TEST_F (DealDamageTests, Effects)
       attack.mutable_effects ()->mutable_speed ()->set_percent (-10);
       attack.mutable_effects ()->mutable_range ()->set_percent (-15);
       attack.mutable_effects ()->mutable_shield_regen ()->set_percent (50);
+      attack.mutable_effects ()->set_mentecon (i == 0);
     }
   c.reset ();
 
-  c = characters.CreateNew ("green", Faction::GREEN);
-  const auto idTarget = c->GetId ();
-  /* This will get reset and replaced by the effects accumulated
-     over this round of damage.  */
+  c = characters.GetById (idTarget);
   c->MutableEffects ().mutable_speed ()->set_percent (50);
   NoAttacks (*c);
   c.reset ();
 
   FindTargetsAndDamage ();
-
   c = characters.GetById (idTarget);
   EXPECT_EQ (c->GetEffects ().speed ().percent (), -20);
   EXPECT_EQ (c->GetEffects ().range ().percent (), -30);
   EXPECT_EQ (c->GetEffects ().shield_regen ().percent (), 100);
+  EXPECT_TRUE (c->GetEffects ().mentecon ());
 }
 
 TEST_F (DealDamageTests, EffectsAndDamageApplied)

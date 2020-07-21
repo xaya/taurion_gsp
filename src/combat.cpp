@@ -591,6 +591,8 @@ DamageProcessor::ApplyEffects (const proto::Attack& attack,
     *targetEffects.mutable_range () += attackEffects.range ();
   if (attackEffects.has_shield_regen ())
     *targetEffects.mutable_shield_regen () += attackEffects.shield_regen ();
+  if (attackEffects.mentecon ())
+    targetEffects.set_mentecon (true);
 }
 
 void
