@@ -51,11 +51,11 @@ using testing::ElementsAreArray;
 using testing::IsEmpty;
 
 /** A coordinate that is a safe zone.  */
-const HexCoord SAFE(2'042, 10);
+constexpr HexCoord SAFE(2'042, 10);
 /** A coordinate that is not safe (but next to the safe one).  */
-const HexCoord NOT_SAFE(2'042, 11);
+constexpr HexCoord NOT_SAFE(2'042, 11);
 /** A coordinate that is not safe and a bit further away.  */
-const HexCoord NOT_SAFE_FURTHER(2'042, 15);
+constexpr HexCoord NOT_SAFE_FURTHER(2'042, 15);
 
 /* ************************************************************************** */
 
@@ -836,6 +836,50 @@ TEST_F (DealDamageTests, MixedAttacks)
   EXPECT_LE (hpFar, 9);
 }
 
+TEST_F (DealDamageTests, FriendlyAttack)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  const auto idAttacker = c->GetId ();
+  c->SetPosition (NOT_SAFE);
+  auto* attack = &CombatTests::AddFriendlyAttack (*c);
+  attack->set_area (5);
+  attack->mutable_effects ()->mutable_shield_regen ()->set_percent (50);
+  AddAttack (*c, 10, 1, 1);
+  AddAreaAttack (*c, 10, 1, 1);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", Faction::RED);
+  const auto idAffected = c->GetId ();
+  c->SetPosition (NOT_SAFE_FURTHER);
+  NoAttacks (*c);
+  c.reset ();
+
+  c = characters.CreateNew ("enemy", Faction::GREEN);
+  const auto idEnemy = c->GetId ();
+  c->SetPosition (NOT_SAFE_FURTHER);
+  NoAttacks (*c);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", Faction::RED);
+  const auto idSafe = c->GetId ();
+  c->SetPosition (SAFE);
+  NoAttacks (*c);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", Faction::RED);
+  const auto idOutOfRange = c->GetId ();
+  c->SetPosition (NOT_SAFE + HexCoord (100, 100));
+  NoAttacks (*c);
+  c.reset ();
+
+  FindTargetsAndDamage ();
+  EXPECT_EQ (characters.GetById (idAffected)
+                ->GetEffects ().shield_regen ().percent (),
+             50);
+  for (const auto id : {idAttacker, idEnemy, idSafe, idOutOfRange})
+    EXPECT_FALSE (characters.GetById (id)->GetEffects ().has_shield_regen ());
+}
+
 TEST_F (DealDamageTests, ReceivedDamageModifier)
 {
   auto c = characters.CreateNew ("domob", Faction::RED);
@@ -1106,6 +1150,7 @@ TEST_F (DealDamageTests, Effects)
       attack.set_range (5);
       attack.mutable_effects ()->mutable_speed ()->set_percent (-10);
       attack.mutable_effects ()->mutable_range ()->set_percent (-15);
+      attack.mutable_effects ()->mutable_shield_regen ()->set_percent (50);
     }
   c.reset ();
 
@@ -1122,6 +1167,7 @@ TEST_F (DealDamageTests, Effects)
   c = characters.GetById (idTarget);
   EXPECT_EQ (c->GetEffects ().speed ().percent (), -20);
   EXPECT_EQ (c->GetEffects ().range ().percent (), -30);
+  EXPECT_EQ (c->GetEffects ().shield_regen ().percent (), 100);
 }
 
 TEST_F (DealDamageTests, EffectsAndDamageApplied)

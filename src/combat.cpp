@@ -589,21 +589,35 @@ DamageProcessor::ApplyEffects (const proto::Attack& attack,
     *targetEffects.mutable_speed () += attackEffects.speed ();
   if (attackEffects.has_range ())
     *targetEffects.mutable_range () += attackEffects.range ();
+  if (attackEffects.has_shield_regen ())
+    *targetEffects.mutable_shield_regen () += attackEffects.shield_regen ();
 }
 
 void
 DamageProcessor::DealDamage (FighterTable::Handle f, const bool forGainHp,
                              std::set<TargetKey>& newDead)
 {
-  const auto& cd = f->GetCombatData ();
   const auto& pos = f->GetCombatPosition ();
   CHECK (!ctx.Map ().SafeZones ().IsNoCombat (pos));
 
-  CHECK (f->HasTarget ());
-  FighterTable::Handle tf = fighters.GetForTarget (f->GetTarget ());
-  const auto targetPos = tf->GetCombatPosition ();
-  const auto targetDist = HexCoord::DistanceL1 (pos, targetPos);
-  tf.reset ();
+  const auto& cd = f->GetCombatData ();
+  const TargetKey myId(f->GetIdAsTarget ());
+
+  /* If the fighter has friendly attacks and friendlies in range, it may
+     happen that we get here without it having a proper target.  This needs
+     to be handled fine.  (In this situation, only friendly attacks will need
+     to be processed in the end, which only have area and no range.)  */
+  const bool hasTarget = f->HasTarget ();
+  HexCoord targetPos;
+  HexCoord::IntT targetDist = std::numeric_limits<HexCoord::IntT>::max ();
+  if (hasTarget)
+    {
+      FighterTable::Handle tf = fighters.GetForTarget (f->GetTarget ());
+      targetPos = tf->GetCombatPosition ();
+      targetDist = HexCoord::DistanceL1 (pos, targetPos);
+    }
+  else
+    CHECK (f->HasFriendlyTargets ());
 
   const auto& mod = modifiers.at (f->GetIdAsTarget ());
 
@@ -613,10 +627,15 @@ DamageProcessor::DealDamage (FighterTable::Handle f, const bool forGainHp,
         continue;
 
       /* If this is not a centred-on-attacker AoE attack, check that
-         the target is actually within range of this attack.  */
-      if (attack.has_range ()
-            && targetDist > static_cast<int> (mod.range (attack.range ())))
-        continue;
+         the target is actually within range of this attack (and that
+         we actually have a target).  */
+      if (attack.has_range ())
+        {
+          if (!hasTarget)
+            continue;
+          if (targetDist > static_cast<int> (mod.range (attack.range ())))
+            continue;
+        }
 
       unsigned dmg = 0;
       if (attack.has_damage ())
@@ -626,12 +645,19 @@ DamageProcessor::DealDamage (FighterTable::Handle f, const bool forGainHp,
         {
           HexCoord centre;
           if (attack.has_range ())
-            centre = targetPos;
+            {
+              CHECK (hasTarget);
+              centre = targetPos;
+            }
           else
             centre = pos;
 
+          const bool processFriendlies = attack.friendlies ();
+          const bool processEnemies = !processFriendlies;
+
           targets.ProcessL1Targets (centre, mod.range (attack.area ()),
-                                    f->GetFaction (), true, false,
+                                    f->GetFaction (),
+                                    processEnemies, processFriendlies,
             [&] (const HexCoord& c, const proto::TargetId& id)
             {
               auto t = fighters.GetForTarget (id);
@@ -642,12 +668,16 @@ DamageProcessor::DealDamage (FighterTable::Handle f, const bool forGainHp,
                       << t->GetIdAsTarget ().DebugString ();
                   return;
                 }
+              if (myId == TargetKey (id))
+                return;
               ApplyDamage (dmg, *f, attack, *t, newDead);
               ApplyEffects (attack, *t);
             });
         }
       else
         {
+          CHECK (hasTarget);
+          CHECK (!attack.friendlies ());
           auto t = fighters.GetForTarget (f->GetTarget ());
           ApplyDamage (dmg, *f, attack, *t, newDead);
           ApplyEffects (attack, *t);
