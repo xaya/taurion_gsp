@@ -246,7 +246,7 @@ public:
   Database::Result<BuildingResult> QueryAll ();
 
   /**
-   * Queries for all buildings with attacks.
+   * Queries for all buildings with attacks (including friendly ones).
    */
   Database::Result<BuildingResult> QueryWithAttacks ();
 
@@ -257,7 +257,8 @@ public:
 
   /**
    * Queries for all buildings that have a combat target and thus need
-   * to be processed for damage.
+   * to be processed for damage.  This includes buildings that only have
+   * a friendly target in range.
    */
   Database::Result<BuildingResult> QueryWithTarget ();
 

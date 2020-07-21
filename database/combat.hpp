@@ -38,8 +38,10 @@ struct ResultWithCombat : public Database::ResultType
   RESULT_COLUMN (pxd::proto::HP, hp, 53);
   RESULT_COLUMN (pxd::proto::RegenData, regendata, 54);
   RESULT_COLUMN (pxd::proto::TargetId, target, 55);
-  RESULT_COLUMN (int64_t, attackrange, 56);
-  RESULT_COLUMN (bool, canregen, 57);
+  RESULT_COLUMN (bool, friendlytargets, 56);
+  RESULT_COLUMN (int64_t, attackrange, 57);
+  RESULT_COLUMN (int64_t, friendlyrange, 58);
+  RESULT_COLUMN (bool, canregen, 59);
 };
 
 /**
@@ -80,16 +82,32 @@ private:
   LazyProto<proto::TargetId> target;
 
   /**
-   * The longest attack or zero if there are none.  This field is loaded
+   * Whether or not friendly targets are in range.  This is set accordingly
+   * by the target finding phase, and will be used to determine whether or
+   * not we need to process them.
+   */
+  bool friendlyTargets;
+
+  /**
+   * The longest attack or NO_ATTACKS if there are none.  This field is loaded
    * from the database but never updated.
    */
   HexCoord::IntT oldAttackRange;
+
+  /**
+   * The longest friendly attack range or NO_ATTACKS if there is none.  This is
+   * loaded from the database but never updated.
+   */
+  HexCoord::IntT oldFriendlyRange;
 
   /**
    * Stores the canregen flag from the database.  We only update it if
    * the RegenData or HP have been modified.
    */
   bool oldCanRegen;
+
+  /** Set to true if non-proto fields have been changed.  */
+  bool isDirty;
 
   /**
    * Computes (from HP and RegenData protos) whether or not an entity
@@ -99,10 +117,13 @@ private:
                                const proto::RegenData& regen);
 
   /**
-   * Computes the attack range of a fighter with the given combat data.
+   * Computes the attack range of a fighter with the given combat data,
+   * or the range of the longest friendly attack.
+   *
    * Returns NO_ATTACKS if there are no attacks at all.
    */
-  static HexCoord::IntT FindAttackRange (const proto::CombatData& cd);
+  static HexCoord::IntT FindAttackRange (const proto::CombatData& cd,
+                                         bool friendly);
 
   friend class ComputeCanRegenTests;
   friend class FindAttackRangeTests;
@@ -137,7 +158,7 @@ protected:
   bool
   IsDirtyFields () const
   {
-    return hp.IsDirty ();
+    return isDirty || hp.IsDirty ();
   }
 
   /**
@@ -146,7 +167,8 @@ protected:
    */
   void
   BindFullFields (Database::Statement& stmt, unsigned indRegenData,
-                  unsigned indTarget, unsigned indAttackRange) const;
+                  unsigned indTarget, unsigned indAttackRange,
+                  unsigned indFriendlyRange) const;
 
   /**
    * Binds statement parameters for updating the small / fast changing
@@ -154,10 +176,10 @@ protected:
    */
   void
   BindFields (Database::Statement& stmt, unsigned indHp,
-              unsigned indCanRegen) const;
+              unsigned indFriendlyTargets, unsigned indCanRegen) const;
 
   /**
-   * Validates the character state for consistency.  CHECK-fails if there
+   * Validates the state for consistency.  CHECK-fails if there
    * is any mismatch in the fields.
    */
   virtual void Validate () const;
@@ -214,6 +236,20 @@ public:
   void ClearTarget ();
   void SetTarget (const proto::TargetId& t);
 
+  bool
+  HasFriendlyTargets () const
+  {
+    return friendlyTargets;
+  }
+
+  void
+  SetFriendlyTargets (const bool val)
+  {
+    if (friendlyTargets != val)
+      isDirty = true;
+    friendlyTargets = val;
+  }
+
   /**
    * Returns the entity's attack range or NO_ATTACKS if there are no attacks.
    * Note that this method must only be called if the instance has been
@@ -224,8 +260,11 @@ public:
    * The attack range returned is just based on the base stats of the entity.
    * It does not take combat effects, low-HP-boosts or things like that
    * into account.
+   *
+   * If friendly is true, it returns the longest attack affecting friendlies
+   * instead of the normal attack range.
    */
-  HexCoord::IntT GetAttackRange () const;
+  HexCoord::IntT GetAttackRange (bool friendly) const;
 
   /**
    * Returns this entity's target ID as a proto.

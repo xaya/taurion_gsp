@@ -69,6 +69,11 @@ CREATE TABLE IF NOT EXISTS `characters` (
   -- as we later on only process attacks of characters with a selected target.
   `target` BLOB NULL,
 
+  -- Whether or not friendlies are in range of a friendly attack, which
+  -- indicates that this character needs to be processed for "dealing damage"
+  -- next time a block is processed.
+  `friendlytargets` INTEGER NOT NULL,
+
   -- Any combat effects that apply to the character (or NULL if none).
   -- This is a serialised CombatEffects protocol buffer.  The effects
   -- are set by the combat damaging phase, and then in effect until
@@ -94,6 +99,10 @@ CREATE TABLE IF NOT EXISTS `characters` (
   -- full proto) every time.
   `attackrange` INTEGER NULL,
 
+  -- The range of the longest "attack" affecting friendlies, or NULL if there
+  -- is no such attack.
+  `friendlyrange` INTEGER NULL,
+
   -- Flag indicating whether a character may need HP regeneration.  This is
   -- set here (based on the RegenData and current HP) so that we can only
   -- retrieve and process characters that need regeneration.
@@ -117,8 +126,12 @@ CREATE INDEX IF NOT EXISTS `characters_ismoving` ON `characters` (`ismoving`);
 CREATE INDEX IF NOT EXISTS `characters_ismining` ON `characters` (`ismining`);
 CREATE INDEX IF NOT EXISTS `characters_attackrange`
   ON `characters` (`attackrange`);
+CREATE INDEX IF NOT EXISTS `characters_friendlyrange`
+  ON `characters` (`friendlyrange`);
 CREATE INDEX IF NOT EXISTS `characters_canregen` ON `characters` (`canregen`);
 CREATE INDEX IF NOT EXISTS `characters_target` ON `characters` (`target`);
+CREATE INDEX IF NOT EXISTS `characters_friendlytargets`
+  ON `characters` (`friendlytargets`);
 CREATE INDEX IF NOT EXISTS `characters_effects` ON `characters` (`effects`);
 
 -- =============================================================================
@@ -164,13 +177,17 @@ CREATE TABLE IF NOT EXISTS `buildings` (
   -- The attacked target (if any), as a serialised TargetId proto.
   `target` BLOB NULL,
 
+  -- Whether or not friendlies are in range and processing needs to happen.
+  `friendlytargets` INTEGER NOT NULL,
+
   -- Any combat effects that apply to the building (or NULL if none).
   -- This is a serialised CombatEffects protocol buffer.
   `effects` BLOB NULL,
 
   -- The range of the longest attack this building has or NULL if there
-  -- is no attack at all.
+  -- is no attack at all, and the longest friendly affecting "attack".
   `attackrange` INTEGER NULL,
+  `friendlyrange` INTEGER NULL,
 
   -- Flag indicating whether a building may need HP regeneration.
   `canregen` INTEGER NULL NOT NULL,
@@ -183,8 +200,12 @@ CREATE TABLE IF NOT EXISTS `buildings` (
 CREATE INDEX IF NOT EXISTS `buildings_pos` ON `buildings` (`x`, `y`);
 CREATE INDEX IF NOT EXISTS `buildings_attackrange`
   ON `buildings` (`attackrange`);
+CREATE INDEX IF NOT EXISTS `buildings_friendlyrange`
+  ON `buildings` (`friendlyrange`);
 CREATE INDEX IF NOT EXISTS `buildings_canregen` ON `buildings` (`canregen`);
 CREATE INDEX IF NOT EXISTS `buildings_target` ON `buildings` (`target`);
+CREATE INDEX IF NOT EXISTS `buildings_friendlytargets`
+  ON `buildings` (`friendlytargets`);
 CREATE INDEX IF NOT EXISTS `buildings_effects` ON `buildings` (`effects`);
 
 -- =============================================================================

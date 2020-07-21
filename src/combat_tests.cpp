@@ -51,11 +51,11 @@ using testing::ElementsAreArray;
 using testing::IsEmpty;
 
 /** A coordinate that is a safe zone.  */
-const HexCoord SAFE(2'042, 10);
+constexpr HexCoord SAFE(2'042, 10);
 /** A coordinate that is not safe (but next to the safe one).  */
-const HexCoord NOT_SAFE(2'042, 11);
+constexpr HexCoord NOT_SAFE(2'042, 11);
 /** A coordinate that is not safe and a bit further away.  */
-const HexCoord NOT_SAFE_FURTHER(2'042, 15);
+constexpr HexCoord NOT_SAFE_FURTHER(2'042, 15);
 
 /* ************************************************************************** */
 
@@ -93,6 +93,19 @@ protected:
     AddAttack (T& h)
   {
     return *h.MutableProto ().mutable_combat_data ()->add_attacks ();
+  }
+
+  /**
+   * Adds a friendly attack without any more other stats to the combat entity
+   * and returns a reference to it for further customisation.
+   */
+  template <typename T>
+    static proto::Attack&
+    AddFriendlyAttack (T& h)
+  {
+    auto* res = h.MutableProto ().mutable_combat_data ()->add_attacks ();
+    res->set_friendlies (true);
+    return *res;
   }
 
   /**
@@ -246,6 +259,42 @@ TEST_F (TargetSelectionTests, ZeroRange)
   EXPECT_EQ (t.id (), idTarget);
 }
 
+TEST_F (TargetSelectionTests, FrienlyAttacks)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  const auto idNoAttacks = c->GetId ();
+  AddAttack (*c).set_area (10);
+  // No friendly attack.
+  c.reset ();
+
+  c = characters.CreateNew ("domob", Faction::RED);
+  const auto idWithAttacks = c->GetId ();
+  c->SetPosition (HexCoord (1, 0));
+  AddFriendlyAttack (*c).set_area (10);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", Faction::RED);
+  const auto idOutOfRange = c->GetId ();
+  c->SetPosition (HexCoord (100, 0));
+  AddAttack (*c).set_range (10);
+  AddFriendlyAttack (*c).set_area (10);
+  c.reset ();
+
+  c = characters.CreateNew ("andy", Faction::GREEN);
+  c->SetPosition (HexCoord (100, 0));
+  NoAttacks (*c);
+  c.reset ();
+
+  FindCombatTargets (db, rnd, ctx);
+
+  EXPECT_FALSE (characters.GetById (idNoAttacks)->HasFriendlyTargets ());
+  EXPECT_TRUE (characters.GetById (idWithAttacks)->HasFriendlyTargets ());
+
+  c = characters.GetById (idOutOfRange);
+  EXPECT_FALSE (c->HasFriendlyTargets ());
+  EXPECT_TRUE (c->HasTarget ());
+}
+
 TEST_F (TargetSelectionTests, WithBuildings)
 {
   auto c = characters.CreateNew ("domob", Faction::RED);
@@ -320,13 +369,21 @@ TEST_F (TargetSelectionTests, SafeZone)
   proto::TargetId t;
   t.set_id (42);
   c->SetTarget (t);
+  c->SetFriendlyTargets (true);
   AddAttack (*c).set_range (10);
+  AddFriendlyAttack (*c).set_area (10);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", Faction::GREEN);
+  c->SetPosition (SAFE);
+  NoAttacks (*c);
   c.reset ();
 
   c = characters.CreateNew ("domob", Faction::GREEN);
   const auto idAttacker = c->GetId ();
   c->SetPosition (NOT_SAFE);
   AddAttack (*c).set_range (10);
+  AddFriendlyAttack (*c).set_area (10);
   c.reset ();
 
   /* This one is not in a safe zone and thus a valid target for idAttacker.
@@ -340,10 +397,14 @@ TEST_F (TargetSelectionTests, SafeZone)
 
   FindCombatTargets (db, rnd, ctx);
 
-  EXPECT_FALSE (characters.GetById (idSafe)->HasTarget ());
+  c = characters.GetById (idSafe);
+  EXPECT_FALSE (c->HasTarget ());
+  EXPECT_FALSE (c->HasFriendlyTargets ());
+
   c = characters.GetById (idAttacker);
   ASSERT_TRUE (c->HasTarget ());
   EXPECT_EQ (c->GetTarget ().id (), idTarget);
+  EXPECT_FALSE (c->HasFriendlyTargets ());
 }
 
 TEST_F (TargetSelectionTests, MultipleAttacks)
@@ -490,6 +551,84 @@ TEST_F (TargetSelectionTests, CombatEffect)
   FindCombatTargets (db, rnd, ctx);
   EXPECT_FALSE (characters.GetById (id1)->HasTarget ());
   EXPECT_EQ (characters.GetById (id2)->GetTarget ().id (), id1);
+}
+
+TEST_F (TargetSelectionTests, NoRandomNumbersRequested)
+{
+  /* Target finding for none of the following situations should request
+     any random numbers.  */
+
+  auto c = characters.CreateNew ("no attacks 1", Faction::RED);
+  c->SetPosition (HexCoord (0, 0));
+  NoAttacks (*c);
+  c.reset ();
+
+  c = characters.CreateNew ("no attacks 2", Faction::GREEN);
+  c->SetPosition (HexCoord (0, 0));
+  NoAttacks (*c);
+  c.reset ();
+
+  c = characters.CreateNew ("friendly attacks", Faction::GREEN);
+  c->SetPosition (HexCoord (0, 0));
+  AddFriendlyAttack (*c).set_area (10);
+  c.reset ();
+
+  c = characters.CreateNew ("in building", Faction::RED);
+  c->SetBuildingId (100);
+  AddAttack (*c).set_range (10);
+  c.reset ();
+
+  c = characters.CreateNew ("in building 2", Faction::GREEN);
+  c->SetBuildingId (100);
+  AddAttack (*c).set_range (10);
+  c.reset ();
+
+  c = characters.CreateNew ("safe zone", Faction::RED);
+  c->SetPosition (SAFE);
+  AddAttack (*c).set_range (10);
+  c.reset ();
+
+  c = characters.CreateNew ("no enemy in range 1", Faction::GREEN);
+  c->SetPosition (NOT_SAFE);
+  AddAttack (*c).set_range (10);
+  c.reset ();
+
+  c = characters.CreateNew ("no enemy in range 2", Faction::GREEN);
+  c->SetPosition (NOT_SAFE);
+  AddAttack (*c).set_range (10);
+  c.reset ();
+
+  auto branched = rnd.BranchOff ("branch");
+  FindCombatTargets (db, branched, ctx);
+
+  auto original = rnd.BranchOff ("branch");
+  EXPECT_EQ (branched.Next<uint64_t> (), original.Next<uint64_t> ());
+}
+
+TEST_F (TargetSelectionTests, RandomNumbersRequested)
+{
+  /* All of the following characters will look up a random number
+     during target finding.  Note that there is a very small chance that
+     the NextInt call will actually retrieve more than one uint64_t from
+     the Random instance, but we ignore that as it is negligible.  */
+
+  auto c = characters.CreateNew ("only one target", Faction::RED);
+  c->SetPosition (HexCoord (0, 0));
+  AddAttack (*c).set_range (10);
+  c.reset ();
+
+  c = characters.CreateNew ("only area attack", Faction::GREEN);
+  c->SetPosition (HexCoord (0, 0));
+  AddAttack (*c).set_area (10);
+  c.reset ();
+
+  auto branched = rnd.BranchOff ("branch");
+  FindCombatTargets (db, branched, ctx);
+
+  auto original = rnd.BranchOff ("branch");
+  for (unsigned i = 0; i < 2; ++i)
+    original.Next<uint64_t> ();
+  EXPECT_EQ (branched.Next<uint64_t> (), original.Next<uint64_t> ());
 }
 
 /* ************************************************************************** */
@@ -695,6 +834,50 @@ TEST_F (DealDamageTests, MixedAttacks)
   EXPECT_LE (hpNear, 8);
   EXPECT_GE (hpFar, 8);
   EXPECT_LE (hpFar, 9);
+}
+
+TEST_F (DealDamageTests, FriendlyAttack)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  const auto idAttacker = c->GetId ();
+  c->SetPosition (NOT_SAFE);
+  auto* attack = &CombatTests::AddFriendlyAttack (*c);
+  attack->set_area (5);
+  attack->mutable_effects ()->mutable_shield_regen ()->set_percent (50);
+  AddAttack (*c, 10, 1, 1);
+  AddAreaAttack (*c, 10, 1, 1);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", Faction::RED);
+  const auto idAffected = c->GetId ();
+  c->SetPosition (NOT_SAFE_FURTHER);
+  NoAttacks (*c);
+  c.reset ();
+
+  c = characters.CreateNew ("enemy", Faction::GREEN);
+  const auto idEnemy = c->GetId ();
+  c->SetPosition (NOT_SAFE_FURTHER);
+  NoAttacks (*c);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", Faction::RED);
+  const auto idSafe = c->GetId ();
+  c->SetPosition (SAFE);
+  NoAttacks (*c);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", Faction::RED);
+  const auto idOutOfRange = c->GetId ();
+  c->SetPosition (NOT_SAFE + HexCoord (100, 100));
+  NoAttacks (*c);
+  c.reset ();
+
+  FindTargetsAndDamage ();
+  EXPECT_EQ (characters.GetById (idAffected)
+                ->GetEffects ().shield_regen ().percent (),
+             50);
+  for (const auto id : {idAttacker, idEnemy, idSafe, idOutOfRange})
+    EXPECT_FALSE (characters.GetById (id)->GetEffects ().has_shield_regen ());
 }
 
 TEST_F (DealDamageTests, ReceivedDamageModifier)
@@ -967,6 +1150,7 @@ TEST_F (DealDamageTests, Effects)
       attack.set_range (5);
       attack.mutable_effects ()->mutable_speed ()->set_percent (-10);
       attack.mutable_effects ()->mutable_range ()->set_percent (-15);
+      attack.mutable_effects ()->mutable_shield_regen ()->set_percent (50);
     }
   c.reset ();
 
@@ -983,6 +1167,7 @@ TEST_F (DealDamageTests, Effects)
   c = characters.GetById (idTarget);
   EXPECT_EQ (c->GetEffects ().speed ().percent (), -20);
   EXPECT_EQ (c->GetEffects ().range ().percent (), -30);
+  EXPECT_EQ (c->GetEffects ().shield_regen ().percent (), 100);
 }
 
 TEST_F (DealDamageTests, EffectsAndDamageApplied)
@@ -2185,6 +2370,23 @@ TEST_F (RegenerateHpTests, InsideBuilding)
 
   c = characters.GetById (id);
   EXPECT_EQ (c->GetHP ().shield (), 11);
+}
+
+TEST_F (RegenerateHpTests, RateModifierEffect)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  const auto id = c->GetId ();
+  c->MutableHP ().set_shield (10);
+  auto* regen = &c->MutableRegenData ();
+  regen->mutable_max_hp ()->set_shield (100);
+  regen->mutable_regeneration_mhp ()->set_shield (10'000);
+  c->MutableEffects ().mutable_shield_regen ()->set_percent (50);
+  c.reset ();
+
+  RegenerateHP (db);
+
+  c = characters.GetById (id);
+  EXPECT_EQ (c->GetHP ().shield (), 10 + 15);
 }
 
 /* ************************************************************************** */

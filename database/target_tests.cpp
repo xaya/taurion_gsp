@@ -37,12 +37,14 @@ namespace
 class TargetFinderTests : public DBTestWithSchema
 {
 
-protected:
-
-  BuildingsTable buildings;
-  CharacterTable characters;
+private:
 
   TargetFinder finder;
+
+  /** Callback that inserts targets into found.  */
+  TargetFinder::ProcessingFcn cb;
+
+protected:
 
   /**
    * Vector into which found targets will be inserted by the constructed
@@ -50,11 +52,11 @@ protected:
    */
   std::vector<std::pair<HexCoord, proto::TargetId>> found;
 
-  /** Callback that inserts targets into found.  */
-  TargetFinder::ProcessingFcn cb;
+  BuildingsTable buildings;
+  CharacterTable characters;
 
   TargetFinderTests ()
-    : buildings(db), characters(db), finder(db)
+    : finder(db), buildings(db), characters(db)
   {
     cb = [this] (const HexCoord& c, const proto::TargetId& t)
       {
@@ -88,15 +90,46 @@ protected:
     return h->GetId ();
   }
 
+  /**
+   * Calls ProcessL1Targets with our callback and for a red "attacker",
+   * looking only for enemies.
+   */
+  void
+  ProcessEnemies (const HexCoord& centre, const HexCoord::IntT l1range)
+  {
+    finder.ProcessL1Targets (centre, l1range, Faction::RED, true, false, cb);
+  }
+
+  /**
+   * Calls ProcessL1Targets with our callback and for a red "attacker",
+   * looking only for friendlies.
+   */
+  void
+  ProcessFriendlies (const HexCoord& centre, const HexCoord::IntT l1range)
+  {
+    finder.ProcessL1Targets (centre, l1range, Faction::RED, false, true, cb);
+  }
+
+  /**
+   * Calls ProcessL1Targets with our callback and for a red "attacker",
+   * looking for anyone (friendly and enemies).
+   */
+  void
+  ProcessEveryone (const HexCoord& centre, const HexCoord::IntT l1range)
+  {
+    finder.ProcessL1Targets (centre, l1range, Faction::RED, true, true, cb);
+  }
+
 };
 
 TEST_F (TargetFinderTests, CharacterFactions)
 {
+  InsertCharacter (HexCoord (0, 0), Faction::RED);
   const auto idEnemy1 = InsertCharacter (HexCoord (1, 1), Faction::GREEN);
   InsertCharacter (HexCoord (-1, 1), Faction::RED);
   const auto idEnemy2 = InsertCharacter (HexCoord (0, 0), Faction::BLUE);
 
-  finder.ProcessL1Targets (HexCoord (0, 0), 2, Faction::RED, cb);
+  ProcessEnemies (HexCoord (0, 0), 2);
 
   ASSERT_EQ (found.size (), 2);
 
@@ -112,7 +145,7 @@ TEST_F (TargetFinderTests, CharacterFactions)
 TEST_F (TargetFinderTests, InBuilding)
 {
   characters.CreateNew ("domob", Faction::GREEN)->SetBuildingId (100);
-  finder.ProcessL1Targets (HexCoord (0, 0), 1, Faction::RED, cb);
+  ProcessEnemies (HexCoord (0, 0), 1);
   EXPECT_TRUE (found.empty ());
 }
 
@@ -134,7 +167,7 @@ TEST_F (TargetFinderTests, CharacterRange)
           expected.emplace_back (id, pos);
       }
 
-  finder.ProcessL1Targets (centre, range, Faction::RED, cb);
+  ProcessEnemies (centre, range);
 
   ASSERT_EQ (found.size (), expected.size ());
   for (unsigned i = 0; i < expected.size (); ++i)
@@ -154,7 +187,7 @@ TEST_F (TargetFinderTests, BuildingFactions)
   const auto idEnemy1 = InsertBuilding (pos, Faction::GREEN);
   const auto idEnemy2 = InsertBuilding (pos, Faction::BLUE);
 
-  finder.ProcessL1Targets (pos, 1, Faction::RED, cb);
+  ProcessEnemies (pos, 1);
 
   ASSERT_EQ (found.size (), 2);
 
@@ -176,7 +209,7 @@ TEST_F (TargetFinderTests, BuildingsAndCharacters)
   const auto building2 = InsertBuilding (pos, Faction::GREEN);
   const auto char2 = InsertCharacter (pos, Faction::BLUE);
 
-  finder.ProcessL1Targets (pos, 1, Faction::RED, cb);
+  ProcessEnemies (pos, 1);
 
   ASSERT_EQ (found.size (), 4);
 
@@ -189,6 +222,51 @@ TEST_F (TargetFinderTests, BuildingsAndCharacters)
   EXPECT_EQ (found[2].second.id (), char1);
   EXPECT_EQ (found[3].second.type (), proto::TargetId::TYPE_CHARACTER);
   EXPECT_EQ (found[3].second.id (), char2);
+}
+
+TEST_F (TargetFinderTests, Friendlies)
+{
+  const auto idCharacter = InsertCharacter (HexCoord (0, 0), Faction::RED);
+  InsertCharacter (HexCoord (0, 0), Faction::GREEN);
+
+  const auto idBuilding = InsertBuilding (HexCoord (0, 0), Faction::RED);
+  InsertBuilding (HexCoord (0, 0), Faction::GREEN);
+  InsertBuilding (HexCoord (0, 0), Faction::ANCIENT);
+
+  ProcessFriendlies (HexCoord (0, 0), 2);
+
+  ASSERT_EQ (found.size (), 2);
+
+  EXPECT_EQ (found[0].second.type (), proto::TargetId::TYPE_BUILDING);
+  EXPECT_EQ (found[0].second.id (), idBuilding);
+
+  EXPECT_EQ (found[1].second.type (), proto::TargetId::TYPE_CHARACTER);
+  EXPECT_EQ (found[1].second.id (), idCharacter);
+}
+
+TEST_F (TargetFinderTests, FriendlyAndEnemies)
+{
+  const auto idCharacter1 = InsertCharacter (HexCoord (0, 0), Faction::RED);
+  const auto idCharacter2 = InsertCharacter (HexCoord (0, 0), Faction::GREEN);
+
+  const auto idBuilding1 = InsertBuilding (HexCoord (0, 0), Faction::RED);
+  const auto idBuilding2 = InsertBuilding (HexCoord (0, 0), Faction::GREEN);
+  InsertBuilding (HexCoord (0, 0), Faction::ANCIENT);
+
+  /* This should return all except for the ancient (neutral) building.  */
+  ProcessEveryone (HexCoord (0, 0), 2);
+
+  ASSERT_EQ (found.size (), 4);
+
+  EXPECT_EQ (found[0].second.type (), proto::TargetId::TYPE_BUILDING);
+  EXPECT_EQ (found[0].second.id (), idBuilding1);
+  EXPECT_EQ (found[1].second.type (), proto::TargetId::TYPE_BUILDING);
+  EXPECT_EQ (found[1].second.id (), idBuilding2);
+
+  EXPECT_EQ (found[2].second.type (), proto::TargetId::TYPE_CHARACTER);
+  EXPECT_EQ (found[2].second.id (), idCharacter1);
+  EXPECT_EQ (found[3].second.type (), proto::TargetId::TYPE_CHARACTER);
+  EXPECT_EQ (found[3].second.id (), idCharacter2);
 }
 
 } // anonymous namespace

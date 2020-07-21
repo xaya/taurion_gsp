@@ -74,7 +74,9 @@ public:
 
   /**
    * Retrieves all fighters from the database that have an attack and runs
-   * the callback on each one.
+   * the callback on each one.  This includes fighters with only friendly
+   * attacks, and hence essentially means "process everyone that needs it
+   * for target finding".
    */
   void ProcessWithAttacks (const Callback& cb);
 
@@ -85,7 +87,8 @@ public:
 
   /**
    * Retrieves and processes all fighers that have a target, i.e. for whom
-   * we need to deal damage.
+   * we need to deal damage.  This includes fighters that have only
+   * friendlies in range but a friendly attack.
    */
   void ProcessWithTarget (const Callback& cb);
 

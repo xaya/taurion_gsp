@@ -64,6 +64,9 @@ message CombatEffects
   /** Modification to the range.  */
   optional StatModifier range = 2;
 
+  /** Modification to the shield regeneration rate.  */
+  optional StatModifier shield_regen = 3;
+
 }
 
 /**
@@ -127,6 +130,12 @@ message Attack
    * added to the armour (if not full).
    */
   optional bool gain_hp = 5;
+
+  /**
+   * If true, then this attack affects friendlies instead of enemies.
+   * This is used for positive effects, like improved shield regeneration.
+   */
+  optional bool friendlies = 6;
 
 }
 

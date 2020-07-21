@@ -96,6 +96,13 @@ TEST_F (FighterTableTests, ProcessWithAttacks)
   b->MutableProto ().mutable_combat_data ()->add_attacks ()->set_range (5);
   b.reset ();
 
+  c = characters.CreateNew ("daniel", Faction::RED);
+  const auto idFriendly = c->GetId ();
+  auto* att = c->MutableProto ().mutable_combat_data ()->add_attacks ();
+  att->set_area (1);
+  att->set_friendlies (true);
+  c.reset ();
+
   unsigned cnt = 0;
   tbl.ProcessWithAttacks ([&] (FighterTable::Handle f)
     {
@@ -114,12 +121,18 @@ TEST_F (FighterTableTests, ProcessWithAttacks)
           EXPECT_EQ (f->GetIdAsTarget ().id (), idChar);
           break;
 
+        case 3:
+          EXPECT_EQ (f->GetIdAsTarget ().type (),
+                     proto::TargetId::TYPE_CHARACTER);
+          EXPECT_EQ (f->GetIdAsTarget ().id (), idFriendly);
+          break;
+
         default:
-          FAIL () << "Too many regen-able fighters returned";
+          FAIL () << "Too many attack-able fighters returned";
           break;
         }
     });
-  EXPECT_EQ (cnt, 2);
+  EXPECT_EQ (cnt, 3);
 }
 
 TEST_F (FighterTableTests, ProcessForRegen)
@@ -187,6 +200,11 @@ TEST_F (FighterTableTests, ProcessWithTarget)
   b->SetTarget (t);
   b.reset ();
 
+  c = characters.CreateNew ("daniel", Faction::RED);
+  const auto idFriendly = c->GetId ();
+  c->SetFriendlyTargets (true);
+  c.reset ();
+
   unsigned cnt = 0;
   tbl.ProcessWithTarget ([&] (FighterTable::Handle f)
     {
@@ -205,12 +223,18 @@ TEST_F (FighterTableTests, ProcessWithTarget)
           EXPECT_EQ (f->GetIdAsTarget ().id (), idChar);
           break;
 
+        case 3:
+          EXPECT_EQ (f->GetIdAsTarget ().type (),
+                     proto::TargetId::TYPE_CHARACTER);
+          EXPECT_EQ (f->GetIdAsTarget ().id (), idFriendly);
+          break;
+
         default:
           FAIL () << "Too many targets returned";
           break;
         }
     });
-  EXPECT_EQ (cnt, 2);
+  EXPECT_EQ (cnt, 3);
 }
 
 TEST_F (FighterTableTests, Effects)

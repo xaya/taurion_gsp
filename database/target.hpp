@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -58,11 +58,13 @@ public:
   void operator= (const TargetFinder&) = delete;
 
   /**
-   * Finds all enemy targets in the given L1 range and executes the
-   * callback on each of the resulting Target instances.
+   * Finds all targets in the given L1 range and executes the
+   * callback on each of the resulting Target instances.  This function can
+   * be used to query for enemies, friendlies or all.
    */
   void ProcessL1Targets (const HexCoord& centre, HexCoord::IntT l1range,
-                         Faction action, const ProcessingFcn& cb);
+                         Faction faction, bool enemies, bool friendlies,
+                         const ProcessingFcn& cb);
 
 };
 

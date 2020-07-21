@@ -42,7 +42,7 @@ namespace
  * Chance (in percent) that an inventory position inside a destroyed building
  * will drop on the ground instead of being destroyed.
  */
-constexpr const unsigned BUILDING_INVENTORY_DROP_PERCENT = 30;
+constexpr unsigned BUILDING_INVENTORY_DROP_PERCENT = 30;
 
 /**
  * Modifications to combat-related stats.
@@ -115,41 +115,29 @@ namespace
 {
 
 /**
- * Runs target selection for one fighter entity.
+ * Runs target finding for the normal attacks, setting (or clearing)
+ * the target field.
  */
 void
-SelectTarget (TargetFinder& targets, xaya::Random& rnd, const Context& ctx,
-              FighterTable::Handle f)
+SelectNormalTarget (TargetFinder& targets, xaya::Random& rnd,
+                    const Context& ctx, const CombatModifier& mod,
+                    CombatEntity& f)
 {
-  const HexCoord pos = f->GetCombatPosition ();
-  if (ctx.Map ().SafeZones ().IsNoCombat (pos))
-    {
-      VLOG (1)
-          << "Not selecting targets for fighter in no-combat zone:\n"
-          << f->GetIdAsTarget ().DebugString ();
-      f->ClearTarget ();
-      return;
-    }
+  const HexCoord pos = f.GetCombatPosition ();
 
-  HexCoord::IntT range = f->GetAttackRange ();
+  HexCoord::IntT range = f.GetAttackRange (false);
   if (range == CombatEntity::NO_ATTACKS)
     {
       VLOG (1) << "Fighter at " << pos << " has no attacks";
       return;
     }
   CHECK_GE (range, 0);
-
-  /* Apply the modifier to range (if any).  */
-  {
-    CombatModifier mod;
-    ComputeModifier (*f, mod);
-    range = mod.range (range);
-  }
+  range = mod.range (range);
 
   HexCoord::IntT closestRange;
   std::vector<proto::TargetId> closestTargets;
 
-  targets.ProcessL1Targets (pos, range, f->GetFaction (),
+  targets.ProcessL1Targets (pos, range, f.GetFaction (), true, false,
     [&] (const HexCoord& c, const proto::TargetId& id)
     {
       if (ctx.Map ().SafeZones ().IsNoCombat (c))
@@ -183,12 +171,86 @@ SelectTarget (TargetFinder& targets, xaya::Random& rnd, const Context& ctx,
 
   if (closestTargets.empty ())
     {
-      f->ClearTarget ();
+      f.ClearTarget ();
       return;
     }
 
   const unsigned ind = rnd.NextInt (closestTargets.size ());
-  f->SetTarget (closestTargets[ind]);
+  f.SetTarget (closestTargets[ind]);
+}
+
+/**
+ * Runs target finding for friendlies in range of a friendly attack, if any.
+ * This sets (or unsets) the friendly-targets flag.
+ */
+void
+SelectFriendlyTargets (TargetFinder& targets, const Context& ctx,
+                       const CombatModifier& mod, CombatEntity& f)
+{
+  const HexCoord pos = f.GetCombatPosition ();
+  const TargetKey myId(f.GetIdAsTarget ());
+
+  HexCoord::IntT range = f.GetAttackRange (true);
+  if (range == CombatEntity::NO_ATTACKS)
+    {
+      VLOG (2) << "Fighter at " << pos << " has no friendly attacks";
+      return;
+    }
+  CHECK_GE (range, 0);
+  range = mod.range (range);
+
+  bool found = false;
+  targets.ProcessL1Targets (pos, range, f.GetFaction (), false, true,
+    [&] (const HexCoord& c, const proto::TargetId& id)
+    {
+      if (ctx.Map ().SafeZones ().IsNoCombat (c))
+        {
+          VLOG (2)
+              << "Ignoring friendly in no-combat zone for target selection:\n"
+              << id.DebugString ();
+          return;
+        }
+
+      if (myId == TargetKey (id))
+        return;
+
+      found = true;
+    });
+
+  f.SetFriendlyTargets (found);
+
+  if (found)
+    VLOG (1)
+        << "Found at least one friendly target in range for "
+        << myId.ToProto ().DebugString ();
+  else
+    VLOG (1)
+        << "No friendlies in range for " << myId.ToProto ().DebugString ();
+}
+
+/**
+ * Runs target selection for one fighter entity.  This clears or sets
+ * the fighter's target and friendly-targets fields accordingly.
+ */
+void
+SelectTarget (TargetFinder& targets, xaya::Random& rnd, const Context& ctx,
+              FighterTable::Handle f)
+{
+  if (ctx.Map ().SafeZones ().IsNoCombat (f->GetCombatPosition ()))
+    {
+      VLOG (1)
+          << "Not selecting targets for fighter in no-combat zone:\n"
+          << f->GetIdAsTarget ().DebugString ();
+      f->ClearTarget ();
+      f->SetFriendlyTargets (false);
+      return;
+    }
+
+  CombatModifier mod;
+  ComputeModifier (*f, mod);
+
+  SelectNormalTarget (targets, rnd, ctx, mod, *f);
+  SelectFriendlyTargets (targets, ctx, mod, *f);
 }
 
 } // anonymous namespace
@@ -527,21 +589,35 @@ DamageProcessor::ApplyEffects (const proto::Attack& attack,
     *targetEffects.mutable_speed () += attackEffects.speed ();
   if (attackEffects.has_range ())
     *targetEffects.mutable_range () += attackEffects.range ();
+  if (attackEffects.has_shield_regen ())
+    *targetEffects.mutable_shield_regen () += attackEffects.shield_regen ();
 }
 
 void
 DamageProcessor::DealDamage (FighterTable::Handle f, const bool forGainHp,
                              std::set<TargetKey>& newDead)
 {
-  const auto& cd = f->GetCombatData ();
   const auto& pos = f->GetCombatPosition ();
   CHECK (!ctx.Map ().SafeZones ().IsNoCombat (pos));
 
-  CHECK (f->HasTarget ());
-  FighterTable::Handle tf = fighters.GetForTarget (f->GetTarget ());
-  const auto targetPos = tf->GetCombatPosition ();
-  const auto targetDist = HexCoord::DistanceL1 (pos, targetPos);
-  tf.reset ();
+  const auto& cd = f->GetCombatData ();
+  const TargetKey myId(f->GetIdAsTarget ());
+
+  /* If the fighter has friendly attacks and friendlies in range, it may
+     happen that we get here without it having a proper target.  This needs
+     to be handled fine.  (In this situation, only friendly attacks will need
+     to be processed in the end, which only have area and no range.)  */
+  const bool hasTarget = f->HasTarget ();
+  HexCoord targetPos;
+  HexCoord::IntT targetDist = std::numeric_limits<HexCoord::IntT>::max ();
+  if (hasTarget)
+    {
+      FighterTable::Handle tf = fighters.GetForTarget (f->GetTarget ());
+      targetPos = tf->GetCombatPosition ();
+      targetDist = HexCoord::DistanceL1 (pos, targetPos);
+    }
+  else
+    CHECK (f->HasFriendlyTargets ());
 
   const auto& mod = modifiers.at (f->GetIdAsTarget ());
 
@@ -551,10 +627,15 @@ DamageProcessor::DealDamage (FighterTable::Handle f, const bool forGainHp,
         continue;
 
       /* If this is not a centred-on-attacker AoE attack, check that
-         the target is actually within range of this attack.  */
-      if (attack.has_range ()
-            && targetDist > static_cast<int> (mod.range (attack.range ())))
-        continue;
+         the target is actually within range of this attack (and that
+         we actually have a target).  */
+      if (attack.has_range ())
+        {
+          if (!hasTarget)
+            continue;
+          if (targetDist > static_cast<int> (mod.range (attack.range ())))
+            continue;
+        }
 
       unsigned dmg = 0;
       if (attack.has_damage ())
@@ -564,12 +645,19 @@ DamageProcessor::DealDamage (FighterTable::Handle f, const bool forGainHp,
         {
           HexCoord centre;
           if (attack.has_range ())
-            centre = targetPos;
+            {
+              CHECK (hasTarget);
+              centre = targetPos;
+            }
           else
             centre = pos;
 
+          const bool processFriendlies = attack.friendlies ();
+          const bool processEnemies = !processFriendlies;
+
           targets.ProcessL1Targets (centre, mod.range (attack.area ()),
                                     f->GetFaction (),
+                                    processEnemies, processFriendlies,
             [&] (const HexCoord& c, const proto::TargetId& id)
             {
               auto t = fighters.GetForTarget (id);
@@ -580,12 +668,16 @@ DamageProcessor::DealDamage (FighterTable::Handle f, const bool forGainHp,
                       << t->GetIdAsTarget ().DebugString ();
                   return;
                 }
+              if (myId == TargetKey (id))
+                return;
               ApplyDamage (dmg, *f, attack, *t, newDead);
               ApplyEffects (attack, *t);
             });
         }
       else
         {
+          CHECK (hasTarget);
+          CHECK (!attack.friendlies ());
           auto t = fighters.GetForTarget (f->GetTarget ());
           ApplyDamage (dmg, *f, attack, *t, newDead);
           ApplyEffects (attack, *t);
@@ -615,7 +707,8 @@ DamageProcessor::ProcessSelfDestructs (FighterTable::Handle f,
           << " of damage for self-destruct of "
           << f->GetIdAsTarget ().DebugString ();
 
-      targets.ProcessL1Targets (pos, mod.range (sd.area ()), f->GetFaction (),
+      targets.ProcessL1Targets (pos, mod.range (sd.area ()),
+                                f->GetFaction (), true, false,
         [&] (const HexCoord& c, const proto::TargetId& id)
         {
           auto t = fighters.GetForTarget (id);
@@ -1055,8 +1148,12 @@ RegenerateFighterHP (FighterTable::Handle f)
       f->MutableHP ().mutable_mhp ()->set_armour (milli);
     }
 
+  const StatModifier shieldRegenMod(f->GetEffects ().shield_regen ());
+  const unsigned shieldRate
+      = shieldRegenMod (regen.regeneration_mhp ().shield ());
+
   if (RegenerateHpType (
-          regen.max_hp ().shield (), regen.regeneration_mhp ().shield (),
+          regen.max_hp ().shield (), shieldRate,
           hp.shield (), hp.mhp ().shield (), cur, milli))
     {
       f->MutableHP ().set_shield (cur);

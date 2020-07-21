@@ -119,14 +119,19 @@ TEST_F (BuildingTests, CombatFields)
   const auto id = tbl.CreateNew ("turret", "andy", Faction::RED)->GetId ();
 
   auto h = tbl.GetById (id);
-  EXPECT_EQ (h->GetAttackRange (), CombatEntity::NO_ATTACKS);
+  EXPECT_EQ (h->GetAttackRange (false), CombatEntity::NO_ATTACKS);
+  EXPECT_EQ (h->GetAttackRange (true), CombatEntity::NO_ATTACKS);
   auto* att = h->MutableProto ().mutable_combat_data ()->add_attacks ();
   att->set_range (5);
+  att = h->MutableProto ().mutable_combat_data ()->add_attacks ();
+  att->set_area (3);
+  att->set_friendlies (true);
   h.reset ();
 
   h = tbl.GetById (id);
-  EXPECT_EQ (h->GetProto ().combat_data ().attacks_size (), 1);
-  EXPECT_EQ (h->GetAttackRange (), 5);
+  EXPECT_EQ (h->GetProto ().combat_data ().attacks_size (), 2);
+  EXPECT_EQ (h->GetAttackRange (false), 5);
+  EXPECT_EQ (h->GetAttackRange (true), 3);
   h->MutableHP ().set_armour (10);
   h.reset ();
 
@@ -138,18 +143,24 @@ TEST_F (BuildingTests, CombatFields)
   h = tbl.GetById (id);
   EXPECT_EQ (h->GetRegenData ().regeneration_mhp ().shield (), 42);
   EXPECT_FALSE (h->HasTarget ());
+  EXPECT_FALSE (h->HasFriendlyTargets ());
   proto::TargetId t;
   t.set_id (50);
   h->SetTarget (t);
+  h->SetFriendlyTargets (true);
   h.reset ();
 
   h = tbl.GetById (id);
   ASSERT_TRUE (h->HasTarget ());
   EXPECT_EQ (h->GetTarget ().id (), 50);
+  EXPECT_TRUE (h->HasFriendlyTargets ());
   h->ClearTarget ();
+  h->SetFriendlyTargets (false);
   h.reset ();
 
-  EXPECT_FALSE (tbl.GetById (id)->HasTarget ());
+  h = tbl.GetById (id);
+  EXPECT_FALSE (h->HasTarget ());
+  EXPECT_FALSE (h->HasFriendlyTargets ());
 }
 
 TEST_F (BuildingTests, CombatEffects)
@@ -200,10 +211,17 @@ TEST_F (BuildingsTableTests, QueryWithAttacks)
   tbl.CreateNew ("checkmark", "domob", Faction::RED);
   tbl.CreateNew ("checkmark", "andy", Faction::RED)
     ->MutableProto ().mutable_combat_data ()->add_attacks ()->set_range (0);
+  auto c = tbl.CreateNew ("checkmark", "daniel", Faction::RED);
+  auto* att = c->MutableProto ().mutable_combat_data ()->add_attacks ();
+  att->set_area (0);
+  att->set_friendlies (true);
+  c.reset ();
 
   auto res = tbl.QueryWithAttacks ();
   ASSERT_TRUE (res.Step ());
   EXPECT_EQ (tbl.GetFromResult (res)->GetOwner (), "andy");
+  ASSERT_TRUE (res.Step ());
+  EXPECT_EQ (tbl.GetFromResult (res)->GetOwner (), "daniel");
   ASSERT_FALSE (res.Step ());
 }
 
@@ -250,6 +268,14 @@ TEST_F (BuildingsTableTests, QueryWithTarget)
   res = tbl.QueryWithTarget ();
   ASSERT_TRUE (res.Step ());
   EXPECT_EQ (tbl.GetFromResult (res)->GetOwner (), "andy");
+  ASSERT_FALSE (res.Step ());
+
+  tbl.GetById (id1)->SetFriendlyTargets (true);
+  tbl.GetById (id2)->ClearTarget ();
+
+  res = tbl.QueryWithTarget ();
+  ASSERT_TRUE (res.Step ());
+  EXPECT_EQ (tbl.GetFromResult (res)->GetOwner (), "domob");
   ASSERT_FALSE (res.Step ());
 }
 
