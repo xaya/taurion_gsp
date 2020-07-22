@@ -115,6 +115,42 @@ namespace
 {
 
 /**
+ * Wrapper around ProcessL1Targets, which filters out targets in a no-combat
+ * safe zone as well as the fighter itself.  If enemies is true, it will look
+ * for enemies and not friendlies; if enemies is false, the other way round.
+ */
+void
+ProcessCombatTargets (TargetFinder& targets, const Context& ctx,
+                      const CombatEntity& f,
+                      const HexCoord& centre, const HexCoord::IntT range,
+                      const bool enemies,
+                      const TargetFinder::ProcessingFcn& cb)
+{
+  const TargetKey myId(f.GetIdAsTarget ());
+
+  const bool lookForEnemies = enemies;
+  const bool lookForFriendlies = !enemies;
+
+  targets.ProcessL1Targets (centre, range, f.GetFaction (),
+                            lookForEnemies, lookForFriendlies,
+    [&] (const HexCoord& c, const proto::TargetId& id)
+    {
+      if (ctx.Map ().SafeZones ().IsNoCombat (c))
+        {
+          VLOG (2)
+              << "Ignoring fighter in no-combat zone:\n"
+              << id.DebugString ();
+          return;
+        }
+
+      if (myId == TargetKey (id))
+        return;
+
+      cb (c, id);
+    });
+}
+
+/**
  * Runs target finding for the normal attacks, setting (or clearing)
  * the target field.
  */
@@ -137,17 +173,9 @@ SelectNormalTarget (TargetFinder& targets, xaya::Random& rnd,
   HexCoord::IntT closestRange;
   std::vector<proto::TargetId> closestTargets;
 
-  targets.ProcessL1Targets (pos, range, f.GetFaction (), true, false,
+  ProcessCombatTargets (targets, ctx, f, pos, range, true,
     [&] (const HexCoord& c, const proto::TargetId& id)
     {
-      if (ctx.Map ().SafeZones ().IsNoCombat (c))
-        {
-          VLOG (2)
-              << "Ignoring fighter in no-combat zone for target selection:\n"
-              << id.DebugString ();
-          return;
-        }
-
       const HexCoord::IntT curDist = HexCoord::DistanceL1 (pos, c);
       if (closestTargets.empty () || curDist < closestRange)
         {
@@ -188,7 +216,6 @@ SelectFriendlyTargets (TargetFinder& targets, const Context& ctx,
                        const CombatModifier& mod, CombatEntity& f)
 {
   const HexCoord pos = f.GetCombatPosition ();
-  const TargetKey myId(f.GetIdAsTarget ());
 
   HexCoord::IntT range = f.GetAttackRange (true);
   if (range == CombatEntity::NO_ATTACKS)
@@ -200,20 +227,9 @@ SelectFriendlyTargets (TargetFinder& targets, const Context& ctx,
   range = mod.range (range);
 
   bool found = false;
-  targets.ProcessL1Targets (pos, range, f.GetFaction (), false, true,
+  ProcessCombatTargets (targets, ctx, f, pos, range, false,
     [&] (const HexCoord& c, const proto::TargetId& id)
     {
-      if (ctx.Map ().SafeZones ().IsNoCombat (c))
-        {
-          VLOG (2)
-              << "Ignoring friendly in no-combat zone for target selection:\n"
-              << id.DebugString ();
-          return;
-        }
-
-      if (myId == TargetKey (id))
-        return;
-
       found = true;
     });
 
@@ -222,10 +238,10 @@ SelectFriendlyTargets (TargetFinder& targets, const Context& ctx,
   if (found)
     VLOG (1)
         << "Found at least one friendly target in range for "
-        << myId.ToProto ().DebugString ();
+        << f.GetIdAsTarget ().DebugString ();
   else
     VLOG (1)
-        << "No friendlies in range for " << myId.ToProto ().DebugString ();
+        << "No friendlies in range for " << f.GetIdAsTarget ().DebugString ();
 }
 
 /**
@@ -599,11 +615,9 @@ void
 DamageProcessor::DealDamage (FighterTable::Handle f, const bool forGainHp,
                              std::set<TargetKey>& newDead)
 {
+  const auto& cd = f->GetCombatData ();
   const auto& pos = f->GetCombatPosition ();
   CHECK (!ctx.Map ().SafeZones ().IsNoCombat (pos));
-
-  const auto& cd = f->GetCombatData ();
-  const TargetKey myId(f->GetIdAsTarget ());
 
   /* If the fighter has friendly attacks and friendlies in range, it may
      happen that we get here without it having a proper target.  This needs
@@ -654,24 +668,12 @@ DamageProcessor::DealDamage (FighterTable::Handle f, const bool forGainHp,
           else
             centre = pos;
 
-          const bool processFriendlies = attack.friendlies ();
-          const bool processEnemies = !processFriendlies;
-
-          targets.ProcessL1Targets (centre, mod.range (attack.area ()),
-                                    f->GetFaction (),
-                                    processEnemies, processFriendlies,
+          ProcessCombatTargets (targets, ctx,
+                                *f, centre, mod.range (attack.area ()),
+                                !attack.friendlies (),
             [&] (const HexCoord& c, const proto::TargetId& id)
             {
               auto t = fighters.GetForTarget (id);
-              if (ctx.Map ().SafeZones ().IsNoCombat (t->GetCombatPosition ()))
-                {
-                  VLOG (2)
-                      << "No AoE damage to fighter in safe zone:\n"
-                      << t->GetIdAsTarget ().DebugString ();
-                  return;
-                }
-              if (myId == TargetKey (id))
-                return;
               ApplyDamage (dmg, *f, attack, *t, newDead);
               ApplyEffects (attack, *t);
             });
@@ -709,18 +711,12 @@ DamageProcessor::ProcessSelfDestructs (FighterTable::Handle f,
           << " of damage for self-destruct of "
           << f->GetIdAsTarget ().DebugString ();
 
-      targets.ProcessL1Targets (pos, mod.range (sd.area ()),
-                                f->GetFaction (), true, false,
+      ProcessCombatTargets (targets, ctx,
+                            *f, pos, mod.range (sd.area ()),
+                            true,
         [&] (const HexCoord& c, const proto::TargetId& id)
         {
           auto t = fighters.GetForTarget (id);
-          if (ctx.Map ().SafeZones ().IsNoCombat (t->GetCombatPosition ()))
-            {
-              VLOG (2)
-                  << "No self-destruct damage to fighter in safe zone:\n"
-                  << t->GetIdAsTarget ().DebugString ();
-              return;
-            }
           ApplyDamage (dmg, *f, sd.damage (), *t, newDead);
         });
     }
