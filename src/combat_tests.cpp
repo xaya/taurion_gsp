@@ -259,7 +259,7 @@ TEST_F (TargetSelectionTests, ZeroRange)
   EXPECT_EQ (t.id (), idTarget);
 }
 
-TEST_F (TargetSelectionTests, FrienlyAttacks)
+TEST_F (TargetSelectionTests, FriendlyAttacks)
 {
   auto c = characters.CreateNew ("domob", Faction::RED);
   const auto idNoAttacks = c->GetId ();
@@ -293,6 +293,45 @@ TEST_F (TargetSelectionTests, FrienlyAttacks)
   c = characters.GetById (idOutOfRange);
   EXPECT_FALSE (c->HasFriendlyTargets ());
   EXPECT_TRUE (c->HasTarget ());
+}
+
+TEST_F (TargetSelectionTests, Mentecon)
+{
+  auto c = characters.CreateNew ("red", Faction::RED);
+  const auto idTargetsFriendly = c->GetId ();
+  c->SetPosition (HexCoord (0, 0));
+  AddAttack (*c).set_range (10);
+  c.reset ();
+
+  c = characters.CreateNew ("red", Faction::RED);
+  const auto idEnemyAsFriendlyTarget = c->GetId ();
+  c->SetPosition (HexCoord (0, 10));
+  AddFriendlyAttack (*c).set_area (5);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idEnemy = c->GetId ();
+  c->SetPosition (HexCoord (0, 15));
+  AddAttack (*c).set_range (5);
+  c.reset ();
+
+  FindCombatTargets (db, rnd, ctx);
+  EXPECT_FALSE (characters.GetById (idTargetsFriendly)->HasTarget ());
+  EXPECT_FALSE (characters.GetById (idEnemyAsFriendlyTarget)
+                  ->HasFriendlyTargets ());
+  EXPECT_EQ (characters.GetById (idEnemy)->GetTarget ().id (),
+             idEnemyAsFriendlyTarget);
+
+  for (const auto id : {idTargetsFriendly, idEnemyAsFriendlyTarget, idEnemy})
+    characters.GetById (id)->MutableEffects ().set_mentecon (true);
+
+  FindCombatTargets (db, rnd, ctx);
+  EXPECT_EQ (characters.GetById (idTargetsFriendly)->GetTarget ().id (),
+             idEnemyAsFriendlyTarget);
+  EXPECT_TRUE (characters.GetById (idEnemyAsFriendlyTarget)
+                  ->HasFriendlyTargets ());
+  EXPECT_EQ (characters.GetById (idEnemy)->GetTarget ().id (),
+             idEnemyAsFriendlyTarget);
 }
 
 TEST_F (TargetSelectionTests, WithBuildings)
@@ -985,6 +1024,45 @@ TEST_F (DealDamageTests, SafeZone)
   EXPECT_EQ (c->GetEffects ().speed ().percent (), -50);
 }
 
+TEST_F (DealDamageTests, Mentecon)
+{
+  auto c = characters.CreateNew ("red", Faction::RED);
+  c->MutableEffects ().set_mentecon (true);
+  AddAttack (*c, 10, 10, 10);
+  AddAreaAttack (*c, 10, 1, 1)
+      .mutable_effects ()->mutable_speed ()->set_percent (-50);
+  auto* att = &AddFriendlyAttack (*c);
+  att->set_area (10);
+  att->mutable_effects ()->mutable_shield_regen ()->set_percent (10);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idEnemy = c->GetId ();
+  c->SetPosition (HexCoord (10, 0));
+  NoAttacks (*c);
+  SetHp (*c, 0, 100, 0, 100);
+  c.reset ();
+
+  c = characters.CreateNew ("red", Faction::RED);
+  const auto idFriendly = c->GetId ();
+  c->SetPosition (HexCoord (5, 0));
+  NoAttacks (*c);
+  SetHp (*c, 0, 100, 0, 100);
+  c.reset ();
+
+  FindTargetsAndDamage ();
+
+  c = characters.GetById (idEnemy);
+  EXPECT_EQ (c->GetHP ().armour (), 99);
+  EXPECT_EQ (c->GetEffects ().speed ().percent (), -50);
+  EXPECT_EQ (c->GetEffects ().shield_regen ().percent (), 10);
+
+  c = characters.GetById (idFriendly);
+  EXPECT_EQ (c->GetHP ().armour (), 89);
+  EXPECT_EQ (c->GetEffects ().speed ().percent (), -50);
+  EXPECT_EQ (c->GetEffects ().shield_regen ().percent (), 10);
+}
+
 TEST_F (DealDamageTests, RandomisedDamage)
 {
   constexpr unsigned minDmg = 5;
@@ -1619,6 +1697,36 @@ TEST_F (SelfDestructTests, CombatEffects)
     TargetKey (proto::TargetId::TYPE_CHARACTER, idDestructed)
   ));
   EXPECT_EQ (characters.GetById (idAttacker)->GetHP ().armour (), 90);
+}
+
+TEST_F (SelfDestructTests, Mentecon)
+{
+  auto c = characters.CreateNew ("red", Faction::RED);
+  const auto idAttacker = c->GetId ();
+  SetHp (*c, 0, 100, 0, 100);
+  AddAttack (*c, 100, 1, 1);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idDestructed = c->GetId ();
+  c->SetPosition (HexCoord (10, 0));
+  c->MutableEffects ().set_mentecon (true);
+  SetHp (*c, 0, 1, 0, 1);
+  AddSelfDestruct (*c, 10, 10);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idFriendly = c->GetId ();
+  c->SetPosition (HexCoord (15, 0));
+  SetHp (*c, 0, 100, 0, 100);
+  NoAttacks (*c);
+  c.reset ();
+
+  EXPECT_THAT (FindTargetsAndDamage (), ElementsAre (
+    TargetKey (proto::TargetId::TYPE_CHARACTER, idDestructed)
+  ));
+  EXPECT_EQ (characters.GetById (idAttacker)->GetHP ().armour (), 90);
+  EXPECT_EQ (characters.GetById (idFriendly)->GetHP ().armour (), 90);
 }
 
 TEST_F (SelfDestructTests, Chain)

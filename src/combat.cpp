@@ -118,6 +118,8 @@ namespace
  * Wrapper around ProcessL1Targets, which filters out targets in a no-combat
  * safe zone as well as the fighter itself.  If enemies is true, it will look
  * for enemies and not friendlies; if enemies is false, the other way round.
+ * If the fighter is affected by a mentecon, it will instead just ignore the
+ * enemies flag and always look for enemies and friendlies alike.
  */
 void
 ProcessCombatTargets (TargetFinder& targets, const Context& ctx,
@@ -128,8 +130,9 @@ ProcessCombatTargets (TargetFinder& targets, const Context& ctx,
 {
   const TargetKey myId(f.GetIdAsTarget ());
 
-  const bool lookForEnemies = enemies;
-  const bool lookForFriendlies = !enemies;
+  const bool mentecon = f.GetEffects ().mentecon ();
+  const bool lookForEnemies = enemies || mentecon;
+  const bool lookForFriendlies = !enemies || mentecon;
 
   targets.ProcessL1Targets (centre, range, f.GetFaction (),
                             lookForEnemies, lookForFriendlies,
