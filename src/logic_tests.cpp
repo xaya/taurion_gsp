@@ -413,6 +413,117 @@ TEST_F (PXLogicTests, RangeReduction)
     }
 }
 
+TEST_F (PXLogicTests, MenteconAlteration)
+{
+  /* If two friendlies with a mentecon each are placed in each other's range
+     and one of the mentecons is activated, they will alternatively hit each
+     other and have their mentecon effects active / inactive.
+
+     If both are activated at the same time, then they will just stay active
+     all the time.  */
+
+  auto c = CreateCharacter ("trigger", Faction::GREEN);
+  ASSERT_EQ (c->GetId (), 1);
+  c->SetPosition (HexCoord (-10, -1));
+  c->MutableProto ().set_speed (1'000);
+  auto* attack = c->MutableProto ().mutable_combat_data ()->add_attacks ();
+  attack->set_range (10);
+  attack->mutable_effects ()->set_mentecon (true);
+  c.reset ();
+
+  std::vector<Database::IdT> ids;
+  for (unsigned i = 0; i < 2; ++i)
+    {
+      c = CreateCharacter ("domob", Faction::RED);
+      ids.push_back (c->GetId ());
+      c->SetPosition (HexCoord (i, 0));
+      AddUnityAttack (*c, 5);
+      auto* attack = c->MutableProto ().mutable_combat_data ()->add_attacks ();
+      attack->set_range (10);
+      attack->mutable_effects ()->set_mentecon (true);
+      c->MutableHP ().set_shield (0);
+      c->MutableHP ().set_armour (100);
+      c.reset ();
+    }
+
+  /* The effect is off initially and the trigger out of range, which means they
+     should not start affecting each other.  */
+  for (unsigned i = 0; i < 10; ++i)
+    UpdateState ("[]");
+  for (const auto id : ids)
+    {
+      c = characters.GetById (id);
+      EXPECT_EQ (c->GetHP ().armour (), 100);
+      EXPECT_FALSE (c->HasTarget ());
+      EXPECT_FALSE (c->GetEffects ().mentecon ());
+      c.reset ();
+    }
+
+  /* Move the trigger unit so that it will be in range of id0 for one block
+     (which is enough to trigger that unit's mentecon effect and starting
+     the alteration).  */
+  UpdateState (R"([
+    {
+      "name": "trigger",
+      "move": {"c": {"1": {"wp": )"
+        + WpStr ({HexCoord (-10, 0), HexCoord (-11, 1)})
+        + R"(}}}
+    }
+  ])");
+  UpdateState ("[]");
+  for (unsigned i = 0; i < 10; ++i)
+    for (unsigned j = 0; j < 2; ++j)
+      {
+        const auto thisId = ids[j];
+        const auto otherId = ids[1 - j];
+
+        c = characters.GetById (thisId);
+        EXPECT_TRUE (c->GetEffects ().mentecon ());
+        EXPECT_TRUE (c->HasTarget ());
+        c.reset ();
+
+        c = characters.GetById (otherId);
+        EXPECT_FALSE (c->GetEffects ().mentecon ());
+        EXPECT_FALSE (c->HasTarget ());
+        c.reset ();
+
+        UpdateState ("[]");
+      }
+  for (const auto id : ids)
+    EXPECT_EQ (characters.GetById (id)->GetHP ().armour (), 90);
+
+  /* Do the same trigger movement again (except in reverse for simplicity).
+     After the empty update, id1 will be targeting id0.  So after the movement
+     block, id0 will be targeting id1, and the trigger will be targeting id0.
+     After another block, both will continuously have the mentecon active
+     and just keep hitting each other all the time.  */
+  UpdateState ("[]");
+  UpdateState (R"([
+    {
+      "name": "trigger",
+      "move": {"c": {"1": {"wp": )"
+        + WpStr ({HexCoord (-10, 0), HexCoord (-10, -1)})
+        + R"(}}}
+    }
+  ])");
+  for (unsigned i = 0; i < 10; ++i)
+    {
+      UpdateState ("[]");
+      for (const auto id : ids)
+        {
+          c = characters.GetById (id);
+          EXPECT_TRUE (c->HasTarget ());
+          EXPECT_TRUE (c->GetEffects ().mentecon ());
+          c.reset ();
+        }
+    }
+  /* During the first empty block, id0 hits id1.  During the movement block,
+     id1 hits id0.  During the first empty update the loop, id0 hits id1.
+     For all nine remaining updates, both hit each other.  */
+  EXPECT_EQ (characters.GetById (ids[0])->GetHP ().armour (), 80);
+  EXPECT_EQ (characters.GetById (ids[1])->GetHP ().armour (), 79);
+}
+
 TEST_F (PXLogicTests, PickUpDeadDrop)
 {
   const HexCoord pos(10, 20);

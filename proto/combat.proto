@@ -67,6 +67,14 @@ message CombatEffects
   /** Modification to the shield regeneration rate.  */
   optional StatModifier shield_regen = 3;
 
+  /**
+   * If set, then the affected fighter ignores the friendly/enemy
+   * classification and just considers everyone a valid target for
+   * both normal and friendly attacks (and similarly affects everyone
+   * with AoE attacks of either type).
+   */
+  optional bool mentecon = 4;
+
 }
 
 /**
