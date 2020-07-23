@@ -150,15 +150,14 @@ protected:
   /**
    * Adds a self-destruct ability for the given character.
    */
-  static void
+  static proto::SelfDestruct&
   AddSelfDestruct (Character& c, const unsigned area, const unsigned dmg)
   {
-    proto::SelfDestruct sd;
-    sd.set_area (area);
-    sd.mutable_damage ()->set_min (dmg);
-    sd.mutable_damage ()->set_max (dmg);
-
-    *c.MutableProto ().mutable_combat_data ()->add_self_destructs () = sd;
+    auto* sd = c.MutableProto ().mutable_combat_data ()->add_self_destructs ();
+    sd->set_area (area);
+    sd->mutable_damage ()->set_min (dmg);
+    sd->mutable_damage ()->set_max (dmg);
+    return *sd;
   }
 
 };
@@ -672,6 +671,55 @@ TEST_F (TargetSelectionTests, RandomNumbersRequested)
 
 /* ************************************************************************** */
 
+class BaseHitChanceTests : public testing::Test
+{
+
+protected:
+
+  /**
+   * Computes the base hit chance for given target and weapon sizes directly
+   * (which get put into protos).  Setting -1 for one of the sizes means
+   * that the field will not be set at all.
+   */
+  static unsigned
+  ComputeChance (const int targetSize, const int weaponSize)
+  {
+    proto::CombatData cd;
+    if (targetSize != -1)
+      cd.set_target_size (targetSize);
+
+    proto::Attack::Damage dmg;
+    if (weaponSize != -1)
+      dmg.set_weapon_size (weaponSize);
+
+    return BaseHitChance (cd, dmg);
+  }
+
+};
+
+TEST_F (BaseHitChanceTests, MissingFields)
+{
+  EXPECT_EQ (ComputeChance (-1, -1), 100);
+  EXPECT_EQ (ComputeChance (-1, 1), 100);
+  EXPECT_EQ (ComputeChance (1, -1), 100);
+}
+
+TEST_F (BaseHitChanceTests, LargeTarget)
+{
+  EXPECT_EQ (ComputeChance (10, 10), 100);
+  EXPECT_EQ (ComputeChance (10, 1), 100);
+}
+
+TEST_F (BaseHitChanceTests, Proportional)
+{
+  EXPECT_EQ (ComputeChance (9, 10), 90);
+  EXPECT_EQ (ComputeChance (1, 10), 10);
+  EXPECT_EQ (ComputeChance (1, 100), 1);
+  EXPECT_EQ (ComputeChance (1, 101), 0);
+}
+
+/* ************************************************************************** */
+
 class DealDamageTests : public CombatTests
 {
 
@@ -873,6 +921,51 @@ TEST_F (DealDamageTests, MixedAttacks)
   EXPECT_LE (hpNear, 8);
   EXPECT_GE (hpFar, 8);
   EXPECT_LE (hpFar, 9);
+}
+
+TEST_F (DealDamageTests, HitMissChance)
+{
+  constexpr unsigned trials = 1'000;
+  constexpr unsigned maxHp = 2 * trials;
+  constexpr unsigned eps = (trials * 3) / 100;
+
+  auto c = characters.CreateNew ("attacker", Faction::RED);
+  AddAreaAttack (*c, 10, 1, 1).mutable_damage ()->set_weapon_size (8);
+  AddAttack (*c, 5, 1, 1).mutable_damage ()->set_weapon_size (4);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idTarget = c->GetId ();
+  c->SetPosition (HexCoord (1, 0));
+  c->MutableProto ().mutable_combat_data ()->set_target_size (1);
+  NoAttacks (*c);
+  SetHp (*c, 0, maxHp, 0, maxHp);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idArea = c->GetId ();
+  c->SetPosition (HexCoord (10, 0));
+  c->MutableProto ().mutable_combat_data ()->set_target_size (2);
+  NoAttacks (*c);
+  SetHp (*c, 0, maxHp, 0, maxHp);
+  c.reset ();
+
+  for (unsigned i = 0; i < trials; ++i)
+    FindTargetsAndDamage ();
+
+  /* The nearer target is affected by both attacks.  The hit chance for
+     the directed attack is 1/4, and for the area attack 1/8.  The further
+     target is affected by the area attack only, with a chance of 1/4.  */
+  constexpr auto expectedTarget = trials / 4 + trials / 8;
+  constexpr auto expectedArea = trials / 4;
+
+  c = characters.GetById (idTarget);
+  EXPECT_GT (maxHp - c->GetHP ().armour (), expectedTarget - eps);
+  EXPECT_LT (maxHp - c->GetHP ().armour (), expectedTarget + eps);
+
+  c = characters.GetById (idArea);
+  EXPECT_GT (maxHp - c->GetHP ().armour (), expectedArea - eps);
+  EXPECT_LT (maxHp - c->GetHP ().armour (), expectedArea + eps);
 }
 
 TEST_F (DealDamageTests, FriendlyAttack)
@@ -1668,6 +1761,42 @@ TEST_F (SelfDestructTests, StackingAndLowHpBoost)
     TargetKey (proto::TargetId::TYPE_CHARACTER, idDestructed)
   ));
   EXPECT_EQ (characters.GetById (idAttacker)->GetHP ().armour (), 100 - 24);
+}
+
+TEST_F (SelfDestructTests, HitMissChance)
+{
+  auto c = characters.CreateNew ("red", Faction::RED);
+  AddAttack (*c, 100, 1, 1);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idDestructed = c->GetId ();
+  c->SetPosition (HexCoord (10, 0));
+  SetHp (*c, 0, 1, 0, 1);
+  AddSelfDestruct (*c, 5, 10).mutable_damage ()->set_weapon_size (1'000);
+  c.reset ();
+
+  c = characters.CreateNew ("red", Faction::RED);
+  const auto idHit = c->GetId ();
+  c->SetPosition (HexCoord (15, 0));
+  c->MutableProto ().mutable_combat_data ()->set_target_size (1'000);
+  SetHp (*c, 0, 100, 0, 100);
+  NoAttacks (*c);
+  c.reset ();
+
+  c = characters.CreateNew ("red", Faction::RED);
+  const auto idMissed = c->GetId ();
+  c->SetPosition (HexCoord (15, 0));
+  c->MutableProto ().mutable_combat_data ()->set_target_size (1);
+  SetHp (*c, 0, 100, 0, 100);
+  NoAttacks (*c);
+  c.reset ();
+
+  EXPECT_THAT (FindTargetsAndDamage (), ElementsAre (
+    TargetKey (proto::TargetId::TYPE_CHARACTER, idDestructed)
+  ));
+  EXPECT_EQ (characters.GetById (idHit)->GetHP ().armour (), 90);
+  EXPECT_EQ (characters.GetById (idMissed)->GetHP ().armour (), 100);
 }
 
 TEST_F (SelfDestructTests, CombatEffects)

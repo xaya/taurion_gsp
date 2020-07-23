@@ -123,6 +123,12 @@ message Attack
 
     /** The factor (as percent) that this attack does damage to shields.  */
     optional uint32 shield_percent = 4;
+
+    /**
+     * "Size" of the attack's weapon for hit/miss chance computation.
+     * See target_size on CombatData.
+     */
+    optional uint32 weapon_size = 5;
   }
 
   /** If this attack does damage, the stats for it.  */
@@ -243,5 +249,14 @@ message CombatData
    * upgrade fitment).
    */
   optional StatModifier received_damage_modifier = 4;
+
+  /**
+   * "Size" of the fighter as a target, i.e. for hit/miss chance
+   * computation.  If this is missing or at least as large as the
+   * corresponding size of the attack, then the base chance (without any
+   * modifiers) is 100%.  If the target size is lower, the chance is
+   * proportionally lowered.
+   */
+  optional uint32 target_size = 5;
 
 }

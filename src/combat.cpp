@@ -290,6 +290,22 @@ FindCombatTargets (Database& db, xaya::Random& rnd, const Context& ctx)
 
 /* ************************************************************************** */
 
+unsigned
+BaseHitChance (const proto::CombatData& target,
+               const proto::Attack::Damage& dmg)
+{
+  if (!target.has_target_size () || !dmg.has_weapon_size ())
+    return 100;
+
+  if (target.target_size () >= dmg.weapon_size ())
+    return 100;
+
+  CHECK_GT (target.target_size (), 0);
+  CHECK_GT (dmg.weapon_size (), 0);
+
+  return (target.target_size () * 100) / dmg.weapon_size ();
+}
+
 namespace
 {
 
@@ -360,6 +376,13 @@ private:
    */
   unsigned RollAttackDamage (const proto::Attack::Damage& attack,
                              const StatModifier& mod);
+
+  /**
+   * Checks (possibly with a random roll) whether or not an attack is supposed
+   * to hit the given target.
+   */
+  bool AttackHitsTarget (const CombatEntity& target,
+                         const proto::Attack::Damage& attack);
 
   /**
    * Applies a fixed given amount of damage to a given attack target.  Adds
@@ -439,8 +462,20 @@ DamageProcessor::RollAttackDamage (const proto::Attack::Damage& dmg,
   return minDmg + rnd.NextInt (n);
 }
 
-namespace
+bool
+DamageProcessor::AttackHitsTarget (const CombatEntity& target,
+                                   const proto::Attack::Damage& attack)
 {
+  const unsigned chance = BaseHitChance (target.GetCombatData (), attack);
+
+  /* Do not do a random roll at all if the chance is fully 0 or 100.  */
+  if (chance == 0)
+    return false;
+  if (chance >= 100)
+    return true;
+
+  return rnd.ProbabilityRoll (chance, 100);
+}
 
 /**
  * Computes the damage done vs shield and armour, given the total
@@ -497,8 +532,6 @@ ComputeDamage (unsigned dmg, const proto::Attack::Damage& pb,
   return done;
 }
 
-} // anonymous namespace
-
 proto::HP
 DamageProcessor::ApplyDamage (unsigned dmg, const CombatEntity& attacker,
                               const proto::Attack::Damage& pb,
@@ -507,7 +540,26 @@ DamageProcessor::ApplyDamage (unsigned dmg, const CombatEntity& attacker,
 {
   CHECK (!ctx.Map ().SafeZones ().IsNoCombat (target.GetCombatPosition ()));
 
+  /* If the target is already dead from a previous rounds of self-destructs,
+     do nothing (not even roll random for hit/miss).  */
   const auto targetId = target.GetIdAsTarget ();
+  const TargetKey targetKey(targetId);
+  if (alreadyDead.count (targetKey) > 0)
+    {
+      VLOG (1)
+          << "Target is already dead from before:\n" << targetId.DebugString ();
+      return proto::HP ();
+    }
+
+  /* Check if we hit or miss.  */
+  if (!AttackHitsTarget (target, pb))
+    {
+      VLOG (1) << "Attack misses target:\n" << targetId.DebugString ();
+      return proto::HP ();
+    }
+
+  /* Compute the modified damage.  If no damage remains, exit early and
+     do not update the damage lists.  */
   const auto& targetData = target.GetCombatData ();
   const StatModifier recvDamage(targetData.received_damage_modifier ());
   const auto updatedDamage = recvDamage (dmg);
@@ -519,23 +571,12 @@ DamageProcessor::ApplyDamage (unsigned dmg, const CombatEntity& attacker,
           << " changed " << dmg << " to " << updatedDamage;
       dmg = updatedDamage;
     }
-
-  /* Handle cases when we exit early and don't even account for the attack
-     in the damage lists:  No damage done at all (e.g. after modifier)
-     and the target is already dead from a previous round of self-destructs
-     or attacks.  */
   if (dmg == 0)
     {
       VLOG (1) << "No damage done to target:\n" << targetId.DebugString ();
       return proto::HP ();
     }
-  const TargetKey targetKey(targetId);
-  if (alreadyDead.count (targetKey) > 0)
-    {
-      VLOG (1)
-          << "Target is already dead from before:\n" << targetId.DebugString ();
-      return proto::HP ();
-    }
+
   VLOG (1)
       << "Dealing " << dmg << " damage to target:\n" << targetId.DebugString ();
 
