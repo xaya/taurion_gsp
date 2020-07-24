@@ -92,8 +92,10 @@ ComputeModifier (const CombatEntity& f, CombatModifier& mod)
       mod.range += b.range ();
     }
 
-  mod.range += f.GetEffects ().range ();
+  const auto& eff = f.GetEffects ();
+  mod.range += eff.range ();
   mod.hitChance += cd.hit_chance_modifier ();
+  mod.hitChance += eff.hit_chance ();
 }
 
 } // anonymous namespace
@@ -661,6 +663,8 @@ DamageProcessor::ApplyEffects (const proto::Attack& attack,
     *targetEffects.mutable_speed () += attackEffects.speed ();
   if (attackEffects.has_range ())
     *targetEffects.mutable_range () += attackEffects.range ();
+  if (attackEffects.has_hit_chance ())
+    *targetEffects.mutable_hit_chance () += attackEffects.hit_chance ();
   if (attackEffects.has_shield_regen ())
     *targetEffects.mutable_shield_regen () += attackEffects.shield_regen ();
   if (attackEffects.mentecon ())

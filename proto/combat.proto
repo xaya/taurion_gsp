@@ -64,8 +64,11 @@ message CombatEffects
   /** Modification to the range.  */
   optional StatModifier range = 2;
 
+  /** Modification to the hit chance of attacks from this fighter.  */
+  optional StatModifier hit_chance = 3;
+
   /** Modification to the shield regeneration rate.  */
-  optional StatModifier shield_regen = 3;
+  optional StatModifier shield_regen = 4;
 
   /**
    * If set, then the affected fighter ignores the friendly/enemy
@@ -73,7 +76,7 @@ message CombatEffects
    * both normal and friendly attacks (and similarly affects everyone
    * with AoE attacks of either type).
    */
-  optional bool mentecon = 4;
+  optional bool mentecon = 5;
 
 }
 

@@ -1390,6 +1390,7 @@ TEST_F (DealDamageTests, Effects)
   c = characters.GetById (idTarget);
   EXPECT_FALSE (c->GetEffects ().has_speed ());
   EXPECT_FALSE (c->GetEffects ().has_range ());
+  EXPECT_FALSE (c->GetEffects ().has_hit_chance ());
   EXPECT_FALSE (c->GetEffects ().has_shield_regen ());
   EXPECT_FALSE (c->GetEffects ().mentecon ());
 
@@ -1401,6 +1402,7 @@ TEST_F (DealDamageTests, Effects)
       attack.set_range (5);
       attack.mutable_effects ()->mutable_speed ()->set_percent (-10);
       attack.mutable_effects ()->mutable_range ()->set_percent (-15);
+      attack.mutable_effects ()->mutable_hit_chance ()->set_percent (-1);
       attack.mutable_effects ()->mutable_shield_regen ()->set_percent (50);
       attack.mutable_effects ()->set_mentecon (i == 0);
     }
@@ -1415,6 +1417,7 @@ TEST_F (DealDamageTests, Effects)
   c = characters.GetById (idTarget);
   EXPECT_EQ (c->GetEffects ().speed ().percent (), -20);
   EXPECT_EQ (c->GetEffects ().range ().percent (), -30);
+  EXPECT_EQ (c->GetEffects ().hit_chance ().percent (), -2);
   EXPECT_EQ (c->GetEffects ().shield_regen ().percent (), 100);
   EXPECT_TRUE (c->GetEffects ().mentecon ());
 }
@@ -1471,6 +1474,34 @@ TEST_F (DealDamageTests, EffectsOkOnKilledCharacter)
   EXPECT_THAT (FindTargetsAndDamage (), ElementsAre (
     TargetKey (proto::TargetId::TYPE_CHARACTER, idTarget)
   ));
+}
+
+TEST_F (DealDamageTests, HitChanceReducedByEffect)
+{
+  constexpr unsigned trials = 1'000;
+  constexpr unsigned maxHp = 2 * trials;
+  constexpr unsigned eps = (trials * 5) / 100;
+
+  auto c = characters.CreateNew ("attacker", Faction::RED);
+  AddAttack (*c, 5, 1, 1);
+  c.reset ();
+
+  c = characters.CreateNew ("target", Faction::GREEN);
+  const auto idTarget = c->GetId ();
+  SetHp (*c, 0, maxHp, 0, maxHp);
+  auto* attack = &CombatTests::AddAttack (*c);
+  attack->set_area (5);
+  attack->mutable_effects ()->mutable_hit_chance ()->set_percent (-30);
+  c.reset ();
+
+  for (unsigned i = 0; i < trials; ++i)
+    FindTargetsAndDamage ();
+
+  constexpr unsigned expected = maxHp - (trials * 70) / 100;
+
+  c = characters.GetById (idTarget);
+  EXPECT_GT (c->GetHP ().armour (), expected - eps);
+  EXPECT_LT (c->GetHP ().armour (), expected + eps);
 }
 
 /* ************************************************************************** */
