@@ -251,12 +251,18 @@ message CombatData
   optional StatModifier received_damage_modifier = 4;
 
   /**
+   * Modification (e.g. boost) to the hit chance of any attacks made by
+   * this fighter.
+   */
+  optional StatModifier hit_chance_modifier = 5;
+
+  /**
    * "Size" of the fighter as a target, i.e. for hit/miss chance
    * computation.  If this is missing or at least as large as the
    * corresponding size of the attack, then the base chance (without any
    * modifiers) is 100%.  If the target size is lower, the chance is
    * proportionally lowered.
    */
-  optional uint32 target_size = 5;
+  optional uint32 target_size = 6;
 
 }

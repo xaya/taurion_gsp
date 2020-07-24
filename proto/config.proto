@@ -189,26 +189,29 @@ message FitmentData
   /** Modification to the received damage (e.g. armour hardening).  */
   optional StatModifier received_damage = 12;
 
+  /** Modification to the self hit chance.  */
+  optional StatModifier hit_chance = 13;
+
   /** Modification to the vehicle's allowed fitment complexity.  */
-  optional StatModifier complexity = 13;
+  optional StatModifier complexity = 14;
 
   /**
    * Modification to the vehicle's prospecting blocks.  Since a larger number
    * of blocks is worse, a fitment will likely have a negative modifier here.
    */
-  optional StatModifier prospecting_blocks = 14;
+  optional StatModifier prospecting_blocks = 15;
 
   /** MOdification to the vehicle's mining rate (min and max).  */
-  optional StatModifier mining_rate = 15;
+  optional StatModifier mining_rate = 16;
 
   /** Low-HP-boost this fitment provides (if any).  */
-  optional LowHpBoost low_hp_boost = 16;
+  optional LowHpBoost low_hp_boost = 17;
 
   /** Self-destruct ability of this fitment (if any).  */
-  optional SelfDestruct self_destruct = 17;
+  optional SelfDestruct self_destruct = 18;
 
   /** If this is a mobile refinery, the stats for it.  */
-  optional MobileRefinery refining = 18;
+  optional MobileRefinery refining = 19;
 
 }
 

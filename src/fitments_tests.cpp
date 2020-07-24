@@ -247,14 +247,16 @@ TEST_F (DeriveCharacterStatsTests, RangeDamage)
   EXPECT_EQ (a->area (), 11);
 }
 
-TEST_F (DeriveCharacterStatsTests, ReceivedDamage)
+TEST_F (DeriveCharacterStatsTests, ReceivedDamageAndHitChance)
 {
   auto c = Derive ("chariot", {});
   EXPECT_FALSE (c->GetProto ().combat_data ().has_received_damage_modifier ());
+  EXPECT_FALSE (c->GetProto ().combat_data ().has_hit_chance_modifier ());
 
-  c = Derive ("chariot", {"lf dmgred", "lf dmgred"});
+  c = Derive ("chariot", {"lf dmgred", "lf dmgred", "lf hitext"});
   const auto& cd = c->GetProto ().combat_data ();
   EXPECT_EQ (cd.received_damage_modifier ().percent (), -10);
+  EXPECT_EQ (cd.hit_chance_modifier ().percent (), 10);
 }
 
 TEST_F (DeriveCharacterStatsTests, StackingButNotCompounding)

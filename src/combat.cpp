@@ -56,6 +56,9 @@ struct CombatModifier
   /** Modifiction of range.  */
   StatModifier range;
 
+  /** Modification of hit chance for attacks of this fighter.  */
+  StatModifier hitChance;
+
   CombatModifier () = default;
   CombatModifier (CombatModifier&&) = default;
 
@@ -65,14 +68,15 @@ struct CombatModifier
 };
 
 /**
- * Computes the modifier to apply for a given entity (composed of low-HP boosts
- * and effects).
+ * Computes the modifier to apply for a given entity (composed of base
+ * modifiers, low-HP boosts and effects).
  */
 void
 ComputeModifier (const CombatEntity& f, CombatModifier& mod)
 {
   mod.damage = StatModifier ();
   mod.range = StatModifier ();
+  mod.hitChance = StatModifier ();
 
   const auto& cd = f.GetCombatData ();
   const auto& hp = f.GetHP ();
@@ -89,6 +93,7 @@ ComputeModifier (const CombatEntity& f, CombatModifier& mod)
     }
 
   mod.range += f.GetEffects ().range ();
+  mod.hitChance += cd.hit_chance_modifier ();
 }
 
 } // anonymous namespace
@@ -382,7 +387,8 @@ private:
    * to hit the given target.
    */
   bool AttackHitsTarget (const CombatEntity& target,
-                         const proto::Attack::Damage& attack);
+                         const proto::Attack::Damage& attack,
+                         const StatModifier& attackerHitMod);
 
   /**
    * Applies a fixed given amount of damage to a given attack target.  Adds
@@ -392,6 +398,7 @@ private:
    */
   proto::HP ApplyDamage (unsigned dmg, const CombatEntity& attacker,
                          const proto::Attack::Damage& pb,
+                         const CombatModifier& attackerMod,
                          CombatEntity& target, std::set<TargetKey>& newDead);
 
   /**
@@ -401,6 +408,7 @@ private:
    */
   void ApplyDamage (unsigned dmg, const CombatEntity& attacker,
                     const proto::Attack& attack,
+                    const CombatModifier& attackerMod,
                     CombatEntity& target, std::set<TargetKey>& newDead);
 
   /**
@@ -464,12 +472,14 @@ DamageProcessor::RollAttackDamage (const proto::Attack::Damage& dmg,
 
 bool
 DamageProcessor::AttackHitsTarget (const CombatEntity& target,
-                                   const proto::Attack::Damage& attack)
+                                   const proto::Attack::Damage& attack,
+                                   const StatModifier& attackerHitMod)
 {
-  const unsigned chance = BaseHitChance (target.GetCombatData (), attack);
+  int chance = BaseHitChance (target.GetCombatData (), attack);
+  chance = attackerHitMod (chance);
 
   /* Do not do a random roll at all if the chance is fully 0 or 100.  */
-  if (chance == 0)
+  if (chance <= 0)
     return false;
   if (chance >= 100)
     return true;
@@ -535,6 +545,7 @@ ComputeDamage (unsigned dmg, const proto::Attack::Damage& pb,
 proto::HP
 DamageProcessor::ApplyDamage (unsigned dmg, const CombatEntity& attacker,
                               const proto::Attack::Damage& pb,
+                              const CombatModifier& attackerMod,
                               CombatEntity& target,
                               std::set<TargetKey>& newDead)
 {
@@ -552,7 +563,7 @@ DamageProcessor::ApplyDamage (unsigned dmg, const CombatEntity& attacker,
     }
 
   /* Check if we hit or miss.  */
-  if (!AttackHitsTarget (target, pb))
+  if (!AttackHitsTarget (target, pb, attackerMod.hitChance))
     {
       VLOG (1) << "Attack misses target:\n" << targetId.DebugString ();
       return proto::HP ();
@@ -610,11 +621,12 @@ DamageProcessor::ApplyDamage (unsigned dmg, const CombatEntity& attacker,
 void
 DamageProcessor::ApplyDamage (const unsigned dmg, const CombatEntity& attacker,
                               const proto::Attack& attack,
+                              const CombatModifier& attackerMod,
                               CombatEntity& target,
                               std::set<TargetKey>& newDead)
 {
-  const auto done
-      = ApplyDamage (dmg, attacker, attack.damage (), target, newDead);
+  const auto done = ApplyDamage (dmg, attacker, attack.damage (), attackerMod,
+                                 target, newDead);
 
   /* If this is a gain_hp attack, record the drained HP in the map of
      drain attacks done so we can later process the potential HP gains
@@ -718,7 +730,7 @@ DamageProcessor::DealDamage (FighterTable::Handle f, const bool forGainHp,
             [&] (const HexCoord& c, const proto::TargetId& id)
             {
               auto t = fighters.GetForTarget (id);
-              ApplyDamage (dmg, *f, attack, *t, newDead);
+              ApplyDamage (dmg, *f, attack, mod, *t, newDead);
               ApplyEffects (attack, *t);
             });
         }
@@ -727,7 +739,7 @@ DamageProcessor::DealDamage (FighterTable::Handle f, const bool forGainHp,
           CHECK (hasTarget);
           CHECK (!attack.friendlies ());
           auto t = fighters.GetForTarget (f->GetTarget ());
-          ApplyDamage (dmg, *f, attack, *t, newDead);
+          ApplyDamage (dmg, *f, attack, mod, *t, newDead);
           ApplyEffects (attack, *t);
         }
     }
@@ -761,7 +773,7 @@ DamageProcessor::ProcessSelfDestructs (FighterTable::Handle f,
         [&] (const HexCoord& c, const proto::TargetId& id)
         {
           auto t = fighters.GetForTarget (id);
-          ApplyDamage (dmg, *f, sd.damage (), *t, newDead);
+          ApplyDamage (dmg, *f, sd.damage (), mod, *t, newDead);
         });
     }
 }

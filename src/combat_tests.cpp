@@ -951,11 +951,13 @@ TEST_F (DealDamageTests, HitMissChance)
 {
   constexpr unsigned trials = 1'000;
   constexpr unsigned maxHp = 2 * trials;
-  constexpr unsigned eps = (trials * 3) / 100;
+  constexpr unsigned eps = (trials * 5) / 100;
 
   auto c = characters.CreateNew ("attacker", Faction::RED);
-  AddAreaAttack (*c, 10, 1, 1).mutable_damage ()->set_weapon_size (8);
-  AddAttack (*c, 5, 1, 1).mutable_damage ()->set_weapon_size (4);
+  c->MutableProto ().mutable_combat_data ()
+      ->mutable_hit_chance_modifier ()->set_percent (100);
+  AddAreaAttack (*c, 10, 1, 1).mutable_damage ()->set_weapon_size (16);
+  AddAttack (*c, 5, 1, 1).mutable_damage ()->set_weapon_size (8);
   c.reset ();
 
   c = characters.CreateNew ("green", Faction::GREEN);
@@ -990,6 +992,44 @@ TEST_F (DealDamageTests, HitMissChance)
   c = characters.GetById (idArea);
   EXPECT_GT (maxHp - c->GetHP ().armour (), expectedArea - eps);
   EXPECT_LT (maxHp - c->GetHP ().armour (), expectedArea + eps);
+}
+
+TEST_F (DealDamageTests, HitMissOutOfBounds)
+{
+  constexpr unsigned trials = 100;
+  constexpr unsigned maxHp = 10 * trials;
+
+  /* We set up two attackers.  One has a base hit chance of 90% that
+     gets boosted beyond 100%, and the other has a base hit chance of 100%
+     that gets reduced to below 0.  */
+
+  auto c = characters.CreateNew ("attacker 1", Faction::RED);
+  c->SetPosition (HexCoord (0, 1));
+  c->MutableProto ().mutable_combat_data ()
+      ->mutable_hit_chance_modifier ()->set_percent (100);
+  AddAttack (*c, 1, 1, 1).mutable_damage ()->set_weapon_size (10);
+  c.reset ();
+
+  c = characters.CreateNew ("attacker 2", Faction::RED);
+  c->SetPosition (HexCoord (0, -1));
+  c->MutableProto ().mutable_combat_data ()
+      ->mutable_hit_chance_modifier ()->set_percent (-200);
+  AddAttack (*c, 1, 3, 3);
+  c.reset ();
+
+  c = characters.CreateNew ("target", Faction::GREEN);
+  const auto idTarget = c->GetId ();
+  c->SetPosition (HexCoord (0, 0));
+  c->MutableProto ().mutable_combat_data ()->set_target_size (9);
+  NoAttacks (*c);
+  SetHp (*c, 0, maxHp, 0, maxHp);
+  c.reset ();
+
+  for (unsigned i = 0; i < trials; ++i)
+    FindTargetsAndDamage ();
+
+  EXPECT_EQ (characters.GetById (idTarget)->GetHP ().armour (),
+             maxHp - trials);
 }
 
 TEST_F (DealDamageTests, FriendlyAttack)
@@ -2098,9 +2138,26 @@ TEST_F (DamagingRandomRollsTests, SureMiss)
   ExpectRollsForDamaging (1);
 }
 
-/* FIXME: Once we have modifiers for hit/miss, check that also a chance
-   of 99% with a modifier that makes it 100% does not roll (and at the same
-   time, verify explicitly in general that sure-hits also do not roll).  */
+TEST_F (DamagingRandomRollsTests, ModifierSureHit)
+{
+  /* If an attack surely hits (in this case due to a modifier), no
+     roll is done either.  */
+
+  auto c = characters.CreateNew ("attacker", Faction::RED);
+  c->SetPosition (HexCoord (0, 0));
+  c->MutableProto ().mutable_combat_data ()
+      ->mutable_hit_chance_modifier ()->set_percent (100);
+  AddAttack (*c, 10, 1, 1).mutable_damage ()->set_weapon_size (10);
+  c.reset ();
+
+  c = characters.CreateNew ("target", Faction::GREEN);
+  c->SetPosition (HexCoord (5, 0));
+  c->MutableProto ().mutable_combat_data ()->set_target_size (5);
+  NoAttacks (*c);
+  c.reset ();
+
+  ExpectRollsForDamaging (1);
+}
 
 TEST_F (DamagingRandomRollsTests, HitMissForEachTarget)
 {
