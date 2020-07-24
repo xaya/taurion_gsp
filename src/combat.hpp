@@ -66,6 +66,13 @@ public:
 void FindCombatTargets (Database& db, xaya::Random& rnd, const Context& ctx);
 
 /**
+ * Computes the base (without stat modifiers) hit/miss chance for a given
+ * target and applied damage.  Returned is the chance to hit in percent.
+ */
+unsigned BaseHitChance (const proto::CombatData& target,
+                        const proto::Attack::Damage& dmg);
+
+/**
  * Deals damage from combat and returns the target IDs of all fighters
  * that are now dead (and need to be handled accordingly).  This also
  * applies non-damage effects like slowing.

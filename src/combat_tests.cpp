@@ -150,15 +150,44 @@ protected:
   /**
    * Adds a self-destruct ability for the given character.
    */
-  static void
+  static proto::SelfDestruct&
   AddSelfDestruct (Character& c, const unsigned area, const unsigned dmg)
   {
-    proto::SelfDestruct sd;
-    sd.set_area (area);
-    sd.mutable_damage ()->set_min (dmg);
-    sd.mutable_damage ()->set_max (dmg);
+    auto* sd = c.MutableProto ().mutable_combat_data ()->add_self_destructs ();
+    sd->set_area (area);
+    sd->mutable_damage ()->set_min (dmg);
+    sd->mutable_damage ()->set_max (dmg);
+    return *sd;
+  }
 
-    *c.MutableProto ().mutable_combat_data ()->add_self_destructs () = sd;
+  /**
+   * Expects that a given random instance matches the state of another
+   * after using up exactly n times NextInt on it.  rnd will have to be moved
+   * in, and will be modified along the way.
+   */
+  static void
+  ExpectRandomRolls (const xaya::Random& endState,
+                     xaya::Random rnd, const unsigned n)
+  {
+    /* In theory, it is not fully predictable how many actual bytes
+       a single NextInt call uses up (and it depends on the actual arguments
+       with which it will be called).  But with very high probability it
+       will just be one uint64_t, just as the NextInt call below.  */
+
+    const auto expectedVal = endState.BranchOff ("check").Next<uint64_t> ();
+
+    for (unsigned i = 0; i <= 10 * n; ++i)
+      {
+        if (rnd.BranchOff ("check").Next<uint64_t> () == expectedVal)
+          {
+            EXPECT_EQ (i, n);
+            return;
+          }
+
+        rnd.NextInt (42);
+      }
+
+    FAIL () << "Could not detect number of rolls";
   }
 
 };
@@ -639,9 +668,7 @@ TEST_F (TargetSelectionTests, NoRandomNumbersRequested)
 
   auto branched = rnd.BranchOff ("branch");
   FindCombatTargets (db, branched, ctx);
-
-  auto original = rnd.BranchOff ("branch");
-  EXPECT_EQ (branched.Next<uint64_t> (), original.Next<uint64_t> ());
+  ExpectRandomRolls (branched, rnd.BranchOff ("branch"), 0);
 }
 
 TEST_F (TargetSelectionTests, RandomNumbersRequested)
@@ -663,11 +690,56 @@ TEST_F (TargetSelectionTests, RandomNumbersRequested)
 
   auto branched = rnd.BranchOff ("branch");
   FindCombatTargets (db, branched, ctx);
+  ExpectRandomRolls (branched, rnd.BranchOff ("branch"), 2);
+}
 
-  auto original = rnd.BranchOff ("branch");
-  for (unsigned i = 0; i < 2; ++i)
-    original.Next<uint64_t> ();
-  EXPECT_EQ (branched.Next<uint64_t> (), original.Next<uint64_t> ());
+/* ************************************************************************** */
+
+class BaseHitChanceTests : public testing::Test
+{
+
+protected:
+
+  /**
+   * Computes the base hit chance for given target and weapon sizes directly
+   * (which get put into protos).  Setting -1 for one of the sizes means
+   * that the field will not be set at all.
+   */
+  static unsigned
+  ComputeChance (const int targetSize, const int weaponSize)
+  {
+    proto::CombatData cd;
+    if (targetSize != -1)
+      cd.set_target_size (targetSize);
+
+    proto::Attack::Damage dmg;
+    if (weaponSize != -1)
+      dmg.set_weapon_size (weaponSize);
+
+    return BaseHitChance (cd, dmg);
+  }
+
+};
+
+TEST_F (BaseHitChanceTests, MissingFields)
+{
+  EXPECT_EQ (ComputeChance (-1, -1), 100);
+  EXPECT_EQ (ComputeChance (-1, 1), 100);
+  EXPECT_EQ (ComputeChance (1, -1), 100);
+}
+
+TEST_F (BaseHitChanceTests, LargeTarget)
+{
+  EXPECT_EQ (ComputeChance (10, 10), 100);
+  EXPECT_EQ (ComputeChance (10, 1), 100);
+}
+
+TEST_F (BaseHitChanceTests, Proportional)
+{
+  EXPECT_EQ (ComputeChance (9, 10), 90);
+  EXPECT_EQ (ComputeChance (1, 10), 10);
+  EXPECT_EQ (ComputeChance (1, 100), 1);
+  EXPECT_EQ (ComputeChance (1, 101), 0);
 }
 
 /* ************************************************************************** */
@@ -873,6 +945,91 @@ TEST_F (DealDamageTests, MixedAttacks)
   EXPECT_LE (hpNear, 8);
   EXPECT_GE (hpFar, 8);
   EXPECT_LE (hpFar, 9);
+}
+
+TEST_F (DealDamageTests, HitMissChance)
+{
+  constexpr unsigned trials = 1'000;
+  constexpr unsigned maxHp = 2 * trials;
+  constexpr unsigned eps = (trials * 5) / 100;
+
+  auto c = characters.CreateNew ("attacker", Faction::RED);
+  c->MutableProto ().mutable_combat_data ()
+      ->mutable_hit_chance_modifier ()->set_percent (100);
+  AddAreaAttack (*c, 10, 1, 1).mutable_damage ()->set_weapon_size (16);
+  AddAttack (*c, 5, 1, 1).mutable_damage ()->set_weapon_size (8);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idTarget = c->GetId ();
+  c->SetPosition (HexCoord (1, 0));
+  c->MutableProto ().mutable_combat_data ()->set_target_size (1);
+  NoAttacks (*c);
+  SetHp (*c, 0, maxHp, 0, maxHp);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idArea = c->GetId ();
+  c->SetPosition (HexCoord (10, 0));
+  c->MutableProto ().mutable_combat_data ()->set_target_size (2);
+  NoAttacks (*c);
+  SetHp (*c, 0, maxHp, 0, maxHp);
+  c.reset ();
+
+  for (unsigned i = 0; i < trials; ++i)
+    FindTargetsAndDamage ();
+
+  /* The nearer target is affected by both attacks.  The hit chance for
+     the directed attack is 1/4, and for the area attack 1/8.  The further
+     target is affected by the area attack only, with a chance of 1/4.  */
+  constexpr auto expectedTarget = trials / 4 + trials / 8;
+  constexpr auto expectedArea = trials / 4;
+
+  c = characters.GetById (idTarget);
+  EXPECT_GT (maxHp - c->GetHP ().armour (), expectedTarget - eps);
+  EXPECT_LT (maxHp - c->GetHP ().armour (), expectedTarget + eps);
+
+  c = characters.GetById (idArea);
+  EXPECT_GT (maxHp - c->GetHP ().armour (), expectedArea - eps);
+  EXPECT_LT (maxHp - c->GetHP ().armour (), expectedArea + eps);
+}
+
+TEST_F (DealDamageTests, HitMissOutOfBounds)
+{
+  constexpr unsigned trials = 100;
+  constexpr unsigned maxHp = 10 * trials;
+
+  /* We set up two attackers.  One has a base hit chance of 90% that
+     gets boosted beyond 100%, and the other has a base hit chance of 100%
+     that gets reduced to below 0.  */
+
+  auto c = characters.CreateNew ("attacker 1", Faction::RED);
+  c->SetPosition (HexCoord (0, 1));
+  c->MutableProto ().mutable_combat_data ()
+      ->mutable_hit_chance_modifier ()->set_percent (100);
+  AddAttack (*c, 1, 1, 1).mutable_damage ()->set_weapon_size (10);
+  c.reset ();
+
+  c = characters.CreateNew ("attacker 2", Faction::RED);
+  c->SetPosition (HexCoord (0, -1));
+  c->MutableProto ().mutable_combat_data ()
+      ->mutable_hit_chance_modifier ()->set_percent (-200);
+  AddAttack (*c, 1, 3, 3);
+  c.reset ();
+
+  c = characters.CreateNew ("target", Faction::GREEN);
+  const auto idTarget = c->GetId ();
+  c->SetPosition (HexCoord (0, 0));
+  c->MutableProto ().mutable_combat_data ()->set_target_size (9);
+  NoAttacks (*c);
+  SetHp (*c, 0, maxHp, 0, maxHp);
+  c.reset ();
+
+  for (unsigned i = 0; i < trials; ++i)
+    FindTargetsAndDamage ();
+
+  EXPECT_EQ (characters.GetById (idTarget)->GetHP ().armour (),
+             maxHp - trials);
 }
 
 TEST_F (DealDamageTests, FriendlyAttack)
@@ -1233,6 +1390,7 @@ TEST_F (DealDamageTests, Effects)
   c = characters.GetById (idTarget);
   EXPECT_FALSE (c->GetEffects ().has_speed ());
   EXPECT_FALSE (c->GetEffects ().has_range ());
+  EXPECT_FALSE (c->GetEffects ().has_hit_chance ());
   EXPECT_FALSE (c->GetEffects ().has_shield_regen ());
   EXPECT_FALSE (c->GetEffects ().mentecon ());
 
@@ -1244,6 +1402,7 @@ TEST_F (DealDamageTests, Effects)
       attack.set_range (5);
       attack.mutable_effects ()->mutable_speed ()->set_percent (-10);
       attack.mutable_effects ()->mutable_range ()->set_percent (-15);
+      attack.mutable_effects ()->mutable_hit_chance ()->set_percent (-1);
       attack.mutable_effects ()->mutable_shield_regen ()->set_percent (50);
       attack.mutable_effects ()->set_mentecon (i == 0);
     }
@@ -1258,6 +1417,7 @@ TEST_F (DealDamageTests, Effects)
   c = characters.GetById (idTarget);
   EXPECT_EQ (c->GetEffects ().speed ().percent (), -20);
   EXPECT_EQ (c->GetEffects ().range ().percent (), -30);
+  EXPECT_EQ (c->GetEffects ().hit_chance ().percent (), -2);
   EXPECT_EQ (c->GetEffects ().shield_regen ().percent (), 100);
   EXPECT_TRUE (c->GetEffects ().mentecon ());
 }
@@ -1314,6 +1474,34 @@ TEST_F (DealDamageTests, EffectsOkOnKilledCharacter)
   EXPECT_THAT (FindTargetsAndDamage (), ElementsAre (
     TargetKey (proto::TargetId::TYPE_CHARACTER, idTarget)
   ));
+}
+
+TEST_F (DealDamageTests, HitChanceReducedByEffect)
+{
+  constexpr unsigned trials = 1'000;
+  constexpr unsigned maxHp = 2 * trials;
+  constexpr unsigned eps = (trials * 5) / 100;
+
+  auto c = characters.CreateNew ("attacker", Faction::RED);
+  AddAttack (*c, 5, 1, 1);
+  c.reset ();
+
+  c = characters.CreateNew ("target", Faction::GREEN);
+  const auto idTarget = c->GetId ();
+  SetHp (*c, 0, maxHp, 0, maxHp);
+  auto* attack = &CombatTests::AddAttack (*c);
+  attack->set_area (5);
+  attack->mutable_effects ()->mutable_hit_chance ()->set_percent (-30);
+  c.reset ();
+
+  for (unsigned i = 0; i < trials; ++i)
+    FindTargetsAndDamage ();
+
+  constexpr unsigned expected = maxHp - (trials * 70) / 100;
+
+  c = characters.GetById (idTarget);
+  EXPECT_GT (c->GetHP ().armour (), expected - eps);
+  EXPECT_LT (c->GetHP ().armour (), expected + eps);
 }
 
 /* ************************************************************************** */
@@ -1670,6 +1858,42 @@ TEST_F (SelfDestructTests, StackingAndLowHpBoost)
   EXPECT_EQ (characters.GetById (idAttacker)->GetHP ().armour (), 100 - 24);
 }
 
+TEST_F (SelfDestructTests, HitMissChance)
+{
+  auto c = characters.CreateNew ("red", Faction::RED);
+  AddAttack (*c, 100, 1, 1);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idDestructed = c->GetId ();
+  c->SetPosition (HexCoord (10, 0));
+  SetHp (*c, 0, 1, 0, 1);
+  AddSelfDestruct (*c, 5, 10).mutable_damage ()->set_weapon_size (1'000);
+  c.reset ();
+
+  c = characters.CreateNew ("red", Faction::RED);
+  const auto idHit = c->GetId ();
+  c->SetPosition (HexCoord (15, 0));
+  c->MutableProto ().mutable_combat_data ()->set_target_size (1'000);
+  SetHp (*c, 0, 100, 0, 100);
+  NoAttacks (*c);
+  c.reset ();
+
+  c = characters.CreateNew ("red", Faction::RED);
+  const auto idMissed = c->GetId ();
+  c->SetPosition (HexCoord (15, 0));
+  c->MutableProto ().mutable_combat_data ()->set_target_size (1);
+  SetHp (*c, 0, 100, 0, 100);
+  NoAttacks (*c);
+  c.reset ();
+
+  EXPECT_THAT (FindTargetsAndDamage (), ElementsAre (
+    TargetKey (proto::TargetId::TYPE_CHARACTER, idDestructed)
+  ));
+  EXPECT_EQ (characters.GetById (idHit)->GetHP ().armour (), 90);
+  EXPECT_EQ (characters.GetById (idMissed)->GetHP ().armour (), 100);
+}
+
 TEST_F (SelfDestructTests, CombatEffects)
 {
   /* The original combat effects (e.g. range modifier) will be taken into
@@ -1810,6 +2034,239 @@ TEST_F (SelfDestructTests, SafeZone)
   ));
   EXPECT_EQ (characters.GetById (idAlive)->GetHP ().armour (), 90);
   EXPECT_EQ (characters.GetById (idSafe)->GetHP ().armour (), 100);
+}
+
+/* ************************************************************************** */
+
+class DamagingRandomRollsTests : public DealDamageTests
+{
+
+protected:
+
+  /**
+   * Performs targeting and damaging, and expects that the damaging stage
+   * (excluding targeting) uses exactly the given number of random rolls.
+   */
+  void
+  ExpectRollsForDamaging (const unsigned n)
+  {
+    FindCombatTargets (db, rnd, ctx);
+
+    auto branched = rnd.BranchOff ("branch");
+    DealCombatDamage (db, dl, branched, ctx);
+    ExpectRandomRolls (branched, rnd.BranchOff ("branch"), n);
+  }
+
+};
+
+TEST_F (DamagingRandomRollsTests, NormalAttacks)
+{
+  /* Normal attacks roll damage if the target is in range of the
+     attack itself but not if it is outside.  The tests here have
+     a 100% hit chance and don't use up any random rolls for the
+     hit/miss computation.  */
+
+  auto c = characters.CreateNew ("attacker", Faction::RED);
+  c->SetPosition (HexCoord (0, 0));
+  AddAttack (*c, 10, 1, 1);
+  AddAttack (*c, 5, 1, 1);
+  c.reset ();
+
+  c = characters.CreateNew ("target", Faction::GREEN);
+  c->SetPosition (HexCoord (7, 0));
+  NoAttacks (*c);
+  c.reset ();
+
+  ExpectRollsForDamaging (1);
+}
+
+TEST_F (DamagingRandomRollsTests, AreaAttacks)
+{
+  /* Area attacks always roll damage exactly once, independent of the number
+     of targets that are actually in range (even if none).  The tests here
+     do not have any hit/miss rolls.  */
+
+  auto c = characters.CreateNew ("attacker", Faction::RED);
+  c->SetPosition (HexCoord (0, 0));
+  AddAreaAttack (*c, 10, 1, 1);
+  AddAreaAttack (*c, 5, 1, 1);
+  AddAreaAttack (*c, 1, 1, 1);
+  c.reset ();
+
+  for (unsigned i = 0; i < 10; ++i)
+    {
+      c = characters.CreateNew ("target", Faction::GREEN);
+      c->SetPosition (HexCoord (7, 0));
+      NoAttacks (*c);
+      c.reset ();
+    }
+
+  ExpectRollsForDamaging (3);
+}
+
+TEST_F (DamagingRandomRollsTests, Effects)
+{
+  /* Effects do not roll at all, neither for damage nor for hit/miss.  */
+
+  auto c = characters.CreateNew ("attacker", Faction::RED);
+  c->SetPosition (HexCoord (0, 0));
+  auto* attack = &CombatTests::AddAttack (*c);
+  attack->set_area (5);
+  attack->mutable_effects ()->mutable_speed ()->set_percent (-50);
+  c.reset ();
+
+  c = characters.CreateNew ("target", Faction::GREEN);
+  c->SetPosition (HexCoord (1, 0));
+  NoAttacks (*c);
+  c.reset ();
+
+  ExpectRollsForDamaging (0);
+}
+
+TEST_F (DamagingRandomRollsTests, SelfDestruct)
+{
+  /* Self destructs work like AoE attacks, they roll once and then apply
+     it to everyone.  */
+
+  auto c = characters.CreateNew ("attacker", Faction::RED);
+  c->SetPosition (HexCoord (100, 0));
+  AddAttack (*c, 100, 1, 1);
+  c.reset ();
+
+  c = characters.CreateNew ("destructed", Faction::GREEN);
+  c->SetPosition (HexCoord (0, 0));
+  SetHp (*c, 0, 1, 0, 1);
+  AddSelfDestruct (*c, 10, 1);
+  AddSelfDestruct (*c, 5, 1);
+  c.reset ();
+
+  for (unsigned i = 0; i < 10; ++i)
+    {
+      c = characters.CreateNew ("target", Faction::BLUE);
+      c->SetPosition (HexCoord (-7, 0));
+      NoAttacks (*c);
+      c.reset ();
+    }
+
+  ExpectRollsForDamaging (1 + 2);
+}
+
+TEST_F (DamagingRandomRollsTests, SureMiss)
+{
+  /* If an attack has zero hit chance, we do not even roll for it.  */
+
+  auto c = characters.CreateNew ("attacker", Faction::RED);
+  c->SetPosition (HexCoord (0, 0));
+  AddAttack (*c, 10, 1, 1).mutable_damage ()->set_weapon_size (101);
+  c.reset ();
+
+  c = characters.CreateNew ("target", Faction::GREEN);
+  c->SetPosition (HexCoord (5, 0));
+  c->MutableProto ().mutable_combat_data ()->set_target_size (1);
+  NoAttacks (*c);
+  c.reset ();
+
+  ExpectRollsForDamaging (1);
+}
+
+TEST_F (DamagingRandomRollsTests, ModifierSureHit)
+{
+  /* If an attack surely hits (in this case due to a modifier), no
+     roll is done either.  */
+
+  auto c = characters.CreateNew ("attacker", Faction::RED);
+  c->SetPosition (HexCoord (0, 0));
+  c->MutableProto ().mutable_combat_data ()
+      ->mutable_hit_chance_modifier ()->set_percent (100);
+  AddAttack (*c, 10, 1, 1).mutable_damage ()->set_weapon_size (10);
+  c.reset ();
+
+  c = characters.CreateNew ("target", Faction::GREEN);
+  c->SetPosition (HexCoord (5, 0));
+  c->MutableProto ().mutable_combat_data ()->set_target_size (5);
+  NoAttacks (*c);
+  c.reset ();
+
+  ExpectRollsForDamaging (1);
+}
+
+TEST_F (DamagingRandomRollsTests, HitMissForEachTarget)
+{
+  /* For hit chance truly between 0% and 100%, we do a roll for each
+     target that is damaged.  */
+
+  auto c = characters.CreateNew ("attacker", Faction::RED);
+  c->SetPosition (HexCoord (0, 0));
+  AddAreaAttack (*c, 10, 1, 1).mutable_damage ()->set_weapon_size (10);
+  c.reset ();
+
+  for (unsigned i = 0; i < 10; ++i)
+    {
+      c = characters.CreateNew ("target", Faction::GREEN);
+      c->SetPosition (HexCoord (5, 0));
+      c->MutableProto ().mutable_combat_data ()->set_target_size (1);
+      NoAttacks (*c);
+      c.reset ();
+    }
+
+  ExpectRollsForDamaging (1 + 10);
+}
+
+TEST_F (DamagingRandomRollsTests, HitMissRolledForZeroDamage)
+{
+  /* Even if the effective damage is zero due to a damage modifier,
+     the hit/miss chance is still rolled.  */
+
+  auto c = characters.CreateNew ("attacker", Faction::RED);
+  c->SetPosition (HexCoord (0, 0));
+  AddAttack (*c, 10, 1, 1).mutable_damage ()->set_weapon_size (10);
+  c.reset ();
+
+  c = characters.CreateNew ("target", Faction::GREEN);
+  c->SetPosition (HexCoord (5, 0));
+  auto* cd = c->MutableProto ().mutable_combat_data ();
+  cd->set_target_size (1);
+  cd->mutable_received_damage_modifier ()->set_percent (-100);
+  NoAttacks (*c);
+  c.reset ();
+
+  ExpectRollsForDamaging (1 + 1);
+}
+
+TEST_F (DamagingRandomRollsTests, NoRollForAlreadyDead)
+{
+  /* If a target is already dead (from a previous attack / self-destruct),
+     no hit/miss roll is made.  */
+
+  auto c = characters.CreateNew ("attacker", Faction::RED);
+  c->SetPosition (HexCoord (10, 0));
+  AddAreaAttack (*c, 10, 1, 1);
+  c.reset ();
+
+  c = characters.CreateNew ("destructed", Faction::GREEN);
+  c->SetPosition (HexCoord (0, 0));
+  SetHp (*c, 0, 1, 0, 1);
+  AddSelfDestruct (*c, 5, 1).mutable_damage ()->set_weapon_size (10);
+  c.reset ();
+
+  c = characters.CreateNew ("already dead", Faction::BLUE);
+  c->SetPosition (HexCoord (1, 0));
+  c->MutableProto ().mutable_combat_data ()->set_target_size (1);
+  SetHp (*c, 0, 1, 0, 1);
+  NoAttacks (*c);
+  c.reset ();
+
+  c = characters.CreateNew ("still alive", Faction::BLUE);
+  c->SetPosition (HexCoord (2, 0));
+  c->MutableProto ().mutable_combat_data ()->set_target_size (1);
+  SetHp (*c, 0, 100, 0, 100);
+  NoAttacks (*c);
+  c.reset ();
+
+  /* One roll for the original attack's damage, one roll for the
+     self-destruct damage and then one hit/miss roll for the still-alive
+     self-destruct target.  */
+  ExpectRollsForDamaging (3);
 }
 
 /* ************************************************************************** */

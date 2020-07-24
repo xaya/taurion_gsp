@@ -1178,6 +1178,49 @@ fungible_items:
 
 fungible_items:
 {
+    key: "lf hitext"
+    value:
+	{
+        space: 1000
+        complexity: 2
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 2500 }
+        construction_resources: { key: "mat b" value: 2500 }
+        fitment:
+          {
+            slot: "mid"
+            vehicle_size: LIGHT
+            hit_chance: { percent: 10 }
+          }
+      }
+  }
+
+
+fungible_items:
+{
+    key: "lf hitred"
+    value:
+	{
+        space: 1000
+        complexity: 2
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 2500 }
+        construction_resources: { key: "mat b" value: 2500 }
+        fitment:
+          {
+            slot: "mid"
+            attack:
+              {
+                area: 3
+                effects: { hit_chance: { percent: -2 } }
+              }
+          }
+      }
+  }
+
+
+fungible_items:
+{
     key: "vhf mentecon"
     value:
 	{

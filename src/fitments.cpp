@@ -156,6 +156,7 @@ ApplyFitments (Character& c, const Context& ctx)
   StatModifier shieldRegen, armourRegen;
   StatModifier range, damage;
   StatModifier recvDamage;
+  StatModifier hitChance;
 
   /* Mobile refinery (if any).  */
   bool hasRefinery = false;
@@ -205,12 +206,18 @@ ApplyFitments (Character& c, const Context& ctx)
       range += fitment.range ();
       damage += fitment.damage ();
       recvDamage += fitment.received_damage ();
+      hitChance += fitment.hit_chance ();
     }
 
   if (recvDamage.IsNeutral ())
     cd->clear_received_damage_modifier ();
   else
     *cd->mutable_received_damage_modifier () = recvDamage.ToProto ();
+
+  if (hitChance.IsNeutral ())
+    cd->clear_hit_chance_modifier ();
+  else
+    *cd->mutable_hit_chance_modifier () = hitChance.ToProto ();
 
   pb.set_cargo_space (cargo (pb.cargo_space ()));
   pb.set_speed (speed (pb.speed ()));
