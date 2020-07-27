@@ -38,7 +38,7 @@ namespace
 /** Position where prizes are won with normal chance.  */
 constexpr HexCoord POS_NORMAL_PRIZES(4'000, 0);
 /** Position with low chance for prizes.  */
-constexpr HexCoord POS_LOW_PRIZES(1'000, 500);
+constexpr HexCoord POS_LOW_PRIZES(2'000, -2'650);
 
 /* ************************************************************************** */
 
@@ -255,7 +255,7 @@ TEST_F (FinishProspectingTests, Prizes)
   EXPECT_LE (foundMap["silver"], 1050);
 }
 
-TEST_F (FinishProspectingTests, FewerPrizesInCentre)
+TEST_F (FinishProspectingTests, FewerPrizesInLowPrizeZone)
 {
   constexpr unsigned trials = 10'000;
 

@@ -26,9 +26,20 @@ namespace pxd
 bool
 Params::IsLowPrizeZone (const HexCoord& pos) const
 {
-  const HexCoord noPrizeCentre(58, -256);
-  constexpr HexCoord::IntT noPrizeRadius = 3'000;
-  return HexCoord::DistanceL1 (pos, noPrizeCentre) <= noPrizeRadius;
+  const Faction f = map.SafeZones ().StarterFor (pos);
+  switch (f)
+    {
+    case Faction::RED:
+    case Faction::GREEN:
+    case Faction::BLUE:
+      return true;
+
+    case Faction::INVALID:
+      return false;
+
+    default:
+      LOG (FATAL) << "Invalid faction returned: " << static_cast<int> (f);
+    }
 }
 
 unsigned

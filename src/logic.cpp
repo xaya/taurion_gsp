@@ -154,7 +154,6 @@ void
 PXLogic::InitialiseState (xaya::SQLiteDatabase& db)
 {
   SQLiteGameDatabase dbObj(db, *this);
-  const Params params(GetChain ());
 
   InitialiseBuildings (dbObj, GetChain ());
 
