@@ -18,6 +18,10 @@
 
 #include "params.hpp"
 
+#include "protoutils.hpp"
+
+#include "proto/roconfig.hpp"
+
 #include <glog/logging.h>
 
 namespace pxd
@@ -26,20 +30,22 @@ namespace pxd
 bool
 Params::IsLowPrizeZone (const HexCoord& pos) const
 {
-  const Faction f = map.SafeZones ().StarterFor (pos);
-  switch (f)
+  /* The low-prize zone is in a (large) radius around the starter zones
+     and spawn points.  */
+  constexpr HexCoord::IntT radius = 1'250;
+
+  const RoConfig cfg(chain);
+  for (const auto sz : cfg->safe_zones ())
     {
-    case Faction::RED:
-    case Faction::GREEN:
-    case Faction::BLUE:
-      return true;
+      if (!sz.has_faction ())
+        continue;
 
-    case Faction::INVALID:
-      return false;
-
-    default:
-      LOG (FATAL) << "Invalid faction returned: " << static_cast<int> (f);
+      const auto centre = CoordFromProto (sz.centre ());
+      if (HexCoord::DistanceL1 (centre, pos) <= radius)
+        return true;
     }
+
+  return false;
 }
 
 unsigned

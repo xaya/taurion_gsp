@@ -31,7 +31,7 @@ Context::Context (const xaya::Chain c)
 Context::Context (const xaya::Chain c, const BaseMap& m,
                   const unsigned h, const int64_t ts)
   : map(&m), chain(c),
-    params(new pxd::Params (chain, *map)),
+    params(new pxd::Params (chain)),
     cfg(new pxd::RoConfig (chain)),
     height(h), timestamp(ts)
 {}

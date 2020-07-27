@@ -23,7 +23,6 @@
 #include "database/amount.hpp"
 #include "database/faction.hpp"
 #include "database/inventory.hpp"
-#include "mapdata/basemap.hpp"
 
 #include <xayagame/gamelogic.hpp>
 
@@ -47,16 +46,13 @@ private:
   /** The chain for which we need parameters.  */
   const xaya::Chain chain;
 
-  /** Basemap instance (which we need to retrieve starter zones).  */
-  const BaseMap& map;
-
 public:
 
   /**
    * Constructs an instance based on the given situation.
    */
-  explicit Params (const xaya::Chain c, const BaseMap& m)
-    : chain(c), map(m)
+  explicit Params (const xaya::Chain c)
+    : chain(c)
   {}
 
   Params () = delete;
