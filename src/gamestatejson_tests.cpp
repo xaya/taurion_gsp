@@ -1121,9 +1121,7 @@ protected:
 
   PrizesJsonTests ()
     : cnt(db)
-  {
-    ctx.SetChain (xaya::Chain::MAIN);
-  }
+  {}
 
 };
 
@@ -1131,7 +1129,7 @@ TEST_F (PrizesJsonTests, Works)
 {
   cnt.IncrementFound ("gold prize");
   for (unsigned i = 0; i < 10; ++i)
-    cnt.IncrementFound ("bronze prize");
+    cnt.IncrementFound ("silver prize");
 
   ExpectStateJson (R"({
     "prizes":
@@ -1139,23 +1137,23 @@ TEST_F (PrizesJsonTests, Works)
         "gold":
           {
             "number": 3,
-            "probability": 200000,
+            "probability": 100,
             "found": 1,
             "available": 2
           },
         "silver":
           {
-            "number": 5,
-            "probability": 100000,
-            "found": 0,
-            "available": 5
+            "number": 1000,
+            "probability": 10,
+            "found": 10,
+            "available": 990
           },
         "bronze":
           {
-            "number": 10,
-            "probability": 25000,
-            "found": 10,
-            "available": 0
+            "number": 1,
+            "probability": 1,
+            "found": 0,
+            "available": 1
           }
       }
   })");
