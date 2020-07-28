@@ -143,6 +143,7 @@ public:
                         const std::string& faction,
                         int l1range, const Json::Value& source,
                         const Json::Value& target) override;
+  std::string encodewaypoints (const Json::Value& wp) override;
   Json::Value getregionat (const Json::Value& coord) override;
   Json::Value getbuildingshape (const Json::Value& centre, int rot,
                                 const std::string& type) override;
@@ -213,6 +214,12 @@ public:
     return nonstate.findpath (exbuildings, faction, l1range, source, target);
   }
 
+  std::string
+  encodewaypoints (const Json::Value& wp) override
+  {
+    return nonstate.encodewaypoints (wp);
+  }
+
   Json::Value
   getregionat (const Json::Value& coord) override
   {
@@ -225,8 +232,6 @@ public:
   {
     return nonstate.getbuildingshape (centre, rot, type);
   }
-
-  std::string encodewaypoints (const Json::Value& wp) override;
 
 };
 

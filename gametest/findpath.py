@@ -95,6 +95,14 @@ class FindPathTest (PXTest):
       self.expectError (-1, "faction is invalid",
                         self.call, source=a, target=a, faction=f, l1range=1)
 
+    # Also briefly test invalid arguments to encodewaypoints (which is
+    # related to findpath).  The proper functionality is tested in other
+    # tests, e.g. movement.py.
+    self.expectError (-32602, ".*Invalid method parameters.*",
+                      self.rpc.game.encodewaypoints, wp={})
+    self.expectError (-1, "invalid waypoints",
+                      self.rpc.game.encodewaypoints, wp=["invalid"])
+
     # Paths that yield no connection.
     self.expectError (1, "no connection",
                       self.call, source=passable, target=obstacle, l1range=10)

@@ -323,6 +323,31 @@ NonStateRpcServer::findpath (const Json::Value& exbuildings,
   return res;
 }
 
+std::string
+NonStateRpcServer::encodewaypoints (const Json::Value& wp)
+{
+  LOG (INFO) << "RPC method called: encodewaypoints\n" << wp;
+
+  CHECK (wp.isArray ());
+
+  std::vector<HexCoord> wpArr;
+  for (const auto& entry : wp)
+    {
+      HexCoord c;
+      if (!CoordFromJson (entry, c))
+        ReturnError (ErrorCode::INVALID_ARGUMENT, "invalid waypoints");
+      wpArr.push_back (c);
+    }
+
+  Json::Value jsonWp;
+  std::string encoded;
+  if (!EncodeWaypoints (wpArr, jsonWp, encoded))
+    ReturnError (ErrorCode::FINDPATH_ENCODE_FAILED,
+                 "could not encode waypoints");
+
+  return encoded;
+}
+
 Json::Value
 NonStateRpcServer::getregionat (const Json::Value& coord)
 {
@@ -565,35 +590,6 @@ PXRpcServer::getserviceinfo (const std::string& name, const Json::Value& op)
 
       return res;
     });
-}
-
-std::string
-PXRpcServer::encodewaypoints (const Json::Value& wp)
-{
-  LOG (INFO) << "RPC method called: encodewaypoints\n" << wp;
-
-  /* This method does not use any game state (as it just exposes the
-     JSON compression code).  But since it is only really needed for testing,
-     there is no use in exposing it for the nonstate RPC server as well.  */
-
-  CHECK (wp.isArray ());
-
-  std::vector<HexCoord> wpArr;
-  for (const auto& entry : wp)
-    {
-      HexCoord c;
-      if (!CoordFromJson (entry, c))
-        ReturnError (ErrorCode::INVALID_ARGUMENT, "invalid waypoints");
-      wpArr.push_back (c);
-    }
-
-  Json::Value jsonWp;
-  std::string encoded;
-  if (!EncodeWaypoints (wpArr, jsonWp, encoded))
-    ReturnError (ErrorCode::FINDPATH_ENCODE_FAILED,
-                 "could not encode waypoints");
-
-  return encoded;
 }
 
 /* ************************************************************************** */
