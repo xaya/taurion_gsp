@@ -57,19 +57,19 @@ params:
     burnsale_stages: { amount_sold: 10000000000 price_sat: 50000 }
     burnsale_stages: { amount_sold: 20000000000 price_sat: 100000 }
 
-    prizes: { name: "cash" number: 10 probability: 350000 }
+    prizes: { name: "cash" number: 10 probability: 2 }
 
 # Prizes exported from the sheet.
 prizes: { name: "Prison Key Card" number: 100 probability: 2655 }
 prizes: { name: "Thermal Implant" number: 50 probability: 5063 }
 prizes: { name: "Age of Rust MFT Token" number: 25 probability: 9499 }
 prizes: { name: "Runner Mission Card" number: 10 probability: 21118 }
-prizes: { name: "Lastlight Mission Card" number: 1 probability: 130289 }
+prizes: { name: "Lastlight Mission Card" number: 1 probability: 2 }
 prizes: { name: "Silver Crate" number: 5 probability: 37530 }
 prizes: { name: "Cartesi Tokens" number: 10 probability: 21118 }
 prizes: { name: "Package of 10 Training Tickets + 1 Trinity Boost" number: 100 probability: 2655 }
-prizes: { name: "347 E-Den" number: 2 probability: 77127 }
-prizes: { name: "5,000 TKT" number: 5 probability: 37530 }
+prizes: { name: "347 E-Den" number: 2 probability: 2 }
+prizes: { name: "5,000 TKT" number: 5 probability: 2 }
 prizes: { name: "100 TKT" number: 250 probability: 1109 }
 prizes: { name: "U.S.S. Enterprise NCC-1701-D + 3 Founders Supply Crates + Steam key" number: 1 probability: 130289 }
 prizes: { name: "U.S.S. Voyager NCC-74656 +  3 Founders Supply Crates + Steam key" number: 1 probability: 130289 }
@@ -89,7 +89,7 @@ prizes: { name: "F1 Common Crate" number: 4 probability: 44905 }
 prizes: { name: "Gamerhash Coins" number: 3 probability: 56367 }
 prizes: { name: "Gamerhash Store" number: 3 probability: 56367 }
 prizes: { name: "100 DAI" number: 12 probability: 18075 }
-prizes: { name: "Death Knight Head" number: 1 probability: 130289 }
+prizes: { name: "Death Knight Head" number: 1 probability: 2 }
 prizes: { name: "Death Knight Body" number: 1 probability: 130289 }
 prizes: { name: "Death Knight Arms" number: 1 probability: 130289 }
 prizes: { name: "Death Knight Legs" number: 1 probability: 130289 }
@@ -106,7 +106,7 @@ prizes: { name: "Summoner Spellbook" number: 20 probability: 11582 }
 prizes: { name: "Temporal Disrupter" number: 200 probability: 1374 }
 prizes: { name: "Syphon" number: 200 probability: 1374 }
 prizes: { name: "Graviton Spectrometer" number: 200 probability: 1374 }
-prizes: { name: "Tritanian Drill" number: 200 probability: 1374 }
+prizes: { name: "Tritanian Drill" number: 200 probability: 2 }
 prizes: { name: "Medium Transport" number: 50 probability: 5063 }
 prizes: { name: "Legendary Crystals" number: 3 probability: 56367 }
 prizes: { name: "Epic Keys" number: 10 probability: 21118 }

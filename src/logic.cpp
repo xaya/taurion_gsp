@@ -166,6 +166,33 @@ PXLogic::InitialiseState (xaya::SQLiteDatabase& db)
      when we tweak initialisation, and thus having to potentially update test
      data and other stuff.  */
   Ids ("pxd").ReserveUpTo (1'000);
+
+  /* FIXME: Hack for testing, should not be released in a production
+     version (obviously).  */
+  {
+    BuildingInventoriesTable invs(dbObj);
+    auto h = invs.Get (5, "acoloss");
+    auto& inv = h->GetInventory ();
+
+    for (const auto& itm : RoConfig (GetChain ())->fungible_items ())
+      {
+        /* 100 million units of each ore.  */
+        if (itm.second.has_refines ())
+          inv.AddFungibleCount (itm.first, 100'000'000);
+        /* One of each blueprint.  */
+        if (itm.second.with_blueprint ())
+          inv.AddFungibleCount (itm.first + " bpo", 1);
+        /* Two of each upgrade.  */
+        if (itm.second.has_fitment ())
+          inv.AddFungibleCount (itm.first, 2);
+        /* Two of each vehicle.  */
+        if (itm.second.has_vehicle ())
+          inv.AddFungibleCount (itm.first, 2);
+        /* 100 of each artefact.  */
+        if (itm.second.has_reveng ())
+          inv.AddFungibleCount (itm.first, 100);
+      }
+  }
 }
 
 void
