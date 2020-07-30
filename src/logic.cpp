@@ -161,7 +161,7 @@ PXLogic::InitialiseState (xaya::SQLiteDatabase& db)
      We start "regular" IDs at a later value to avoid shifting them always
      when we tweak initialisation, and thus having to potentially update test
      data and other stuff.  */
-  return Ids ("pxd").ReserveUpTo (1'000);
+  Ids ("pxd").ReserveUpTo (1'000);
 }
 
 void
