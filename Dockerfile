@@ -2,43 +2,44 @@
 # process if executed.
 
 FROM xaya/charon AS build
-RUN apt-get update && apt-get install -y \
+RUN apk add --no-cache \
   autoconf \
   autoconf-archive \
   automake \
+  build-base \
   cmake \
+  gflags-dev \
   git \
   libtool \
-  pkg-config \
-  protobuf-compiler
+  pkgconfig
 
 # Build and install the Google benchmark library from source.
 WORKDIR /usr/src/benchmark
 RUN git clone https://github.com/google/benchmark .
 RUN git clone https://github.com/google/googletest
-RUN cmake . && make && make install
+RUN cmake . && make && make install/strip
 
 # Build and install tauriond.
 WORKDIR /usr/src/taurion
 COPY . .
-RUN ./autogen.sh && ./configure && make && make install
+RUN make distclean || true
+RUN ./autogen.sh && ./configure && make && make install-strip
 
-# Copy the stuff we built to the final image.
-FROM xaya/charon
-COPY --from=build /usr/local /usr/local/
-RUN ldconfig
+# Collect the binary and required libraries.
+WORKDIR /jail
+RUN mkdir bin && cp /usr/local/bin/tauriond bin/
+RUN cpld bin/tauriond lib64
+
+# Construct final image.
+FROM alpine
+COPY --from=build /jail /usr/local/
+ENV LD_LIBRARY_PATH "/usr/local/lib64"
 LABEL description="Taurion game-state processor"
-
-# Define the runtime environment for the GSP process.
-RUN useradd taurion \
-  && mkdir -p /var/lib/xayagame && mkdir -p /var/log/taurion \
-  && chown taurion:taurion -R /var/lib/xayagame /var/log/taurion
-USER taurion
-VOLUME ["/var/lib/xayagame", "/var/log/taurion"]
-ENV GLOG_log_dir /var/log/taurion
+VOLUME ["/log", "/xayagame"]
+ENV GLOG_log_dir "/log"
 ENTRYPOINT [ \
   "/usr/local/bin/tauriond", \
-  "--datadir=/var/lib/xayagame", \
+  "--datadir=/xayagame", \
   "--enable_pruning=1000" \
 ]
 CMD []
