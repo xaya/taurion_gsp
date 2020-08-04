@@ -112,6 +112,12 @@ const std::map<std::string, PXRpcMethod> CHARON_METHODS = {
   {"getprizestats", &PXRpcServer::getprizestatsI},
 
   {"getserviceinfo", &PXRpcServer::getserviceinfoI},
+
+  /* FIXME: Instead of handling that through Charon, use an HTTP server to
+     download the bootstrap data.
+
+     See also https://github.com/xaya/taurion_gsp/issues/162.  */
+  {"getbootstrapdata", &PXRpcServer::getbootstrapdataI},
 };
 
 /**
