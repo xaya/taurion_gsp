@@ -75,21 +75,17 @@ TEST (RoConfigTests, ChainDependence)
   EXPECT_FALSE (test->params ().god_mode ());
   EXPECT_TRUE (regtest->params ().god_mode ());
 
-  EXPECT_GT (main->params ().prizes ().size (), 3);
+  EXPECT_GT (main->params ().prizes ().size (), 20);
+  EXPECT_EQ (main->params ().prizes (0).name (), "cash");
   EXPECT_EQ (test->params ().prizes ().size (),
              main->params ().prizes ().size ());
   EXPECT_EQ (regtest->params ().prizes ().size (), 3);
-  for (const auto* cfg : {&main, &test, &regtest})
-    {
-      EXPECT_EQ ((*cfg)->params ().prizes (0).name (), "gold");
-      EXPECT_EQ ((*cfg)->params ().prizes (1).name (), "silver");
-      EXPECT_EQ ((*cfg)->params ().prizes (2).name (), "bronze");
-    }
+  EXPECT_EQ (regtest->params ().prizes (0).name (), "gold");
+  EXPECT_EQ (regtest->params ().prizes (1).name (), "silver");
+  EXPECT_EQ (regtest->params ().prizes (2).name (), "bronze");
 
-  EXPECT_NE (main.ItemOrNull ("fake prize"), nullptr);
-  EXPECT_EQ (regtest.ItemOrNull ("fake prize"), nullptr);
-  EXPECT_NE (main.ItemOrNull ("bronze prize"), nullptr);
-  EXPECT_NE (regtest.ItemOrNull ("bronze prize"), nullptr);
+  EXPECT_NE (main.ItemOrNull ("cash prize"), nullptr);
+  EXPECT_EQ (regtest.ItemOrNull ("cash prize"), nullptr);
 
   /* possible_artefacts is overridden as proto map in the regtest config.  */
   EXPECT_NE (main->resource_dist ().possible_artefacts ()
