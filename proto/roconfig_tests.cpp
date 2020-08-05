@@ -75,7 +75,7 @@ TEST (RoConfigTests, ChainDependence)
   EXPECT_FALSE (test->params ().god_mode ());
   EXPECT_TRUE (regtest->params ().god_mode ());
 
-  EXPECT_EQ (main->params ().prizes ().size (), 1);
+  EXPECT_GT (main->params ().prizes ().size (), 20);
   EXPECT_EQ (main->params ().prizes (0).name (), "cash");
   EXPECT_EQ (test->params ().prizes ().size (),
              main->params ().prizes ().size ());
