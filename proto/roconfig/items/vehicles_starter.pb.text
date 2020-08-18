@@ -3,11 +3,11 @@ fungible_items:
     key: "rv st"
     value:
       {
-        space: 4030000
+        space: 4032000
         complexity: 1
         vehicle:
           {
-            cargo_space: 1008000
+            cargo_space: 1000000
             speed: 3000
             regen_data:
               {
@@ -17,29 +17,7 @@ fungible_items:
             mining_rate: { min: 0 max: 2000000 }
             prospecting_blocks: 10
             size: STARTER
-          }
-      }
-  }
-
-fungible_items:
-  {
-    key: "gv st"
-    value:
-      {
-        space: 4030000
-        complexity: 1
-        vehicle:
-          {
-            cargo_space: 1008000
-            speed: 3000
-            regen_data:
-              {
-                max_hp: { armour: 20 shield: 10 }
-                regeneration_mhp: { shield: 1000 }
-              }
-            mining_rate: { min: 0 max: 2000000 }
-            prospecting_blocks: 10
-            size: STARTER
+            combat_data: { target_size: 20 }
           }
       }
   }
@@ -49,11 +27,11 @@ fungible_items:
     key: "bv st"
     value:
       {
-        space: 4030000
+        space: 4032000
         complexity: 1
         vehicle:
           {
-            cargo_space: 1008000
+            cargo_space: 1000000
             speed: 3000
             regen_data:
               {
@@ -63,6 +41,31 @@ fungible_items:
             mining_rate: { min: 0 max: 2000000 }
             prospecting_blocks: 10
             size: STARTER
+            combat_data: { target_size: 20 }
+          }
+      }
+  }
+
+fungible_items:
+  {
+    key: "gv st"
+    value:
+      {
+        space: 4032000
+        complexity: 1
+        vehicle:
+          {
+            cargo_space: 1000000
+            speed: 3000
+            regen_data:
+              {
+                max_hp: { armour: 20 shield: 10 }
+                regeneration_mhp: { shield: 1000 }
+              }
+            mining_rate: { min: 0 max: 2000000 }
+            prospecting_blocks: 10
+            size: STARTER
+            combat_data: { target_size: 20 }
           }
       }
   }
