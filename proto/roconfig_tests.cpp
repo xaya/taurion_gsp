@@ -417,6 +417,13 @@ RoConfigSanityTests::IsConfigValid (const RoConfig& cfg)
               << "Building construction data is invalid for " << entry.first;
           return false;
         }
+
+      if (b.foundation ().combat_data ().has_target_size ()
+            || b.full_building ().combat_data ().has_target_size ())
+        {
+          LOG (WARNING) << "Building has a target size: " << entry.first;
+          return false;
+        }
     }
 
   for (const auto& area : cfg->resource_dist ().areas ())
