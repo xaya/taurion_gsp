@@ -18,13 +18,115 @@ fungible_items:
                   {
                     min: 5
                     max: 15
-                    armour_percent: 60
                     shield_percent: 140
+                    armour_percent: 60
+                    weapon_size: 30
                   }
               }
           }
       }
   }
+
+
+fungible_items:
+{
+    key: "mf beam"
+    value:
+	{
+        space: 1000
+        complexity: 40
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 4500 }
+        construction_resources: { key: "mat b" value: 4500 }
+        construction_resources: { key: "mat f" value: 1000 }
+        fitment:
+          {
+            slot: "high"
+            attack:
+              {
+                range: 5
+                damage:
+                  {
+                    min: 15
+                    max: 25
+                    shield_percent: 140
+                    armour_percent: 60
+                    weapon_size: 40
+                  }
+              }
+          }
+      }
+  }
+
+
+fungible_items:
+{
+    key: "hf beam"
+    value:
+	{
+        space: 1000
+        complexity: 100
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 24000 }
+        construction_resources: { key: "mat b" value: 24000 }
+        construction_resources: { key: "mat f" value: 9000 }
+        construction_resources: { key: "mat g" value: 3000 }
+        fitment:
+          {
+            slot: "high"
+            attack:
+              {
+                range: 5
+                damage:
+                  {
+                    min: 25
+                    max: 75
+                    shield_percent: 140
+                    armour_percent: 60
+                    weapon_size: 60
+                  }
+              }
+          }
+      }
+  }
+
+
+fungible_items:
+{
+    key: "vhf beam"
+    value:
+	{
+        space: 1000
+        complexity: 400
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 36000 }
+        construction_resources: { key: "mat b" value: 36000 }
+        construction_resources: { key: "mat c" value: 6000 }
+        construction_resources: { key: "mat d" value: 6000 }
+        construction_resources: { key: "mat e" value: 6000 }
+        construction_resources: { key: "mat f" value: 18000 }
+        construction_resources: { key: "mat g" value: 6000 }
+        construction_resources: { key: "mat h" value: 4800 }
+        construction_resources: { key: "mat i" value: 1200 }
+        fitment:
+          {
+            slot: "high"
+            attack:
+              {
+                range: 5
+                damage:
+                  {
+                    min: 25
+                    max: 200
+                    shield_percent: 140
+                    armour_percent: 60
+                    weapon_size: 100
+                  }
+              }
+          }
+      }
+  }
+
 
 fungible_items:
 {
@@ -46,13 +148,115 @@ fungible_items:
                   {
                     min: 5
                     max: 15
-                    armour_percent: 140
                     shield_percent: 60
+                    armour_percent: 140
+                    weapon_size: 30
                   }
               }
           }
       }
   }
+
+
+fungible_items:
+{
+    key: "mf gun"
+    value:
+	{
+        space: 1000
+        complexity: 40
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 4500 }
+        construction_resources: { key: "mat b" value: 4500 }
+        construction_resources: { key: "mat f" value: 1000 }
+        fitment:
+          {
+            slot: "high"
+            attack:
+              {
+                range: 5
+                damage:
+                  {
+                    min: 15
+                    max: 25
+                    shield_percent: 60
+                    armour_percent: 140
+                    weapon_size: 40
+                  }
+              }
+          }
+      }
+  }
+
+
+fungible_items:
+{
+    key: "hf gun"
+    value:
+	{
+        space: 1000
+        complexity: 100
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 24000 }
+        construction_resources: { key: "mat b" value: 24000 }
+        construction_resources: { key: "mat f" value: 9000 }
+        construction_resources: { key: "mat g" value: 3000 }
+        fitment:
+          {
+            slot: "high"
+            attack:
+              {
+                range: 5
+                damage:
+                  {
+                    min: 25
+                    max: 75
+                    shield_percent: 60
+                    armour_percent: 140
+                    weapon_size: 60
+                  }
+              }
+          }
+      }
+  }
+
+
+fungible_items:
+{
+    key: "vhf gun"
+    value:
+	{
+        space: 1000
+        complexity: 400
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 36000 }
+        construction_resources: { key: "mat b" value: 36000 }
+        construction_resources: { key: "mat c" value: 6000 }
+        construction_resources: { key: "mat d" value: 6000 }
+        construction_resources: { key: "mat e" value: 6000 }
+        construction_resources: { key: "mat f" value: 18000 }
+        construction_resources: { key: "mat g" value: 6000 }
+        construction_resources: { key: "mat h" value: 4800 }
+        construction_resources: { key: "mat i" value: 1200 }
+        fitment:
+          {
+            slot: "high"
+            attack:
+              {
+                range: 5
+                damage:
+                  {
+                    min: 25
+                    max: 200
+                    shield_percent: 60
+                    armour_percent: 140
+                    weapon_size: 100
+                  }
+              }
+          }
+      }
+  }
+
 
 fungible_items:
 {
@@ -278,7 +482,7 @@ fungible_items:
             attack:
               {
                 area: 3
-                damage: { min: 3 max: 9 }
+                damage: { min: 3 max: 9 weapon_size: 30 }
               }
           }
       }
@@ -302,7 +506,7 @@ fungible_items:
             attack:
               {
                 area: 3
-                damage: { min: 6 max: 18 }
+                damage: { min: 6 max: 18 weapon_size: 40 }
               }
           }
       }
@@ -327,7 +531,7 @@ fungible_items:
             attack:
               {
                 area: 3
-                damage: { min: 17 max: 27 }
+                damage: { min: 17 max: 27 weapon_size: 60 }
               }
           }
       }
@@ -357,11 +561,12 @@ fungible_items:
             attack:
               {
                 area: 3
-                damage: { min: 25 max: 75 }
+                damage: { min: 25 max: 75 weapon_size: 100 }
               }
           }
       }
   }
+
 
 fungible_items:
 {
@@ -371,25 +576,103 @@ fungible_items:
         space: 1000
         complexity: 2
         with_blueprint: true
-        construction_resources: { key: "mat a" value: 25000 }
-        construction_resources: { key: "mat b" value: 25000 }
+        construction_resources: { key: "mat a" value: 2500 }
+        construction_resources: { key: "mat b" value: 2500 }
         fitment:
           {
             slot: "high"
             attack:
               {
                 range: 5
-                damage:
-                  {
-                    min: 3
-                    max: 9
-                    armour_percent: 0
-                  }
+                damage: { min: 3 max: 9 armour_percent: 0 weapon_size: 30 }
                 gain_hp: true
               }
           }
       }
   }
+
+
+fungible_items:
+{
+    key: "mf syphon"
+    value:
+	{
+        space: 1000
+        complexity: 40
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 4500 }
+        construction_resources: { key: "mat b" value: 4500 }
+        construction_resources: { key: "mat f" value: 1000 }
+        fitment:
+          {
+            slot: "high"
+            attack:
+              {
+                range: 5
+                damage: { min: 6 max: 18 armour_percent: 0 weapon_size: 40 }
+                gain_hp: true
+              }
+          }
+      }
+  }
+
+
+fungible_items:
+{
+    key: "hf syphon"
+    value:
+	{
+        space: 1000
+        complexity: 100
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 24000 }
+        construction_resources: { key: "mat b" value: 24000 }
+        construction_resources: { key: "mat f" value: 9000 }
+        construction_resources: { key: "mat g" value: 3000 }
+        fitment:
+          {
+            slot: "high"
+            attack:
+              {
+                range: 5
+                damage: { min: 17 max: 27 armour_percent: 0 weapon_size: 60 }
+                gain_hp: true
+              }
+          }
+      }
+  }
+
+
+fungible_items:
+{
+    key: "vhf syphon"
+    value:
+	{
+        space: 1000
+        complexity: 400
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 36000 }
+        construction_resources: { key: "mat b" value: 36000 }
+        construction_resources: { key: "mat c" value: 6000 }
+        construction_resources: { key: "mat d" value: 6000 }
+        construction_resources: { key: "mat e" value: 6000 }
+        construction_resources: { key: "mat f" value: 18000 }
+        construction_resources: { key: "mat g" value: 6000 }
+        construction_resources: { key: "mat h" value: 4800 }
+        construction_resources: { key: "mat i" value: 1200 }
+        fitment:
+          {
+            slot: "high"
+            attack:
+              {
+                range: 5
+                damage: { min: 25 max: 75 armour_percent: 0 weapon_size: 100 }
+                gain_hp: true
+              }
+          }
+      }
+  }
+
 
 fungible_items:
 {
@@ -399,25 +682,103 @@ fungible_items:
         space: 1000
         complexity: 2
         with_blueprint: true
-        construction_resources: { key: "mat a" value: 25000 }
-        construction_resources: { key: "mat b" value: 25000 }
+        construction_resources: { key: "mat a" value: 2500 }
+        construction_resources: { key: "mat b" value: 2500 }
         fitment:
           {
             slot: "high"
             attack:
               {
                 area: 4
-                damage:
-                  {
-                    min: 1
-                    max: 5
-                    armour_percent: 0
-                  }
+                damage: { min: 1 max: 5 armour_percent: 0 weapon_size: 30 }
                 gain_hp: true
               }
           }
       }
   }
+
+
+fungible_items:
+{
+    key: "mf syphonaoe"
+    value:
+	{
+        space: 1000
+        complexity: 40
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 4500 }
+        construction_resources: { key: "mat b" value: 4500 }
+        construction_resources: { key: "mat f" value: 1000 }
+        fitment:
+          {
+            slot: "high"
+            attack:
+              {
+                area: 4
+                damage: { min: 3 max: 9 armour_percent: 0 weapon_size: 40 }
+                gain_hp: true
+              }
+          }
+      }
+  }
+
+
+fungible_items:
+{
+    key: "hf syphonaoe"
+    value:
+	{
+        space: 1000
+        complexity: 100
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 24000 }
+        construction_resources: { key: "mat b" value: 24000 }
+        construction_resources: { key: "mat f" value: 9000 }
+        construction_resources: { key: "mat g" value: 3000 }
+        fitment:
+          {
+            slot: "high"
+            attack:
+              {
+                area: 4
+                damage: { min: 10 max: 14 armour_percent: 0 weapon_size: 60 }
+                gain_hp: true
+              }
+          }
+      }
+  }
+
+
+fungible_items:
+{
+    key: "vhf syphonaoe"
+    value:
+	{
+        space: 1000
+        complexity: 400
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 36000 }
+        construction_resources: { key: "mat b" value: 36000 }
+        construction_resources: { key: "mat c" value: 6000 }
+        construction_resources: { key: "mat d" value: 6000 }
+        construction_resources: { key: "mat e" value: 6000 }
+        construction_resources: { key: "mat f" value: 18000 }
+        construction_resources: { key: "mat g" value: 6000 }
+        construction_resources: { key: "mat h" value: 4800 }
+        construction_resources: { key: "mat i" value: 1200 }
+        fitment:
+          {
+            slot: "high"
+            attack:
+              {
+                area: 4
+                damage: { min: 20 max: 40 armour_percent: 0 weapon_size: 100 }
+                gain_hp: true
+              }
+          }
+      }
+  }
+
 
 fungible_items:
 {
@@ -436,7 +797,7 @@ fungible_items:
               {
                 range: 6
                 area: 2
-                damage: { min: 1 max: 5 }
+                damage: { min: 1 max: 5 weapon_size: 30 }
               }
           }
       }
@@ -461,7 +822,7 @@ fungible_items:
               {
                 range: 6
                 area: 2
-                damage: { min: 3 max: 9 }
+                damage: { min: 3 max: 9 weapon_size: 40 }
               }
           }
       }
@@ -487,7 +848,7 @@ fungible_items:
               {
                 range: 6
                 area: 2
-                damage: { min: 10 max: 14 }
+                damage: { min: 10 max: 14 weapon_size: 60 }
               }
           }
       }
@@ -518,7 +879,7 @@ fungible_items:
               {
                 range: 6
                 area: 2
-                damage: { min: 20 max: 40 }
+                damage: { min: 20 max: 40 weapon_size: 100 }
               }
           }
       }
@@ -580,7 +941,7 @@ fungible_items:
               {
                 range: 5
                 area: 3
-                damage: { min: 3 max: 7 }
+                damage: { min: 3 max: 7 weapon_size: 30 }
               }
           }
       }
@@ -605,7 +966,7 @@ fungible_items:
               {
                 range: 5
                 area: 3
-                damage: { min: 8 max: 12 }
+                damage: { min: 8 max: 12 weapon_size: 40 }
               }
           }
       }
@@ -631,7 +992,7 @@ fungible_items:
               {
                 range: 5
                 area: 3
-                damage: { min: 15 max: 25 }
+                damage: { min: 15 max: 25 weapon_size: 60 }
               }
           }
       }
@@ -662,7 +1023,7 @@ fungible_items:
               {
                 range: 5
                 area: 3
-                damage: { min: 30 max: 60 }
+                damage: { min: 30 max: 60 weapon_size: 100 }
               }
           }
       }
@@ -685,7 +1046,7 @@ fungible_items:
             self_destruct:
               {
                 area: 5
-                damage: { min: 30 max: 50 }
+                damage: { min: 30 max: 50 weapon_size: 30 }
               }
           }
       }
@@ -709,7 +1070,7 @@ fungible_items:
             self_destruct:
               {
                 area: 5
-                damage: { min: 150 max: 250 }
+                damage: { min: 150 max: 250 weapon_size: 40 }
               }
           }
       }
@@ -734,7 +1095,7 @@ fungible_items:
             self_destruct:
               {
                 area: 5
-                damage: { min: 300 max: 700 }
+                damage: { min: 300 max: 700 weapon_size: 60 }
               }
           }
       }
@@ -764,7 +1125,7 @@ fungible_items:
             self_destruct:
               {
                 area: 5
-                damage: { min: 1500 max: 2500 }
+                damage: { min: 1500 max: 2500 weapon_size: 100 }
               }
           }
       }
@@ -978,6 +1339,91 @@ fungible_items:
 
 fungible_items:
 {
+    key: "mf allyreplenish"
+    value:
+	{
+        space: 1000
+        complexity: 40
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 4500 }
+        construction_resources: { key: "mat b" value: 4500 }
+        construction_resources: { key: "mat f" value: 1000 }
+        fitment:
+          {
+            slot: "mid"
+            vehicle_size: MEDIUM
+            attack:
+              {
+                area: 1
+                friendlies: true
+                effects: { shield_regen: { percent: 15 } }
+              }
+          }
+      }
+  }
+
+
+fungible_items:
+{
+    key: "hf allyreplenish"
+    value:
+	{
+        space: 1000
+        complexity: 100
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 24000 }
+        construction_resources: { key: "mat b" value: 24000 }
+        construction_resources: { key: "mat f" value: 9000 }
+        construction_resources: { key: "mat g" value: 3000 }
+        fitment:
+          {
+            slot: "mid"
+            vehicle_size: HEAVY
+            attack:
+              {
+                area: 1
+                friendlies: true
+                effects: { shield_regen: { percent: 15 } }
+              }
+          }
+      }
+  }
+
+
+fungible_items:
+{
+    key: "vhf allyreplenish"
+    value:
+	{
+        space: 1000
+        complexity: 400
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 36000 }
+        construction_resources: { key: "mat b" value: 36000 }
+        construction_resources: { key: "mat c" value: 6000 }
+        construction_resources: { key: "mat d" value: 6000 }
+        construction_resources: { key: "mat e" value: 6000 }
+        construction_resources: { key: "mat f" value: 18000 }
+        construction_resources: { key: "mat g" value: 6000 }
+        construction_resources: { key: "mat h" value: 4800 }
+        construction_resources: { key: "mat i" value: 1200 }
+        fitment:
+          {
+            slot: "mid"
+            vehicle_size: VERY_HEAVY
+            attack:
+              {
+                area: 1
+                friendlies: true
+                effects: { shield_regen: { percent: 15 } }
+              }
+          }
+      }
+  }
+
+
+fungible_items:
+{
     key: "lf rangered"
     value:
 	{
@@ -988,8 +1434,90 @@ fungible_items:
         construction_resources: { key: "mat b" value: 2500 }
         fitment:
           {
-            slot: "high"
+            slot: "mid"
             vehicle_size: LIGHT
+            attack:
+              {
+                area: 3
+                effects: { range: { percent: -15 } }
+              }
+          }
+      }
+  }
+
+
+fungible_items:
+{
+    key: "mf rangered"
+    value:
+	{
+        space: 1000
+        complexity: 40
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 4500 }
+        construction_resources: { key: "mat b" value: 4500 }
+        construction_resources: { key: "mat f" value: 1000 }
+        fitment:
+          {
+            slot: "mid"
+            vehicle_size: MEDIUM
+            attack:
+              {
+                area: 3
+                effects: { range: { percent: -15 } }
+              }
+          }
+      }
+  }
+
+
+fungible_items:
+{
+    key: "hf rangered"
+    value:
+	{
+        space: 1000
+        complexity: 100
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 24000 }
+        construction_resources: { key: "mat b" value: 24000 }
+        construction_resources: { key: "mat f" value: 9000 }
+        construction_resources: { key: "mat g" value: 3000 }
+        fitment:
+          {
+            slot: "mid"
+            vehicle_size: HEAVY
+            attack:
+              {
+                area: 3
+                effects: { range: { percent: -15 } }
+              }
+          }
+      }
+  }
+
+
+fungible_items:
+{
+    key: "vhf rangered"
+    value:
+	{
+        space: 1000
+        complexity: 400
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 36000 }
+        construction_resources: { key: "mat b" value: 36000 }
+        construction_resources: { key: "mat c" value: 6000 }
+        construction_resources: { key: "mat d" value: 6000 }
+        construction_resources: { key: "mat e" value: 6000 }
+        construction_resources: { key: "mat f" value: 18000 }
+        construction_resources: { key: "mat g" value: 6000 }
+        construction_resources: { key: "mat h" value: 4800 }
+        construction_resources: { key: "mat i" value: 1200 }
+        fitment:
+          {
+            slot: "mid"
+            vehicle_size: VERY_HEAVY
             attack:
               {
                 area: 3
@@ -1198,6 +1726,76 @@ fungible_items:
 
 fungible_items:
 {
+    key: "mf hitext"
+    value:
+	{
+        space: 1000
+        complexity: 40
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 4500 }
+        construction_resources: { key: "mat b" value: 4500 }
+        construction_resources: { key: "mat f" value: 1000 }
+        fitment:
+          {
+            slot: "mid"
+            vehicle_size: MEDIUM
+            hit_chance: { percent: 10 }
+          }
+      }
+  }
+
+
+fungible_items:
+{
+    key: "hf hitext"
+    value:
+	{
+        space: 1000
+        complexity: 100
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 24000 }
+        construction_resources: { key: "mat b" value: 24000 }
+        construction_resources: { key: "mat f" value: 9000 }
+        construction_resources: { key: "mat g" value: 3000 }
+        fitment:
+          {
+            slot: "mid"
+            vehicle_size: HEAVY
+            hit_chance: { percent: 8 }
+          }
+      }
+  }
+
+
+fungible_items:
+{
+    key: "vhf hitext"
+    value:
+	{
+        space: 1000
+        complexity: 400
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 36000 }
+        construction_resources: { key: "mat b" value: 36000 }
+        construction_resources: { key: "mat c" value: 6000 }
+        construction_resources: { key: "mat d" value: 6000 }
+        construction_resources: { key: "mat e" value: 6000 }
+        construction_resources: { key: "mat f" value: 18000 }
+        construction_resources: { key: "mat g" value: 6000 }
+        construction_resources: { key: "mat h" value: 4800 }
+        construction_resources: { key: "mat i" value: 1200 }
+        fitment:
+          {
+            slot: "mid"
+            vehicle_size: VERY_HEAVY
+            hit_chance: { percent: 8 }
+          }
+      }
+  }
+
+
+fungible_items:
+{
     key: "lf hitred"
     value:
 	{
@@ -1213,6 +1811,85 @@ fungible_items:
               {
                 area: 3
                 effects: { hit_chance: { percent: -2 } }
+              }
+          }
+      }
+  }
+
+
+fungible_items:
+{
+    key: "mf hitred"
+    value:
+	{
+        space: 1000
+        complexity: 40
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 4500 }
+        construction_resources: { key: "mat b" value: 4500 }
+        construction_resources: { key: "mat f" value: 1000 }
+        fitment:
+          {
+            slot: "mid"
+            attack:
+              {
+                area: 3
+                effects: { hit_chance: { percent: -4 } }
+              }
+          }
+      }
+  }
+
+
+fungible_items:
+{
+    key: "hf hitred"
+    value:
+	{
+        space: 1000
+        complexity: 100
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 24000 }
+        construction_resources: { key: "mat b" value: 24000 }
+        construction_resources: { key: "mat f" value: 9000 }
+        construction_resources: { key: "mat g" value: 3000 }
+        fitment:
+          {
+            slot: "mid"
+            attack:
+              {
+                area: 3
+                effects: { hit_chance: { percent: -6 } }
+              }
+          }
+      }
+  }
+
+
+fungible_items:
+{
+    key: "vhf hitred"
+    value:
+	{
+        space: 1000
+        complexity: 400
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 36000 }
+        construction_resources: { key: "mat b" value: 36000 }
+        construction_resources: { key: "mat c" value: 6000 }
+        construction_resources: { key: "mat d" value: 6000 }
+        construction_resources: { key: "mat e" value: 6000 }
+        construction_resources: { key: "mat f" value: 18000 }
+        construction_resources: { key: "mat g" value: 6000 }
+        construction_resources: { key: "mat h" value: 4800 }
+        construction_resources: { key: "mat i" value: 1200 }
+        fitment:
+          {
+            slot: "mid"
+            attack:
+              {
+                area: 3
+                effects: { hit_chance: { percent: -8 } }
               }
           }
       }
@@ -1353,6 +2030,76 @@ fungible_items:
           {
             slot: "low"
             vehicle_size: LIGHT
+            received_damage: { percent: -5 }
+          }
+      }
+  }
+
+
+fungible_items:
+{
+    key: "mf dmgred"
+    value:
+	{
+        space: 1000
+        complexity: 40
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 4500 }
+        construction_resources: { key: "mat b" value: 4500 }
+        construction_resources: { key: "mat f" value: 1000 }
+        fitment:
+          {
+            slot: "low"
+            vehicle_size: MEDIUM
+            received_damage: { percent: -5 }
+          }
+      }
+  }
+
+
+fungible_items:
+{
+    key: "hf dmgred"
+    value:
+	{
+        space: 1000
+        complexity: 100
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 24000 }
+        construction_resources: { key: "mat b" value: 24000 }
+        construction_resources: { key: "mat f" value: 9000 }
+        construction_resources: { key: "mat g" value: 3000 }
+        fitment:
+          {
+            slot: "low"
+            vehicle_size: HEAVY
+            received_damage: { percent: -5 }
+          }
+      }
+  }
+
+
+fungible_items:
+{
+    key: "vhf dmgred"
+    value:
+	{
+        space: 1000
+        complexity: 400
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 36000 }
+        construction_resources: { key: "mat b" value: 36000 }
+        construction_resources: { key: "mat c" value: 6000 }
+        construction_resources: { key: "mat d" value: 6000 }
+        construction_resources: { key: "mat e" value: 6000 }
+        construction_resources: { key: "mat f" value: 18000 }
+        construction_resources: { key: "mat g" value: 6000 }
+        construction_resources: { key: "mat h" value: 4800 }
+        construction_resources: { key: "mat i" value: 1200 }
+        fitment:
+          {
+            slot: "low"
+            vehicle_size: VERY_HEAVY
             received_damage: { percent: -5 }
           }
       }
@@ -1554,6 +2301,76 @@ fungible_items:
             slot: "low"
             vehicle_size: LIGHT
             armour_regen: { absolute: 2000 }
+          }
+      }
+  }
+
+
+fungible_items:
+{
+    key: "mf armourregen"
+    value:
+	{
+        space: 1000
+        complexity: 40
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 4500 }
+        construction_resources: { key: "mat b" value: 4500 }
+        construction_resources: { key: "mat f" value: 1000 }
+        fitment:
+          {
+            slot: "low"
+            vehicle_size: MEDIUM
+            armour_regen: { absolute: 4000 }
+          }
+      }
+  }
+
+
+fungible_items:
+{
+    key: "hf armourregen"
+    value:
+	{
+        space: 1000
+        complexity: 100
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 24000 }
+        construction_resources: { key: "mat b" value: 24000 }
+        construction_resources: { key: "mat f" value: 9000 }
+        construction_resources: { key: "mat g" value: 3000 }
+        fitment:
+          {
+            slot: "low"
+            vehicle_size: HEAVY
+            armour_regen: { absolute: 8000 }
+          }
+      }
+  }
+
+
+fungible_items:
+{
+    key: "vhf armourregen"
+    value:
+	{
+        space: 1000
+        complexity: 400
+        with_blueprint: true
+        construction_resources: { key: "mat a" value: 36000 }
+        construction_resources: { key: "mat b" value: 36000 }
+        construction_resources: { key: "mat c" value: 6000 }
+        construction_resources: { key: "mat d" value: 6000 }
+        construction_resources: { key: "mat e" value: 6000 }
+        construction_resources: { key: "mat f" value: 18000 }
+        construction_resources: { key: "mat g" value: 6000 }
+        construction_resources: { key: "mat h" value: 4800 }
+        construction_resources: { key: "mat i" value: 1200 }
+        fitment:
+          {
+            slot: "low"
+            vehicle_size: VERY_HEAVY
+            armour_regen: { absolute: 14000 }
           }
       }
   }

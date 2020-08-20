@@ -194,6 +194,7 @@ fungible_items:
                     range: 10
                     damage: { min: 1 max: 10 }
                   }
+                target_size: 1000
               }
             mining_rate: { min: 1 max: 1 }
             prospecting_blocks: 10
@@ -234,6 +235,7 @@ fungible_items:
                     area: 10
                     damage: { min: 1 max: 10 }
                   }
+                target_size: 1000
               }
             mining_rate: { min: 10 max: 100 }
             prospecting_blocks: 10
@@ -264,7 +266,7 @@ fungible_items:
                 max_hp: { armour: 1000 shield: 100 }
                 regeneration_mhp: { shield: 1000 }
               }
-            combat_data: {}
+            combat_data: { target_size: 1000 }
             size: HEAVY
             equipment_slots: { key: "high" value: 10 }
             equipment_slots: { key: "mid" value: 10 }

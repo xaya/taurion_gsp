@@ -351,10 +351,19 @@ RoConfigSanityTests::IsConfigValid (const RoConfig& cfg)
             }
         }
 
-      if (i.has_vehicle () && !i.vehicle ().has_size ())
+      if (i.has_vehicle ())
         {
-          LOG (WARNING) << "Vehicle has no size defined: " << entry.first;
-          return false;
+          if (!i.vehicle ().has_size ())
+            {
+              LOG (WARNING) << "Vehicle has no size defined: " << entry.first;
+              return false;
+            }
+
+          if (!i.vehicle ().combat_data ().has_target_size ())
+            {
+              LOG (WARNING) << "Vehicle has no target size: " << entry.first;
+              return false;
+            }
         }
 
       for (const auto& s : i.vehicle ().equipment_slots ())
@@ -406,6 +415,13 @@ RoConfigSanityTests::IsConfigValid (const RoConfig& cfg)
         {
           LOG (WARNING)
               << "Building construction data is invalid for " << entry.first;
+          return false;
+        }
+
+      if (b.foundation ().combat_data ().has_target_size ()
+            || b.full_building ().combat_data ().has_target_size ())
+        {
+          LOG (WARNING) << "Building has a target size: " << entry.first;
           return false;
         }
     }
