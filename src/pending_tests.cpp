@@ -553,7 +553,6 @@ TEST_F (PendingStateTests, CharacterCreation)
 TEST_F (PendingStateTests, CoinTransferBurn)
 {
   auto a = accounts.CreateNew ("domob");
-  a->SetFaction (Faction::RED);
 
   CoinTransferBurn coinOp;
   coinOp.burnt = 5;
@@ -1298,17 +1297,41 @@ TEST_F (PendingStateUpdaterTests, CreationAndUpdateTogether)
   )");
 }
 
+TEST_F (PendingStateUpdaterTests, UninitialisedAndNonExistantAccount)
+{
+  /* This verifies that the pending processor is fine with (i.e. does not
+     crash or something like that) non-existant and uninitialised accounts.
+     The pending moves (even though they might be valid in some of these cases)
+     are not tracked.  */
+
+  Process ("domob", R"({
+    "vc": {"x": 5}
+  })");
+  Process ("domob", R"({
+    "a": {"init": {"faction": "r"}}
+  })");
+
+  ASSERT_EQ (accounts.GetByName ("domob"), nullptr);
+  accounts.CreateNew ("domob");
+
+  ProcessWithDevPayment ("domob", characterCost, R"({
+    "a": {"init": {"faction": "r"}},
+    "nc": [{}]
+  })");
+
+  ExpectStateJson (R"(
+    {
+      "accounts": [],
+      "characters": [],
+      "newcharacters": []
+    }
+  )");
+}
+
 TEST_F (PendingStateUpdaterTests, CoinTransferBurn)
 {
-  auto a = accounts.CreateNew ("domob");
-  a->SetFaction (Faction::RED);
-  a->AddBalance (100);
-  a.reset ();
-
-  a = accounts.CreateNew ("andy");
-  a->SetFaction (Faction::GREEN);
-  a->AddBalance (100);
-  a.reset ();
+  accounts.CreateNew ("domob")->AddBalance (100);
+  accounts.CreateNew ("andy")->AddBalance (100);
 
   Process ("domob", R"({
     "abc": "foo",

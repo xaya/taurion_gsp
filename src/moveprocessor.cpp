@@ -97,7 +97,7 @@ BaseMoveProcessor::TryCharacterCreation (const std::string& name,
   VLOG (1) << "Attempting to create new characters through move: " << cmd;
 
   const auto account = accounts.GetByName (name);
-  CHECK (account != nullptr);
+  CHECK (account != nullptr && account->IsInitialised ());
   const Faction faction = account->GetFaction ();
   VLOG (1)
       << "The new characters' account " << name
@@ -301,6 +301,8 @@ BaseMoveProcessor::TryMobileRefining (Character& c, const Json::Value& upd)
     return;
 
   auto a = accounts.GetByName (c.GetOwner ());
+  CHECK (a != nullptr);
+
   auto op = ServiceOperation::ParseMobileRefining (*a, c, ref, ctx,
                                                    accounts, buildingInv,
                                                    itemCounts, ongoings);
@@ -387,14 +389,6 @@ BaseMoveProcessor::ParseCoinTransferBurn (const Account& a,
         {
           CHECK (it.key ().isString ());
           const std::string to = it.key ().asString ();
-
-          if (accounts.GetByName (to) == nullptr)
-            {
-              LOG (WARNING)
-                  << "Coin transfer recipient " << to
-                  << " is not an initialised account";
-              continue;
-            }
 
           Amount amount;
           if (!ExtractCoinAmount (*it, amount))
@@ -1099,6 +1093,24 @@ MoveProcessor::ProcessOne (const Json::Value& moveObj)
   if (!ExtractMoveBasics (moveObj, name, mv, paidToDev))
     return;
 
+  /* Ensure that the account database entry exists.  In other words, we
+     have accounts (although perhaps uninitialised) for everyone who
+     ever sent a Taurion move.  */
+  if (accounts.GetByName (name) == nullptr)
+    {
+      LOG (INFO) << "Creating uninitialised account for " << name;
+      accounts.CreateNew (name);
+    }
+
+  /* Handle coin transfers before other game operations.  They are even
+     valid without a properly initialised account (so that vCHI works as
+     a real cryptocurrency, not necessarily tied to the game).
+
+     This also ensures that if funds run out, then the explicit transfers
+     are done with priority over the other operations that may require coins
+     implicitly.  */
+  TryCoinOperation (name, mv);
+
   /* We perform account updates first.  That ensures that it is possible to
      e.g. choose one's faction and create characters in a single move.  */
   TryAccountUpdate (name, mv["a"]);
@@ -1108,17 +1120,12 @@ MoveProcessor::ProcessOne (const Json::Value& moveObj)
      enforces that accounts have to be initialised before doing anything
      else, even if perhaps some changes wouldn't actually require access
      to an account in their processing.  */
-  if (accounts.GetByName (name) == nullptr)
+  if (!accounts.GetByName (name)->IsInitialised ())
     {
       LOG (WARNING)
           << "Account " << name << " does not exist, ignoring move " << moveObj;
       return;
     }
-
-  /* Handle coin transfers before other game operations.  This ensures that
-     if funds run out, then the explicit transfers are done with priority
-     over the other operations that may require coins implicitly.  */
-  TryCoinOperation (name, mv);
 
   /* Note that the order between character update and character creation
      matters:  By having the update *before* the creation, we explicitly
@@ -1204,7 +1211,7 @@ MoveProcessor::MaybeTransferCharacter (Character& c, const Json::Value& upd)
     }
 
   const auto a = accounts.GetByName (sendTo);
-  if (a == nullptr)
+  if (a == nullptr || !a->IsInitialised ())
     {
       LOG (WARNING)
           << "Can't send character " << c.GetId ()
@@ -1848,7 +1855,7 @@ MaybeGodBuild (AccountsTable& accounts, BuildingsTable& tbl, const Context& ctx,
         {
           owner = val.asString ();
           auto h = accounts.GetByName (owner);
-          if (h == nullptr)
+          if (h == nullptr || !h->IsInitialised ())
             {
               LOG (WARNING) << "Owner account does not exist: " << owner;
               continue;
@@ -2001,12 +2008,7 @@ MaybeGodGiftCoins (AccountsTable& tbl, const Json::Value& cmd)
 
       auto a = tbl.GetByName (name);
       if (a == nullptr)
-        {
-          LOG (WARNING)
-              << "God-mode gift to non-existing account " << name
-              << " is ignored";
-          continue;
-        }
+        a = tbl.CreateNew (name);
 
       Amount val;
       if (!ExtractCoinAmount (*it, val))
@@ -2048,7 +2050,9 @@ MoveProcessor::MaybeInitAccount (const std::string& name,
   if (!init.isObject ())
     return;
 
-  if (accounts.GetByName (name) != nullptr)
+  auto a = accounts.GetByName (name);
+  CHECK (a != nullptr);
+  if (a->IsInitialised ())
     {
       LOG (WARNING) << "Account " << name << " is already initialised";
       return;
@@ -2082,9 +2086,9 @@ MoveProcessor::MaybeInitAccount (const std::string& name,
       return;
     }
 
-  accounts.CreateNew (name)->SetFaction (faction);
+  a->SetFaction (faction);
   LOG (INFO)
-      << "Created account " << name << " of faction "
+      << "Initialised account " << name << " to faction "
       << FactionToString (faction);
 }
 
@@ -2127,7 +2131,16 @@ MoveProcessor::TryCoinOperation (const std::string& name,
           << name << " is sending " << entry.second
           << " coins to " << entry.first;
       a->AddBalance (-entry.second);
-      accounts.GetByName (entry.first)->AddBalance (entry.second);
+
+      auto to = accounts.GetByName (entry.first);
+      if (to == nullptr)
+        {
+          LOG (INFO)
+              << "Creating uninitialised account for coin recipient "
+              << entry.first;
+          to = accounts.CreateNew (entry.first);
+        }
+      to->AddBalance (entry.second);
     }
 }
 

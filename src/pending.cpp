@@ -521,6 +521,12 @@ PendingStateUpdater::ProcessMove (const Json::Value& moveObj)
   if (ParseCoinTransferBurn (*a, mv, coinOps))
     state.AddCoinTransferBurn (*a, coinOps);
 
+  /* If the account is not initialised yet, any other action is invalid anyway.
+     If this is the init move itself, they would be actually fine, but we
+     ignore this edge case for pending processing.  */
+  if (!a->IsInitialised ())
+    return;
+
   TryCharacterUpdates (name, mv);
   TryCharacterCreation (name, mv, paidToDev);
 

@@ -181,7 +181,11 @@ TEST_F (AccountUpdateTests, InvalidInitialisation)
     {"name": "domob", "move": {"a": 42}}
   ])");
 
-  EXPECT_TRUE (accounts.GetByName ("domob") == nullptr);
+  /* Sending the moves should have created the account entry, but it
+     should not have gotten a faction yet.  */
+  auto a = accounts.GetByName ("domob");
+  ASSERT_NE (a, nullptr);
+  EXPECT_FALSE (a->IsInitialised ());
 }
 
 TEST_F (AccountUpdateTests, InitialisationOfExistingAccount)
@@ -231,8 +235,10 @@ protected:
     for (const auto& entry : expected)
       {
         auto a = accounts.GetByName (entry.first);
-        ASSERT_NE (a, nullptr) << "Account does not exist: " << entry.first;
-        ASSERT_EQ (a->GetBalance (), entry.second);
+        if (a == nullptr)
+          ASSERT_EQ (entry.second, 0);
+        else
+          ASSERT_EQ (a->GetBalance (), entry.second);
       }
   }
 
@@ -240,12 +246,7 @@ protected:
 
 TEST_F (CoinOperationTests, Invalid)
 {
-  auto a = accounts.CreateNew ("domob");
-  a->SetFaction (Faction::RED);
-  a->AddBalance (100);
-  a.reset ();
-
-  accounts.CreateNew ("other")->SetFaction (Faction::RED);
+  accounts.CreateNew ("domob")->AddBalance (100);
 
   Process (R"([
     {"name": "domob", "move": {"vc": 42}},
@@ -257,7 +258,6 @@ TEST_F (CoinOperationTests, Invalid)
     {"name": "domob", "move": {"vc": {"b": 999999999999999999}}},
     {"name": "domob", "move": {"vc": {"t": 42}}},
     {"name": "domob", "move": {"vc": {"t": "other"}}},
-    {"name": "domob", "move": {"vc": {"t": {"invalid": 10}}}},
     {"name": "domob", "move": {"vc": {"t": {"other": -1}}}},
     {"name": "domob", "move": {"vc": {"t": {"other": 1000000001}}}},
     {"name": "domob", "move": {"vc": {"t": {"other": 1.999999}}}},
@@ -269,13 +269,7 @@ TEST_F (CoinOperationTests, Invalid)
 
 TEST_F (CoinOperationTests, BurnAndTransfer)
 {
-  auto a = accounts.CreateNew ("domob");
-  a->SetFaction (Faction::RED);
-  a->AddBalance (100);
-  a.reset ();
-
-  accounts.CreateNew ("second")->SetFaction (Faction::RED);
-  accounts.CreateNew ("third")->SetFaction (Faction::RED);
+  accounts.CreateNew ("domob")->AddBalance (100);
 
   /* Some of the burns and transfers are invalid.  They should just be ignored,
      without affecting the rest of the operation (valid parts).  */
@@ -291,23 +285,20 @@ TEST_F (CoinOperationTests, BurnAndTransfer)
         "b": 1000,
         "t": {"third": 2}
       }}
-    }
+    },
+    {"name": "second", "move": {"vc": {"b": 1}}}
   ])");
 
   ExpectBalances ({
     {"domob", 80},
-    {"second", 5},
+    {"second", 4},
     {"third", 5},
   });
 }
 
 TEST_F (CoinOperationTests, BurnAll)
 {
-  auto a = accounts.CreateNew ("domob");
-  a->SetFaction (Faction::RED);
-  a->AddBalance (100);
-  a.reset ();
-
+  accounts.CreateNew ("domob")->AddBalance (100);
   Process (R"([
     {"name": "domob", "move": {"vc": {"b": 100}}}
   ])");
@@ -316,13 +307,7 @@ TEST_F (CoinOperationTests, BurnAll)
 
 TEST_F (CoinOperationTests, TransferAll)
 {
-  auto a = accounts.CreateNew ("domob");
-  a->SetFaction (Faction::RED);
-  a->AddBalance (100);
-  a.reset ();
-
-  accounts.CreateNew ("other")->SetFaction (Faction::RED);
-
+  accounts.CreateNew ("domob")->AddBalance (100);
   Process (R"([
     {"name": "domob", "move": {"vc": {"t": {"other": 100}}}}
   ])");
@@ -331,13 +316,7 @@ TEST_F (CoinOperationTests, TransferAll)
 
 TEST_F (CoinOperationTests, SelfTransfer)
 {
-  auto a = accounts.CreateNew ("domob");
-  a->SetFaction (Faction::RED);
-  a->AddBalance (100);
-  a.reset ();
-
-  accounts.CreateNew ("other")->SetFaction (Faction::GREEN);
-
+  accounts.CreateNew ("domob")->AddBalance (100);
   Process (R"([
     {"name": "domob", "move": {"vc": {"t": {"domob": 90, "other": 20}}}}
   ])");
@@ -346,12 +325,7 @@ TEST_F (CoinOperationTests, SelfTransfer)
 
 TEST_F (CoinOperationTests, BurnBeforeTransfer)
 {
-  auto a = accounts.CreateNew ("domob");
-  a->SetFaction (Faction::RED);
-  a->AddBalance (100);
-  a.reset ();
-
-  accounts.CreateNew ("other")->SetFaction (Faction::RED);
+  accounts.CreateNew ("domob")->AddBalance (100);
 
   Process (R"([
     {"name": "domob", "move": {"vc":
@@ -370,14 +344,7 @@ TEST_F (CoinOperationTests, BurnBeforeTransfer)
 
 TEST_F (CoinOperationTests, TransferOrder)
 {
-  auto a = accounts.CreateNew ("domob");
-  a->SetFaction (Faction::RED);
-  a->AddBalance (100);
-  a.reset ();
-
-  accounts.CreateNew ("a")->SetFaction (Faction::RED);
-  accounts.CreateNew ("middle")->SetFaction (Faction::RED);
-  accounts.CreateNew ("z")->SetFaction (Faction::RED);
+  accounts.CreateNew ("domob")->AddBalance (100);
 
   Process (R"([
     {"name": "domob", "move": {"vc":
@@ -737,6 +704,7 @@ TEST_F (CharacterUpdateTests, InvalidTransfer)
   for (unsigned i = 0; i < ctx.RoConfig ()->params ().character_limit (); ++i)
     tbl.CreateNew ("at limit", Faction::RED)->SetPosition (HexCoord (i, 0));
 
+  accounts.CreateNew ("uninitialised account");
   accounts.CreateNew ("wrong faction")->SetFaction (Faction::GREEN);
 
   Process (R"([
@@ -747,6 +715,10 @@ TEST_F (CharacterUpdateTests, InvalidTransfer)
     {
       "name": "domob",
       "move": {"c": {"1": {"send": "uninitialised account"}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"send": "non-existant account"}}}
     },
     {
       "name": "domob",
@@ -3511,9 +3483,6 @@ TEST_F (GodModeTests, ValidDropLoot)
 
 TEST_F (GodModeTests, GiftCoins)
 {
-  accounts.CreateNew ("andy")->SetFaction (Faction::RED);
-  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
-
   ProcessAdmin (R"([{"cmd": {
     "god":
       {
