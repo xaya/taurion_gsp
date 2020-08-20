@@ -79,7 +79,16 @@ template <typename T>
   Faction GetFactionFromColumn (const Database::Result<T>& res);
 
 /**
- * Binds a faction value to a statement parameter.
+ * Retrieves a faction from a database column, which can also be NULL.
+ * In the case of NULL, Faction::INVALID is returned.  Any other
+ * value (i.e. non-matching integer values) will CHECK-fail.
+ */
+template <typename T>
+  Faction GetNullableFactionFromColumn (const Database::Result<T>& res);
+
+/**
+ * Binds a faction value to a statement parameter.  If f is Faction::INVALID,
+ * then a NULL will be bound instead.
  */
 void BindFactionParameter (Database::Statement& stmt, unsigned ind, Faction f);
 

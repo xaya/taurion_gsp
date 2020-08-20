@@ -73,6 +73,9 @@ BindFactionParameter (Database::Statement& stmt, const unsigned ind,
     case Faction::ANCIENT:
       stmt.Bind (ind, static_cast<int64_t> (f));
       return;
+    case Faction::INVALID:
+      stmt.BindNull (ind);
+      return;
     default:
       LOG (FATAL)
           << "Binding invalid faction to parameter: " << static_cast<int> (f);

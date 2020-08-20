@@ -27,16 +27,28 @@ namespace pxd
 
 template <typename T>
   Faction
-  GetFactionFromColumn (const Database::Result<T>& res)
+  GetNullableFactionFromColumn (const Database::Result<T>& res)
 {
   static_assert (std::is_base_of<ResultWithFaction, T>::value,
-                 "GetFactionFromColumn needs a ResultWithFaction");
+                 "GetNullableFactionFromColumn needs a ResultWithFaction");
   
+  if (res.template IsNull<typename T::faction> ())
+    return Faction::INVALID;
+
   const auto val = res.template Get<typename T::faction> ();
   CHECK (val >= 1 && val <= 4)
       << "Invalid faction value from database: " << val;
 
   return static_cast<Faction> (val);
+}
+
+template <typename T>
+  Faction
+  GetFactionFromColumn (const Database::Result<T>& res)
+{
+  const Faction f = GetNullableFactionFromColumn (res);
+  CHECK (f != Faction::INVALID) << "Unexpected NULL faction";
+  return f;
 }
 
 } // namespace pxd
