@@ -107,7 +107,10 @@ protected:
   {
     auto a = accounts.GetByName (name);
     if (a == nullptr)
-      a = accounts.CreateNew (name, f);
+      {
+        a = accounts.CreateNew (name);
+        a->SetFaction (f);
+      }
 
     CHECK (a->GetFaction () == f);
     return characters.CreateNew (name, f);
@@ -1135,7 +1138,7 @@ using ValidateStateTests = PXLogicTests;
 
 TEST_F (ValidateStateTests, AncientAccountFaction)
 {
-  accounts.CreateNew ("domob", Faction::ANCIENT);
+  accounts.CreateNew ("domob")->SetFaction (Faction::ANCIENT);
   EXPECT_DEATH (ValidateState (), "has invalid faction");
 }
 
@@ -1146,10 +1149,10 @@ TEST_F (ValidateStateTests, CharacterFactions)
   c.reset ();
   EXPECT_DEATH (ValidateState (), "owned by uninitialised account");
 
-  accounts.CreateNew ("domob", Faction::GREEN);
+  accounts.CreateNew ("domob")->SetFaction (Faction::GREEN);
   EXPECT_DEATH (ValidateState (), "Faction mismatch");
 
-  accounts.CreateNew ("andy", Faction::RED);
+  accounts.CreateNew ("andy")->SetFaction (Faction::RED);
   characters.GetById (id)->SetOwner ("andy");
   ValidateState ();
 }
@@ -1163,18 +1166,18 @@ TEST_F (ValidateStateTests, BuildingFactions)
   h.reset ();
   EXPECT_DEATH (ValidateState (), "owned by uninitialised account");
 
-  accounts.CreateNew ("domob", Faction::GREEN);
+  accounts.CreateNew ("domob")->SetFaction (Faction::GREEN);
   EXPECT_DEATH (ValidateState (), "Faction mismatch");
 
-  accounts.CreateNew ("andy", Faction::RED);
+  accounts.CreateNew ("andy")->SetFaction (Faction::RED);
   buildings.GetById (id)->SetOwner ("andy");
   ValidateState ();
 }
 
 TEST_F (ValidateStateTests, CharacterLimit)
 {
-  accounts.CreateNew ("domob", Faction::RED);
-  accounts.CreateNew ("andy", Faction::GREEN);
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
+  accounts.CreateNew ("andy")->SetFaction (Faction::GREEN);
   for (unsigned i = 0; i < ctx.RoConfig ()->params ().character_limit (); ++i)
     {
       characters.CreateNew ("domob", Faction::RED);
@@ -1189,8 +1192,8 @@ TEST_F (ValidateStateTests, CharacterLimit)
 
 TEST_F (ValidateStateTests, CharactersInBuildings)
 {
-  accounts.CreateNew ("domob", Faction::RED);
-  accounts.CreateNew ("andy", Faction::BLUE);
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
+  accounts.CreateNew ("andy")->SetFaction (Faction::BLUE);
 
   const auto idAncient
       = buildings.CreateNew ("checkmark", "", Faction::ANCIENT)->GetId ();
@@ -1218,12 +1221,12 @@ TEST_F (ValidateStateTests, CharactersInBuildings)
 TEST_F (ValidateStateTests, BuildingInventories)
 {
   db.SetNextId (10);
-  accounts.CreateNew ("domob", Faction::RED);
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
   buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
 
   inv.Get (10, "andy")->GetInventory ().SetFungibleCount ("foo", 1);
   EXPECT_DEATH (ValidateState (), "non-existant account");
-  accounts.CreateNew ("andy", Faction::GREEN);
+  accounts.CreateNew ("andy")->SetFaction (Faction::GREEN);
   ValidateState ();
 
   inv.Get (11, "domob")->GetInventory ().SetFungibleCount ("foo", 1);
@@ -1247,7 +1250,7 @@ TEST_F (ValidateStateTests, BuildingInventories)
 
 TEST_F (ValidateStateTests, OngoingsToCharacterLink)
 {
-  accounts.CreateNew ("domob", Faction::RED);
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
   db.SetNextId (101);
 
   auto op = ongoings.CreateNew (1);
@@ -1266,7 +1269,7 @@ TEST_F (ValidateStateTests, OngoingsToCharacterLink)
 
 TEST_F (ValidateStateTests, CharacterToOngoingsLink)
 {
-  accounts.CreateNew ("domob", Faction::RED);
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
   db.SetNextId (101);
 
   auto c = characters.CreateNew ("domob", Faction::RED);
@@ -1285,7 +1288,7 @@ TEST_F (ValidateStateTests, CharacterToOngoingsLink)
 
 TEST_F (ValidateStateTests, OngoingsToBuildingLink)
 {
-  accounts.CreateNew ("domob", Faction::RED);
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
   db.SetNextId (101);
 
   auto op = ongoings.CreateNew (1);
@@ -1304,7 +1307,7 @@ TEST_F (ValidateStateTests, OngoingsToBuildingLink)
 
 TEST_F (ValidateStateTests, BuildingToOngoingsLink)
 {
-  accounts.CreateNew ("domob", Faction::RED);
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
   db.SetNextId (101);
 
   auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);

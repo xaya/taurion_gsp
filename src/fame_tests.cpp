@@ -126,7 +126,7 @@ protected:
   {
     auto a = accounts.GetByName (owner);
     if (a == nullptr)
-      accounts.CreateNew (owner, Faction::RED);
+      accounts.CreateNew (owner)->SetFaction (Faction::RED);
 
     return characters.CreateNew (owner, Faction::RED)->GetId ();
   }

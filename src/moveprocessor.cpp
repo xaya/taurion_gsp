@@ -2082,7 +2082,7 @@ MoveProcessor::MaybeInitAccount (const std::string& name,
       return;
     }
 
-  accounts.CreateNew (name, faction);
+  accounts.CreateNew (name)->SetFaction (faction);
   LOG (INFO)
       << "Created account " << name << " of faction "
       << FactionToString (faction);

@@ -56,20 +56,20 @@ private:
   /** The Xaya name of this account.  */
   std::string name;
 
-  /** The faction of this account.  */
+  /** The faction of this account.  May be INVALID if not yet initialised.  */
   Faction faction;
 
   /** General proto data.  */
   LazyProto<proto::Account> data;
 
-  /** Whether or not this is a new account.  */
-  bool isNew;
+  /** Whether or not this is dirty in the fields (like faction).  */
+  bool dirtyFields;
 
   /**
    * Constructs an instance with "default / empty" data for the given name
-   * and selected faction.
+   * and not-yet-set faction.
    */
-  explicit Account (Database& d, const std::string& n, Faction f);
+  explicit Account (Database& d, const std::string& n);
 
   /**
    * Constructs an instance based on the given DB result set.  The result
@@ -103,6 +103,12 @@ public:
     return faction;
   }
 
+  /**
+   * Sets the faction.  Is only possible once, i.e. if the faction is so far
+   * not set.
+   */
+  void SetFaction (Faction f);
+
   const proto::Account&
   GetProto () const
   {
@@ -113,6 +119,12 @@ public:
   MutableProto ()
   {
     return data.Mutable ();
+  }
+
+  bool
+  IsInitialised () const
+  {
+    return faction != Faction::INVALID;
   }
 
   /**
@@ -156,13 +168,10 @@ public:
   void operator= (const AccountsTable&) = delete;
 
   /**
-   * Creates a new entry in the database for the given name and selected
-   * faction.  Each player has to select their faction before doing anything
-   * else, and that move will create the account in the database.
-   *
+   * Creates a new entry in the database for the given name.
    * Calling this method for a name that already has an account is an error.
    */
-  Handle CreateNew (const std::string& name, Faction faction);
+  Handle CreateNew (const std::string& name);
 
   /**
    * Returns a handle for the instance based on a Database::Result.
@@ -173,6 +182,11 @@ public:
    * Returns the account with the given name.
    */
   Handle GetByName (const std::string& name);
+
+  /**
+   * Queries the database for all accounts, including uninitialised ones.
+   */
+  Database::Result<AccountResult> QueryAll ();
 
   /**
    * Queries the database for all accounts which have been initialised yet

@@ -21,8 +21,8 @@
 namespace pxd
 {
 
-Account::Account (Database& d, const std::string& n, const Faction f)
-  : db(d), name(n), faction(f), isNew(true)
+Account::Account (Database& d, const std::string& n)
+  : db(d), name(n), faction(Faction::INVALID), dirtyFields(true)
 {
   VLOG (1) << "Created instance for newly initialised account " << name;
   data.SetToDefault ();
@@ -30,10 +30,10 @@ Account::Account (Database& d, const std::string& n, const Faction f)
 }
 
 Account::Account (Database& d, const Database::Result<AccountResult>& res)
-  : db(d), isNew(false)
+  : db(d), dirtyFields(false)
 {
   name = res.Get<AccountResult::name> ();
-  faction = GetFactionFromColumn (res);
+  faction = GetNullableFactionFromColumn (res);
   data = res.GetProto<AccountResult::proto> ();
 
   VLOG (1) << "Created account instance for " << name << " from database";
@@ -41,7 +41,7 @@ Account::Account (Database& d, const Database::Result<AccountResult>& res)
 
 Account::~Account ()
 {
-  if (!isNew && !data.IsDirty ())
+  if (!dirtyFields && !data.IsDirty ())
     {
       VLOG (1) << "Account instance " << name << " is not dirty";
       return;
@@ -64,6 +64,17 @@ Account::~Account ()
 }
 
 void
+Account::SetFaction (const Faction f)
+{
+  CHECK (faction == Faction::INVALID)
+      << "Account " << name << " already has a faction";
+  CHECK (f != Faction::INVALID)
+      << "Setting account " << name << " to NULL faction";
+  faction = f;
+  dirtyFields = true;
+}
+
+void
 Account::AddBalance (const Amount val)
 {
   Amount balance = data.Get ().balance ();
@@ -73,11 +84,11 @@ Account::AddBalance (const Amount val)
 }
 
 AccountsTable::Handle
-AccountsTable::CreateNew (const std::string& name, const Faction f)
+AccountsTable::CreateNew (const std::string& name)
 {
   CHECK (GetByName (name) == nullptr)
       << "Account for " << name << " exists already";
-  return Handle (new Account (db, name, f));
+  return Handle (new Account (db, name));
 }
 
 AccountsTable::Handle
@@ -102,9 +113,25 @@ AccountsTable::GetByName (const std::string& name)
 }
 
 Database::Result<AccountResult>
+AccountsTable::QueryAll ()
+{
+  auto stmt = db.Prepare (R"(
+    SELECT *
+      FROM `accounts`
+      ORDER BY `name`
+  )");
+  return stmt.Query<AccountResult> ();
+}
+
+Database::Result<AccountResult>
 AccountsTable::QueryInitialised ()
 {
-  auto stmt = db.Prepare ("SELECT * FROM `accounts` ORDER BY `name`");
+  auto stmt = db.Prepare (R"(
+    SELECT *
+      FROM `accounts`
+      WHERE `faction` IS NOT NULL
+      ORDER BY `name`
+  )");
   return stmt.Query<AccountResult> ();
 }
 

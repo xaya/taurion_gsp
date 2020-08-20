@@ -246,7 +246,10 @@ CREATE TABLE IF NOT EXISTS `accounts` (
   `name` TEXT PRIMARY KEY,
 
   -- The faction (as integer corresponding to the Faction enum in C++).
-  `faction` INTEGER NOT NULL,
+  -- Can be null for accounts that are not yet initialised.  They are
+  -- not allowed to properly play in the game, but they can hold and
+  -- transfer vCHI.
+  `faction` INTEGER NULL,
 
   -- Additional data for the account as a serialised Account proto.
   `proto` BLOB NOT NULL

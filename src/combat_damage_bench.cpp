@@ -55,8 +55,8 @@ InsertCharacters (Database& db, const unsigned numIdle,
   AccountsTable acc(db);
   CharacterTable tbl(db);
 
-  acc.CreateNew ("red", Faction::RED);
-  acc.CreateNew ("green", Faction::GREEN);
+  acc.CreateNew ("red")->SetFaction (Faction::RED);
+  acc.CreateNew ("green")->SetFaction (Faction::GREEN);
 
   for (unsigned i = 0; i < numIdle; ++i)
     {

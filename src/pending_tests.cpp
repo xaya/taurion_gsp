@@ -91,7 +91,8 @@ TEST_F (PendingStateTests, Empty)
 
 TEST_F (PendingStateTests, Clear)
 {
-  auto a = accounts.CreateNew ("domob", Faction::RED);
+  auto a = accounts.CreateNew ("domob");
+  a->SetFaction (Faction::RED);
   CoinTransferBurn coinOp;
   coinOp.burnt = 10;
   coinOp.transfers["andy"] = 20;
@@ -551,7 +552,8 @@ TEST_F (PendingStateTests, CharacterCreation)
 
 TEST_F (PendingStateTests, CoinTransferBurn)
 {
-  auto a = accounts.CreateNew ("domob", Faction::RED);
+  auto a = accounts.CreateNew ("domob");
+  a->SetFaction (Faction::RED);
 
   CoinTransferBurn coinOp;
   coinOp.burnt = 5;
@@ -588,8 +590,15 @@ TEST_F (PendingStateTests, CoinTransferBurn)
 
 TEST_F (PendingStateTests, ServiceOperations)
 {
-  accounts.CreateNew ("domob", Faction::RED)->AddBalance (30);
-  accounts.CreateNew ("andy", Faction::GREEN)->AddBalance (30);
+  auto a = accounts.CreateNew ("domob");
+  a->SetFaction (Faction::RED);
+  a->AddBalance (30);
+  a.reset ();
+
+  a = accounts.CreateNew ("andy");
+  a->SetFaction (Faction::GREEN);
+  a->AddBalance (30);
+  a.reset ();
 
   db.SetNextId (100);
   buildings.CreateNew ("ancient1", "", Faction::ANCIENT);
@@ -713,9 +722,9 @@ TEST_F (PendingStateUpdaterTests, AccountNotInitialised)
 
 TEST_F (PendingStateUpdaterTests, InvalidCreation)
 {
-  accounts.CreateNew ("domob", Faction::RED);
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
 
-  accounts.CreateNew ("at limit", Faction::BLUE);
+  accounts.CreateNew ("at limit")->SetFaction (Faction::BLUE);
   for (unsigned i = 0; i < ctx.RoConfig ()->params ().character_limit (); ++i)
     characters.CreateNew ("at limit", Faction::BLUE)
         ->SetPosition (HexCoord (i, 1));
@@ -745,8 +754,8 @@ TEST_F (PendingStateUpdaterTests, InvalidCreation)
 
 TEST_F (PendingStateUpdaterTests, ValidCreations)
 {
-  accounts.CreateNew ("domob", Faction::RED);
-  accounts.CreateNew ("andy", Faction::GREEN);
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
+  accounts.CreateNew ("andy")->SetFaction (Faction::GREEN);
 
   ProcessWithDevPayment ("domob", 2 * characterCost, R"({
     "nc": [{}, {}, {}]
@@ -781,8 +790,8 @@ TEST_F (PendingStateUpdaterTests, ValidCreations)
 
 TEST_F (PendingStateUpdaterTests, InvalidUpdate)
 {
-  accounts.CreateNew ("domob", Faction::RED);
-  accounts.CreateNew ("andy", Faction::RED);
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
+  accounts.CreateNew ("andy")->SetFaction (Faction::RED);
 
   CHECK_EQ (characters.CreateNew ("domob", Faction::RED)->GetId (), 1);
 
@@ -805,7 +814,7 @@ TEST_F (PendingStateUpdaterTests, InvalidUpdate)
 
 TEST_F (PendingStateUpdaterTests, Waypoints)
 {
-  accounts.CreateNew ("domob", Faction::RED);
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
 
   characters.CreateNew ("domob", Faction::RED)->SetPosition (HexCoord (0, 1));
   characters.CreateNew ("domob", Faction::RED)->SetPosition (HexCoord (0, 2));
@@ -846,7 +855,7 @@ TEST_F (PendingStateUpdaterTests, Waypoints)
 
 TEST_F (PendingStateUpdaterTests, EnterBuilding)
 {
-  accounts.CreateNew ("domob", Faction::RED);
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
 
   characters.CreateNew ("domob", Faction::RED)->SetPosition (HexCoord (0, -1));
   characters.CreateNew ("domob", Faction::RED)->SetPosition (HexCoord (0, 0));
@@ -895,7 +904,7 @@ TEST_F (PendingStateUpdaterTests, EnterBuilding)
 
 TEST_F (PendingStateUpdaterTests, ExitBuilding)
 {
-  accounts.CreateNew ("domob", Faction::RED);
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
 
   auto c = characters.CreateNew ("domob", Faction::RED);
   ASSERT_EQ (c->GetId (), 1);
@@ -940,7 +949,7 @@ TEST_F (PendingStateUpdaterTests, ExitBuilding)
 
 TEST_F (PendingStateUpdaterTests, DropPickup)
 {
-  accounts.CreateNew ("domob", Faction::RED);
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
   characters.CreateNew ("domob", Faction::RED)->SetPosition (HexCoord (0, 0));
   characters.CreateNew ("domob", Faction::RED)->SetPosition (HexCoord (1, 0));
 
@@ -983,7 +992,7 @@ TEST_F (PendingStateUpdaterTests, DropPickup)
 
 TEST_F (PendingStateUpdaterTests, PickupInFoundation)
 {
-  accounts.CreateNew ("domob", Faction::RED);
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
   auto b = buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
   const auto bId = b->GetId ();
   b->MutableProto ().set_foundation (true);
@@ -1006,7 +1015,7 @@ TEST_F (PendingStateUpdaterTests, PickupInFoundation)
 
 TEST_F (PendingStateUpdaterTests, Prospecting)
 {
-  accounts.CreateNew ("domob", Faction::RED);
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
 
   const HexCoord pos(456, -789);
   auto h = characters.CreateNew ("domob", Faction::RED);
@@ -1047,7 +1056,7 @@ TEST_F (PendingStateUpdaterTests, Prospecting)
 
 TEST_F (PendingStateUpdaterTests, Mining)
 {
-  accounts.CreateNew ("domob", Faction::RED);
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
 
   const HexCoord pos(456, -789);
   constexpr Database::IdT regionId = 345'820;
@@ -1086,7 +1095,7 @@ TEST_F (PendingStateUpdaterTests, Mining)
 
 TEST_F (PendingStateUpdaterTests, FoundBuilding)
 {
-  accounts.CreateNew ("domob", Faction::RED);
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
 
   auto c = characters.CreateNew ("domob", Faction::RED);
   c->GetInventory ().AddFungibleCount ("foo", 10);
@@ -1132,7 +1141,7 @@ TEST_F (PendingStateUpdaterTests, FoundBuilding)
 
 TEST_F (PendingStateUpdaterTests, ChangeVehicle)
 {
-  accounts.CreateNew ("domob", Faction::RED);
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
 
   auto c = characters.CreateNew ("domob", Faction::RED);
   ASSERT_EQ (c->GetId (), 1);
@@ -1198,7 +1207,7 @@ TEST_F (PendingStateUpdaterTests, ChangeVehicle)
 
 TEST_F (PendingStateUpdaterTests, Fitments)
 {
-  accounts.CreateNew ("domob", Faction::RED);
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
 
   auto c = characters.CreateNew ("domob", Faction::RED);
   ASSERT_EQ (c->GetId (), 1);
@@ -1266,7 +1275,7 @@ TEST_F (PendingStateUpdaterTests, Fitments)
 
 TEST_F (PendingStateUpdaterTests, CreationAndUpdateTogether)
 {
-  accounts.CreateNew ("domob", Faction::RED);
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
 
   CHECK_EQ (characters.CreateNew ("domob", Faction::RED)->GetId (), 1);
 
@@ -1291,8 +1300,15 @@ TEST_F (PendingStateUpdaterTests, CreationAndUpdateTogether)
 
 TEST_F (PendingStateUpdaterTests, CoinTransferBurn)
 {
-  accounts.CreateNew ("domob", Faction::RED)->AddBalance (100);
-  accounts.CreateNew ("andy", Faction::GREEN)->AddBalance (100);
+  auto a = accounts.CreateNew ("domob");
+  a->SetFaction (Faction::RED);
+  a->AddBalance (100);
+  a.reset ();
+
+  a = accounts.CreateNew ("andy");
+  a->SetFaction (Faction::GREEN);
+  a->AddBalance (100);
+  a.reset ();
 
   Process ("domob", R"({
     "abc": "foo",
@@ -1339,7 +1355,10 @@ TEST_F (PendingStateUpdaterTests, CoinTransferBurn)
 
 TEST_F (PendingStateUpdaterTests, ServiceOperations)
 {
-  accounts.CreateNew ("domob", Faction::RED)->AddBalance (100);
+  auto a = accounts.CreateNew ("domob");
+  a->SetFaction (Faction::RED);
+  a->AddBalance (100);
+  a.reset ();
 
   db.SetNextId (100);
   buildings.CreateNew ("ancient1", "", Faction::ANCIENT)
@@ -1379,7 +1398,10 @@ TEST_F (PendingStateUpdaterTests, ServiceOperations)
 
 TEST_F (PendingStateUpdaterTests, MobileRefining)
 {
-  accounts.CreateNew ("domob", Faction::RED)->AddBalance (100);
+  auto a = accounts.CreateNew ("domob");
+  a->SetFaction (Faction::RED);
+  a->AddBalance (100);
+  a.reset ();
 
   db.SetNextId (101);
   auto c = characters.CreateNew ("domob", Faction::RED);
