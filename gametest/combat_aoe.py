@@ -70,6 +70,8 @@ class CombatAoETest (PXTest):
       self.initAccount (nm, "g")
       self.createCharacters (nm)
     self.generate (1)
+    for nm in self.targetNames:
+      self.changeCharacterVehicle (nm, "basetank")
     self.moveCharactersTo ({
       "a": {"x": 2, "y": 0},
       "b": {"x": -3, "y": 0},
