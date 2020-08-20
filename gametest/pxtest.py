@@ -246,7 +246,9 @@ class Account (object):
     return self.data["name"]
 
   def getFaction (self):
-    return self.data["faction"]
+    if "faction" in self.data:
+      return self.data["faction"]
+    return None
 
   def getBalance (self):
     return self.data["balance"]

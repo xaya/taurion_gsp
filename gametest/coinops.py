@@ -33,16 +33,18 @@ class CoinOpsTest (PXTest):
 
     acc = self.getAccounts ()
     for k, v in expected.items ():
-      self.assertEqual (acc[k].getBalance (), v)
+      if k not in acc:
+        self.assertEqual (v, 0)
+      else:
+        self.assertEqual (acc[k].getBalance (), v)
 
   def run (self):
     self.collectPremine ()
     self.splitPremine ()
 
-    self.mainLogger.info ("Creating test accounts...")
-    self.initAccount ("domob", "r")
-    self.initAccount ("andy", "g")
-    self.initAccount ("daniel", "b")
+    self.mainLogger.info ("Setting up test situation...")
+    # No need to initialise accounts.  Coin operations also work
+    # without a chosen faction.
     self.generate (1)
     self.giftCoins ({"domob": 100})
 

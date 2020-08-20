@@ -33,6 +33,13 @@ class AccountsTest (PXTest):
     accounts = self.getAccounts ()
     self.assertEqual (accounts, {})
 
+    self.mainLogger.info ("Accounts are created with any moves...")
+    self.sendMove ("domob", {"x": "foobar"})
+    self.generate (1)
+    accounts = self.getAccounts ()
+    self.assertEqual (accounts["domob"].getFaction (), None)
+    assert "andy" not in accounts
+
     self.mainLogger.info ("Initialising basic accounts...")
     self.initAccount ("domob", "r")
     self.initAccount ("domob", "g")
