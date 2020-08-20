@@ -256,7 +256,7 @@ class MovementTest (PXTest):
     self.moveCharactersTo ({
       "blocker": offsetCoord ({"x": 30, "y": 0}, self.offset, False),
     })
-    self.generate (20)
+    self.generate (10 + self.roConfig ().params.blocked_step_retries)
     pos, mv = self.getMovement ("domob")
     self.assertEqual (pos, {"x": 31, "y": 0})
     self.assertEqual (mv, None)

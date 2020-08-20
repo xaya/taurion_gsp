@@ -366,6 +366,15 @@ protected:
     EXPECT_FALSE (IsMoving ());
   }
 
+  /**
+   * Utility function for the blocked step retry config param.
+   */
+  unsigned
+  BlockedRetries () const
+  {
+    return ctx.RoConfig ()->params ().blocked_step_retries ();
+  }
+
 };
 
 TEST_F (MovementTests, Basic)
@@ -490,9 +499,9 @@ TEST_F (MovementTests, Obstacle)
 
       /* After using up all movement points, we still try the next step
          already (e.g. in case it would be zero distance).  This will
-         have incremented the blocked-turn counter by one already.  Ten more
-         trials will stop movement.  */
-      {10, HexCoord (0, 5)},
+         have incremented the blocked-turn counter by one already.  Thus
+         doing the blocked-retry counter more blocks will stop movement.  */
+      {BlockedRetries (), HexCoord (0, 5)},
     });
 }
 
@@ -516,11 +525,11 @@ TEST_F (MovementTests, BlockedTurns)
   /* Try stepping into the obstacle, which should increment the blocked turns
      counter and reset any partial step progress.  */
   GetTest ()->MutableVolatileMv ().set_partial_step (500);
-  StepCharacter (1, EdgesWithObstacle (1000), 9);
+  StepCharacter (1, EdgesWithObstacle (1000), BlockedRetries () - 1);
   EXPECT_EQ (GetTest ()->GetPosition (), HexCoord (0, 0));
   EXPECT_TRUE (IsMoving ());
   EXPECT_FALSE (GetTest ()->GetVolatileMv ().has_partial_step ());
-  EXPECT_EQ (GetTest ()->GetVolatileMv ().blocked_turns (), 10);
+  EXPECT_EQ (GetTest ()->GetVolatileMv ().blocked_turns (), BlockedRetries ());
 
   /* Stepping with free way (even if we can't do a full step) will reset
      the counter again.  */
@@ -531,7 +540,7 @@ TEST_F (MovementTests, BlockedTurns)
   EXPECT_FALSE (GetTest ()->GetVolatileMv ().has_blocked_turns ());
 
   /* Trying too often will stop movement.  */
-  StepCharacter (1, EdgesWithObstacle (1000), 11);
+  StepCharacter (1, EdgesWithObstacle (1000), BlockedRetries () + 1);
   EXPECT_EQ (GetTest ()->GetPosition (), HexCoord (0, 0));
   EXPECT_FALSE (IsMoving ());
   EXPECT_FALSE (GetTest ()->GetVolatileMv ().has_partial_step ());
@@ -546,7 +555,7 @@ TEST_F (MovementTests, CharacterInObstacle)
   SetWaypoints ({HexCoord (10, 0)});
   ExpectSteps (1, EdgesWithObstacle (1),
     {
-      {11, HexCoord (-1, 0)},
+      {BlockedRetries () + 1, HexCoord (-1, 0)},
     });
 }
 

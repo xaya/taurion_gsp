@@ -63,7 +63,7 @@ class BuildingsBasicTest (PXTest):
     ])
 
     self.mainLogger.info ("Building will act as obstacle...")
-    self.generate (20)
+    self.generate (10 + self.roConfig ().params.blocked_step_retries)
     c = self.getCharacters ()["domob"]
     self.assertEqual (c.isMoving (), False)
     self.assertEqual (c.getPosition (), {"x": -1, "y": 0})
