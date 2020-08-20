@@ -181,12 +181,16 @@ TEST_F (AccountUpdateTests, InvalidInitialisation)
     {"name": "domob", "move": {"a": 42}}
   ])");
 
-  EXPECT_TRUE (accounts.GetByName ("domob") == nullptr);
+  /* Sending the moves should have created the account entry, but it
+     should not have gotten a faction yet.  */
+  auto a = accounts.GetByName ("domob");
+  ASSERT_NE (a, nullptr);
+  EXPECT_FALSE (a->IsInitialised ());
 }
 
 TEST_F (AccountUpdateTests, InitialisationOfExistingAccount)
 {
-  accounts.CreateNew ("domob", Faction::RED);
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
 
   Process (R"([
     {"name": "domob", "move": {"a": {"init": {"faction": "b"}}}}
@@ -231,8 +235,10 @@ protected:
     for (const auto& entry : expected)
       {
         auto a = accounts.GetByName (entry.first);
-        ASSERT_NE (a, nullptr) << "Account does not exist: " << entry.first;
-        ASSERT_EQ (a->GetBalance (), entry.second);
+        if (a == nullptr)
+          ASSERT_EQ (entry.second, 0);
+        else
+          ASSERT_EQ (a->GetBalance (), entry.second);
       }
   }
 
@@ -240,8 +246,7 @@ protected:
 
 TEST_F (CoinOperationTests, Invalid)
 {
-  accounts.CreateNew ("domob", Faction::RED)->AddBalance (100);
-  accounts.CreateNew ("other", Faction::RED);
+  accounts.CreateNew ("domob")->AddBalance (100);
 
   Process (R"([
     {"name": "domob", "move": {"vc": 42}},
@@ -253,7 +258,6 @@ TEST_F (CoinOperationTests, Invalid)
     {"name": "domob", "move": {"vc": {"b": 999999999999999999}}},
     {"name": "domob", "move": {"vc": {"t": 42}}},
     {"name": "domob", "move": {"vc": {"t": "other"}}},
-    {"name": "domob", "move": {"vc": {"t": {"invalid": 10}}}},
     {"name": "domob", "move": {"vc": {"t": {"other": -1}}}},
     {"name": "domob", "move": {"vc": {"t": {"other": 1000000001}}}},
     {"name": "domob", "move": {"vc": {"t": {"other": 1.999999}}}},
@@ -265,9 +269,7 @@ TEST_F (CoinOperationTests, Invalid)
 
 TEST_F (CoinOperationTests, BurnAndTransfer)
 {
-  accounts.CreateNew ("domob", Faction::RED)->AddBalance (100);
-  accounts.CreateNew ("second", Faction::RED);
-  accounts.CreateNew ("third", Faction::RED);
+  accounts.CreateNew ("domob")->AddBalance (100);
 
   /* Some of the burns and transfers are invalid.  They should just be ignored,
      without affecting the rest of the operation (valid parts).  */
@@ -283,19 +285,20 @@ TEST_F (CoinOperationTests, BurnAndTransfer)
         "b": 1000,
         "t": {"third": 2}
       }}
-    }
+    },
+    {"name": "second", "move": {"vc": {"b": 1}}}
   ])");
 
   ExpectBalances ({
     {"domob", 80},
-    {"second", 5},
+    {"second", 4},
     {"third", 5},
   });
 }
 
 TEST_F (CoinOperationTests, BurnAll)
 {
-  accounts.CreateNew ("domob", Faction::RED)->AddBalance (100);
+  accounts.CreateNew ("domob")->AddBalance (100);
   Process (R"([
     {"name": "domob", "move": {"vc": {"b": 100}}}
   ])");
@@ -304,8 +307,7 @@ TEST_F (CoinOperationTests, BurnAll)
 
 TEST_F (CoinOperationTests, TransferAll)
 {
-  accounts.CreateNew ("domob", Faction::RED)->AddBalance (100);
-  accounts.CreateNew ("other", Faction::RED);
+  accounts.CreateNew ("domob")->AddBalance (100);
   Process (R"([
     {"name": "domob", "move": {"vc": {"t": {"other": 100}}}}
   ])");
@@ -314,8 +316,7 @@ TEST_F (CoinOperationTests, TransferAll)
 
 TEST_F (CoinOperationTests, SelfTransfer)
 {
-  accounts.CreateNew ("domob", Faction::RED)->AddBalance (100);
-  accounts.CreateNew ("other", Faction::GREEN);
+  accounts.CreateNew ("domob")->AddBalance (100);
   Process (R"([
     {"name": "domob", "move": {"vc": {"t": {"domob": 90, "other": 20}}}}
   ])");
@@ -324,8 +325,7 @@ TEST_F (CoinOperationTests, SelfTransfer)
 
 TEST_F (CoinOperationTests, BurnBeforeTransfer)
 {
-  accounts.CreateNew ("domob", Faction::RED)->AddBalance (100);
-  accounts.CreateNew ("other", Faction::RED);
+  accounts.CreateNew ("domob")->AddBalance (100);
 
   Process (R"([
     {"name": "domob", "move": {"vc":
@@ -344,10 +344,7 @@ TEST_F (CoinOperationTests, BurnBeforeTransfer)
 
 TEST_F (CoinOperationTests, TransferOrder)
 {
-  accounts.CreateNew ("domob", Faction::RED)->AddBalance (100);
-  accounts.CreateNew ("a", Faction::RED);
-  accounts.CreateNew ("middle", Faction::RED);
-  accounts.CreateNew ("z", Faction::RED);
+  accounts.CreateNew ("domob")->AddBalance (100);
 
   Process (R"([
     {"name": "domob", "move": {"vc":
@@ -383,7 +380,7 @@ protected:
 
 TEST_F (CharacterCreationTests, InvalidCommands)
 {
-  accounts.CreateNew ("domob", Faction::RED);
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
 
   ProcessWithDevPayment (R"([
     {"name": "domob", "move": {}},
@@ -407,8 +404,8 @@ TEST_F (CharacterCreationTests, AccountNotInitialised)
 
 TEST_F (CharacterCreationTests, ValidCreation)
 {
-  accounts.CreateNew ("domob", Faction::RED);
-  accounts.CreateNew ("andy", Faction::BLUE);
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
+  accounts.CreateNew ("andy")->SetFaction (Faction::BLUE);
 
   ProcessWithDevPayment (R"([
     {"name": "domob", "move": {"nc": []}},
@@ -433,8 +430,8 @@ TEST_F (CharacterCreationTests, ValidCreation)
 
 TEST_F (CharacterCreationTests, VChiAirdrop)
 {
-  accounts.CreateNew ("domob", Faction::RED);
-  accounts.CreateNew ("andy", Faction::BLUE);
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
+  accounts.CreateNew ("andy")->SetFaction (Faction::BLUE);
 
   ProcessWithDevPayment (R"([
     {"name": "domob", "move": {"nc": [{}, {}]}},
@@ -448,8 +445,8 @@ TEST_F (CharacterCreationTests, VChiAirdrop)
 
 TEST_F (CharacterCreationTests, DevPayment)
 {
-  accounts.CreateNew ("domob", Faction::RED);
-  accounts.CreateNew ("andy", Faction::GREEN);
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
+  accounts.CreateNew ("andy")->SetFaction (Faction::GREEN);
 
   Process (R"([
     {"name": "domob", "move": {"nc": [{}]}}
@@ -471,7 +468,7 @@ TEST_F (CharacterCreationTests, DevPayment)
 
 TEST_F (CharacterCreationTests, Multiple)
 {
-  accounts.CreateNew ("domob", Faction::RED);
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
 
   ProcessWithDevPayment (R"([
     {
@@ -500,7 +497,7 @@ TEST_F (CharacterCreationTests, CharacterLimit)
 {
   const unsigned limit = ctx.RoConfig ()->params ().character_limit ();
 
-  accounts.CreateNew ("domob", Faction::RED);
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
   for (unsigned i = 0; i < limit - 1; ++i)
     tbl.CreateNew ("domob", Faction::RED)->SetPosition (HexCoord (i, 0));
 
@@ -556,7 +553,7 @@ protected:
   SetupCharacter (const Database::IdT id, const std::string& owner)
   {
     if (accounts.GetByName (owner) == nullptr)
-      accounts.CreateNew (owner, Faction::RED);
+      accounts.CreateNew (owner)->SetFaction (Faction::RED);
 
     db.SetNextId (id);
     /* We have to place the character on a spot not yet taken by another,
@@ -593,8 +590,8 @@ protected:
 
 TEST_F (CharacterUpdateTests, CreationAndUpdate)
 {
-  accounts.CreateNew ("daniel", Faction::RED);
-  accounts.CreateNew ("andy", Faction::RED);
+  accounts.CreateNew ("daniel")->SetFaction (Faction::RED);
+  accounts.CreateNew ("andy")->SetFaction (Faction::RED);
 
   ProcessWithDevPayment (R"([{
     "name": "domob",
@@ -639,10 +636,10 @@ TEST_F (CharacterUpdateTests, MultipleCharacters)
   SetupCharacter (13, "domob");
   SetupCharacter (14, "domob");
 
-  accounts.CreateNew ("andy", Faction::RED);
-  accounts.CreateNew ("bob", Faction::RED);
-  accounts.CreateNew ("charly", Faction::RED);
-  accounts.CreateNew ("mallory", Faction::RED);
+  accounts.CreateNew ("andy")->SetFaction (Faction::RED);
+  accounts.CreateNew ("bob")->SetFaction (Faction::RED);
+  accounts.CreateNew ("charly")->SetFaction (Faction::RED);
+  accounts.CreateNew ("mallory")->SetFaction (Faction::RED);
 
   /* This whole command is invalid, because an ID is specified twice in it.  */
   Process (R"([{
@@ -691,7 +688,7 @@ TEST_F (CharacterUpdateTests, MultipleCharacters)
 
 TEST_F (CharacterUpdateTests, ValidTransfer)
 {
-  accounts.CreateNew ("andy", Faction::RED);
+  accounts.CreateNew ("andy")->SetFaction (Faction::RED);
 
   EXPECT_EQ (GetTest ()->GetOwner (), "domob");
   Process (R"([{
@@ -703,11 +700,12 @@ TEST_F (CharacterUpdateTests, ValidTransfer)
 
 TEST_F (CharacterUpdateTests, InvalidTransfer)
 {
-  accounts.CreateNew ("at limit", Faction::RED);
+  accounts.CreateNew ("at limit")->SetFaction (Faction::RED);
   for (unsigned i = 0; i < ctx.RoConfig ()->params ().character_limit (); ++i)
     tbl.CreateNew ("at limit", Faction::RED)->SetPosition (HexCoord (i, 0));
 
-  accounts.CreateNew ("wrong faction", Faction::GREEN);
+  accounts.CreateNew ("uninitialised account");
+  accounts.CreateNew ("wrong faction")->SetFaction (Faction::GREEN);
 
   Process (R"([
     {
@@ -717,6 +715,10 @@ TEST_F (CharacterUpdateTests, InvalidTransfer)
     {
       "name": "domob",
       "move": {"c": {"1": {"send": "uninitialised account"}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"1": {"send": "non-existant account"}}}
     },
     {
       "name": "domob",
@@ -747,7 +749,7 @@ TEST_F (CharacterUpdateTests, OwnerCheck)
 
 TEST_F (CharacterUpdateTests, InvalidUpdate)
 {
-  accounts.CreateNew ("andy", Faction::RED);
+  accounts.CreateNew ("andy")->SetFaction (Faction::RED);
 
   /* We want to test that one invalid update still allows for other
      updates (i.e. other characters) to be done successfully in the same
@@ -2709,7 +2711,7 @@ TEST_F (ProspectingMoveTests, NoProspectingAbility)
 
 TEST_F (ProspectingMoveTests, MultipleCharacters)
 {
-  accounts.CreateNew ("foo", Faction::GREEN);
+  accounts.CreateNew ("foo")->SetFaction (Faction::GREEN);
 
   auto c = tbl.CreateNew ("foo", Faction::GREEN);
   ASSERT_EQ (c->GetId (), 2);
@@ -2944,8 +2946,8 @@ protected:
   BuildingUpdateTests ()
     : buildings(db)
   {
-    accounts.CreateNew ("domob", Faction::RED);
-    accounts.CreateNew ("andy", Faction::RED);
+    accounts.CreateNew ("domob")->SetFaction (Faction::RED);
+    accounts.CreateNew ("andy")->SetFaction (Faction::RED);
 
     db.SetNextId (100);
 
@@ -3079,7 +3081,10 @@ protected:
   ServicesMoveTests ()
     : buildings(db), inv(db), characters(db)
   {
-    accounts.CreateNew ("domob", Faction::RED)->AddBalance (100);
+    auto a = accounts.CreateNew ("domob");
+    a->SetFaction (Faction::RED);
+    a->AddBalance (100);
+    a.reset ();
 
     db.SetNextId (100);
     buildings.CreateNew ("ancient1", "", Faction::ANCIENT)
@@ -3209,7 +3214,7 @@ protected:
 
 TEST_F (GodModeTests, InvalidTeleport)
 {
-  accounts.CreateNew ("domob", Faction::RED);
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
   const auto id = tbl.CreateNew ("domob", Faction::RED)->GetId ();
   ASSERT_EQ (id, 1);
 
@@ -3225,7 +3230,7 @@ TEST_F (GodModeTests, InvalidTeleport)
 
 TEST_F (GodModeTests, Teleport)
 {
-  accounts.CreateNew ("domob", Faction::RED);
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
   auto c = tbl.CreateNew ("domob", Faction::RED);
   const auto id = c->GetId ();
   ASSERT_EQ (id, 1);
@@ -3253,7 +3258,7 @@ TEST_F (GodModeTests, Teleport)
 
 TEST_F (GodModeTests, SetHp)
 {
-  accounts.CreateNew ("domob", Faction::RED);
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
   auto c = tbl.CreateNew ("domob", Faction::RED);
   const auto id = c->GetId ();
   ASSERT_EQ (id, 1);
@@ -3324,7 +3329,7 @@ TEST_F (GodModeTests, SetHp)
 
 TEST_F (GodModeTests, Build)
 {
-  accounts.CreateNew ("domob", Faction::RED);
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
 
   /* This is entirely invalid (not even an array).  */
   ProcessAdmin (R"([{"cmd": {"god": {"build": {"foo": "bar"}}}}])");
@@ -3478,9 +3483,6 @@ TEST_F (GodModeTests, ValidDropLoot)
 
 TEST_F (GodModeTests, GiftCoins)
 {
-  accounts.CreateNew ("andy", Faction::RED);
-  accounts.CreateNew ("domob", Faction::RED);
-
   ProcessAdmin (R"([{"cmd": {
     "god":
       {
@@ -3536,7 +3538,7 @@ protected:
 
 TEST_F (GodModeDisabledTests, Teleport)
 {
-  accounts.CreateNew ("domob", Faction::RED);
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
   const auto id = tbl.CreateNew ("domob", Faction::RED)->GetId ();
   ASSERT_EQ (id, 1);
 
@@ -3549,7 +3551,7 @@ TEST_F (GodModeDisabledTests, Teleport)
 
 TEST_F (GodModeDisabledTests, SetHp)
 {
-  accounts.CreateNew ("domob", Faction::RED);
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
   auto c = tbl.CreateNew ("domob", Faction::RED);
   const auto id = c->GetId ();
   ASSERT_EQ (id, 1);

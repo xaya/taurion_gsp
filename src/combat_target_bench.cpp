@@ -53,7 +53,7 @@ InsertCharacters (Database& db, const Context& ctx, const Faction f,
   CharacterTable tbl(db);
 
   const std::string nm = FactionToString (f);
-  acc.CreateNew (nm, f);
+  acc.CreateNew (nm)->SetFaction (f);
 
   for (unsigned r = 0; r < rows; ++r)
     for (unsigned c = 0; c < cols; ++c)

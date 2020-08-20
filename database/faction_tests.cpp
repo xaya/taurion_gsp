@@ -64,7 +64,7 @@ protected:
     auto stmt = db.Prepare (R"(
       CREATE TABLE `test` (
         `name` TEXT PRIMARY KEY,
-        `faction` INTEGER NOT NULL
+        `faction` INTEGER NULL
       )
     )");
     stmt.Execute ();
@@ -96,8 +96,25 @@ TEST_F (FactionDatabaseTests, RoundTrip)
 
       ASSERT_TRUE (res.Step ());
       EXPECT_EQ (GetFactionFromColumn (res), t.first);
+      EXPECT_EQ (GetNullableFactionFromColumn (res), t.first);
       EXPECT_FALSE (res.Step ());
     }
+}
+
+TEST_F (FactionDatabaseTests, Null)
+{
+  auto stmt = db.Prepare (R"(
+    INSERT INTO `test` (`name`, `faction`) VALUES ("foo", ?1)
+  )");
+  BindFactionParameter (stmt, 1, Faction::INVALID);
+  stmt.Execute ();
+
+  stmt = db.Prepare ("SELECT `faction` FROM `test`");
+  auto res = stmt.Query<ResultWithFaction> ();
+
+  ASSERT_TRUE (res.Step ());
+  EXPECT_DEATH (GetFactionFromColumn (res), "Unexpected NULL faction");
+  EXPECT_EQ (GetNullableFactionFromColumn (res), Faction::INVALID);
 }
 
 TEST_F (FactionDatabaseTests, Invalid)
@@ -112,6 +129,7 @@ TEST_F (FactionDatabaseTests, Invalid)
 
   ASSERT_TRUE (res.Step ());
   EXPECT_DEATH (GetFactionFromColumn (res), "Invalid faction value");
+  EXPECT_DEATH (GetNullableFactionFromColumn (res), "Invalid faction value");
 }
 
 } // anonymous namespace

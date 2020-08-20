@@ -67,7 +67,10 @@ protected:
     : accounts(db), buildings(db), inv(db), characters(db),
       itemCounts(db), ongoings(db)
   {
-    accounts.CreateNew ("domob", Faction::RED)->AddBalance (100);
+    auto a = accounts.CreateNew ("domob");
+    a->SetFaction (Faction::RED);
+    a->AddBalance (100);
+    a.reset ();
 
     db.SetNextId (ANCIENT_BUILDING);
     auto b = buildings.CreateNew ("ancient1", "", Faction::ANCIENT);
@@ -239,7 +242,7 @@ TEST_F (ServicesTests, InsufficientFunds)
 
 TEST_F (ServicesTests, PendingJson)
 {
-  accounts.CreateNew ("andy", Faction::RED);
+  accounts.CreateNew ("andy")->SetFaction (Faction::RED);
 
   auto b = buildings.CreateNew ("ancient1", "andy", Faction::RED);
   ASSERT_EQ (b->GetId (), 101);
@@ -275,7 +278,10 @@ protected:
     /* For some fee tests, we need an account with just enough balance
        for the base cost.  This will be "andy" (as opposed to "domob" who
        has 100 coins).  */
-    accounts.CreateNew ("andy", Faction::RED)->AddBalance (10);
+    auto a = accounts.CreateNew ("andy");
+    a->SetFaction (Faction::RED);
+    a->AddBalance (10);
+    a.reset ();
 
     CHECK_EQ (buildings.CreateNew ("ancient1", "andy", Faction::RED)
                 ->GetId (), 101);
@@ -716,7 +722,11 @@ TEST_F (RepairTests, NonExistantCharacter)
 
 TEST_F (RepairTests, NonOwnedCharacter)
 {
-  accounts.CreateNew ("andy", Faction::RED)->AddBalance (100);
+  auto a = accounts.CreateNew ("andy");
+  a->SetFaction (Faction::RED);
+  a->AddBalance (100);
+  a.reset ();
+
   EXPECT_FALSE (Process ("andy", R"({
     "t": "fix",
     "b": 100,

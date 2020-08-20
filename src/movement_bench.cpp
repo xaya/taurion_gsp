@@ -52,7 +52,7 @@ void
 InitialiseAccount (Database& db)
 {
   AccountsTable tbl(db);
-  tbl.CreateNew ("domob", Faction::RED);
+  tbl.CreateNew ("domob")->SetFaction (Faction::RED);
 }
 
 /**
