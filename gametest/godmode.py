@@ -153,10 +153,12 @@ class GodModeTest (PXTest):
     self.mainLogger.info ("Testing gift coins...")
     self.giftCoins ({"daniel": 20, "andy": 42})
     self.giftCoins ({"daniel": 30})
+    self.giftCoins ({"rich": 99000000000})
     acc = self.getAccounts ()
     self.assertEqual (acc["andy"].getBalance (), 42)
     self.assertEqual (acc["daniel"].getBalance (), 50)
     self.assertEqual (acc["daniel"].getFaction (), None)
+    self.assertEqual (acc["rich"].getBalance (), 99000000000)
     
 
 if __name__ == "__main__":

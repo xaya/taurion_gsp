@@ -56,12 +56,11 @@ namespace pxd
 static constexpr unsigned MAX_CHOSEN_SPEED = 1'000'000;
 
 /**
- * The maximum amount of vCHI in a move.  This is consensus relevant.  The
- * value is chosen such that its square still does not overflow an int64,
- * so that it can even be used for prices that are then multiplied by some
- * quantity.
+ * The maximum amount of vCHI in a move.  This is consensus relevant.
+ * The value here is actually the total cap on vCHI (although that's not
+ * relevant in this context).
  */
-static constexpr Amount MAX_COIN_AMOUNT = 1'000'000'000;
+static constexpr Amount MAX_COIN_AMOUNT = 100'000'000'000;
 
 /** Amounts of fungible items.  */
 using FungibleAmountMap = std::map<std::string, Quantity>;
