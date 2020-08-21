@@ -212,7 +212,7 @@ class PendingTest (PXTest):
           },
           {
             "name": "domob",
-            "coinops": {"burnt": 10, "transfers": {"miner": 20}},
+            "coinops": {"minted": 0, "burnt": 10, "transfers": {"miner": 20}},
           },
         ],
     })

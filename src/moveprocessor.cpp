@@ -19,6 +19,7 @@
 #include "moveprocessor.hpp"
 
 #include "buildings.hpp"
+#include "burnsale.hpp"
 #include "fitments.hpp"
 #include "jsonutils.hpp"
 #include "mining.hpp"
@@ -59,7 +60,8 @@ BaseMoveProcessor::BaseMoveProcessor (Database& d, DynObstacles& o,
 bool
 BaseMoveProcessor::ExtractMoveBasics (const Json::Value& moveObj,
                                       std::string& name, Json::Value& mv,
-                                      Amount& paidToDev) const
+                                      Amount& paidToDev,
+                                      Amount& burnt) const
 {
   VLOG (1) << "Processing move:\n" << moveObj;
   CHECK (moveObj.isObject ());
@@ -82,13 +84,18 @@ BaseMoveProcessor::ExtractMoveBasics (const Json::Value& moveObj,
   if (outVal.isObject () && outVal.isMember (devAddr))
     CHECK (AmountFromJson (outVal[devAddr], paidToDev));
 
+  if (moveObj.isMember ("burnt"))
+    CHECK (AmountFromJson (moveObj["burnt"], burnt));
+  else
+    burnt = 0;
+
   return true;
 }
 
 void
 BaseMoveProcessor::TryCharacterCreation (const std::string& name,
                                          const Json::Value& mv,
-                                         Amount paidToDev)
+                                         Amount& paidToDev)
 {
   const auto& cmd = mv["nc"];
   if (!cmd.isArray ())
@@ -355,15 +362,29 @@ ExtractCoinAmount (const Json::Value& val, Amount& amount)
 bool
 BaseMoveProcessor::ParseCoinTransferBurn (const Account& a,
                                           const Json::Value& moveObj,
-                                          CoinTransferBurn& op)
+                                          CoinTransferBurn& op,
+                                          Amount& burntChi)
 {
   CHECK (moveObj.isObject ());
   const auto& cmd = moveObj["vc"];
   if (!cmd.isObject ())
     return false;
 
-  const Amount balance = a.GetBalance ();
+  Amount balance = a.GetBalance ();
   Amount total = 0;
+
+  const auto& mint = cmd["m"];
+  if (mint.isObject () && mint.empty ())
+    {
+      const Amount soldBefore = moneySupply.Get ("burnsale");
+      op.minted = ComputeBurnsaleAmount (burntChi, soldBefore, ctx);
+      balance += op.minted;
+    }
+  else
+    {
+      op.minted = 0;
+      LOG_IF (WARNING, !mint.isNull ()) << "Invalid mint command: " << mint;
+    }
 
   const auto& burn = cmd["b"];
   if (ExtractCoinAmount (burn, op.burnt))
@@ -419,7 +440,7 @@ BaseMoveProcessor::ParseCoinTransferBurn (const Account& a,
     }
 
   CHECK_LE (total, balance);
-  return total > 0;
+  return total > 0 || op.minted > 0;
 }
 
 bool
@@ -1089,8 +1110,8 @@ MoveProcessor::ProcessOne (const Json::Value& moveObj)
 {
   std::string name;
   Json::Value mv;
-  Amount paidToDev;
-  if (!ExtractMoveBasics (moveObj, name, mv, paidToDev))
+  Amount paidToDev, burnt;
+  if (!ExtractMoveBasics (moveObj, name, mv, paidToDev, burnt))
     return;
 
   /* Ensure that the account database entry exists.  In other words, we
@@ -1109,7 +1130,7 @@ MoveProcessor::ProcessOne (const Json::Value& moveObj)
      This also ensures that if funds run out, then the explicit transfers
      are done with priority over the other operations that may require coins
      implicitly.  */
-  TryCoinOperation (name, mv);
+  TryCoinOperation (name, mv, burnt);
 
   /* We perform account updates first.  That ensures that it is possible to
      e.g. choose one's faction and create characters in a single move.  */
@@ -1122,8 +1143,9 @@ MoveProcessor::ProcessOne (const Json::Value& moveObj)
      to an account in their processing.  */
   if (!accounts.GetByName (name)->IsInitialised ())
     {
-      LOG (WARNING)
-          << "Account " << name << " does not exist, ignoring move " << moveObj;
+      VLOG (1)
+          << "Account " << name << " is not yet initialised,"
+          << " ignoring parts of the move " << moveObj;
       return;
     }
 
@@ -1138,6 +1160,13 @@ MoveProcessor::ProcessOne (const Json::Value& moveObj)
 
   TryBuildingUpdates (name, mv);
   TryServiceOperations (name, mv);
+
+  /* If any burnt or paid-to-dev coins are left, it means probably something
+     has gone wrong and the user overpaid due to a frontend bug.  */
+  LOG_IF (WARNING, paidToDev > 0 || burnt > 0)
+      << "At the end of the move, " << name
+      << " has " << paidToDev << " paid-to-dev and "
+      << burnt << " burnt CHI satoshi left";
 }
 
 void
@@ -2106,14 +2135,22 @@ MoveProcessor::TryAccountUpdate (const std::string& name,
 
 void
 MoveProcessor::TryCoinOperation (const std::string& name,
-                                 const Json::Value& mv)
+                                 const Json::Value& mv,
+                                 Amount& burntChi)
 {
   auto a = accounts.GetByName (name);
   CHECK (a != nullptr);
 
   CoinTransferBurn op;
-  if (!ParseCoinTransferBurn (*a, mv, op))
+  if (!ParseCoinTransferBurn (*a, mv, op, burntChi))
     return;
+
+  if (op.minted > 0)
+    {
+      LOG (INFO) << name << " minted " << op.minted << " coins in the burnsale";
+      a->AddBalance (op.minted);
+      moneySupply.Increment ("burnsale", op.minted);
+    }
 
   if (op.burnt > 0)
     {

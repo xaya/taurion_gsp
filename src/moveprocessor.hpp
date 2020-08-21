@@ -78,6 +78,9 @@ struct CoinTransferBurn
   /** Amount of coins burnt.  */
   Amount burnt = 0;
 
+  /** Amount of coins bought for CHI in the burnsale.  */
+  Amount minted = 0;
+
   CoinTransferBurn () = default;
   CoinTransferBurn (CoinTransferBurn&&) = default;
   CoinTransferBurn (const CoinTransferBurn&) = default;
@@ -150,15 +153,20 @@ protected:
    */
   bool ExtractMoveBasics (const Json::Value& moveObj,
                           std::string& name, Json::Value& mv,
-                          Amount& paidToDev) const;
+                          Amount& paidToDev,
+                          Amount& burnt) const;
 
   /**
-   * Parses and validates a move to transfer and burn coins (vCHI).  Returns
-   * true if at least one part of the transfer/burn was parsed successfully
-   * and needs to be executed.
+   * Parses and validates a move to transfer and burn coins (vCHI), as well
+   * as to mint coins through the burnsale.
+   *
+   * Returns true if at least one part of the transfer/burn was parsed
+   * successfully and needs to be executed.  The amount of burnt CHI
+   * is updated accordingly if all or some is used up.
    */
   bool ParseCoinTransferBurn (const Account& a, const Json::Value& moveObj,
-                              CoinTransferBurn& op);
+                              CoinTransferBurn& op,
+                              Amount& burntChi);
 
   /**
    * Parses and verifies a potential update to the character waypoints
@@ -231,7 +239,7 @@ protected:
    * is called with the relevant data.
    */
   void TryCharacterCreation (const std::string& name, const Json::Value& mv,
-                             Amount paidToDev);
+                             Amount& paidToDev);
 
   /**
    * Parses and verifies potential character updates as part of the
@@ -403,9 +411,11 @@ private:
   void TryAccountUpdate (const std::string& name, const Json::Value& upd);
 
   /**
-   * Tries to handle a coin (vCHI) transfer / burn operation.
+   * Tries to handle a coin (vCHI) transfer / burn operation.  The amount
+   * of burnt CHI in the move is updated if any is used for minting vCHI.
    */
-  void TryCoinOperation (const std::string& name, const Json::Value& mv);
+  void TryCoinOperation (const std::string& name, const Json::Value& mv,
+                         Amount& burntChi);
 
 protected:
 
