@@ -560,13 +560,17 @@ TEST_F (AccountJsonTests, KillsAndFame)
 TEST_F (AccountJsonTests, UninitialisedBalance)
 {
   tbl.CreateNew ("foo")->SetFaction (Faction::RED);
-  tbl.CreateNew ("bar")->AddBalance (42);
+
+  auto a = tbl.CreateNew ("bar");
+  a->MutableProto ().set_burnsale_balance (10);
+  a->AddBalance (42);
+  a.reset ();
 
   ExpectStateJson (R"({
     "accounts":
       [
-        {"name": "bar", "faction": null, "balance": 42},
-        {"name": "foo", "faction": "r", "balance": 0}
+        {"name": "bar", "faction": null, "balance": 42, "minted": 10},
+        {"name": "foo", "faction": "r", "balance": 0, "minted": 0}
       ]
   })");
 }

@@ -351,6 +351,18 @@ TEST_F (CoinOperationTests, Minting)
   EXPECT_EQ (ms.Get ("burnsale"), 10'000'010'000);
 }
 
+TEST_F (CoinOperationTests, BurnsaleBalance)
+{
+  Process (R"([
+    {"name": "domob", "move": {"vc": {"m": {}}}, "burnt": 0.1},
+    {"name": "domob", "move": {"vc": {"b": 10}}, "burnt": 1}
+  ])");
+
+  ExpectBalances ({{"domob", 990}});
+  EXPECT_EQ (accounts.GetByName ("domob")->GetProto ().burnsale_balance (),
+             1'000);
+}
+
 TEST_F (CoinOperationTests, MintBeforeBurnBeforeTransfer)
 {
   Process (R"([

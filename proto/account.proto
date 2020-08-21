@@ -41,4 +41,10 @@ message Account
    */
   optional uint64 balance = 3;
 
+  /**
+   * Balance of vCHI minted through the burnsale, which corresponds to
+   * the balance that will be carried over to the full game.
+   */
+  optional uint64 burnsale_balance = 4;
+
 }

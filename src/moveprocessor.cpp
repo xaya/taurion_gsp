@@ -2149,6 +2149,8 @@ MoveProcessor::TryCoinOperation (const std::string& name,
     {
       LOG (INFO) << name << " minted " << op.minted << " coins in the burnsale";
       a->AddBalance (op.minted);
+      const Amount oldBurnsale = a->GetProto ().burnsale_balance ();
+      a->MutableProto ().set_burnsale_balance (oldBurnsale + op.minted);
       moneySupply.Increment ("burnsale", op.minted);
     }
 

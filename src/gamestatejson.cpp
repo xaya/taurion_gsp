@@ -302,15 +302,16 @@ template <>
   Json::Value
   GameStateJson::Convert<Account> (const Account& a) const
 {
+  const auto& pb = a.GetProto ();
+
   Json::Value res(Json::objectValue);
   res["name"] = a.GetName ();
   res["balance"] = IntToJson (a.GetBalance ());
+  res["minted"] = IntToJson (pb.burnsale_balance ());
 
   if (a.IsInitialised ())
     {
       res["faction"] = FactionToString (a.GetFaction ());
-
-      const auto& pb = a.GetProto ();
       res["kills"] = IntToJson (pb.kills ());
       res["fame"] = IntToJson (pb.fame ());
     }
