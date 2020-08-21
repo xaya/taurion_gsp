@@ -3497,7 +3497,6 @@ TEST_F (GodModeTests, GiftCoins)
         "x": "foo",
         "giftcoins":
           {
-            "invalid": 20,
             "andy": 5.42,
             "domob": 10
           }
@@ -3518,6 +3517,9 @@ TEST_F (GodModeTests, GiftCoins)
 
   EXPECT_EQ (accounts.GetByName ("andy")->GetBalance (), 5);
   EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 20);
+
+  MoneySupply ms(db);
+  EXPECT_EQ (ms.Get ("gifted"), 25);
 }
 
 /**

@@ -30,6 +30,7 @@
 #include "database/database.hpp"
 #include "database/inventory.hpp"
 #include "database/itemcounts.hpp"
+#include "database/moneysupply.hpp"
 #include "database/ongoing.hpp"
 #include "database/region.hpp"
 #include "mapdata/basemap.hpp"
@@ -129,6 +130,9 @@ protected:
 
   /** Item counts table.  */
   ItemCounts itemCounts;
+
+  /** MoneySupply database table.  */
+  MoneySupply moneySupply;
 
   /** Ongoing operations table.  */
   OngoingsTable ongoings;

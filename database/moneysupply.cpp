@@ -77,10 +77,16 @@ MoneySupply::InitialiseDatabase ()
 {
   auto stmt = db.Prepare (R"(
     INSERT INTO `money_supply`
-      (`key`, `amount`) VALUES
-      ('burnsale', 0)
+      (`key`, `amount`) VALUES (?1, ?2)
   )");
-  stmt.Execute ();
+
+  for (const auto& k : GetValidKeys ())
+    {
+      stmt.Reset ();
+      stmt.Bind (1, k);
+      stmt.Bind (2, 0);
+      stmt.Execute ();
+    }
 }
 
 const std::set<std::string>&
@@ -89,6 +95,7 @@ MoneySupply::GetValidKeys ()
   static const std::set<std::string> keys =
     {
       "burnsale",
+      "gifted",
     };
   return keys;
 }

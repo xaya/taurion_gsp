@@ -351,6 +351,10 @@ CREATE TABLE IF NOT EXISTS `item_counts` (
 --  * "burnsale": vCHI bought in the burnsale process (in exchange for
 --                burnt CHI).  This total also defines how much more vCHI
 --                can be minted in that way.
+--
+--  * "gifted": vCHI that have been gifted through god mode (only possible
+--              on regtest for testing).
+--
 CREATE TABLE IF NOT EXISTS `money_supply` (
 
   -- The key of an entry.

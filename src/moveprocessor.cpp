@@ -52,7 +52,7 @@ BaseMoveProcessor::BaseMoveProcessor (Database& d, DynObstacles& o,
                                       const Context& c)
   : ctx(c), db(d), dyn(o),
     accounts(db), buildings(db), characters(db),
-    groundLoot(db), buildingInv(db), itemCounts(db),
+    groundLoot(db), buildingInv(db), itemCounts(db), moneySupply(db),
     ongoings(db), regions(db, ctx.Height ())
 {}
 
@@ -1996,7 +1996,8 @@ MaybeGodDropLoot (GroundLootTable& loot, BuildingInventoriesTable& buildingInv,
  * balances in the game.
  */
 void
-MaybeGodGiftCoins (AccountsTable& tbl, const Json::Value& cmd)
+MaybeGodGiftCoins (AccountsTable& tbl, MoneySupply& moneySupply,
+                   const Json::Value& cmd)
 {
   if (!cmd.isObject ())
     return;
@@ -2019,6 +2020,7 @@ MaybeGodGiftCoins (AccountsTable& tbl, const Json::Value& cmd)
 
       LOG (INFO) << "Gifting " << val << " coins to " << name;
       a->AddBalance (val);
+      moneySupply.Increment ("gifted", val);
     }
 }
 
@@ -2040,7 +2042,7 @@ MoveProcessor::HandleGodMode (const Json::Value& cmd)
   MaybeGodAllSetHp (buildings, characters, cmd["sethp"]);
   MaybeGodBuild (accounts, buildings, ctx, cmd["build"]);
   MaybeGodDropLoot (groundLoot, buildingInv, ctx, cmd["drop"]);
-  MaybeGodGiftCoins (accounts, cmd["giftcoins"]);
+  MaybeGodGiftCoins (accounts, moneySupply, cmd["giftcoins"]);
 }
 
 void

@@ -45,9 +45,14 @@ protected:
 TEST_F (MoneySupplyTests, GetAndIncrement)
 {
   EXPECT_EQ (m.Get ("burnsale"), 0);
+  EXPECT_EQ (m.Get ("gifted"), 0);
+
   m.Increment ("burnsale", 42);
   m.Increment ("burnsale", 100);
+  m.Increment ("gifted", 1);
+
   EXPECT_EQ (m.Get ("burnsale"), 142);
+  EXPECT_EQ (m.Get ("gifted"), 1);
 }
 
 TEST_F (MoneySupplyTests, AllKeys)
