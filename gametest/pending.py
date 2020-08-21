@@ -154,8 +154,8 @@ class PendingTest (PXTest):
     self.getCharacters ()["inbuilding 2"].sendMove ({"eb": None})
 
     self.sendMove ("domob", {
-      "vc": {"b": 10, "t": {"miner": 20}},
-    })
+      "vc": {"b": 10, "t": {"miner": 20}, "m": {}},
+    }, burn=0.01)
     self.sendMove ("andy", {
       "s": [{"b": building, "t": "ref", "i": "test ore", "n": 9}],
     })
@@ -212,7 +212,7 @@ class PendingTest (PXTest):
           },
           {
             "name": "domob",
-            "coinops": {"minted": 0, "burnt": 10, "transfers": {"miner": 20}},
+            "coinops": {"minted": 100, "burnt": 10, "transfers": {"miner": 20}},
           },
         ],
     })
