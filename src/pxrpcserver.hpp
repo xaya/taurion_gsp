@@ -193,6 +193,7 @@ public:
   Json::Value getgroundloot () override;
   Json::Value getongoings () override;
   Json::Value getregions (int fromHeight) override;
+  Json::Value getmoneysupply () override;
   Json::Value getprizestats () override;
 
   Json::Value getbootstrapdata () override;

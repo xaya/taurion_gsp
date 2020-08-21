@@ -28,6 +28,7 @@
 
 #include "database/account.hpp"
 #include "database/building.hpp"
+#include "database/moneysupply.hpp"
 #include "database/schema.hpp"
 
 #include <glog/logging.h>
@@ -156,6 +157,9 @@ PXLogic::InitialiseState (xaya::SQLiteDatabase& db)
   SQLiteGameDatabase dbObj(db, *this);
 
   InitialiseBuildings (dbObj, GetChain ());
+
+  MoneySupply ms(dbObj);
+  ms.InitialiseDatabase ();
 
   /* The initialisation uses up some auto IDs, namely for placed buildings.
      We start "regular" IDs at a later value to avoid shifting them always

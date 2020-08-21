@@ -496,6 +496,20 @@ message ProspectingPrize
 }
 
 /**
+ * A stage in the burnsale schedule.
+ */
+message BurnsaleStage
+{
+
+  /** Amount of vCHI to be sold in the stage.  */
+  optional uint64 amount_sold = 1;
+
+  /** Price of one coin in CHI satoshi.  */
+  optional uint64 price_sat = 2;
+
+}
+
+/**
  * Basic parameters of the game.
  */
 message Params
@@ -556,6 +570,9 @@ message Params
   /** Spawn areas for the factions (with the "r", "g", "b" string as key).  */
   map<string, SpawnArea> spawn_areas = 16;
 
+  /** Data about the burnsale schedule.  */
+  repeated BurnsaleStage burnsale_stages = 17;
+
   /**
    * Prospecting prizes.  They are just a list and not a map, because the
    * order matters (it is the order in which winning is checked).
@@ -564,7 +581,7 @@ message Params
    * It is replaced rather than concatenated (which would be the default
    * behaviour for proto merge).
    */
-  repeated ProspectingPrize prizes = 17;
+  repeated ProspectingPrize prizes = 18;
 
 }
 

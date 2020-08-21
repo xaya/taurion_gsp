@@ -27,6 +27,7 @@
 #include "database/dbtest.hpp"
 #include "database/inventory.hpp"
 #include "database/itemcounts.hpp"
+#include "database/moneysupply.hpp"
 #include "database/ongoing.hpp"
 #include "database/region.hpp"
 #include "proto/character.pb.h"
@@ -560,13 +561,17 @@ TEST_F (AccountJsonTests, KillsAndFame)
 TEST_F (AccountJsonTests, UninitialisedBalance)
 {
   tbl.CreateNew ("foo")->SetFaction (Faction::RED);
-  tbl.CreateNew ("bar")->AddBalance (42);
+
+  auto a = tbl.CreateNew ("bar");
+  a->MutableProto ().set_burnsale_balance (10);
+  a->AddBalance (42);
+  a.reset ();
 
   ExpectStateJson (R"({
     "accounts":
       [
-        {"name": "bar", "faction": null, "balance": 42},
-        {"name": "foo", "faction": "r", "balance": 0}
+        {"name": "bar", "faction": null, "balance": 42, "minted": 10},
+        {"name": "foo", "faction": "r", "balance": 0, "minted": 0}
       ]
   })");
 }
@@ -1114,6 +1119,107 @@ TEST_F (RegionJsonTests, MiningResource)
             }
         }
       ]
+  })");
+}
+
+/* ************************************************************************** */
+
+class MoneySupplyJsonTests : public GameStateJsonTests
+{
+
+protected:
+
+  MoneySupply ms;
+
+  MoneySupplyJsonTests ()
+    : ms(db)
+  {}
+
+};
+
+TEST_F (MoneySupplyJsonTests, EntriesAndTotal)
+{
+  ctx.SetChain (xaya::Chain::REGTEST);
+
+  ms.Increment ("burnsale", 20);
+  ms.Increment ("gifted", 10);
+
+  ExpectStateJson (R"({
+    "moneysupply":
+      {
+        "total": 30,
+        "entries":
+          {
+            "gifted": 10,
+            "burnsale": 20
+          }
+      }
+  })");
+}
+
+TEST_F (MoneySupplyJsonTests, GiftedOnMainnet)
+{
+  ctx.SetChain (xaya::Chain::MAIN);
+
+  ms.Increment ("burnsale", 20);
+
+  ExpectStateJson (R"({
+    "moneysupply":
+      {
+        "total": 20,
+        "entries":
+          {
+            "gifted": null,
+            "burnsale": 20
+          }
+      }
+  })");
+}
+
+TEST_F (MoneySupplyJsonTests, BurnsaleStages)
+{
+  ms.Increment ("burnsale", 25'000'000'000);
+
+  ExpectStateJson (R"({
+    "moneysupply":
+      {
+        "total": 25000000000,
+        "entries":
+          {
+            "burnsale": 25000000000
+          },
+        "burnsale":
+          [
+            {
+              "stage": 1,
+              "price": 0.0001,
+              "total": 10000000000,
+              "sold": 10000000000,
+              "available": 0
+            },
+            {
+              "stage": 2,
+              "price": 0.0002,
+              "total": 10000000000,
+              "sold": 10000000000,
+              "available": 0
+            },
+            {
+              "stage": 3,
+              "price": 0.0005,
+              "total": 10000000000,
+              "sold": 5000000000,
+              "available": 5000000000
+            },
+            {
+              "stage": 4,
+              "price": 0.0010,
+              "total": 20000000000,
+              "sold": 0,
+              "available": 20000000000
+            }
+          ]
+      }
   })");
 }
 

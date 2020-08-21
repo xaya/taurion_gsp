@@ -532,6 +532,17 @@ PXRpcServer::getregions (const int fromHeight)
 }
 
 Json::Value
+PXRpcServer::getmoneysupply ()
+{
+  LOG (INFO) << "RPC method called: getmoneysupply";
+  return logic.GetCustomStateData (game,
+    [] (GameStateJson& gsj)
+      {
+        return gsj.MoneySupply ();
+      });
+}
+
+Json::Value
 PXRpcServer::getprizestats ()
 {
   LOG (INFO) << "RPC method called: getprizestats";

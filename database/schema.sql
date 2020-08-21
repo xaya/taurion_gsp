@@ -343,6 +343,30 @@ CREATE TABLE IF NOT EXISTS `item_counts` (
 
 -- =============================================================================
 
+-- Data about the money supply of vCHI.  This is a table with just a few
+-- defined entries (keyed by a string) and an associated vCHI amount.
+--
+-- Keys that we use:
+--
+--  * "burnsale": vCHI bought in the burnsale process (in exchange for
+--                burnt CHI).  This total also defines how much more vCHI
+--                can be minted in that way.
+--
+--  * "gifted": vCHI that have been gifted through god mode (only possible
+--              on regtest for testing).
+--
+CREATE TABLE IF NOT EXISTS `money_supply` (
+
+  -- The key of an entry.
+  `key` TEXT PRIMARY KEY,
+
+  -- The associated amount of vCHI.
+  `amount` INTEGER NOT NULL
+
+);
+
+-- =============================================================================
+
 -- Ongoing operations that take a couple of blocks and need processing
 -- at a later time (when they are done / need updates).
 CREATE TABLE IF NOT EXISTS `ongoing_operations` (

@@ -18,6 +18,7 @@
 
 #include "dbtest.hpp"
 
+#include "moneysupply.hpp"
 #include "schema.hpp"
 
 #include <glog/logging.h>
@@ -45,6 +46,9 @@ DBTestWithSchema::DBTestWithSchema ()
 {
   LOG (INFO) << "Setting up game-state schema in test database...";
   SetupDatabaseSchema (db.GetHandle ());
+
+  MoneySupply ms(db);
+  ms.InitialiseDatabase ();
 }
 
 TemporaryDatabaseChanges::TemporaryDatabaseChanges (Database& d,

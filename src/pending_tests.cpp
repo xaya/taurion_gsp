@@ -94,6 +94,7 @@ TEST_F (PendingStateTests, Clear)
   auto a = accounts.CreateNew ("domob");
   a->SetFaction (Faction::RED);
   CoinTransferBurn coinOp;
+  coinOp.minted = 5;
   coinOp.burnt = 10;
   coinOp.transfers["andy"] = 20;
   state.AddCoinTransferBurn (*a, coinOp);
@@ -555,10 +556,12 @@ TEST_F (PendingStateTests, CoinTransferBurn)
   auto a = accounts.CreateNew ("domob");
 
   CoinTransferBurn coinOp;
+  coinOp.minted = 32;
   coinOp.burnt = 5;
   coinOp.transfers["andy"] = 20;
   state.AddCoinTransferBurn (*a, coinOp);
 
+  coinOp.minted = 10;
   coinOp.burnt = 2;
   coinOp.transfers["andy"] = 1;
   coinOp.transfers["daniel"] = 10;
@@ -574,6 +577,7 @@ TEST_F (PendingStateTests, CoinTransferBurn)
             "name": "domob",
             "coinops":
               {
+                "minted": 42,
                 "burnt": 7,
                 "transfers":
                   {
@@ -675,11 +679,13 @@ protected:
   /**
    * Processes a move for the given name and with the given move data, parsed
    * from JSON string.  If paidToDev is non-zero, then add an "out" entry
-   * paying the given amount to the dev address.
+   * paying the given amount to the dev address.  If burntChi is non-zero,
+   * then also a CHI burn is added to the JSON data.
    */
   void
-  ProcessWithDevPayment (const std::string& name, const Amount paidToDev,
-                         const std::string& mvStr)
+  ProcessWithDevPaymentAndBurn (const std::string& name,
+                                const Amount paidToDev, const Amount burntChi,
+                                const std::string& mvStr)
   {
     Json::Value moveObj(Json::objectValue);
     moveObj["name"] = name;
@@ -688,6 +694,8 @@ protected:
     if (paidToDev != 0)
       moveObj["out"][ctx.RoConfig ()->params ().dev_addr ()]
           = AmountToJson (paidToDev);
+    if (burntChi != 0)
+      moveObj["burnt"] = AmountToJson (burntChi);
 
     DynObstacles dyn(db, ctx);
     PendingStateUpdater updater(db, dyn, state, ctx);
@@ -695,13 +703,33 @@ protected:
   }
 
   /**
+   * Processes a move for the given name, data and dev payment, without burn.
+   */
+  void
+  ProcessWithDevPayment (const std::string& name, const Amount paidToDev,
+                         const std::string& mvStr)
+  {
+    ProcessWithDevPaymentAndBurn (name, paidToDev, 0, mvStr);
+  }
+
+  /**
+   * Processes a move for the given name, data and burn.
+   */
+  void
+  ProcessWithBurn (const std::string& name, const Amount burntChi,
+                   const std::string& mvStr)
+  {
+    ProcessWithDevPaymentAndBurn (name, 0, burntChi, mvStr);
+  }
+
+  /**
    * Processes a move for the given name and with the given move data
-   * as JSON string, without developer payment.
+   * as JSON string, without developer payment or burn.
    */
   void
   Process (const std::string& name, const std::string& mvStr)
   {
-    ProcessWithDevPayment (name, 0, mvStr);
+    ProcessWithDevPaymentAndBurn (name, 0, 0, mvStr);
   }
 
 };
@@ -1369,6 +1397,33 @@ TEST_F (PendingStateUpdaterTests, CoinTransferBurn)
               {
                 "burnt": 12,
                 "transfers": {"andy": 5}
+              }
+          }
+        ]
+    }
+  )");
+}
+
+TEST_F (PendingStateUpdaterTests, Minting)
+{
+  accounts.CreateNew ("domob");
+
+  ProcessWithBurn ("domob", COIN, R"({
+    "vc": {"m": {}}
+  })");
+  ProcessWithBurn ("domob", 2 * COIN, R"({
+    "vc": {"m": {}}
+  })");
+
+  ExpectStateJson (R"(
+    {
+      "accounts":
+        [
+          {
+            "name": "domob",
+            "coinops":
+              {
+                "minted": 30000
               }
           }
         ]

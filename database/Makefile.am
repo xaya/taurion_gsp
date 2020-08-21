@@ -24,6 +24,7 @@ libdatabase_la_SOURCES = \
   fighter.cpp \
   inventory.cpp \
   itemcounts.cpp \
+  moneysupply.cpp \
   ongoing.cpp \
   region.cpp \
   schema.cpp \
@@ -41,6 +42,7 @@ noinst_HEADERS = \
   fighter.hpp \
   inventory.hpp \
   itemcounts.hpp \
+  moneysupply.hpp \
   ongoing.hpp \
   lazyproto.hpp lazyproto.tpp \
   region.hpp \
@@ -88,6 +90,7 @@ tests_SOURCES = \
   inventory_tests.cpp \
   itemcounts_tests.cpp \
   lazyproto_tests.cpp \
+  moneysupply_tests.cpp \
   ongoing_tests.cpp \
   region_tests.cpp \
   schema_tests.cpp \

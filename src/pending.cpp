@@ -280,6 +280,7 @@ PendingState::AddCoinTransferBurn (const Account& a, const CoinTransferBurn& op)
       return;
     }
 
+  aState.coinOps->minted += op.minted;
   aState.coinOps->burnt += op.burnt;
   for (const auto& entry : op.transfers)
     aState.coinOps->transfers[entry.first] += entry.second;
@@ -361,6 +362,7 @@ PendingState::AccountState::ToJson () const
   if (coinOps != nullptr)
     {
       Json::Value coin(Json::objectValue);
+      coin["minted"] = IntToJson (coinOps->minted);
       coin["burnt"] = IntToJson (coinOps->burnt);
 
       Json::Value transfers(Json::objectValue);
@@ -502,8 +504,8 @@ PendingStateUpdater::ProcessMove (const Json::Value& moveObj)
 {
   std::string name;
   Json::Value mv;
-  Amount paidToDev;
-  if (!ExtractMoveBasics (moveObj, name, mv, paidToDev))
+  Amount paidToDev, burnt;
+  if (!ExtractMoveBasics (moveObj, name, mv, paidToDev, burnt))
     return;
 
   auto a = accounts.GetByName (name);
@@ -518,7 +520,7 @@ PendingStateUpdater::ProcessMove (const Json::Value& moveObj)
     }
 
   CoinTransferBurn coinOps;
-  if (ParseCoinTransferBurn (*a, mv, coinOps))
+  if (ParseCoinTransferBurn (*a, mv, coinOps, burnt))
     state.AddCoinTransferBurn (*a, coinOps);
 
   /* If the account is not initialised yet, any other action is invalid anyway.

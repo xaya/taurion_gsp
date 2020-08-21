@@ -261,10 +261,23 @@ TEST_F (CoinOperationTests, Invalid)
     {"name": "domob", "move": {"vc": {"t": {"other": -1}}}},
     {"name": "domob", "move": {"vc": {"t": {"other": 1000000001}}}},
     {"name": "domob", "move": {"vc": {"t": {"other": 1.999999}}}},
-    {"name": "domob", "move": {"vc": {"t": {"other": 101}}}}
+    {"name": "domob", "move": {"vc": {"t": {"other": 101}}}},
+    {"name": "domob", "move": {"vc": {"m": {"x": "foo"}}}, "burnt": 1.0},
+    {"name": "domob", "move": {"vc": {"m": null}}, "burnt": 1.0},
+    {"name": "domob", "move": {"vc": {"m": []}}, "burnt": 1.0},
+    {"name": "domob", "move": {"vc": {}}, "burnt": 1.0}
   ])");
 
   ExpectBalances ({{"domob", 100}, {"other", 0}});
+}
+
+TEST_F (CoinOperationTests, ExtraFieldsAreFine)
+{
+  accounts.CreateNew ("domob")->AddBalance (100);
+  Process (R"([
+    {"name": "domob", "move": {"vc": {"b": 10, "x": "foo"}}}
+  ])");
+  ExpectBalances ({{"domob", 90}});
 }
 
 TEST_F (CoinOperationTests, BurnAndTransfer)
@@ -323,13 +336,39 @@ TEST_F (CoinOperationTests, SelfTransfer)
   ExpectBalances ({{"domob", 80}, {"other", 20}});
 }
 
-TEST_F (CoinOperationTests, BurnBeforeTransfer)
+TEST_F (CoinOperationTests, Minting)
 {
-  accounts.CreateNew ("domob")->AddBalance (100);
+  accounts.CreateNew ("andy")->SetFaction (Faction::RED);
 
   Process (R"([
-    {"name": "domob", "move": {"vc":
+    {"name": "domob", "move": {"vc": {"m": {}}}, "burnt": 1000000},
+    {"name": "andy", "move": {"vc": {"m": {}}}, "burnt": 2.00019999}
+  ])");
+
+  ExpectBalances ({{"domob", 10'000'000'000}});
+
+  MoneySupply ms(db);
+  EXPECT_EQ (ms.Get ("burnsale"), 10'000'010'000);
+}
+
+TEST_F (CoinOperationTests, BurnsaleBalance)
+{
+  Process (R"([
+    {"name": "domob", "move": {"vc": {"m": {}}}, "burnt": 0.1},
+    {"name": "domob", "move": {"vc": {"b": 10}}, "burnt": 1}
+  ])");
+
+  ExpectBalances ({{"domob", 990}});
+  EXPECT_EQ (accounts.GetByName ("domob")->GetProto ().burnsale_balance (),
+             1'000);
+}
+
+TEST_F (CoinOperationTests, MintBeforeBurnBeforeTransfer)
+{
+  Process (R"([
+    {"name": "domob", "burnt": 0.01, "move": {"vc":
       {
+        "m": {},
         "b": 90,
         "t": {"other": 20}
       }}
@@ -340,6 +379,23 @@ TEST_F (CoinOperationTests, BurnBeforeTransfer)
     {"domob", 10},
     {"other", 0},
   });
+
+  Process (R"([
+    {"name": "domob", "burnt": 0.01, "move": {"vc":
+      {
+        "m": {},
+        "t": {"other": 20}
+      }}
+    }
+  ])");
+
+  ExpectBalances ({
+    {"domob", 10 + 80},
+    {"other", 20},
+  });
+
+  MoneySupply ms(db);
+  EXPECT_EQ (ms.Get ("burnsale"), 200);
 }
 
 TEST_F (CoinOperationTests, TransferOrder)
@@ -3497,7 +3553,6 @@ TEST_F (GodModeTests, GiftCoins)
         "x": "foo",
         "giftcoins":
           {
-            "invalid": 20,
             "andy": 5.42,
             "domob": 10
           }
@@ -3518,6 +3573,9 @@ TEST_F (GodModeTests, GiftCoins)
 
   EXPECT_EQ (accounts.GetByName ("andy")->GetBalance (), 5);
   EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 20);
+
+  MoneySupply ms(db);
+  EXPECT_EQ (ms.Get ("gifted"), 25);
 }
 
 /**

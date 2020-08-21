@@ -16,35 +16,30 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-syntax = "proto2";
+#ifndef PXD_BURNSALE_HPP
+#define PXD_BURNSALE_HPP
 
-package pxd.proto;
+#include "context.hpp"
 
-/**
- * General data associated to an account.
- */
-message Account
+#include "database/amount.hpp"
+
+namespace pxd
 {
 
-  /**
-   * The number of characters killed by the account in total.
-   */
-  optional uint32 kills = 1;
+/**
+ * Computes how much vCHI will be bought with a CHI burn of the given amount
+ * (and how much of the burnt CHI will actually be used by that).  This
+ * implements the burnsale schedule / stages.
+ *
+ * The amount of vCHI sold in previous burns (from MoneySupply) has to
+ * be passed in.
+ *
+ * Returned is the number of vCHI bought (if any).  The burnt CHI amount
+ * is decremented by whatever is used up for that.
+ */
+Amount ComputeBurnsaleAmount (Amount& burntChi, Amount soldBefore,
+                              const Context& ctx);
 
-  /**
-   * The fame of this account.
-   */
-  optional uint32 fame = 2;
+} // namespace pxd
 
-  /**
-   * Balance of vCHI for this account.
-   */
-  optional uint64 balance = 3;
-
-  /**
-   * Balance of vCHI minted through the burnsale, which corresponds to
-   * the balance that will be carried over to the full game.
-   */
-  optional uint64 burnsale_balance = 4;
-
-}
+#endif // PXD_BURNSALE_HPP

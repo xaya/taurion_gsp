@@ -33,6 +33,7 @@ class SplitStateRpcsTest (PXTest):
     # regions, kills/fame, buildings, ground loot and ongoing operations.
     self.initAccount ("prospector", "r")
     self.initAccount ("killed", "g")
+    self.sendMove ("sale buyer", {"vc": {"m": {}}}, burn=10)
     self.dropLoot ({"x": 1, "y": 2}, {"foo": 5, "bar": 10})
     self.dropLoot ({"x": -1, "y": 20}, {"foo": 5})
     self.build ("checkmark", None, {"x": -100, "y": 200}, rot=5)
@@ -62,6 +63,7 @@ class SplitStateRpcsTest (PXTest):
     loot = self.getRpc ("getgroundloot")
     ongoings = self.getRpc ("getongoings")
     regions = self.getRpc ("getregions", fromheight=0)
+    moneySupply = self.getRpc ("getmoneysupply")
     prizes = self.getRpc ("getprizestats")
     assert len (accounts) > 0
     assert len (buildings) > 0
@@ -69,6 +71,7 @@ class SplitStateRpcsTest (PXTest):
     assert len (loot) > 0
     assert len (ongoings) > 0
     assert len (regions) > 0
+    assert len (moneySupply["entries"]) > 0
     assert len (prizes) > 0
     self.assertEqual (accounts, state["accounts"])
     self.assertEqual (buildings, state["buildings"])
@@ -76,6 +79,7 @@ class SplitStateRpcsTest (PXTest):
     self.assertEqual (loot, state["groundloot"])
     self.assertEqual (ongoings, state["ongoings"])
     self.assertEqual (regions, state["regions"])
+    self.assertEqual (moneySupply, state["moneysupply"])
     self.assertEqual (prizes, state["prizes"])
 
     # Test the bootstrap data.

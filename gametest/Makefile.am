@@ -12,6 +12,7 @@ REGTESTS = \
   buildings_enterexit.py \
   buildings_foundations.py \
   buildings_inventory.py \
+  burnsale.py \
   character_limit.py \
   characters.py \
   charon.py \

@@ -111,6 +111,11 @@ public:
   Json::Value Regions (unsigned h);
 
   /**
+   * Returns the JSON data about money supply and burnsale stats.
+   */
+  Json::Value MoneySupply ();
+
+  /**
    * Returns the JSON data representing the available and found prizes
    * for prospecting.
    */
