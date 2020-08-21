@@ -163,11 +163,10 @@ main (int argc, char** argv)
   config.EnablePruning = FLAGS_enable_pruning;
   config.DataDirectory = FLAGS_datadir;
 
-  /* We need the "proper" implementation of admin commands in the ZMQ
-     notifications, which was implemented for 1.3 and up in
-     https://github.com/xaya/xaya/pull/93, as well as backported for the
-     1.2.0 release.  */
-  config.MinXayaVersion = 1020000;
+  /* We need support for coin burns, which was implemented in
+     https://github.com/xaya/xaya/pull/103 and is included in
+     versions from 1.4 up.  */
+  config.MinXayaVersion = 1040000;
 
   pxd::PXLogic rules;
   PXInstanceFactory instanceFact(rules);
