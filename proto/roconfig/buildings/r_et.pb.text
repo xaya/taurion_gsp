@@ -6,33 +6,6 @@ building_types: {
         shape_tiles: {
             x: 0 y: 0
         }
-
-        foundation: {
-            combat_data: {}
-            regen_data: {
-                max_hp: {
-                    armour: 50 shield: 0
-                }
-            }
-        }
-
-        full_building: {
-            combat_data: {
-                attacks: {
-                    range: 5
-                    damage: {
-                        min: 1 max: 3
-                    }
-                }
-            }
-            regen_data: {
-                max_hp: {
-                    armour: 1000 shield: 200
-                }
-                regeneration_mhp: { shield: 500 }
-            }
-        }
-
         construction: {
             foundation: {
                 key: "mat a" value: 1600000
@@ -47,6 +20,33 @@ building_types: {
                 key: "mat b" value: 8000000
             }
             blocks: 10
+        }
+        foundation: {
+            combat_data: {}
+            regen_data:
+                  {
+                    max_hp: { armour: 100 shield: 100 }
+                    regeneration_mhp: { shield: 10000 }
+                  }
+        }
+        full_building: {
+            combat_data: {
+                attacks: {
+                    range: 5
+                    damage: {
+                        min: 5
+                        max: 15
+                        shield_percent: 60
+                        armour_percent: 140
+                        weapon_size:30
+                    }
+                }
+            }
+            regen_data:
+                  {
+                    max_hp: { armour: 1000 shield: 1000 }
+                    regeneration_mhp: { shield: 10000 }
+                  }
         }
     }
 }
