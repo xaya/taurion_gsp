@@ -48,7 +48,7 @@ fungible_items:
                 max_hp: { armour: 100 shield: 200 }
                 regeneration_mhp: { shield: 5000 }
               }
-            mining_rate: { min: 0 max: 8000000 }
+            mining_rate: { min: 0 max: 6000000 }
             prospecting_blocks: 8
             size: MEDIUM
             equipment_slots: { key: "high" value: 3 }
@@ -176,7 +176,7 @@ fungible_items:
                 max_hp: { armour: 1000 shield: 300 }
                 regeneration_mhp: { shield: 6000 }
               }
-            mining_rate: { min: 0 max: 2000000 }
+            mining_rate: { min: 0 max: 4000000 }
             prospecting_blocks: 7
             size: HEAVY
             equipment_slots: { key: "high" value: 1 }
@@ -213,7 +213,7 @@ fungible_items:
                 max_hp: { armour: 2000 shield: 500 }
                 regeneration_mhp: { shield: 10000 }
               }
-            mining_rate: { min: 0 max: 2000000 }
+            mining_rate: { min: 0 max: 6000000 }
             prospecting_blocks: 6
             size: VERY_HEAVY
             equipment_slots: { key: "high" value: 2 }
@@ -413,7 +413,7 @@ fungible_items:
                 max_hp: { armour: 100 shield: 200 }
                 regeneration_mhp: { shield: 5000 }
               }
-            mining_rate: { min: 0 max: 8000000 }
+            mining_rate: { min: 0 max: 6000000 }
             prospecting_blocks: 8
             size: MEDIUM
             equipment_slots: { key: "high" value: 2 }
@@ -541,7 +541,7 @@ fungible_items:
                 max_hp: { armour: 1000 shield: 300 }
                 regeneration_mhp: { shield: 6000 }
               }
-            mining_rate: { min: 0 max: 2000000 }
+            mining_rate: { min: 0 max: 4000000 }
             prospecting_blocks: 7
             size: HEAVY
             equipment_slots: { key: "high" value: 1 }
@@ -578,7 +578,7 @@ fungible_items:
                 max_hp: { armour: 2000 shield: 500 }
                 regeneration_mhp: { shield: 10000 }
               }
-            mining_rate: { min: 0 max: 2000000 }
+            mining_rate: { min: 0 max: 6000000 }
             prospecting_blocks: 6
             size: VERY_HEAVY
             equipment_slots: { key: "high" value: 1 }
@@ -778,7 +778,7 @@ fungible_items:
                 max_hp: { armour: 100 shield: 200 }
                 regeneration_mhp: { shield: 5000 }
               }
-            mining_rate: { min: 0 max: 8000000 }
+            mining_rate: { min: 0 max: 6000000 }
             prospecting_blocks: 8
             size: MEDIUM
             equipment_slots: { key: "high" value: 2 }
@@ -906,7 +906,7 @@ fungible_items:
                 max_hp: { armour: 1000 shield: 300 }
                 regeneration_mhp: { shield: 6000 }
               }
-            mining_rate: { min: 0 max: 2000000 }
+            mining_rate: { min: 0 max: 4000000 }
             prospecting_blocks: 7
             size: HEAVY
             equipment_slots: { key: "high" value: 0 }
@@ -943,7 +943,7 @@ fungible_items:
                 max_hp: { armour: 2000 shield: 500 }
                 regeneration_mhp: { shield: 10000 }
               }
-            mining_rate: { min: 0 max: 2000000 }
+            mining_rate: { min: 0 max: 6000000 }
             prospecting_blocks: 6
             size: VERY_HEAVY
             equipment_slots: { key: "high" value: 1 }
