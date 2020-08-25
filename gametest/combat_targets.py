@@ -64,16 +64,16 @@ class CombatTargetTest (PXTest):
     self.changeCharacterVehicle ("green", "light attacker")
     self.changeCharacterVehicle ("green 2", "light attacker")
 
-    # We use the starting coordinate of green 1 as offset for coordinates,
+    # We use a well-defined position as coordinate offset,
     # so that the test is independent of the actual starting positions
     # of the characters.
-    c = self.getCharacters ()["green"]
-    self.offset = c.getPosition ()
+    self.offset = {"x": 0, "y": 0}
 
     # Move all other characters in range before continuing with
     # the rest of the test.
     self.moveCharactersTo ({
       "red": offsetCoord ({"x": 1, "y": 0}, self.offset, False),
+      "green": self.offset,
       "green 2": offsetCoord ({"x": 0, "y": 1}, self.offset, False),
     })
 
