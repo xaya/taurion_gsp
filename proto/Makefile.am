@@ -33,8 +33,6 @@ ROCONFIG_TEXT_PROTOS = \
   roconfig/buildings/r_c11.pb.text \
   roconfig/buildings/r_cc.pb.text \
   roconfig/buildings/r_cf.pb.text \
-  roconfig/buildings/r_et.pb.text \
-  roconfig/buildings/r_ep.pb.text \
   roconfig/buildings/r_rf.pb.text \
   roconfig/buildings/r_r.pb.text \
   roconfig/buildings/r_rt.pb.text \
@@ -53,8 +51,6 @@ ROCONFIG_TEXT_PROTOS = \
   roconfig/buildings/g_c10.pb.text \
   roconfig/buildings/g_cc.pb.text \
   roconfig/buildings/g_cf.pb.text \
-  roconfig/buildings/g_et.pb.text \
-  roconfig/buildings/g_ep.pb.text \
   roconfig/buildings/g_rf.pb.text \
   roconfig/buildings/g_r.pb.text \
   roconfig/buildings/g_rt.pb.text \
@@ -74,8 +70,6 @@ ROCONFIG_TEXT_PROTOS = \
   roconfig/buildings/b_c11.pb.text \
   roconfig/buildings/b_cc.pb.text \
   roconfig/buildings/b_cf.pb.text \
-  roconfig/buildings/b_et.pb.text \
-  roconfig/buildings/b_ep.pb.text \
   roconfig/buildings/b_rf.pb.text \
   roconfig/buildings/b_r.pb.text \
   roconfig/buildings/b_rt.pb.text \

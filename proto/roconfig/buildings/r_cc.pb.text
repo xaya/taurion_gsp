@@ -394,20 +394,6 @@ building_types: {
         shape_tiles: {
             x: 5 y: 2
         }
-        foundation: {
-            regen_data: {
-                max_hp: {
-                    armour: 10
-                }
-            }
-        }
-        full_building: {
-            regen_data: {
-                max_hp: {
-                    armour: 100
-                }
-            }
-        }
         construction: {
             foundation: {
                 key: "mat a" value: 32000000
@@ -422,6 +408,20 @@ building_types: {
                 key: "mat b" value: 160000000
             }
             blocks: 10
+        }
+        foundation: {
+            regen_data:
+                  {
+                    max_hp: { armour: 100000 shield: 100000 }
+                    regeneration_mhp: { shield: 10000 }
+                  }
+        }
+        full_building: {
+            regen_data:
+                  {
+                    max_hp: { armour: 1000000 shield: 1000000 }
+                    regeneration_mhp: { shield: 10000 }
+                  }
         }
     }
 }

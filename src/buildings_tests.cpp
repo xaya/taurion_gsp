@@ -84,8 +84,8 @@ TEST_F (BuildingsTests, UpdateBuildingStats)
   h->MutableProto ().set_foundation (true);
   UpdateBuildingStats (*h, ctx.Chain ());
   EXPECT_EQ (h->GetProto ().combat_data ().attacks_size (), 0);
-  EXPECT_EQ (h->GetRegenData ().max_hp ().armour (), 50);
-  EXPECT_EQ (h->GetHP ().armour (), 50);
+  EXPECT_EQ (h->GetRegenData ().max_hp ().armour (), 100);
+  EXPECT_EQ (h->GetHP ().armour (), 100);
 }
 
 /* ************************************************************************** */

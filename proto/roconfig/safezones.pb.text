@@ -21,4 +21,127 @@ safe_zones:
     faction: "b"
   }
 
-# TODO: Define the no-combat zones.
+# No-combat zones are around all neutral / partner buildings.
+
+safe_zones: { centre: { x: -125 y: 810 } radius: 30 }
+safe_zones: { centre: { x: -1301 y: 902 } radius: 30 }
+safe_zones: { centre: { x: -637 y: -291 } radius: 30 }
+
+safe_zones:
+  {
+    centre: { x: 2140 y: 3247 }
+    radius: 30
+  }
+safe_zones:
+  {
+    centre: { x: 4472 y: -2132 }
+    radius: 30
+  }
+
+safe_zones:
+  {
+    centre: { x: 3479 y: -184 }
+    radius: 30
+  }
+
+safe_zones:
+  {
+    centre: { x: 235 y:3030 }
+    radius: 30
+  }
+
+safe_zones:
+  {
+    centre: { x: -873 y:2106 }
+    radius: 30
+  }
+
+safe_zones:
+  {
+    centre: { x: 1702 y: -125 }
+    radius: 30
+  }
+
+safe_zones:
+  {
+    centre: { x: 2372 y: -2349 }
+    radius: 30
+  }
+
+safe_zones:
+  {
+    centre: { x: 2264 y: -3621 }
+    radius: 30
+  }
+
+safe_zones:
+  {
+    centre: { x: 495 y: -1163 }
+    radius: 30
+  }
+
+safe_zones:
+  {
+    centre: { x: -448 y: 704 }
+    radius: 30
+  }
+
+safe_zones:
+  {
+    centre: { x: -2077 y: -2404 }
+    radius: 30
+  }
+
+safe_zones:
+  {
+    centre: { x: -4620 y: 2187 }
+    radius: 30
+  }
+
+safe_zones:
+  {
+    centre: { x: -2861 y: 1594 }
+    radius: 30
+  }
+
+safe_zones:
+  {
+    centre: { x: 1600 y: -699 }
+    radius: 30
+  }
+
+safe_zones:
+  {
+    centre: { x: -991 y: 704 }
+    radius: 30
+  }
+
+safe_zones:
+  {
+    centre: { x: 1609 y: -2941 }
+    radius: 30
+  }
+
+safe_zones:
+  {
+    centre: { x: -195 y: 2629 }
+    radius: 30
+  }
+
+safe_zones:
+  {
+    centre: { x: -100 y: 605 }
+    radius: 30
+  }
+
+safe_zones:
+  {
+    centre: { x: -3309 y: 318 }
+    radius: 30
+  }
+
+safe_zones:
+  {
+    centre: { x: 1236 y: -3342 }
+    radius: 30
+  }

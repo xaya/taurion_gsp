@@ -1,6 +1,6 @@
 params:
   {
-    character_cost: 1
+    character_cost: 10
     character_limit: 20
 
     blocked_step_retries: 25
