@@ -2,7 +2,11 @@ building_types: {
     key: "g c9"
     value: {
         enter_radius: 10
-        offered_services: {}
+        offered_services: {
+            armour_repair: true
+            reverse_engineering: true
+            blueprint_copy: true
+        }
         shape_tiles: {
             x: -2 y: -1
         }

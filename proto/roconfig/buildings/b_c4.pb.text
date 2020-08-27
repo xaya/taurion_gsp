@@ -2,7 +2,10 @@ building_types: {
     key: "b c4"
     value: {
         enter_radius: 10
-        offered_services: {}
+        offered_services: {
+            armour_repair: true
+            vehicle_construction: true
+        }
         shape_tiles: {
             x: -2 y: -1
         }
