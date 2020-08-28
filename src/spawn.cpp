@@ -142,6 +142,7 @@ SpawnCharacter (const std::string& owner, const Faction f,
           << static_cast<int> (f);
       break;
     }
+  c->MutableProto ().add_fitments ("lf gun");
 
   DeriveCharacterStats (*c, ctx);
 

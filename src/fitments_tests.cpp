@@ -48,7 +48,7 @@ TEST_F (CheckVehicleFitmentsTests, ComplexityLimit)
 
 TEST_F (CheckVehicleFitmentsTests, Slots)
 {
-  EXPECT_FALSE (CheckVehicleFitments ("rv st", {"sword"}, ctx));
+  EXPECT_FALSE (CheckVehicleFitments ("noslots", {"sword"}, ctx));
   EXPECT_FALSE (CheckVehicleFitments ("chariot",
                                       {"sword", "sword", "sword", "sword"},
                                       ctx));

@@ -4,19 +4,20 @@ fungible_items:
     value:
       {
         space: 4032000
-        complexity: 1
+        complexity: 2
         vehicle:
           {
             cargo_space: 1000000
             speed: 3000
             regen_data:
               {
-                max_hp: { armour: 20 shield: 10 }
+                max_hp: { armour: 20 shield: 30 }
                 regeneration_mhp: { shield: 1000 }
               }
             mining_rate: { min: 0 max: 2000000 }
             prospecting_blocks: 10
             size: STARTER
+            equipment_slots: { key: "high" value: 1 }
             combat_data: { target_size: 20 }
           }
       }
@@ -28,19 +29,20 @@ fungible_items:
     value:
       {
         space: 4032000
-        complexity: 1
+        complexity: 2
         vehicle:
           {
             cargo_space: 1000000
             speed: 3000
             regen_data:
               {
-                max_hp: { armour: 20 shield: 10 }
+                max_hp: { armour: 20 shield: 30 }
                 regeneration_mhp: { shield: 1000 }
               }
             mining_rate: { min: 0 max: 2000000 }
             prospecting_blocks: 10
             size: STARTER
+            equipment_slots: { key: "high" value: 1 }
             combat_data: { target_size: 20 }
           }
       }
@@ -52,19 +54,20 @@ fungible_items:
     value:
       {
         space: 4032000
-        complexity: 1
+        complexity: 2
         vehicle:
           {
             cargo_space: 1000000
             speed: 3000
             regen_data:
               {
-                max_hp: { armour: 20 shield: 10 }
+                max_hp: { armour: 20 shield: 30 }
                 regeneration_mhp: { shield: 1000 }
               }
             mining_rate: { min: 0 max: 2000000 }
             prospecting_blocks: 10
             size: STARTER
+            equipment_slots: { key: "high" value: 1 }
             combat_data: { target_size: 20 }
           }
       }

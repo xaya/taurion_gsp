@@ -274,3 +274,27 @@ fungible_items:
           }
       }
   }
+
+# Test vehicle without any fitment slots.
+fungible_items:
+  {
+    key: "noslots"
+    value:
+      {
+        space: 50
+        complexity: 1000
+        with_blueprint: true
+        vehicle:
+          {
+            cargo_space: 100
+            speed: 1000
+            regen_data:
+              {
+                max_hp: { armour: 100 shield: 10 }
+                regeneration_mhp: { shield: 1000 }
+              }
+            combat_data: { target_size: 100 }
+            size: LIGHT
+          }
+      }
+  }
