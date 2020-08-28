@@ -39,6 +39,10 @@ AS_IF([test "x$enable_slow_asserts" = "xyes"], [
 
 PKG_PROG_PKG_CONFIG
 
+# The official version of libxayagame used for the 3rd competition
+# is 175238c115f576ddf33bb2fd8e2fa88cb510d932.  That of Charon is
+# 5143891ac9873a21a298ac2b2a05865a50711da5.
+
 PKG_CHECK_MODULES([XAYAGAME], [libxayautil libxayagame])
 PKG_CHECK_MODULES([CHARON], [charon])
 PKG_CHECK_MODULES([SQLITE3], [sqlite3])
