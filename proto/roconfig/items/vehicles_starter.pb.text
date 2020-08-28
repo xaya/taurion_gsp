@@ -3,12 +3,12 @@ fungible_items:
     key: "rv st"
     value:
       {
-        space: 4032000
+        space: 10
         complexity: 2
         vehicle:
           {
             cargo_space: 1000000
-            speed: 3000
+            speed: 4500
             regen_data:
               {
                 max_hp: { armour: 20 shield: 30 }
@@ -28,12 +28,12 @@ fungible_items:
     key: "bv st"
     value:
       {
-        space: 4032000
+        space: 10
         complexity: 2
         vehicle:
           {
             cargo_space: 1000000
-            speed: 3000
+            speed: 4500
             regen_data:
               {
                 max_hp: { armour: 20 shield: 30 }
@@ -53,12 +53,12 @@ fungible_items:
     key: "gv st"
     value:
       {
-        space: 4032000
+        space: 10
         complexity: 2
         vehicle:
           {
             cargo_space: 1000000
-            speed: 3000
+            speed: 4500
             regen_data:
               {
                 max_hp: { armour: 20 shield: 30 }
