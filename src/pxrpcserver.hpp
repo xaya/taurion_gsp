@@ -82,12 +82,13 @@ private:
   const BaseMap& map;
 
   /**
-   * Data relevant for findpath about the set of buildings on the map.
+   * Data relevant for findpath about the set of buildings and characters
+   * on the map.
    */
-  struct BuildingsData
+  struct PathingData
   {
 
-    /** DynObstacles instance with all those buildings added.  */
+    /** DynObstacles instance with all those buildings and characters added.  */
     DynObstacles obstacles;
 
     /**
@@ -97,7 +98,7 @@ private:
      */
     std::unordered_map<HexCoord, Database::IdT> buildingIds;
 
-    explicit BuildingsData (const xaya::Chain c)
+    explicit PathingData (const xaya::Chain c)
       : obstacles(c)
     {}
 
@@ -114,16 +115,16 @@ private:
    * and then the instance itself does not need to be kept locked while the
    * call is running.
    */
-  std::shared_ptr<const BuildingsData> dyn;
+  std::shared_ptr<const PathingData> dyn;
 
   /** Mutex for protecting dyn in concurrent calls.  */
   std::mutex mutDynObstacles;
 
   /**
-   * Constructs a fresh BuildingsData instance without any extra
+   * Constructs a fresh PathingData instance without any extra
    * buildings added yet.
    */
-  std::shared_ptr<BuildingsData> InitBuildingsData () const;
+  std::shared_ptr<PathingData> InitPathingData () const;
 
   /**
    * Processes a JSON array of building specifications and adds them
@@ -131,14 +132,24 @@ private:
    * goes wrong, e.g. the JSON format is invalid or some buildings overlap.
    */
   bool AddBuildingsFromJson (const Json::Value& buildings,
-                             BuildingsData& dyn) const;
+                             PathingData& dyn) const;
+
+  /**
+   * Processes a JSON array of character data (including at least position
+   * and faction), and adds them to the given dynobstacle map.  Returns false
+   * if something is wrong (invalid format or characters overlap in an
+   * invalid way).
+   */
+  static bool AddCharactersFromJson (const Json::Value& characters,
+                                     PathingData& dyn);
 
 public:
 
   explicit NonStateRpcServer (jsonrpc::AbstractServerConnector& conn,
                               const BaseMap& m, const xaya::Chain c);
 
-  bool setpathbuildings (const Json::Value& buildings) override;
+  bool setpathdata (const Json::Value& buildings,
+                    const Json::Value& characters) override;
   Json::Value findpath (const Json::Value& exbuildings,
                         const std::string& faction,
                         int l1range, const Json::Value& source,
@@ -202,9 +213,10 @@ public:
                               const Json::Value& op) override;
 
   bool
-  setpathbuildings (const Json::Value& buildings) override
+  setpathdata (const Json::Value& buildings,
+               const Json::Value& characters) override
   {
-    return nonstate.setpathbuildings (buildings);
+    return nonstate.setpathdata (buildings, characters);
   }
 
   Json::Value

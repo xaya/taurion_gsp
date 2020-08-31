@@ -98,9 +98,10 @@ public:
   bool IsFree (const HexCoord& c) const;
 
   /**
-   * Adds a new vehicle with the given faction and position.
+   * Adds a new vehicle with the given faction and position.  Returns false
+   * if it failed (e.g. because there is already something there on the map).
    */
-  void AddVehicle (const HexCoord& c, Faction f);
+  bool AddVehicle (const HexCoord& c, Faction f);
 
   /**
    * Removes a vehicle from the given position.
