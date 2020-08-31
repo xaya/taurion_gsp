@@ -251,7 +251,7 @@ class FindPathTest (PXTest):
     self.initAccount ("red", "r")
     self.initAccount ("green", "g")
     self.generate (1)
-    self.createCharacters ("red", 3)
+    self.createCharacters ("red", 4)
     self.createCharacters ("green")
 
     # Now place buildings and characters in two steps on the map, which make
@@ -286,6 +286,11 @@ class FindPathTest (PXTest):
     self.moveCharactersTo ({
       "red 3": offsetCoord (longA, {"x": -1, "y": 1}, False),
       "green": offsetCoord (longA, {"x": -1, "y": 0}, False),
+      # Make sure that moving from the location of a character of one's own
+      # faction is fine, as this is a very common situation of course
+      # while planning movement paths.  It works because the dynamic obstacle
+      # map is only checked on the "to" coordinate, not the "from" one.
+      "red 4": longA,
     })
 
     buildings.append (self.getRpc ("getbuildings"))
