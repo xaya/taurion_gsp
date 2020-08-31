@@ -27,18 +27,18 @@ import threading
 import time
 
 
-# A thread that does an async call to findpath (plus setting buildings
-# first with setpathbuildings for the call).
+# A thread that does an async call to findpath (plus setting data
+# first with setpathdata for the call).
 class AsyncFindPath (threading.Thread):
 
-  def __init__ (self, gameNode, buildings, *args, **kwargs):
+  def __init__ (self, gameNode, buildings, characters, *args, **kwargs):
     super ().__init__ ()
     self.rpc = gameNode.createRpc ()
     self.args = args
     self.kwargs = kwargs
 
     self.result = None
-    self.rpc.setpathbuildings (buildings=buildings)
+    self.rpc.setpathdata (buildings=buildings, characters=characters)
     self.start ()
 
     # Wait a bit so that the findpath call has (likely) started already
@@ -134,10 +134,12 @@ class FindPathTest (PXTest):
         "wp": [a],
       })
 
-    self.testWithBuildings ()
+    self.testExbuildings ()
+    self.testInvalidData ()
+    self.testWithData ()
 
-  def testWithBuildings (self):
-    self.mainLogger.info ("Testing with buildings...")
+  def testExbuildings (self):
+    self.mainLogger.info ("Testing exbuildings...")
 
     # Invalid exbuildings arguments.
     a = {"x": -10, "y": 0}
@@ -154,16 +156,21 @@ class FindPathTest (PXTest):
     self.build ("checkmark", None, b, rot=0)
     buildings = self.getRpc ("getbuildings")
     bId = buildings[-1]["id"]
-    self.rpc.game.setpathbuildings (buildings=buildings)
+    self.rpc.game.setpathdata (buildings=buildings, characters=[])
     self.expectError (1, "no connection",
                       self.call, source=a, target=b, l1range=100)
     self.assertEqual (self.call (source=a, target=b, l1range=100,
                                  exbuildings=[bId, bId, 123456])["dist"],
                       20 * 1000)
 
-    # Invalid building specs for setpathbuildings.
+  def testInvalidData (self):
+    self.mainLogger.info ("Testing invalid setpathdata...")
+
     self.expectError (-32602, ".*Invalid method parameters.*",
-                      self.rpc.game.setpathbuildings, buildings={})
+                      self.rpc.game.setpathdata, buildings={}, characters=[])
+    self.expectError (-32602, ".*Invalid method parameters.*",
+                      self.rpc.game.setpathdata, buildings=[], characters={})
+
     coord = {"x": 1, "y": 2}
     for specs in [
       [42],
@@ -188,7 +195,31 @@ class FindPathTest (PXTest):
       ],
     ]:
       self.expectError (-1, "buildings is invalid",
-                        self.rpc.game.setpathbuildings, buildings=specs)
+                        self.rpc.game.setpathdata,
+                        buildings=specs, characters=[])
+
+    for specs in [
+      [42],
+      ["foo"],
+      [{}],
+      [{"faction": "r"}],
+      [{"position": coord}],
+      [{"faction": 42, "position": coord}],
+      [{"faction": "a", "position": coord}],
+      [{"faction": "a", "position": coord}],
+      [{"faction": "r", "position": "foo"}],
+      [{"faction": "r", "position": {"x": 1}}],
+      [
+        {"faction": "r", "position": coord},
+        {"faction": "r", "position": coord},
+      ],
+    ]:
+      self.expectError (-1, "characters is invalid",
+                        self.rpc.game.setpathdata,
+                        buildings=[], characters=specs)
+
+  def testWithData (self):
+    self.mainLogger.info ("Testing with set data...")
 
     # This is a very long path, which takes a non-negligible amount of time
     # to compute.  We use this later to ensure that multiple calls are
@@ -216,30 +247,57 @@ class FindPathTest (PXTest):
     serialised = json.dumps (path["wp"], separators=(",", ":"))
     assert len (serialised) > 3000
 
-    # Now place buildings in two steps on the map, which make the path from
-    # longA to longB further.  We use the output of getbuildings itself, to
-    # ensure that it can be passed directly back to setpathbuildings.
+    # Create some test characters that we can use as obstacles.
+    self.initAccount ("red", "r")
+    self.initAccount ("green", "g")
+    self.generate (1)
+    self.createCharacters ("red", 3)
+    self.createCharacters ("green")
+
+    # Now place buildings and characters in two steps on the map, which make
+    # the path from longA to longB further.  We use the outputs of getbuildings
+    # and getcharacters itself, to ensure that it can be passed directly back
+    # to setpathdata.
     buildings = [[]]
-    self.build ("r rt", None,
-                offsetCoord (longA, {"x": 1, "y": 0}, False), rot=0)
+    characters = [[]]
+
     self.build ("r rt", None,
                 offsetCoord (longA, {"x": 1, "y": -1}, False), rot=0)
     self.build ("r rt", None,
                 offsetCoord (longA, {"x": 0, "y": 1}, False), rot=0)
+    self.moveCharactersTo ({
+      "red": longA,
+      "red 2": offsetCoord (longA, {"x": 1, "y": 0}, False),
+    })
+    bIds = [
+      b["id"]
+      for b in self.getRpc ("getbuildings")
+      if b["type"] == "r rt"
+    ]
+    self.getCharacters ()["red"].sendMove ({"eb": bIds[0]})
+    self.generate (1)
+    self.assertEqual (self.getCharacters ()["red"].isInBuilding (), True)
+
     buildings.append (self.getRpc ("getbuildings"))
+    characters.append (self.getRpc ("getcharacters"))
+
     self.build ("r rt", None,
                 offsetCoord (longA, {"x": 0, "y": -1}, False), rot=0)
-    self.build ("r rt", None,
-                offsetCoord (longA, {"x": -1, "y": 1}, False), rot=0)
+    self.moveCharactersTo ({
+      "red 3": offsetCoord (longA, {"x": -1, "y": 1}, False),
+      "green": offsetCoord (longA, {"x": -1, "y": 0}, False),
+    })
+
     buildings.append (self.getRpc ("getbuildings"))
+    characters.append (self.getRpc ("getcharacters"))
 
     # We do three calls now in parallel, with different sets of buildings.
     # All should be running concurrently and not block each other.  The total
     # time should be shorter than sequential execution.
     before = time.clock_gettime (time.CLOCK_MONOTONIC)
     calls = []
-    for b in buildings:
-      calls.append (AsyncFindPath (self.gamenode, b, **kwargs))
+    for b, c in zip (buildings, characters):
+      calls.append (AsyncFindPath (self.gamenode, b, c, **kwargs))
     [shortLen, midLen, longLen] = [c.finish ()["dist"] for c in calls]
     after = time.clock_gettime (time.CLOCK_MONOTONIC)
     threeDuration = after - before

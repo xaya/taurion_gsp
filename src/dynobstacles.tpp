@@ -51,12 +51,15 @@ DynObstacles::IsFree (const HexCoord& c) const
   return !buildings.Get (c) && !red.Get (c) && !green.Get (c) && !blue.Get (c);
 }
 
-inline void
+inline bool
 DynObstacles::AddVehicle (const HexCoord& c, const Faction f)
 {
   auto ref = FactionVehicles (f).Access (c);
-  CHECK (!ref);
+  if (ref)
+    return false;
+
   ref = true;
+  return true;
 }
 
 inline void

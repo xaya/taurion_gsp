@@ -241,7 +241,7 @@ LeaveBuilding (BuildingsTable& buildings, Character& c,
       << " is leaving building " << b->GetId ()
       << " to location " << pos;
   c.SetPosition (pos);
-  dyn.AddVehicle (pos, c.GetFaction ());
+  CHECK (dyn.AddVehicle (pos, c.GetFaction ()));
 }
 
 } // namespace pxd

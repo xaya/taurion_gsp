@@ -123,7 +123,7 @@ SpawnCharacter (const std::string& owner, const Faction f,
 
   auto c = tbl.CreateNew (owner, f);
   c->SetPosition (pos);
-  dyn.AddVehicle (pos, f);
+  CHECK (dyn.AddVehicle (pos, f));
 
   switch (f)
     {
