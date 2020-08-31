@@ -1,9 +1,10 @@
 [
   {
-    "name": "setpathbuildings",
+    "name": "setpathdata",
     "params":
       {
-        "buildings": []
+        "buildings": [],
+        "characters": []
       },
     "returns": true
   },

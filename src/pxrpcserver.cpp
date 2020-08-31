@@ -109,18 +109,18 @@ NonStateRpcServer::NonStateRpcServer (jsonrpc::AbstractServerConnector& conn,
   : NonStateRpcServerStub(conn), chain(c), map(m)
 {
   std::lock_guard<std::mutex> lock(mutDynObstacles);
-  dyn = InitBuildingsData ();
+  dyn = InitPathingData ();
 }
 
-std::shared_ptr<NonStateRpcServer::BuildingsData>
-NonStateRpcServer::InitBuildingsData () const
+std::shared_ptr<NonStateRpcServer::PathingData>
+NonStateRpcServer::InitPathingData () const
 {
-  return std::make_shared<BuildingsData> (chain);
+  return std::make_shared<PathingData> (chain);
 }
 
 bool
 NonStateRpcServer::AddBuildingsFromJson (const Json::Value& buildings,
-                                         BuildingsData& dyn) const
+                                         PathingData& dyn) const
 {
   /* This is enforced already by libjson-rpc-cpp's stub generator.  */
   CHECK (buildings.isArray ());
@@ -170,19 +170,70 @@ NonStateRpcServer::AddBuildingsFromJson (const Json::Value& buildings,
 }
 
 bool
-NonStateRpcServer::setpathbuildings (const Json::Value& buildings)
+NonStateRpcServer::AddCharactersFromJson (const Json::Value& characters,
+                                          PathingData& dyn)
 {
-  LOG (INFO)
-      << "RPC method called: setpathbuildings\n"
-      << "  buildings=" << buildings;
+  /* This is enforced already by libjson-rpc-cpp's stub generator.  */
+  CHECK (characters.isArray ());
+
+  for (const auto& c : characters)
+    {
+      if (!c.isObject ())
+        return false;
+
+      /* If the character is in a building, we just ignore them rather than
+         failing for missing "position".  */
+      if (c.isMember ("inbuilding"))
+        continue;
+
+      HexCoord pos;
+      if (!CoordFromJson (c["position"], pos))
+        return false;
+
+      const auto& factVal = c["faction"];
+      if (!factVal.isString ())
+        return false;
+      const Faction faction = FactionFromString (factVal.asString ());
+      switch (faction)
+        {
+        case Faction::INVALID:
+        case Faction::ANCIENT:
+          return false;
+
+        case Faction::RED:
+        case Faction::GREEN:
+        case Faction::BLUE:
+          break;
+
+        default:
+          LOG (FATAL) << "Invalid faction: " << static_cast<int> (faction);
+          break;
+        }
+
+      if (!dyn.obstacles.AddVehicle (pos, faction))
+        return false;
+    }
+
+  return true;
+}
+
+bool
+NonStateRpcServer::setpathdata (const Json::Value& buildings,
+                                const Json::Value& characters)
+{
+  LOG (INFO) << "RPC method called: setpathdata";
+  VLOG (1) << "  Buildings data:\n" << buildings;
+  VLOG (1) << "  Character data:\n" << characters;
 
   /* We first construct the full obstacle map, and only lock the mutex
      later on when replacing the pointer in the instance.  This avoids
      locking for a longer time while processing the buildings.  */
 
-  auto fresh = InitBuildingsData ();
+  auto fresh = InitPathingData ();
   if (!AddBuildingsFromJson (buildings, *fresh))
     ReturnError (ErrorCode::INVALID_ARGUMENT, "buildings is invalid");
+  if (!AddCharactersFromJson (characters, *fresh))
+    ReturnError (ErrorCode::INVALID_ARGUMENT, "characters is invalid");
 
   {
     std::lock_guard<std::mutex> lock(mutDynObstacles);
@@ -253,7 +304,7 @@ NonStateRpcServer::findpath (const Json::Value& exbuildings,
      long call is running.  Instead, we just copy the shared pointer and
      then release the lock again.  Once created, the DynObstacle instance
      (inside the shared pointer) is immutable, so this is safe.  */
-  std::shared_ptr<const BuildingsData> dynCopy;
+  std::shared_ptr<const PathingData> dynCopy;
   {
     std::lock_guard<std::mutex> lock(mutDynObstacles);
     dynCopy = dyn;
