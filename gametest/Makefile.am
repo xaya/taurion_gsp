@@ -25,6 +25,7 @@ REGTESTS = \
   damage_lists.py \
   fame.py \
   findpath.py \
+  fork_unblockspawns.py \
   getbuildingshape.py \
   getserviceinfo.py \
   getregionat.py \

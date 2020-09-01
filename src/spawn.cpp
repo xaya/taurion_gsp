@@ -115,15 +115,7 @@ SpawnCharacter (const std::string& owner, const Faction f,
       << "Spawning new character for " << owner
       << " in faction " << FactionToString (f) << "...";
 
-  const auto& spawn
-      = ctx.RoConfig ()->params ().spawn_areas ().at (FactionToString (f));
-  const HexCoord pos
-      = ChooseSpawnLocation (CoordFromProto (spawn.centre ()), spawn.radius (),
-                             f, rnd, dyn, ctx.Map ());
-
   auto c = tbl.CreateNew (owner, f);
-  c->SetPosition (pos);
-  CHECK (dyn.AddVehicle (pos, f));
 
   switch (f)
     {
@@ -145,6 +137,21 @@ SpawnCharacter (const std::string& owner, const Faction f,
   c->MutableProto ().add_fitments ("lf gun");
 
   DeriveCharacterStats (*c, ctx);
+
+  const auto& spawn
+      = ctx.RoConfig ()->params ().spawn_areas ().at (FactionToString (f));
+
+  if (ctx.Forks ().IsActive (Fork::UnblockSpawns))
+    c->SetBuildingId (spawn.building_id ());
+  else
+    {
+      const HexCoord pos
+          = ChooseSpawnLocation (CoordFromProto (spawn.centre ()),
+                                 spawn.radius (),
+                                 f, rnd, dyn, ctx.Map ());
+      c->SetPosition (pos);
+      CHECK (dyn.AddVehicle (pos, f));
+    }
 
   return c;
 }

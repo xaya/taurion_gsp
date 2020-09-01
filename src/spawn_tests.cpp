@@ -18,6 +18,7 @@
 
 #include "spawn.hpp"
 
+#include "buildings.hpp"
 #include "protoutils.hpp"
 #include "testutils.hpp"
 
@@ -52,7 +53,10 @@ protected:
 
   SpawnTests ()
     : dyn(db, ctx), tbl(db)
-  {}
+  {
+    InitialiseBuildings (db, ctx.Chain ());
+    db.SetNextId (1'001);
+  }
 
   /**
    * Spawns a character with the test references needed for that.
@@ -95,7 +99,7 @@ TEST_F (SpawnTests, DataInitialised)
 {
   Spawn ("domob", Faction::RED);
 
-  auto c = tbl.GetById (1);
+  auto c = tbl.GetById (1'001);
   ASSERT_TRUE (c != nullptr);
   ASSERT_EQ (c->GetOwner (), "domob");
 
@@ -105,6 +109,35 @@ TEST_F (SpawnTests, DataInitialised)
   EXPECT_GT (c->GetHP ().shield (), 0);
   EXPECT_TRUE (MessageDifferencer::Equals (c->GetHP (),
                                            c->GetRegenData ().max_hp ()));
+}
+
+TEST_F (SpawnTests, SpawnOnMap)
+{
+  ctx.SetHeight (499);
+  ASSERT_FALSE (ctx.Forks ().IsActive (Fork::UnblockSpawns));
+
+  auto c = Spawn ("domob", Faction::RED);
+  EXPECT_FALSE (c->IsInBuilding ());
+}
+
+TEST_F (SpawnTests, SpawnIntoBuildings)
+{
+  BuildingsTable buildings(db);
+
+  ctx.SetHeight (500);
+  ASSERT_TRUE (ctx.Forks ().IsActive (Fork::UnblockSpawns));
+
+  auto c = Spawn ("domob", Faction::RED);
+  ASSERT_TRUE (c->IsInBuilding ());
+  EXPECT_EQ (buildings.GetById (c->GetBuildingId ())->GetType (), "r ss");
+
+  c = Spawn ("domob", Faction::GREEN);
+  ASSERT_TRUE (c->IsInBuilding ());
+  EXPECT_EQ (buildings.GetById (c->GetBuildingId ())->GetType (), "g ss");
+
+  c = Spawn ("domob", Faction::BLUE);
+  ASSERT_TRUE (c->IsInBuilding ());
+  EXPECT_EQ (buildings.GetById (c->GetBuildingId ())->GetType (), "b ss");
 }
 
 /* ************************************************************************** */
