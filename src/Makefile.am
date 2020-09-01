@@ -30,6 +30,7 @@ libtaurion_la_SOURCES = \
   dynobstacles.cpp \
   fame.cpp \
   fitments.cpp \
+  forks.cpp \
   gamestatejson.cpp \
   jsonutils.cpp \
   logic.cpp \
@@ -53,6 +54,7 @@ libtaurionheaders = \
   dynobstacles.hpp dynobstacles.tpp \
   fame.hpp \
   fitments.hpp \
+  forks.hpp \
   gamestatejson.hpp \
   jsonutils.hpp \
   logic.hpp \
@@ -133,6 +135,7 @@ tests_SOURCES = \
   dynobstacles_tests.cpp \
   fame_tests.cpp \
   fitments_tests.cpp \
+  forks_tests.cpp \
   gamestatejson_tests.cpp \
   jsonutils_tests.cpp \
   logic_tests.cpp \
