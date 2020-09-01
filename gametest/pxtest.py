@@ -425,24 +425,33 @@ class PXTest (XayaGameTest):
   def changeCharacterVehicle (self, char, vehicleType, fitments=[]):
     """
     Changes the vehicle of the given character to the given type.  This is
-    done through god-mode, by dropping the vehicle type into an ancient
-    building and changing there.
+    done through god-mode, by dropping the vehicle type into some of the
+    initial buildings and changing there.
+
+    If the character is already inside some building (e.g. after
+    spawn), we will do it directly there instead.
     """
 
-    b = self.getBuildings ()[1]
-    self.assertEqual (b.getFaction (), "a")
-    pos = offsetCoord (b.getCentre (), {"x": 30, "y": 0}, False)
-    self.moveCharactersTo ({char: pos})
-
     c = self.getCharacters ()[char]
-    c.sendMove ({"eb": b.getId ()})
+    if c.isInBuilding ():
+      bId = c.getBuildingId ()
+    else:
+      b = self.getBuildings ()[1]
+      bId = b.getId ()
+      self.assertEqual (b.getFaction (), "a")
+      pos = offsetCoord (b.getCentre (), {"x": 30, "y": 0}, False)
+      self.moveCharactersTo ({char: pos})
+
+      c = self.getCharacters ()[char]
+      c.sendMove ({"eb": bId})
+
     inv = {vehicleType: 1}
     for f in fitments:
       if f in inv:
         ++inv[f]
       else:
         inv[f] = 1
-    self.dropIntoBuilding (b.getId (), c.getOwner (), inv)
+    self.dropIntoBuilding (bId, c.getOwner (), inv)
 
     # Make sure that we can change vehicle and fitments by maxing the
     # character's HP (just in case).

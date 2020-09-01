@@ -32,7 +32,6 @@ class GodModeTest (PXTest):
     self.createCharacters ("domob")
     self.generate (1)
     c = self.getCharacters ()["domob"]
-    pos = c.getPosition ()
     charId = c.getId ()
 
     self.mainLogger.info ("Testing build...")
@@ -94,7 +93,6 @@ class GodModeTest (PXTest):
 
     self.mainLogger.info ("Testing teleport...")
     target = {"x": 28, "y": 9}
-    assert pos != target
     self.adminCommand ({"god": {"teleport": [{"id": charId, "pos": target}]}})
     self.generate (1)
     self.assertEqual (self.getCharacters ()["domob"].getPosition (), target)
