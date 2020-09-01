@@ -312,6 +312,19 @@ class PXTest (XayaGameTest):
       self.rpc.xaya.sendtoaddress (self.rpc.xaya.getnewaddress (), 100)
     self.generate (1)
 
+  def advanceToHeight (self, targetHeight):
+    """
+    Mines blocks until we are exactly at the given target height.
+    """
+
+    n = targetHeight - self.rpc.xaya.getblockcount ()
+
+    assert n >= 0
+    if n > 0:
+      self.generate (n)
+
+    self.assertEqual (self.rpc.xaya.getblockcount (), targetHeight)
+
   def getRpc (self, method, *args, **kwargs):
     """
     Calls the given "read-type" RPC method on the game daemon and returns

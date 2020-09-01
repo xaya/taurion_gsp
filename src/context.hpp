@@ -19,6 +19,7 @@
 #ifndef PXD_CONTEXT_HPP
 #define PXD_CONTEXT_HPP
 
+#include "forks.hpp"
 #include "params.hpp"
 
 #include "mapdata/basemap.hpp"
@@ -56,6 +57,9 @@ private:
   /** RoConfig instance dependant on the chain.  */
   std::unique_ptr<pxd::RoConfig> cfg;
 
+  /** Fork handler based on chain and height.  */
+  std::unique_ptr<ForkHandler> forks;
+
   /**
    * The current block's height.  This is set to the confirmed height plus
    * one for processing pending moves, as that corresponds to the expected
@@ -74,6 +78,14 @@ private:
    * used with ContextForTesting.
    */
   explicit Context (xaya::Chain c);
+
+  /**
+   * Sets up all instances that are based on the basic state, like the
+   * Params or RoConfig one.  This is usually just done as part of the
+   * constructor, but in tests, we use it to refresh them when we explicitly
+   * change values.
+   */
+  void RefreshInstances ();
 
   friend class ContextForTesting;
 
@@ -112,6 +124,12 @@ public:
   RoConfig () const
   {
     return *cfg;
+  }
+
+  const ForkHandler&
+  Forks () const
+  {
+    return *forks;
   }
 
   /**
