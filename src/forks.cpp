@@ -42,6 +42,14 @@ const std::unordered_map<Fork, ActivationHeights> FORK_HEIGHTS =
         {xaya::Chain::REGTEST, 100},
       },
     },
+    {
+      Fork::UnblockSpawns,
+      {
+        {xaya::Chain::MAIN, 2'159'000},
+        {xaya::Chain::TEST, 0},
+        {xaya::Chain::REGTEST, 500},
+      },
+    },
   };
 
 } // anonymous namespace

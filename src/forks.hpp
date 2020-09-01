@@ -36,6 +36,15 @@ enum class Fork
    */
   Dummy,
 
+  /**
+   * Fork on the 0.3 competition rules to fix issues with blocked spawn
+   * areas (from abused starter packs):  New characters will be spawned
+   * inside the starter-city building, rather than outside.  Also, vehicles
+   * of the same faction are no longer hard obstacles, but instead just
+   * slow down movement drastically (but can be passed with enough patience).
+   */
+  UnblockSpawns,
+
 };
 
 /**
