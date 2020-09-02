@@ -210,10 +210,6 @@ class FindPathTest (PXTest):
       [{"faction": "a", "position": coord}],
       [{"faction": "r", "position": "foo"}],
       [{"faction": "r", "position": {"x": 1}}],
-      [
-        {"faction": "r", "position": coord},
-        {"faction": "r", "position": coord},
-      ],
     ]:
       self.expectError (-1, "characters is invalid",
                         self.rpc.game.setpathdata,

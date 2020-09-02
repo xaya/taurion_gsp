@@ -158,7 +158,7 @@ SpawnCharacter (const std::string& owner, const Faction f,
                                  spawn.radius (),
                                  f, rnd, dyn, ctx.Map ());
       c->SetPosition (pos);
-      CHECK (dyn.AddVehicle (pos, f));
+      dyn.AddVehicle (pos, f);
     }
 
   return c;

@@ -60,14 +60,17 @@ TEST_F (DynObstaclesTests, VehiclesFromDb)
   EXPECT_TRUE (dyn.HasVehicle (c1, Faction::RED));
   EXPECT_TRUE (dyn.HasVehicle (c1, Faction::GREEN));
   EXPECT_FALSE (dyn.HasVehicle (c1, Faction::BLUE));
+  EXPECT_TRUE (dyn.HasVehicle (c1));
 
   EXPECT_FALSE (dyn.HasVehicle (c2, Faction::RED));
   EXPECT_FALSE (dyn.HasVehicle (c2, Faction::GREEN));
   EXPECT_TRUE (dyn.HasVehicle (c2, Faction::BLUE));
+  EXPECT_TRUE (dyn.HasVehicle (c2));
 
   EXPECT_FALSE (dyn.HasVehicle (c3, Faction::RED));
   EXPECT_FALSE (dyn.HasVehicle (c3, Faction::GREEN));
   EXPECT_FALSE (dyn.HasVehicle (c3, Faction::BLUE));
+  EXPECT_FALSE (dyn.HasVehicle (c3));
 }
 
 TEST_F (DynObstaclesTests, BuildingsFromDb)
@@ -86,14 +89,17 @@ TEST_F (DynObstaclesTests, Modifications)
   DynObstacles dyn(db, ctx);
 
   EXPECT_FALSE (dyn.HasVehicle (c, Faction::RED));
+  EXPECT_FALSE (dyn.HasVehicle (c));
 
   dyn.AddVehicle (c, Faction::RED);
   EXPECT_TRUE (dyn.HasVehicle (c, Faction::RED));
   EXPECT_FALSE (dyn.HasVehicle (c, Faction::GREEN));
+  EXPECT_TRUE (dyn.HasVehicle (c));
 
   dyn.RemoveVehicle (c, Faction::RED);
   EXPECT_FALSE (dyn.HasVehicle (c, Faction::RED));
   EXPECT_FALSE (dyn.HasVehicle (c, Faction::BLUE));
+  EXPECT_FALSE (dyn.HasVehicle (c));
 
   auto b = buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
   EXPECT_FALSE (dyn.IsBuilding (HexCoord (1, 0)));
@@ -127,6 +133,33 @@ TEST_F (DynObstaclesTests, AddingBuildings)
                                    b1->GetProto ().shape_trafo (),
                                    b1->GetCentre (), shape));
   }
+}
+
+TEST_F (DynObstaclesTests, MultipleVehicles)
+{
+  const HexCoord c(10, 0);
+  DynObstacles dyn(db, ctx);
+
+  dyn.AddVehicle (c, Faction::RED);
+  dyn.AddVehicle (c, Faction::RED);
+  dyn.AddVehicle (c, Faction::GREEN);
+  EXPECT_TRUE (dyn.HasVehicle (c, Faction::RED));
+  EXPECT_TRUE (dyn.HasVehicle (c, Faction::GREEN));
+  EXPECT_FALSE (dyn.HasVehicle (c, Faction::BLUE));
+  EXPECT_TRUE (dyn.HasVehicle (c));
+
+  dyn.RemoveVehicle (c, Faction::RED);
+  dyn.RemoveVehicle (c, Faction::GREEN);
+  EXPECT_TRUE (dyn.HasVehicle (c, Faction::RED));
+  EXPECT_FALSE (dyn.HasVehicle (c, Faction::GREEN));
+  EXPECT_FALSE (dyn.HasVehicle (c, Faction::BLUE));
+  EXPECT_TRUE (dyn.HasVehicle (c));
+
+  dyn.RemoveVehicle (c, Faction::RED);
+  EXPECT_FALSE (dyn.HasVehicle (c, Faction::RED));
+  EXPECT_FALSE (dyn.HasVehicle (c, Faction::GREEN));
+  EXPECT_FALSE (dyn.HasVehicle (c, Faction::BLUE));
+  EXPECT_FALSE (dyn.HasVehicle (c));
 }
 
 TEST_F (DynObstaclesTests, IsFree)

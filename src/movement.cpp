@@ -359,7 +359,7 @@ MoveInDynObstacles::~MoveInDynObstacles ()
       << "Adding back character " << character.GetId ()
       << " at position " << character.GetPosition ()
       << " to the dynamic obstacle map...";
-  CHECK (dyn.AddVehicle (character.GetPosition (), character.GetFaction ()));
+  dyn.AddVehicle (character.GetPosition (), character.GetFaction ());
 }
 
 namespace test

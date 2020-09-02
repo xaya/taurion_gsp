@@ -210,8 +210,7 @@ NonStateRpcServer::AddCharactersFromJson (const Json::Value& characters,
           break;
         }
 
-      if (!dyn.obstacles.AddVehicle (pos, faction))
-        return false;
+      dyn.obstacles.AddVehicle (pos, faction);
     }
 
   return true;
