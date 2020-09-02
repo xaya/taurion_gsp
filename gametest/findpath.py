@@ -136,7 +136,8 @@ class FindPathTest (PXTest):
 
     self.testExbuildings ()
     self.testInvalidData ()
-    self.testWithData ()
+    self.testWithCharacterData ()
+    self.testWithBuildingData ()
 
   def testExbuildings (self):
     self.mainLogger.info ("Testing exbuildings...")
@@ -218,8 +219,47 @@ class FindPathTest (PXTest):
                         self.rpc.game.setpathdata,
                         buildings=[], characters=specs)
 
-  def testWithData (self):
-    self.mainLogger.info ("Testing with set data...")
+  def testWithCharacterData (self):
+    self.mainLogger.info ("Testing with character data...")
+
+    # Create some test characters that we can use as obstacles.
+    self.initAccount ("red", "r")
+    self.initAccount ("green", "g")
+    self.generate (1)
+    self.createCharacters ("red", 2)
+    self.createCharacters ("green")
+    self.generate (1)
+
+    # Place some characters on the map.  We then use the output of
+    # getcharacters to pass as findpath data, to ensure this works.
+    self.moveCharactersTo ({
+      # Make sure that moving from the location of a character of one's own
+      # faction is fine, as this is a very common situation of course
+      # while planning movement paths.  It works because the dynamic obstacle
+      # map is only checked on the "to" coordinate, not the "from" one.
+      "red": {"x": 0, "y": 0},
+      "green": {"x": 10, "y": 0},
+      "red 2": {"x": 0, "y": 10},
+    })
+    characters = self.getRpc ("getcharacters")
+    self.rpc.game.setpathdata (buildings=[], characters=characters)
+
+    moreArgs = {
+      "source": {"x": 0, "y": 0},
+      "faction": "r",
+      "l1range": 8000,
+    }
+
+    self.assertEqual (self.call (target={"x": 20, "y": 0}, **moreArgs)["dist"],
+                      20000)
+    self.assertEqual (self.call (target={"x": 0, "y": 20}, **moreArgs)["dist"],
+                      21000)
+    self.expectError (1, "no connection",
+                      self.call,
+                      target={"x": 0, "y": 10}, **moreArgs)
+
+  def testWithBuildingData (self):
+    self.mainLogger.info ("Testing with building data...")
 
     # This is a very long path, which takes a non-negligible amount of time
     # to compute.  We use this later to ensure that multiple calls are
@@ -247,62 +287,32 @@ class FindPathTest (PXTest):
     serialised = json.dumps (path["wp"], separators=(",", ":"))
     assert len (serialised) > 3000
 
-    # Create some test characters that we can use as obstacles.
-    self.initAccount ("red", "r")
-    self.initAccount ("green", "g")
-    self.generate (1)
-    self.createCharacters ("red", 4)
-    self.createCharacters ("green")
-
-    # Now place buildings and characters in two steps on the map, which make
-    # the path from longA to longB further.  We use the outputs of getbuildings
-    # and getcharacters itself, to ensure that it can be passed directly back
-    # to setpathdata.
+    # Now place buildings in two steps on the map, which make the path from
+    # longA to longB further.  We use the outputs of getbuildings itself, to
+    # ensure that it can be passed directly back to setpathdata.
     buildings = [[]]
-    characters = [[]]
 
+    self.build ("r rt", None,
+                offsetCoord (longA, {"x": 1, "y": 0}, False), rot=0)
     self.build ("r rt", None,
                 offsetCoord (longA, {"x": 1, "y": -1}, False), rot=0)
     self.build ("r rt", None,
                 offsetCoord (longA, {"x": 0, "y": 1}, False), rot=0)
-    self.moveCharactersTo ({
-      "red": longA,
-      "red 2": offsetCoord (longA, {"x": 1, "y": 0}, False),
-    })
-    bIds = [
-      b["id"]
-      for b in self.getRpc ("getbuildings")
-      if b["type"] == "r rt"
-    ]
-    self.getCharacters ()["red"].sendMove ({"eb": bIds[0]})
-    self.generate (1)
-    self.assertEqual (self.getCharacters ()["red"].isInBuilding (), True)
-
     buildings.append (self.getRpc ("getbuildings"))
-    characters.append (self.getRpc ("getcharacters"))
 
     self.build ("r rt", None,
                 offsetCoord (longA, {"x": 0, "y": -1}, False), rot=0)
-    self.moveCharactersTo ({
-      "red 3": offsetCoord (longA, {"x": -1, "y": 1}, False),
-      "green": offsetCoord (longA, {"x": -1, "y": 0}, False),
-      # Make sure that moving from the location of a character of one's own
-      # faction is fine, as this is a very common situation of course
-      # while planning movement paths.  It works because the dynamic obstacle
-      # map is only checked on the "to" coordinate, not the "from" one.
-      "red 4": longA,
-    })
-
+    self.build ("r rt", None,
+                offsetCoord (longA, {"x": -1, "y": 1}, False), rot=0)
     buildings.append (self.getRpc ("getbuildings"))
-    characters.append (self.getRpc ("getcharacters"))
 
     # We do three calls now in parallel, with different sets of buildings.
     # All should be running concurrently and not block each other.  The total
     # time should be shorter than sequential execution.
     before = time.clock_gettime (time.CLOCK_MONOTONIC)
     calls = []
-    for b, c in zip (buildings, characters):
-      calls.append (AsyncFindPath (self.gamenode, b, c, **kwargs))
+    for b in buildings:
+      calls.append (AsyncFindPath (self.gamenode, b, [], **kwargs))
     [shortLen, midLen, longLen] = [c.finish ()["dist"] for c in calls]
     after = time.clock_gettime (time.CLOCK_MONOTONIC)
     threeDuration = after - before
