@@ -448,12 +448,12 @@ TEST_F (LeaveBuildingTests, WhenAllBlocked)
 {
   for (HexCoord::IntT r = 0; r <= radius; ++r)
     for (const auto& c : L1Ring (centre, r))
-      characters.CreateNew ("domob", Faction::RED)->SetPosition (c);
+      characters.CreateNew ("domob", Faction::GREEN)->SetPosition (c);
   DynObstacles originalDyn(db, ctx);
 
   const auto pos = Leave ();
   EXPECT_TRUE (ctx.Map ().IsPassable (pos));
-  EXPECT_FALSE (originalDyn.HasVehicle (pos, Faction::RED));
+  EXPECT_TRUE (originalDyn.IsFree (pos));
   EXPECT_GT (HexCoord::DistanceL1 (pos, centre), radius);
 }
 

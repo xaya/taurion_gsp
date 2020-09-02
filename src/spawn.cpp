@@ -77,7 +77,7 @@ RandomSpawnLocation (const HexCoord& centre, const HexCoord::IntT radius,
 HexCoord
 ChooseSpawnLocation (const HexCoord& centre, const HexCoord::IntT radius,
                      const Faction f, xaya::Random& rnd,
-                     const DynObstacles& dyn, const BaseMap& map)
+                     const DynObstacles& dyn, const Context& ctx)
 {
   const HexCoord ringCentre = RandomSpawnLocation (centre, radius, rnd);
 
@@ -90,17 +90,16 @@ ChooseSpawnLocation (const HexCoord& centre, const HexCoord::IntT radius,
       bool foundOnMap = false;
       for (const auto& pos : ring)
         {
-          if (!map.IsOnMap (pos))
+          if (!ctx.Map ().IsOnMap (pos))
             continue;
           foundOnMap = true;
 
-          if (!map.IsPassable (pos))
+          if (!ctx.Map ().IsPassable (pos))
             continue;
 
-          if (dyn.IsBuilding (pos))
-            continue;
-
-          if (dyn.HasVehicle (pos, f))
+          /* Even though vehicles are in principle passable, we want to avoid
+             them when spawning and just look for other places instead.  */
+          if (!dyn.IsFree (pos))
             continue;
 
           return pos;
