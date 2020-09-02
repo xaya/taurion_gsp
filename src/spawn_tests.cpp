@@ -155,7 +155,7 @@ protected:
   SpawnLocation (const HexCoord& centre, const HexCoord::IntT radius,
                  const Faction f)
   {
-    return ChooseSpawnLocation (centre, radius, f, rnd, dyn, ctx.Map ());
+    return ChooseSpawnLocation (centre, radius, f, rnd, dyn, ctx);
   }
 
 };

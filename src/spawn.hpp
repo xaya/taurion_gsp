@@ -41,7 +41,7 @@ namespace pxd
  */
 HexCoord ChooseSpawnLocation (const HexCoord& centre, HexCoord::IntT radius,
                               const Faction f, xaya::Random& rnd,
-                              const DynObstacles& dyn, const BaseMap& map);
+                              const DynObstacles& dyn, const Context& ctx);
 
 /**
  * Spawns a new character in the world.  This takes care of initialising the

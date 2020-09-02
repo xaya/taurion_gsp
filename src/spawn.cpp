@@ -77,7 +77,7 @@ RandomSpawnLocation (const HexCoord& centre, const HexCoord::IntT radius,
 HexCoord
 ChooseSpawnLocation (const HexCoord& centre, const HexCoord::IntT radius,
                      const Faction f, xaya::Random& rnd,
-                     const DynObstacles& dyn, const BaseMap& map)
+                     const DynObstacles& dyn, const Context& ctx)
 {
   const HexCoord ringCentre = RandomSpawnLocation (centre, radius, rnd);
 
@@ -90,18 +90,30 @@ ChooseSpawnLocation (const HexCoord& centre, const HexCoord::IntT radius,
       bool foundOnMap = false;
       for (const auto& pos : ring)
         {
-          if (!map.IsOnMap (pos))
+          if (!ctx.Map ().IsOnMap (pos))
             continue;
           foundOnMap = true;
 
-          if (!map.IsPassable (pos))
+          if (!ctx.Map ().IsPassable (pos))
             continue;
 
-          if (dyn.IsBuilding (pos))
-            continue;
-
-          if (dyn.HasVehicle (pos, f))
-            continue;
+          /* Even though the "unblock spawn" fork makes other vehicles
+             in principle passable, we want to avoid them when spawning
+             and just look for other places instead.  The difference to the
+             pre-fork behaviour is that we now avoid all factions, not just
+             the own.  */
+          if (ctx.Forks ().IsActive (Fork::UnblockSpawns))
+            {
+              if (!dyn.IsFree (pos))
+                continue;
+            }
+          else
+            {
+              if (dyn.IsBuilding (pos))
+                continue;
+              if (dyn.HasVehicle (pos, f))
+                continue;
+            }
 
           return pos;
         }
@@ -156,7 +168,7 @@ SpawnCharacter (const std::string& owner, const Faction f,
       const HexCoord pos
           = ChooseSpawnLocation (CoordFromProto (spawn.centre ()),
                                  spawn.radius (),
-                                 f, rnd, dyn, ctx.Map ());
+                                 f, rnd, dyn, ctx);
       c->SetPosition (pos);
       dyn.AddVehicle (pos, f);
     }

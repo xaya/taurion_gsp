@@ -234,7 +234,7 @@ LeaveBuilding (BuildingsTable& buildings, Character& c,
 
   const auto radius = ctx.RoConfig ().Building (b->GetType ()).enter_radius ();
   const auto pos = ChooseSpawnLocation (b->GetCentre (), radius,
-                                        c.GetFaction (), rnd, dyn, ctx.Map ());
+                                        c.GetFaction (), rnd, dyn, ctx);
 
   LOG (INFO)
       << "Character " << c.GetId ()
