@@ -86,10 +86,14 @@ public:
   void operator= (const DynObstacles&) = delete;
 
   /**
-   * Checks whether the given tile is passable to a vehicle of the given
-   * faction.  This must only be called for tiles on the map.
+   * Checks if the given tile is blocked by a building.
    */
-  bool IsPassable (const HexCoord& c, Faction f) const;
+  bool IsBuilding (const HexCoord& c) const;
+
+  /**
+   * Checks if the given tile has a vehicle of the given faction.
+   */
+  bool HasVehicle (const HexCoord& c, Faction f) const;
 
   /**
    * Checks whether the given tile is entirely free (which is needed to

@@ -40,9 +40,15 @@ DynObstacles::FactionVehicles (const Faction f)
 }
 
 inline bool
-DynObstacles::IsPassable (const HexCoord& c, const Faction f) const
+DynObstacles::IsBuilding (const HexCoord& c) const
 {
-  return !buildings.Get (c) && !FactionVehicles (f).Get (c);
+  return buildings.Get (c);
+}
+
+inline bool
+DynObstacles::HasVehicle (const HexCoord& c, const Faction f) const
+{
+  return FactionVehicles (f).Get (c);
 }
 
 inline bool

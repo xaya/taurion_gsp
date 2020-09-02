@@ -57,17 +57,17 @@ TEST_F (DynObstaclesTests, VehiclesFromDb)
 
   DynObstacles dyn(db, ctx);
 
-  EXPECT_FALSE (dyn.IsPassable (c1, Faction::RED));
-  EXPECT_FALSE (dyn.IsPassable (c1, Faction::GREEN));
-  EXPECT_TRUE (dyn.IsPassable (c1, Faction::BLUE));
+  EXPECT_TRUE (dyn.HasVehicle (c1, Faction::RED));
+  EXPECT_TRUE (dyn.HasVehicle (c1, Faction::GREEN));
+  EXPECT_FALSE (dyn.HasVehicle (c1, Faction::BLUE));
 
-  EXPECT_TRUE (dyn.IsPassable (c2, Faction::RED));
-  EXPECT_TRUE (dyn.IsPassable (c2, Faction::GREEN));
-  EXPECT_FALSE (dyn.IsPassable (c2, Faction::BLUE));
+  EXPECT_FALSE (dyn.HasVehicle (c2, Faction::RED));
+  EXPECT_FALSE (dyn.HasVehicle (c2, Faction::GREEN));
+  EXPECT_TRUE (dyn.HasVehicle (c2, Faction::BLUE));
 
-  EXPECT_TRUE (dyn.IsPassable (c3, Faction::RED));
-  EXPECT_TRUE (dyn.IsPassable (c3, Faction::GREEN));
-  EXPECT_TRUE (dyn.IsPassable (c3, Faction::BLUE));
+  EXPECT_FALSE (dyn.HasVehicle (c3, Faction::RED));
+  EXPECT_FALSE (dyn.HasVehicle (c3, Faction::GREEN));
+  EXPECT_FALSE (dyn.HasVehicle (c3, Faction::BLUE));
 }
 
 TEST_F (DynObstaclesTests, BuildingsFromDb)
@@ -76,13 +76,8 @@ TEST_F (DynObstaclesTests, BuildingsFromDb)
 
   DynObstacles dyn(db, ctx);
 
-  EXPECT_FALSE (dyn.IsPassable (HexCoord (0, 2), Faction::RED));
-  EXPECT_FALSE (dyn.IsPassable (HexCoord (0, 2), Faction::GREEN));
-  EXPECT_FALSE (dyn.IsPassable (HexCoord (0, 2), Faction::BLUE));
-
-  EXPECT_TRUE (dyn.IsPassable (HexCoord (2, 0), Faction::RED));
-  EXPECT_TRUE (dyn.IsPassable (HexCoord (2, 0), Faction::GREEN));
-  EXPECT_TRUE (dyn.IsPassable (HexCoord (2, 0), Faction::BLUE));
+  EXPECT_TRUE (dyn.IsBuilding (HexCoord (0, 2)));
+  EXPECT_FALSE (dyn.IsBuilding (HexCoord (2, 0)));
 }
 
 TEST_F (DynObstaclesTests, Modifications)
@@ -90,20 +85,20 @@ TEST_F (DynObstaclesTests, Modifications)
   const HexCoord c(42, 0);
   DynObstacles dyn(db, ctx);
 
-  EXPECT_TRUE (dyn.IsPassable (c, Faction::RED));
+  EXPECT_FALSE (dyn.HasVehicle (c, Faction::RED));
 
   dyn.AddVehicle (c, Faction::RED);
-  EXPECT_FALSE (dyn.IsPassable (c, Faction::RED));
-  EXPECT_TRUE (dyn.IsPassable (c, Faction::GREEN));
+  EXPECT_TRUE (dyn.HasVehicle (c, Faction::RED));
+  EXPECT_FALSE (dyn.HasVehicle (c, Faction::GREEN));
 
   dyn.RemoveVehicle (c, Faction::RED);
-  EXPECT_TRUE (dyn.IsPassable (c, Faction::RED));
-  EXPECT_TRUE (dyn.IsPassable (c, Faction::BLUE));
+  EXPECT_FALSE (dyn.HasVehicle (c, Faction::RED));
+  EXPECT_FALSE (dyn.HasVehicle (c, Faction::BLUE));
 
   auto b = buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
-  EXPECT_TRUE (dyn.IsPassable (HexCoord (1, 0), Faction::RED));
+  EXPECT_FALSE (dyn.IsBuilding (HexCoord (1, 0)));
   dyn.AddBuilding (*b);
-  EXPECT_FALSE (dyn.IsPassable (HexCoord (1, 0), Faction::RED));
+  EXPECT_TRUE (dyn.IsBuilding (HexCoord (1, 0)));
 }
 
 TEST_F (DynObstaclesTests, AddingBuildings)

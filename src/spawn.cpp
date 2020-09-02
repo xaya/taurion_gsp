@@ -94,8 +94,16 @@ ChooseSpawnLocation (const HexCoord& centre, const HexCoord::IntT radius,
             continue;
           foundOnMap = true;
 
-          if (map.IsPassable (pos) && dyn.IsPassable (pos, f))
-            return pos;
+          if (!map.IsPassable (pos))
+            continue;
+
+          if (dyn.IsBuilding (pos))
+            continue;
+
+          if (dyn.HasVehicle (pos, f))
+            continue;
+
+          return pos;
         }
 
       /* If no coordinate on the current ring was even on the map, then we
