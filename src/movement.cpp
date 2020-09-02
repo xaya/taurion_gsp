@@ -137,7 +137,10 @@ template <typename Fcn>
 
   const auto res = baseEdges (from, to);
 
-  if (res == PathFinder::NO_CONNECTION || !dyn.IsPassable (to, f))
+  if (res == PathFinder::NO_CONNECTION)
+    return PathFinder::NO_CONNECTION;
+
+  if (dyn.IsBuilding (to) || dyn.HasVehicle (to, f))
     return PathFinder::NO_CONNECTION;
 
   return res;

@@ -322,18 +322,20 @@ NonStateRpcServer::findpath (const Json::Value& exbuildings,
       if (base == PathFinder::NO_CONNECTION)
         return PathFinder::NO_CONNECTION;
 
-      if (dynCopy->obstacles.IsPassable (to, f))
-        return base;
+      /* If the path is blocked by a building, look closer to see if it is one
+         of the buildings we want to ignore or not.  */
+      if (dynCopy->obstacles.IsBuilding (to))
+        {
+          const auto mitTiles = dynCopy->buildingIds.find (to);
+          if (mitTiles == dynCopy->buildingIds.end ()
+                || exBuildingIds.count (mitTiles->second) == 0)
+            return PathFinder::NO_CONNECTION;
+        }
 
-      /* If the path is blocked by a dynamic obstacle (building), look
-         closer to see if it is one of the buildings we want to ignore
-         or not.  */
-      const auto mitTiles = dynCopy->buildingIds.find (to);
-      if (mitTiles != dynCopy->buildingIds.end ()
-            && exBuildingIds.count (mitTiles->second) > 0)
-        return base;
+      if (dynCopy->obstacles.HasVehicle (to, f))
+        return PathFinder::NO_CONNECTION;
 
-      return PathFinder::NO_CONNECTION;
+      return base;
     };
   const PathFinder::DistanceT dist = finder.Compute (edges, sourceCoord,
                                                      l1range);
