@@ -247,12 +247,13 @@ class FindPathTest (PXTest):
     }
 
     self.assertEqual (self.call (target={"x": 20, "y": 0}, **moreArgs)["dist"],
-                      20000)
+                      21000)
     self.assertEqual (self.call (target={"x": 0, "y": 20}, **moreArgs)["dist"],
                       21000)
-    self.expectError (1, "no connection",
-                      self.call,
-                      target={"x": 0, "y": 10}, **moreArgs)
+    self.assertEqual (self.call (target={"x": 10, "y": 0}, **moreArgs)["dist"],
+                      17000)
+    self.assertEqual (self.call (target={"x": 0, "y": 10}, **moreArgs)["dist"],
+                      17000)
 
   def testWithBuildingData (self):
     self.mainLogger.info ("Testing with building data...")

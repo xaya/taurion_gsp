@@ -44,17 +44,17 @@ class CombatEffectsTest (PXTest):
     self.moveCharactersTo ({
       "attacker": {"x": 0, "y": 1},
       "target": {"x": -50, "y": 0},
-      "friendly": {"x": -50, "y": 0},
+      "friendly": {"x": -48, "y": 0},
     })
 
     self.mainLogger.info ("Moving through retarding area...")
     c = self.getCharacters ()
     for key in ["target", "friendly"]:
       c[key].moveTowards ({"x": 50, "y": 0})
-    self.generate (100)
+    self.generate (98)
     c = self.getCharacters ()
     self.assertEqual (c["friendly"].getPosition (), {"x": 50, "y": 0})
-    self.assertEqual (c["target"].getPosition (), {"x": 48, "y": 0})
+    self.assertEqual (c["target"].getPosition (), {"x": 46, "y": 0})
 
 
 if __name__ == "__main__":

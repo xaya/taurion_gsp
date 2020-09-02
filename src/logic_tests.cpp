@@ -651,12 +651,13 @@ TEST_F (PXLogicTests, CombatEffectRetarder)
 {
   /* In this test, we set up a red character with retarding attack, and
      move both a green enemy and a red friendly through the AoE of that
-     attack (which will last from (-10, 0) to (11, 0) along the x axis).  */
+     attack.  The retarding area is from 0 to 10 at y=-10 (for the green)
+     and from -10 to 0 at y=10 (for the red).  */
 
   auto c = CreateCharacter ("domob", Faction::RED);
   c->SetPosition (HexCoord (0, 0));
   auto& attack = *c->MutableProto ().mutable_combat_data ()->add_attacks ();
-  attack.set_range (11);
+  attack.set_range (10);
   attack.mutable_effects ()->mutable_speed ()->set_percent (-50);
   c.reset ();
 
@@ -665,8 +666,8 @@ TEST_F (PXLogicTests, CombatEffectRetarder)
   c->MutableProto ().mutable_combat_data ();
   c->MutableProto ().set_speed (2'000);
   *c->MutableProto ().mutable_movement ()->add_waypoints ()
-      = CoordToProto (HexCoord (20, 0));
-  c->SetPosition (HexCoord (-20, 0));
+      = CoordToProto (HexCoord (20, -10));
+  c->SetPosition (HexCoord (-10, -10));
   c.reset ();
 
   c = CreateCharacter ("other", Faction::RED);
@@ -674,25 +675,27 @@ TEST_F (PXLogicTests, CombatEffectRetarder)
   c->MutableProto ().mutable_combat_data ();
   c->MutableProto ().set_speed (2'000);
   *c->MutableProto ().mutable_movement ()->add_waypoints ()
-      = CoordToProto (HexCoord (20, 1));
-  c->SetPosition (HexCoord (-20, 1));
+      = CoordToProto (HexCoord (10, 10));
+  c->SetPosition (HexCoord (-20, 10));
   c.reset ();
 
   for (unsigned i = 0; i < 5; ++i)
     UpdateState ("[]");
-  EXPECT_EQ (characters.GetById (idTarget)->GetPosition (), HexCoord (-10, 0));
+  EXPECT_EQ (characters.GetById (idTarget)->GetPosition (), HexCoord (0, -10));
   UpdateState ("[]");
-  EXPECT_EQ (characters.GetById (idTarget)->GetPosition (), HexCoord (-9, 0));
-  EXPECT_EQ (characters.GetById (idFriendly)->GetPosition (), HexCoord (-8, 1));
-  for (unsigned i = 0; i < 21; ++i)
+  EXPECT_EQ (characters.GetById (idTarget)->GetPosition (), HexCoord (1, -10));
+  EXPECT_EQ (characters.GetById (idFriendly)->GetPosition (),
+             HexCoord (-8, 10));
+  for (unsigned i = 0; i < 10; ++i)
     UpdateState ("[]");
-  EXPECT_EQ (characters.GetById (idTarget)->GetPosition (), HexCoord (12, 0));
-  EXPECT_EQ (characters.GetById (idFriendly)->GetPosition (), HexCoord (20, 1));
+  EXPECT_EQ (characters.GetById (idTarget)->GetPosition (), HexCoord (11, -10));
+  EXPECT_EQ (characters.GetById (idFriendly)->GetPosition (),
+             HexCoord (10, 10));
   UpdateState ("[]");
-  EXPECT_EQ (characters.GetById (idTarget)->GetPosition (), HexCoord (14, 0));
-  for (unsigned i = 0; i < 3; ++i)
+  EXPECT_EQ (characters.GetById (idTarget)->GetPosition (), HexCoord (13, -10));
+  for (unsigned i = 0; i < 4; ++i)
     UpdateState ("[]");
-  EXPECT_EQ (characters.GetById (idTarget)->GetPosition (), HexCoord (20, 0));
+  EXPECT_EQ (characters.GetById (idTarget)->GetPosition (), HexCoord (20, -10));
 }
 
 TEST_F (PXLogicTests, ProspectingBeforeMovement)

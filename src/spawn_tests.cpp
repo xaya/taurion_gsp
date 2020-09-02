@@ -124,17 +124,15 @@ protected:
    * other context from the test fixture).
    */
   HexCoord
-  SpawnLocation (const HexCoord& centre, const HexCoord::IntT radius,
-                 const Faction f)
+  SpawnLocation (const HexCoord& centre, const HexCoord::IntT radius)
   {
-    return ChooseSpawnLocation (centre, radius, f, rnd, dyn, ctx);
+    return ChooseSpawnLocation (centre, radius, rnd, dyn, ctx);
   }
 
 };
 
 TEST_F (SpawnLocationTests, SpawnLocation)
 {
-  constexpr Faction f = Faction::RED;
   constexpr HexCoord::IntT spawnRadius = 20;
   const HexCoord spawnCentre = HexCoord (42, -10);
 
@@ -151,7 +149,7 @@ TEST_F (SpawnLocationTests, SpawnLocation)
   unsigned foundInner = 0;
   for (unsigned i = 0; i < trials; ++i)
     {
-      const auto pos = SpawnLocation (spawnCentre, spawnRadius, f);
+      const auto pos = SpawnLocation (spawnCentre, spawnRadius);
       const auto dist = HexCoord::DistanceL1 (pos, spawnCentre);
 
       ASSERT_LE (dist, spawnRadius);
@@ -169,7 +167,6 @@ TEST_F (SpawnLocationTests, SpawnLocation)
 
 TEST_F (SpawnLocationTests, DynObstacles)
 {
-  const Faction f = Faction::RED;
   constexpr HexCoord::IntT spawnRadius = 20;
   const HexCoord spawnCentre = HexCoord (42, -10);
 
@@ -183,7 +180,7 @@ TEST_F (SpawnLocationTests, DynObstacles)
   std::unordered_set<HexCoord> positions;
   for (unsigned i = 0; i < vehicles; ++i)
     {
-      const auto pos = SpawnLocation (spawnCentre, spawnRadius, f);
+      const auto pos = SpawnLocation (spawnCentre, spawnRadius);
       ASSERT_TRUE (dyn.IsFree (pos));
       dyn.AddVehicle (pos, f);
 

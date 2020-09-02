@@ -65,6 +65,14 @@ class MovementTest (PXTest):
 
     return pos, None
 
+  def expectPosition (self, owner, expected):
+    """
+    Expects the position of the given character to be the given value.
+    """
+
+    pos, _ = self.getMovement (owner)
+    self.assertEqual (pos, expected)
+
   def expectMovement (self, owner, wp):
     """
     Expects that the given character moves along the set of waypoints
@@ -160,6 +168,7 @@ class MovementTest (PXTest):
 
     self.testChosenSpeed ()
     self.testBlockingBuilding ()
+    self.testConvoy ()
     self.testWaypointExtension ()
     self.testReorg ()
 
@@ -257,6 +266,88 @@ class MovementTest (PXTest):
     self.assertEqual (pos, {"x": 0, "y": 0})
     self.assertEqual (mv, None)
 
+  def testConvoy (self):
+    """
+    Tests movement of multiple characters in a "convoy", with semantics
+    after the unblock-spawns fork.
+    """
+
+    self.mainLogger.info ("Testing convoy movement...")
+
+    # Set up three test characters around a common centre, and then
+    # send them to move with the same path.  They will "collidate" on the
+    # initial step, but due to the slowdown on entering a coordinate with
+    # another vehicle on it, should just split out into a convoy over time.
+    self.createCharacters ("domob", 2)
+    self.generate (1)
+    self.moveCharactersTo ({
+      "domob": offsetCoord ({"x": 1, "y": -1}, self.offset, False),
+      "domob 2": offsetCoord ({"x": 1, "y": 0}, self.offset, False),
+      "domob 3": offsetCoord ({"x": 0, "y": 1}, self.offset, False),
+    })
+
+    wp = [{"x": 0, "y": 0}, {"x": -10, "y": 0}]
+    self.setWaypoints ("domob 3", wp, speed=1000)
+    self.setWaypoints ("domob 2", wp, speed=1000)
+    self.setWaypoints ("domob", wp, speed=1000)
+
+    self.generate (1)
+    self.expectPosition ("domob", {"x": 0, "y": 0})
+    self.expectPosition ("domob 2", {"x": 1, "y": 0})
+    self.expectPosition ("domob 3", {"x": 0, "y": 1})
+
+    self.generate (1)
+    self.expectPosition ("domob", {"x": -1, "y": 0})
+    self.expectPosition ("domob 2", {"x": 0, "y": 0})
+    self.expectPosition ("domob 3", {"x": 0, "y": 1})
+
+    self.generate (1)
+    self.expectPosition ("domob", {"x": -2, "y": 0})
+    self.expectPosition ("domob 2", {"x": -1, "y": 0})
+    self.expectPosition ("domob 3", {"x": 0, "y": 0})
+
+    self.generate (5)
+    self.expectPosition ("domob", {"x": -7, "y": 0})
+    self.expectPosition ("domob 2", {"x": -6, "y": 0})
+    self.expectPosition ("domob 3", {"x": -5, "y": 0})
+
+    # Let them move onto the target tile and collect up there together.
+    # Then move back off, which should again be as a convoy.
+    self.generate (20)
+    self.expectPosition ("domob", {"x": -10, "y": 0})
+    self.expectPosition ("domob 2", {"x": -10, "y": 0})
+    self.expectPosition ("domob 3", {"x": -10, "y": 0})
+
+    wp = [{"x": 0, "y": 0}]
+    self.setWaypoints ("domob 3", wp, speed=1000)
+    self.setWaypoints ("domob 2", wp, speed=1000)
+    self.setWaypoints ("domob", wp, speed=1000)
+
+    self.generate (1)
+    self.expectPosition ("domob", {"x": -9, "y": 0})
+    self.expectPosition ("domob 2", {"x": -10, "y": 0})
+    self.expectPosition ("domob 3", {"x": -10, "y": 0})
+
+    self.generate (1)
+    self.expectPosition ("domob", {"x": -8, "y": 0})
+    self.expectPosition ("domob 2", {"x": -9, "y": 0})
+    self.expectPosition ("domob 3", {"x": -10, "y": 0})
+
+    self.generate (1)
+    self.expectPosition ("domob", {"x": -7, "y": 0})
+    self.expectPosition ("domob 2", {"x": -8, "y": 0})
+    self.expectPosition ("domob 3", {"x": -9, "y": 0})
+
+    self.generate (7)
+    self.expectPosition ("domob", {"x": 0, "y": 0})
+    self.expectPosition ("domob 2", {"x": -1, "y": 0})
+    self.expectPosition ("domob 3", {"x": -2, "y": 0})
+
+    self.generate (20)
+    self.expectPosition ("domob", {"x": 0, "y": 0})
+    self.expectPosition ("domob 2", {"x": 0, "y": 0})
+    self.expectPosition ("domob 3", {"x": 0, "y": 0})
+
   def testWaypointExtension (self):
     """
     Tests how we can use waypoint extension to move a couple of units
@@ -267,7 +358,6 @@ class MovementTest (PXTest):
 
     # Set up three test characters and a shared initial waypoint.  The
     # characters need custom paths to go to the initial waypoint.
-    self.createCharacters ("domob", 2)
     self.generate (1)
     initialWp = self.offset
     self.moveCharactersTo ({
@@ -275,13 +365,14 @@ class MovementTest (PXTest):
       "domob 2": offsetCoord ({"x": 5, "y": 2}, initialWp, False),
       "domob 3": offsetCoord ({"x": -1, "y": 8}, initialWp, False),
     })
+    names = ["domob", "domob 2", "domob 3"]
 
     # Build up a single move that sends them to a target far away,
     # but sharing most of the path among them.
     target = offsetCoord ({"x": -1_234, "y": 570}, self.offset, False)
     ops = []
     ids = []
-    for nm in ["domob", "domob 2", "domob 3"]:
+    for nm in names:
       c = self.getCharacters ()[nm]
       ids.append (c.getId ())
       ops.append ({
@@ -289,7 +380,7 @@ class MovementTest (PXTest):
         "wp": c.findPath (initialWp),
       })
     path = self.rpc.game.findpath (source=initialWp, target=target,
-                                   faction="r", l1range=2_000, exbuildings=[])
+                                   faction="g", l1range=2_000, exbuildings=[])
     ops.append ({
       "id": ids,
       "wpx": path["encoded"],
@@ -297,14 +388,10 @@ class MovementTest (PXTest):
     self.sendMove ("domob", {"c": ops})
 
     # Let them move there and check the expected outcome (they arrive
-    # all there, just blocked up against each other).
+    # all there, stacking on top of each other).
     self.generate (500)
-    chars = self.getCharacters ()
-    self.assertEqual (chars["domob 2"].getPosition (), target)
-    self.assertEqual (chars["domob 3"].getPosition (),
-                      offsetCoord ({"x": 1, "y": -1}, target, False))
-    self.assertEqual (chars["domob"].getPosition (),
-                      offsetCoord ({"x": 2, "y": -2}, target, False))
+    for nm in names:
+      self.assertEqual (self.getCharacters ()[nm].getPosition (), target)
 
   def testReorg (self):
     """
@@ -326,7 +413,6 @@ class MovementTest (PXTest):
 
     self.rpc.xaya.reconsiderblock (self.reorgBlock)
     self.expectGameState (originalState)
-
 
 
 if __name__ == "__main__":

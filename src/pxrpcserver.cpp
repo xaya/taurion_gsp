@@ -252,7 +252,8 @@ NonStateRpcServer::setpathdata (const Json::Value& buildings,
 Json::Value
 NonStateRpcServer::findpath (const Json::Value& exbuildings,
                              const std::string& faction,
-                             const int l1range, const Json::Value& source,
+                             const int l1range,
+                             const Json::Value& source,
                              const Json::Value& target)
 {
   LOG (INFO)
@@ -314,10 +315,9 @@ NonStateRpcServer::findpath (const Json::Value& exbuildings,
   CHECK (dynCopy != nullptr);
 
   PathFinder finder(targetCoord);
-  const auto edges = [this, f, &dynCopy, &exBuildingIds] (const HexCoord& from,
-                                                          const HexCoord& to)
+  const auto edges = [&] (const HexCoord& from, const HexCoord& to)
     {
-      const auto base = MovementEdgeWeight (map, f, from, to);
+      auto base = MovementEdgeWeight (map, f, from, to);
       if (base == PathFinder::NO_CONNECTION)
         return PathFinder::NO_CONNECTION;
 
@@ -331,8 +331,8 @@ NonStateRpcServer::findpath (const Json::Value& exbuildings,
             return PathFinder::NO_CONNECTION;
         }
 
-      if (dynCopy->obstacles.HasVehicle (to, f))
-        return PathFinder::NO_CONNECTION;
+      if (dynCopy->obstacles.HasVehicle (to))
+        base *= MULTI_VEHICLE_SLOWDOWN;
 
       return base;
     };

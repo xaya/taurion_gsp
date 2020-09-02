@@ -76,7 +76,7 @@ RandomSpawnLocation (const HexCoord& centre, const HexCoord::IntT radius,
 
 HexCoord
 ChooseSpawnLocation (const HexCoord& centre, const HexCoord::IntT radius,
-                     const Faction f, xaya::Random& rnd,
+                     xaya::Random& rnd,
                      const DynObstacles& dyn, const Context& ctx)
 {
   const HexCoord ringCentre = RandomSpawnLocation (centre, radius, rnd);

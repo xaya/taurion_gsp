@@ -232,25 +232,35 @@ protected:
 TEST_F (MovementEdgeWeightTests, BaseEdgesPassedThrough)
 {
   const auto baseEdges = EdgesWithObstacle (42);
-  EXPECT_EQ (MovementEdgeWeight (baseEdges, dyn, Faction::RED,
+  EXPECT_EQ (MovementEdgeWeight (baseEdges, dyn,
                                  HexCoord (0, 0), HexCoord (1, 0)),
              42);
-  EXPECT_EQ (MovementEdgeWeight (baseEdges, dyn, Faction::RED,
+  EXPECT_EQ (MovementEdgeWeight (baseEdges, dyn,
                                  HexCoord (0, 0), HexCoord (-1, 0)),
              PathFinder::NO_CONNECTION);
 }
 
 TEST_F (MovementEdgeWeightTests, DynamicObstacle)
 {
-  const auto baseEdges = EdgeWeights (42);
+  BuildingsTable buildings(db);
+  auto b = buildings.CreateNew ("r rt", "domob", Faction::RED);
+  b->SetCentre (HexCoord (123, 0));
+  dyn.AddBuilding (*b);
+  b.reset ();
+
+  const auto baseEdges = EdgeWeights (10);
   dyn.AddVehicle (HexCoord (0, 0), Faction::RED);
 
-  EXPECT_EQ (MovementEdgeWeight (baseEdges, dyn, Faction::RED,
-                                 HexCoord (1, 0), HexCoord (0, 0)),
+  EXPECT_EQ (MovementEdgeWeight (baseEdges, dyn,
+                                 HexCoord (123, 1), HexCoord (123, 0)),
              PathFinder::NO_CONNECTION);
-  EXPECT_EQ (MovementEdgeWeight (baseEdges, dyn, Faction::GREEN,
+
+  EXPECT_EQ (MovementEdgeWeight (baseEdges, dyn,
                                  HexCoord (1, 0), HexCoord (0, 0)),
-             42);
+             80);
+  EXPECT_EQ (MovementEdgeWeight (baseEdges, dyn,
+                                 HexCoord (0, 0), HexCoord (1, 0)),
+             10);
 }
 
 TEST_F (MovementEdgeWeightTests, StarterZones)
@@ -634,14 +644,11 @@ TEST_F (AllMovementTests, OtherVehicles)
   const auto id1 = setupChar (Faction::RED, HexCoord (1, 0));
   const auto id2 = setupChar (Faction::RED, HexCoord (-1, 0));
   ASSERT_GT (id2, id1);
-  const auto id3 = setupChar (Faction::GREEN, HexCoord (0, 1));
-  ASSERT_GT (id3, id2);
 
   StepAll ();
 
   EXPECT_EQ (tbl.GetById (id1)->GetPosition (), HexCoord (0, 0));
   EXPECT_EQ (tbl.GetById (id2)->GetPosition (), HexCoord (-1, 0));
-  EXPECT_EQ (tbl.GetById (id3)->GetPosition (), HexCoord (0, 0));
 }
 
 /* ************************************************************************** */

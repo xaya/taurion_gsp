@@ -37,6 +37,12 @@ namespace pxd
 {
 
 /**
+ * Slowdown factor when entering a tile that has already other vehicles
+ * on it (after the "unblock spawns" fork).
+ */
+static constexpr PathFinder::DistanceT MULTI_VEHICLE_SLOWDOWN = 8;
+
+/**
  * Encodes a list of hex coordinates (waypoints) into a compressed string
  * that is used for moves.  Returns true on success, and false if it failed.
  * This may be the case e.g. when the final size is too large for our
@@ -115,7 +121,7 @@ using EdgeWeightFcn
  * and additionally excluding movement to locations where a dynamic obstacle is.
  */
 PathFinder::DistanceT MovementEdgeWeight (
-    const EdgeWeightFcn& baseEdges, const DynObstacles& dyn, Faction f,
+    const EdgeWeightFcn& baseEdges, const DynObstacles& dyn,
     const HexCoord& from, const HexCoord& to);
 
 /**

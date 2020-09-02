@@ -87,7 +87,7 @@ class SafeZonesTest (PXTest):
     self.mainLogger.info ("Testing combat...")
     self.moveCharactersTo ({
       "red": relativePos (0, 14),
-      "green": relativePos (0, 11),
+      "green": relativePos (1, 11),
     })
     self.setCharactersHP ({
       "red": {"ma": 100, "a": 100, "ms": 100, "s": 100},
