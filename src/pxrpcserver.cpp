@@ -19,6 +19,7 @@
 #include "pxrpcserver.hpp"
 
 #include "buildings.hpp"
+#include "forks.hpp"
 #include "jsonutils.hpp"
 #include "movement.hpp"
 #include "services.hpp"
@@ -249,7 +250,8 @@ NonStateRpcServer::setpathdata (const Json::Value& buildings,
 Json::Value
 NonStateRpcServer::findpath (const Json::Value& exbuildings,
                              const std::string& faction,
-                             const int l1range, const Json::Value& source,
+                             const int height, const int l1range,
+                             const Json::Value& source,
                              const Json::Value& target)
 {
   LOG (INFO)
@@ -257,6 +259,7 @@ NonStateRpcServer::findpath (const Json::Value& exbuildings,
       << "  l1range=" << l1range << ", faction=" << faction << "\n"
       << "  source=" << source << ",\n"
       << "  target=" << target << ",\n"
+      << "  height=" << height << ",\n"
       << "  exbuildings=" << exbuildings;
 
   HexCoord sourceCoord;
@@ -288,6 +291,9 @@ NonStateRpcServer::findpath (const Json::Value& exbuildings,
 
   const int maxInt = std::numeric_limits<HexCoord::IntT>::max ();
   CheckIntBounds ("l1range", l1range, 0, maxInt);
+  CheckIntBounds ("height", height, 0, maxInt);
+
+  const ForkHandler forks(chain, height);
 
   std::unordered_set<Database::IdT> exBuildingIds;
   CHECK (exbuildings.isArray ());
@@ -311,10 +317,9 @@ NonStateRpcServer::findpath (const Json::Value& exbuildings,
   CHECK (dynCopy != nullptr);
 
   PathFinder finder(targetCoord);
-  const auto edges = [this, f, &dynCopy, &exBuildingIds] (const HexCoord& from,
-                                                          const HexCoord& to)
+  const auto edges = [&] (const HexCoord& from, const HexCoord& to)
     {
-      const auto base = MovementEdgeWeight (map, f, from, to);
+      auto base = MovementEdgeWeight (map, f, from, to);
       if (base == PathFinder::NO_CONNECTION)
         return PathFinder::NO_CONNECTION;
 
@@ -328,8 +333,16 @@ NonStateRpcServer::findpath (const Json::Value& exbuildings,
             return PathFinder::NO_CONNECTION;
         }
 
-      if (dynCopy->obstacles.HasVehicle (to, f))
-        return PathFinder::NO_CONNECTION;
+      if (forks.IsActive (Fork::UnblockSpawns))
+        {
+          if (dynCopy->obstacles.HasVehicle (to))
+            base *= MULTI_VEHICLE_SLOWDOWN;
+        }
+      else
+        {
+          if (dynCopy->obstacles.HasVehicle (to, f))
+            return PathFinder::NO_CONNECTION;
+        }
 
       return base;
     };

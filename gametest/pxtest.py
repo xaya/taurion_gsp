@@ -130,10 +130,12 @@ class Character (object):
     target, and returns it as encoded string suitable for a "wp" move.
     """
 
+    nextHeight = self.test.rpc.xaya.getblockcount () + 1
     path = self.test.rpc.game.findpath (source=self.getPosition (),
                                         target=target,
                                         faction=self.data["faction"],
                                         l1range=1000,
+                                        height=nextHeight,
                                         exbuildings=[])
     return path["encoded"]
 

@@ -232,25 +232,48 @@ protected:
 TEST_F (MovementEdgeWeightTests, BaseEdgesPassedThrough)
 {
   const auto baseEdges = EdgesWithObstacle (42);
-  EXPECT_EQ (MovementEdgeWeight (baseEdges, dyn, Faction::RED,
+  EXPECT_EQ (MovementEdgeWeight (baseEdges, dyn, ctx, Faction::RED,
                                  HexCoord (0, 0), HexCoord (1, 0)),
              42);
-  EXPECT_EQ (MovementEdgeWeight (baseEdges, dyn, Faction::RED,
+  EXPECT_EQ (MovementEdgeWeight (baseEdges, dyn, ctx, Faction::RED,
                                  HexCoord (0, 0), HexCoord (-1, 0)),
              PathFinder::NO_CONNECTION);
 }
 
 TEST_F (MovementEdgeWeightTests, DynamicObstacle)
 {
-  const auto baseEdges = EdgeWeights (42);
+  BuildingsTable buildings(db);
+  auto b = buildings.CreateNew ("r rt", "domob", Faction::RED);
+  b->SetCentre (HexCoord (123, 0));
+  dyn.AddBuilding (*b);
+  b.reset ();
+
+  const auto baseEdges = EdgeWeights (10);
   dyn.AddVehicle (HexCoord (0, 0), Faction::RED);
 
-  EXPECT_EQ (MovementEdgeWeight (baseEdges, dyn, Faction::RED,
+  EXPECT_EQ (MovementEdgeWeight (baseEdges, dyn, ctx, Faction::BLUE,
+                                 HexCoord (123, 1), HexCoord (123, 0)),
+             PathFinder::NO_CONNECTION);
+
+  ASSERT_FALSE (ctx.Forks ().IsActive (Fork::UnblockSpawns));
+  EXPECT_EQ (MovementEdgeWeight (baseEdges, dyn, ctx, Faction::RED,
                                  HexCoord (1, 0), HexCoord (0, 0)),
              PathFinder::NO_CONNECTION);
-  EXPECT_EQ (MovementEdgeWeight (baseEdges, dyn, Faction::GREEN,
+  EXPECT_EQ (MovementEdgeWeight (baseEdges, dyn, ctx, Faction::GREEN,
                                  HexCoord (1, 0), HexCoord (0, 0)),
-             42);
+             10);
+
+  ctx.SetHeight (500);
+  ASSERT_TRUE (ctx.Forks ().IsActive (Fork::UnblockSpawns));
+  EXPECT_EQ (MovementEdgeWeight (baseEdges, dyn, ctx, Faction::RED,
+                                 HexCoord (1, 0), HexCoord (0, 0)),
+             80);
+  EXPECT_EQ (MovementEdgeWeight (baseEdges, dyn, ctx, Faction::GREEN,
+                                 HexCoord (1, 0), HexCoord (0, 0)),
+             80);
+  EXPECT_EQ (MovementEdgeWeight (baseEdges, dyn, ctx, Faction::GREEN,
+                                 HexCoord (0, 0), HexCoord (1, 0)),
+             10);
 }
 
 TEST_F (MovementEdgeWeightTests, StarterZones)

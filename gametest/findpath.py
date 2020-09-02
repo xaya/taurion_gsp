@@ -55,10 +55,11 @@ class AsyncFindPath (threading.Thread):
 
 class FindPathTest (PXTest):
 
-  def call (self, source, target, l1range, faction="r", exbuildings=[]):
+  def call (self, source, target, l1range,
+            faction="r", exbuildings=[], height=0):
     return self.rpc.game.findpath (source=source, target=target,
                                    faction=faction, l1range=l1range,
-                                   exbuildings=exbuildings)
+                                   exbuildings=exbuildings, height=height)
 
   def strip (self, val):
     """
@@ -242,6 +243,7 @@ class FindPathTest (PXTest):
       "l1range": 8000,
     }
 
+    moreArgs["height"] = 0
     self.assertEqual (self.call (target={"x": 20, "y": 0}, **moreArgs)["dist"],
                       20000)
     self.assertEqual (self.call (target={"x": 0, "y": 20}, **moreArgs)["dist"],
@@ -249,6 +251,16 @@ class FindPathTest (PXTest):
     self.expectError (1, "no connection",
                       self.call,
                       target={"x": 0, "y": 10}, **moreArgs)
+
+    moreArgs["height"] = 500
+    self.assertEqual (self.call (target={"x": 20, "y": 0}, **moreArgs)["dist"],
+                      21000)
+    self.assertEqual (self.call (target={"x": 0, "y": 20}, **moreArgs)["dist"],
+                      21000)
+    self.assertEqual (self.call (target={"x": 10, "y": 0}, **moreArgs)["dist"],
+                      17000)
+    self.assertEqual (self.call (target={"x": 0, "y": 10}, **moreArgs)["dist"],
+                      17000)
 
   def testWithBuildingData (self):
     self.mainLogger.info ("Testing with building data...")
@@ -264,6 +276,7 @@ class FindPathTest (PXTest):
       "faction": "r",
       "l1range": 8000,
       "exbuildings": [],
+      "height": 0,
     }
     before = time.clock_gettime (time.CLOCK_MONOTONIC)
     path = self.call (**kwargs)
