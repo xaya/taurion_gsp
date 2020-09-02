@@ -184,7 +184,8 @@ TEST_F (SpawnLocationTests, DynObstacles)
   for (unsigned i = 0; i < vehicles; ++i)
     {
       const auto pos = SpawnLocation (spawnCentre, spawnRadius, f);
-      ASSERT_TRUE (dyn.AddVehicle (pos, f));
+      ASSERT_TRUE (dyn.IsFree (pos));
+      dyn.AddVehicle (pos, f);
 
       const unsigned dist = HexCoord::DistanceL1 (pos, spawnCentre);
       if (dist > spawnRadius)
