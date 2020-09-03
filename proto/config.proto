@@ -462,7 +462,7 @@ message SafeZone
 /* ************************************************************************** */
 
 /**
- * Definition of a spawn area.
+ * Definition of a spawn area / location.
  */
 message SpawnArea
 {
@@ -472,6 +472,12 @@ message SpawnArea
 
   /** The L1 radius around the centre.  */
   optional uint32 radius = 2;
+
+  /**
+   * The building ID into which new characters are spawned after the
+   * UnblockSpawns fork.
+   */
+  optional uint64 building_id = 3;
 
 }
 

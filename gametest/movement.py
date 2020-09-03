@@ -25,7 +25,7 @@ from pxtest import PXTest, offsetCoord
 
 class MovementTest (PXTest):
 
-  def setWaypoints (self, owner, wp):
+  def setWaypoints (self, owner, wp, speed=None):
     """
     Sends a move to update the waypoints of the character with the given owner.
     """
@@ -35,7 +35,11 @@ class MovementTest (PXTest):
 
     encoded = self.rpc.game.encodewaypoints (wp=offset)
 
-    return c.sendMove ({"wp": encoded})
+    mv = {"wp": encoded}
+    if speed:
+      mv["speed"] = speed
+
+    return c.sendMove (mv)
 
   def moveTowards (self, owner, target):
     """
@@ -60,6 +64,14 @@ class MovementTest (PXTest):
       return pos, c.data["movement"]
 
     return pos, None
+
+  def expectPosition (self, owner, expected):
+    """
+    Expects the position of the given character to be the given value.
+    """
+
+    pos, _ = self.getMovement (owner)
+    self.assertEqual (pos, expected)
 
   def expectMovement (self, owner, wp):
     """
@@ -155,7 +167,8 @@ class MovementTest (PXTest):
     assert mv is None
 
     self.testChosenSpeed ()
-    self.testBlockingVehicle ()
+    self.testBlockingBuilding ()
+    self.testConvoy ()
     self.testReorg ()
 
   def testChosenSpeed (self):
@@ -166,10 +179,7 @@ class MovementTest (PXTest):
     })
 
     # Move the character with reduced speed.
-    c = self.getCharacters ()["domob"]
-    wp = [offsetCoord ({"x": 100, "y": 0}, self.offset, False)]
-    encoded = self.rpc.game.encodewaypoints (wp=wp)
-    c.sendMove ({"wp": encoded, "speed": 1000})
+    self.setWaypoints ("domob", [{"x": 100, "y": 0}], speed=1000)
     self.generate (10)
     pos, mv = self.getMovement ("domob")
     self.assertEqual (pos, {"x": 10, "y": 0})
@@ -177,8 +187,7 @@ class MovementTest (PXTest):
 
     # Adjust the speed to be higher than the natural speed of 2'000,
     # and expect movement with the natural speed.
-    c = self.getCharacters ()["domob"]
-    c.sendMove ({"speed": 10000})
+    self.getCharacters ()["domob"].sendMove ({"speed": 10000})
     self.generate (10)
     pos, mv = self.getMovement ("domob")
     self.assertEqual (pos, {"x": 40, "y": 0})
@@ -186,8 +195,7 @@ class MovementTest (PXTest):
 
     # Sending another movement in-between without speed will revert it to
     # the default one.
-    c = self.getCharacters ()["domob"]
-    c.sendMove ({"wp": encoded, "speed": 1000})
+    self.setWaypoints ("domob", [{"x": 100, "y": 0}], speed=1000)
     self.generate (10)
     pos, _ = self.getMovement ("domob")
     self.assertEqual (pos, {"x": 50, "y": 0})
@@ -199,8 +207,7 @@ class MovementTest (PXTest):
 
     # Letting the movement finish and then sending a new movement will also
     # revert to intrinsic speed.
-    c = self.getCharacters ()["domob"]
-    c.sendMove ({"wp": encoded, "speed": 1000})
+    self.setWaypoints ("domob", [{"x": 100, "y": 0}], speed=1000)
     self.generate (10)
     pos, _ = self.getMovement ("domob")
     self.assertEqual (pos, {"x": 30, "y": 0})
@@ -217,45 +224,31 @@ class MovementTest (PXTest):
     self.setWaypoints ("domob", [])
     self.generate (1)
 
-  def testBlockingVehicle (self):
+  def testBlockingBuilding (self):
     """
-    Tests how another vehicle can block the movement when it is placed
-    into the path during the "stepping" phase.
+    Tests how a new building can block the movement when it is placed
+    into the path.
     """
 
     self.mainLogger.info ("Testing blocking the path...")
 
-    self.initAccount ("blocker", "g")
-    self.createCharacters ("blocker")
-    self.generate (1)
-
     self.moveCharactersTo ({
-      "domob": offsetCoord ({"x": 70, "y": 0}, self.offset, False),
-      "blocker": offsetCoord ({"x": 50, "y": 1}, self.offset, False),
+      "domob": offsetCoord ({"x": 50, "y": 0}, self.offset, False),
     })
+    self.build ("huesli", None,
+                offsetCoord ({"x": 30, "y": 0}, self.offset, False),
+                rot=0)
 
     # Set waypoints across a blocked path.
     self.setWaypoints ("domob", [{"x": 0, "y": 0}])
-    self.setWaypoints ("blocker", [{"x": 50, "y": 0}])
     self.generate (10)
 
     # The character should be blocked by the obstacle.
     pos, mv = self.getMovement ("domob")
-    self.assertEqual (pos, {"x": 51, "y": 0})
+    self.assertEqual (pos, {"x": 31, "y": 0})
     assert mv["blockedturns"] > 0
 
-    # Move the obstacle away and let the character continue moving.
-    self.setWaypoints ("blocker", [{"x": 50, "y": 1}])
-    self.generate (5)
-    pos, mv = self.getMovement ("domob")
-    assert pos["x"] < 50
-    assert pos["x"] > 30
-    assert "blockedturns" not in mv
-
-    # Block the path again and let movement stop completely.
-    self.moveCharactersTo ({
-      "blocker": offsetCoord ({"x": 30, "y": 0}, self.offset, False),
-    })
+    # Let movement stop completely.
     self.generate (10 + self.roConfig ().params.blocked_step_retries)
     pos, mv = self.getMovement ("domob")
     self.assertEqual (pos, {"x": 31, "y": 0})
@@ -271,6 +264,91 @@ class MovementTest (PXTest):
     pos, mv = self.getMovement ("domob")
     self.assertEqual (pos, {"x": 0, "y": 0})
     self.assertEqual (mv, None)
+
+  def testConvoy (self):
+    """
+    Tests movement of multiple characters in a "convoy", with semantics
+    after the unblock-spawns fork.
+    """
+
+    self.mainLogger.info ("Testing convoy movement...")
+
+    # We should already be beyond the fork height, but check that.
+    assert self.rpc.xaya.getblockcount () > 500
+
+    # Set up three test characters around a common centre, and then
+    # send them to move with the same path.  They will "collidate" on the
+    # initial step, but due to the slowdown on entering a coordinate with
+    # another vehicle on it, should just split out into a convoy over time.
+    self.createCharacters ("domob", 2)
+    self.generate (1)
+    self.moveCharactersTo ({
+      "domob": offsetCoord ({"x": 1, "y": -1}, self.offset, False),
+      "domob 2": offsetCoord ({"x": 1, "y": 0}, self.offset, False),
+      "domob 3": offsetCoord ({"x": 0, "y": 1}, self.offset, False),
+    })
+
+    wp = [{"x": 0, "y": 0}, {"x": -10, "y": 0}]
+    self.setWaypoints ("domob 3", wp, speed=1000)
+    self.setWaypoints ("domob 2", wp, speed=1000)
+    self.setWaypoints ("domob", wp, speed=1000)
+
+    self.generate (1)
+    self.expectPosition ("domob", {"x": 0, "y": 0})
+    self.expectPosition ("domob 2", {"x": 1, "y": 0})
+    self.expectPosition ("domob 3", {"x": 0, "y": 1})
+
+    self.generate (1)
+    self.expectPosition ("domob", {"x": -1, "y": 0})
+    self.expectPosition ("domob 2", {"x": 0, "y": 0})
+    self.expectPosition ("domob 3", {"x": 0, "y": 1})
+
+    self.generate (1)
+    self.expectPosition ("domob", {"x": -2, "y": 0})
+    self.expectPosition ("domob 2", {"x": -1, "y": 0})
+    self.expectPosition ("domob 3", {"x": 0, "y": 0})
+
+    self.generate (5)
+    self.expectPosition ("domob", {"x": -7, "y": 0})
+    self.expectPosition ("domob 2", {"x": -6, "y": 0})
+    self.expectPosition ("domob 3", {"x": -5, "y": 0})
+
+    # Let them move onto the target tile and collect up there together.
+    # Then move back off, which should again be as a convoy.
+    self.generate (20)
+    self.expectPosition ("domob", {"x": -10, "y": 0})
+    self.expectPosition ("domob 2", {"x": -10, "y": 0})
+    self.expectPosition ("domob 3", {"x": -10, "y": 0})
+
+    wp = [{"x": 0, "y": 0}]
+    self.setWaypoints ("domob 3", wp, speed=1000)
+    self.setWaypoints ("domob 2", wp, speed=1000)
+    self.setWaypoints ("domob", wp, speed=1000)
+
+    self.generate (1)
+    self.expectPosition ("domob", {"x": -9, "y": 0})
+    self.expectPosition ("domob 2", {"x": -10, "y": 0})
+    self.expectPosition ("domob 3", {"x": -10, "y": 0})
+
+    self.generate (1)
+    self.expectPosition ("domob", {"x": -8, "y": 0})
+    self.expectPosition ("domob 2", {"x": -9, "y": 0})
+    self.expectPosition ("domob 3", {"x": -10, "y": 0})
+
+    self.generate (1)
+    self.expectPosition ("domob", {"x": -7, "y": 0})
+    self.expectPosition ("domob 2", {"x": -8, "y": 0})
+    self.expectPosition ("domob 3", {"x": -9, "y": 0})
+
+    self.generate (7)
+    self.expectPosition ("domob", {"x": 0, "y": 0})
+    self.expectPosition ("domob 2", {"x": -1, "y": 0})
+    self.expectPosition ("domob 3", {"x": -2, "y": 0})
+
+    self.generate (20)
+    self.expectPosition ("domob", {"x": 0, "y": 0})
+    self.expectPosition ("domob 2", {"x": 0, "y": 0})
+    self.expectPosition ("domob 3", {"x": 0, "y": 0})
 
   def testReorg (self):
     """

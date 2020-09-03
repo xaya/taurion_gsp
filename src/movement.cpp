@@ -127,7 +127,7 @@ namespace
 template <typename Fcn>
   inline PathFinder::DistanceT
   FullMovementEdgeWeight (const Fcn& baseEdges, const DynObstacles& dyn,
-                          const Faction f,
+                          const Context& ctx, const Faction f,
                           const HexCoord& from, const HexCoord& to)
 {
   /* With dynamic obstacles, we do not handle the situation well if from and
@@ -135,10 +135,23 @@ template <typename Fcn>
      seen as obstacle (which it should not).  */
   CHECK_NE (from, to);
 
-  const auto res = baseEdges (from, to);
-
-  if (res == PathFinder::NO_CONNECTION || !dyn.IsPassable (to, f))
+  auto res = baseEdges (from, to);
+  if (res == PathFinder::NO_CONNECTION)
     return PathFinder::NO_CONNECTION;
+
+  if (dyn.IsBuilding (to))
+    return PathFinder::NO_CONNECTION;
+
+  if (ctx.Forks ().IsActive (Fork::UnblockSpawns))
+    {
+      if (dyn.HasVehicle (to))
+        res *= MULTI_VEHICLE_SLOWDOWN;
+    }
+  else
+    {
+      if (dyn.HasVehicle (to, f))
+        return PathFinder::NO_CONNECTION;
+    }
 
   return res;
 }
@@ -333,7 +346,7 @@ ProcessAllMovement (Database& db, DynObstacles& dyn, const Context& ctx)
                                                       const HexCoord& to)
         {
 
-          return FullMovementEdgeWeight (baseEdges, dyn, f, from, to);
+          return FullMovementEdgeWeight (baseEdges, dyn, ctx, f, from, to);
         };
 
       CharacterMovement (*c, ctx, edges);
@@ -356,7 +369,7 @@ MoveInDynObstacles::~MoveInDynObstacles ()
       << "Adding back character " << character.GetId ()
       << " at position " << character.GetPosition ()
       << " to the dynamic obstacle map...";
-  CHECK (dyn.AddVehicle (character.GetPosition (), character.GetFaction ()));
+  dyn.AddVehicle (character.GetPosition (), character.GetFaction ());
 }
 
 namespace test
@@ -364,10 +377,10 @@ namespace test
 
 PathFinder::DistanceT
 MovementEdgeWeight (const EdgeWeightFcn& baseEdges, const DynObstacles& dyn,
-                    const Faction f,
+                    const Context& ctx, const Faction f,
                     const HexCoord& from, const HexCoord& to)
 {
-  return FullMovementEdgeWeight (baseEdges, dyn, f, from, to);
+  return FullMovementEdgeWeight (baseEdges, dyn, ctx, f, from, to);
 }
 
 void

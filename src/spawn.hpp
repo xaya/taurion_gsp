@@ -34,19 +34,18 @@ namespace pxd
 {
 
 /**
- * Chooses the actual spawn location for a new character of the given faction.
+ * Chooses a location for spawning a of the given faction.
  * This places them randomly within the given radius around the centre,
- * displacing them as needed to find an accessible spot.  This function is
- * also used for leaving buildings.
+ * displacing them as needed to find an accessible spot.
+ * This is used for leaving buildings.
  */
 HexCoord ChooseSpawnLocation (const HexCoord& centre, HexCoord::IntT radius,
                               const Faction f, xaya::Random& rnd,
-                              const DynObstacles& dyn, const BaseMap& map);
+                              const DynObstacles& dyn, const Context& ctx);
 
 /**
- * Spawns a new character on the map.  This takes care of initialising the
- * character accordingly (including determining the exact spawn position)
- * and updating the database as needed.
+ * Spawns a new character in the world.  This takes care of initialising the
+ * character accordingly and updating the database as needed.
  *
  * This function returns a handle to the newly created character.
  */

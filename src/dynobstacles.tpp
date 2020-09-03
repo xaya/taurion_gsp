@@ -23,7 +23,7 @@
 namespace pxd
 {
 
-inline DynTiles<bool>&
+inline SparseTileMap<unsigned>&
 DynObstacles::FactionVehicles (const Faction f)
 {
   switch (f)
@@ -40,34 +40,43 @@ DynObstacles::FactionVehicles (const Faction f)
 }
 
 inline bool
-DynObstacles::IsPassable (const HexCoord& c, const Faction f) const
+DynObstacles::IsBuilding (const HexCoord& c) const
 {
-  return !buildings.Get (c) && !FactionVehicles (f).Get (c);
+  return buildings.Get (c);
+}
+
+inline bool
+DynObstacles::HasVehicle (const HexCoord& c, const Faction f) const
+{
+  return FactionVehicles (f).Get (c) > 0;
+}
+
+inline bool
+DynObstacles::HasVehicle (const HexCoord& c) const
+{
+  return red.Get (c) > 0 || green.Get (c) > 0 || blue.Get (c) > 0;
 }
 
 inline bool
 DynObstacles::IsFree (const HexCoord& c) const
 {
-  return !buildings.Get (c) && !red.Get (c) && !green.Get (c) && !blue.Get (c);
+  return !buildings.Get (c) && !HasVehicle (c);
 }
 
-inline bool
+inline void
 DynObstacles::AddVehicle (const HexCoord& c, const Faction f)
 {
-  auto ref = FactionVehicles (f).Access (c);
-  if (ref)
-    return false;
-
-  ref = true;
-  return true;
+  auto& fv = FactionVehicles (f);
+  fv.Set (c, fv.Get (c) + 1);
 }
 
 inline void
 DynObstacles::RemoveVehicle (const HexCoord& c, const Faction f)
 {
-  auto ref = FactionVehicles (f).Access (c);
-  CHECK (ref);
-  ref = false;
+  auto& fv = FactionVehicles (f);
+  const auto cnt = fv.Get (c);
+  CHECK_GT (cnt, 0);
+  fv.Set (c, cnt - 1);
 }
 
 } // namespace pxd

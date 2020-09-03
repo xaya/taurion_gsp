@@ -338,7 +338,7 @@ TEST_F (ProcessEnterBuildingsTests, EnteringEffects)
   c.reset ();
 
   DynObstacles dyn(db, ctx);
-  ASSERT_FALSE (dyn.IsPassable (HexCoord (5, 0), Faction::RED));
+  ASSERT_TRUE (dyn.HasVehicle (HexCoord (5, 0), Faction::RED));
 
   ProcessEnter (dyn);
 
@@ -349,7 +349,7 @@ TEST_F (ProcessEnterBuildingsTests, EnteringEffects)
   EXPECT_FALSE (c->HasTarget ());
   EXPECT_FALSE (c->GetProto ().has_movement ());
   EXPECT_FALSE (c->GetProto ().mining ().active ());
-  EXPECT_TRUE (dyn.IsPassable (HexCoord (5, 0), Faction::RED));
+  EXPECT_FALSE (dyn.HasVehicle (HexCoord (5, 0), Faction::RED));
 }
 
 TEST_F (ProcessEnterBuildingsTests, MultipleCharacters)
@@ -439,13 +439,15 @@ TEST_F (LeaveBuildingTests, Basic)
   DynObstacles dyn(db, ctx);
   const auto pos = Leave (dyn);
   EXPECT_TRUE (ctx.Map ().IsPassable (pos));
-  EXPECT_TRUE (originalDyn.IsPassable (pos, Faction::RED));
-  EXPECT_FALSE (dyn.IsPassable (pos, Faction::RED));
+  EXPECT_FALSE (originalDyn.HasVehicle (pos, Faction::RED));
+  EXPECT_TRUE (dyn.HasVehicle (pos, Faction::RED));
   EXPECT_LE (HexCoord::DistanceL1 (pos, centre), radius);
 }
 
-TEST_F (LeaveBuildingTests, WhenAllBlocked)
+TEST_F (LeaveBuildingTests, WhenAllBlockedPreFork)
 {
+  ASSERT_FALSE (ctx.Forks ().IsActive (Fork::UnblockSpawns));
+
   for (HexCoord::IntT r = 0; r <= radius; ++r)
     for (const auto& c : L1Ring (centre, r))
       characters.CreateNew ("domob", Faction::RED)->SetPosition (c);
@@ -453,7 +455,38 @@ TEST_F (LeaveBuildingTests, WhenAllBlocked)
 
   const auto pos = Leave ();
   EXPECT_TRUE (ctx.Map ().IsPassable (pos));
-  EXPECT_TRUE (originalDyn.IsPassable (pos, Faction::RED));
+  EXPECT_FALSE (originalDyn.HasVehicle (pos, Faction::RED));
+  EXPECT_GT (HexCoord::DistanceL1 (pos, centre), radius);
+}
+
+TEST_F (LeaveBuildingTests, BlockedByOtherFactionPreFork)
+{
+  ASSERT_FALSE (ctx.Forks ().IsActive (Fork::UnblockSpawns));
+
+  for (HexCoord::IntT r = 0; r <= radius; ++r)
+    for (const auto& c : L1Ring (centre, r))
+      characters.CreateNew ("domob", Faction::GREEN)->SetPosition (c);
+  DynObstacles originalDyn(db, ctx);
+
+  const auto pos = Leave ();
+  EXPECT_TRUE (ctx.Map ().IsPassable (pos));
+  EXPECT_FALSE (originalDyn.IsFree (pos));
+  EXPECT_LE (HexCoord::DistanceL1 (pos, centre), radius);
+}
+
+TEST_F (LeaveBuildingTests, WhenAllBlockedPostFork)
+{
+  ctx.SetHeight (500);
+  ASSERT_TRUE (ctx.Forks ().IsActive (Fork::UnblockSpawns));
+
+  for (HexCoord::IntT r = 0; r <= radius; ++r)
+    for (const auto& c : L1Ring (centre, r))
+      characters.CreateNew ("domob", Faction::GREEN)->SetPosition (c);
+  DynObstacles originalDyn(db, ctx);
+
+  const auto pos = Leave ();
+  EXPECT_TRUE (ctx.Map ().IsPassable (pos));
+  EXPECT_TRUE (originalDyn.IsFree (pos));
   EXPECT_GT (HexCoord::DistanceL1 (pos, centre), radius);
 }
 

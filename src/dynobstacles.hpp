@@ -26,7 +26,7 @@
 #include "database/faction.hpp"
 #include "hexagonal/coord.hpp"
 #include "mapdata/basemap.hpp"
-#include "mapdata/dyntiles.hpp"
+#include "mapdata/sparsemap.hpp"
 #include "proto/building.pb.h"
 
 namespace pxd
@@ -47,11 +47,11 @@ private:
   const xaya::Chain chain;
 
   /** Vehicles of the red faction on the map.  */
-  DynTiles<bool> red;
+  SparseTileMap<unsigned> red;
   /** Vehicles of the green faction on the map.  */
-  DynTiles<bool> green;
+  SparseTileMap<unsigned> green;
   /** Vehicles of the blue faction on the map.  */
-  DynTiles<bool> blue;
+  SparseTileMap<unsigned> blue;
 
   /** Buildings in general.  */
   DynTiles<bool> buildings;
@@ -59,9 +59,9 @@ private:
   /**
    * Returns the obstacle map responsible for the given faction.
    */
-  DynTiles<bool>& FactionVehicles (Faction f);
+  SparseTileMap<unsigned>& FactionVehicles (Faction f);
 
-  const DynTiles<bool>&
+  const SparseTileMap<unsigned>&
   FactionVehicles (const Faction f) const
   {
     return const_cast<DynObstacles*> (this)->FactionVehicles (f);
@@ -86,10 +86,19 @@ public:
   void operator= (const DynObstacles&) = delete;
 
   /**
-   * Checks whether the given tile is passable to a vehicle of the given
-   * faction.  This must only be called for tiles on the map.
+   * Checks if the given tile is blocked by a building.
    */
-  bool IsPassable (const HexCoord& c, Faction f) const;
+  bool IsBuilding (const HexCoord& c) const;
+
+  /**
+   * Checks if the given tile has a vehicle of the given faction.
+   */
+  bool HasVehicle (const HexCoord& c, Faction f) const;
+
+  /**
+   * Checks if the given tile has any vehicle.
+   */
+  bool HasVehicle (const HexCoord& c) const;
 
   /**
    * Checks whether the given tile is entirely free (which is needed to
@@ -98,10 +107,9 @@ public:
   bool IsFree (const HexCoord& c) const;
 
   /**
-   * Adds a new vehicle with the given faction and position.  Returns false
-   * if it failed (e.g. because there is already something there on the map).
+   * Adds a new vehicle with the given faction and position.
    */
-  bool AddVehicle (const HexCoord& c, Faction f);
+  void AddVehicle (const HexCoord& c, Faction f);
 
   /**
    * Removes a vehicle from the given position.

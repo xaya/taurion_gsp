@@ -151,7 +151,7 @@ public:
   bool setpathdata (const Json::Value& buildings,
                     const Json::Value& characters) override;
   Json::Value findpath (const Json::Value& exbuildings,
-                        const std::string& faction,
+                        const std::string& faction, int height,
                         int l1range, const Json::Value& source,
                         const Json::Value& target) override;
   std::string encodewaypoints (const Json::Value& wp) override;
@@ -221,10 +221,11 @@ public:
 
   Json::Value
   findpath (const Json::Value& exbuildings, const std::string& faction,
-            int l1range, const Json::Value& source,
+            const int height, const int l1range, const Json::Value& source,
             const Json::Value& target) override
   {
-    return nonstate.findpath (exbuildings, faction, l1range, source, target);
+    return nonstate.findpath (exbuildings, faction, height, l1range,
+                              source, target);
   }
 
   std::string

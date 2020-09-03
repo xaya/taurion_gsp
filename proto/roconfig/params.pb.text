@@ -31,6 +31,7 @@ params:
           {
             centre: { x: 1960 y: -2601 }
             radius: 50
+            building_id: 6
           }
       }
     spawn_areas:
@@ -40,6 +41,7 @@ params:
           {
             centre: { x: -3472 y: 1824 }
             radius: 50
+            building_id: 4
           }
       }
     spawn_areas:
@@ -49,6 +51,7 @@ params:
           {
             centre: { x: 547 y: 2497 }
             radius: 50
+            building_id: 5
           }
       }
 

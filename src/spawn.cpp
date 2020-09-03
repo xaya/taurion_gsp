@@ -77,7 +77,7 @@ RandomSpawnLocation (const HexCoord& centre, const HexCoord::IntT radius,
 HexCoord
 ChooseSpawnLocation (const HexCoord& centre, const HexCoord::IntT radius,
                      const Faction f, xaya::Random& rnd,
-                     const DynObstacles& dyn, const BaseMap& map)
+                     const DynObstacles& dyn, const Context& ctx)
 {
   const HexCoord ringCentre = RandomSpawnLocation (centre, radius, rnd);
 
@@ -90,12 +90,32 @@ ChooseSpawnLocation (const HexCoord& centre, const HexCoord::IntT radius,
       bool foundOnMap = false;
       for (const auto& pos : ring)
         {
-          if (!map.IsOnMap (pos))
+          if (!ctx.Map ().IsOnMap (pos))
             continue;
           foundOnMap = true;
 
-          if (map.IsPassable (pos) && dyn.IsPassable (pos, f))
-            return pos;
+          if (!ctx.Map ().IsPassable (pos))
+            continue;
+
+          /* Even though the "unblock spawn" fork makes other vehicles
+             in principle passable, we want to avoid them when spawning
+             and just look for other places instead.  The difference to the
+             pre-fork behaviour is that we now avoid all factions, not just
+             the own.  */
+          if (ctx.Forks ().IsActive (Fork::UnblockSpawns))
+            {
+              if (!dyn.IsFree (pos))
+                continue;
+            }
+          else
+            {
+              if (dyn.IsBuilding (pos))
+                continue;
+              if (dyn.HasVehicle (pos, f))
+                continue;
+            }
+
+          return pos;
         }
 
       /* If no coordinate on the current ring was even on the map, then we
@@ -115,15 +135,7 @@ SpawnCharacter (const std::string& owner, const Faction f,
       << "Spawning new character for " << owner
       << " in faction " << FactionToString (f) << "...";
 
-  const auto& spawn
-      = ctx.RoConfig ()->params ().spawn_areas ().at (FactionToString (f));
-  const HexCoord pos
-      = ChooseSpawnLocation (CoordFromProto (spawn.centre ()), spawn.radius (),
-                             f, rnd, dyn, ctx.Map ());
-
   auto c = tbl.CreateNew (owner, f);
-  c->SetPosition (pos);
-  CHECK (dyn.AddVehicle (pos, f));
 
   switch (f)
     {
@@ -145,6 +157,21 @@ SpawnCharacter (const std::string& owner, const Faction f,
   c->MutableProto ().add_fitments ("lf gun");
 
   DeriveCharacterStats (*c, ctx);
+
+  const auto& spawn
+      = ctx.RoConfig ()->params ().spawn_areas ().at (FactionToString (f));
+
+  if (ctx.Forks ().IsActive (Fork::UnblockSpawns))
+    c->SetBuildingId (spawn.building_id ());
+  else
+    {
+      const HexCoord pos
+          = ChooseSpawnLocation (CoordFromProto (spawn.centre ()),
+                                 spawn.radius (),
+                                 f, rnd, dyn, ctx);
+      c->SetPosition (pos);
+      dyn.AddVehicle (pos, f);
+    }
 
   return c;
 }
