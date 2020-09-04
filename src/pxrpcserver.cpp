@@ -89,8 +89,8 @@ ReturnError (const ErrorCode code, const std::string& msg)
  * returns an INVALID_ARGUMENT error.  Both bounds are inclusive.
  */
 void
-CheckIntBounds (const std::string& name, const int value,
-                const int min, const int max)
+CheckIntBounds (const std::string& name, const int64_t value,
+                const int64_t min, const int64_t max)
 {
   if (value >= min && value <= max)
     return;
@@ -289,9 +289,10 @@ NonStateRpcServer::findpath (const Json::Value& exbuildings,
       break;
     }
 
-  const int maxInt = std::numeric_limits<HexCoord::IntT>::max ();
-  CheckIntBounds ("l1range", l1range, 0, maxInt);
-  CheckIntBounds ("height", height, 0, maxInt);
+  CheckIntBounds ("l1range", l1range, 0,
+                  std::numeric_limits<HexCoord::IntT>::max ());
+  CheckIntBounds ("height", height, 0,
+                  std::numeric_limits<unsigned>::max ());
 
   const ForkHandler forks(chain, height);
 
