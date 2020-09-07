@@ -1,5 +1,6 @@
 noinst_LTLIBRARIES = libtaurion.la
 bin_PROGRAMS = tauriond
+dist_noinst_SCRIPTS = update-version.sh
 
 EXTRA_DIST = \
   rpc-stubs/nonstate.json \
@@ -8,8 +9,10 @@ EXTRA_DIST = \
 RPC_STUBS = \
   rpc-stubs/nonstaterpcserverstub.h \
   rpc-stubs/pxrpcserverstub.h
-BUILT_SOURCES = $(RPC_STUBS)
+BUILT_SOURCES = $(RPC_STUBS) version.cpp
 CLEANFILES = $(RPC_STUBS)
+
+.PHONY: getversion
 
 libtaurion_la_CXXFLAGS = \
   -I$(top_srcdir) \
@@ -82,10 +85,12 @@ tauriond_LDADD = \
   $(GLOG_LIBS) $(GFLAGS_LIBS) $(PROTOBUF_LIBS)
 tauriond_SOURCES = main.cpp \
   charon.cpp \
-  pxrpcserver.cpp
+  pxrpcserver.cpp \
+  version.cpp
 tauriondheaders = \
   charon.hpp \
   pxrpcserver.hpp \
+  version.hpp \
   \
   rpc-stubs/nonstaterpcserverstub.h \
   rpc-stubs/pxrpcserverstub.h
@@ -172,3 +177,9 @@ rpc-stubs/nonstaterpcserverstub.h: $(srcdir)/rpc-stubs/nonstate.json
           --cpp-server=NonStateRpcServerStub --cpp-server-file="$@"
 rpc-stubs/pxrpcserverstub.h: $(srcdir)/rpc-stubs/pxd.json
 	jsonrpcstub "$<" --cpp-server=PXRpcServerStub --cpp-server-file="$@"
+
+version.cpp: getversion
+getversion:
+	$(srcdir)/update-version.sh \
+          $(builddir)/version.cpp \
+          $(srcdir)/version.cpp

@@ -1,4 +1,5 @@
 tauriond
 benchmarks
 tests
+version.cpp
 *.trs
