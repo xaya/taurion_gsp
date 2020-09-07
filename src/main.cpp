@@ -114,7 +114,7 @@ main (int argc, char** argv)
   gflags::ParseCommandLineFlags (&argc, &argv, true);
 
   LOG (INFO)
-      << "Runing Taurion version " << PACKAGE_VERSION
+      << "Running Taurion version " << PACKAGE_VERSION
       << " (" << GIT_VERSION << ")";
 
 #ifdef ENABLE_SLOW_ASSERTS
