@@ -46,5 +46,10 @@
         "rot": 42
       },
     "returns": []
+  },
+  {
+    "name": "getversion",
+    "params": {},
+    "returns": {}
   }
 ]
