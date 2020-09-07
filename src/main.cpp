@@ -22,6 +22,7 @@
 #include "logic.hpp"
 #include "pending.hpp"
 #include "pxrpcserver.hpp"
+#include "version.hpp"
 
 #include <xayagame/defaultmain.hpp>
 #include <xayagame/game.hpp>
@@ -111,6 +112,10 @@ main (int argc, char** argv)
   gflags::SetUsageMessage ("Run Taurion game daemon");
   gflags::SetVersionString (PACKAGE_VERSION);
   gflags::ParseCommandLineFlags (&argc, &argv, true);
+
+  LOG (INFO)
+      << "Runing Taurion version " << PACKAGE_VERSION
+      << " (" << GIT_VERSION << ")";
 
 #ifdef ENABLE_SLOW_ASSERTS
   LOG (WARNING)
