@@ -1,4 +1,4 @@
-AC_INIT([tauriond], [0.3.1])
+AC_INIT([tauriond], [0.3.2])
 AM_INIT_AUTOMAKE
 
 AC_CONFIG_MACRO_DIR([m4])
