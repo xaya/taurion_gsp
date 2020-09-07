@@ -18,10 +18,13 @@
 
 #include "pxrpcserver.hpp"
 
+#include "config.h"
+
 #include "buildings.hpp"
 #include "jsonutils.hpp"
 #include "movement.hpp"
 #include "services.hpp"
+#include "version.hpp"
 
 #include "database/itemcounts.hpp"
 #include "proto/roconfig.hpp"
@@ -456,6 +459,18 @@ NonStateRpcServer::getbuildingshape (const Json::Value& centre, const int rot,
   Json::Value res(Json::arrayValue);
   for (const auto& t : GetBuildingShape (type, trafo, c, chain))
     res.append (CoordToJson (t));
+
+  return res;
+}
+
+Json::Value
+NonStateRpcServer::getversion ()
+{
+  LOG (INFO) << "RPC method called: getversion";
+
+  Json::Value res(Json::objectValue);
+  res["package"] = PACKAGE_VERSION;
+  res["git"] = GIT_VERSION;
 
   return res;
 }

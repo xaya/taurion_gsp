@@ -158,6 +158,7 @@ public:
   Json::Value getregionat (const Json::Value& coord) override;
   Json::Value getbuildingshape (const Json::Value& centre, int rot,
                                 const std::string& type) override;
+  Json::Value getversion () override;
 
 };
 
@@ -244,6 +245,12 @@ public:
                     const std::string& type) override
   {
     return nonstate.getbuildingshape (centre, rot, type);
+  }
+
+  Json::Value
+  getversion () override
+  {
+    return nonstate.getversion ();
   }
 
 };

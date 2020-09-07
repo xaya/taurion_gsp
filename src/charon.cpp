@@ -114,6 +114,8 @@ const std::map<std::string, PXRpcMethod> CHARON_METHODS = {
 
   {"getserviceinfo", &PXRpcServer::getserviceinfoI},
 
+  {"getversion", &PXRpcServer::getversionI},
+
   /* FIXME: Instead of handling that through Charon, use an HTTP server to
      download the bootstrap data.
 
@@ -453,6 +455,16 @@ RealCharonClient::RpcServer::HandleMethodCall (jsonrpc::Procedure& proc,
     {
       VLOG (1) << "Forwarding method " << method << " through Charon";
       result = parent.client.ForwardMethod (method, params);
+
+      /* getversion is a special case, where we want to return both the
+         result of the server and the local one from nonstate.  */
+      if (method == "getversion")
+        {
+          const Json::Value serverResult = result;
+          nonstate.getversionI (params, result);
+          result["server"] = serverResult;
+        }
+
       return;
     }
 
