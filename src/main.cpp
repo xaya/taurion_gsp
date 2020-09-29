@@ -22,6 +22,7 @@
 #include "logic.hpp"
 #include "pending.hpp"
 #include "pxrpcserver.hpp"
+#include "rest.hpp"
 #include "version.hpp"
 
 #include <xayagame/defaultmain.hpp>
@@ -49,6 +50,9 @@ DEFINE_int32 (game_rpc_port, 0,
 DEFINE_bool (game_rpc_listen_locally, true,
              "whether the game's JSON-RPC server should listen locally");
 
+DEFINE_int32 (rest_port, 0,
+              "if non-zero, the port at which the REST interface should run");
+
 DEFINE_int32 (enable_pruning, -1,
               "if non-negative (including zero), old undo data will be pruned"
               " and only as many blocks as specified will be kept");
@@ -71,11 +75,20 @@ private:
    */
   pxd::PXLogic& rules;
 
+  /** The REST API port.  */
+  int restPort = 0;
+
 public:
 
   explicit PXInstanceFactory (pxd::PXLogic& r)
     : rules(r)
   {}
+
+  void
+  EnableRest (const int p)
+  {
+    restPort = p;
+  }
 
   std::unique_ptr<xaya::RpcServerInterface>
   BuildRpcServer (xaya::Game& game,
@@ -95,6 +108,9 @@ public:
     auto charonSrv = MaybeBuildCharonServer (game, rules);
     if (charonSrv != nullptr)
       res.push_back (std::move (charonSrv));
+
+    if (restPort != 0)
+      res.push_back (std::make_unique<pxd::RestApi> (game, rules, restPort));
 
     return res;
   }
@@ -175,6 +191,8 @@ main (int argc, char** argv)
 
   pxd::PXLogic rules;
   PXInstanceFactory instanceFact(rules);
+  if (FLAGS_rest_port != 0)
+    instanceFact.EnableRest (FLAGS_rest_port);
   config.InstanceFactory = &instanceFact;
 
   pxd::PendingMoves pending(rules);
