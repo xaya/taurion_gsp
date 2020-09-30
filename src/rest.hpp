@@ -75,6 +75,24 @@ public:
 
 };
 
+/**
+ * REST client for the Taurion API.
+ */
+class RestClient : public xaya::RestClient
+{
+
+public:
+
+  using xaya::RestClient::RestClient;
+
+  /**
+   * Queries for the bootstrap data.  May throw a std::runtime_error
+   * if the request fails.
+   */
+  Json::Value GetBootstrapData ();
+
+};
+
 } // namespace pxd
 
 #endif // PXD_REST_HPP
