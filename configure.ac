@@ -66,6 +66,7 @@ AC_SUBST(GMP_LIBS, -lgmp)
 
 AC_CONFIG_FILES([
   Makefile \
+  data/Makefile \
   database/Makefile \
   gametest/Makefile \
   hexagonal/Makefile \
