@@ -110,4 +110,17 @@ RestApi::Stop ()
   xaya::RestApi::Stop ();
 }
 
+Json::Value
+RestClient::GetBootstrapData ()
+{
+  Request req(*this);
+  if (!req.Send ("/bootstrap.json.gz"))
+    throw std::runtime_error (req.GetError ());
+
+  if (req.GetType () != "application/json")
+    throw std::runtime_error ("response is not JSON");
+
+  return req.GetJson ();
+}
+
 } // namespace pxd
