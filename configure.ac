@@ -47,6 +47,7 @@ PKG_CHECK_MODULES([XAYAGAME], [libxayautil libxayagame])
 PKG_CHECK_MODULES([CHARON], [charon])
 PKG_CHECK_MODULES([SQLITE3], [sqlite3])
 PKG_CHECK_MODULES([JSON], [jsoncpp])
+PKG_CHECK_MODULES([MHD], [libmicrohttpd])
 PKG_CHECK_MODULES([GLOG], [libglog])
 PKG_CHECK_MODULES([GFLAGS], [gflags])
 PKG_CHECK_MODULES([GTEST], [gmock gtest])
@@ -68,6 +69,7 @@ AC_SUBST(GMP_LIBS, -lgmp)
 
 AC_CONFIG_FILES([
   Makefile \
+  data/Makefile \
   database/Makefile \
   gametest/Makefile \
   hexagonal/Makefile \

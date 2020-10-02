@@ -74,22 +74,24 @@ libtaurionheaders = \
 tauriond_CXXFLAGS = \
   -I$(top_srcdir) \
   $(XAYAGAME_CFLAGS) $(CHARON_CFLAGS) \
-  $(JSON_CFLAGS) \
+  $(JSON_CFLAGS) $(MHD_CLFGAS) \
   $(GLOG_CFLAGS) $(GFLAGS_CFLAGS) $(PROTOBUF_CFLAGS)
 tauriond_LDADD = \
   $(builddir)/libtaurion.la \
   $(top_builddir)/mapdata/libmapdata.la \
   $(top_builddir)/database/libdatabase.la \
   $(XAYAGAME_LIBS) $(CHARON_LIBS) \
-  $(JSON_LIBS) \
+  $(JSON_LIBS) $(MHD_LIBS) \
   $(GLOG_LIBS) $(GFLAGS_LIBS) $(PROTOBUF_LIBS)
 tauriond_SOURCES = main.cpp \
   charon.cpp \
   pxrpcserver.cpp \
+  rest.cpp \
   version.cpp
 tauriondheaders = \
   charon.hpp \
   pxrpcserver.hpp \
+  rest.hpp \
   version.hpp \
   \
   rpc-stubs/nonstaterpcserverstub.h \
