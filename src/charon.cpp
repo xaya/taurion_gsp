@@ -21,6 +21,7 @@
 #include "config.h"
 
 #include "pxrpcserver.hpp"
+#include "rest.hpp"
 
 #include <charon/notifications.hpp>
 #include <charon/rpcserver.hpp>
@@ -61,6 +62,12 @@ DEFINE_string (charon_pubsub_service, "",
 DEFINE_int32 (charon_timeout_ms, 3000,
               "Timeout in ms that the Charon client will wait"
               " for a server response");
+
+DEFINE_string (rest_endpoint, "https://rest.taurion.io",
+               "URL for the REST API that is used in the Charon client");
+DEFINE_string (cafile, "",
+               "if set, trust these certificates for TLS"
+               " instead of the cURL default");
 
 /** Interval for Charon server reconnects.  */
 const auto RECONNECT_INTERVAL = std::chrono::seconds (5);
@@ -115,12 +122,6 @@ const std::map<std::string, PXRpcMethod> CHARON_METHODS = {
   {"getserviceinfo", &PXRpcServer::getserviceinfoI},
 
   {"getversion", &PXRpcServer::getversionI},
-
-  /* FIXME: Instead of handling that through Charon, use an HTTP server to
-     download the bootstrap data.
-
-     See also https://github.com/xaya/taurion_gsp/issues/162.  */
-  {"getbootstrapdata", &PXRpcServer::getbootstrapdataI},
 };
 
 /**
@@ -377,6 +378,9 @@ private:
   /** The Charon client.  */
   charon::Client client;
 
+  /** The REST client.  */
+  RestClient rest;
+
   /** The RPC server, if one has been started / set up.  */
   std::unique_ptr<RpcServer> rpc;
 
@@ -394,11 +398,15 @@ public:
   explicit RealCharonClient (const std::string& serverJid,
                              const std::string& clientJid,
                              const std::string& password)
-    : client(serverJid, GetBackendVersion (), clientJid, password)
+    : client(serverJid, GetBackendVersion (), clientJid, password),
+      rest(FLAGS_rest_endpoint)
   {
     LOG (INFO)
         << "Using " << serverJid << " as Charon server,"
         << " requiring backend version " << GetBackendVersion ();
+    LOG (INFO)
+        << "REST endpoint: " << FLAGS_rest_endpoint;
+    rest.SetCaFile (FLAGS_cafile);
   }
 
   /**
@@ -435,6 +443,8 @@ RealCharonClient::RpcServer::RpcServer (RealCharonClient& p,
   jsonrpc::Procedure stopProc("stop", jsonrpc::PARAMS_BY_POSITION, nullptr);
   bindAndAddNotification (stopProc, &RpcServer::stop);
 
+  AddMethod ("getbootstrapdata");
+
   for (const auto& entry : CHARON_METHODS)
     AddMethod (entry.first);
   for (const auto& entry : NONSTATE_METHODS)
@@ -450,6 +460,21 @@ RealCharonClient::RpcServer::HandleMethodCall (jsonrpc::Procedure& proc,
                                                Json::Value& result)
 {
   const auto& method = proc.GetProcedureName ();
+
+  if (method == "getbootstrapdata")
+    {
+      VLOG (1) << "Getting bootstrap data through REST...";
+      try
+        {
+          result = parent.rest.GetBootstrapData ();
+          return;
+        }
+      catch (const std::runtime_error& exc)
+        {
+          throw jsonrpc::JsonRpcException (
+              jsonrpc::Errors::ERROR_RPC_INTERNAL_ERROR, exc.what ());
+        }
+    }
 
   if (CHARON_METHODS.find (method) != CHARON_METHODS.end ())
     {

@@ -46,6 +46,11 @@ XMPP_SERVER = "chat.xaya.io"
 PUBSUB = "pubsub.chat.xaya.io"
 
 
+# Port and URL for the local REST API used for bootstrap data.
+REST_PORT = 18_042
+REST_URL = "http://localhost:%d" % REST_PORT
+
+
 def testAccountJid (acc):
   return "%s@%s" % (acc[0], XMPP_SERVER)
 
@@ -79,6 +84,7 @@ class CharonClient ():
     args = [self.binary]
     args.extend (["--datadir", self.datadir])
     args.append ("--game_rpc_port=%d" % self.rpcport)
+    args.extend (["--rest_endpoint", REST_URL])
     args.extend (["--charon", "client"])
     args.extend (["--charon_server_jid", testAccountJid (TEST_ACCOUNTS[0])])
     args.extend (["--charon_client_jid", testAccountJid (TEST_ACCOUNTS[1])])
@@ -142,6 +148,7 @@ class CharonTest (PXTest):
     args.extend (["--charon_pubsub_service", PUBSUB])
     args.extend (["--charon_server_jid", testAccountJid (TEST_ACCOUNTS[0])])
     args.extend (["--charon_password", TEST_ACCOUNTS[0][1]])
+    args.extend (["--rest_port", str (REST_PORT)])
     self.startGameDaemon (extraArgs=args)
 
     self.mainLogger.info ("Starting tauriond as Charon client...")
@@ -162,6 +169,10 @@ class CharonTest (PXTest):
       srv = res["server"]
       del res["server"]
       self.assertEqual (res, srv)
+
+      self.mainLogger.info ("Testing bootstrap data via REST...")
+      res = client.rpc.getbootstrapdata ()
+      self.assertEqual (res, self.rpc.game.getbootstrapdata ())
 
       self.mainLogger.info ("Testing invalid Charon method call...")
       self.expectError (-32602, ".*Invalid method parameters.*",
