@@ -3026,19 +3026,15 @@ TEST_F (BuildingUpdateTests, InvalidFormat)
 {
   Process (R"([
     {"name": "domob", "move": {"b": null}},
-    {"name": "domob", "move": {"b": []}},
+    {"name": "domob", "move": {"b": 42}},
     {"name": "domob", "move": {"b": "foo"}},
     {
       "name": "domob",
-      "move": {"b": {"x": {"sf": 10}}}
+      "move": {"b": {"id": "x", "sf": 10}}
     },
     {
       "name": "domob",
-      "move": {"b": {"-50": {"sf": 10}}}
-    },
-    {
-      "name": "domob",
-      "move": {"b": {"102": "foo"}}
+      "move": {"b": {"id": -50, "sf": 10}}
     }
   ])");
 
@@ -3051,7 +3047,7 @@ TEST_F (BuildingUpdateTests, NonExistantBuilding)
   Process (R"([
     {
       "name": "domob",
-      "move": {"b": {"12345": {"sf": 10}}}
+      "move": {"b": {"id": 12345, "sf": 10}}
     }
   ])");
   EXPECT_FALSE (buildings.GetById (DOMOB_OWNED)
@@ -3063,7 +3059,7 @@ TEST_F (BuildingUpdateTests, AncientCannotBeUpdated)
   Process (R"([
     {
       "name": "domob",
-      "move": {"b": {"100": {"sf": 10}}}
+      "move": {"b": {"id": 100, "sf": 10}}
     }
   ])");
   EXPECT_FALSE (buildings.GetById (ANCIENT)
@@ -3075,11 +3071,30 @@ TEST_F (BuildingUpdateTests, NotOwner)
   Process (R"([
     {
       "name": "domob",
-      "move": {"b": {"101": {"sf": 10}}}
+      "move": {"b": {"id": 101, "sf": 10}}
     }
   ])");
   EXPECT_FALSE (buildings.GetById (ANDY_OWNED)
                   ->GetProto ().has_service_fee_percent ());
+}
+
+TEST_F (BuildingUpdateTests, ArrayUpdate)
+{
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"b": [
+        {"id": 102, "sf": 10},
+        {"id": 101, "sf": 50},
+        {"id": 102, "sf": 70},
+        {"id": [102], "sf": 80}
+      ]}
+    }
+  ])");
+  EXPECT_FALSE (buildings.GetById (ANDY_OWNED)
+                  ->GetProto ().has_service_fee_percent ());
+  EXPECT_EQ (buildings.GetById (DOMOB_OWNED)
+                ->GetProto ().service_fee_percent (), 70);
 }
 
 TEST_F (BuildingUpdateTests, SetServiceFee)
@@ -3087,11 +3102,11 @@ TEST_F (BuildingUpdateTests, SetServiceFee)
   Process (R"([
     {
       "name": "andy",
-      "move": {"b": {"101": {"x": 42, "sf": 1000}}}
+      "move": {"b": {"id": 101, "x": 42, "sf": 1000}}
     },
     {
       "name": "domob",
-      "move": {"b": {"101": {"sf": 0}, "102": {"sf": 1}}}
+      "move": {"b": [{"id": 101, "sf": 0}, {"id": 102, "sf": 1}]}
     }
   ])");
   EXPECT_EQ (buildings.GetById (ANDY_OWNED)
@@ -3102,19 +3117,19 @@ TEST_F (BuildingUpdateTests, SetServiceFee)
   Process (R"([
     {
       "name": "andy",
-      "move": {"b": {"101": {"sf": 1001}}}
+      "move": {"b": {"id": 101, "sf": 1001}}
     },
     {
       "name": "andy",
-      "move": {"b": {"101": {"sf": -20}}}
+      "move": {"b": {"id": 101, "sf": -20}}
     },
     {
       "name": "andy",
-      "move": {"b": {"101": {"sf": "42"}}}
+      "move": {"b": {"id": 101, "sf": "42"}}
     },
     {
       "name": "domob",
-      "move": {"b": {"102": {"sf": 0}}}
+      "move": {"b": {"id": 102, "sf": 0}}
     }
   ])");
   EXPECT_EQ (buildings.GetById (ANDY_OWNED)

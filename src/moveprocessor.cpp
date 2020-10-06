@@ -236,45 +236,41 @@ BaseMoveProcessor::TryBuildingUpdates (const std::string& name,
                                        const Json::Value& mv)
 {
   const auto& cmd = mv["b"];
-  if (!cmd.isObject ())
+
+  /* The building update can either be an array of individual operations,
+     or just a single object for a single operation.  */
+  Json::Value ops;
+  if (cmd.isArray ())
+    ops = cmd;
+  else if (cmd.isObject ())
+    {
+      ops = Json::Value(Json::arrayValue);
+      ops.append (cmd);
+    }
+  else
     return;
 
-  /* The order in which building updates are processed may be relevant for
-     consensus, and we perform the update in order of increasing *numerical*
-     value of the ID (unlike the alphabetical value of the string keys).
-     This matches how character updates are processed.
-
-     Unlike characters, however, updates with ID lists are not necessary.  */
-
-  std::map<Database::IdT, Json::Value> updates;
-  for (auto i = cmd.begin (); i != cmd.end (); ++i)
+  for (const auto& op : ops)
     {
+      if (!op.isObject ())
+        {
+          LOG (WARNING)
+              << "Building update entry is not an object: " << op;
+          continue;
+        }
+
       Database::IdT id;
-      if (!IdFromString (i.name (), id))
+      if (!IdFromJson (op["id"], id))
         {
           LOG (WARNING)
-              << "Ignoring invalid building ID for update: " << i.name ();
+              << "Invalid ID in building update entry: " << op;
           continue;
         }
 
-      const auto& upd = *i;
-      if (!upd.isObject ())
-        {
-          LOG (WARNING)
-              << "Building update is not an object: " << upd;
-          continue;
-        }
-
-      CHECK (updates.emplace (id, upd).second);
-    }
-
-  for (const auto& entry : updates)
-    {
-      auto b = buildings.GetById (entry.first);
+      auto b = buildings.GetById (id);
       if (b == nullptr)
         {
-          LOG (WARNING)
-              << "Building ID does not exist: " << entry.first;
+          LOG (WARNING) << "Building ID does not exist: " << id;
           continue;
         }
 
@@ -295,7 +291,7 @@ BaseMoveProcessor::TryBuildingUpdates (const std::string& name,
           continue;
         }
 
-      PerformBuildingUpdate (*b, entry.second);
+      PerformBuildingUpdate (*b, op);
     }
 }
 

@@ -19,6 +19,7 @@ from xayagametest.testcase import XayaGameTest
 from proto import config_pb2
 
 import collections
+import copy
 import os
 import os.path
 
@@ -230,8 +231,10 @@ class Building (object):
     Sends a move to update the given building with the given data.
     """
 
-    idStr = "%s" % self.getId ()
-    return self.test.sendMove (self.data["owner"], {"b": {idStr: mv}})
+    fullMv = copy.deepcopy (mv)
+    fullMv["id"] = self.getId ()
+
+    return self.test.sendMove (self.data["owner"], {"b": fullMv})
 
 
 class Account (object):
