@@ -60,14 +60,6 @@ class Character (object):
   def getId (self):
     return self.data["id"]
 
-  def getIdStr (self):
-    """
-    Returns the character ID as a string, suitable for indexing
-    JSON dictionaries in commands.
-    """
-
-    return "%d" % self.getId ()
-
   def getOwner (self):
     return self.data["owner"]
 
@@ -122,8 +114,10 @@ class Character (object):
     Sends a move to update the given character with the given data.
     """
 
-    idStr = self.getIdStr ()
-    return self.test.sendMove (self.data["owner"], {"c": {idStr: mv}})
+    fullMv = copy.deepcopy (mv)
+    fullMv["id"] = self.getId ()
+
+    return self.test.sendMove (self.data["owner"], {"c": fullMv})
 
   def findPath (self, target):
     """

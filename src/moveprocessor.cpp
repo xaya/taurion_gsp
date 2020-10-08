@@ -158,76 +158,71 @@ BaseMoveProcessor::TryCharacterUpdates (const std::string& name,
                                         const Json::Value& mv)
 {
   const auto& cmd = mv["c"];
-  if (!cmd.isObject ())
+
+  /* The character update can either be an array of individual operations,
+     or just a single object for a single operation.  */
+  Json::Value ops;
+  if (cmd.isArray ())
+    ops = cmd;
+  else if (cmd.isObject ())
+    {
+      ops = Json::Value(Json::arrayValue);
+      ops.append (cmd);
+    }
+  else
     return;
 
-  /* The order in which character updates are processed may be relevant for
-     consensus (if the updates to characters interact with each other).  We
-     order the updates in a move increasing by character ID.
-
-     If a character ID has more than one update associated to it (e.g. because
-     it appears in multiple, different ID lists used as keys), then the whole
-     update is invalid and no part of it will be processed.  This simplifies
-     handling, avoids any doubt about which one of the updates should be
-     processed, and is something that is not relevant in practice anyway
-     except for malicious moves or buggy software.
-
-     For other errors (that do not lead to ambiguity) like a single malformed
-     key string, a value that is not a JSON object or an ID that does not
-     exist in the database, we only ignore that part.  */
-
-  std::map<Database::IdT, Json::Value> updates;
-  for (auto i = cmd.begin (); i != cmd.end (); ++i)
+  for (const auto& op : ops)
     {
-      std::vector<Database::IdT> ids;
-      if (!IdArrayFromString (i.name (), ids))
+      if (!op.isObject ())
         {
-          LOG (WARNING)
-              << "Ignoring invalid character IDs for update: " << i.name ();
+          LOG (WARNING) << "Character update entry is not an object: " << op;
           continue;
         }
 
-      const auto& upd = *i;
-      if (!upd.isObject ())
+      /* Also the ID in the update itself can either be a single ID or
+         an array of IDs, which will be batch-updated with the same
+         operation.  */
+      const auto& idOrIds = op["id"];
+      Json::Value ids;
+      if (idOrIds.isNull ())
         {
-          LOG (WARNING)
-              << "Character update is not an object: " << upd;
+          LOG (WARNING) << "Missing ID in character update entry: " << op;
           continue;
         }
+      else if (idOrIds.isArray ())
+        ids = idOrIds;
+      else
+        ids.append (idOrIds);
 
-      for (const auto id : ids)
+      for (const auto& idVal : ids)
         {
-          const auto res = updates.emplace (id, upd);
-          if (!res.second)
+          Database::IdT id;
+          if (!IdFromJson (idVal, id))
             {
               LOG (WARNING)
-                  << "Character update processes ID " << id
-                  << " more than once: " << mv;
-              return;
+                  << "Invalid ID in character update entry: " << idVal;
+              continue;
             }
-        }
-    }
 
-  for (const auto& entry : updates)
-    {
-      auto c = characters.GetById (entry.first);
-      if (c == nullptr)
-        {
-          LOG (WARNING)
-              << "Character ID does not exist: " << entry.first;
-          continue;
-        }
+          auto c = characters.GetById (id);
+          if (c == nullptr)
+            {
+              LOG (WARNING) << "Character ID does not exist: " << id;
+              continue;
+            }
 
-      if (c->GetOwner () != name)
-        {
-          LOG (WARNING)
-              << "User " << name
-              << " is not allowed to update character owned by "
-              << c->GetOwner ();
-          continue;
-        }
+          if (c->GetOwner () != name)
+            {
+              LOG (WARNING)
+                  << "User " << name
+                  << " is not allowed to update character owned by "
+                  << c->GetOwner ();
+              continue;
+            }
 
-      PerformCharacterUpdate (*c, entry.second);
+          PerformCharacterUpdate (*c, op);
+        }
     }
 }
 

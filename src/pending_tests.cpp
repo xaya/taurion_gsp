@@ -823,13 +823,13 @@ TEST_F (PendingStateUpdaterTests, InvalidUpdate)
   CHECK_EQ (characters.CreateNew ("domob", Faction::RED)->GetId (), 1);
 
   Process ("andy", R"({
-    "c": {"1": {"wp": null}}
+    "c": {"id": 1, "wp": null}
   })");
   Process ("domob", R"({
-    "c": {" 1 ": {"wp": null}}
+    "c": {"wp": null}
   })");
   Process ("domob", R"({
-    "c": {"42": {"wp": null}}
+    "c": {"id": 42, "wp": null}
   })");
 
   ExpectStateJson (R"(
@@ -850,23 +850,23 @@ TEST_F (PendingStateUpdaterTests, Waypoints)
   /* An invalid update that will just not show up (i.e. ID 1 will have no
      pending updates later on).  */
   Process ("domob", R"({
-    "c": {"1": {"wp": "foo"}}
+    "c": {"id": 1, "wp": "foo"}
   })");
 
   /* Perform valid updates.  Only the waypoints updates will be tracked, and
      we will keep the latest one for any character.  */
   Process ("domob", R"({
     "c":
-      {
-        "2": {"wp": )" + WpStr ({HexCoord (0, 100)}) + R"(},
-        "3": {"wp": )" + WpStr ({HexCoord (1, -2)}) + R"(}
-      }
+      [
+        {"id": 2, "wp": )" + WpStr ({HexCoord (0, 100)}) + R"(},
+        {"id": 3, "wp": )" + WpStr ({HexCoord (1, -2)}) + R"(}
+      ]
   })");
   Process ("domob", R"({
-    "c": {"2": {"wp": null}}
+    "c": {"id": 2, "wp": null}
   })");
   Process ("domob", R"({
-    "c": {"2": {"send": "andy"}}
+    "c": {"id": 2, "send": "andy"}
   })");
 
   ExpectStateJson (R"(
@@ -897,25 +897,22 @@ TEST_F (PendingStateUpdaterTests, EnterBuilding)
   /* Some invalid updates that will just not show up (i.e. ID 1 will have no
      pending updates later on).  */
   Process ("domob", R"({
-    "c": {"1": {"eb": "foo"}}
+    "c": {"id": 1, "eb": "foo"}
   })");
   Process ("domob", R"({
-    "c": {"1": {"eb": 20}}
+    "c": {"id": 1, "eb": 20}
   })");
 
   /* Perform valid updates.  */
   Process ("domob", R"({
     "c":
-      {
-        "2": {"eb": 100},
-        "3": {"eb": null}
-      }
+      [
+        {"id": 2, "eb": 100},
+        {"id": 3, "eb": null}
+      ]
   })");
   Process ("domob", R"({
-    "c":
-      {
-        "2": {"eb": 101}
-      }
+    "c": {"id": 2, "eb": 101}
   })");
 
   ExpectStateJson (R"(
@@ -950,18 +947,15 @@ TEST_F (PendingStateUpdaterTests, ExitBuilding)
   /* Some invalid updates that will just not show up (i.e. IDs 1 and 2 will
      have no pending updates later on).  */
   Process ("domob", R"({
-    "c": {"1": {"xb": {}}}
+    "c": {"id": 1, "xb": {}}
   })");
   Process ("domob", R"({
-    "c": {"2": {"xb": 20}}
+    "c": {"id": 2, "xb": 20}
   })");
 
   /* Perform valid update.  */
   Process ("domob", R"({
-    "c":
-      {
-        "3": {"xb": {}}
-      }
+    "c": {"id": 3, "xb": {}}
   })");
 
   ExpectStateJson (R"(
@@ -982,28 +976,28 @@ TEST_F (PendingStateUpdaterTests, DropPickup)
 
   /* Some invalid / empty commands.  */
   Process ("domob", R"({
-    "c": {"1": {"drop": []}}
+    "c": {"id": 1, "drop": []}
   })");
   Process ("domob", R"({
-    "c": {"2": {"pu": {"f": {}}}}
+    "c": {"id": 2, "pu": {"f": {}}}
   })");
   Process ("domob", R"({
-    "c": {"1": {"drop": {"f": {"foo": 0}}}}
+    "c": {"id": 1, "drop": {"f": {"foo": 0}}}
   })");
   Process ("domob", R"({
-    "c": {"1": {"drop": {"f": {"invalid item": 1}}}}
+    "c": {"id": 1, "drop": {"f": {"invalid item": 1}}}
   })");
   Process ("domob", R"({
-    "c": {"1": {"pu": {"f": {"invalid item": 1}}}}
+    "c": {"id": 1, "pu": {"f": {"invalid item": 1}}}
   })");
 
   /* Valid drop/pickup commands (character 1 will pickup, character 2 will
      drop, but not the corresponding other command).  */
   Process ("domob", R"({
-    "c": {"1": {"pu": {"f": {"foo": 1}}}}
+    "c": {"id": 1, "pu": {"f": {"foo": 1}}}
   })");
   Process ("domob", R"({
-    "c": {"2": {"drop": {"f": {"bar": 10}}}}
+    "c": {"id": 2, "drop": {"f": {"bar": 10}}}
   })");
 
   ExpectStateJson (R"(
@@ -1031,7 +1025,7 @@ TEST_F (PendingStateUpdaterTests, PickupInFoundation)
   characters.CreateNew ("domob", Faction::RED)->SetBuildingId (bId);
 
   Process ("domob", R"({
-    "c": {"101": {"pu": {"f": {"foo": 100}}}}
+    "c": {"id": 101, "pu": {"f": {"foo": 100}}}
   })");
   ExpectStateJson (R"(
     {
@@ -1064,11 +1058,11 @@ TEST_F (PendingStateUpdaterTests, Prospecting)
 
   Process ("domob", R"({
     "c":
-      {
-        "1": {"prospect": {}},
-        "2": {"prospect": {}},
-        "3": {"prospect": {}}
-      }
+      [
+        {"id": 1, "prospect": {}},
+        {"id": 2, "prospect": {}},
+        {"id": 3, "prospect": {}}
+      ]
   })");
 
   ExpectStateJson (R"(
@@ -1104,10 +1098,10 @@ TEST_F (PendingStateUpdaterTests, Mining)
 
   Process ("domob", R"({
     "c":
-      {
-        "1": {"mine": {}},
-        "2": {"mine": {}}
-      }
+      [
+        {"id": 1, "mine": {}},
+        {"id": 2, "mine": {}}
+      ]
   })");
 
   ExpectStateJson (R"(
@@ -1143,10 +1137,10 @@ TEST_F (PendingStateUpdaterTests, FoundBuilding)
 
   Process ("domob", R"({
     "c":
-      {
-        "1": {"fb": {"t": "huesli", "rot": 3}},
-        "2": {"fb": {"t": "huesli", "rot": 0}}
-      }
+      [
+        {"id": 1, "fb": {"t": "huesli", "rot": 3}},
+        {"id": 2, "fb": {"t": "huesli", "rot": 0}}
+      ]
   })");
 
   ExpectStateJson (R"(
@@ -1187,10 +1181,7 @@ TEST_F (PendingStateUpdaterTests, ChangeVehicle)
 
   /* Invalid move format.  */
   Process ("domob", R"({
-    "c":
-      {
-        "1": {"v": ["chariot"]}
-      }
+    "c": {"id": 1, "v": ["chariot"]}
   })");
   ExpectStateJson (R"(
     {
@@ -1200,10 +1191,7 @@ TEST_F (PendingStateUpdaterTests, ChangeVehicle)
 
   /* This one is valid.  */
   Process ("domob", R"({
-    "c":
-      {
-        "1": {"v": "chariot"}
-      }
+    "c": {"id": 1, "v": "chariot"}
   })");
   ExpectStateJson (R"(
     {
@@ -1217,10 +1205,7 @@ TEST_F (PendingStateUpdaterTests, ChangeVehicle)
   /* This one is invalid (item not owned) and thus does not change
      the pending state.  */
   Process ("domob", R"({
-    "c":
-      {
-        "1": {"v": "rv st"}
-      }
+    "c": {"id": 1, "v": "rv st"}
   })");
   ExpectStateJson (R"(
     {
@@ -1255,10 +1240,7 @@ TEST_F (PendingStateUpdaterTests, Fitments)
 
   /* Invalid move format, no fitments will be pending.  */
   Process ("domob", R"({
-    "c":
-      {
-        "1": {"fit": [42]}
-      }
+    "c": {"id": 1, "fit": [42]}
   })");
   ExpectStateJson (R"(
     {
@@ -1268,10 +1250,7 @@ TEST_F (PendingStateUpdaterTests, Fitments)
 
   /* This one is valid and sets pending fitments.  */
   Process ("domob", R"({
-    "c":
-      {
-        "1": {"fit": ["sword", "super scanner"]}
-      }
+    "c": {"id": 1, "fit": ["sword", "super scanner"]}
   })");
   ExpectStateJson (R"(
     {
@@ -1285,10 +1264,7 @@ TEST_F (PendingStateUpdaterTests, Fitments)
   /* This one is invalid (exceeding the complexity limit) and thus
      the previous one will remain.  */
   Process ("domob", R"({
-    "c":
-      {
-        "1": {"fit": ["sword", "bow"]}
-      }
+    "c": {"id": 1, "fit": ["sword", "bow"]}
   })");
   ExpectStateJson (R"(
     {
@@ -1308,7 +1284,7 @@ TEST_F (PendingStateUpdaterTests, CreationAndUpdateTogether)
 
   ProcessWithDevPayment ("domob", characterCost, R"({
     "nc": [{}],
-    "c": {"1": {"wp": null}}
+    "c": {"id": 1, "wp": null}
   })");
 
   ExpectStateJson (R"(
@@ -1490,10 +1466,10 @@ TEST_F (PendingStateUpdaterTests, MobileRefining)
   c.reset ();
 
   Process ("domob", R"({
-    "c": {"101": {"ref": {"i": "test ore", "n": 6}}}
+    "c": {"id": 101, "ref": {"i": "test ore", "n": 6}}
   })");
   Process ("domob", R"({
-    "c": {"101": {"ref": {"i": "test ore", "n": 7}}}
+    "c": {"id": 101, "ref": {"i": "test ore", "n": 7}}
   })");
 
   ExpectStateJson (R"(

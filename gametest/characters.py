@@ -106,8 +106,7 @@ class CharactersTest (PXTest):
 
     self.mainLogger.info ("Non-owner cannot update the character...")
     c = self.getCharacters ()["adam"]
-    idStr = c.getIdStr ()
-    self.sendMove ("domob", {"c": {idStr: {"send": "domob"}}})
+    self.sendMove ("domob", {"c": {"id": c.getId (), "send": "domob"}})
     self.generate (1)
     self.expectPartial ({
       "adam": {"owner": "adam"},
@@ -135,7 +134,7 @@ class CharactersTest (PXTest):
     id1 = self.getCharacters ()["domob"].getId ()
     id2 = self.getCharacters ()["domob 2"].getId ()
     self.sendMove ("domob", {
-      "c": {"%d,%d" % (id1, id2): {"send": "idlist"}},
+      "c": {"id": [id1, id2], "send": "idlist"},
     })
     self.generate (1)
     self.assertEqual (self.getCharacters ()["idlist"].getId (), id1)

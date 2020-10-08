@@ -654,7 +654,7 @@ TEST_F (CharacterUpdateTests, CreationAndUpdate)
     "move":
       {
         "nc": [{}],
-        "c": {"1": {"send": "daniel"}, "2": {"send": "andy"}}
+        "c": [{"id": 1, "send": "daniel"}, {"id": 2, "send": "andy"}]
       }
   }])", ctx.RoConfig ()->params ().character_cost () * COIN);
 
@@ -677,7 +677,7 @@ TEST_F (CharacterUpdateTests, AccountNotInitialised)
     "name": "unknown account",
     "move":
       {
-        "c": {"10": {"send": "domob"}}
+        "c": {"id": 10, "send": "domob"}
       }
   }])", ctx.RoConfig ()->params ().character_cost () * COIN);
 
@@ -697,35 +697,20 @@ TEST_F (CharacterUpdateTests, MultipleCharacters)
   accounts.CreateNew ("charly")->SetFaction (Faction::RED);
   accounts.CreateNew ("mallory")->SetFaction (Faction::RED);
 
-  /* This whole command is invalid, because an ID is specified twice in it.  */
-  Process (R"([{
-    "name": "domob",
-    "move":
-      {
-        "c":
-          {
-            "10,11": {"send": "bob"},
-            "11,12": {"send": "andy"}
-          }
-      }
-  }])");
-  ExpectCharacterOwners ({{10, "domob"}, {11, "domob"}, {12, "domob"}});
-
   /* This command is valid, and should transfer all characters accordingly;
-     the invalid ID array string is ignored, as is the update part whose
-     value is not an object.  */
+     the invalid ID array string is ignored, and also later sends of the
+     same character are invalid.  */
   Process (R"([{
     "name": "domob",
     "move":
       {
         "c":
-          {
-            "12,11": {"send": "bob"},
-            " 11 ": {"send": "mallory"},
-            "12": "not an object",
-            "13,10": {"send": "andy"},
-            "14": {"send": "charly"}
-          }
+          [
+            {"id": [12, 11], "send": "bob"},
+            {"id": "11", "send": "mallory"},
+            {"id": [13, 10], "send": "andy"},
+            {"id": 14, "send": "charly"}
+          ]
       }
   }])");
   ExpectCharacterOwners ({
@@ -749,7 +734,7 @@ TEST_F (CharacterUpdateTests, ValidTransfer)
   EXPECT_EQ (GetTest ()->GetOwner (), "domob");
   Process (R"([{
     "name": "domob",
-    "move": {"c": {"1": {"send": "andy"}}}
+    "move": {"c": {"id": 1, "send": "andy"}}
   }])");
   ExpectCharacterOwners ({{1, "andy"}});
 }
@@ -766,23 +751,23 @@ TEST_F (CharacterUpdateTests, InvalidTransfer)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"send": false}}}
+      "move": {"c": {"id": 1, "send": false}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"send": "uninitialised account"}}}
+      "move": {"c": {"id": 1, "send": "uninitialised account"}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"send": "non-existant account"}}}
+      "move": {"c": {"id": 1, "send": "non-existant account"}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"send": "wrong faction"}}}
+      "move": {"c": {"id": 1, "send": "wrong faction"}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"send": "at limit"}}}
+      "move": {"c": {"id": 1, "send": "at limit"}}
     }
   ])");
 
@@ -798,7 +783,10 @@ TEST_F (CharacterUpdateTests, OwnerCheck)
   ExpectCharacterOwners ({{1, "domob"}, {9, "andy"}});
   Process (R"([{
     "name": "andy",
-    "move": {"c": {"1": {"send": "andy"}, "9": {"send": "domob"}}}
+    "move": {"c": [
+      {"id": 1, "send": "andy"},
+      {"id": 9, "send": "domob"}
+    ]}
   }])");
   ExpectCharacterOwners ({{1, "domob"}, {9, "domob"}});
 }
@@ -809,27 +797,42 @@ TEST_F (CharacterUpdateTests, InvalidUpdate)
 
   /* We want to test that one invalid update still allows for other
      updates (i.e. other characters) to be done successfully in the same
-     move transaction.  Thus create another character with a later ID that
-     we will use for successful updates.  */
+     move transaction.  Thus create another character that we will use
+     for successful updates.  */
   SetupCharacter (9, "domob");
 
-  for (const std::string upd : {"\"1\": []", "\"1\": false",
-                                R"(" ": {"send": "andy"})",
-                                R"("5": {"send": "andy"})"})
+  for (const std::string upd : {"[]", "false",
+                                R"({"id": " ", "send": "andy"})",
+                                R"({"id": 5, "send": "andy"})"})
     {
       ASSERT_EQ (tbl.GetById (9)->GetOwner (), "domob");
       Process (R"([{
         "name": "domob",
-        "move": {"c":{
+        "move": {"c":[
           )" + upd + R"(,
-          "9": {"send": "andy"}
-        }}
+          {"id": 9, "send": "andy"}
+        ]}
       }])");
 
       auto h = tbl.GetById (9);
       EXPECT_EQ (h->GetOwner (), "andy");
       h->SetOwner ("domob");
     }
+
+  /* Also within a single ID list, individual invalid IDs will be ignored
+     and the rest still tried.  */
+  ASSERT_EQ (tbl.GetById (9)->GetOwner (), "domob");
+  Process (R"([{
+    "name": "domob",
+    "move": {"c": {
+      "id": [false, 5, " ", null, 9],
+      "send": "andy"
+    }}
+  }])");
+
+  auto h = tbl.GetById (9);
+  EXPECT_EQ (h->GetOwner (), "andy");
+  h->SetOwner ("domob");
 }
 
 TEST_F (CharacterUpdateTests, WhenBusy)
@@ -843,15 +846,15 @@ TEST_F (CharacterUpdateTests, WhenBusy)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"wp": )" + WpStr ({HexCoord (-3, 4)}) + R"(}}}
+      "move": {"c": {"id": 1, "wp": )" + WpStr ({HexCoord (-3, 4)}) + R"(}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"prospect": {}}}}
+      "move": {"c": {"id": 1, "prospect": {}}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"mine": {}}}}
+      "move": {"c": {"id": 1, "mine": {}}}
     }
   ])");
 
@@ -874,15 +877,15 @@ TEST_F (CharacterUpdateTests, InvalidWhenInsideBuilding)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"wp": )" + WpStr ({HexCoord (-3, 4)}) + R"(}}}
+      "move": {"c": {"id": 1, "wp": )" + WpStr ({HexCoord (-3, 4)}) + R"(}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"prospect": {}}}}
+      "move": {"c": {"id": 1, "prospect": {}}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"mine": {}}}}
+      "move": {"c": {"id": 1, "mine": {}}}
     }
   ])");
 
@@ -906,27 +909,23 @@ TEST_F (CharacterUpdateTests, BasicWaypoints)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"wp": "foo"}}}
+      "move": {"c": {"id": 1, "wp": "foo"}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"wp": []}}}
+      "move": {"c": {"id": 1, "wp": []}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {}}}
+      "move": {"c": {"id": 1, "wp": {"x": 4, "y": 3}}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"wp": {"x": 4, "y": 3}}}}
-    },
-    {
-      "name": "domob",
-      "move": {"c": {"1": {"wp": [{"x": 4, "y": 3}]}}}
+      "move": {"c": {"id": 1, "wp": [{"x": 4, "y": 3}]}}
     },
     {
       "name": "andy",
-      "move": {"c": {"1": {"wp": 42}}}
+      "move": {"c": {"id": 1, "wp": 42}}
     }
   ])");
 
@@ -940,8 +939,8 @@ TEST_F (CharacterUpdateTests, BasicWaypoints)
   /* Process a valid waypoints update move.  */
   Process (R"([{
     "name": "domob",
-    "move": {"c": {"1": {"wp": )"
-        + WpStr ({HexCoord (-3, 4), HexCoord (5, 0)}) + R"(}}}
+    "move": {"c": {"id": 1, "wp": )"
+        + WpStr ({HexCoord (-3, 4), HexCoord (5, 0)}) + R"(}}
   }])");
 
   /* Verify that the valid move had the expected effect.  */
@@ -964,7 +963,7 @@ TEST_F (CharacterUpdateTests, EmptyWaypoints)
   GetTest ()->MutableVolatileMv ().set_partial_step (42);
   Process (R"([{
     "name": "domob",
-    "move": {"c": {"1": {"wp": null}}}
+    "move": {"c": {"id": 1, "wp": null}}
   }])");
 
   h = GetTest ();
@@ -983,7 +982,7 @@ TEST_F (CharacterUpdateTests, WaypointsWithZeroSpeed)
   GetTest ()->MutableVolatileMv ().set_partial_step (42);
   Process (R"([{
     "name": "domob",
-    "move": {"c": {"1": {"wp": )" + WpStr ({HexCoord (-3, 100)}) + R"(}}}
+    "move": {"c": {"id": 1, "wp": )" + WpStr ({HexCoord (-3, 100)}) + R"(}}
   }])");
 
   /* With zero speed of the character, we should just "stop" it but not
@@ -1000,7 +999,7 @@ TEST_F (CharacterUpdateTests, ChosenSpeedWithoutMovement)
 
   Process (R"([{
     "name": "domob",
-    "move": {"c": {"1": {"speed": 100}}}
+    "move": {"c": {"id": 1, "speed": 100}}
   }])");
 
   EXPECT_FALSE (GetTest ()->GetProto ().has_movement ());
@@ -1012,15 +1011,15 @@ TEST_F (CharacterUpdateTests, ChosenSpeedWorks)
 
   Process (R"([{
     "name": "domob",
-    "move": {"c": {"1": {"wp": )"
+    "move": {"c": {"id": 1, "wp": )"
         + WpStr ({HexCoord (5, 1)})
-        + R"(, "speed": 1000000}}}
+        + R"(, "speed": 1000000}}
   }])");
   EXPECT_EQ (GetTest ()->GetProto ().movement ().chosen_speed (), 1000000);
 
   Process (R"([{
     "name": "domob",
-    "move": {"c": {"1": {"speed": 1}}}
+    "move": {"c": {"id": 1, "speed": 1}}
   }])");
   EXPECT_EQ (GetTest ()->GetProto ().movement ().chosen_speed (), 1);
 }
@@ -1030,32 +1029,32 @@ TEST_F (CharacterUpdateTests, ChosenSpeedInvalid)
   GetTest ()->MutableProto ().set_speed (1000);
   Process (R"([{
     "name": "domob",
-    "move": {"c": {"1": {"wp": )"
+    "move": {"c": {"id": 1, "wp": )"
         + WpStr ({HexCoord (5, 1)})
-        + R"(, "speed": 1000}}}
+        + R"(, "speed": 1000}}
   }])");
 
   /* All of them are invalid in one way or another.  */
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"speed": -5}}}
+      "move": {"c": {"id": 1, "speed": -5}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"speed": 5.2}}}
+      "move": {"c": {"id": 1, "speed": 5.2}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"speed": 0}}}
+      "move": {"c": {"id": 1, "speed": 0}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"speed": {}}}}
+      "move": {"c": {"id": 1, "speed": {}}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"speed": 1000001}}}
+      "move": {"c": {"id": 1, "speed": 1000001}}
     }
   ])");
   EXPECT_EQ (GetTest ()->GetProto ().movement ().chosen_speed (), 1000);
@@ -1140,15 +1139,11 @@ TEST_F (FitmentMoveTests, InvalidFormat)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {}}}
+      "move": {"c": {"id": 1, "fit": {"bow": 5}}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"fit": {"bow": 5}}}}
-    },
-    {
-      "name": "domob",
-      "move": {"c": {"1": {"fit": ["sword", 42]}}}
+      "move": {"c": {"id": 1, "fit": ["sword", 42]}}
     }
   ])");
 
@@ -1163,11 +1158,11 @@ TEST_F (FitmentMoveTests, InvalidItems)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"fit": ["invalid item"]}}}
+      "move": {"c": {"id": 1, "fit": ["invalid item"]}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"fit": ["foo"]}}}
+      "move": {"c": {"id": 1, "fit": ["foo"]}}
     }
   ])");
 
@@ -1183,7 +1178,7 @@ TEST_F (FitmentMoveTests, NotInBuilding)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"fit": ["sword"]}}}
+      "move": {"c": {"id": 1, "fit": ["sword"]}}
     }
   ])");
 
@@ -1198,7 +1193,7 @@ TEST_F (FitmentMoveTests, InFoundation)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"fit": []}}}
+      "move": {"c": {"id": 1, "fit": []}}
     }
   ])");
 
@@ -1214,7 +1209,7 @@ TEST_F (FitmentMoveTests, NoFullHp)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"fit": ["sword"]}}}
+      "move": {"c": {"id": 1, "fit": ["sword"]}}
     }
   ])");
 
@@ -1223,7 +1218,7 @@ TEST_F (FitmentMoveTests, NoFullHp)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"fit": ["sword"]}}}
+      "move": {"c": {"id": 1, "fit": ["sword"]}}
     }
   ])");
 
@@ -1244,7 +1239,7 @@ TEST_F (FitmentMoveTests, ItemsNotAvailable)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"fit": ["sword", "sword"]}}}
+      "move": {"c": {"id": 1, "fit": ["sword", "sword"]}}
     }
   ])");
 
@@ -1259,7 +1254,7 @@ TEST_F (FitmentMoveTests, InvalidFitments)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"fit": ["bow", "sword"]}}}
+      "move": {"c": {"id": 1, "fit": ["bow", "sword"]}}
     }
   ])");
 
@@ -1274,7 +1269,7 @@ TEST_F (FitmentMoveTests, ValidUpdate)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"fit": ["super scanner"]}}}
+      "move": {"c": {"id": 1, "fit": ["super scanner"]}}
     }
   ])");
 
@@ -1294,7 +1289,7 @@ TEST_F (FitmentMoveTests, ExistingFitmentsReused)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"fit": ["sword", "super scanner"]}}}
+      "move": {"c": {"id": 1, "fit": ["sword", "super scanner"]}}
     }
   ])");
 
@@ -1314,7 +1309,7 @@ TEST_F (FitmentMoveTests, DropsInventory)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"fit": ["sword"]}}}
+      "move": {"c": {"id": 1, "fit": ["sword"]}}
     }
   ])");
 
@@ -1335,10 +1330,13 @@ TEST_F (FitmentMoveTests, FitmentBeforePickup)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {
-        "pu": {"f": {"sword": 1}},
-        "fit": ["sword"]
-      }}}
+      "move": {"c":
+        {
+          "id": 1,
+          "pu": {"f": {"sword": 1}},
+          "fit": ["sword"]
+        }
+      }
     }
   ])");
 
@@ -1357,15 +1355,11 @@ TEST_F (ChangeVehicleMoveTests, InvalidFormat)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {}}}
+      "move": {"c": {"id": 1, "v": 42}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"v": 42}}}
-    },
-    {
-      "name": "domob",
-      "move": {"c": {"1": {"v": {"chariot": 1}}}}
+      "move": {"c": {"id": 1, "v": {"chariot": 1}}}
     }
   ])");
 
@@ -1380,11 +1374,11 @@ TEST_F (ChangeVehicleMoveTests, InvalidVehicle)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"v": "foo"}}}
+      "move": {"c": {"id": 1, "v": "foo"}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"v": "invalid item"}}}
+      "move": {"c": {"id": 1, "v": "invalid item"}}
     }
   ])");
 
@@ -1400,7 +1394,7 @@ TEST_F (ChangeVehicleMoveTests, NotInBuilding)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"v": "chariot"}}}
+      "move": {"c": {"id": 1, "v": "chariot"}}
     }
   ])");
 
@@ -1416,7 +1410,7 @@ TEST_F (ChangeVehicleMoveTests, InFoundation)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"v": "chariot"}}}
+      "move": {"c": {"id": 1, "v": "chariot"}}
     }
   ])");
 
@@ -1432,7 +1426,7 @@ TEST_F (ChangeVehicleMoveTests, NoFullHp)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"v": "chariot"}}}
+      "move": {"c": {"id": 1, "v": "chariot"}}
     }
   ])");
 
@@ -1441,7 +1435,7 @@ TEST_F (ChangeVehicleMoveTests, NoFullHp)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"v": "chariot"}}}
+      "move": {"c": {"id": 1, "v": "chariot"}}
     }
   ])");
 
@@ -1455,7 +1449,7 @@ TEST_F (ChangeVehicleMoveTests, MissingItem)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"v": "chariot"}}}
+      "move": {"c": {"id": 1, "v": "chariot"}}
     }
   ])");
 
@@ -1470,7 +1464,7 @@ TEST_F (ChangeVehicleMoveTests, BasicUpdate)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"v": "chariot"}}}
+      "move": {"c": {"id": 1, "v": "chariot"}}
     }
   ])");
 
@@ -1494,7 +1488,7 @@ TEST_F (ChangeVehicleMoveTests, InventoryDropped)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"v": "chariot"}}}
+      "move": {"c": {"id": 1, "v": "chariot"}}
     }
   ])");
 
@@ -1511,7 +1505,7 @@ TEST_F (ChangeVehicleMoveTests, RemovesFitments)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"v": "chariot"}}}
+      "move": {"c": {"id": 1, "v": "chariot"}}
     }
   ])");
 
@@ -1533,7 +1527,7 @@ TEST_F (ChangeVehicleMoveTests, ChangeToSameType)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"v": "chariot"}}}
+      "move": {"c": {"id": 1, "v": "chariot"}}
     }
   ])");
   ExpectFitments ({"bow"});
@@ -1542,7 +1536,7 @@ TEST_F (ChangeVehicleMoveTests, ChangeToSameType)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"v": "chariot"}}}
+      "move": {"c": {"id": 1, "v": "chariot"}}
     }
   ])");
   ExpectFitments ({});
@@ -1558,11 +1552,14 @@ TEST_F (ChangeVehicleMoveTests, ChangeVehicleBeforeFitmentsAndPickup)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {
-        "fit": ["sword"],
-        "pu": {"f": {"foo": 1}},
-        "v": "chariot"
-      }}}
+      "move": {"c":
+        {
+          "id": 1,
+          "fit": ["sword"],
+          "pu": {"f": {"foo": 1}},
+          "v": "chariot"
+        }
+      }
     }
   ])");
 
@@ -1601,35 +1598,35 @@ TEST_F (FoundBuildingMoveTests, InvalidFormat)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"fb": "foo"}}}
+      "move": {"c": {"id": 1, "fb": "foo"}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"fb": {"t": 42, "rot": 5}}}}
+      "move": {"c": {"id": 1, "fb": {"t": 42, "rot": 5}}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"fb": {"t": "huesli", "rot": -1}}}}
+      "move": {"c": {"id": 1, "fb": {"t": "huesli", "rot": -1}}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"fb": {"t": "huesli", "rot": 6}}}}
+      "move": {"c": {"id": 1, "fb": {"t": "huesli", "rot": 6}}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"fb": {"t": "huesli", "rot": 0, "x": false}}}}
+      "move": {"c": {"id": 1, "fb": {"t": "huesli", "rot": 0, "x": false}}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"fb": {"t": "huesli", "x": false}}}}
+      "move": {"c": {"id": 1, "fb": {"t": "huesli", "x": false}}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"fb": {"rot": 0}}}}
+      "move": {"c": {"id": 1, "fb": {"rot": 0}}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"fb": {"t": "invalid building", "rot": 0}}}}
+      "move": {"c": {"id": 1, "fb": {"t": "invalid building", "rot": 0}}}
     }
   ])");
   EXPECT_EQ (buildings.GetById (101), nullptr);
@@ -1642,7 +1639,7 @@ TEST_F (FoundBuildingMoveTests, CharacterBusy)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"fb": {"t": "huesli", "rot": 0}}}}
+      "move": {"c": {"id": 1, "fb": {"t": "huesli", "rot": 0}}}
     }
   ])");
   EXPECT_EQ (buildings.GetById (101), nullptr);
@@ -1655,7 +1652,7 @@ TEST_F (FoundBuildingMoveTests, InBuilding)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"fb": {"t": "huesli", "rot": 0}}}}
+      "move": {"c": {"id": 1, "fb": {"t": "huesli", "rot": 0}}}
     }
   ])");
   EXPECT_EQ (buildings.GetById (101), nullptr);
@@ -1666,7 +1663,7 @@ TEST_F (FoundBuildingMoveTests, UnconstructibleBuilding)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"fb": {"t": "itemmaker", "rot": 0}}}}
+      "move": {"c": {"id": 1, "fb": {"t": "itemmaker", "rot": 0}}}
     }
   ])");
   EXPECT_EQ (buildings.GetById (101), nullptr);
@@ -1678,7 +1675,7 @@ TEST_F (FoundBuildingMoveTests, NotEnoughResources)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"fb": {"t": "huesli", "rot": 0}}}}
+      "move": {"c": {"id": 1, "fb": {"t": "huesli", "rot": 0}}}
     }
   ])");
   EXPECT_EQ (buildings.GetById (101), nullptr);
@@ -1694,7 +1691,7 @@ TEST_F (FoundBuildingMoveTests, CannotPlaceBuilding)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"fb": {"t": "huesli", "rot": 0}}}}
+      "move": {"c": {"id": 1, "fb": {"t": "huesli", "rot": 0}}}
     }
   ])");
   EXPECT_EQ (buildings.GetById (101), nullptr);
@@ -1707,7 +1704,7 @@ TEST_F (FoundBuildingMoveTests, Success)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"fb": {"t": "huesli", "rot": 3}}}}
+      "move": {"c": {"id": 1, "fb": {"t": "huesli", "rot": 3}}}
     }
   ])");
 
@@ -1736,10 +1733,13 @@ TEST_F (FoundBuildingMoveTests, FoundationBeforeDrop)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {
-        "drop": {"f": {"zerospace": 100, "foo": 100}},
-        "fb": {"t": "huesli", "rot": 3}
-      }}}
+      "move": {"c":
+        {
+          "id": 1,
+          "drop": {"f": {"zerospace": 100, "foo": 100}},
+          "fb": {"t": "huesli", "rot": 3}
+        }
+      }
     }
   ])");
 
@@ -1757,10 +1757,13 @@ TEST_F (FoundBuildingMoveTests, FoundationBeforeExit)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {
-        "xb": {},
-        "fb": {"t": "huesli", "rot": 3}
-      }}}
+      "move": {"c":
+        {
+          "id": 1,
+          "xb": {},
+          "fb": {"t": "huesli", "rot": 3}
+        }
+      }
     }
   ])");
 
@@ -1795,27 +1798,27 @@ TEST_F (EnterBuildingMoveTests, InvalidSet)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"eb": {}}}}
+      "move": {"c": {"id": 1, "eb": {}}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"eb": "foo"}}}
+      "move": {"c": {"id": 1, "eb": "foo"}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"eb": -10}}}
+      "move": {"c": {"id": 1, "eb": -10}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"eb": 0}}}
+      "move": {"c": {"id": 1, "eb": 0}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"eb": 42}}}
+      "move": {"c": {"id": 1, "eb": 42}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"eb": 100}}}
+      "move": {"c": {"id": 1, "eb": 100}}
     }
   ])");
   EXPECT_EQ (GetTest ()->GetEnterBuilding (), Database::EMPTY_ID);
@@ -1828,23 +1831,19 @@ TEST_F (EnterBuildingMoveTests, InvalidClear)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"eb": {}}}}
+      "move": {"c": {"id": 1, "eb": {}}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"eb": "foo"}}}
+      "move": {"c": {"id": 1, "eb": "foo"}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"eb": 0}}}
+      "move": {"c": {"id": 1, "eb": 0}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"eb": 42}}}
-    },
-    {
-      "name": "domob",
-      "move": {"c": {"1": {}}}
+      "move": {"c": {"id": 1, "eb": 42}}
     }
   ])");
   EXPECT_EQ (GetTest ()->GetEnterBuilding (), 50);
@@ -1864,7 +1863,7 @@ TEST_F (EnterBuildingMoveTests, ValidEnter)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"eb": 100}}}
+      "move": {"c": {"id": 1, "eb": 100}}
     }
   ])");
   EXPECT_EQ (GetTest ()->GetEnterBuilding (), 100);
@@ -1872,7 +1871,7 @@ TEST_F (EnterBuildingMoveTests, ValidEnter)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"eb": 101}}}
+      "move": {"c": {"id": 1, "eb": 101}}
     }
   ])");
   EXPECT_EQ (GetTest ()->GetEnterBuilding (), 101);
@@ -1884,7 +1883,7 @@ TEST_F (EnterBuildingMoveTests, ValidClear)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"eb": null}}}
+      "move": {"c": {"id": 1, "eb": null}}
     }
   ])");
   EXPECT_EQ (GetTest ()->GetEnterBuilding (), Database::EMPTY_ID);
@@ -1902,7 +1901,7 @@ TEST_F (EnterBuildingMoveTests, BusyIsFine)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"eb": 100}}}
+      "move": {"c": {"id": 1, "eb": 100}}
     }
   ])");
   EXPECT_EQ (GetTest ()->GetEnterBuilding (), 100);
@@ -1920,7 +1919,7 @@ TEST_F (EnterBuildingMoveTests, AlreadyInBuilding)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"eb": 100}}}
+      "move": {"c": {"id": 1, "eb": 100}}
     }
   ])");
   EXPECT_EQ (GetTest ()->GetEnterBuilding (), Database::EMPTY_ID);
@@ -1935,19 +1934,19 @@ TEST_F (ExitBuildingMoveTests, Invalid)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"xb": {"a": 10}}}}
+      "move": {"c": {"id": 1, "xb": {"a": 10}}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"xb": "foo"}}}
+      "move": {"c": {"id": 1, "xb": "foo"}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"xb": 20}}}
+      "move": {"c": {"id": 1, "xb": 20}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"xb": null}}}
+      "move": {"c": {"id": 1, "xb": null}}
     }
   ])");
 
@@ -1966,7 +1965,7 @@ TEST_F (ExitBuildingMoveTests, WhenBusy)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"xb": {}}}}
+      "move": {"c": {"id": 1, "xb": {}}}
     }
   ])");
 
@@ -1982,7 +1981,7 @@ TEST_F (ExitBuildingMoveTests, NotInBuilding)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"xb": {}}}}
+      "move": {"c": {"id": 1, "xb": {}}}
     }
   ])");
 
@@ -2002,7 +2001,7 @@ TEST_F (ExitBuildingMoveTests, Valid)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"xb": {}}}}
+      "move": {"c": {"id": 1, "xb": {}}}
     }
   ])");
 
@@ -2021,7 +2020,7 @@ TEST_F (ExitBuildingMoveTests, EnterAndExitWhenInside)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"xb": {}, "eb": 100}}}
+      "move": {"c": {"id": 1, "xb": {}, "eb": 100}}
     }
   ])");
 
@@ -2044,7 +2043,7 @@ TEST_F (ExitBuildingMoveTests, InventoryBeforeExit)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"xb": {}, "drop": {"f": {"foo": 1}}}}}
+      "move": {"c": {"id": 1, "xb": {}, "drop": {"f": {"foo": 1}}}}
     }
   ])");
 
@@ -2099,11 +2098,11 @@ TEST_F (MobileRefiningMoveTests, Invalid)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"ref": {}}}}
+      "move": {"c": {"id": 1, "ref": {}}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"ref": {"i": "test ore", "n": 10}}}}
+      "move": {"c": {"id": 1, "ref": {"i": "test ore", "n": 10}}}
     }
   ])");
   EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 100);
@@ -2115,7 +2114,7 @@ TEST_F (MobileRefiningMoveTests, Works)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"ref": {"i": "test ore", "n": 12}}}}
+      "move": {"c": {"id": 1, "ref": {"i": "test ore", "n": 12}}}
     }
   ])");
   EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 80);
@@ -2140,10 +2139,13 @@ TEST_F (MobileRefiningMoveTests, BeforePickup)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {
-        "pu": {"f": {"foo": 10}},
-        "ref": {"i": "test ore", "n": 6}
-      }}}
+      "move": {"c":
+        {
+          "id": 1,
+          "pu": {"f": {"foo": 10}},
+          "ref": {"i": "test ore", "n": 6}
+        }
+      }
     }
   ])");
 
@@ -2159,10 +2161,13 @@ TEST_F (MobileRefiningMoveTests, BeforeDrop)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {
-        "drop": {"f": {"bar": 100, "test ore": 100}},
-        "ref": {"i": "test ore", "n": 6}
-      }}}
+      "move": {"c":
+        {
+          "id": 1,
+          "drop": {"f": {"bar": 100, "test ore": 100}},
+          "ref": {"i": "test ore", "n": 6}
+        }
+      }
     }
   ])");
 
@@ -2230,23 +2235,23 @@ TEST_F (DropPickupMoveTests, InvalidDrop)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"drop": 42}}}
+      "move": {"c": {"id": 1, "drop": 42}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"drop": {"f": []}}}}
+      "move": {"c": {"id": 1, "drop": {"f": []}}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"drop": {"f": {"foo": 1}, "x": 2}}}}
+      "move": {"c": {"id": 1, "drop": {"f": {"foo": 1}, "x": 2}}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"drop": {"f": {"invalid item": 1}}}}}
+      "move": {"c": {"id": 1, "drop": {"f": {"invalid item": 1}}}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"drop": {"f": {"foo": 10000000000000000}}}}}
+      "move": {"c": {"id": 1, "drop": {"f": {"foo": 10000000000000000}}}}
     }
   ])");
 
@@ -2261,23 +2266,23 @@ TEST_F (DropPickupMoveTests, InvalidPickUp)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"pu": 42}}}
+      "move": {"c": {"id": 1, "pu": 42}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"pu": {"f": []}}}}
+      "move": {"c": {"id": 1, "pu": {"f": []}}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"pu": {"f": {"foo": 1}, "x": 2}}}}
+      "move": {"c": {"id": 1, "pu": {"f": {"foo": 1}, "x": 2}}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"pu": {"f": {"invalid item": 1}}}}}
+      "move": {"c": {"id": 1, "pu": {"f": {"invalid item": 1}}}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"pu": {"f": {"foo": 10000000000000000}}}}}
+      "move": {"c": {"id": 1, "pu": {"f": {"foo": 10000000000000000}}}}
     }
   ])");
 
@@ -2296,16 +2301,16 @@ TEST_F (DropPickupMoveTests, BasicDrop)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"drop": {"f": {
+      "move": {"c": {"id": 1, "drop": {"f": {
         "a": 2000000000,
         "foo": 2,
         "bar": 1,
         "x": 10
-      }}}}}
+      }}}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"drop": {"f": {"foo": 1}}}}}
+      "move": {"c": {"id": 1, "drop": {"f": {"foo": 1}}}}
     }
   ])");
 
@@ -2327,15 +2332,15 @@ TEST_F (DropPickupMoveTests, BasicPickUp)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"pu": {"f": {
+      "move": {"c": {"id": 1, "pu": {"f": {
         "a": 2000000000,
         "foo": 2,
         "bar": 10
-      }}}}}
+      }}}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"pu": {"f": {"foo": 1}}}}}
+      "move": {"c": {"id": 1, "pu": {"f": {"foo": 1}}}}
     }
   ])");
 
@@ -2355,10 +2360,13 @@ TEST_F (DropPickupMoveTests, TooMuch)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {
-        "drop": {"f": {"foo": 100}},
-        "pu": {"f": {"bar": 100}}
-      }}}
+      "move": {"c":
+        {
+          "id": 1,
+          "drop": {"f": {"foo": 100}},
+          "pu": {"f": {"bar": 100}}
+        }
+      }
     }
   ])");
 
@@ -2378,9 +2386,12 @@ TEST_F (DropPickupMoveTests, CargoLimit)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {
-        "pu": {"f": {"bar": 1, "foo": 100, "zerospace": 100}}
-      }}}
+      "move": {"c":
+        {
+          "id": 1,
+          "pu": {"f": {"bar": 1, "foo": 100, "zerospace": 100}}
+        }
+      }
     }
   ])");
 
@@ -2404,10 +2415,13 @@ TEST_F (DropPickupMoveTests, RelativeOrder)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {
-        "drop": {"f": {"foo": 100}},
-        "pu": {"f": {"foo": 3}}
-      }}}
+      "move": {"c":
+        {
+          "id": 1,
+          "drop": {"f": {"foo": 100}},
+          "pu": {"f": {"foo": 3}}
+        }
+      }
     }
   ])");
 
@@ -2432,9 +2446,12 @@ TEST_F (DropPickupMoveTests, OrderOfItems)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {
-        "pu": {"f": {"foo": 100, "bar": 100}}
-      }}}
+      "move": {"c":
+        {
+          "id": 1,
+          "pu": {"f": {"foo": 100, "bar": 100}}
+        }
+      }
     }
   ])");
 
@@ -2472,10 +2489,13 @@ TEST_F (DropPickupMoveTests, InBuilding)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {
-        "drop": {"f": {"foo": 5}},
-        "pu": {"f": {"bar": 3}}
-      }}}
+      "move": {"c":
+        {
+          "id": 1,
+          "drop": {"f": {"foo": 5}},
+          "pu": {"f": {"bar": 3}}
+        }
+      }
     }
   ])");
 
@@ -2513,9 +2533,12 @@ TEST_F (DropPickupMoveTests, DropInFoundation)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {
-        "drop": {"f": {"foo": 5}}
-      }}}
+      "move": {"c":
+        {
+          "id": 1,
+          "drop": {"f": {"foo": 5}}
+        }
+      }
     }
   ])");
 
@@ -2541,9 +2564,12 @@ TEST_F (DropPickupMoveTests, PickupInFoundation)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {
-        "pu": {"f": {"foo": 10}}
-      }}}
+      "move": {"c":
+        {
+          "id": 1,
+          "pu": {"f": {"foo": 10}}
+        }
+      }
     }
   ])");
 
@@ -2573,9 +2599,12 @@ TEST_F (DropPickupMoveTests, StartBuildingConstruction)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {
-        "drop": {"f": {"foo": 5, "zerospace": 9}}
-      }}}
+      "move": {"c":
+        {
+          "id": 1,
+          "drop": {"f": {"foo": 5, "zerospace": 9}}
+        }
+      }
     }
   ])");
   EXPECT_FALSE (buildings.GetById (bId)
@@ -2586,9 +2615,12 @@ TEST_F (DropPickupMoveTests, StartBuildingConstruction)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {
-        "drop": {"f": {"zerospace": 1}}
-      }}}
+      "move": {"c":
+        {
+          "id": 1,
+          "drop": {"f": {"zerospace": 1}}
+        }
+      }
     }
   ])");
   EXPECT_TRUE (buildings.GetById (bId)
@@ -2598,9 +2630,12 @@ TEST_F (DropPickupMoveTests, StartBuildingConstruction)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {
-        "drop": {"f": {"foo": 1}}
-      }}}
+      "move": {"c":
+        {
+          "id": 1,
+          "drop": {"f": {"foo": 1}}
+        }
+      }
     }
   ])");
   auto res = ongoings.QueryAll ();
@@ -2659,10 +2694,13 @@ TEST_F (ProspectingMoveTests, Success)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {
-        "wp": )" + WpStr ({HexCoord (5, -2)}) + R"(,
-        "prospect": {}
-      }}}
+      "move": {"c":
+        {
+          "id": 1,
+          "wp": )" + WpStr ({HexCoord (5, -2)}) + R"(,
+          "prospect": {}
+        }
+      }
     }
   ])");
 
@@ -2691,9 +2729,12 @@ TEST_F (ProspectingMoveTests, Reprospecting)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {
-        "prospect": {}
-      }}}
+      "move": {"c":
+        {
+          "id": 1,
+          "prospect": {}
+        }
+      }
     }
   ])");
 
@@ -2709,15 +2750,15 @@ TEST_F (ProspectingMoveTests, Invalid)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"prospect": true}}}
+      "move": {"c": {"id": 1, "prospect": true}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"prospect": 1}}}
+      "move": {"c": {"id": 1, "prospect": 1}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"prospect": {"x": 42}}}}
+      "move": {"c": {"id": 1, "prospect": {"x": 42}}}
     }
   ])");
 
@@ -2741,7 +2782,7 @@ TEST_F (ProspectingMoveTests, CannotProspectRegion)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"prospect": {}}}}
+      "move": {"c": {"id": 1, "prospect": {}}}
     }
   ])");
 
@@ -2759,7 +2800,7 @@ TEST_F (ProspectingMoveTests, NoProspectingAbility)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"prospect": {}}}}
+      "move": {"c": {"id": 1, "prospect": {}}}
     }
   ])");
   EXPECT_FALSE (GetTest ()->IsBusy ());
@@ -2778,11 +2819,11 @@ TEST_F (ProspectingMoveTests, MultipleCharacters)
   Process (R"([
     {
       "name": "foo",
-      "move": {"c": {"2": {"prospect": {}}}}
+      "move": {"c": {"id": 2, "prospect": {}}}
     },
     {
       "name": "domob",
-      "move": {"c": {"1": {"prospect": {}}}}
+      "move": {"c": {"id": 1, "prospect": {}}}
     }
   ])");
 
@@ -2802,9 +2843,6 @@ TEST_F (ProspectingMoveTests, OrderOfCharactersInAMove)
 {
   GetTest ()->SetPosition (HexCoord (0, 0));
 
-  /* Character 9 will be processed before character 10, since we order by
-     ID and not by string.  */
-
   auto c = SetupCharacter (9, "domob");
   c->SetPosition (pos + HexCoord (1, 0));
   c->MutableProto ().set_prospecting_blocks (10);
@@ -2818,17 +2856,20 @@ TEST_F (ProspectingMoveTests, OrderOfCharactersInAMove)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {
-        "10": {"prospect": {}},
-        "9": {"prospect": {}}
-      }}
+      "move": {"c":
+        {
+          "id": [10, 9],
+          "prospect": {}
+        }
+      }
     }
   ])");
 
-  EXPECT_TRUE (tbl.GetById (9)->IsBusy ());
-  EXPECT_FALSE (tbl.GetById (10)->IsBusy ());
+  EXPECT_FALSE (tbl.GetById (9)->IsBusy ());
+  EXPECT_TRUE (tbl.GetById (10)->IsBusy ());
 
-  EXPECT_EQ (regions.GetById (region)->GetProto ().prospecting_character (), 9);
+  EXPECT_EQ (regions.GetById (region)->GetProto ().prospecting_character (),
+             10);
 }
 
 /* ************************************************************************** */
@@ -2866,9 +2907,7 @@ protected:
     Process (R"([
       {
         "name": "domob",
-        "move": {"c": {
-          "1": {"mine": {}}
-        }}
+        "move": {"c": {"id": 1, "mine": {}}}
       }
     ])");
   }
@@ -2882,9 +2921,7 @@ TEST_F (MiningMoveTests, WaypointsStopMining)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {
-        "1": {"wp": null}
-      }}
+      "move": {"c": {"id": 1, "wp": null}}
     }
   ])");
 
@@ -2900,9 +2937,7 @@ TEST_F (MiningMoveTests, WaypointsNoMiningData)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {
-        "1": {"wp": null}
-      }}
+      "move": {"c": {"id": 1, "wp": null}}
     }
   ])");
 
@@ -2915,15 +2950,11 @@ TEST_F (MiningMoveTests, InvalidMoveJson)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {
-        "1": {"mine": 123}
-      }}
+      "move": {"c": {"id": 1, "mine": 123}}
     },
     {
       "name": "domob",
-      "move": {"c": {
-        "1": {"mine": {"x": 5}}
-      }}
+      "move": {"c": {"id": 1, "mine": {"x": 5}}}
     }
   ])");
 
@@ -2977,9 +3008,13 @@ TEST_F (MiningMoveTests, MiningAndWaypointsInSameMove)
   Process (R"([
     {
       "name": "domob",
-      "move": {"c": {
-        "1": {"wp": )" + WpStr ({HexCoord (5, 10)}) + R"(, "mine": {}}
-      }}
+      "move": {"c":
+        {
+          "id": 1,
+          "wp": )" + WpStr ({HexCoord (5, 10)}) + R"(,
+          "mine": {}
+        }
+      }
     }
   ])");
 
@@ -3253,7 +3288,7 @@ TEST_F (ServicesMoveTests, ServicesAfterCharacterUpdates)
       "move":
         {
           "s": [{"b": 100, "t": "fix", "c": 200}],
-          "c": {"200": {"xb": {}}}
+          "c": {"id": 200, "xb": {}}
         }
     }
   ])");

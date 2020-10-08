@@ -203,7 +203,7 @@ TEST_F (PXLogicTests, WaypointsBeforeMovement)
   UpdateState (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"wp": )" + WpStr ({HexCoord (-1, 0)}) + R"(}}}
+      "move": {"c": {"id": 1, "wp": )" + WpStr ({HexCoord (-1, 0)}) + R"(}}
     }
   ])");
 
@@ -281,7 +281,7 @@ TEST_F (PXLogicTests, KilledVehicleNoLongerBlocks)
   UpdateState (R"([
     {
       "name": "moving",
-      "move": {"c": {"3": {"wp": )" + WpStr ({HexCoord (10, 0)}) + R"(}}}
+      "move": {"c": {"id": 3, "wp": )" + WpStr ({HexCoord (10, 0)}) + R"(}}
     }
   ])");
 
@@ -309,11 +309,11 @@ TEST_F (PXLogicTests, NewBuildingBlocksMovement)
   UpdateState (R"([
     {
       "name": "moving",
-      "move": {"c": {"2": {"wp": )" + WpStr ({HexCoord (0, 0)}) + R"(}}}
+      "move": {"c": {"id": 2, "wp": )" + WpStr ({HexCoord (0, 0)}) + R"(}}
     },
     {
       "name": "builder",
-      "move": {"c": {"1": {"fb": {"t": "huesli", "rot": 0}}}}
+      "move": {"c": {"id": 1, "fb": {"t": "huesli", "rot": 0}}}
     }
   ])");
 
@@ -468,9 +468,9 @@ TEST_F (PXLogicTests, MenteconAlteration)
   UpdateState (R"([
     {
       "name": "trigger",
-      "move": {"c": {"1": {"wp": )"
+      "move": {"c": {"id": 1, "wp": )"
         + WpStr ({HexCoord (-10, 0), HexCoord (-11, 1)})
-        + R"(}}}
+        + R"(}}
     }
   ])");
   UpdateState ("[]");
@@ -504,9 +504,9 @@ TEST_F (PXLogicTests, MenteconAlteration)
   UpdateState (R"([
     {
       "name": "trigger",
-      "move": {"c": {"1": {"wp": )"
+      "move": {"c": {"id": 1, "wp": )"
         + WpStr ({HexCoord (-10, 0), HexCoord (-10, -1)})
-        + R"(}}}
+        + R"(}}
     }
   ])");
   for (unsigned i = 0; i < 10; ++i)
@@ -563,7 +563,7 @@ TEST_F (PXLogicTests, PickUpDeadDrop)
   UpdateState (R"([
     {
       "name": "attacker",
-      "move": {"c": {"1": {"pu": {"f": {"foo": 3}}}}}
+      "move": {"c": {"id": 1, "pu": {"f": {"foo": 3}}}}
     }
   ])");
 
@@ -732,7 +732,7 @@ TEST_F (PXLogicTests, ProspectingBeforeMovement)
   UpdateState (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"prospect": {}}}}
+      "move": {"c": {"id": 1, "prospect": {}}}
     }
   ])");
 
@@ -775,7 +775,7 @@ TEST_F (PXLogicTests, ProspectingUserKilled)
   UpdateState (R"([
     {
       "name": "andy",
-      "move": {"c": {"2": {"prospect": {}}}}
+      "move": {"c": {"id": 2, "prospect": {}}}
     }
   ])");
 
@@ -799,7 +799,7 @@ TEST_F (PXLogicTests, ProspectingUserKilled)
   UpdateState (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"prospect": {}}}}
+      "move": {"c": {"id": 1, "prospect": {}}}
     }
   ])");
 
@@ -830,7 +830,7 @@ TEST_F (PXLogicTests, FinishingProspecting)
   UpdateState (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"prospect": {}}}}
+      "move": {"c": {"id": 1, "prospect": {}}}
     }
   ])");
 
@@ -854,7 +854,7 @@ TEST_F (PXLogicTests, FinishingProspecting)
   UpdateState (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"wp": )" + WpStr ({HexCoord (0, 5)}) + R"(}}}
+      "move": {"c": {"id": 1, "wp": )" + WpStr ({HexCoord (0, 5)}) + R"(}}
     }
   ])");
 
@@ -886,7 +886,7 @@ TEST_F (PXLogicTests, MiningRightAfterProspecting)
   UpdateState (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"prospect": {}}}}
+      "move": {"c": {"id": 1, "prospect": {}}}
     }
   ])");
   c = characters.GetById (1);
@@ -900,7 +900,7 @@ TEST_F (PXLogicTests, MiningRightAfterProspecting)
   UpdateState (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"mine": {}}}}
+      "move": {"c": {"id": 1, "mine": {}}}
     }
   ])");
 
@@ -948,7 +948,7 @@ TEST_F (PXLogicTests, MiningAndDropping)
   UpdateState (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"drop": {"f": {"foo": 3}}}}}
+      "move": {"c": {"id": 1, "drop": {"f": {"foo": 3}}}}
     }
   ])");
   c = characters.GetById (1);
@@ -995,7 +995,7 @@ TEST_F (PXLogicTests, MiningWhenReprospected)
   auto data = BuildBlockData (R"([
     {
       "name": "domob",
-      "move": {"c": {"1": {"prospect": {}}}}
+      "move": {"c": {"id": 1, "prospect": {}}}
     }
   ])");
   data["block"]["height"] = 200;
@@ -1028,7 +1028,7 @@ TEST_F (PXLogicTests, EnterBuildingAfterMovesAndMovement)
   UpdateState (R"([
     {
       "name": "domob",
-      "move": {"c": {"2": {"eb": 1}}}
+      "move": {"c": {"id": 2, "eb": 1}}
     }
   ])");
 
@@ -1097,7 +1097,7 @@ TEST_F (PXLogicTests, EnterBuildingAndTargetFinding)
   UpdateState (R"([
     {
       "name": "domob",
-      "move": {"c": {"2": {"eb": 1}}}
+      "move": {"c": {"id": 2, "eb": 1}}
     }
   ])");
 
@@ -1123,7 +1123,7 @@ TEST_F (PXLogicTests, EnterAndExitBuildingWhenOutside)
   UpdateState (R"([
     {
       "name": "domob",
-      "move": {"c": {"2": {"eb": 1, "xb": {}}}}
+      "move": {"c": {"id": 2, "eb": 1, "xb": {}}}
     }
   ])");
 
