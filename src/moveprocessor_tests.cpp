@@ -3293,7 +3293,7 @@ TEST_F (GodModeTests, InvalidTeleport)
     "god": false
   }}])");
   ProcessAdmin (R"([{"cmd": {
-    "god": {"teleport": {"1": {"x": 5, "y": 0, "z": 42}}}
+    "god": {"teleport": [{"id": 1, "pos": {"x": 5, "y": 0, "z": 42}}]}
   }}])");
 
   EXPECT_EQ (tbl.GetById (id)->GetPosition (), HexCoord (0, 0));
@@ -3313,10 +3313,10 @@ TEST_F (GodModeTests, Teleport)
     "god":
       {
         "teleport":
-          {
-            "2": {"x": 0, "y": 0},
-            "1": {"x": 5, "y": -42}
-          }
+          [
+            {"id": 2, "pos": {"x": 0, "y": 0}},
+            {"id": 1, "pos": {"x": 5, "y": -42}}
+          ]
       },
     "foo": "bar"
   }}])");
@@ -3352,14 +3352,14 @@ TEST_F (GodModeTests, SetHp)
         "sethp":
           {
             "b":
-              {
-                "2": {"ma": 200, "a": 5}
-              },
+              [
+                {"id": 2, "ma": 200, "a": 5}
+              ],
             "c":
-              {
-                "2": {"a": 5},
-                "1": {"a": 32, "s": 15, "ma": -5, "ms": false, "x": "y"}
-              }
+              [
+                {"id": 2, "a": 5},
+                {"id": 1, "a": 32, "s": 15, "ma": -5, "ms": false, "x": "y"}
+              ]
           }
       }
   }}])");
@@ -3383,9 +3383,9 @@ TEST_F (GodModeTests, SetHp)
         "sethp":
           {
             "c":
-              {
-                "1": {"a": 1.5, "s": -15, "ma": 100, "ms": 90}
-              }
+              [
+                {"id": 1, "a": 1.5, "s": -15, "ma": 100, "ms": 90}
+              ]
           }
       }
   }}])");
@@ -3616,7 +3616,7 @@ TEST_F (GodModeDisabledTests, Teleport)
   ASSERT_EQ (id, 1);
 
   ProcessAdmin (R"([{"cmd": {
-    "god": {"teleport": {"1": {"x": 5, "y": -42}}}
+    "god": {"teleport": [{"id": 1, "pos": {"x": 5, "y": -42}}]}
   }}])");
 
   EXPECT_EQ (tbl.GetById (id)->GetPosition (), HexCoord (0, 0));
@@ -3632,7 +3632,7 @@ TEST_F (GodModeDisabledTests, SetHp)
   c.reset ();
 
   ProcessAdmin (R"([{"cmd": {
-    "god": {"sethp": {"c": {"1": {"a": 10}}}}
+    "god": {"sethp": {"c": [{"id": 1, "a": 10}]}}
   }}])");
 
   EXPECT_EQ (tbl.GetById (id)->GetHP ().armour (), 50);

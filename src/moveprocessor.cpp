@@ -1742,23 +1742,28 @@ namespace
 void
 MaybeGodTeleport (CharacterTable& tbl, const Json::Value& cmd)
 {
-  if (!cmd.isObject ())
+  if (!cmd.isArray ())
     return;
 
-  for (auto i = cmd.begin (); i != cmd.end (); ++i)
+  for (const auto& entry : cmd)
     {
-      Database::IdT id;
-      if (!IdFromString (i.name (), id))
+      if (!entry.isObject ())
         {
-          LOG (WARNING)
-              << "Ignoring invalid character ID for teleport: " << i.name ();
+          LOG (WARNING) << "Ignoring invalid teleport entry: " << entry;
+          continue;
+        }
+
+      Database::IdT id;
+      if (!IdFromJson (entry["id"], id))
+        {
+          LOG (WARNING) << "Invalid character ID in teleport: " << entry;
           continue;
         }
 
       HexCoord target;
-      if (!CoordFromJson (*i, target))
+      if (!CoordFromJson (entry["pos"], target))
         {
-          LOG (WARNING) << "Invalid teleport target: " << *i;
+          LOG (WARNING) << "Invalid target in teleport: " << entry;
           continue;
         }
 
@@ -1785,24 +1790,28 @@ template <typename T>
   void
   MaybeGodSetHp (T& tbl, const Json::Value& cmd)
 {
-  if (!cmd.isObject ())
+  if (!cmd.isArray ())
     return;
 
-  for (auto i = cmd.begin (); i != cmd.end (); ++i)
+  for (const auto& entry : cmd)
     {
-      Database::IdT id;
-      if (!IdFromString (i.name (), id))
+      if (!entry.isObject ())
         {
-          LOG (WARNING)
-              << "Ignoring invalid character ID for sethp: " << i.name ();
+          LOG (WARNING) << "Ignoring invalid sethp entry: " << entry;
+          continue;
+        }
+
+      Database::IdT id;
+      if (!IdFromJson (entry["id"], id))
+        {
+          LOG (WARNING) << "Invalid ID in sethp: " << entry;
           continue;
         }
 
       auto c = tbl.GetById (id);
       if (c == nullptr)
         {
-          LOG (WARNING)
-              << "Character ID does not exist: " << id;
+          LOG (WARNING) << "ID does not exist: " << id;
           continue;
         }
 
@@ -1810,17 +1819,17 @@ template <typename T>
       auto& hp = c->MutableHP ();
       auto& maxHP = *c->MutableRegenData ().mutable_max_hp ();
 
-      Json::Value val = (*i)["a"];
+      Json::Value val = entry["a"];
       if (val.isUInt64 ())
         hp.set_armour (val.asUInt64 ());
-      val = (*i)["s"];
+      val = entry["s"];
       if (val.isUInt64 ())
         hp.set_shield (val.asUInt64 ());
 
-      val = (*i)["ma"];
+      val = entry["ma"];
       if (val.isUInt64 ())
         maxHP.set_armour (val.asUInt64 ());
-      val = (*i)["ms"];
+      val = entry["ms"];
       if (val.isUInt64 ())
         maxHP.set_shield (val.asUInt64 ());
     }

@@ -399,10 +399,12 @@ class PXTest (XayaGameTest):
     """
 
     chars = self.getCharacters ()
-    teleport = {}
+    teleport = []
     for nm, c in charTargets.items ():
-      idStr = chars[nm].getIdStr ()
-      teleport[idStr] = c
+      teleport.append ({
+        "id": chars[nm].getId (),
+        "pos": c,
+      })
 
     self.adminCommand ({"god": {"teleport": teleport}})
     self.generate (1)
@@ -417,10 +419,11 @@ class PXTest (XayaGameTest):
     """
 
     chars = self.getCharacters ()
-    sethp = {}
+    sethp = []
     for nm, c in charHP.items ():
-      idStr = chars[nm].getIdStr ()
-      sethp[idStr] = c
+      val = copy.deepcopy (c)
+      val["id"] = chars[nm].getId ()
+      sethp.append (val)
 
     self.adminCommand ({"god": {"sethp": {"c": sethp}}})
     self.generate (1)
