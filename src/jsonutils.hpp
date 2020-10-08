@@ -63,24 +63,6 @@ bool AmountFromJson (const Json::Value& val, Amount& amount);
 bool IdFromJson (const Json::Value& val, Database::IdT& id);
 
 /**
- * Parses an ID value encoded as a string (e.g. for a dictionary key in JSON).
- * Returns true if the string represents exactly a valid unsigned integer and
- * false if something is wrong.
- */
-bool IdFromString (const std::string& str, Database::IdT& id);
-
-/**
- * Parses a string that encodes one or more IDs (separated by commas), e.g.
- * from a character-update JSON command.  Returns true and fills in the vector
- * of parsed IDs on success, and returns false if the string is not valid.
- *
- * The empty string is valid, and corresponds to an empty array that will be
- * returned for it.  A string like " " or " 1 " is invalid.
- */
-bool IdArrayFromString (const std::string& str,
-                        std::vector<Database::IdT>& ids);
-
-/**
  * Converts an integer value to the proper JSON representation.
  */
 template <typename T>
