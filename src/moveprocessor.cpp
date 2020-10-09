@@ -158,76 +158,71 @@ BaseMoveProcessor::TryCharacterUpdates (const std::string& name,
                                         const Json::Value& mv)
 {
   const auto& cmd = mv["c"];
-  if (!cmd.isObject ())
+
+  /* The character update can either be an array of individual operations,
+     or just a single object for a single operation.  */
+  Json::Value ops;
+  if (cmd.isArray ())
+    ops = cmd;
+  else if (cmd.isObject ())
+    {
+      ops = Json::Value(Json::arrayValue);
+      ops.append (cmd);
+    }
+  else
     return;
 
-  /* The order in which character updates are processed may be relevant for
-     consensus (if the updates to characters interact with each other).  We
-     order the updates in a move increasing by character ID.
-
-     If a character ID has more than one update associated to it (e.g. because
-     it appears in multiple, different ID lists used as keys), then the whole
-     update is invalid and no part of it will be processed.  This simplifies
-     handling, avoids any doubt about which one of the updates should be
-     processed, and is something that is not relevant in practice anyway
-     except for malicious moves or buggy software.
-
-     For other errors (that do not lead to ambiguity) like a single malformed
-     key string, a value that is not a JSON object or an ID that does not
-     exist in the database, we only ignore that part.  */
-
-  std::map<Database::IdT, Json::Value> updates;
-  for (auto i = cmd.begin (); i != cmd.end (); ++i)
+  for (const auto& op : ops)
     {
-      std::vector<Database::IdT> ids;
-      if (!IdArrayFromString (i.name (), ids))
+      if (!op.isObject ())
         {
-          LOG (WARNING)
-              << "Ignoring invalid character IDs for update: " << i.name ();
+          LOG (WARNING) << "Character update entry is not an object: " << op;
           continue;
         }
 
-      const auto& upd = *i;
-      if (!upd.isObject ())
+      /* Also the ID in the update itself can either be a single ID or
+         an array of IDs, which will be batch-updated with the same
+         operation.  */
+      const auto& idOrIds = op["id"];
+      Json::Value ids;
+      if (idOrIds.isNull ())
         {
-          LOG (WARNING)
-              << "Character update is not an object: " << upd;
+          LOG (WARNING) << "Missing ID in character update entry: " << op;
           continue;
         }
+      else if (idOrIds.isArray ())
+        ids = idOrIds;
+      else
+        ids.append (idOrIds);
 
-      for (const auto id : ids)
+      for (const auto& idVal : ids)
         {
-          const auto res = updates.emplace (id, upd);
-          if (!res.second)
+          Database::IdT id;
+          if (!IdFromJson (idVal, id))
             {
               LOG (WARNING)
-                  << "Character update processes ID " << id
-                  << " more than once: " << mv;
-              return;
+                  << "Invalid ID in character update entry: " << idVal;
+              continue;
             }
-        }
-    }
 
-  for (const auto& entry : updates)
-    {
-      auto c = characters.GetById (entry.first);
-      if (c == nullptr)
-        {
-          LOG (WARNING)
-              << "Character ID does not exist: " << entry.first;
-          continue;
-        }
+          auto c = characters.GetById (id);
+          if (c == nullptr)
+            {
+              LOG (WARNING) << "Character ID does not exist: " << id;
+              continue;
+            }
 
-      if (c->GetOwner () != name)
-        {
-          LOG (WARNING)
-              << "User " << name
-              << " is not allowed to update character owned by "
-              << c->GetOwner ();
-          continue;
-        }
+          if (c->GetOwner () != name)
+            {
+              LOG (WARNING)
+                  << "User " << name
+                  << " is not allowed to update character owned by "
+                  << c->GetOwner ();
+              continue;
+            }
 
-      PerformCharacterUpdate (*c, entry.second);
+          PerformCharacterUpdate (*c, op);
+        }
     }
 }
 
@@ -236,45 +231,41 @@ BaseMoveProcessor::TryBuildingUpdates (const std::string& name,
                                        const Json::Value& mv)
 {
   const auto& cmd = mv["b"];
-  if (!cmd.isObject ())
+
+  /* The building update can either be an array of individual operations,
+     or just a single object for a single operation.  */
+  Json::Value ops;
+  if (cmd.isArray ())
+    ops = cmd;
+  else if (cmd.isObject ())
+    {
+      ops = Json::Value(Json::arrayValue);
+      ops.append (cmd);
+    }
+  else
     return;
 
-  /* The order in which building updates are processed may be relevant for
-     consensus, and we perform the update in order of increasing *numerical*
-     value of the ID (unlike the alphabetical value of the string keys).
-     This matches how character updates are processed.
-
-     Unlike characters, however, updates with ID lists are not necessary.  */
-
-  std::map<Database::IdT, Json::Value> updates;
-  for (auto i = cmd.begin (); i != cmd.end (); ++i)
+  for (const auto& op : ops)
     {
+      if (!op.isObject ())
+        {
+          LOG (WARNING)
+              << "Building update entry is not an object: " << op;
+          continue;
+        }
+
       Database::IdT id;
-      if (!IdFromString (i.name (), id))
+      if (!IdFromJson (op["id"], id))
         {
           LOG (WARNING)
-              << "Ignoring invalid building ID for update: " << i.name ();
+              << "Invalid ID in building update entry: " << op;
           continue;
         }
 
-      const auto& upd = *i;
-      if (!upd.isObject ())
-        {
-          LOG (WARNING)
-              << "Building update is not an object: " << upd;
-          continue;
-        }
-
-      CHECK (updates.emplace (id, upd).second);
-    }
-
-  for (const auto& entry : updates)
-    {
-      auto b = buildings.GetById (entry.first);
+      auto b = buildings.GetById (id);
       if (b == nullptr)
         {
-          LOG (WARNING)
-              << "Building ID does not exist: " << entry.first;
+          LOG (WARNING) << "Building ID does not exist: " << id;
           continue;
         }
 
@@ -295,7 +286,7 @@ BaseMoveProcessor::TryBuildingUpdates (const std::string& name,
           continue;
         }
 
-      PerformBuildingUpdate (*b, entry.second);
+      PerformBuildingUpdate (*b, op);
     }
 }
 
@@ -488,6 +479,42 @@ BaseMoveProcessor::ParseCharacterWaypoints (const Character& c,
       LOG (WARNING)
           << "Invalid waypoints given for character " << c.GetId ()
           << ", not updating movement";
+      return false;
+    }
+
+  return true;
+}
+
+bool
+BaseMoveProcessor::ParseCharacterWaypointExtension (const Character& c,
+                                                    const Json::Value& upd,
+                                                    const bool pendingWp,
+                                                    std::vector<HexCoord>& wp)
+{
+  CHECK (upd.isObject ());
+  const auto& wpx = upd["wpx"];
+  if (!wpx.isString ())
+    return false;
+
+  /* A waypoint extension is only valid if the character is currently moving,
+     i.e. has already some waypoints set.  This ensures that we will not
+     violate any assumptions like "not moving and mining at the same time",
+     without having to explicitly enforce them explicitly by changing
+     the character state.  */
+  const auto& pb = c.GetProto ();
+  if (!pendingWp && pb.movement ().waypoints ().empty ())
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId ()
+          << " is not moving, can't extend waypoints";
+      return false;
+    }
+
+  if (!DecodeWaypoints (wpx.asString (), wp))
+    {
+      LOG (WARNING)
+          << "Invalid waypoints given for character " << c.GetId ()
+          << ", not extending movement";
       return false;
     }
 
@@ -1288,8 +1315,25 @@ MoveProcessor::MaybeSetCharacterWaypoints (Character& c, const Json::Value& upd)
       return;
     }
 
-  auto* mv = c.MutableProto ().mutable_movement ();
-  SetRepeatedCoords (wp, *mv->mutable_waypoints ());
+  auto* pb = c.MutableProto ().mutable_movement ()->mutable_waypoints ();
+  pb->Clear ();
+  AddRepeatedCoords (wp, *pb);
+}
+
+void
+MoveProcessor::MaybeExtendCharacterWaypoints (Character& c,
+                                              const Json::Value& upd)
+{
+  std::vector<HexCoord> wp;
+  if (!ParseCharacterWaypointExtension (c, upd, false, wp))
+    return;
+
+  VLOG (1)
+      << "Extending waypoints of character " << c.GetId ()
+      << " by: " << upd["wpx"];
+
+  auto* pb = c.MutableProto ().mutable_movement ()->mutable_waypoints ();
+  AddRepeatedCoords (wp, *pb);
 }
 
 void
@@ -1662,6 +1706,7 @@ MoveProcessor::PerformCharacterUpdate (Character& c, const Json::Value& upd)
      update is only valid if there is active movement.  That way, we can set
      waypoints and a chosen speed in a single move.  */
   MaybeSetCharacterWaypoints (c, upd);
+  MaybeExtendCharacterWaypoints (c, upd);
   MaybeSetCharacterSpeed (c, upd);
 
   /* Founding a building puts the character into the newly created foundation.
@@ -1746,23 +1791,28 @@ namespace
 void
 MaybeGodTeleport (CharacterTable& tbl, const Json::Value& cmd)
 {
-  if (!cmd.isObject ())
+  if (!cmd.isArray ())
     return;
 
-  for (auto i = cmd.begin (); i != cmd.end (); ++i)
+  for (const auto& entry : cmd)
     {
-      Database::IdT id;
-      if (!IdFromString (i.name (), id))
+      if (!entry.isObject ())
         {
-          LOG (WARNING)
-              << "Ignoring invalid character ID for teleport: " << i.name ();
+          LOG (WARNING) << "Ignoring invalid teleport entry: " << entry;
+          continue;
+        }
+
+      Database::IdT id;
+      if (!IdFromJson (entry["id"], id))
+        {
+          LOG (WARNING) << "Invalid character ID in teleport: " << entry;
           continue;
         }
 
       HexCoord target;
-      if (!CoordFromJson (*i, target))
+      if (!CoordFromJson (entry["pos"], target))
         {
-          LOG (WARNING) << "Invalid teleport target: " << *i;
+          LOG (WARNING) << "Invalid target in teleport: " << entry;
           continue;
         }
 
@@ -1789,24 +1839,28 @@ template <typename T>
   void
   MaybeGodSetHp (T& tbl, const Json::Value& cmd)
 {
-  if (!cmd.isObject ())
+  if (!cmd.isArray ())
     return;
 
-  for (auto i = cmd.begin (); i != cmd.end (); ++i)
+  for (const auto& entry : cmd)
     {
-      Database::IdT id;
-      if (!IdFromString (i.name (), id))
+      if (!entry.isObject ())
         {
-          LOG (WARNING)
-              << "Ignoring invalid character ID for sethp: " << i.name ();
+          LOG (WARNING) << "Ignoring invalid sethp entry: " << entry;
+          continue;
+        }
+
+      Database::IdT id;
+      if (!IdFromJson (entry["id"], id))
+        {
+          LOG (WARNING) << "Invalid ID in sethp: " << entry;
           continue;
         }
 
       auto c = tbl.GetById (id);
       if (c == nullptr)
         {
-          LOG (WARNING)
-              << "Character ID does not exist: " << id;
+          LOG (WARNING) << "ID does not exist: " << id;
           continue;
         }
 
@@ -1814,17 +1868,17 @@ template <typename T>
       auto& hp = c->MutableHP ();
       auto& maxHP = *c->MutableRegenData ().mutable_max_hp ();
 
-      Json::Value val = (*i)["a"];
+      Json::Value val = entry["a"];
       if (val.isUInt64 ())
         hp.set_armour (val.asUInt64 ());
-      val = (*i)["s"];
+      val = entry["s"];
       if (val.isUInt64 ())
         hp.set_shield (val.asUInt64 ());
 
-      val = (*i)["ma"];
+      val = entry["ma"];
       if (val.isUInt64 ())
         maxHP.set_armour (val.asUInt64 ());
-      val = (*i)["ms"];
+      val = entry["ms"];
       if (val.isUInt64 ())
         maxHP.set_shield (val.asUInt64 ());
     }

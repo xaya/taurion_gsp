@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -49,24 +49,17 @@ TEST_F (ProtoCoordTests, CoordFromProto)
   EXPECT_EQ (CoordFromProto (pb), HexCoord (42, -2));
 }
 
-TEST_F (ProtoCoordTests, SetRepeatedCoords)
+TEST_F (ProtoCoordTests, AddRepeatedCoords)
 {
   proto::Movement mv;
-  SetRepeatedCoords ({HexCoord (2, 3), HexCoord (-5, 5)},
+  AddRepeatedCoords ({HexCoord (2, 3), HexCoord (-5, 5)},
                      *mv.mutable_waypoints ());
+  AddRepeatedCoords ({HexCoord (1, 1)}, *mv.mutable_waypoints ());
 
-  ASSERT_EQ (mv.waypoints_size (), 2);
+  ASSERT_EQ (mv.waypoints_size (), 3);
   EXPECT_EQ (CoordFromProto (mv.waypoints (0)), HexCoord (2, 3));
   EXPECT_EQ (CoordFromProto (mv.waypoints (1)), HexCoord (-5, 5));
-}
-
-TEST_F (ProtoCoordTests, SetRepeatedCoordsClears)
-{
-  proto::Movement mv;
-  mv.mutable_waypoints ()->Add ()->set_x (5);
-
-  SetRepeatedCoords ({}, *mv.mutable_waypoints ());
-  EXPECT_EQ (mv.waypoints_size (), 0);
+  EXPECT_EQ (CoordFromProto (mv.waypoints (2)), HexCoord (1, 1));
 }
 
 } // anonymous namespace

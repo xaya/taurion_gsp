@@ -19,6 +19,7 @@
 #include "pending.hpp"
 
 #include "jsonutils.hpp"
+#include "protoutils.hpp"
 #include "testutils.hpp"
 
 #include "database/account.hpp"
@@ -103,7 +104,7 @@ TEST_F (PendingStateTests, Clear)
   state.AddCharacterCreation ("domob", Faction::RED);
 
   auto h = characters.CreateNew ("domob", Faction::RED);
-  state.AddCharacterWaypoints (*h, {});
+  state.AddCharacterWaypoints (*h, {}, true);
   state.AddEnterBuilding (*h, 42);
   state.AddCharacterDrop (*h);
   state.AddCharacterPickup (*h);
@@ -132,15 +133,17 @@ TEST_F (PendingStateTests, Waypoints)
   auto c1 = characters.CreateNew ("domob", Faction::RED);
   auto c2 = characters.CreateNew ("domob", Faction::RED);
   auto c3 = characters.CreateNew ("domob", Faction::RED);
+  auto* wp = c3->MutableProto ().mutable_movement ()->mutable_waypoints ();
+  AddRepeatedCoords ({HexCoord (-42, 30)}, *wp);
 
   ASSERT_EQ (c1->GetId (), 1);
   ASSERT_EQ (c2->GetId (), 2);
   ASSERT_EQ (c3->GetId (), 3);
 
-  state.AddCharacterWaypoints (*c1, {HexCoord (42, 5), HexCoord (0, 1)});
-  state.AddCharacterWaypoints (*c2, {HexCoord (100, 3)});
-  state.AddCharacterWaypoints (*c1, {HexCoord (2, 0), HexCoord (50, -49)});
-  state.AddCharacterWaypoints (*c3, {});
+  state.AddCharacterWaypoints (*c1, {HexCoord (42, 5), HexCoord (0, 1)}, true);
+  state.AddCharacterWaypoints (*c2, {HexCoord (100, 3)}, true);
+  state.AddCharacterWaypoints (*c1, {HexCoord (2, 0), HexCoord (5, -5)}, true);
+  state.AddCharacterWaypoints (*c3, {}, true);
 
   c1.reset ();
   c2.reset ();
@@ -152,7 +155,7 @@ TEST_F (PendingStateTests, Waypoints)
         [
           {
             "id": 1,
-            "waypoints": [{"x": 2, "y": 0}, {"x": 50, "y": -49}]
+            "waypoints": [{"x": 2, "y": 0}, {"x": 5, "y": -5}]
           },
           {
             "id": 2,
@@ -161,6 +164,35 @@ TEST_F (PendingStateTests, Waypoints)
           {
             "id": 3,
             "waypoints": []
+          }
+        ]
+    }
+  )");
+}
+
+TEST_F (PendingStateTests, WaypointExtension)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  auto* wp = c->MutableProto ().mutable_movement ()->mutable_waypoints ();
+  AddRepeatedCoords ({HexCoord (-42, 30)}, *wp);
+
+  state.AddCharacterWaypoints (*c, {HexCoord (1, 2)}, false);
+  state.AddCharacterWaypoints (*c, {HexCoord (-5, 10)}, false);
+
+  c.reset ();
+
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {
+            "id": 1,
+            "waypoints":
+              [
+                {"x": -42, "y": 30},
+                {"x": 1, "y": 2},
+                {"x": -5, "y": 10}
+              ]
           }
         ]
     }
@@ -291,7 +323,7 @@ TEST_F (PendingStateTests, ProspectingAndWaypoints)
   ASSERT_EQ (c->GetId (), 1);
 
   state.AddCharacterProspecting (*c, 12345);
-  state.AddCharacterWaypoints (*c, {});
+  state.AddCharacterWaypoints (*c, {}, true);
 
   c.reset ();
   ExpectStateJson (R"(
@@ -310,7 +342,7 @@ TEST_F (PendingStateTests, ProspectingAndWaypoints)
   c = characters.GetById (1);
 
   state.Clear ();
-  state.AddCharacterWaypoints (*c, {});
+  state.AddCharacterWaypoints (*c, {}, true);
   state.AddCharacterProspecting (*c, 12345);
 
   c.reset ();
@@ -357,7 +389,7 @@ TEST_F (PendingStateTests, MiningNotPossible)
   auto c = characters.CreateNew ("domob", Faction::RED);
   ASSERT_EQ (c->GetId (), 1);
 
-  state.AddCharacterWaypoints (*c, {});
+  state.AddCharacterWaypoints (*c, {}, true);
   state.AddCharacterMining (*c, 12345);
 
   c.reset ();
@@ -414,7 +446,7 @@ TEST_F (PendingStateTests, MiningCancelledByWaypoints)
   )");
 
   c = characters.GetById (1);
-  state.AddCharacterWaypoints (*c, {});
+  state.AddCharacterWaypoints (*c, {}, true);
 
   c.reset ();
   ExpectStateJson (R"(
@@ -823,13 +855,13 @@ TEST_F (PendingStateUpdaterTests, InvalidUpdate)
   CHECK_EQ (characters.CreateNew ("domob", Faction::RED)->GetId (), 1);
 
   Process ("andy", R"({
-    "c": {"1": {"wp": null}}
+    "c": {"id": 1, "wp": null}
   })");
   Process ("domob", R"({
-    "c": {" 1 ": {"wp": null}}
+    "c": {"wp": null}
   })");
   Process ("domob", R"({
-    "c": {"42": {"wp": null}}
+    "c": {"id": 42, "wp": null}
   })");
 
   ExpectStateJson (R"(
@@ -850,23 +882,23 @@ TEST_F (PendingStateUpdaterTests, Waypoints)
   /* An invalid update that will just not show up (i.e. ID 1 will have no
      pending updates later on).  */
   Process ("domob", R"({
-    "c": {"1": {"wp": "foo"}}
+    "c": {"id": 1, "wp": "foo"}
   })");
 
   /* Perform valid updates.  Only the waypoints updates will be tracked, and
      we will keep the latest one for any character.  */
   Process ("domob", R"({
     "c":
-      {
-        "2": {"wp": )" + WpStr ({HexCoord (0, 100)}) + R"(},
-        "3": {"wp": )" + WpStr ({HexCoord (1, -2)}) + R"(}
-      }
+      [
+        {"id": 2, "wp": )" + WpStr ({HexCoord (0, 100)}) + R"(},
+        {"id": 3, "wp": )" + WpStr ({HexCoord (1, -2)}) + R"(}
+      ]
   })");
   Process ("domob", R"({
-    "c": {"2": {"wp": null}}
+    "c": {"id": 2, "wp": null}
   })");
   Process ("domob", R"({
-    "c": {"2": {"send": "andy"}}
+    "c": {"id": 2, "send": "andy"}
   })");
 
   ExpectStateJson (R"(
@@ -875,6 +907,48 @@ TEST_F (PendingStateUpdaterTests, Waypoints)
         [
           {"id": 2, "waypoints": []},
           {"id": 3, "waypoints": [{"x": 1, "y": -2}]}
+        ]
+    }
+  )");
+}
+
+TEST_F (PendingStateUpdaterTests, WaypointExtension)
+{
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
+
+  characters.CreateNew ("domob", Faction::RED)->SetPosition (HexCoord (0, 1));
+  characters.CreateNew ("domob", Faction::RED)->SetPosition (HexCoord (0, 2));
+
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  c->SetPosition (HexCoord (0, 3));
+  auto* wp = c->MutableProto ().mutable_movement ()->mutable_waypoints ();
+  AddRepeatedCoords ({HexCoord (0, 30)}, *wp);
+  c.reset ();
+
+  /* Character 1 isn't moving, so the extension is not valid.  The other
+     two will be extended, because they already have existing confirmed
+     waypoints or get pending ones added before.  */
+  Process ("domob", R"({
+    "c":
+      [
+        {
+          "id": 2,
+          "wp": )" + WpStr ({HexCoord (-5, 2)}) + R"(,
+          "wpx": )" + WpStr ({HexCoord (-6, 3)}) + R"(
+        },
+        {
+          "id": 3,
+          "wpx": )" + WpStr ({HexCoord (0, 0)}) + R"(
+        }
+      ]
+  })");
+
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {"id": 2, "waypoints": [{"x": -5, "y": 2}, {"x": -6, "y": 3}]},
+          {"id": 3, "waypoints": [{"x": 0, "y": 30}, {"x": 0, "y": 0}]}
         ]
     }
   )");
@@ -897,25 +971,22 @@ TEST_F (PendingStateUpdaterTests, EnterBuilding)
   /* Some invalid updates that will just not show up (i.e. ID 1 will have no
      pending updates later on).  */
   Process ("domob", R"({
-    "c": {"1": {"eb": "foo"}}
+    "c": {"id": 1, "eb": "foo"}
   })");
   Process ("domob", R"({
-    "c": {"1": {"eb": 20}}
+    "c": {"id": 1, "eb": 20}
   })");
 
   /* Perform valid updates.  */
   Process ("domob", R"({
     "c":
-      {
-        "2": {"eb": 100},
-        "3": {"eb": null}
-      }
+      [
+        {"id": 2, "eb": 100},
+        {"id": 3, "eb": null}
+      ]
   })");
   Process ("domob", R"({
-    "c":
-      {
-        "2": {"eb": 101}
-      }
+    "c": {"id": 2, "eb": 101}
   })");
 
   ExpectStateJson (R"(
@@ -950,18 +1021,15 @@ TEST_F (PendingStateUpdaterTests, ExitBuilding)
   /* Some invalid updates that will just not show up (i.e. IDs 1 and 2 will
      have no pending updates later on).  */
   Process ("domob", R"({
-    "c": {"1": {"xb": {}}}
+    "c": {"id": 1, "xb": {}}
   })");
   Process ("domob", R"({
-    "c": {"2": {"xb": 20}}
+    "c": {"id": 2, "xb": 20}
   })");
 
   /* Perform valid update.  */
   Process ("domob", R"({
-    "c":
-      {
-        "3": {"xb": {}}
-      }
+    "c": {"id": 3, "xb": {}}
   })");
 
   ExpectStateJson (R"(
@@ -982,28 +1050,28 @@ TEST_F (PendingStateUpdaterTests, DropPickup)
 
   /* Some invalid / empty commands.  */
   Process ("domob", R"({
-    "c": {"1": {"drop": []}}
+    "c": {"id": 1, "drop": []}
   })");
   Process ("domob", R"({
-    "c": {"2": {"pu": {"f": {}}}}
+    "c": {"id": 2, "pu": {"f": {}}}
   })");
   Process ("domob", R"({
-    "c": {"1": {"drop": {"f": {"foo": 0}}}}
+    "c": {"id": 1, "drop": {"f": {"foo": 0}}}
   })");
   Process ("domob", R"({
-    "c": {"1": {"drop": {"f": {"invalid item": 1}}}}
+    "c": {"id": 1, "drop": {"f": {"invalid item": 1}}}
   })");
   Process ("domob", R"({
-    "c": {"1": {"pu": {"f": {"invalid item": 1}}}}
+    "c": {"id": 1, "pu": {"f": {"invalid item": 1}}}
   })");
 
   /* Valid drop/pickup commands (character 1 will pickup, character 2 will
      drop, but not the corresponding other command).  */
   Process ("domob", R"({
-    "c": {"1": {"pu": {"f": {"foo": 1}}}}
+    "c": {"id": 1, "pu": {"f": {"foo": 1}}}
   })");
   Process ("domob", R"({
-    "c": {"2": {"drop": {"f": {"bar": 10}}}}
+    "c": {"id": 2, "drop": {"f": {"bar": 10}}}
   })");
 
   ExpectStateJson (R"(
@@ -1031,7 +1099,7 @@ TEST_F (PendingStateUpdaterTests, PickupInFoundation)
   characters.CreateNew ("domob", Faction::RED)->SetBuildingId (bId);
 
   Process ("domob", R"({
-    "c": {"101": {"pu": {"f": {"foo": 100}}}}
+    "c": {"id": 101, "pu": {"f": {"foo": 100}}}
   })");
   ExpectStateJson (R"(
     {
@@ -1064,11 +1132,11 @@ TEST_F (PendingStateUpdaterTests, Prospecting)
 
   Process ("domob", R"({
     "c":
-      {
-        "1": {"prospect": {}},
-        "2": {"prospect": {}},
-        "3": {"prospect": {}}
-      }
+      [
+        {"id": 1, "prospect": {}},
+        {"id": 2, "prospect": {}},
+        {"id": 3, "prospect": {}}
+      ]
   })");
 
   ExpectStateJson (R"(
@@ -1104,10 +1172,10 @@ TEST_F (PendingStateUpdaterTests, Mining)
 
   Process ("domob", R"({
     "c":
-      {
-        "1": {"mine": {}},
-        "2": {"mine": {}}
-      }
+      [
+        {"id": 1, "mine": {}},
+        {"id": 2, "mine": {}}
+      ]
   })");
 
   ExpectStateJson (R"(
@@ -1143,10 +1211,10 @@ TEST_F (PendingStateUpdaterTests, FoundBuilding)
 
   Process ("domob", R"({
     "c":
-      {
-        "1": {"fb": {"t": "huesli", "rot": 3}},
-        "2": {"fb": {"t": "huesli", "rot": 0}}
-      }
+      [
+        {"id": 1, "fb": {"t": "huesli", "rot": 3}},
+        {"id": 2, "fb": {"t": "huesli", "rot": 0}}
+      ]
   })");
 
   ExpectStateJson (R"(
@@ -1187,10 +1255,7 @@ TEST_F (PendingStateUpdaterTests, ChangeVehicle)
 
   /* Invalid move format.  */
   Process ("domob", R"({
-    "c":
-      {
-        "1": {"v": ["chariot"]}
-      }
+    "c": {"id": 1, "v": ["chariot"]}
   })");
   ExpectStateJson (R"(
     {
@@ -1200,10 +1265,7 @@ TEST_F (PendingStateUpdaterTests, ChangeVehicle)
 
   /* This one is valid.  */
   Process ("domob", R"({
-    "c":
-      {
-        "1": {"v": "chariot"}
-      }
+    "c": {"id": 1, "v": "chariot"}
   })");
   ExpectStateJson (R"(
     {
@@ -1217,10 +1279,7 @@ TEST_F (PendingStateUpdaterTests, ChangeVehicle)
   /* This one is invalid (item not owned) and thus does not change
      the pending state.  */
   Process ("domob", R"({
-    "c":
-      {
-        "1": {"v": "rv st"}
-      }
+    "c": {"id": 1, "v": "rv st"}
   })");
   ExpectStateJson (R"(
     {
@@ -1255,10 +1314,7 @@ TEST_F (PendingStateUpdaterTests, Fitments)
 
   /* Invalid move format, no fitments will be pending.  */
   Process ("domob", R"({
-    "c":
-      {
-        "1": {"fit": [42]}
-      }
+    "c": {"id": 1, "fit": [42]}
   })");
   ExpectStateJson (R"(
     {
@@ -1268,10 +1324,7 @@ TEST_F (PendingStateUpdaterTests, Fitments)
 
   /* This one is valid and sets pending fitments.  */
   Process ("domob", R"({
-    "c":
-      {
-        "1": {"fit": ["sword", "super scanner"]}
-      }
+    "c": {"id": 1, "fit": ["sword", "super scanner"]}
   })");
   ExpectStateJson (R"(
     {
@@ -1285,10 +1338,7 @@ TEST_F (PendingStateUpdaterTests, Fitments)
   /* This one is invalid (exceeding the complexity limit) and thus
      the previous one will remain.  */
   Process ("domob", R"({
-    "c":
-      {
-        "1": {"fit": ["sword", "bow"]}
-      }
+    "c": {"id": 1, "fit": ["sword", "bow"]}
   })");
   ExpectStateJson (R"(
     {
@@ -1308,7 +1358,7 @@ TEST_F (PendingStateUpdaterTests, CreationAndUpdateTogether)
 
   ProcessWithDevPayment ("domob", characterCost, R"({
     "nc": [{}],
-    "c": {"1": {"wp": null}}
+    "c": {"id": 1, "wp": null}
   })");
 
   ExpectStateJson (R"(
@@ -1490,10 +1540,10 @@ TEST_F (PendingStateUpdaterTests, MobileRefining)
   c.reset ();
 
   Process ("domob", R"({
-    "c": {"101": {"ref": {"i": "test ore", "n": 6}}}
+    "c": {"id": 101, "ref": {"i": "test ore", "n": 6}}
   })");
   Process ("domob", R"({
-    "c": {"101": {"ref": {"i": "test ore", "n": 7}}}
+    "c": {"id": 101, "ref": {"i": "test ore", "n": 7}}
   })");
 
   ExpectStateJson (R"(

@@ -193,13 +193,16 @@ public:
 
   /**
    * Updates the state for waypoints found for a character in a pending move.
+   * If replace is true, we erase any existing waypoints in the pending state.
+   * Otherwise, we add to them.
    *
    * If the character is already pending to start prospecting, then this
    * will do nothing as a prospecting character cannot move.  If the character
    * is poised to start mining, then mining will be stopped.
    */
   void AddCharacterWaypoints (const Character& ch,
-                              const std::vector<HexCoord>& wp);
+                              const std::vector<HexCoord>& wp,
+                              bool replace);
 
   /**
    * Updates the state, adding an "enter building" command.
@@ -271,6 +274,11 @@ public:
    * Updates the state for a given account, adding a new service operation.
    */
   void AddServiceOperation (const ServiceOperation& op);
+
+  /**
+   * Returns true if the given character has pending waypoints.
+   */
+  bool HasPendingWaypoints (const Character& c) const;
 
   /**
    * Returns the JSON representation of the pending state.

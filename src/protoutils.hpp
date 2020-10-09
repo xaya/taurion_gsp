@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -40,10 +40,9 @@ proto::HexCoord CoordToProto (const HexCoord& c);
 HexCoord CoordFromProto (const proto::HexCoord& pb);
 
 /**
- * Sets a repeated coordinate field in the protocol buffer to the given
- * vector of coordinates.
+ * Adds a vector of coordinates to a repeated field in the protocol buffer.
  */
-void SetRepeatedCoords (
+void AddRepeatedCoords (
     const std::vector<HexCoord>& coords,
     google::protobuf::RepeatedPtrField<proto::HexCoord>& field);
 

@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -37,10 +37,9 @@ CoordFromProto (const proto::HexCoord& pb)
 }
 
 void
-SetRepeatedCoords (const std::vector<HexCoord>& coords,
+AddRepeatedCoords (const std::vector<HexCoord>& coords,
                    google::protobuf::RepeatedPtrField<proto::HexCoord>& field)
 {
-  field.Clear ();
   for (const auto& c : coords)
     *field.Add () = CoordToProto (c);
 }

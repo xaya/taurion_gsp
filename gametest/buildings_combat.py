@@ -64,9 +64,9 @@ class BuildingsCombatTest (PXTest):
     self.moveCharactersTo ({"attacker": {"x": 1, "y": 0}})
 
     self.mainLogger.info ("Killing both entities...")
-    self.adminCommand ({"god": {"sethp": {"b": {
-      "%s" % self.building: {"a": 1, "s": 0},
-    }}}})
+    self.adminCommand ({"god": {"sethp": {"b": [
+      {"id": self.building, "a": 1, "s": 0},
+    ]}}})
     self.setCharactersHP ({"attacker": {"a": 1, "s": 0}})
     self.generate (1)
     assert self.building not in self.getBuildings ()

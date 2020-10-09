@@ -19,6 +19,7 @@
 #include "pending.hpp"
 
 #include "jsonutils.hpp"
+#include "protoutils.hpp"
 #include "logic.hpp"
 
 namespace pxd
@@ -74,7 +75,8 @@ PendingState::GetAccountState (const Account& a)
 
 void
 PendingState::AddCharacterWaypoints (const Character& ch,
-                                     const std::vector<HexCoord>& wp)
+                                     const std::vector<HexCoord>& wp,
+                                     const bool replace)
 {
   VLOG (1) << "Adding pending waypoints for character " << ch.GetId ();
   auto& chState = GetCharacterState (ch);
@@ -98,7 +100,17 @@ PendingState::AddCharacterWaypoints (const Character& ch,
       chState.miningRegionId = RegionMap::OUT_OF_MAP;
     }
 
-  chState.wp = std::make_unique<std::vector<HexCoord>> (wp);
+  if (chState.wp == nullptr || replace)
+    {
+      chState.wp = std::make_unique<std::vector<HexCoord>> ();
+      /* If we are not replacing (i.e. extending), copy any existing
+         waypoints from the confirmed state first.  */
+      if (!replace)
+        for (const auto& c : ch.GetProto ().movement ().waypoints ())
+          chState.wp->push_back (CoordFromProto (c));
+    }
+
+  chState.wp->insert (chState.wp->end (), wp.begin (), wp.end ());
 }
 
 void
@@ -298,6 +310,19 @@ PendingState::AddServiceOperation (const ServiceOperation& op)
   GetAccountState (op.GetAccount ()).serviceOps.push_back (val);
 }
 
+bool
+PendingState::HasPendingWaypoints (const Character& c) const
+{
+  const auto mit = characters.find (c.GetId ());
+  if (mit == characters.end ())
+    return false;
+
+  if (mit->second.wp == nullptr)
+    return false;
+
+  return !mit->second.wp->empty ();
+}
+
 Json::Value
 PendingState::CharacterState::ToJson () const
 {
@@ -469,7 +494,16 @@ PendingStateUpdater::PerformCharacterUpdate (Character& c,
       VLOG (1)
           << "Found pending waypoints for character " << c.GetId ()
           << ": " << upd["wp"];
-      state.AddCharacterWaypoints (c, wp);
+      state.AddCharacterWaypoints (c, wp, true);
+    }
+  wp.clear ();
+  if (ParseCharacterWaypointExtension (c, upd,
+                                       state.HasPendingWaypoints (c), wp))
+    {
+      VLOG (1)
+          << "Found pending waypoints extension for " << c.GetId ()
+          << ": " << upd["wpx"];
+      state.AddCharacterWaypoints (c, wp, false);
     }
 
   Database::IdT buildingId;

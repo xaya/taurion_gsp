@@ -32,8 +32,7 @@ class GodModeTest (PXTest):
     self.createCharacters ("domob")
     self.generate (1)
     c = self.getCharacters ()["domob"]
-    pos = c.getPosition ()
-    charIdStr = c.getIdStr ()
+    charId = c.getId ()
 
     self.mainLogger.info ("Testing build...")
     self.build ("checkmark", None, {"x": 100, "y": 150}, rot=2)
@@ -94,8 +93,7 @@ class GodModeTest (PXTest):
 
     self.mainLogger.info ("Testing teleport...")
     target = {"x": 28, "y": 9}
-    assert pos != target
-    self.adminCommand ({"god": {"teleport": {charIdStr: target}}})
+    self.adminCommand ({"god": {"teleport": [{"id": charId, "pos": target}]}})
     self.generate (1)
     self.assertEqual (self.getCharacters ()["domob"].getPosition (), target)
 
@@ -106,9 +104,9 @@ class GodModeTest (PXTest):
           "sethp":
             {
               "c":
-                {
-                  charIdStr: {"a": 32, "s": 15, "ma": 100, "ms": 90},
-                },
+                [
+                  {"id": charId, "a": 32, "s": 15, "ma": 100, "ms": 90},
+                ],
             },
         },
     })
@@ -124,9 +122,9 @@ class GodModeTest (PXTest):
           "sethp":
             {
               "b":
-                {
-                  ("%s" % buildingId): {"a": 32, "s": 15},
-                },
+                [
+                  {"id": buildingId, "a": 32, "s": 15},
+                ],
             },
         },
     })

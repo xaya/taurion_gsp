@@ -19,6 +19,7 @@ from xayagametest.testcase import XayaGameTest
 from proto import config_pb2
 
 import collections
+import copy
 import os
 import os.path
 
@@ -58,14 +59,6 @@ class Character (object):
 
   def getId (self):
     return self.data["id"]
-
-  def getIdStr (self):
-    """
-    Returns the character ID as a string, suitable for indexing
-    JSON dictionaries in commands.
-    """
-
-    return "%d" % self.getId ()
 
   def getOwner (self):
     return self.data["owner"]
@@ -121,8 +114,10 @@ class Character (object):
     Sends a move to update the given character with the given data.
     """
 
-    idStr = self.getIdStr ()
-    return self.test.sendMove (self.data["owner"], {"c": {idStr: mv}})
+    fullMv = copy.deepcopy (mv)
+    fullMv["id"] = self.getId ()
+
+    return self.test.sendMove (self.data["owner"], {"c": fullMv})
 
   def findPath (self, target):
     """
@@ -230,8 +225,10 @@ class Building (object):
     Sends a move to update the given building with the given data.
     """
 
-    idStr = "%s" % self.getId ()
-    return self.test.sendMove (self.data["owner"], {"b": {idStr: mv}})
+    fullMv = copy.deepcopy (mv)
+    fullMv["id"] = self.getId ()
+
+    return self.test.sendMove (self.data["owner"], {"b": fullMv})
 
 
 class Account (object):
@@ -396,10 +393,12 @@ class PXTest (XayaGameTest):
     """
 
     chars = self.getCharacters ()
-    teleport = {}
+    teleport = []
     for nm, c in charTargets.items ():
-      idStr = chars[nm].getIdStr ()
-      teleport[idStr] = c
+      teleport.append ({
+        "id": chars[nm].getId (),
+        "pos": c,
+      })
 
     self.adminCommand ({"god": {"teleport": teleport}})
     self.generate (1)
@@ -414,10 +413,11 @@ class PXTest (XayaGameTest):
     """
 
     chars = self.getCharacters ()
-    sethp = {}
+    sethp = []
     for nm, c in charHP.items ():
-      idStr = chars[nm].getIdStr ()
-      sethp[idStr] = c
+      val = copy.deepcopy (c)
+      val["id"] = chars[nm].getId ()
+      sethp.append (val)
 
     self.adminCommand ({"god": {"sethp": {"c": sethp}}})
     self.generate (1)
@@ -425,24 +425,33 @@ class PXTest (XayaGameTest):
   def changeCharacterVehicle (self, char, vehicleType, fitments=[]):
     """
     Changes the vehicle of the given character to the given type.  This is
-    done through god-mode, by dropping the vehicle type into an ancient
-    building and changing there.
+    done through god-mode, by dropping the vehicle type into some of the
+    initial buildings and changing there.
+
+    If the character is already inside some building (e.g. after
+    spawn), we will do it directly there instead.
     """
 
-    b = self.getBuildings ()[1]
-    self.assertEqual (b.getFaction (), "a")
-    pos = offsetCoord (b.getCentre (), {"x": 30, "y": 0}, False)
-    self.moveCharactersTo ({char: pos})
-
     c = self.getCharacters ()[char]
-    c.sendMove ({"eb": b.getId ()})
+    if c.isInBuilding ():
+      bId = c.getBuildingId ()
+    else:
+      b = self.getBuildings ()[1]
+      bId = b.getId ()
+      self.assertEqual (b.getFaction (), "a")
+      pos = offsetCoord (b.getCentre (), {"x": 30, "y": 0}, False)
+      self.moveCharactersTo ({char: pos})
+
+      c = self.getCharacters ()[char]
+      c.sendMove ({"eb": bId})
+
     inv = {vehicleType: 1}
     for f in fitments:
       if f in inv:
         ++inv[f]
       else:
         inv[f] = 1
-    self.dropIntoBuilding (b.getId (), c.getOwner (), inv)
+    self.dropIntoBuilding (bId, c.getOwner (), inv)
 
     # Make sure that we can change vehicle and fitments by maxing the
     # character's HP (just in case).
