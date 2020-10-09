@@ -178,6 +178,16 @@ protected:
                                        std::vector<HexCoord>& wp);
 
   /**
+   * Parses and verifies a potential waypoint extension for the
+   * character.  If pendingWp is true, we assume that there are already
+   * pending waypoints, which we accept also as "is already moving".
+   */
+  static bool ParseCharacterWaypointExtension (const Character& c,
+                                               const Json::Value& upd,
+                                               bool pendingWp,
+                                               std::vector<HexCoord>& wp);
+
+  /**
    * Parses and verifies a potential update to the character's
    * "enter building" value.  On success, buildingId will be set
    * to the ID of the building to enter, or EMPTY_ID if the move
@@ -351,6 +361,12 @@ private:
    * is there.
    */
   static void MaybeSetCharacterWaypoints (Character& c, const Json::Value& upd);
+
+  /**
+   * Extends the character's waypoints with an wpx move.
+   */
+  static void MaybeExtendCharacterWaypoints (Character& c,
+                                             const Json::Value& upd);
 
   /**
    * Processes a command to set (or clear) a character's "enter building".

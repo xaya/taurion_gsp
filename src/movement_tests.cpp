@@ -329,8 +329,9 @@ protected:
   SetWaypoints (const std::vector<HexCoord>& coords)
   {
     const auto h = GetTest ();
-    auto* mv = h->MutableProto ().mutable_movement ();
-    SetRepeatedCoords (coords, *mv->mutable_waypoints ());
+    auto* pb = h->MutableProto ().mutable_movement ()->mutable_waypoints ();
+    pb->Clear ();
+    AddRepeatedCoords (coords, *pb);
   }
 
   /**

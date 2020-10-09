@@ -486,6 +486,42 @@ BaseMoveProcessor::ParseCharacterWaypoints (const Character& c,
 }
 
 bool
+BaseMoveProcessor::ParseCharacterWaypointExtension (const Character& c,
+                                                    const Json::Value& upd,
+                                                    const bool pendingWp,
+                                                    std::vector<HexCoord>& wp)
+{
+  CHECK (upd.isObject ());
+  const auto& wpx = upd["wpx"];
+  if (!wpx.isString ())
+    return false;
+
+  /* A waypoint extension is only valid if the character is currently moving,
+     i.e. has already some waypoints set.  This ensures that we will not
+     violate any assumptions like "not moving and mining at the same time",
+     without having to explicitly enforce them explicitly by changing
+     the character state.  */
+  const auto& pb = c.GetProto ();
+  if (!pendingWp && pb.movement ().waypoints ().empty ())
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId ()
+          << " is not moving, can't extend waypoints";
+      return false;
+    }
+
+  if (!DecodeWaypoints (wpx.asString (), wp))
+    {
+      LOG (WARNING)
+          << "Invalid waypoints given for character " << c.GetId ()
+          << ", not extending movement";
+      return false;
+    }
+
+  return true;
+}
+
+bool
 BaseMoveProcessor::ParseEnterBuilding (const Character& c,
                                        const Json::Value& upd,
                                        Database::IdT& buildingId)
@@ -1279,8 +1315,25 @@ MoveProcessor::MaybeSetCharacterWaypoints (Character& c, const Json::Value& upd)
       return;
     }
 
-  auto* mv = c.MutableProto ().mutable_movement ();
-  SetRepeatedCoords (wp, *mv->mutable_waypoints ());
+  auto* pb = c.MutableProto ().mutable_movement ()->mutable_waypoints ();
+  pb->Clear ();
+  AddRepeatedCoords (wp, *pb);
+}
+
+void
+MoveProcessor::MaybeExtendCharacterWaypoints (Character& c,
+                                              const Json::Value& upd)
+{
+  std::vector<HexCoord> wp;
+  if (!ParseCharacterWaypointExtension (c, upd, false, wp))
+    return;
+
+  VLOG (1)
+      << "Extending waypoints of character " << c.GetId ()
+      << " by: " << upd["wpx"];
+
+  auto* pb = c.MutableProto ().mutable_movement ()->mutable_waypoints ();
+  AddRepeatedCoords (wp, *pb);
 }
 
 void
@@ -1653,6 +1706,7 @@ MoveProcessor::PerformCharacterUpdate (Character& c, const Json::Value& upd)
      update is only valid if there is active movement.  That way, we can set
      waypoints and a chosen speed in a single move.  */
   MaybeSetCharacterWaypoints (c, upd);
+  MaybeExtendCharacterWaypoints (c, upd);
   MaybeSetCharacterSpeed (c, upd);
 
   /* Founding a building puts the character into the newly created foundation.

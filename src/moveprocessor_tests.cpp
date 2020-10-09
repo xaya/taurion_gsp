@@ -993,6 +993,76 @@ TEST_F (CharacterUpdateTests, WaypointsWithZeroSpeed)
   EXPECT_FALSE (h->GetProto ().has_movement ());
 }
 
+TEST_F (CharacterUpdateTests, WaypointExtension)
+{
+  auto h = GetTest ();
+  h->MutableProto ().set_speed (1000);
+  auto* mv = h->MutableProto ().mutable_movement ();
+  mv->mutable_waypoints ()->Add ();
+  h.reset ();
+
+  /* Those are invalid.  */
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"id": 1, "wpx": "foo"}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"id": 1, "wpx": []}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"id": 1, "wpx": null}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"id": 1, "wpx": {"x": 4, "y": 3}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"id": 1, "wpx": [{"x": 4, "y": 3}]}}
+    },
+    {
+      "name": "andy",
+      "move": {"c": {"id": 1, "wpx": 42}}
+    }
+  ])");
+  EXPECT_EQ (GetTest ()->GetProto ().movement ().waypoints_size (), 1);
+
+  /* wpx is also invalid if there are not already waypoints.  */
+  GetTest ()->MutableProto ().mutable_movement ()
+      ->mutable_waypoints ()->Clear ();
+  Process (R"([{
+    "name": "domob",
+    "move": {"c": {"id": 1, "wpx": )" + WpStr ({HexCoord (-3, 4)}) + R"(}}
+  }])");
+  EXPECT_TRUE (GetTest ()->GetProto ().movement ().waypoints ().empty ());
+
+  /* Now the extension should work, even if we set the initial waypoints
+     in the same move.  */
+  Process (R"([{
+    "name": "domob",
+    "move": {"c": [
+      {
+        "id": 1,
+        "wp": )" + WpStr ({HexCoord (-3, 4)}) + R"(,
+        "wpx": )" + WpStr ({HexCoord (-4, 4)}) + R"(
+      },
+      {
+        "id": 1,
+        "wpx": )" + WpStr ({HexCoord (-4, 7)}) + R"(
+      }
+    ]}
+  }])");
+  h = GetTest ();
+  const auto& wp = h->GetProto ().movement ().waypoints ();
+  ASSERT_EQ (wp.size (), 3);
+  EXPECT_EQ (CoordFromProto (wp.Get (0)), HexCoord (-3, 4));
+  EXPECT_EQ (CoordFromProto (wp.Get (1)), HexCoord (-4, 4));
+  EXPECT_EQ (CoordFromProto (wp.Get (2)), HexCoord (-4, 7));
+}
+
 TEST_F (CharacterUpdateTests, ChosenSpeedWithoutMovement)
 {
   GetTest ()->MutableProto ().set_speed (1000);
