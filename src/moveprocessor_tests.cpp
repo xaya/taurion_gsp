@@ -24,6 +24,7 @@
 
 #include "database/dbtest.hpp"
 
+#include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
 #include <json/json.h>
@@ -32,6 +33,9 @@
 
 namespace pxd
 {
+
+DECLARE_int32 (fork_height_gamestart);
+
 namespace
 {
 
@@ -416,6 +420,58 @@ TEST_F (CoinOperationTests, TransferOrder)
     {"middle", 99},
     {"z", 0},
   });
+}
+
+/* ************************************************************************** */
+
+class GameStartTests : public CoinOperationTests
+{
+
+protected:
+
+  GameStartTests ()
+  {
+    FLAGS_fork_height_gamestart = 100;
+  }
+
+  ~GameStartTests ()
+  {
+    FLAGS_fork_height_gamestart = -1;
+  }
+
+};
+
+TEST_F (GameStartTests, Before)
+{
+  ctx.SetHeight (99);
+  accounts.CreateNew ("domob")->AddBalance (100);
+
+  Process (R"([
+    {"name": "andy", "move": {"vc": {"m": {}}}, "burnt": 1},
+    {"name": "domob", "move": {"vc": {"b": 10}}},
+    {"name": "domob", "move": {"vc": {"t": {"daniel": 5}}}},
+    {"name": "domob", "move": {"a": {"init": {"faction": "r"}}}}
+  ])");
+
+  ExpectBalances ({
+    {"domob", 85},
+    {"daniel", 5},
+    {"andy", 10'000},
+  });
+
+  EXPECT_FALSE (accounts.GetByName ("domob")->IsInitialised ());
+}
+
+TEST_F (GameStartTests, After)
+{
+  ctx.SetHeight (100);
+  Process (R"([
+    {"name": "domob", "move": {"a": {"init": {"faction": "r"}}}}
+  ])");
+
+  auto a = accounts.GetByName ("domob");
+  EXPECT_TRUE (a->IsInitialised ());
+  EXPECT_EQ (a->GetFaction (), Faction::RED);
 }
 
 /* ************************************************************************** */

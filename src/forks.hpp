@@ -36,6 +36,13 @@ enum class Fork
    */
   Dummy,
 
+  /**
+   * Fork at which we enable the actual gameplay.  Before this takes place,
+   * only Cubit operations are enabled (which are live with the burnsale
+   * since the third competition and won't be reset).
+   */
+  GameStart,
+
 };
 
 /**

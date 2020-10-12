@@ -26,6 +26,11 @@
 namespace pxd
 {
 
+/* The flags are not in an anonymous namespace, as we will need to DECLARE
+   and access (modify) them for unit tests.  */
+DEFINE_int32 (fork_height_gamestart, -1,
+              "if set, override the fork height for \"game start\"");
+
 namespace
 {
 
@@ -58,6 +63,17 @@ const std::unordered_map<Fork, ForkData> FORK_HEIGHTS =
           {xaya::Chain::REGTEST, 100},
         },
         nullptr,
+      }
+    },
+    {
+      Fork::GameStart,
+      {
+        {
+          {xaya::Chain::MAIN, 2'250'000},
+          {xaya::Chain::TEST, 112'000},
+          {xaya::Chain::REGTEST, 0},
+        },
+        &FLAGS_fork_height_gamestart,
       }
     },
   };

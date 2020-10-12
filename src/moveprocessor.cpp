@@ -21,6 +21,7 @@
 #include "buildings.hpp"
 #include "burnsale.hpp"
 #include "fitments.hpp"
+#include "forks.hpp"
 #include "jsonutils.hpp"
 #include "mining.hpp"
 #include "movement.hpp"
@@ -1158,6 +1159,12 @@ MoveProcessor::ProcessOne (const Json::Value& moveObj)
      are done with priority over the other operations that may require coins
      implicitly.  */
   TryCoinOperation (name, mv, burnt);
+
+  /* At this point, we terminate if the game-play itself has not started.
+     This is more or less when the "game world is created", except that we
+     do allow Cubit operations already from the start of the burnsale.  */
+  if (!ctx.Forks ().IsActive (Fork::GameStart))
+    return;
 
   /* We perform account updates first.  That ensures that it is possible to
      e.g. choose one's faction and create characters in a single move.  */
