@@ -28,7 +28,7 @@
 # of the listed files already, nothing is done.  Else the new version data
 # is written to the first argument.
 
-version=$(git describe --dirty --always 2>/dev/null || true)
+version=$(git describe --dirty --always --long 2>/dev/null || true)
 if [ -z "${version}" ]
 then
   exit
