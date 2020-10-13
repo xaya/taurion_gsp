@@ -18,6 +18,7 @@
 
 #include "forks.hpp"
 
+#include <gflags/gflags.h>
 #include <glog/logging.h>
 
 #include <unordered_map>
@@ -28,19 +29,36 @@ namespace pxd
 namespace
 {
 
-/** Activation heights by chain for a given fork.  */
-using ActivationHeights = std::unordered_map<xaya::Chain, unsigned>;
+/**
+ * Data specification for one particular fork.
+ */
+struct ForkData
+{
+
+  /** The activation heights by chain.  */
+  std::unordered_map<xaya::Chain, unsigned> heights;
+
+  /**
+   * If set, the flag variable that will override the activation height
+   * (if that flag is set).
+   */
+  const int* overrideFlag;
+
+};
 
 /** The activation heights for our forks.  */
-const std::unordered_map<Fork, ActivationHeights> FORK_HEIGHTS =
+const std::unordered_map<Fork, ForkData> FORK_HEIGHTS =
   {
     {
       Fork::Dummy,
       {
-        {xaya::Chain::MAIN, 3'000'000},
-        {xaya::Chain::TEST, 150'000},
-        {xaya::Chain::REGTEST, 100},
-      },
+        {
+          {xaya::Chain::MAIN, 3'000'000},
+          {xaya::Chain::TEST, 150'000},
+          {xaya::Chain::REGTEST, 100},
+        },
+        nullptr,
+      }
     },
   };
 
@@ -52,12 +70,15 @@ ForkHandler::IsActive (const Fork f) const
   const auto mit = FORK_HEIGHTS.find (f);
   CHECK (mit != FORK_HEIGHTS.end ())
       << "Fork height not defined for " << static_cast<int> (f);
+  const auto& data = mit->second;
 
-  const auto mit2 = mit->second.find (chain);
-  CHECK (mit2 != mit->second.end ())
+  if (data.overrideFlag != nullptr && *data.overrideFlag >= 0)
+    return static_cast<int> (height) >= *data.overrideFlag;
+
+  const auto mit2 = data.heights.find (chain);
+  CHECK (mit2 != data.heights.end ())
       << "Fork " << static_cast<int> (f)
       << " does not define height for chain " << static_cast<int> (chain);
-
   return height >= mit2->second;
 }
 

@@ -16,12 +16,14 @@ CLEANFILES = $(RPC_STUBS)
 
 libtaurion_la_CXXFLAGS = \
   -I$(top_srcdir) \
-  $(XAYAGAME_CFLAGS) $(JSON_CFLAGS) $(GLOG_CFLAGS) $(PROTOBUF_CFLAGS)
+  $(XAYAGAME_CFLAGS) $(JSON_CFLAGS) \
+  $(GLOG_CFLAGS) $(GFLAGS_CFLAGS) $(PROTOBUF_CFLAGS)
 libtaurion_la_LIBADD = \
   $(top_builddir)/database/libdatabase.la \
   $(top_builddir)/hexagonal/libhexagonal.la \
   $(top_builddir)/proto/libpxproto.la \
-  $(XAYAGAME_LIBS) $(JSON_LIBS) $(GLOG_LIBS) $(PROTOBUF_LIBS)
+  $(XAYAGAME_LIBS) $(JSON_LIBS) \
+  $(GLOG_LIBS) $(GFLAGS_LIBS) $(PROTOBUF_LIBS)
 libtaurion_la_SOURCES = \
   buildings.cpp \
   burnsale.cpp \
@@ -117,7 +119,8 @@ libtestutils_la_SOURCES = \
 tests_CXXFLAGS = \
   -I$(top_srcdir) \
   $(GTEST_MAIN_CFLAGS) \
-  $(JSON_CFLAGS) $(GTEST_CFLAGS) $(GLOG_CFLAGS) $(PROTOBUF_CFLAGS)
+  $(JSON_CFLAGS) $(GTEST_CFLAGS) \
+  $(GLOG_CFLAGS) $(GFLAGS_CFLAGS) $(PROTOBUF_CFLAGS)
 tests_LDADD = \
   $(builddir)/libtaurion.la \
   $(builddir)/libtestutils.la \
@@ -127,7 +130,8 @@ tests_LDADD = \
   $(top_builddir)/mapdata/libmapdata.la \
   $(top_builddir)/proto/libpxproto.la \
   $(GTEST_MAIN_LIBS) \
-  $(JSON_LIBS) $(GTEST_LIBS) $(GLOG_LIBS) $(PROTOBUF_LIBS)
+  $(JSON_LIBS) $(GTEST_LIBS) \
+  $(GLOG_LIBS) $(GFLAGS_LIBS) $(PROTOBUF_LIBS)
 tests_SOURCES = \
   buildings_tests.cpp \
   burnsale_tests.cpp \
