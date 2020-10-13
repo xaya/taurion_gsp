@@ -88,8 +88,7 @@ ContextForTesting::SetChain (const xaya::Chain c)
   LOG (INFO) << "Setting context chain to " << xaya::ChainToString (c);
   chain = c;
   map = &dynamic_cast<const BaseMapInstances*> (maps)->Get (c);
-  params = std::make_unique<pxd::Params> (chain);
-  cfg = std::make_unique<pxd::RoConfig> (chain);
+  RefreshInstances ();
 }
 
 void
@@ -97,6 +96,7 @@ ContextForTesting::SetHeight (const unsigned h)
 {
   LOG (INFO) << "Setting context height to " << h;
   height = h;
+  RefreshInstances ();
 }
 
 void
@@ -104,6 +104,7 @@ ContextForTesting::SetTimestamp (const int64_t ts)
 {
   LOG (INFO) << "Setting context timestamp to " << ts;
   timestamp = ts;
+  RefreshInstances ();
 }
 
 Json::Value
