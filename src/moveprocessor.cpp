@@ -1206,7 +1206,7 @@ MoveProcessor::ProcessOne (const Json::Value& moveObj)
 void
 MoveProcessor::PerformCharacterCreation (Account& acc, const Faction f)
 {
-  SpawnCharacter (acc.GetName (), f, characters, dyn, rnd, ctx);
+  SpawnCharacter (acc.GetName (), f, characters, ctx);
 
   /* FIXME: For the full game, remove this.  */
   LOG (INFO)

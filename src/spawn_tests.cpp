@@ -18,6 +18,7 @@
 
 #include "spawn.hpp"
 
+#include "buildings.hpp"
 #include "protoutils.hpp"
 #include "testutils.hpp"
 
@@ -52,7 +53,10 @@ protected:
 
   SpawnTests ()
     : dyn(db, ctx), tbl(db)
-  {}
+  {
+    InitialiseBuildings (db, ctx.Chain ());
+    db.SetNextId (1'001);
+  }
 
   /**
    * Spawns a character with the test references needed for that.
@@ -60,7 +64,7 @@ protected:
   CharacterTable::Handle
   Spawn (const std::string& owner, const Faction f)
   {
-    return SpawnCharacter (owner, f, tbl, dyn, rnd, ctx);
+    return SpawnCharacter (owner, f, tbl, ctx);
   }
 
 };
@@ -77,6 +81,7 @@ TEST_F (SpawnTests, Basic)
   auto c = tbl.GetFromResult (res);
   EXPECT_EQ (c->GetOwner (), "domob");
   EXPECT_EQ (c->GetFaction (), Faction::RED);
+  EXPECT_TRUE (c->IsInBuilding ());
 
   ASSERT_TRUE (res.Step ());
   c = tbl.GetFromResult (res);
@@ -95,7 +100,7 @@ TEST_F (SpawnTests, DataInitialised)
 {
   Spawn ("domob", Faction::RED);
 
-  auto c = tbl.GetById (1);
+  auto c = tbl.GetById (1'001);
   ASSERT_TRUE (c != nullptr);
   ASSERT_EQ (c->GetOwner (), "domob");
 
@@ -126,25 +131,6 @@ protected:
   }
 
 };
-
-TEST_F (SpawnLocationTests, NoObstaclesInSpawns)
-{
-  for (const Faction f : {Faction::RED, Faction::GREEN, Faction::BLUE})
-    {
-      const auto& spawn
-          = ctx.RoConfig ()->params ().spawn_areas ().at (FactionToString (f));
-      const auto spawnCentre = CoordFromProto (spawn.centre ());
-
-      for (unsigned r = 0; r <= spawn.radius (); ++r)
-        {
-          const L1Ring ring(spawnCentre, r);
-          for (const auto& pos : ring)
-            ASSERT_TRUE (ctx.Map ().IsPassable (pos))
-                << "Tile " << pos << " for faction " << FactionToString (f)
-                << " is not passable";
-        }
-    }
-}
 
 TEST_F (SpawnLocationTests, SpawnLocation)
 {
@@ -184,13 +170,12 @@ TEST_F (SpawnLocationTests, SpawnLocation)
 TEST_F (SpawnLocationTests, DynObstacles)
 {
   const Faction f = Faction::RED;
-  const auto& spawn
-      = ctx.RoConfig ()->params ().spawn_areas ().at (FactionToString (f));
-  const HexCoord spawnCentre = CoordFromProto (spawn.centre ());
+  constexpr HexCoord::IntT spawnRadius = 20;
+  const HexCoord spawnCentre = HexCoord (42, -10);
 
   /* The 50x50 spawn area has less than 10k tiles.  So if we create 10k
-     characters, some will be displaced out of the spawn area.  It should
-     still work fine.  In the end, we should get all locations in the spawn
+     locations and block them in the dynamic map, some will be displaced out
+     of the spawn area.  In the end, we should get all locations in the spawn
      area filled up, and we should not get any vehicle on top of another.  */
   constexpr unsigned vehicles = 10'000;
 
@@ -198,11 +183,11 @@ TEST_F (SpawnLocationTests, DynObstacles)
   std::unordered_set<HexCoord> positions;
   for (unsigned i = 0; i < vehicles; ++i)
     {
-      auto c = Spawn ("domob", f);
-      const auto& pos = c->GetPosition ();
+      const auto pos = SpawnLocation (spawnCentre, spawnRadius, f);
+      ASSERT_TRUE (dyn.AddVehicle (pos, f));
 
       const unsigned dist = HexCoord::DistanceL1 (pos, spawnCentre);
-      if (dist > spawn.radius ())
+      if (dist > spawnRadius)
         ++outside;
 
       const auto res = positions.insert (pos);
@@ -212,7 +197,7 @@ TEST_F (SpawnLocationTests, DynObstacles)
   LOG (INFO) << "Vehicles outside of spawn ring: " << outside;
 
   unsigned tilesInside = 0;
-  for (unsigned r = 0; r <= spawn.radius (); ++r)
+  for (unsigned r = 0; r <= spawnRadius; ++r)
     {
       const L1Ring ring(spawnCentre, r);
       for (const auto& pos : ring)

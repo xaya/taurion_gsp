@@ -27,29 +27,17 @@ params:
     spawn_areas:
       {
         key: "r"
-        value:
-          {
-            centre: { x: 1960 y: -2601 }
-            radius: 50
-          }
+        value: { building_id: 6 }
       }
     spawn_areas:
       {
         key: "g"
-        value:
-          {
-            centre: { x: -3472 y: 1824 }
-            radius: 50
-          }
+        value: { building_id: 4 }
       }
     spawn_areas:
       {
         key: "b"
-        value:
-          {
-            centre: { x: 547 y: 2497 }
-            radius: 50
-          }
+        value: { building_id: 5 }
       }
 
     burnsale_stages: { amount_sold: 10000000000 price_sat: 10000 }

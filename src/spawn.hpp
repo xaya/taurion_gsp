@@ -45,14 +45,12 @@ HexCoord ChooseSpawnLocation (const HexCoord& centre, HexCoord::IntT radius,
 
 /**
  * Spawns a new character on the map.  This takes care of initialising the
- * character accordingly (including determining the exact spawn position)
- * and updating the database as needed.
+ * character accordingly and updating the database as needed.
  *
  * This function returns a handle to the newly created character.
  */
 CharacterTable::Handle SpawnCharacter (const std::string& owner, Faction f,
-                                       CharacterTable& tbl, DynObstacles& dyn,
-                                       xaya::Random& rnd, const Context& ctx);
+                                       CharacterTable& tbl, const Context& ctx);
 
 } // namespace pxd
 
