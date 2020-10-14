@@ -125,13 +125,13 @@ main (int argc, char** argv)
   google::InitGoogleLogging (argv[0]);
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
-  gflags::SetUsageMessage ("Run Taurion game daemon");
-  gflags::SetVersionString (PACKAGE_VERSION);
-  gflags::ParseCommandLineFlags (&argc, &argv, true);
-
   LOG (INFO)
       << "Running Taurion version " << PACKAGE_VERSION
       << " (" << GIT_VERSION << ")";
+
+  gflags::SetUsageMessage ("Run Taurion game daemon");
+  gflags::SetVersionString (PACKAGE_VERSION);
+  gflags::ParseCommandLineFlags (&argc, &argv, true);
 
 #ifdef ENABLE_SLOW_ASSERTS
   LOG (WARNING)
