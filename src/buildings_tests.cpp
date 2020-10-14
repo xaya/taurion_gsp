@@ -338,7 +338,7 @@ TEST_F (ProcessEnterBuildingsTests, EnteringEffects)
   c.reset ();
 
   DynObstacles dyn(db, ctx);
-  ASSERT_TRUE (dyn.HasVehicle (HexCoord (5, 0), Faction::RED));
+  ASSERT_TRUE (dyn.HasVehicle (HexCoord (5, 0)));
 
   ProcessEnter (dyn);
 
@@ -349,7 +349,7 @@ TEST_F (ProcessEnterBuildingsTests, EnteringEffects)
   EXPECT_FALSE (c->HasTarget ());
   EXPECT_FALSE (c->GetProto ().has_movement ());
   EXPECT_FALSE (c->GetProto ().mining ().active ());
-  EXPECT_FALSE (dyn.HasVehicle (HexCoord (5, 0), Faction::RED));
+  EXPECT_FALSE (dyn.HasVehicle (HexCoord (5, 0)));
 }
 
 TEST_F (ProcessEnterBuildingsTests, MultipleCharacters)
@@ -439,8 +439,8 @@ TEST_F (LeaveBuildingTests, Basic)
   DynObstacles dyn(db, ctx);
   const auto pos = Leave (dyn);
   EXPECT_TRUE (ctx.Map ().IsPassable (pos));
-  EXPECT_FALSE (originalDyn.HasVehicle (pos, Faction::RED));
-  EXPECT_TRUE (dyn.HasVehicle (pos, Faction::RED));
+  EXPECT_FALSE (originalDyn.HasVehicle (pos));
+  EXPECT_TRUE (dyn.HasVehicle (pos));
   EXPECT_LE (HexCoord::DistanceL1 (pos, centre), radius);
 }
 

@@ -350,7 +350,7 @@ MoveInDynObstacles::MoveInDynObstacles (const Character& c, DynObstacles& d)
       << "Removing character " << character.GetId ()
       << " at position " << character.GetPosition ()
       << " from the dynamic obstacle map before moving it...";
-  dyn.RemoveVehicle (character.GetPosition (), character.GetFaction ());
+  dyn.RemoveVehicle (character.GetPosition ());
 }
 
 MoveInDynObstacles::~MoveInDynObstacles ()
@@ -359,7 +359,7 @@ MoveInDynObstacles::~MoveInDynObstacles ()
       << "Adding back character " << character.GetId ()
       << " at position " << character.GetPosition ()
       << " to the dynamic obstacle map...";
-  dyn.AddVehicle (character.GetPosition (), character.GetFaction ());
+  dyn.AddVehicle (character.GetPosition ());
 }
 
 namespace test

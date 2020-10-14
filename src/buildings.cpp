@@ -159,7 +159,7 @@ UpdateBuildingStats (Building& b, const xaya::Chain chain)
 void
 EnterBuilding (Character& c, const Building& b, DynObstacles& dyn)
 {
-  dyn.RemoveVehicle (c.GetPosition (), c.GetFaction ());
+  dyn.RemoveVehicle (c.GetPosition ());
   c.SetBuildingId (b.GetId ());
   c.ClearTarget ();
   c.SetEnterBuilding (Database::EMPTY_ID);
@@ -240,7 +240,7 @@ LeaveBuilding (BuildingsTable& buildings, Character& c,
       << " is leaving building " << b->GetId ()
       << " to location " << pos;
   c.SetPosition (pos);
-  dyn.AddVehicle (pos, c.GetFaction ());
+  dyn.AddVehicle (pos);
 }
 
 } // namespace pxd

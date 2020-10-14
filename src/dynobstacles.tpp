@@ -23,22 +23,6 @@
 namespace pxd
 {
 
-inline SparseTileMap<unsigned>&
-DynObstacles::FactionVehicles (const Faction f)
-{
-  switch (f)
-    {
-    case Faction::RED:
-      return red;
-    case Faction::GREEN:
-      return green;
-    case Faction::BLUE:
-      return blue;
-    default:
-      LOG (FATAL) << "Invalid vehicle faction: " << static_cast<int> (f);
-    }
-}
-
 inline bool
 DynObstacles::IsBuilding (const HexCoord& c) const
 {
@@ -46,15 +30,9 @@ DynObstacles::IsBuilding (const HexCoord& c) const
 }
 
 inline bool
-DynObstacles::HasVehicle (const HexCoord& c, const Faction f) const
-{
-  return FactionVehicles (f).Get (c) > 0;
-}
-
-inline bool
 DynObstacles::HasVehicle (const HexCoord& c) const
 {
-  return red.Get (c) > 0 || green.Get (c) > 0 || blue.Get (c) > 0;
+  return vehicles.Get (c) > 0;
 }
 
 inline bool
@@ -64,19 +42,17 @@ DynObstacles::IsFree (const HexCoord& c) const
 }
 
 inline void
-DynObstacles::AddVehicle (const HexCoord& c, const Faction f)
+DynObstacles::AddVehicle (const HexCoord& c)
 {
-  auto& fv = FactionVehicles (f);
-  fv.Set (c, fv.Get (c) + 1);
+  vehicles.Set (c, vehicles.Get (c) + 1);
 }
 
 inline void
-DynObstacles::RemoveVehicle (const HexCoord& c, const Faction f)
+DynObstacles::RemoveVehicle (const HexCoord& c)
 {
-  auto& fv = FactionVehicles (f);
-  const auto cnt = fv.Get (c);
+  const auto cnt = vehicles.Get (c);
   CHECK_GT (cnt, 0);
-  fv.Set (c, cnt - 1);
+  vehicles.Set (c, cnt - 1);
 }
 
 } // namespace pxd

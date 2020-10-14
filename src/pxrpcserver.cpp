@@ -193,27 +193,7 @@ NonStateRpcServer::AddCharactersFromJson (const Json::Value& characters,
       if (!CoordFromJson (c["position"], pos))
         return false;
 
-      const auto& factVal = c["faction"];
-      if (!factVal.isString ())
-        return false;
-      const Faction faction = FactionFromString (factVal.asString ());
-      switch (faction)
-        {
-        case Faction::INVALID:
-        case Faction::ANCIENT:
-          return false;
-
-        case Faction::RED:
-        case Faction::GREEN:
-        case Faction::BLUE:
-          break;
-
-        default:
-          LOG (FATAL) << "Invalid faction: " << static_cast<int> (faction);
-          break;
-        }
-
-      dyn.obstacles.AddVehicle (pos, faction);
+      dyn.obstacles.AddVehicle (pos);
     }
 
   return true;

@@ -26,6 +26,7 @@
 #include "database/faction.hpp"
 #include "hexagonal/coord.hpp"
 #include "mapdata/basemap.hpp"
+#include "mapdata/dyntiles.hpp"
 #include "mapdata/sparsemap.hpp"
 #include "proto/building.pb.h"
 
@@ -46,26 +47,11 @@ private:
   /** Chain to extract the roconfig building shapes.  */
   const xaya::Chain chain;
 
-  /** Vehicles of the red faction on the map.  */
-  SparseTileMap<unsigned> red;
-  /** Vehicles of the green faction on the map.  */
-  SparseTileMap<unsigned> green;
-  /** Vehicles of the blue faction on the map.  */
-  SparseTileMap<unsigned> blue;
+  /** Vehicles (of any faction) on the map.  */
+  SparseTileMap<unsigned> vehicles;
 
   /** Buildings in general.  */
   DynTiles<bool> buildings;
-
-  /**
-   * Returns the obstacle map responsible for the given faction.
-   */
-  SparseTileMap<unsigned>& FactionVehicles (Faction f);
-
-  const SparseTileMap<unsigned>&
-  FactionVehicles (const Faction f) const
-  {
-    return const_cast<DynObstacles*> (this)->FactionVehicles (f);
-  }
 
 public:
 
@@ -91,11 +77,6 @@ public:
   bool IsBuilding (const HexCoord& c) const;
 
   /**
-   * Checks if the given tile has a vehicle of the given faction.
-   */
-  bool HasVehicle (const HexCoord& c, Faction f) const;
-
-  /**
    * Checks if the given tile has any vehicle.
    */
   bool HasVehicle (const HexCoord& c) const;
@@ -107,14 +88,14 @@ public:
   bool IsFree (const HexCoord& c) const;
 
   /**
-   * Adds a new vehicle with the given faction and position.
+   * Adds a new vehicle with the given position.
    */
-  void AddVehicle (const HexCoord& c, Faction f);
+  void AddVehicle (const HexCoord& c);
 
   /**
    * Removes a vehicle from the given position.
    */
-  void RemoveVehicle (const HexCoord& c, Faction f);
+  void RemoveVehicle (const HexCoord& c);
 
   /**
    * Adds a building from the raw data (without requiring a Building instance).
