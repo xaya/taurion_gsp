@@ -57,17 +57,9 @@ TEST_F (DynObstaclesTests, VehiclesFromDb)
 
   DynObstacles dyn(db, ctx);
 
-  EXPECT_FALSE (dyn.IsPassable (c1, Faction::RED));
-  EXPECT_FALSE (dyn.IsPassable (c1, Faction::GREEN));
-  EXPECT_TRUE (dyn.IsPassable (c1, Faction::BLUE));
-
-  EXPECT_TRUE (dyn.IsPassable (c2, Faction::RED));
-  EXPECT_TRUE (dyn.IsPassable (c2, Faction::GREEN));
-  EXPECT_FALSE (dyn.IsPassable (c2, Faction::BLUE));
-
-  EXPECT_TRUE (dyn.IsPassable (c3, Faction::RED));
-  EXPECT_TRUE (dyn.IsPassable (c3, Faction::GREEN));
-  EXPECT_TRUE (dyn.IsPassable (c3, Faction::BLUE));
+  EXPECT_TRUE (dyn.HasVehicle (c1));
+  EXPECT_TRUE (dyn.HasVehicle (c2));
+  EXPECT_FALSE (dyn.HasVehicle (c3));
 }
 
 TEST_F (DynObstaclesTests, BuildingsFromDb)
@@ -76,13 +68,8 @@ TEST_F (DynObstaclesTests, BuildingsFromDb)
 
   DynObstacles dyn(db, ctx);
 
-  EXPECT_FALSE (dyn.IsPassable (HexCoord (0, 2), Faction::RED));
-  EXPECT_FALSE (dyn.IsPassable (HexCoord (0, 2), Faction::GREEN));
-  EXPECT_FALSE (dyn.IsPassable (HexCoord (0, 2), Faction::BLUE));
-
-  EXPECT_TRUE (dyn.IsPassable (HexCoord (2, 0), Faction::RED));
-  EXPECT_TRUE (dyn.IsPassable (HexCoord (2, 0), Faction::GREEN));
-  EXPECT_TRUE (dyn.IsPassable (HexCoord (2, 0), Faction::BLUE));
+  EXPECT_TRUE (dyn.IsBuilding (HexCoord (0, 2)));
+  EXPECT_FALSE (dyn.IsBuilding (HexCoord (2, 0)));
 }
 
 TEST_F (DynObstaclesTests, Modifications)
@@ -90,20 +77,18 @@ TEST_F (DynObstaclesTests, Modifications)
   const HexCoord c(42, 0);
   DynObstacles dyn(db, ctx);
 
-  EXPECT_TRUE (dyn.IsPassable (c, Faction::RED));
+  EXPECT_FALSE (dyn.HasVehicle (c));
 
-  dyn.AddVehicle (c, Faction::RED);
-  EXPECT_FALSE (dyn.IsPassable (c, Faction::RED));
-  EXPECT_TRUE (dyn.IsPassable (c, Faction::GREEN));
+  dyn.AddVehicle (c);
+  EXPECT_TRUE (dyn.HasVehicle (c));
 
-  dyn.RemoveVehicle (c, Faction::RED);
-  EXPECT_TRUE (dyn.IsPassable (c, Faction::RED));
-  EXPECT_TRUE (dyn.IsPassable (c, Faction::BLUE));
+  dyn.RemoveVehicle (c);
+  EXPECT_FALSE (dyn.HasVehicle (c));
 
   auto b = buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
-  EXPECT_TRUE (dyn.IsPassable (HexCoord (1, 0), Faction::RED));
+  EXPECT_FALSE (dyn.IsBuilding (HexCoord (1, 0)));
   dyn.AddBuilding (*b);
-  EXPECT_FALSE (dyn.IsPassable (HexCoord (1, 0), Faction::RED));
+  EXPECT_TRUE (dyn.IsBuilding (HexCoord (1, 0)));
 }
 
 TEST_F (DynObstaclesTests, AddingBuildings)
@@ -134,6 +119,22 @@ TEST_F (DynObstaclesTests, AddingBuildings)
   }
 }
 
+TEST_F (DynObstaclesTests, MultipleVehicles)
+{
+  const HexCoord c(10, 0);
+  DynObstacles dyn(db, ctx);
+
+  dyn.AddVehicle (c);
+  dyn.AddVehicle (c);
+  EXPECT_TRUE (dyn.HasVehicle (c));
+
+  dyn.RemoveVehicle (c);
+  EXPECT_TRUE (dyn.HasVehicle (c));
+
+  dyn.RemoveVehicle (c);
+  EXPECT_FALSE (dyn.HasVehicle (c));
+}
+
 TEST_F (DynObstaclesTests, IsFree)
 {
   auto b = buildings.CreateNew ("huesli", "", Faction::ANCIENT);
@@ -141,15 +142,11 @@ TEST_F (DynObstaclesTests, IsFree)
 
   DynObstacles dyn(db, ctx);
   dyn.AddBuilding (*b);
-  dyn.AddVehicle (HexCoord (1, 0), Faction::RED);
-  dyn.AddVehicle (HexCoord (2, 0), Faction::GREEN);
-  dyn.AddVehicle (HexCoord (3, 0), Faction::BLUE);
+  dyn.AddVehicle (HexCoord (1, 0));
 
   EXPECT_TRUE (dyn.IsFree (HexCoord (0, 1)));
   EXPECT_FALSE (dyn.IsFree (HexCoord (0, 0)));
   EXPECT_FALSE (dyn.IsFree (HexCoord (1, 0)));
-  EXPECT_FALSE (dyn.IsFree (HexCoord (2, 0)));
-  EXPECT_FALSE (dyn.IsFree (HexCoord (3, 0)));
 }
 
 } // anonymous namespace

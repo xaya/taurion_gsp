@@ -26,19 +26,18 @@ namespace pxd
 {
 
 DynObstacles::DynObstacles (const xaya::Chain c)
-  : chain(c), red(false), green(false), blue(false), buildings(false)
+  : chain(c), vehicles(0), buildings(false)
 {}
 
 DynObstacles::DynObstacles (Database& db, const Context& ctx)
-  : chain(ctx.Chain ()),
-    red(false), green(false), blue(false), buildings(false)
+  : chain(ctx.Chain ()), vehicles(0), buildings(false)
 {
   {
     CharacterTable tbl(db);
     tbl.ProcessAllPositions ([this] (const Database::IdT id,
                                      const HexCoord& pos, const Faction f)
       {
-        AddVehicle (pos, f);
+        AddVehicle (pos);
       });
   }
 

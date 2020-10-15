@@ -47,6 +47,7 @@ REGTESTS = \
   services_refining.py \
   services_repair.py \
   services_reveng.py \
+  spawn.py \
   splitstaterpcs.py \
   vehiclefitments.py
 

@@ -127,7 +127,6 @@ namespace
 template <typename Fcn>
   inline PathFinder::DistanceT
   FullMovementEdgeWeight (const Fcn& baseEdges, const DynObstacles& dyn,
-                          const Faction f,
                           const HexCoord& from, const HexCoord& to)
 {
   /* With dynamic obstacles, we do not handle the situation well if from and
@@ -135,10 +134,15 @@ template <typename Fcn>
      seen as obstacle (which it should not).  */
   CHECK_NE (from, to);
 
-  const auto res = baseEdges (from, to);
-
-  if (res == PathFinder::NO_CONNECTION || !dyn.IsPassable (to, f))
+  auto res = baseEdges (from, to);
+  if (res == PathFinder::NO_CONNECTION)
     return PathFinder::NO_CONNECTION;
+
+  if (dyn.IsBuilding (to))
+    return PathFinder::NO_CONNECTION;
+
+  if (dyn.HasVehicle (to))
+    res *= MULTI_VEHICLE_SLOWDOWN;
 
   return res;
 }
@@ -329,11 +333,10 @@ ProcessAllMovement (Database& db, DynObstacles& dyn, const Context& ctx)
         {
           return MovementEdgeWeight (ctx.Map (), f, from, to);
         };
-      const auto edges = [&ctx, &dyn, f, &baseEdges] (const HexCoord& from,
-                                                      const HexCoord& to)
+      const auto edges = [&] (const HexCoord& from, const HexCoord& to)
         {
 
-          return FullMovementEdgeWeight (baseEdges, dyn, f, from, to);
+          return FullMovementEdgeWeight (baseEdges, dyn, from, to);
         };
 
       CharacterMovement (*c, ctx, edges);
@@ -347,7 +350,7 @@ MoveInDynObstacles::MoveInDynObstacles (const Character& c, DynObstacles& d)
       << "Removing character " << character.GetId ()
       << " at position " << character.GetPosition ()
       << " from the dynamic obstacle map before moving it...";
-  dyn.RemoveVehicle (character.GetPosition (), character.GetFaction ());
+  dyn.RemoveVehicle (character.GetPosition ());
 }
 
 MoveInDynObstacles::~MoveInDynObstacles ()
@@ -356,7 +359,7 @@ MoveInDynObstacles::~MoveInDynObstacles ()
       << "Adding back character " << character.GetId ()
       << " at position " << character.GetPosition ()
       << " to the dynamic obstacle map...";
-  CHECK (dyn.AddVehicle (character.GetPosition (), character.GetFaction ()));
+  dyn.AddVehicle (character.GetPosition ());
 }
 
 namespace test
@@ -364,10 +367,9 @@ namespace test
 
 PathFinder::DistanceT
 MovementEdgeWeight (const EdgeWeightFcn& baseEdges, const DynObstacles& dyn,
-                    const Faction f,
                     const HexCoord& from, const HexCoord& to)
 {
-  return FullMovementEdgeWeight (baseEdges, dyn, f, from, to);
+  return FullMovementEdgeWeight (baseEdges, dyn, from, to);
 }
 
 void

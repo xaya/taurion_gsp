@@ -222,7 +222,7 @@ public:
 
   Json::Value
   findpath (const Json::Value& exbuildings, const std::string& faction,
-            int l1range, const Json::Value& source,
+            const int l1range, const Json::Value& source,
             const Json::Value& target) override
   {
     return nonstate.findpath (exbuildings, faction, l1range, source, target);

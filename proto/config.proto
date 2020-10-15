@@ -462,16 +462,13 @@ message SafeZone
 /* ************************************************************************** */
 
 /**
- * Definition of a spawn area.
+ * Definition of a spawn location.
  */
 message SpawnArea
 {
 
-  /** The centre of the area.  */
-  optional HexCoord centre = 1;
-
-  /** The L1 radius around the centre.  */
-  optional uint32 radius = 2;
+  /** The building ID into which new characters are spawned.  */
+  optional uint64 building_id = 1;
 
 }
 

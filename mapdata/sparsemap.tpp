@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,43 +16,39 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-/* Template implementation code for dynobstacles.hpp.  */
-
-#include <glog/logging.h>
+/* Template implementation code for sparsemap.hpp.  */
 
 namespace pxd
 {
 
-inline bool
-DynObstacles::IsBuilding (const HexCoord& c) const
+template <typename T>
+  SparseTileMap<T>::SparseTileMap (const T& val)
+  : defaultValue(val), density(false)
+{}
+
+template <typename T>
+  const T&
+  SparseTileMap<T>::Get (const HexCoord& c) const
 {
-  return buildings.Get (c);
+  if (!density.Get (c))
+    return defaultValue;
+
+  return values.at (c);
 }
 
-inline bool
-DynObstacles::HasVehicle (const HexCoord& c) const
+template <typename T>
+  void
+  SparseTileMap<T>::Set (const HexCoord& c, const T& val)
 {
-  return vehicles.Get (c) > 0;
-}
+  if (val == defaultValue)
+    {
+      values.erase (c);
+      density.Access (c) = false;
+      return;
+    }
 
-inline bool
-DynObstacles::IsFree (const HexCoord& c) const
-{
-  return !buildings.Get (c) && !HasVehicle (c);
-}
-
-inline void
-DynObstacles::AddVehicle (const HexCoord& c)
-{
-  vehicles.Set (c, vehicles.Get (c) + 1);
-}
-
-inline void
-DynObstacles::RemoveVehicle (const HexCoord& c)
-{
-  const auto cnt = vehicles.Get (c);
-  CHECK_GT (cnt, 0);
-  vehicles.Set (c, cnt - 1);
+  density.Access (c) = true;
+  values[c] = val;
 }
 
 } // namespace pxd

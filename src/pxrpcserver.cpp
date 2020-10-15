@@ -193,28 +193,7 @@ NonStateRpcServer::AddCharactersFromJson (const Json::Value& characters,
       if (!CoordFromJson (c["position"], pos))
         return false;
 
-      const auto& factVal = c["faction"];
-      if (!factVal.isString ())
-        return false;
-      const Faction faction = FactionFromString (factVal.asString ());
-      switch (faction)
-        {
-        case Faction::INVALID:
-        case Faction::ANCIENT:
-          return false;
-
-        case Faction::RED:
-        case Faction::GREEN:
-        case Faction::BLUE:
-          break;
-
-        default:
-          LOG (FATAL) << "Invalid faction: " << static_cast<int> (faction);
-          break;
-        }
-
-      if (!dyn.obstacles.AddVehicle (pos, faction))
-        return false;
+      dyn.obstacles.AddVehicle (pos);
     }
 
   return true;
@@ -253,7 +232,8 @@ NonStateRpcServer::setpathdata (const Json::Value& buildings,
 Json::Value
 NonStateRpcServer::findpath (const Json::Value& exbuildings,
                              const std::string& faction,
-                             const int l1range, const Json::Value& source,
+                             const int l1range,
+                             const Json::Value& source,
                              const Json::Value& target)
 {
   LOG (INFO)
@@ -315,25 +295,26 @@ NonStateRpcServer::findpath (const Json::Value& exbuildings,
   CHECK (dynCopy != nullptr);
 
   PathFinder finder(targetCoord);
-  const auto edges = [this, f, &dynCopy, &exBuildingIds] (const HexCoord& from,
-                                                          const HexCoord& to)
+  const auto edges = [&] (const HexCoord& from, const HexCoord& to)
     {
-      const auto base = MovementEdgeWeight (map, f, from, to);
+      auto base = MovementEdgeWeight (map, f, from, to);
       if (base == PathFinder::NO_CONNECTION)
         return PathFinder::NO_CONNECTION;
 
-      if (dynCopy->obstacles.IsPassable (to, f))
-        return base;
+      /* If the path is blocked by a building, look closer to see if it is one
+         of the buildings we want to ignore or not.  */
+      if (dynCopy->obstacles.IsBuilding (to))
+        {
+          const auto mitTiles = dynCopy->buildingIds.find (to);
+          if (mitTiles == dynCopy->buildingIds.end ()
+                || exBuildingIds.count (mitTiles->second) == 0)
+            return PathFinder::NO_CONNECTION;
+        }
 
-      /* If the path is blocked by a dynamic obstacle (building), look
-         closer to see if it is one of the buildings we want to ignore
-         or not.  */
-      const auto mitTiles = dynCopy->buildingIds.find (to);
-      if (mitTiles != dynCopy->buildingIds.end ()
-            && exBuildingIds.count (mitTiles->second) > 0)
-        return base;
+      if (dynCopy->obstacles.HasVehicle (to))
+        base *= MULTI_VEHICLE_SLOWDOWN;
 
-      return PathFinder::NO_CONNECTION;
+      return base;
     };
   const PathFinder::DistanceT dist = finder.Compute (edges, sourceCoord,
                                                      l1range);

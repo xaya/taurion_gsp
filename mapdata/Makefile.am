@@ -31,6 +31,7 @@ noinst_HEADERS = \
   dyntiles.hpp dyntiles.tpp \
   regionmap.hpp \
   safezones.hpp safezones.tpp \
+  sparsemap.hpp sparsemap.tpp \
   tiledata.hpp \
   \
   benchutils.hpp \
@@ -55,6 +56,7 @@ tests_SOURCES = \
   dyntiles_tests.cpp \
   regionmap_tests.cpp \
   safezones_tests.cpp \
+  sparsemap_tests.cpp \
   \
   dataio.cpp
 
