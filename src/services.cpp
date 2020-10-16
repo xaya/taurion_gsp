@@ -733,10 +733,12 @@ BlueprintCopyOperation::ExecuteSpecific (xaya::Random& rnd)
   auto& inv = GetBaseInventory ();
   inv.AddFungibleCount (original, -1);
 
+  /* Copies are produced one by one as they are done, so we schedule a
+     processing step of the operation after the baseDuration (not the
+     full duration of num copies).  */
   auto op = CreateOngoing ();
-  const unsigned baseDuration
-      = ctx.RoConfig ()->params ().bp_copy_blocks () * complexity;
-  op->SetHeight (ctx.Height () + num * baseDuration);
+  const unsigned baseDuration = GetBpCopyBlocks (copy, ctx);
+  op->SetHeight (ctx.Height () + baseDuration);
   op->SetBuildingId (GetBuilding ().GetId ());
   auto& cp = *op->MutableProto ().mutable_blueprint_copy ();
   cp.set_account (GetAccount ().GetName ());
@@ -744,6 +746,25 @@ BlueprintCopyOperation::ExecuteSpecific (xaya::Random& rnd)
   cp.set_copy_type (copy);
   cp.set_num_copies (num);
 }
+
+} // anonymous namespace
+
+unsigned GetBpCopyBlocks (const std::string& bpcType, const Context& ctx)
+{
+  const auto& bpData = ctx.RoConfig ().Item (bpcType);
+  CHECK (bpData.has_is_blueprint ());
+  CHECK (!bpData.is_blueprint ().original ());
+
+  const auto& baseData
+      = ctx.RoConfig ().Item (bpData.is_blueprint ().for_item ());
+  CHECK_GT (baseData.complexity (), 0);
+
+  return ctx.RoConfig ()->params ().construction_blocks ()
+            * baseData.complexity ();
+}
+
+namespace
+{
 
 /* ************************************************************************** */
 

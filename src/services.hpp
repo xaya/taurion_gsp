@@ -253,6 +253,11 @@ public:
 };
 
 /**
+ * Returns the number of blocks for copying a blueprint of the given type.
+ */
+unsigned GetBpCopyBlocks (const std::string& bpcType, const Context& ctx);
+
+/**
  * Returns the number of blocks for constructing one item of the
  * given type.
  */

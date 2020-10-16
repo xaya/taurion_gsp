@@ -1113,7 +1113,7 @@ TEST_F (BlueprintCopyTests, Success)
 
   auto op = ongoings.GetById (100);
   ASSERT_NE (op, nullptr);
-  EXPECT_EQ (op->GetHeight (), 100 + 10 * 10);
+  EXPECT_EQ (op->GetHeight (), 100 + 10);
   EXPECT_EQ (op->GetBuildingId (), ANCIENT_BUILDING);
   ASSERT_TRUE (op->GetProto ().has_blueprint_copy ());
   const auto& cp = op->GetProto ().blueprint_copy ();

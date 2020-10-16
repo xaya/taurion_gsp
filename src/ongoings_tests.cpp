@@ -99,20 +99,20 @@ TEST_F (OngoingsTests, ProcessedByHeight)
   proto::BlueprintCopy cpTemplate;
   cpTemplate.set_account ("domob");
   cpTemplate.set_original_type ("bow bpo");
-  cpTemplate.set_copy_type ("bow bpc");
+  cpTemplate.set_num_copies (1);
 
   auto b = buildings.CreateNew ("ancient1", "", Faction::ANCIENT);
   const auto bId = b->GetId ();
 
   auto op = AddOp (*b);
   op->SetHeight (10);
-  cpTemplate.set_num_copies (1);
+  cpTemplate.set_copy_type ("bow bpc");
   *op->MutableProto ().mutable_blueprint_copy () = cpTemplate;
   op.reset ();
 
   op = AddOp (*b);
   op->SetHeight (15);
-  cpTemplate.set_num_copies (10);
+  cpTemplate.set_copy_type ("sword bpc");
   *op->MutableProto ().mutable_blueprint_copy () = cpTemplate;
   op.reset ();
 
@@ -123,6 +123,7 @@ TEST_F (OngoingsTests, ProcessedByHeight)
   auto inv = buildingInv.Get (bId, "domob");
   EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpo"), 0);
   EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpc"), 0);
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("sword bpc"), 0);
   EXPECT_EQ (GetNumOngoing (), 2);
 
   ctx.SetHeight (10);
@@ -130,6 +131,7 @@ TEST_F (OngoingsTests, ProcessedByHeight)
   inv = buildingInv.Get (bId, "domob");
   EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpo"), 1);
   EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpc"), 1);
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("sword bpc"), 0);
   EXPECT_EQ (GetNumOngoing (), 1);
 
   ctx.SetHeight (14);
@@ -137,13 +139,15 @@ TEST_F (OngoingsTests, ProcessedByHeight)
   inv = buildingInv.Get (bId, "domob");
   EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpo"), 1);
   EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpc"), 1);
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("sword bpc"), 0);
   EXPECT_EQ (GetNumOngoing (), 1);
 
   ctx.SetHeight (15);
   ProcessAllOngoings (db, rnd, ctx);
   inv = buildingInv.Get (bId, "domob");
   EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpo"), 2);
-  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpc"), 11);
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpc"), 1);
+  EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("sword bpc"), 1);
   EXPECT_EQ (GetNumOngoing (), 0);
 }
 
@@ -204,10 +208,13 @@ TEST_F (OngoingsTests, Prospection)
 
 TEST_F (OngoingsTests, BlueprintCopy)
 {
+  const unsigned baseDuration = GetBpCopyBlocks ("bow bpc", ctx);
+
   auto b = buildings.CreateNew ("ancient1", "", Faction::ANCIENT);
   const auto bId = b->GetId ();
   auto op = AddOp (*b);
-  op->SetHeight (10);
+  const auto opId = op->GetId ();
+  op->SetHeight (baseDuration);
   auto& cp = *op->MutableProto ().mutable_blueprint_copy ();
   cp.set_account ("domob");
   cp.set_original_type ("bow bpo");
@@ -220,9 +227,23 @@ TEST_F (OngoingsTests, BlueprintCopy)
   inv->GetInventory ().AddFungibleCount ("bow bpc", 10);
   inv.reset ();
 
-  ctx.SetHeight (10);
-  ProcessAllOngoings (db, rnd, ctx);
+  /* The operation will be processed 20 times and produce a copy each time.  */
+  for (unsigned i = 1; i < 20; ++i)
+    {
+      ctx.SetHeight (i * baseDuration);
+      ProcessAllOngoings (db, rnd, ctx);
 
+      inv = buildingInv.Get (bId, "domob");
+      EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpo"), 0);
+      EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpc"), 10 + i);
+
+      ASSERT_EQ (GetNumOngoing (), 1);
+      ASSERT_EQ (ongoings.GetById (opId)->GetHeight (), (i + 1) * baseDuration);
+    }
+
+  /* The final step will refund the original as well.  */
+  ctx.SetHeight (20 * baseDuration);
+  ProcessAllOngoings (db, rnd, ctx);
   inv = buildingInv.Get (bId, "domob");
   EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpo"), 1);
   EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpc"), 30);
