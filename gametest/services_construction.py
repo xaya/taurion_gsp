@@ -53,14 +53,15 @@ class ServicesConstructionTest (PXTest):
                       1000000 - 5 * 100 - 2 * 100 * 100)
     b = self.getBuildings ()[building]
     self.assertEqual (b.getFungibleInventory ("domob"), {})
+    start = self.rpc.xaya.getblockcount ()
     self.assertEqual (self.getRpc ("getongoings"), [
       {
         "id": 1002,
         "operation": "construct",
         "buildingid": building,
         "account": "domob",
-        "start_height": self.rpc.xaya.getblockcount (),
-        "end_height": self.rpc.xaya.getblockcount () + 50,
+        "start_height": start,
+        "end_height": start + 10,
         "original": "sword bpo",
         "output": {"sword": 5},
       },
@@ -69,8 +70,36 @@ class ServicesConstructionTest (PXTest):
         "operation": "construct",
         "buildingid": building,
         "account": "domob",
-        "start_height": self.rpc.xaya.getblockcount (),
-        "end_height": self.rpc.xaya.getblockcount () + 1000,
+        "start_height": start,
+        "end_height": start + 1000,
+        "output": {"chariot": 2},
+      },
+    ])
+
+    self.mainLogger.info ("Partial construction from original...")
+    self.generate (20)
+    b = self.getBuildings ()[building]
+    self.assertEqual (b.getFungibleInventory ("domob"), {
+      "sword": 2,
+    })
+    self.assertEqual (self.getRpc ("getongoings"), [
+      {
+        "id": 1002,
+        "operation": "construct",
+        "buildingid": building,
+        "account": "domob",
+        "start_height": start,
+        "end_height": self.rpc.xaya.getblockcount () + 10,
+        "original": "sword bpo",
+        "output": {"sword": 3},
+      },
+      {
+        "id": 1003,
+        "operation": "construct",
+        "buildingid": building,
+        "account": "domob",
+        "start_height": start,
+        "end_height": start + 1000,
         "output": {"chariot": 2},
       },
     ])

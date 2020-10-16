@@ -252,6 +252,12 @@ public:
 
 };
 
+/**
+ * Returns the number of blocks for constructing one item of the
+ * given type.
+ */
+unsigned GetConstructionBlocks (const std::string& itm, const Context& ctx);
+
 } // namespace pxd
 
 #endif // PXD_SERVICES_HPP

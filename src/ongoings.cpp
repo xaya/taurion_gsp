@@ -20,6 +20,7 @@
 
 #include "buildings.hpp"
 #include "prospecting.hpp"
+#include "services.hpp"
 
 #include "database/building.hpp"
 #include "database/character.hpp"
@@ -35,6 +36,47 @@ namespace pxd
 
 namespace
 {
+
+/**
+ * Updates an item construction operation.
+ */
+void
+UpdateItemConstruction (OngoingOperation& op, Building& b, const Context& ctx,
+                        BuildingInventoriesTable& buildingInv)
+{
+  const auto& c = op.GetProto ().item_construction ();
+  auto inv = buildingInv.Get (b.GetId (), c.account ());
+
+  /* If this was constructed from blueprint copies, it will be done immediately
+     and all items are given out.  Otherwise, we keep constructing one by
+     one and schedule new updates for when the next item is done.  */
+  Quantity finished;
+  if (c.has_original_type ())
+    finished = 1;
+  else
+    finished = c.num_items ();
+
+  CHECK_LE (finished, c.num_items ());
+  const Quantity remaining = c.num_items () - finished;
+
+  LOG (INFO)
+      << c.account () << " constructed "
+      << finished << " " << c.output_type ()
+      << " in building " << b.GetId ()
+      << ", " << remaining << " units remaining in the queue";
+  inv->GetInventory ().AddFungibleCount (c.output_type (), finished);
+
+  if (remaining > 0)
+    {
+      CHECK (c.has_original_type ());
+      const unsigned duration = GetConstructionBlocks (c.output_type (), ctx);
+      op.SetHeight (ctx.Height () + duration);
+      op.MutableProto ().mutable_item_construction ()
+          ->set_num_items (remaining);
+    }
+  else if (c.has_original_type ())
+    inv->GetInventory ().AddFungibleCount (c.original_type (), 1);
+}
 
 /**
  * Finishes construction of the given building.
@@ -130,20 +172,9 @@ ProcessAllOngoings (Database& db, xaya::Random& rnd, const Context& ctx)
           }
 
         case proto::OngoingOperation::kItemConstruction:
-          {
-            CHECK (b != nullptr);
-            const auto& c = op->GetProto ().item_construction ();
-            LOG (INFO)
-                << c.account () << " finished constructing "
-                << c.num_items () << " " << c.output_type ()
-                << " in building " << b->GetId ();
-            auto inv = buildingInv.Get (b->GetId (), c.account ());
-            inv->GetInventory ().AddFungibleCount (c.output_type (),
-                                                   c.num_items ());
-            if (c.has_original_type ())
-              inv->GetInventory ().AddFungibleCount (c.original_type (), 1);
-            break;
-          }
+          CHECK (b != nullptr);
+          UpdateItemConstruction (*op, *b, ctx, buildingInv);
+          break;
 
         case proto::OngoingOperation::kBuildingConstruction:
           CHECK (b != nullptr);

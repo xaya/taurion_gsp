@@ -1320,7 +1320,7 @@ TEST_F (ConstructionTests, FromOriginal)
 
   auto op = ongoings.GetById (100);
   ASSERT_NE (op, nullptr);
-  EXPECT_EQ (op->GetHeight (), 100 + 5 * 10);
+  EXPECT_EQ (op->GetHeight (), 100 + 10);
   EXPECT_EQ (op->GetBuildingId (), ANCIENT_BUILDING);
   ASSERT_TRUE (op->GetProto ().has_item_construction ());
   const auto& c = op->GetProto ().item_construction ();

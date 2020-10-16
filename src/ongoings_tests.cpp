@@ -18,6 +18,7 @@
 
 #include "ongoings.hpp"
 
+#include "services.hpp"
 #include "testutils.hpp"
 
 #include "database/building.hpp"
@@ -230,10 +231,13 @@ TEST_F (OngoingsTests, BlueprintCopy)
 
 TEST_F (OngoingsTests, ItemConstructionFromOriginal)
 {
+  const unsigned baseDuration = GetConstructionBlocks ("bow", ctx);
+
   auto b = buildings.CreateNew ("ancient1", "", Faction::ANCIENT);
   const auto bId = b->GetId ();
   auto op = AddOp (*b);
-  op->SetHeight (10);
+  const auto opId = op->GetId ();
+  op->SetHeight (baseDuration);
   auto& c = *op->MutableProto ().mutable_item_construction ();
   c.set_account ("domob");
   c.set_output_type ("bow");
@@ -246,9 +250,26 @@ TEST_F (OngoingsTests, ItemConstructionFromOriginal)
   inv->GetInventory ().AddFungibleCount ("bow bpo", 10);
   inv.reset ();
 
-  ctx.SetHeight (10);
-  ProcessAllOngoings (db, rnd, ctx);
+  /* The operation will be processed 20 times (once for each item), and
+     produce the items one by one.  */
+  for (unsigned i = 1; i < 20; ++i)
+    {
+      ctx.SetHeight (i * baseDuration);
+      ProcessAllOngoings (db, rnd, ctx);
 
+      inv = buildingInv.Get (bId, "domob");
+      EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpo"), 10);
+      EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpc"), 0);
+      EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow"), i);
+
+      ASSERT_EQ (GetNumOngoing (), 1);
+      ASSERT_EQ (ongoings.GetById (opId)->GetHeight (), (i + 1) * baseDuration);
+    }
+
+  /* The final construction step will clear out the ongoing operation
+     and refund the bpo.  */
+  ctx.SetHeight (20 * baseDuration);
+  ProcessAllOngoings (db, rnd, ctx);
   inv = buildingInv.Get (bId, "domob");
   EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpo"), 11);
   EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpc"), 0);
