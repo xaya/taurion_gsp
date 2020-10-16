@@ -20,6 +20,7 @@
 
 #include "buildings.hpp"
 #include "prospecting.hpp"
+#include "services.hpp"
 
 #include "database/building.hpp"
 #include "database/character.hpp"
@@ -35,6 +36,76 @@ namespace pxd
 
 namespace
 {
+
+/**
+ * Updates a blueprint copy operation.
+ */
+void
+UpdateBlueprintCopy (OngoingOperation& op, Building& b, const Context& ctx,
+                     BuildingInventoriesTable& buildingInv)
+{
+  const auto& cp = op.GetProto ().blueprint_copy ();
+  auto inv = buildingInv.Get (b.GetId (), cp.account ());
+
+  CHECK_GE (cp.num_copies (), 1);
+  const Quantity remaining = cp.num_copies () - 1;
+
+  LOG (INFO)
+      << cp.account () << " copied one blueprint " << cp.original_type ()
+      << " in building " << b.GetId ()
+      << ", " << remaining << " units remaining in the queue";
+  inv->GetInventory ().AddFungibleCount (cp.copy_type (), 1);
+
+  if (remaining > 0)
+    {
+      const unsigned duration = GetBpCopyBlocks (cp.copy_type (), ctx);
+      op.SetHeight (ctx.Height () + duration);
+      op.MutableProto ().mutable_blueprint_copy ()->set_num_copies (remaining);
+    }
+  else
+    inv->GetInventory ().AddFungibleCount (cp.original_type (), 1);
+}
+
+/**
+ * Updates an item construction operation.
+ */
+void
+UpdateItemConstruction (OngoingOperation& op, Building& b, const Context& ctx,
+                        BuildingInventoriesTable& buildingInv)
+{
+  const auto& c = op.GetProto ().item_construction ();
+  auto inv = buildingInv.Get (b.GetId (), c.account ());
+
+  /* If this was constructed from blueprint copies, it will be done immediately
+     and all items are given out.  Otherwise, we keep constructing one by
+     one and schedule new updates for when the next item is done.  */
+  Quantity finished;
+  if (c.has_original_type ())
+    finished = 1;
+  else
+    finished = c.num_items ();
+
+  CHECK_LE (finished, c.num_items ());
+  const Quantity remaining = c.num_items () - finished;
+
+  LOG (INFO)
+      << c.account () << " constructed "
+      << finished << " " << c.output_type ()
+      << " in building " << b.GetId ()
+      << ", " << remaining << " units remaining in the queue";
+  inv->GetInventory ().AddFungibleCount (c.output_type (), finished);
+
+  if (remaining > 0)
+    {
+      CHECK (c.has_original_type ());
+      const unsigned duration = GetConstructionBlocks (c.output_type (), ctx);
+      op.SetHeight (ctx.Height () + duration);
+      op.MutableProto ().mutable_item_construction ()
+          ->set_num_items (remaining);
+    }
+  else if (c.has_original_type ())
+    inv->GetInventory ().AddFungibleCount (c.original_type (), 1);
+}
 
 /**
  * Finishes construction of the given building.
@@ -116,34 +187,14 @@ ProcessAllOngoings (Database& db, xaya::Random& rnd, const Context& ctx)
           break;
 
         case proto::OngoingOperation::kBlueprintCopy:
-          {
-            CHECK (b != nullptr);
-            const auto& cp = op->GetProto ().blueprint_copy ();
-            LOG (INFO)
-                << "Finished blue-print copy of " << cp.account ()
-                << " in building " << b->GetId ();
-            auto inv = buildingInv.Get (b->GetId (), cp.account ());
-            inv->GetInventory ().AddFungibleCount (cp.original_type (), 1);
-            inv->GetInventory ().AddFungibleCount (cp.copy_type (),
-                                                   cp.num_copies ());
-            break;
-          }
+          CHECK (b != nullptr);
+          UpdateBlueprintCopy (*op, *b, ctx, buildingInv);
+          break;
 
         case proto::OngoingOperation::kItemConstruction:
-          {
-            CHECK (b != nullptr);
-            const auto& c = op->GetProto ().item_construction ();
-            LOG (INFO)
-                << c.account () << " finished constructing "
-                << c.num_items () << " " << c.output_type ()
-                << " in building " << b->GetId ();
-            auto inv = buildingInv.Get (b->GetId (), c.account ());
-            inv->GetInventory ().AddFungibleCount (c.output_type (),
-                                                   c.num_items ());
-            if (c.has_original_type ())
-              inv->GetInventory ().AddFungibleCount (c.original_type (), 1);
-            break;
-          }
+          CHECK (b != nullptr);
+          UpdateItemConstruction (*op, *b, ctx, buildingInv);
+          break;
 
         case proto::OngoingOperation::kBuildingConstruction:
           CHECK (b != nullptr);

@@ -53,14 +53,15 @@ class ServicesBlueprintCopyTest (PXTest):
     self.assertEqual (self.getAccounts ()["domob"].getBalance (), 500)
     b = self.getBuildings ()[building]
     self.assertEqual (b.getFungibleInventory ("domob"), {})
+    start = self.rpc.xaya.getblockcount ()
     self.assertEqual (self.getRpc ("getongoings"), [
       {
         "id": 1002,
         "operation": "bpcopy",
         "buildingid": building,
         "account": "domob",
-        "start_height": self.rpc.xaya.getblockcount (),
-        "end_height": self.rpc.xaya.getblockcount () + 30,
+        "start_height": start,
+        "end_height": start + 30,
         "original": "sword bpo",
         "output": {"sword bpc": 3},
       },
@@ -69,10 +70,30 @@ class ServicesBlueprintCopyTest (PXTest):
         "operation": "bpcopy",
         "buildingid": building,
         "account": "domob",
-        "start_height": self.rpc.xaya.getblockcount (),
-        "end_height": self.rpc.xaya.getblockcount () + 20,
+        "start_height": start,
+        "end_height": start + 20,
         "original": "sword bpo",
         "output": {"sword bpc": 2},
+      },
+    ])
+
+    self.mainLogger.info ("Partial copying...")
+    self.generate (20)
+    b = self.getBuildings ()[building]
+    self.assertEqual (b.getFungibleInventory ("domob"), {
+      "sword bpo": 1,
+      "sword bpc": 4,
+    })
+    self.assertEqual (self.getRpc ("getongoings"), [
+      {
+        "id": 1002,
+        "operation": "bpcopy",
+        "buildingid": building,
+        "account": "domob",
+        "start_height": start,
+        "end_height": start + 30,
+        "original": "sword bpo",
+        "output": {"sword bpc": 1},
       },
     ])
 

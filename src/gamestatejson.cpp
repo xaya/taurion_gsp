@@ -22,6 +22,7 @@
 #include "jsonutils.hpp"
 #include "modifier.hpp"
 #include "protoutils.hpp"
+#include "services.hpp"
 
 #include "database/account.hpp"
 #include "database/building.hpp"
@@ -391,11 +392,16 @@ template <>
 
   res["id"] = IntToJson (op.GetId ());
   res["start_height"] = IntToJson (pb.start_height ());
-  res["end_height"] = IntToJson (op.GetHeight ());
   if (op.GetCharacterId () != Database::EMPTY_ID)
     res["characterid"] = IntToJson (op.GetCharacterId ());
   if (op.GetBuildingId () != Database::EMPTY_ID)
     res["buildingid"] = IntToJson (op.GetBuildingId ());
+
+  /* For some operations, the actual end height is not the height of the
+     operation, because it will be processed multiple times before it is
+     complete (e.g. blueprint copies).  For them, we add an operation-specific
+     delta onto the operation height.  */
+  unsigned endDelta = 0;
 
   switch (pb.op_case ())
     {
@@ -419,6 +425,10 @@ template <>
         output[cp.copy_type ()] = IntToJson (cp.num_copies ());
         res["output"] = output;
 
+        CHECK_GE (cp.num_copies (), 1);
+        endDelta += (cp.num_copies () - 1)
+                      * GetBpCopyBlocks (cp.copy_type (), ctx);
+
         break;
       }
 
@@ -434,7 +444,13 @@ template <>
         res["output"] = output;
 
         if (c.has_original_type ())
-          res["original"] = c.original_type ();
+          {
+            res["original"] = c.original_type ();
+
+            CHECK_GE (c.num_items (), 1);
+            endDelta += (c.num_items () - 1)
+                          * GetConstructionBlocks (c.output_type (), ctx);
+          }
 
         break;
       }
@@ -446,6 +462,8 @@ template <>
     default:
       LOG (FATAL) << "Unexpected ongoing operation case: " << pb.op_case ();
     }
+
+  res["end_height"] = IntToJson (op.GetHeight () + endDelta);
 
   return res;
 }

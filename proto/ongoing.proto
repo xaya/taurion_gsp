@@ -74,6 +74,12 @@ message BlueprintCopy
  * given back together with the constructed items.  Blueprint copies and
  * resources required for the construction are always just removed when the
  * operation starts (and thus not related to the operation state).
+ *
+ * Construction from an original produces the items "in series", which means
+ * that we schedule an update for each single item finished and give them out
+ * one after the other while the operation is still going on.  If constructing
+ * from blueprint copies, all of them are done in parallel, and just one update
+ * is done after the construction time and all items are given out at once.
  */
 message ItemConstruction
 {
@@ -84,7 +90,12 @@ message ItemConstruction
   /** The constructed item.  */
   optional string output_type = 2;
 
-  /** The number of constructed items.  */
+  /**
+   * The number of items still to be constructed.  If this is done based on
+   * an original blueprint, we will update the operation after each produced
+   * item, give that item out, decrement the number here, and re-schedule
+   * an update.
+   */
   optional uint32 num_items = 3;
 
   /**
@@ -132,7 +143,7 @@ message OngoingOperation
   }
 
   /* The database stores extra data directly in columns:
-      - block height when the operation is finished
+      - block height when the next processing is required
       - associated character ID (if any)
       - associated building ID (if any)
   */

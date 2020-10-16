@@ -19,6 +19,7 @@
 #include "gamestatejson.hpp"
 
 #include "protoutils.hpp"
+#include "services.hpp"
 #include "testutils.hpp"
 
 #include "database/account.hpp"
@@ -956,8 +957,11 @@ TEST_F (OngoingsJsonTests, ArmourRepair)
 
 TEST_F (OngoingsJsonTests, BlueprintCopy)
 {
+  ASSERT_EQ (GetBpCopyBlocks ("bow bpc", ctx), 1'000);
+
   auto op = tbl.CreateNew (1);
   ASSERT_EQ (op->GetId (), 1);
+  op->SetHeight (1'001);
   auto& cp = *op->MutableProto ().mutable_blueprint_copy ();
   cp.set_account ("domob");
   cp.set_original_type ("bow bpo");
@@ -972,7 +976,9 @@ TEST_F (OngoingsJsonTests, BlueprintCopy)
           "id": 1,
           "operation": "bpcopy",
           "original": "bow bpo",
-          "output": {"bow bpc": 42}
+          "output": {"bow bpc": 42},
+          "start_height": 1,
+          "end_height": 42001
         }
       ]
   })");
@@ -980,8 +986,11 @@ TEST_F (OngoingsJsonTests, BlueprintCopy)
 
 TEST_F (OngoingsJsonTests, ItemConstruction)
 {
+  ASSERT_EQ (GetConstructionBlocks ("bow", ctx), 1'000);
+
   auto op = tbl.CreateNew (1);
   ASSERT_EQ (op->GetId (), 1);
+  op->SetHeight (1'001);
   auto* c = op->MutableProto ().mutable_item_construction ();
   c->set_account ("domob");
   c->set_output_type ("bow");
@@ -990,6 +999,7 @@ TEST_F (OngoingsJsonTests, ItemConstruction)
 
   op = tbl.CreateNew (1);
   ASSERT_EQ (op->GetId (), 2);
+  op->SetHeight (1'001);
   c = op->MutableProto ().mutable_item_construction ();
   c->set_account ("domob");
   c->set_output_type ("bow");
@@ -1003,13 +1013,17 @@ TEST_F (OngoingsJsonTests, ItemConstruction)
         {
           "id": 1,
           "operation": "construct",
-          "output": {"bow": 42}
+          "output": {"bow": 42},
+          "start_height": 1,
+          "end_height": 1001
         },
         {
           "id": 2,
           "operation": "construct",
           "output": {"bow": 5},
-          "original": "bow bpo"
+          "original": "bow bpo",
+          "start_height": 1,
+          "end_height": 5001
         }
       ]
   })");

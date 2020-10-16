@@ -733,10 +733,12 @@ BlueprintCopyOperation::ExecuteSpecific (xaya::Random& rnd)
   auto& inv = GetBaseInventory ();
   inv.AddFungibleCount (original, -1);
 
+  /* Copies are produced one by one as they are done, so we schedule a
+     processing step of the operation after the baseDuration (not the
+     full duration of num copies).  */
   auto op = CreateOngoing ();
-  const unsigned baseDuration
-      = ctx.RoConfig ()->params ().bp_copy_blocks () * complexity;
-  op->SetHeight (ctx.Height () + num * baseDuration);
+  const unsigned baseDuration = GetBpCopyBlocks (copy, ctx);
+  op->SetHeight (ctx.Height () + baseDuration);
   op->SetBuildingId (GetBuilding ().GetId ());
   auto& cp = *op->MutableProto ().mutable_blueprint_copy ();
   cp.set_account (GetAccount ().GetName ());
@@ -744,6 +746,25 @@ BlueprintCopyOperation::ExecuteSpecific (xaya::Random& rnd)
   cp.set_copy_type (copy);
   cp.set_num_copies (num);
 }
+
+} // anonymous namespace
+
+unsigned GetBpCopyBlocks (const std::string& bpcType, const Context& ctx)
+{
+  const auto& bpData = ctx.RoConfig ().Item (bpcType);
+  CHECK (bpData.has_is_blueprint ());
+  CHECK (!bpData.is_blueprint ().original ());
+
+  const auto& baseData
+      = ctx.RoConfig ().Item (bpData.is_blueprint ().for_item ());
+  CHECK_GT (baseData.complexity (), 0);
+
+  return ctx.RoConfig ()->params ().construction_blocks ()
+            * baseData.complexity ();
+}
+
+namespace
+{
 
 /* ************************************************************************** */
 
@@ -913,15 +934,11 @@ ConstructionOperation::ExecuteSpecific (xaya::Random& rnd)
   auto op = CreateOngoing ();
   op->SetBuildingId (GetBuilding ().GetId ());
 
-  /* When constructing from an original, the items have to be constructed
-     in series.  With blueprint copies, we need to have as many copies as items
-     anyway, and can construct the items in parallel.  */
-  unsigned baseDuration = ctx.RoConfig ()->params ().construction_blocks ();
-  baseDuration *= outputData->complexity ();
-  if (fromOriginal)
-    op->SetHeight (ctx.Height () + num * baseDuration);
-  else
-    op->SetHeight (ctx.Height () + baseDuration);
+  /* We always update the operation after how long it takes to construct
+     one item.  If constructing from an original blueprint, we then disperse
+     the first item, and schedule the remaining ones.  If constructing from
+     a bunch of copies, we will be fully done then.  */
+  op->SetHeight (ctx.Height () + GetConstructionBlocks (output, ctx));
 
   auto& c = *op->MutableProto ().mutable_item_construction ();
   c.set_account (GetAccount ().GetName ());
@@ -930,6 +947,18 @@ ConstructionOperation::ExecuteSpecific (xaya::Random& rnd)
   if (fromOriginal)
     c.set_original_type (blueprint);
 }
+
+} // anonymous namespace
+
+unsigned GetConstructionBlocks (const std::string& itm, const Context& ctx)
+{
+  const auto& data = ctx.RoConfig ().Item (itm);
+  CHECK_GT (data.complexity (), 0);
+  return ctx.RoConfig ()->params ().construction_blocks () * data.complexity ();
+}
+
+namespace
+{
 
 /* ************************************************************************** */
 
