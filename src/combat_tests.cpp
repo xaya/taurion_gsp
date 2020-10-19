@@ -2525,6 +2525,56 @@ TEST_F (ProcessKillsCharacterTests, DropsInventory)
   EXPECT_EQ (ground->GetInventory ().GetFungibleCount ("bar"), 10);
 }
 
+TEST_F (ProcessKillsCharacterTests, MaybeDropsFitments)
+{
+  constexpr HexCoord pos(-42, 100);
+  constexpr unsigned trials = 1'000;
+  constexpr unsigned baseCnt = (20 * trials) / 100;
+  constexpr unsigned eps = (trials * 5) / 100;
+
+  for (unsigned i = 0; i < trials; ++i)
+    {
+      auto c = characters.CreateNew ("domob", Faction::RED);
+      const auto id = c->GetId ();
+      c->SetPosition (pos);
+      auto& pb = c->MutableProto ();
+      pb.set_vehicle ("basetank");
+      pb.add_fitments ("bow");
+      pb.add_fitments ("sword");
+      pb.add_fitments ("bow");
+      pb.add_fitments ("free plating");
+      c.reset ();
+
+      KillCharacter (id);
+      EXPECT_TRUE (characters.GetById (id) == nullptr);
+    }
+
+  auto ground = loot.GetByCoord (pos);
+  const auto& inv = ground->GetInventory ();
+
+  const auto cntBow = inv.GetFungibleCount ("bow");
+  const auto cntSword = inv.GetFungibleCount ("sword");
+  const auto cntPlating = inv.GetFungibleCount ("free plating");
+
+  /* The vehicle should never drop.  */
+  EXPECT_EQ (inv.GetFungibleCount ("basetank"), 0);
+
+  /* sword and plating have the same chance to drop, but they should not
+     have dropped with exactly the same number (i.e. the rolls should have
+     been uncorrelated, not a single one for all fitments).  */
+  EXPECT_NE (cntSword, cntPlating);
+  EXPECT_GT (cntBow, cntSword);
+
+  EXPECT_LE (cntBow, 2 * baseCnt + eps);
+  EXPECT_GE (cntBow, 2 * baseCnt - eps);
+
+  EXPECT_LE (cntSword, baseCnt + eps);
+  EXPECT_GE (cntSword, baseCnt - eps);
+
+  EXPECT_LE (cntPlating, baseCnt + eps);
+  EXPECT_GE (cntPlating, baseCnt - eps);
+}
+
 class ProcessKillsBuildingTests : public ProcessKillsTests
 {
 
@@ -2610,6 +2660,8 @@ TEST_F (ProcessKillsBuildingTests, MayDropAnyInventoryItem)
       {"foo", 5},
       {"bar", 100},
       {"zerospace", 1},
+      {"basetank", 2},
+      {"bow", 3},
     };
 
   std::set<std::string> dropped;
@@ -2627,11 +2679,16 @@ TEST_F (ProcessKillsBuildingTests, MayDropAnyInventoryItem)
       auto c = characters.CreateNew ("domob", Faction::RED);
       c->SetBuildingId (id);
       c->GetInventory ().SetFungibleCount ("foo", 2);
+      c->MutableProto ().set_vehicle ("basetank");
+      c->MutableProto ().add_fitments ("bow");
+      c->MutableProto ().add_fitments ("bow");
       c.reset ();
 
       c = characters.CreateNew ("andy", Faction::RED);
       c->SetBuildingId (id);
       c->GetInventory ().SetFungibleCount ("zerospace", 1);
+      c->MutableProto ().set_vehicle ("basetank");
+      c->MutableProto ().add_fitments ("bow");
       c.reset ();
 
       KillBuilding (id);

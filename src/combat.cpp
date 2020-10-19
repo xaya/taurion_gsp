@@ -45,6 +45,12 @@ namespace
 constexpr unsigned BUILDING_INVENTORY_DROP_PERCENT = 30;
 
 /**
+ * Chance (in percent) that an equipped fitment of a destroyed character
+ * will be dropped as loot rather than destroyed.
+ */
+constexpr unsigned EQUIPPED_FITMENT_DROP_PERCENT = 20;
+
+/**
  * Modifications to combat-related stats.
  */
 struct CombatModifier
@@ -996,13 +1002,14 @@ void
 KillProcessor::ProcessCharacter (const Database::IdT id)
 {
   auto c = characters.GetById (id);
+  const auto& pb = c->GetProto ();
   const auto& pos = c->GetPosition ();
 
   /* If the character was prospecting some region, cancel that
      operation and mark the region as not being prospected.  */
   if (c->IsBusy ())
     {
-      const auto op = ongoings.GetById (c->GetProto ().ongoing ());
+      const auto op = ongoings.GetById (pb.ongoing ());
       CHECK (op != nullptr);
       if (op->GetProto ().has_prospection ())
         {
@@ -1019,13 +1026,18 @@ KillProcessor::ProcessCharacter (const Database::IdT id)
     }
 
   /* If the character has an inventory, drop everything they had
-     on the ground. */
-  const auto& inv = c->GetInventory ();
+     on the ground.  Equipped fitments have a chance to survive and
+     be dropped as well.  The vehicle itself is always destroyed.  */
+  Inventory inv;
+  inv += c->GetInventory ();
+  for (const auto& f : pb.fitments ())
+    if (rnd.ProbabilityRoll (EQUIPPED_FITMENT_DROP_PERCENT, 100))
+      inv.AddFungibleCount (f, 1);
   if (!inv.IsEmpty ())
     {
       LOG (INFO)
           << "Killed character " << id
-          << " has non-empty inventory, dropping loot at " << pos;
+          << " has non-empty inventory/fitments, dropping loot at " << pos;
 
       auto ground = loot.GetByCoord (pos);
       auto& groundInv = ground->GetInventory ();
@@ -1062,9 +1074,16 @@ KillProcessor::ProcessBuilding (const Database::IdT id)
     auto res = characters.QueryForBuilding (id);
     while (res.Step ())
       {
-        auto h = characters.GetFromResult (res);
-        totalInv += h->GetInventory ();
-        DeleteCharacter (std::move (h));
+        auto c = characters.GetFromResult (res);
+        totalInv += c->GetInventory ();
+        const auto& pb = c->GetProto ();
+        /* Normally the character always has a vehicle, but in some tests
+           this might not be set up.  */
+        if (pb.has_vehicle ())
+          totalInv.AddFungibleCount (pb.vehicle (), 1);
+        for (const auto& f : pb.fitments ())
+          totalInv.AddFungibleCount (f, 1);
+        DeleteCharacter (std::move (c));
       }
   }
 
