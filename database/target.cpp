@@ -39,7 +39,7 @@ TargetFinder::ProcessL1Targets (const HexCoord& centre,
                                 const HexCoord::IntT l1range,
                                 const Faction faction,
                                 const bool enemies, const bool friendlies,
-                                const ProcessingFcn& cb)
+                                const ProcessingFcn& cb) const
 {
   CHECK (enemies || friendlies)
       << "Neither enemy nor friendly targets requested?";

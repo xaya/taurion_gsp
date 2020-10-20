@@ -135,7 +135,7 @@ namespace
  * enemies flag and always look for enemies and friendlies alike.
  */
 void
-ProcessCombatTargets (TargetFinder& targets, const Context& ctx,
+ProcessCombatTargets (const TargetFinder& targets, const Context& ctx,
                       const CombatEntity& f,
                       const HexCoord& centre, const HexCoord::IntT range,
                       const bool enemies,
@@ -167,13 +167,59 @@ ProcessCombatTargets (TargetFinder& targets, const Context& ctx,
 }
 
 /**
- * Runs target finding for the normal attacks, setting (or clearing)
- * the target field.
+ * Helper class for performing target finding.  It holds some general
+ * context, and also manages parallel processing.
  */
+class TargetFindingProcessor
+{
+
+private:
+
+  BuildingsTable buildings;
+  CharacterTable characters;
+  FighterTable fighters;
+  const TargetFinder targets;
+
+  xaya::Random& rnd;
+  const Context& ctx;
+
+  /**
+   * Runs target finding for the normal attacks, setting (or clearing)
+   * the target field.
+   */
+  void SelectNormalTarget (const CombatModifier& mod, CombatEntity& f);
+
+  /**
+   * Runs target finding for friendlies in range of a friendly attack, if any.
+   * This sets (or unsets) the friendly-targets flag.
+   */
+  void SelectFriendlyTargets (const CombatModifier& mod, CombatEntity& f);
+
+  /**
+   * Runs target selection for one fighter entity.  This clears or sets
+   * the fighter's target and friendly-targets fields accordingly.
+   */
+  void SelectTarget (FighterTable::Handle f);
+
+public:
+
+  TargetFindingProcessor (Database& db, xaya::Random& r, const Context& c)
+    : buildings(db), characters(db),
+      fighters(buildings, characters),
+      targets(db),
+      rnd(r), ctx(c)
+  {}
+
+  /**
+   * Runs all processing.
+   */
+  void ProcessAll ();
+
+};
+
 void
-SelectNormalTarget (TargetFinder& targets, xaya::Random& rnd,
-                    const Context& ctx, const CombatModifier& mod,
-                    CombatEntity& f)
+TargetFindingProcessor::SelectNormalTarget (const CombatModifier& mod,
+                                            CombatEntity& f)
 {
   const HexCoord pos = f.GetCombatPosition ();
 
@@ -223,13 +269,9 @@ SelectNormalTarget (TargetFinder& targets, xaya::Random& rnd,
   f.SetTarget (closestTargets[ind]);
 }
 
-/**
- * Runs target finding for friendlies in range of a friendly attack, if any.
- * This sets (or unsets) the friendly-targets flag.
- */
 void
-SelectFriendlyTargets (TargetFinder& targets, const Context& ctx,
-                       const CombatModifier& mod, CombatEntity& f)
+TargetFindingProcessor::SelectFriendlyTargets (const CombatModifier& mod,
+                                               CombatEntity& f)
 {
   const HexCoord pos = f.GetCombatPosition ();
 
@@ -249,8 +291,6 @@ SelectFriendlyTargets (TargetFinder& targets, const Context& ctx,
       found = true;
     });
 
-  f.SetFriendlyTargets (found);
-
   if (found)
     VLOG (1)
         << "Found at least one friendly target in range for "
@@ -258,15 +298,12 @@ SelectFriendlyTargets (TargetFinder& targets, const Context& ctx,
   else
     VLOG (1)
         << "No friendlies in range for " << f.GetIdAsTarget ().DebugString ();
+
+  f.SetFriendlyTargets (found);
 }
 
-/**
- * Runs target selection for one fighter entity.  This clears or sets
- * the fighter's target and friendly-targets fields accordingly.
- */
 void
-SelectTarget (TargetFinder& targets, xaya::Random& rnd, const Context& ctx,
-              FighterTable::Handle f)
+TargetFindingProcessor::SelectTarget (FighterTable::Handle f)
 {
   if (ctx.Map ().SafeZones ().IsNoCombat (f->GetCombatPosition ()))
     {
@@ -281,8 +318,17 @@ SelectTarget (TargetFinder& targets, xaya::Random& rnd, const Context& ctx,
   CombatModifier mod;
   ComputeModifier (*f, mod);
 
-  SelectNormalTarget (targets, rnd, ctx, mod, *f);
-  SelectFriendlyTargets (targets, ctx, mod, *f);
+  SelectNormalTarget (mod, *f);
+  SelectFriendlyTargets (mod, *f);
+}
+
+void
+TargetFindingProcessor::ProcessAll ()
+{
+  fighters.ProcessWithAttacks ([this] (FighterTable::Handle f)
+    {
+      SelectTarget (std::move (f));
+    });
 }
 
 } // anonymous namespace
@@ -290,15 +336,8 @@ SelectTarget (TargetFinder& targets, xaya::Random& rnd, const Context& ctx,
 void
 FindCombatTargets (Database& db, xaya::Random& rnd, const Context& ctx)
 {
-  BuildingsTable buildings(db);
-  CharacterTable characters(db);
-  FighterTable fighters(buildings, characters);
-  TargetFinder targets(db);
-
-  fighters.ProcessWithAttacks ([&] (FighterTable::Handle f)
-    {
-      SelectTarget (targets, rnd, ctx, std::move (f));
-    });
+  TargetFindingProcessor proc(db, rnd, ctx);
+  proc.ProcessAll ();
 }
 
 /* ************************************************************************** */

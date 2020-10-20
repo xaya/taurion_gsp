@@ -64,7 +64,7 @@ public:
    */
   void ProcessL1Targets (const HexCoord& centre, HexCoord::IntT l1range,
                          Faction faction, bool enemies, bool friendlies,
-                         const ProcessingFcn& cb);
+                         const ProcessingFcn& cb) const;
 
 };
 
