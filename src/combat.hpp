@@ -38,7 +38,9 @@ namespace pxd
 
 /**
  * Representation of a Target that can be used as key in a map or as
- * entry in a set.
+ * entry in a set.  The natural sorting order matches the order in
+ * which TargetFinder::ProcessL1Targets and FighterTable::ProcessWithAttacks
+ * returns their results.
  */
 class TargetKey : public std::pair<proto::TargetId::Type, Database::IdT>
 {
