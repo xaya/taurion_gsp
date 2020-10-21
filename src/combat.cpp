@@ -175,6 +175,8 @@ class TargetFindingProcessor
 
 private:
 
+  class TargetingResult;
+
   BuildingsTable buildings;
   CharacterTable characters;
   FighterTable fighters;
@@ -185,21 +187,30 @@ private:
 
   /**
    * Runs target finding for the normal attacks, setting (or clearing)
-   * the target field.
+   * the target field in the result.
    */
-  void SelectNormalTarget (const CombatModifier& mod, CombatEntity& f);
+  void SelectNormalTarget (const CombatModifier& mod,
+                           TargetingResult& res) const;
 
   /**
    * Runs target finding for friendlies in range of a friendly attack, if any.
-   * This sets (or unsets) the friendly-targets flag.
+   * This sets (or unsets) the friendly-targets flag in the result.
    */
-  void SelectFriendlyTargets (const CombatModifier& mod, CombatEntity& f);
+  void SelectFriendlyTargets (const CombatModifier& mod,
+                              TargetingResult& res) const;
 
   /**
-   * Runs target selection for one fighter entity.  This clears or sets
-   * the fighter's target and friendly-targets fields accordingly.
+   * Runs target selection for one fighter entity.  This does most of the
+   * processing, but does not modify the handle.  Instead it returns
+   * the associated TargetingResult.
    */
-  void SelectTarget (FighterTable::Handle f);
+  TargetingResult SelectTarget (FighterTable::Handle f);
+
+  /**
+   * Applies changes specified in a TargetingResult to the contained handle,
+   * and then destroys (writes to the database) the handle.
+   */
+  void Finalise (TargetingResult res);
 
 public:
 
@@ -217,13 +228,54 @@ public:
 
 };
 
+/**
+ * Helper struct that holds the result of target finding for a particular
+ * potential attacker.  It is used to pass the result from the processor
+ * thread back to when it will be executed in a single thread.
+ */
+struct TargetFindingProcessor::TargetingResult
+{
+
+  /**
+   * The underlying fighter handle, which needs to be modified still
+   * according to the update.
+   */
+  FighterTable::Handle f;
+
+  /** The fighter's ID.  We use this to sort them for processing.  */
+  TargetKey id;
+
+  /**
+   * Array of closest enemy targets found, if any.  From this list, we will
+   * randomly pick one as "the" target.
+   */
+  std::vector<proto::TargetId> enemyTargets;
+
+  /** Whether or not there is a friendly target in range.  */
+  bool hasFriendlyTarget;
+
+  TargetingResult () = default;
+
+  explicit TargetingResult (FighterTable::Handle h)
+    : f(std::move (h)), id(f->GetIdAsTarget ())
+  {}
+
+  TargetingResult (TargetingResult&&) = default;
+  TargetingResult& operator= (TargetingResult&&) = default;
+
+  TargetingResult (const TargetingResult&) = delete;
+  void operator= (const TargetingResult&) = delete;
+
+};
+
 void
 TargetFindingProcessor::SelectNormalTarget (const CombatModifier& mod,
-                                            CombatEntity& f)
+                                            TargetingResult& res) const
 {
-  const HexCoord pos = f.GetCombatPosition ();
+  CHECK (res.enemyTargets.empty ());
+  const HexCoord pos = res.f->GetCombatPosition ();
 
-  HexCoord::IntT range = f.GetAttackRange (false);
+  HexCoord::IntT range = res.f->GetAttackRange (false);
   if (range == CombatEntity::NO_ATTACKS)
     {
       VLOG (1) << "Fighter at " << pos << " has no attacks";
@@ -233,22 +285,21 @@ TargetFindingProcessor::SelectNormalTarget (const CombatModifier& mod,
   range = mod.range (range);
 
   HexCoord::IntT closestRange;
-  std::vector<proto::TargetId> closestTargets;
 
-  ProcessCombatTargets (targets, ctx, f, pos, range, true,
+  ProcessCombatTargets (targets, ctx, *res.f, pos, range, true,
     [&] (const HexCoord& c, const proto::TargetId& id)
     {
       const HexCoord::IntT curDist = HexCoord::DistanceL1 (pos, c);
-      if (closestTargets.empty () || curDist < closestRange)
+      if (res.enemyTargets.empty () || curDist < closestRange)
         {
           closestRange = curDist;
-          closestTargets = {id};
+          res.enemyTargets = {id};
           return;
         }
 
       if (curDist == closestRange)
         {
-          closestTargets.push_back (id);
+          res.enemyTargets.push_back (id);
           return;
         }
 
@@ -256,70 +307,79 @@ TargetFindingProcessor::SelectNormalTarget (const CombatModifier& mod,
     });
 
   VLOG (1)
-      << "Found " << closestTargets.size () << " targets in closest range "
+      << "Found " << res.enemyTargets.size () << " targets in closest range "
       << closestRange << " around " << pos;
-
-  if (closestTargets.empty ())
-    {
-      f.ClearTarget ();
-      return;
-    }
-
-  const unsigned ind = rnd.NextInt (closestTargets.size ());
-  f.SetTarget (closestTargets[ind]);
 }
 
 void
 TargetFindingProcessor::SelectFriendlyTargets (const CombatModifier& mod,
-                                               CombatEntity& f)
+                                               TargetingResult& res) const
 {
-  const HexCoord pos = f.GetCombatPosition ();
+  const HexCoord pos = res.f->GetCombatPosition ();
 
-  HexCoord::IntT range = f.GetAttackRange (true);
+  HexCoord::IntT range = res.f->GetAttackRange (true);
   if (range == CombatEntity::NO_ATTACKS)
     {
       VLOG (2) << "Fighter at " << pos << " has no friendly attacks";
+      res.hasFriendlyTarget = false;
       return;
     }
   CHECK_GE (range, 0);
   range = mod.range (range);
 
-  bool found = false;
-  ProcessCombatTargets (targets, ctx, f, pos, range, false,
+  res.hasFriendlyTarget = false;
+  ProcessCombatTargets (targets, ctx, *res.f, pos, range, false,
     [&] (const HexCoord& c, const proto::TargetId& id)
     {
-      found = true;
+      res.hasFriendlyTarget = true;
     });
 
-  if (found)
+  if (res.hasFriendlyTarget)
     VLOG (1)
         << "Found at least one friendly target in range for "
-        << f.GetIdAsTarget ().DebugString ();
+        << res.f->GetIdAsTarget ().DebugString ();
   else
     VLOG (1)
-        << "No friendlies in range for " << f.GetIdAsTarget ().DebugString ();
-
-  f.SetFriendlyTargets (found);
+        << "No friendlies in range for "
+        << res.f->GetIdAsTarget ().DebugString ();
 }
 
-void
+TargetFindingProcessor::TargetingResult
 TargetFindingProcessor::SelectTarget (FighterTable::Handle f)
 {
-  if (ctx.Map ().SafeZones ().IsNoCombat (f->GetCombatPosition ()))
+  TargetingResult res(std::move (f));
+
+  if (ctx.Map ().SafeZones ().IsNoCombat (res.f->GetCombatPosition ()))
     {
       VLOG (1)
           << "Not selecting targets for fighter in no-combat zone:\n"
           << f->GetIdAsTarget ().DebugString ();
-      f->ClearTarget ();
-      f->SetFriendlyTargets (false);
-      return;
+      CHECK (res.enemyTargets.empty ());
+      res.hasFriendlyTarget = false;
+      return res;
     }
 
   CombatModifier mod;
-  ComputeModifier (*f, mod);
+  ComputeModifier (*res.f, mod);
 
-  SelectNormalTarget (mod, *f);
-  SelectFriendlyTargets (mod, *f);
+  SelectNormalTarget (mod, res);
+  SelectFriendlyTargets (mod, res);
+
+  return res;
+}
+
+void
+TargetFindingProcessor::Finalise (TargetingResult res)
+{
+  if (res.enemyTargets.empty ())
+    res.f->ClearTarget ();
+  else
+    {
+      const unsigned ind = rnd.NextInt (res.enemyTargets.size ());
+      res.f->SetTarget (res.enemyTargets[ind]);
+    }
+
+  res.f->SetFriendlyTargets (res.hasFriendlyTarget);
 }
 
 void
@@ -327,7 +387,7 @@ TargetFindingProcessor::ProcessAll ()
 {
   fighters.ProcessWithAttacks ([this] (FighterTable::Handle f)
     {
-      SelectTarget (std::move (f));
+      Finalise (SelectTarget (std::move (f)));
     });
 }
 
