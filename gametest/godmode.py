@@ -35,6 +35,9 @@ class GodModeTest (PXTest):
     charId = c.getId ()
 
     self.mainLogger.info ("Testing build...")
+    # Base height for building age.  Each build function call mines
+    # a block on top of it.
+    height = self.rpc.xaya.getblockcount ()
     self.build ("checkmark", None, {"x": 100, "y": 150}, rot=2)
     self.build ("checkmark", "domob", {"x": -100, "y": -150}, rot=0)
     buildings = self.getBuildings ()
@@ -46,6 +49,7 @@ class GodModeTest (PXTest):
       "centre": {"x": 100, "y": 150},
       "rotationsteps": 2,
       "servicefee": 0,
+      "age": {"founded": height + 1, "finished": height + 1},
       "tiles":
         [
           {"x": 100, "y": 150},
@@ -72,6 +76,7 @@ class GodModeTest (PXTest):
       "centre": {"x": -100, "y": -150},
       "rotationsteps": 0,
       "servicefee": 0,
+      "age": {"founded": height + 2, "finished": height + 2},
       "tiles":
         [
           {"x": -100, "y": -150},
