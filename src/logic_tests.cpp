@@ -294,6 +294,7 @@ TEST_F (PXLogicTests, NewBuildingBlocksMovement)
   auto c = CreateCharacter ("builder", Faction::GREEN);
   ASSERT_EQ (c->GetId (), 1);
   c->SetPosition (HexCoord (0, 0));
+  c->MutableProto ().set_cargo_space (1'000);
   c->GetInventory ().AddFungibleCount ("foo", 10);
   c.reset ();
 
@@ -1216,6 +1217,20 @@ TEST_F (ValidateStateTests, CharactersInBuildings)
 
   characters.GetById (10)->SetBuildingId (12345);
   EXPECT_DEATH (ValidateState (), "is in non-existant building");
+}
+
+TEST_F (ValidateStateTests, CharacterCargoSpace)
+{
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  const auto id = c->GetId ();
+  c->MutableProto ().set_cargo_space (19);
+  c->GetInventory ().AddFungibleCount ("foo", 2);
+  c.reset ();
+
+  EXPECT_DEATH (ValidateState (), "exceeds cargo limit");
+  characters.GetById (id)->MutableProto ().set_cargo_space (20);
+  ValidateState ();
 }
 
 TEST_F (ValidateStateTests, BuildingInventories)
