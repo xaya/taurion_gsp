@@ -228,6 +228,41 @@ namespace
 {
 
 /**
+ * Verifies general consistency of buildings.
+ */
+void
+ValidateBuildings (Database& db, const Context& ctx)
+{
+  BuildingsTable buildings(db);
+  auto res = buildings.QueryAll ();
+  while (res.Step ())
+    {
+      auto b = buildings.GetFromResult (res);
+      const auto& pb = b->GetProto ();
+
+      CHECK (pb.age_data ().has_founded_height ())
+          << "Building " << b->GetId () << " has no founded height";
+      CHECK_LE (pb.age_data ().founded_height (), ctx.Height ())
+          << "Building " << b->GetId () << " is founded in the future";
+
+      if (pb.foundation ())
+        CHECK (!pb.age_data ().has_finished_height ())
+            << "Foundation " << b->GetId () << " has already finished height";
+      else
+        {
+          CHECK (pb.age_data ().has_finished_height ())
+              << "Building " << b->GetId () << " has no finished height";
+          CHECK_GE (pb.age_data ().finished_height (),
+                    pb.age_data ().founded_height ())
+              << "Building " << b->GetId ()
+              << " was finished before being founded";
+          CHECK_LE (pb.age_data ().finished_height (), ctx.Height ())
+              << "Building " << b->GetId () << " is finished in the future";
+        }
+    }
+}
+
+/**
  * Verifies that each character's and building's faction in the database
  * matches the owner's faction.
  */
@@ -305,11 +340,10 @@ ValidateCharacterLimit (Database& db, const Context& ctx)
 }
 
 /**
- * Verifies that characters are only inside buildings they can be in,
- * i.e. ancient or matching their faction.
+ * Verifies general assumptions about characters.
  */
 void
-ValidateCharactersInBuildings (Database& db)
+ValidateCharacters (Database& db, const Context& ctx)
 {
   BuildingsTable buildings(db);
   CharacterTable characters(db);
@@ -318,21 +352,28 @@ ValidateCharactersInBuildings (Database& db)
   while (res.Step ())
     {
       auto c = characters.GetFromResult (res);
-      if (!c->IsInBuilding ())
-        continue;
+      const auto& pb = c->GetProto ();
 
-      const auto id = c->GetBuildingId ();
-      auto b = buildings.GetById (id);
-      CHECK (b != nullptr)
-          << "Character " << c->GetId ()
-          << " is in non-existant building " << id;
+      /* Check cargo space limit.  */
+      CHECK_LE (c->UsedCargoSpace (ctx.RoConfig ()), pb.cargo_space ())
+          << "Character " << c->GetId () << " exceeds cargo limit";
 
-      if (b->GetFaction () == Faction::ANCIENT)
-        continue;
-      CHECK (c->GetFaction () == b->GetFaction ())
-          << "Character " << c->GetId ()
-          << " is in building " << id
-          << " of opposing faction";
+      /* If the character is inside a building, check that it is matching
+         their faction or ancient.  */
+      if (c->IsInBuilding ())
+        {
+          const auto id = c->GetBuildingId ();
+          auto b = buildings.GetById (id);
+          CHECK (b != nullptr)
+              << "Character " << c->GetId ()
+              << " is in non-existant building " << id;
+
+          if (b->GetFaction () != Faction::ANCIENT)
+            CHECK (c->GetFaction () == b->GetFaction ())
+                << "Character " << c->GetId ()
+                << " is in building " << id
+                << " of opposing faction";
+        }
     }
 }
 
@@ -401,9 +442,10 @@ ValidateOngoingsLinks (Database& db)
             CHECK (b != nullptr)
                 << "Operation " << op->GetId ()
                 << " refers to non-existing building " << bId;
-            CHECK_EQ (b->GetProto ().ongoing_construction (), op->GetId ())
-                << "Building " << bId
-                << " does not refer back to ongoing " << op->GetId ();
+            if (op->GetProto ().has_building_construction ())
+              CHECK_EQ (b->GetProto ().ongoing_construction (), op->GetId ())
+                  << "Building " << bId
+                  << " does not refer back to ongoing " << op->GetId ();
           }
 
         if (cId != Database::EMPTY_ID)
@@ -454,6 +496,10 @@ ValidateOngoingsLinks (Database& db)
         CHECK_EQ (op->GetBuildingId (), b->GetId ())
             << "Operation " << opId
             << " does not refer back to building " << b->GetId ();
+        CHECK (op->GetProto ().has_building_construction ())
+            << "Building " << b->GetId ()
+            << " refers to ongoing " << opId
+            << " that is not a building construction";
       }
   }
 }
@@ -464,9 +510,10 @@ void
 PXLogic::ValidateStateSlow (Database& db, const Context& ctx)
 {
   LOG (INFO) << "Performing slow validation of the game-state database...";
+  ValidateBuildings (db, ctx);
+  ValidateCharacters (db, ctx);
   ValidateCharacterBuildingFactions (db);
   ValidateCharacterLimit (db, ctx);
-  ValidateCharactersInBuildings (db);
   ValidateBuildingInventories (db);
   ValidateOngoingsLinks (db);
 }

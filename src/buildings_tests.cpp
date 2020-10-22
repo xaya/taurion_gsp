@@ -327,29 +327,48 @@ TEST_F (ProcessEnterBuildingsTests, TooFar)
 
 TEST_F (ProcessEnterBuildingsTests, EnteringEffects)
 {
+  /* Target is cleared, dynamic obstacles are updated.  */
   auto c = GetCharacter (10);
   c->SetPosition (HexCoord (5, 0));
   c->SetEnterBuilding (1);
   proto::TargetId t;
   t.set_id (42);
   c->SetTarget (t);
-  c->MutableProto ().mutable_movement ()->mutable_waypoints ();
-  c->MutableProto ().mutable_mining ()->set_active (true);
   c.reset ();
 
-  DynObstacles dyn(db, ctx);
-  ASSERT_TRUE (dyn.HasVehicle (HexCoord (5, 0)));
+  auto dyn = std::make_unique<DynObstacles> (db, ctx);
+  ASSERT_TRUE (dyn->HasVehicle (HexCoord (5, 0)));
 
-  ProcessEnter (dyn);
+  ProcessEnter (*dyn);
 
   c = GetCharacter (10);
   ASSERT_TRUE (c->IsInBuilding ());
   EXPECT_EQ (c->GetBuildingId (), 1);
   EXPECT_EQ (c->GetEnterBuilding (), Database::EMPTY_ID);
   EXPECT_FALSE (c->HasTarget ());
-  EXPECT_FALSE (c->GetProto ().has_movement ());
-  EXPECT_FALSE (c->GetProto ().mining ().active ());
-  EXPECT_FALSE (dyn.HasVehicle (HexCoord (5, 0)));
+  EXPECT_FALSE (dyn->HasVehicle (HexCoord (5, 0)));
+
+  /* Movement is stopped.  */
+  c = GetCharacter (10);
+  c->SetPosition (HexCoord (5, 0));
+  c->SetEnterBuilding (1);
+  c->MutableProto ().mutable_movement ()->mutable_waypoints ();
+  c.reset ();
+
+  dyn = std::make_unique<DynObstacles> (db, ctx);
+  ProcessEnter (*dyn);
+  EXPECT_FALSE (GetCharacter (10)->GetProto ().has_movement ());
+
+  /* Mining is stopped.  */
+  c = GetCharacter (10);
+  c->SetPosition (HexCoord (5, 0));
+  c->SetEnterBuilding (1);
+  c->MutableProto ().mutable_mining ()->set_active (true);
+  c.reset ();
+
+  dyn = std::make_unique<DynObstacles> (db, ctx);
+  ProcessEnter (*dyn);
+  EXPECT_FALSE (GetCharacter (10)->GetProto ().mining ().active ());
 }
 
 TEST_F (ProcessEnterBuildingsTests, MultipleCharacters)

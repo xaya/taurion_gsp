@@ -136,6 +136,8 @@ FinishBuildingConstruction (Building& b, const Context& ctx,
 
   pb.clear_construction_inventory ();
   pb.set_foundation (false);
+  pb.clear_ongoing_construction ();
+  pb.mutable_age_data ()->set_finished_height (ctx.Height ());
 
   UpdateBuildingStats (b, ctx.Chain ());
 }

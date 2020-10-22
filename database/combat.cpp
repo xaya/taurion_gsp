@@ -83,9 +83,13 @@ CombatEntity::Validate () const
 
   if (!isNew && !IsDirtyCombatData ())
     {
-      CHECK_EQ (oldAttackRange, FindAttackRange (pb.combat_data (), false));
-      CHECK_EQ (oldFriendlyRange, FindAttackRange (pb.combat_data (), true));
+      const auto& cd = GetCombatData ();
+      CHECK_EQ (oldAttackRange, FindAttackRange (cd, false));
+      CHECK_EQ (oldFriendlyRange, FindAttackRange (cd, true));
     }
+
+  if (!regenData.IsDirty () && !hp.IsDirty ())
+    CHECK_EQ (oldCanRegen, ComputeCanRegen (hp.Get (), regenData.Get ()));
 
 #endif // ENABLE_SLOW_ASSERTS
 }

@@ -1825,8 +1825,10 @@ TEST_F (FoundBuildingMoveTests, CannotPlaceBuilding)
 
 TEST_F (FoundBuildingMoveTests, Success)
 {
+  ctx.SetHeight (10);
   const HexCoord pos = GetTest ()->GetPosition ();
   GetTest ()->GetInventory ().AddFungibleCount ("foo", 10);
+
   Process (R"([
     {
       "name": "domob",
@@ -1845,6 +1847,7 @@ TEST_F (FoundBuildingMoveTests, Success)
   const auto& pb = b->GetProto ();
   EXPECT_TRUE (pb.foundation ());
   EXPECT_EQ (pb.shape_trafo ().rotation_steps (), 3);
+  EXPECT_EQ (pb.age_data ().founded_height (), 10);
 
   auto c = GetTest ();
   EXPECT_EQ (c->GetInventory ().GetFungibleCount ("foo"), 8);
@@ -2764,9 +2767,12 @@ TEST_F (DropPickupMoveTests, StartBuildingConstruction)
       }
     }
   ])");
+
   auto res = ongoings.QueryAll ();
   ASSERT_TRUE (res.Step ());
-  EXPECT_EQ (ongoings.GetFromResult (res)->GetBuildingId (), bId);
+  auto op = ongoings.GetFromResult (res);
+  EXPECT_EQ (op->GetBuildingId (), bId);
+  EXPECT_TRUE (op->GetProto ().has_building_construction ());
   EXPECT_FALSE (res.Step ());
 }
 
@@ -3561,6 +3567,7 @@ TEST_F (GodModeTests, SetHp)
 
 TEST_F (GodModeTests, Build)
 {
+  ctx.SetHeight (10);
   accounts.CreateNew ("domob")->SetFaction (Faction::RED);
 
   /* This is entirely invalid (not even an array).  */
@@ -3604,6 +3611,8 @@ TEST_F (GodModeTests, Build)
   EXPECT_EQ (h->GetOwner (), "domob");
   EXPECT_EQ (h->GetCentre (), HexCoord (-100, -200));
   EXPECT_EQ (h->GetProto ().shape_trafo ().rotation_steps (), 0);
+  EXPECT_EQ (h->GetProto ().age_data ().founded_height (), 10);
+  EXPECT_EQ (h->GetProto ().age_data ().finished_height (), 10);
 
   ASSERT_TRUE (res.Step ());
   h = buildings.GetFromResult (res);

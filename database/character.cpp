@@ -166,11 +166,6 @@ Character::Validate () const
   if (IsBusy ())
     CHECK (!pb.has_movement ()) << "Busy character should not be moving";
 
-  if (!regenData.IsDirty () && !hp.IsDirty ())
-    CHECK_EQ (oldCanRegen, ComputeCanRegen ());
-
-  CHECK_LE (UsedCargoSpace (), pb.cargo_space ());
-
   CHECK (!pb.mining ().active () || !pb.has_movement ())
       << "Character " << id << " is moving and mining at the same time";
 
