@@ -118,8 +118,8 @@ libtestutils_la_SOURCES = \
 
 tests_CXXFLAGS = \
   -I$(top_srcdir) \
-  $(GTEST_MAIN_CFLAGS) \
-  $(JSON_CFLAGS) $(GTEST_CFLAGS) \
+  $(GTEST_MAIN_CFLAGS) $(GTEST_CFLAGS) \
+  $(JSON_CFLAGS) \
   $(GLOG_CFLAGS) $(GFLAGS_CFLAGS) $(PROTOBUF_CFLAGS)
 tests_LDADD = \
   $(builddir)/libtaurion.la \
@@ -129,8 +129,8 @@ tests_LDADD = \
   $(top_builddir)/hexagonal/libhexagonal.la \
   $(top_builddir)/mapdata/libmapdata.la \
   $(top_builddir)/proto/libpxproto.la \
-  $(GTEST_MAIN_LIBS) \
-  $(JSON_LIBS) $(GTEST_LIBS) \
+  $(GTEST_MAIN_LIBS) $(GTEST_LIBS) \
+  $(JSON_LIBS) \
   $(GLOG_LIBS) $(GFLAGS_LIBS) $(PROTOBUF_LIBS)
 tests_SOURCES = \
   buildings_tests.cpp \

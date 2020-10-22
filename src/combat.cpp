@@ -28,8 +28,14 @@
 #include "database/target.hpp"
 #include "hexagonal/coord.hpp"
 
+#include <gflags/gflags.h>
+
 #include <algorithm>
+#include <condition_variable>
 #include <map>
+#include <mutex>
+#include <queue>
+#include <thread>
 #include <vector>
 
 namespace pxd
@@ -37,6 +43,9 @@ namespace pxd
 
 namespace
 {
+
+DEFINE_int32 (target_finding_threads, 1,
+              "number of threads to use for target finding");
 
 /**
  * Chance (in percent) that an inventory position inside a destroyed building
@@ -185,6 +194,27 @@ private:
   xaya::Random& rnd;
   const Context& ctx;
 
+  /** Worker threads for multithreaded operation.  */
+  std::vector<std::thread> workers;
+
+  /** Mutex for the worker synchronisation.  */
+  std::mutex mut;
+
+  /**
+   * When all work items have been put into the queue.  If this is set
+   * and todo is empty, then the workers can stop.
+   */
+  bool todoFinished;
+
+  /** Condition variable signalled when new work is there.  */
+  std::condition_variable cv;
+
+  /** Queue of handles to process by the workers.  */
+  std::queue<FighterTable::Handle> todo;
+
+  /** Finished processing results of the workers.  */
+  std::vector<TargetingResult> results;
+
   /**
    * Runs target finding for the normal attacks, setting (or clearing)
    * the target field in the result.
@@ -207,6 +237,13 @@ private:
   TargetingResult SelectTarget (FighterTable::Handle f);
 
   /**
+   * Starts a new worker thread that will wait for items to process,
+   * dequeue and process them, and store the result.  It will terminate
+   * when all todo items are done and todoFinished is set.
+   */
+  void StartWorker ();
+
+  /**
    * Applies changes specified in a TargetingResult to the contained handle,
    * and then destroys (writes to the database) the handle.
    */
@@ -221,10 +258,17 @@ public:
       rnd(r), ctx(c)
   {}
 
+  ~TargetFindingProcessor ()
+  {
+    /* All worker threads should have been cleaned up (and their results
+       processed) explicitly.  */
+    CHECK (workers.empty ());
+  }
+
   /**
-   * Runs all processing.
+   * Runs all processing with the given number of threads.
    */
-  void ProcessAll ();
+  void ProcessAll (int numThreads);
 
 };
 
@@ -359,6 +403,10 @@ TargetFindingProcessor::SelectTarget (FighterTable::Handle f)
       return res;
     }
 
+  VLOG (1)
+      << "Running target finding for:\n"
+      << res.f->GetIdAsTarget ().DebugString ();
+
   CombatModifier mod;
   ComputeModifier (*res.f, mod);
 
@@ -366,6 +414,38 @@ TargetFindingProcessor::SelectTarget (FighterTable::Handle f)
   SelectFriendlyTargets (mod, res);
 
   return res;
+}
+
+void
+TargetFindingProcessor::StartWorker ()
+{
+  workers.emplace_back ([this] ()
+    {
+      while (true)
+        {
+          FighterTable::Handle toProcess;
+          {
+            std::unique_lock<std::mutex> lock(mut);
+            if (todoFinished && todo.empty ())
+              break;
+            if (todo.empty ())
+              cv.wait (lock);
+            if (!todo.empty ())
+              {
+                toProcess = std::move (todo.front ());
+                todo.pop ();
+              }
+          }
+
+          if (toProcess == nullptr)
+            continue;
+
+          auto res = SelectTarget (std::move (toProcess));
+
+          std::lock_guard<std::mutex> lock(mut);
+          results.emplace_back (std::move (res));
+        }
+    });
 }
 
 void
@@ -383,12 +463,53 @@ TargetFindingProcessor::Finalise (TargetingResult res)
 }
 
 void
-TargetFindingProcessor::ProcessAll ()
+TargetFindingProcessor::ProcessAll (const int numThreads)
 {
-  fighters.ProcessWithAttacks ([this] (FighterTable::Handle f)
+  const bool multiThreaded = (numThreads > 1);
+  if (multiThreaded)
     {
-      Finalise (SelectTarget (std::move (f)));
+      todoFinished = false;
+      for (int i = 0; i < numThreads; ++i)
+        StartWorker ();
+    }
+
+  fighters.ProcessWithAttacks ([this, multiThreaded] (FighterTable::Handle f)
+    {
+      if (multiThreaded)
+        {
+          VLOG (2)
+              << "Enqueuing for target finding:\n"
+              << f->GetIdAsTarget ().DebugString ();
+
+          std::unique_lock<std::mutex> lock(mut);
+          todo.emplace (std::move (f));
+          cv.notify_one ();
+        }
+      else
+        Finalise (SelectTarget (std::move (f)));
     });
+
+  if (!multiThreaded)
+    return;
+
+  {
+    std::lock_guard<std::mutex> lock(mut);
+    todoFinished = true;
+    cv.notify_all ();
+  }
+  for (auto& t : workers)
+    t.join ();
+  workers.clear ();
+  CHECK (todo.empty ());
+
+  std::sort (results.begin (), results.end (),
+      [] (const TargetingResult& a, const TargetingResult& b) -> bool
+        {
+          return a.id < b.id;
+        });
+
+  for (auto& r : results)
+    Finalise (std::move (r));
 }
 
 } // anonymous namespace
@@ -397,7 +518,8 @@ void
 FindCombatTargets (Database& db, xaya::Random& rnd, const Context& ctx)
 {
   TargetFindingProcessor proc(db, rnd, ctx);
-  proc.ProcessAll ();
+  proc.ProcessAll (FLAGS_target_finding_threads);
+  //proc.ProcessAll (10);
 }
 
 /* ************************************************************************** */
