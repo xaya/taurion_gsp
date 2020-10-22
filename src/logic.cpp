@@ -305,11 +305,10 @@ ValidateCharacterLimit (Database& db, const Context& ctx)
 }
 
 /**
- * Verifies that characters are only inside buildings they can be in,
- * i.e. ancient or matching their faction.
+ * Verifies general assumptions about characters.
  */
 void
-ValidateCharactersInBuildings (Database& db)
+ValidateCharacters (Database& db, const Context& ctx)
 {
   BuildingsTable buildings(db);
   CharacterTable characters(db);
@@ -318,21 +317,28 @@ ValidateCharactersInBuildings (Database& db)
   while (res.Step ())
     {
       auto c = characters.GetFromResult (res);
-      if (!c->IsInBuilding ())
-        continue;
+      const auto& pb = c->GetProto ();
 
-      const auto id = c->GetBuildingId ();
-      auto b = buildings.GetById (id);
-      CHECK (b != nullptr)
-          << "Character " << c->GetId ()
-          << " is in non-existant building " << id;
+      /* Check cargo space limit.  */
+      CHECK_LE (c->UsedCargoSpace (ctx.RoConfig ()), pb.cargo_space ())
+          << "Character " << c->GetId () << " exceeds cargo limit";
 
-      if (b->GetFaction () == Faction::ANCIENT)
-        continue;
-      CHECK (c->GetFaction () == b->GetFaction ())
-          << "Character " << c->GetId ()
-          << " is in building " << id
-          << " of opposing faction";
+      /* If the character is inside a building, check that it is matching
+         their faction or ancient.  */
+      if (c->IsInBuilding ())
+        {
+          const auto id = c->GetBuildingId ();
+          auto b = buildings.GetById (id);
+          CHECK (b != nullptr)
+              << "Character " << c->GetId ()
+              << " is in non-existant building " << id;
+
+          if (b->GetFaction () != Faction::ANCIENT)
+            CHECK (c->GetFaction () == b->GetFaction ())
+                << "Character " << c->GetId ()
+                << " is in building " << id
+                << " of opposing faction";
+        }
     }
 }
 
@@ -469,9 +475,9 @@ void
 PXLogic::ValidateStateSlow (Database& db, const Context& ctx)
 {
   LOG (INFO) << "Performing slow validation of the game-state database...";
+  ValidateCharacters (db, ctx);
   ValidateCharacterBuildingFactions (db);
   ValidateCharacterLimit (db, ctx);
-  ValidateCharactersInBuildings (db);
   ValidateBuildingInventories (db);
   ValidateOngoingsLinks (db);
 }
