@@ -136,6 +136,7 @@ FinishBuildingConstruction (Building& b, const Context& ctx,
 
   pb.clear_construction_inventory ();
   pb.set_foundation (false);
+  pb.clear_ongoing_construction ();
 
   UpdateBuildingStats (b, ctx.Chain ());
 }

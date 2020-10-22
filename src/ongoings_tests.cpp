@@ -349,6 +349,7 @@ TEST_F (OngoingsTests, BuildingConstruction)
   b = buildings.GetById (bId);
   auto inv = buildingInv.Get (bId, "domob");
   EXPECT_FALSE (b->GetProto ().foundation ());
+  EXPECT_FALSE (b->GetProto ().has_ongoing_construction ());
   EXPECT_FALSE (b->GetProto ().has_construction_inventory ());
   EXPECT_EQ (b->GetHP ().armour (), 100);
   EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("foo"), 2);

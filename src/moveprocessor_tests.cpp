@@ -2764,9 +2764,12 @@ TEST_F (DropPickupMoveTests, StartBuildingConstruction)
       }
     }
   ])");
+
   auto res = ongoings.QueryAll ();
   ASSERT_TRUE (res.Step ());
-  EXPECT_EQ (ongoings.GetFromResult (res)->GetBuildingId (), bId);
+  auto op = ongoings.GetFromResult (res);
+  EXPECT_EQ (op->GetBuildingId (), bId);
+  EXPECT_TRUE (op->GetProto ().has_building_construction ());
   EXPECT_FALSE (res.Step ());
 }
 
