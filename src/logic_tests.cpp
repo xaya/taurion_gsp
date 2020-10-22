@@ -1297,6 +1297,12 @@ TEST_F (ValidateStateTests, OngoingsToBuildingLink)
   EXPECT_DEATH (ValidateState (), "refers to non-existing building");
 
   buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  /* If the ongoing operation is not a building construction, it is fine
+     that the building does not refer to it (in practice, this might be
+     blueprint copies or item constructions going on inside the building).  */
+  ValidateState ();
+
+  ongoings.GetById (101)->MutableProto ().mutable_building_construction ();
   EXPECT_DEATH (ValidateState (), "does not refer back to ongoing");
 
   auto b = buildings.GetById (102);
@@ -1315,13 +1321,14 @@ TEST_F (ValidateStateTests, BuildingToOngoingsLink)
   b.reset ();
   EXPECT_DEATH (ValidateState (), "has non-existing ongoing");
 
-  ongoings.CreateNew (1);
+  ongoings.CreateNew (1)->MutableProto ().mutable_building_construction ();
   EXPECT_DEATH (ValidateState (), "does not refer back to building");
 
-  auto op = ongoings.GetById (102);
-  op->SetBuildingId (101);
-  op.reset ();
+  ongoings.GetById (102)->SetBuildingId (101);
   ValidateState ();
+
+  ongoings.GetById (102)->MutableProto ().mutable_blueprint_copy ();
+  EXPECT_DEATH (ValidateState (), "that is not a building construction");
 }
 
 /* ************************************************************************** */

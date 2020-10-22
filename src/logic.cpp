@@ -401,9 +401,10 @@ ValidateOngoingsLinks (Database& db)
             CHECK (b != nullptr)
                 << "Operation " << op->GetId ()
                 << " refers to non-existing building " << bId;
-            CHECK_EQ (b->GetProto ().ongoing_construction (), op->GetId ())
-                << "Building " << bId
-                << " does not refer back to ongoing " << op->GetId ();
+            if (op->GetProto ().has_building_construction ())
+              CHECK_EQ (b->GetProto ().ongoing_construction (), op->GetId ())
+                  << "Building " << bId
+                  << " does not refer back to ongoing " << op->GetId ();
           }
 
         if (cId != Database::EMPTY_ID)
@@ -454,6 +455,10 @@ ValidateOngoingsLinks (Database& db)
         CHECK_EQ (op->GetBuildingId (), b->GetId ())
             << "Operation " << opId
             << " does not refer back to building " << b->GetId ();
+        CHECK (op->GetProto ().has_building_construction ())
+            << "Building " << b->GetId ()
+            << " refers to ongoing " << opId
+            << " that is not a building construction";
       }
   }
 }
