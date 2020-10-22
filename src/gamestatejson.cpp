@@ -367,6 +367,12 @@ template <>
       res["inventories"] = inv;
     }
 
+  Json::Value age(Json::objectValue);
+  age["founded"] = IntToJson (pb.age_data ().founded_height ());
+  if (!pb.foundation ())
+    age["finished"] = IntToJson (pb.age_data ().finished_height ());
+  res["age"] = age;
+
   return res;
 }
 

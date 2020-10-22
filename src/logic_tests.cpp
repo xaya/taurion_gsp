@@ -117,6 +117,21 @@ protected:
   }
 
   /**
+   * Creates a new building and sets up also the age data and other things
+   * so it is considered valid.
+   */
+  BuildingsTable::Handle
+  CreateBuilding (const std::string& type, const std::string& owner,
+                  const Faction f)
+  {
+    auto b = buildings.CreateNew (type, owner, f);
+    auto* age = b->MutableProto ().mutable_age_data ();
+    age->set_founded_height (0);
+    age->set_finished_height (0);
+    return b;
+  }
+
+  /**
    * Sets the block height for processing the next block.
    */
   void
@@ -1011,7 +1026,7 @@ TEST_F (PXLogicTests, MiningWhenReprospected)
 
 TEST_F (PXLogicTests, EnterBuildingAfterMovesAndMovement)
 {
-  auto b = buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+  auto b = CreateBuilding ("checkmark", "", Faction::ANCIENT);
   ASSERT_EQ (b->GetId (), 1);
   b->SetCentre (HexCoord (0, 0));
   b.reset ();
@@ -1040,7 +1055,7 @@ TEST_F (PXLogicTests, EnterBuildingAfterMovesAndMovement)
 
 TEST_F (PXLogicTests, EnterBuildingDelayed)
 {
-  auto b = buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+  auto b = CreateBuilding ("checkmark", "", Faction::ANCIENT);
   ASSERT_EQ (b->GetId (), 1);
   b->SetCentre (HexCoord (0, 0));
   b.reset ();
@@ -1068,7 +1083,7 @@ TEST_F (PXLogicTests, EnterBuildingDelayed)
 
 TEST_F (PXLogicTests, EnterBuildingAndTargetFinding)
 {
-  auto b = buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+  auto b = CreateBuilding ("checkmark", "", Faction::ANCIENT);
   ASSERT_EQ (b->GetId (), 1);
   b->SetCentre (HexCoord (0, 0));
   b.reset ();
@@ -1108,7 +1123,7 @@ TEST_F (PXLogicTests, EnterBuildingAndTargetFinding)
 
 TEST_F (PXLogicTests, EnterAndExitBuildingWhenOutside)
 {
-  auto b = buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+  auto b = CreateBuilding ("checkmark", "", Faction::ANCIENT);
   ASSERT_EQ (b->GetId (), 1);
   b->SetCentre (HexCoord (0, 0));
   b.reset ();
@@ -1160,9 +1175,9 @@ TEST_F (ValidateStateTests, CharacterFactions)
 
 TEST_F (ValidateStateTests, BuildingFactions)
 {
-  buildings.CreateNew ("refinery", "", Faction::ANCIENT);
+  CreateBuilding ("refinery", "", Faction::ANCIENT);
 
-  auto h = buildings.CreateNew ("turret", "domob", Faction::RED);
+  auto h = CreateBuilding ("turret", "domob", Faction::RED);
   const auto id = h->GetId ();
   h.reset ();
   EXPECT_DEATH (ValidateState (), "owned by uninitialised account");
@@ -1172,6 +1187,45 @@ TEST_F (ValidateStateTests, BuildingFactions)
 
   accounts.CreateNew ("andy")->SetFaction (Faction::RED);
   buildings.GetById (id)->SetOwner ("andy");
+  ValidateState ();
+}
+
+TEST_F (ValidateStateTests, BuildingAgeData)
+{
+  auto b = buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+  const auto id = b->GetId ();
+  b->MutableProto ().set_foundation (true);
+  b.reset ();
+  EXPECT_DEATH (ValidateState (), "has no founded height");
+
+  ctx.SetHeight (9);
+  buildings.GetById (id)->MutableProto ().mutable_age_data ()
+      ->set_founded_height (10);
+  EXPECT_DEATH (ValidateState (), "founded in the future");
+
+  ctx.SetHeight (10);
+  ValidateState ();
+
+  buildings.GetById (id)->MutableProto ().mutable_age_data ()
+      ->set_finished_height (10);
+  EXPECT_DEATH (ValidateState (), "has already finished height");
+
+  buildings.GetById (id)->MutableProto ().set_foundation (false);
+  ValidateState ();
+
+  buildings.GetById (id)->MutableProto ().mutable_age_data ()
+      ->clear_finished_height ();
+  EXPECT_DEATH (ValidateState (), "has no finished height");
+
+  buildings.GetById (id)->MutableProto ().mutable_age_data ()
+      ->set_finished_height (9);
+  EXPECT_DEATH (ValidateState (), "was finished before being founded");
+
+  buildings.GetById (id)->MutableProto ().mutable_age_data ()
+      ->set_finished_height (11);
+  EXPECT_DEATH (ValidateState (), "finished in the future");
+
+  ctx.SetHeight (11);
   ValidateState ();
 }
 
@@ -1197,11 +1251,11 @@ TEST_F (ValidateStateTests, CharactersInBuildings)
   accounts.CreateNew ("andy")->SetFaction (Faction::BLUE);
 
   const auto idAncient
-      = buildings.CreateNew ("checkmark", "", Faction::ANCIENT)->GetId ();
+      = CreateBuilding ("checkmark", "", Faction::ANCIENT)->GetId ();
   const auto idOk
-      = buildings.CreateNew ("checkmark", "domob", Faction::RED)->GetId ();
+      = CreateBuilding ("checkmark", "domob", Faction::RED)->GetId ();
   const auto idWrong
-      = buildings.CreateNew ("checkmark", "andy", Faction::BLUE)->GetId ();
+      = CreateBuilding ("checkmark", "andy", Faction::BLUE)->GetId ();
 
   db.SetNextId (10);
   ASSERT_EQ (characters.CreateNew ("domob", Faction::RED)->GetId (), 10);
@@ -1237,7 +1291,7 @@ TEST_F (ValidateStateTests, BuildingInventories)
 {
   db.SetNextId (10);
   accounts.CreateNew ("domob")->SetFaction (Faction::RED);
-  buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+  CreateBuilding ("checkmark", "", Faction::ANCIENT);
 
   inv.Get (10, "andy")->GetInventory ().SetFungibleCount ("foo", 1);
   EXPECT_DEATH (ValidateState (), "non-existant account");
@@ -1246,20 +1300,31 @@ TEST_F (ValidateStateTests, BuildingInventories)
 
   inv.Get (11, "domob")->GetInventory ().SetFungibleCount ("foo", 1);
   EXPECT_DEATH (ValidateState (), "non-existant building");
-  buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+  CreateBuilding ("checkmark", "", Faction::ANCIENT);
   ValidateState ();
 
-  buildings.GetById (10)->MutableProto ().set_foundation (true);
+  auto b = buildings.GetById (10);
+  b->MutableProto ().set_foundation (true);
+  b->MutableProto ().mutable_age_data ()->clear_finished_height ();
+  b.reset ();
   EXPECT_DEATH (ValidateState (), "in foundation");
-  buildings.GetById (10)->MutableProto ().set_foundation (false);
+
+  b = buildings.GetById (10);
+  b->MutableProto ().set_foundation (false);
+  b->MutableProto ().mutable_age_data ()->set_finished_height (0);
+  b.reset ();
   ValidateState ();
 
-  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  b = CreateBuilding ("checkmark", "domob", Faction::RED);
   ASSERT_EQ (b->GetId (), 12);
   b->MutableProto ().mutable_construction_inventory ();
   b.reset ();
   EXPECT_DEATH (ValidateState (), "has construction inventory");
-  buildings.GetById (12)->MutableProto ().set_foundation (true);
+
+  b = buildings.GetById (12);
+  b->MutableProto ().set_foundation (true);
+  b->MutableProto ().mutable_age_data ()->clear_finished_height ();
+  b.reset ();
   ValidateState ();
 }
 
@@ -1311,7 +1376,7 @@ TEST_F (ValidateStateTests, OngoingsToBuildingLink)
   op.reset ();
   EXPECT_DEATH (ValidateState (), "refers to non-existing building");
 
-  buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  CreateBuilding ("checkmark", "domob", Faction::RED);
   /* If the ongoing operation is not a building construction, it is fine
      that the building does not refer to it (in practice, this might be
      blueprint copies or item constructions going on inside the building).  */
@@ -1331,7 +1396,7 @@ TEST_F (ValidateStateTests, BuildingToOngoingsLink)
   accounts.CreateNew ("domob")->SetFaction (Faction::RED);
   db.SetNextId (101);
 
-  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  auto b = CreateBuilding ("checkmark", "domob", Faction::RED);
   b->MutableProto ().set_ongoing_construction (102);
   b.reset ();
   EXPECT_DEATH (ValidateState (), "has non-existing ongoing");

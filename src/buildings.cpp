@@ -105,10 +105,13 @@ InitialiseBuildings (Database& db, const xaya::Chain chain)
   const RoConfig cfg(chain);
   for (const auto& ib : cfg->initial_buildings ())
     {
-      auto h = tbl.CreateNew (ib.type (), "", Faction::ANCIENT);
-      h->SetCentre (CoordFromProto (ib.centre ()));
-      *h->MutableProto ().mutable_shape_trafo () = ib.shape_trafo ();
-      UpdateBuildingStats (*h, chain);
+      auto b = tbl.CreateNew (ib.type (), "", Faction::ANCIENT);
+      b->SetCentre (CoordFromProto (ib.centre ()));
+      auto& pb = b->MutableProto ();
+      *pb.mutable_shape_trafo () = ib.shape_trafo ();
+      pb.mutable_age_data ()->set_founded_height (0);
+      pb.mutable_age_data ()->set_finished_height (0);
+      UpdateBuildingStats (*b, chain);
     }
 }
 

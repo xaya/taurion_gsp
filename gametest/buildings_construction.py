@@ -48,6 +48,7 @@ class BuildingConstructionTest (PXTest):
     })
     self.generate (1)
 
+    foundedHeight = self.rpc.xaya.getblockcount ()
     buildings = self.getBuildings ()
     bId = list (buildings.keys ())[-1]
     self.assertEqual (buildings[bId].isFoundation (), True)
@@ -55,6 +56,7 @@ class BuildingConstructionTest (PXTest):
       "foo": 98,
     })
     self.assertEqual (buildings[bId].getOngoingConstruction (), None)
+    self.assertEqual (buildings[bId].data["age"], {"founded": foundedHeight})
 
     self.mainLogger.info ("Starting the construction...")
     self.getCharacters ()["domob"].sendMove ({
@@ -74,6 +76,7 @@ class BuildingConstructionTest (PXTest):
 
     self.mainLogger.info ("Finishing construction...")
     self.generate (1)
+    finishedHeight = self.rpc.xaya.getblockcount ()
     b = self.getBuildings ()[bId]
     self.assertEqual (b.isFoundation (), False)
     self.assertEqual (b.getFungibleInventory ("domob"), {
@@ -81,6 +84,10 @@ class BuildingConstructionTest (PXTest):
       "zerospace": 90,
     })
     self.assertEqual (b.getOngoingConstruction (), None)
+    self.assertEqual (b.data["age"], {
+      "founded": foundedHeight,
+      "finished": finishedHeight,
+    })
 
 
 if __name__ == "__main__":

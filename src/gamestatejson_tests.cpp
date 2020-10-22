@@ -747,6 +747,48 @@ TEST_F (BuildingJsonTests, ServiceFees)
   })");
 }
 
+TEST_F (BuildingJsonTests, AgeData)
+{
+  auto b = tbl.CreateNew ("checkmark", "daniel", Faction::RED);
+  ASSERT_EQ (b->GetId (), 1);
+  b->MutableProto ().set_foundation (true);
+  b->MutableProto ().mutable_age_data ()->set_founded_height (10);
+  b.reset ();
+
+  ExpectStateJson (R"({
+    "buildings":
+      [
+        {
+          "id": 1,
+          "age":
+            {
+              "founded": 10,
+              "finished": null
+            }
+        }
+      ]
+  })");
+
+  b = tbl.GetById (1);
+  b->MutableProto ().set_foundation (false);
+  b->MutableProto ().mutable_age_data ()->set_finished_height (12);
+  b.reset ();
+
+  ExpectStateJson (R"({
+    "buildings":
+      [
+        {
+          "id": 1,
+          "age":
+            {
+              "founded": 10,
+              "finished": 12
+            }
+        }
+      ]
+  })");
+}
+
 TEST_F (BuildingJsonTests, CombatData)
 {
   ASSERT_EQ (tbl.CreateNew ("checkmark", "", Faction::ANCIENT)->GetId (), 1);
