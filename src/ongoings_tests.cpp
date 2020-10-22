@@ -351,6 +351,7 @@ TEST_F (OngoingsTests, BuildingConstruction)
   EXPECT_FALSE (b->GetProto ().foundation ());
   EXPECT_FALSE (b->GetProto ().has_ongoing_construction ());
   EXPECT_FALSE (b->GetProto ().has_construction_inventory ());
+  EXPECT_EQ (b->GetProto ().age_data ().finished_height (), 10);
   EXPECT_EQ (b->GetHP ().armour (), 100);
   EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("foo"), 2);
   EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bar"), 42);

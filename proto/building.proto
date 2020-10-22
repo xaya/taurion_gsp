@@ -79,4 +79,22 @@ message Building
    */
   optional uint32 service_fee_percent = 6;
 
+  /**
+   * Data about the building age, i.e. the block heights when it was founded
+   * and finished.
+   */
+  message AgeData
+  {
+
+    /** Block height when it was founded.  */
+    optional uint32 founded_height = 1;
+
+    /** Block height when it was finished.  */
+    optional uint32 finished_height = 2;
+
+  }
+
+  /** Age data for this building.  */
+  optional AgeData age_data = 7;
+
 }

@@ -1498,6 +1498,7 @@ MoveProcessor::MaybeFoundBuilding (Character& c, const Json::Value& upd)
   auto& pb = b->MutableProto ();
   pb.set_foundation (true);
   *pb.mutable_shape_trafo () = trafo;
+  pb.mutable_age_data ()->set_founded_height (ctx.Height ());
 
   auto& inv = c.GetInventory ();
   const auto& roBuilding = ctx.RoConfig ().Building (b->GetType ());
@@ -1971,14 +1972,17 @@ MaybeGodBuild (AccountsTable& accounts, BuildingsTable& tbl, const Context& ctx,
          placed as needed in tests, without having to worry about regions
          and the ability to build in them.  */
 
-      auto h = tbl.CreateNew (type, owner, f);
-      h->SetCentre (centre);
-      *h->MutableProto ().mutable_shape_trafo () = trafo;
-      UpdateBuildingStats (*h, ctx.Chain ());
+      auto b = tbl.CreateNew (type, owner, f);
+      b->SetCentre (centre);
+      auto& pb = b->MutableProto ();
+      *pb.mutable_shape_trafo () = trafo;
+      pb.mutable_age_data ()->set_founded_height (ctx.Height ());
+      pb.mutable_age_data ()->set_finished_height (ctx.Height ());
+      UpdateBuildingStats (*b, ctx.Chain ());
       LOG (INFO)
           << "God building " << type
           << " for " << owner << " of faction " << FactionToString (f) << ":\n"
-          << "  id: " << h->GetId () << "\n"
+          << "  id: " << b->GetId () << "\n"
           << "  centre: " << centre << "\n"
           << "  rotation: " << trafo.rotation_steps ();
     }
