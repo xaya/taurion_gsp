@@ -228,6 +228,41 @@ namespace
 {
 
 /**
+ * Verifies general consistency of buildings.
+ */
+void
+ValidateBuildings (Database& db, const Context& ctx)
+{
+  BuildingsTable buildings(db);
+  auto res = buildings.QueryAll ();
+  while (res.Step ())
+    {
+      auto b = buildings.GetFromResult (res);
+      const auto& pb = b->GetProto ();
+
+      CHECK (pb.age_data ().has_founded_height ())
+          << "Building " << b->GetId () << " has no founded height";
+      CHECK_LE (pb.age_data ().founded_height (), ctx.Height ())
+          << "Building " << b->GetId () << " is founded in the future";
+
+      if (pb.foundation ())
+        CHECK (!pb.age_data ().has_finished_height ())
+            << "Foundation " << b->GetId () << " has already finished height";
+      else
+        {
+          CHECK (pb.age_data ().has_finished_height ())
+              << "Building " << b->GetId () << " has no finished height";
+          CHECK_GE (pb.age_data ().finished_height (),
+                    pb.age_data ().founded_height ())
+              << "Building " << b->GetId ()
+              << " was finished before being founded";
+          CHECK_LE (pb.age_data ().finished_height (), ctx.Height ())
+              << "Building " << b->GetId () << " is finished in the future";
+        }
+    }
+}
+
+/**
  * Verifies that each character's and building's faction in the database
  * matches the owner's faction.
  */
@@ -475,6 +510,7 @@ void
 PXLogic::ValidateStateSlow (Database& db, const Context& ctx)
 {
   LOG (INFO) << "Performing slow validation of the game-state database...";
+  ValidateBuildings (db, ctx);
   ValidateCharacters (db, ctx);
   ValidateCharacterBuildingFactions (db);
   ValidateCharacterLimit (db, ctx);
