@@ -22,6 +22,7 @@
 #include "lazyproto.hpp"
 
 #include <xayagame/sqlitegame.hpp>
+#include <xayagame/sqlitestorage.hpp>
 
 #include <google/protobuf/message.h>
 
@@ -46,16 +47,22 @@ namespace pxd
 class Database
 {
 
+private:
+
+  /** Underlying SQLiteDatabase from libxayagame.  */
+  xaya::SQLiteDatabase* db = nullptr;
+
 protected:
 
   Database () = default;
 
   /**
-   * Constructs an SQLite prepared statement based on the given SQL.  The
-   * returned object is managed externally and may be cached.  It should just
-   * be used to step through all results and then abandoned.
+   * Sets the underlying SQLite database.  This must be called by subclasses
+   * before using the Database instance in any form, and is just separate
+   * from the constructor to allow composability in the structure of
+   * subclasses.
    */
-  virtual sqlite3_stmt* PrepareStatement (const std::string& sql) = 0;
+  void SetDatabase (xaya::SQLiteDatabase& d);
 
 public:
 
@@ -88,7 +95,7 @@ public:
 };
 
 /**
- * Wrapper class around an sqlite3_stmt prepared statement.  It allows binding
+ * Wrapper class around an SQLite prepared statement.  It allows binding
  * of parameters including std::string and protocol buffers (to BLOBs).
  */
 class Database::Statement
@@ -99,22 +106,20 @@ private:
   /** The Database this corresponds to.  */
   Database* db;
 
-  /**
-   * The underlying SQLite prepared statement.  As with the general method
-   * for preparing statements, this is not owned by the instance (or rather,
-   * it is only used temporarily and not freed when done).
-   */
-  sqlite3_stmt* stmt;
+  /** The underlying SQLite prepared statement.  */
+  xaya::SQLiteDatabase::Statement stmt;
 
-  /** Set to true when Execute or Query have been called.  */
-  bool run = false;
+  /** Set to true when Execute has been called.  */
+  bool executed = false;
+  /** Set to true when Query has been called.  */
+  bool queried = false;
 
   /**
-   * Constructs an instance based on the given statement handle.  This is called
-   * by Database::Prepare and not used directly.
+   * Constructs an instance based on the given libxayagame statement.
+   * This is called by Database::Prepare and not used directly.
    */
-  explicit Statement (Database& d, sqlite3_stmt* s)
-    : db(&d), stmt(s)
+  explicit Statement (Database& d, xaya::SQLiteDatabase::Statement&& s)
+    : db(&d), stmt(std::move (s))
   {}
 
   friend class Database;
@@ -143,7 +148,11 @@ public:
   /**
    * Binds a null value to a parameter.
    */
-  void BindNull (unsigned ind);
+  inline void
+  BindNull (unsigned ind)
+  {
+    stmt.BindNull (ind);
+  }
 
   /**
    * Binds a protocol buffer to a BLOB parameter.
@@ -153,7 +162,8 @@ public:
 
   /**
    * Resets the statement so it can be used again with fresh bindings
-   * and fresh execution from start.
+   * and fresh execution from start.  This can be used after calling Execute,
+   * but not after Query.
    */
   void Reset ();
 
@@ -165,7 +175,9 @@ public:
 
   /**
    * Executes the statement as SELECT and returns a handle for the resulting
-   * database rows.
+   * database rows.  This transfers the libxayagame statement out into the
+   * result handle, and leaves this instance unusable (not even Reset can
+   * be used on it anymore).
    */
   template <typename T>
     Result<T> Query ();
@@ -237,8 +249,8 @@ private:
   /** The database this corresponds to.  */
   Database* db;
 
-  /** The underlying sqlit3_stmt handle.  */
-  sqlite3_stmt* stmt;
+  /** The underlying libxayagame statement.  */
+  xaya::SQLiteDatabase::Statement stmt;
 
   /** Map of ColumnId values to the indices in the SQLite statement.  */
   mutable std::array<int, ResultType::MAX_ID> columnInd;
@@ -247,7 +259,7 @@ private:
    * Constructs an instance based on the given statement handle.  This is called
    * by Statement::Query and not used directly.
    */
-  explicit Result (Database& d, sqlite3_stmt* s);
+  explicit Result (Database& d, xaya::SQLiteDatabase::Statement&& s);
 
   /**
    * Returns the index for a column defined in the result type.  Fills it in
@@ -276,7 +288,11 @@ public:
   /**
    * Tries to step to the next result.  Returns false if there is none.
    */
-  bool Step ();
+  inline bool
+  Step ()
+  {
+    return stmt.Step ();
+  }
 
   /**
    * Checks if the given column is null.

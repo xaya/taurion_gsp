@@ -53,21 +53,12 @@ class SQLiteGameDatabase : public Database
 
 private:
 
-  /** The underlying SQLiteDatabase instance.  */
-  xaya::SQLiteDatabase& db;
-
   /** The underlying SQLiteGame instance.  */
   PXLogic& game;
 
-protected:
-
-  sqlite3_stmt* PrepareStatement (const std::string& sql) override;
-
 public:
 
-  explicit SQLiteGameDatabase (xaya::SQLiteDatabase& d, PXLogic& g)
-    : db(d), game(g)
-  {}
+  explicit SQLiteGameDatabase (xaya::SQLiteDatabase& d, PXLogic& g);
 
   SQLiteGameDatabase () = delete;
   SQLiteGameDatabase (const SQLiteGameDatabase&) = delete;

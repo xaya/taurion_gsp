@@ -28,12 +28,8 @@ namespace pxd
 
 TestDatabase::TestDatabase ()
   : db("test", SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_MEMORY)
-{}
-
-sqlite3_stmt*
-TestDatabase::PrepareStatement (const std::string& sql)
 {
-  return db.Prepare (sql);
+  SetDatabase (db);
 }
 
 Database::IdT

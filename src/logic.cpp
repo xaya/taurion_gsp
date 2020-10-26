@@ -36,10 +36,10 @@
 namespace pxd
 {
 
-sqlite3_stmt*
-SQLiteGameDatabase::PrepareStatement (const std::string& sql)
+SQLiteGameDatabase::SQLiteGameDatabase (xaya::SQLiteDatabase& d, PXLogic& g)
+  : game(g)
 {
-  return db.Prepare (sql);
+  SetDatabase (d);
 }
 
 Database::IdT
