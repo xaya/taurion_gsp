@@ -41,7 +41,7 @@ TestDatabase::GetNextId ()
 DBTestWithSchema::DBTestWithSchema ()
 {
   LOG (INFO) << "Setting up game-state schema in test database...";
-  SetupDatabaseSchema (db.GetHandle ());
+  SetupDatabaseSchema (*db);
 
   MoneySupply ms(db);
   ms.InitialiseDatabase ();

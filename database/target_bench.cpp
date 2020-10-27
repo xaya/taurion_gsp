@@ -62,7 +62,7 @@ void
 TargetFinding (benchmark::State& state)
 {
   TestDatabase db;
-  SetupDatabaseSchema (db.GetHandle ());
+  SetupDatabaseSchema (*db);
 
   const HexCoord::IntT range = state.range (0);
   const unsigned inRange = state.range (1);

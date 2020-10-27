@@ -69,15 +69,6 @@ public:
     nextId = id;
   }
 
-  /**
-   * Returns the underlying database handle for SQLite.
-   */
-  sqlite3*
-  GetHandle ()
-  {
-    return *db;
-  }
-
 };
 
 /**

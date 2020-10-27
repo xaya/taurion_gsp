@@ -118,7 +118,7 @@ PXLogic::UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
 void
 PXLogic::SetupSchema (xaya::SQLiteDatabase& db)
 {
-  SetupDatabaseSchema (*db);
+  SetupDatabaseSchema (db);
 }
 
 void

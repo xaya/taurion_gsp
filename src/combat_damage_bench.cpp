@@ -123,7 +123,7 @@ CombatHpUpdate (benchmark::State& state)
   ContextForTesting ctx;
 
   TestDatabase db;
-  SetupDatabaseSchema (db.GetHandle ());
+  SetupDatabaseSchema (*db);
 
   xaya::SHA256 seed;
   seed << "random seed";
@@ -166,7 +166,7 @@ CombatKills (benchmark::State& state)
   ContextForTesting ctx;
 
   TestDatabase db;
-  SetupDatabaseSchema (db.GetHandle ());
+  SetupDatabaseSchema (*db);
 
   xaya::SHA256 seed;
   seed << "random seed";

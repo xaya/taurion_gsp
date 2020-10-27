@@ -92,6 +92,15 @@ public:
    */
   Statement Prepare (const std::string& sql);
 
+  /**
+   * Gives access to the underlying libxayagame Database instance.
+   */
+  xaya::SQLiteDatabase&
+  operator* ()
+  {
+    return *db;
+  }
+
 };
 
 /**
