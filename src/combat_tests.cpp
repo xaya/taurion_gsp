@@ -25,8 +25,10 @@
 #include "database/damagelists.hpp"
 #include "database/dbtest.hpp"
 #include "database/faction.hpp"
+#include "database/fighter.hpp"
 #include "database/ongoing.hpp"
 #include "database/region.hpp"
+#include "database/target.hpp"
 #include "hexagonal/coord.hpp"
 #include "proto/combat.pb.h"
 
@@ -38,6 +40,7 @@
 
 #include <glog/logging.h>
 
+#include <algorithm>
 #include <map>
 #include <vector>
 
@@ -191,6 +194,61 @@ protected:
   }
 
 };
+
+/* ************************************************************************** */
+
+class TargetKeyTests : public CombatTests
+{
+
+protected:
+
+  FighterTable fighters;
+  TargetFinder targets;
+
+  TargetKeyTests ()
+    : fighters(buildings, characters),
+      targets(db)
+  {}
+
+};
+
+TEST_F (TargetKeyTests, Ordering)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  c->SetPosition (HexCoord (1, 0));
+  AddAttack (*c).set_range (1);
+  c.reset ();
+
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  b->SetCentre (HexCoord (0, 1));
+  AddAttack (*b).set_range (1);
+  b.reset ();
+
+  c = characters.CreateNew ("domob", Faction::RED);
+  c->SetPosition (HexCoord (2, 0));
+  AddAttack (*c).set_range (1);
+  c.reset ();
+
+  b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  b->SetCentre (HexCoord (0, 2));
+  AddAttack (*b).set_range (1);
+  b.reset ();
+
+  std::vector<TargetKey> fromFighters;
+  fighters.ProcessWithAttacks ([&fromFighters] (FighterTable::Handle f)
+    {
+      fromFighters.emplace_back (f->GetIdAsTarget ());
+    });
+  EXPECT_TRUE (std::is_sorted (fromFighters.begin (), fromFighters.end ()));
+
+  std::vector<TargetKey> fromTarget;
+  targets.ProcessL1Targets (HexCoord (0, 0), 10, Faction::GREEN, true, false,
+      [&fromTarget] (const HexCoord& c, const proto::TargetId& id)
+        {
+          fromTarget.emplace_back (id);
+        });
+  EXPECT_EQ (fromTarget, fromFighters);
+}
 
 /* ************************************************************************** */
 

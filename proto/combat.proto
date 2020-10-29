@@ -36,8 +36,10 @@ message TargetId
   enum Type
   {
     INVALID_TYPE = 0;
-    TYPE_CHARACTER = 1;
-    TYPE_BUILDING = 2;
+    /* The numeric values below are used to sort TargetKey instances, which
+       are expected to match the sorting order used in some DB queries.  */
+    TYPE_BUILDING = 1;
+    TYPE_CHARACTER = 2;
   }
 
   /** The type of this target.  */
