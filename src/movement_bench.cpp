@@ -77,7 +77,7 @@ void
 MovementLongHaul (benchmark::State& state)
 {
   TestDatabase db;
-  SetupDatabaseSchema (db.GetHandle ());
+  SetupDatabaseSchema (*db);
 
   ContextForTesting ctx;
 

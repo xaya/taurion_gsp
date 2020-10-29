@@ -50,10 +50,6 @@ private:
   /** The next ID to give out.  */
   IdT nextId = 1;
 
-protected:
-
-  sqlite3_stmt* PrepareStatement (const std::string& sql) override;
-
 public:
 
   TestDatabase ();
@@ -71,15 +67,6 @@ public:
   SetNextId (const IdT id)
   {
     nextId = id;
-  }
-
-  /**
-   * Returns the underlying database handle for SQLite.
-   */
-  sqlite3*
-  GetHandle ()
-  {
-    return *db;
   }
 
 };

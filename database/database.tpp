@@ -29,27 +29,39 @@ template <typename T>
   Database::Result<T>
   Database::Statement::Query ()
 {
-  CHECK (!run) << "Database statement has already been run";
-  run = true;
-  return Result<T> (*db, stmt);
+  CHECK (!executed && !queried) << "Database statement has already been run";
+  queried = true;
+  return Result<T> (*db, std::move (stmt));
 }
+
+template <typename T>
+  void
+  Database::Statement::Bind (const unsigned ind, const T& val)
+{
+  CHECK (!executed && !queried);
+  stmt.Bind (ind, val);
+}
+
+/* Specialisations for types not supported by libxayagame's Statement
+   directly (with implementations in the .cpp file).  */
+template <>
+  void Database::Statement::Bind<int16_t> (unsigned ind, const int16_t& val);
+template <>
+  void Database::Statement::Bind<int32_t> (unsigned ind, const int32_t& val);
 
 template <typename Proto>
   void
   Database::Statement::BindProto (const unsigned ind,
                                   const LazyProto<Proto>& msg)
 {
-  CHECK (!run);
-
+  CHECK (!executed && !queried);
   const std::string& str = msg.GetSerialised ();
-  CHECK_EQ (sqlite3_bind_blob (stmt, ind, &str[0], str.size (),
-                               SQLITE_TRANSIENT),
-            SQLITE_OK);
+  stmt.BindBlob (ind, str);
 }
 
 template <typename T>
-  Database::Result<T>::Result (Database& d, sqlite3_stmt* s)
-    : db(&d), stmt(s)
+  Database::Result<T>::Result (Database& d, xaya::SQLiteDatabase::Statement&& s)
+    : db(&d), stmt(std::move (s))
 {
   columnInd.fill (MISSING_COLUMN);
 }
@@ -63,10 +75,10 @@ template <typename Col>
   if (res != MISSING_COLUMN)
     return res;
 
-  const int num = sqlite3_column_count (stmt);
+  const int num = sqlite3_column_count (stmt.ro ());
   for (int i = 0; i < num; ++i)
     {
-      const char* name = sqlite3_column_name (stmt, i);
+      const char* name = sqlite3_column_name (stmt.ro (), i);
       if (std::strcmp (name, Col::NAME) == 0)
         {
           columnInd[Col::ID] = i;
@@ -78,46 +90,19 @@ template <typename Col>
 }
 
 template <typename T>
-  bool
-  Database::Result<T>::Step ()
-{
-  const int rc = sqlite3_step (stmt);
-  if (rc == SQLITE_DONE)
-    return false;
-
-  CHECK_EQ (rc, SQLITE_ROW);
-  return true;
-}
-
-template <typename T>
 template <typename Col>
   bool
   Database::Result<T>::IsNull () const
 {
-  const int ind = ColumnIndex<Col> ();
-  return sqlite3_column_type (stmt, ind) == SQLITE_NULL;
+  return stmt.IsNull (ColumnIndex<Col> ());
 }
-
-namespace internal
-{
-
-/**
- * Extracts a typed object from the SQLite statement.  This is used internally
- * to implement Result<T>::Get<C> accordingly.  The actual logic is in
- * certain specialisations below.
- */
-template <typename C>
-  C GetColumnValue (sqlite3_stmt* stmt, int index);
-
-} // namespace internal
 
 template <typename T>
 template <typename Col>
   typename Col::Type
   Database::Result<T>::Get () const
 {
-  return internal::GetColumnValue<typename Col::Type> (stmt,
-                                                       ColumnIndex<Col> ());
+  return stmt.Get<typename Col::Type> (ColumnIndex<Col> ());
 }
 
 template <typename T>
@@ -126,12 +111,7 @@ template <typename Col>
   Database::Result<T>::GetProto () const
 {
   const int ind = ColumnIndex<Col> ();
-
-  const void* bytes = sqlite3_column_blob (stmt, ind);
-  const int len = sqlite3_column_bytes (stmt, ind);
-
-  std::string data(static_cast<const char*> (bytes), len);
-  return LazyProto<typename Col::Type> (std::move (data));
+  return LazyProto<typename Col::Type> (stmt.GetBlob (ind));
 }
 
 } // namespace pxd

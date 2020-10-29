@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
 #ifndef DATABASE_SCHEMA_HPP
 #define DATABASE_SCHEMA_HPP
 
-#include <sqlite3.h>
+#include <xayagame/sqlitestorage.hpp>
 
 namespace pxd
 {
@@ -28,7 +28,7 @@ namespace pxd
  * Create the database schema (if it does not exist yet) in the given database
  * connection.
  */
-void SetupDatabaseSchema (sqlite3* db);
+void SetupDatabaseSchema (xaya::SQLiteDatabase& db);
 
 } // namespace pxd
 

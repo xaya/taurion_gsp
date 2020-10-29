@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2020  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,13 +31,13 @@ using SchemaTests = DBTestFixture;
 
 TEST_F (SchemaTests, Works)
 {
-  SetupDatabaseSchema (db.GetHandle ());
+  SetupDatabaseSchema (*db);
 }
 
 TEST_F (SchemaTests, TwiceIsOk)
 {
-  SetupDatabaseSchema (db.GetHandle ());
-  SetupDatabaseSchema (db.GetHandle ());
+  SetupDatabaseSchema (*db);
+  SetupDatabaseSchema (*db);
 }
 
 } // anonymous namespace

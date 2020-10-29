@@ -69,7 +69,7 @@ void
 CharacterLookupSimple (benchmark::State& state)
 {
   TestDatabase db;
-  SetupDatabaseSchema (db.GetHandle ());
+  SetupDatabaseSchema (*db);
 
   const unsigned numInDb = state.range (0);
   const unsigned numLookedUp = state.range (1);
@@ -107,7 +107,7 @@ void
 CharacterLookupProto (benchmark::State& state)
 {
   TestDatabase db;
-  SetupDatabaseSchema (db.GetHandle ());
+  SetupDatabaseSchema (*db);
 
   const unsigned numChar = state.range (0);
   const unsigned numWP = state.range (1);
@@ -142,7 +142,7 @@ BENCHMARK (CharacterLookupProto)
 void CharacterQuery (benchmark::State& state)
 {
   TestDatabase db;
-  SetupDatabaseSchema (db.GetHandle ());
+  SetupDatabaseSchema (*db);
 
   const unsigned numChar = state.range (0);
   const unsigned numWP = state.range (1);
@@ -179,7 +179,7 @@ void
 CharacterFieldsUpdate (benchmark::State& state)
 {
   TestDatabase db;
-  SetupDatabaseSchema (db.GetHandle ());
+  SetupDatabaseSchema (*db);
 
   const unsigned n = state.range (0);
   const unsigned numWP = state.range (1);
@@ -216,7 +216,7 @@ void
 CharacterProtoUpdate (benchmark::State& state)
 {
   TestDatabase db;
-  SetupDatabaseSchema (db.GetHandle ());
+  SetupDatabaseSchema (*db);
 
   const unsigned n = state.range (0);
   const unsigned numWP = state.range (1);
