@@ -14,6 +14,8 @@
 --  You should have received a copy of the GNU General Public License
 --  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+-- =============================================================================
+
 -- Data for the characters in the game.
 CREATE TABLE IF NOT EXISTS `characters` (
 
@@ -329,6 +331,63 @@ CREATE INDEX IF NOT EXISTS `building_inventories_by_account`
 
 -- =============================================================================
 
+-- Data about orders on the DEX.  Each entry in this table represents a
+-- currently open limit order for trading of some fungible item for
+-- Cubits inside a particular building.
+--
+-- Resources required when the order is taken (Cubits for a bid and
+-- items for an ask) are deducted from the normal balance of a user and
+-- "reserved" inside the order.  They get restored to the normal balance
+-- if the order is cancelled (or for Cubits if the building is destroyed).
+--
+-- This table contains all data directly in columns rather than encoded into
+-- protocol buffers, because this allows us to efficiently perform some
+-- operations (like order matching or the computation of reserved balances)
+-- directly through database statements.
+CREATE TABLE IF NOT EXISTS `dex_orders` (
+
+  -- The ID of the order.  This is used in moves to cancel it.
+  `id` INTEGER PRIMARY KEY,
+
+  -- The building this is in.
+  `building` INTEGER NOT NULL,
+
+  -- The account this belongs to.
+  `account` TEXT NOT NULL,
+
+  -- Type of this order (bid or ask).  The numeric values match the
+  -- enum values defined in dex.hpp.
+  `type` INTEGER NOT NULL,
+
+  -- The item to be sold or bought.
+  `item` TEXT NOT NULL,
+
+  -- The quantity of item this order is for.
+  `quantity` INTEGER NOT NULL,
+
+  -- The price in Cubits per item (not in total).
+  `price` INTEGER NOT NULL
+
+);
+
+-- This index allows summing up the reserved Cubit balances of
+-- any particular user account in the entire world.
+CREATE INDEX IF NOT EXISTS `dex_orders_by_account`
+  ON `dex_orders` (`type`, `account`);
+
+-- This index allows summing up the reserved item balances of accounts
+-- inside a building.
+CREATE INDEX IF NOT EXISTS `dex_orders_by_building`
+  ON `dex_orders` (`building`, `type`, `account`, `item`);
+
+-- This index allows order matching.  It also allows querying of all
+-- orders for one building with sorting useful for building up order
+-- books, which we need for RPC methods.
+CREATE INDEX IF NOT EXISTS `dex_orders_by_price`
+  ON `dex_orders` (`building`, `item`, `type`, `price`, `id`);
+
+-- =============================================================================
+
 -- Data about counts of items found for a particular type already (for
 -- things where it matters, like prizes and blueprints).
 CREATE TABLE IF NOT EXISTS `item_counts` (
@@ -396,3 +455,5 @@ CREATE INDEX IF NOT EXISTS `ongoing_operations_by_character`
   ON `ongoing_operations` (`character`);
 CREATE INDEX IF NOT EXISTS `ongoing_operations_by_building`
   ON `ongoing_operations` (`building`);
+
+-- =============================================================================
