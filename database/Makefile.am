@@ -20,6 +20,7 @@ libdatabase_la_SOURCES = \
   coord.cpp \
   damagelists.cpp \
   database.cpp \
+  dex.cpp \
   faction.cpp \
   fighter.cpp \
   inventory.cpp \
@@ -38,6 +39,7 @@ noinst_HEADERS = \
   coord.hpp coord.tpp \
   damagelists.hpp \
   database.hpp database.tpp \
+  dex.hpp \
   faction.hpp faction.tpp \
   fighter.hpp \
   inventory.hpp \
@@ -85,6 +87,7 @@ tests_SOURCES = \
   coord_tests.cpp \
   damagelists_tests.cpp \
   database_tests.cpp \
+  dex_tests.cpp \
   faction_tests.cpp \
   fighter_tests.cpp \
   inventory_tests.cpp \
