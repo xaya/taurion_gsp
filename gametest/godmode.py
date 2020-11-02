@@ -67,6 +67,8 @@ class GodModeTest (PXTest):
             },
         },
       "inventories": {},
+      "reserved": {},
+      "orderbook": {},
     })
     self.assertEqual (buildings[1003].data, {
       "id": 1003,
@@ -94,6 +96,8 @@ class GodModeTest (PXTest):
             },
         },
       "inventories": {},
+      "reserved": {},
+      "orderbook": {},
     })
 
     self.mainLogger.info ("Testing teleport...")

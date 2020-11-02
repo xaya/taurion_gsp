@@ -23,6 +23,7 @@
 
 #include "database/damagelists.hpp"
 #include "database/database.hpp"
+#include "database/dex.hpp"
 #include "database/inventory.hpp"
 #include "mapdata/basemap.hpp"
 
@@ -52,6 +53,12 @@ private:
   /** Damage lists accessor (for adding the attackers to a character JSON).  */
   const DamageLists dl;
 
+  /**
+   * Database table for DEX orders.  This is also used from the "convert"
+   * function for buildings.
+   */
+  mutable DexOrderTable orders;
+
   /** Current parameter context.  */
   const Context& ctx;
 
@@ -65,7 +72,7 @@ private:
 public:
 
   explicit GameStateJson (Database& d, const Context& c)
-    : db(d), buildingInventories(db), dl(db), ctx(c)
+    : db(d), buildingInventories(db), dl(db), orders(db), ctx(c)
   {}
 
   GameStateJson () = delete;

@@ -247,8 +247,8 @@ class Account (object):
       return self.data["faction"]
     return None
 
-  def getBalance (self):
-    return self.data["balance"]
+  def getBalance (self, type="available"):
+    return self.data["balance"][type]
 
 
 class Region (object):
