@@ -19,6 +19,9 @@
 #include "inventory.hpp"
 
 #include <glog/logging.h>
+#include <google/protobuf/util/message_differencer.h>
+
+using google::protobuf::util::MessageDifferencer;
 
 namespace pxd
 {
@@ -139,6 +142,12 @@ Inventory::operator= (LazyProto<proto::Inventory>&& d)
   CHECK (data != nullptr);
   *data = std::move (d);
   return *this;
+}
+
+bool
+operator== (const Inventory& a, const Inventory& b)
+{
+  return MessageDifferencer::Equals (a.Get (), b.Get ());
 }
 
 const proto::Inventory&

@@ -163,6 +163,25 @@ TEST_F (InventoryTests, Modification)
   EXPECT_TRUE (inv.IsDirty ());
 }
 
+TEST_F (InventoryTests, Equality)
+{
+  Inventory a, b, c;
+
+  a.SetFungibleCount ("foo", 10);
+  a.SetFungibleCount ("bar", 5);
+
+  b.SetFungibleCount ("bar", 5);
+  b.SetFungibleCount ("foo", 10);
+
+  c.SetFungibleCount ("foo", 10);
+  c.SetFungibleCount ("bar", 5);
+  c.SetFungibleCount ("zerospace", 1);
+
+  EXPECT_EQ (a, a);
+  EXPECT_EQ (a, b);
+  EXPECT_NE (a, c);
+}
+
 TEST_F (InventoryTests, Clear)
 {
   inv.SetFungibleCount ("foo", 10);

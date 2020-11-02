@@ -156,6 +156,8 @@ public:
    */
   Inventory ();
 
+  Inventory (Inventory&&) = default;
+
   /**
    * Constructs an instance based on the given explicit proto.  This is
    * used to wrap a raw proto not coming from a database column (e.g.
@@ -177,6 +179,14 @@ public:
 
   Inventory (const Inventory&) = delete;
   void operator= (const Inventory&) = delete;
+
+  friend bool operator== (const Inventory& a, const Inventory& b);
+
+  friend bool
+  operator != (const Inventory& a, const Inventory& b)
+  {
+    return !(a == b);
+  }
 
   /**
    * Clears the inventory completely.  This is mostly useful for testing.
