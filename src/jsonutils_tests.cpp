@@ -133,6 +133,41 @@ TEST_F (JsonAmountTests, InvalidAmountFromJson)
     }
 }
 
+using QuantityJsonTests = testing::Test;
+
+TEST_F (QuantityJsonTests, Valid)
+{
+  Quantity q;
+
+  ASSERT_TRUE (QuantityFromJson (ParseJson ("1"), q));
+  EXPECT_EQ (q, 1);
+
+  ASSERT_TRUE (QuantityFromJson (ParseJson ("42"), q));
+  EXPECT_EQ (q, 42);
+
+  ASSERT_TRUE (QuantityFromJson (ParseJson ("1125899906842624"), q));
+  EXPECT_EQ (q, 1125899906842624);
+}
+
+TEST_F (QuantityJsonTests, OutOfRange)
+{
+  Quantity q;
+  EXPECT_FALSE (QuantityFromJson (ParseJson ("0"), q));
+  EXPECT_FALSE (QuantityFromJson (ParseJson ("-5"), q));
+  EXPECT_FALSE (QuantityFromJson (ParseJson ("1125899906842625"), q));
+}
+
+TEST_F (QuantityJsonTests, InvalidType)
+{
+  Quantity q;
+  EXPECT_FALSE (QuantityFromJson (ParseJson ("null"), q));
+  EXPECT_FALSE (QuantityFromJson (ParseJson ("true"), q));
+  EXPECT_FALSE (QuantityFromJson (ParseJson ("\"42\""), q));
+  EXPECT_FALSE (QuantityFromJson (ParseJson ("1.5"), q));
+  EXPECT_FALSE (QuantityFromJson (ParseJson ("10.0"), q));
+  EXPECT_FALSE (QuantityFromJson (ParseJson ("1e2"), q));
+}
+
 using IdFromJsonTests = testing::Test;
 
 TEST_F (IdFromJsonTests, Valid)

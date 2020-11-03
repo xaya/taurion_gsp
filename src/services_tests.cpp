@@ -406,6 +406,12 @@ TEST_F (RefiningTests, InvalidFormat)
     "t": "ref",
     "b": 100,
     "i": "test ore",
+    "n": 3.0
+  })"));
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "ref",
+    "b": 100,
+    "i": "test ore",
     "n": "x"
   })"));
 }
@@ -562,6 +568,10 @@ TEST_F (MobileRefiningTests, InvalidFormat)
     "x": "foo",
     "i": "test ore",
     "n": 6
+  })"));
+  EXPECT_FALSE (Process (R"({
+    "i": "test ore",
+    "n": 6.0
   })"));
   EXPECT_FALSE (Process (R"({
     "i": 42,

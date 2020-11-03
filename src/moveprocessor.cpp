@@ -626,8 +626,7 @@ namespace
 /**
  * Parses a JSON dictionary giving fungible items and their quantities
  * into a std::map.  This will contain all item names and quantities
- * for "valid" entries, i.e. entries with a uint64 value that is within
- * the range (0, MAX_QUANTITY].
+ * for valid entries.
  */
 FungibleAmountMap
 ParseFungibleQuantities (const Context& ctx, const Json::Value& obj)
@@ -647,19 +646,11 @@ ParseFungibleQuantities (const Context& ctx, const Json::Value& obj)
           continue;
         }
 
-      if (!it->isUInt64 ())
+      Quantity cnt;
+      if (!QuantityFromJson (*it, cnt))
         {
           LOG (WARNING)
               << "Invalid fungible amount for item " << key << ": " << *it;
-          continue;
-        }
-      const Quantity cnt = it->asUInt64 ();
-
-      CHECK_GE (cnt, 0);
-      if (cnt == 0 || cnt > MAX_QUANTITY)
-        {
-          LOG (WARNING)
-              << "Invalid fungible amount for item " << key << ": " << cnt;
           continue;
         }
 

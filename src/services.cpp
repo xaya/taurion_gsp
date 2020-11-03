@@ -79,13 +79,12 @@ template <typename T>
   if (!type.isString ())
     return nullptr;
 
-  const auto& amount = data["n"];
-  if (!amount.isUInt64 ())
+  Quantity amount;
+  if (!QuantityFromJson (data["n"], amount))
     return nullptr;
 
   return std::make_unique<T> (acc, std::move (b),
-                              type.asString (), amount.asUInt64 (),
-                              refs);
+                              type.asString (), amount, refs);
 }
 
 /* ************************************************************************** */
@@ -1238,14 +1237,12 @@ ServiceOperation::ParseMobileRefining (Account& acc, Character& c,
   if (!item.isString ())
     return nullptr;
 
-  const auto& amount = data["n"];
-  if (!amount.isUInt64 ())
+  Quantity amount;
+  if (!QuantityFromJson (data["n"], amount))
     return nullptr;
 
   auto op = std::make_unique<RefiningOperation> (
-      acc, c,
-      item.asString (), amount.asUInt64 (),
-      refs);
+      acc, c, item.asString (), amount, refs);
 
   op->rawMove = data;
   return op;

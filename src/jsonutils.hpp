@@ -21,6 +21,7 @@
 
 #include "database/amount.hpp"
 #include "database/database.hpp"
+#include "database/inventory.hpp"
 #include "hexagonal/coord.hpp"
 
 #include <json/json.h>
@@ -56,6 +57,12 @@ Json::Value AmountToJson (Amount amount);
  * not valid.
  */
 bool AmountFromJson (const Json::Value& val, Amount& amount);
+
+/**
+ * Parses an item quantity from JSON.  Verifies that it is in the range
+ * (0, MAX_QUANTITY].
+ */
+bool QuantityFromJson (const Json::Value& val, Quantity& quantity);
 
 /**
  * Parses an ID value encoded in JSON.  Returns true if one was found.

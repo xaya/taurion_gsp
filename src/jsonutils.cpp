@@ -18,6 +18,8 @@
 
 #include "jsonutils.hpp"
 
+#include <xayautil/jsonutils.hpp>
+
 #include <glog/logging.h>
 
 #include <cmath>
@@ -139,6 +141,16 @@ AmountFromJson (const Json::Value& val, Amount& amount)
   CHECK_LE (amount, MAX_AMOUNT);
 
   return true;
+}
+
+bool
+QuantityFromJson (const Json::Value& val, Quantity& quantity)
+{
+  if (!val.isInt64 () || !xaya::IsIntegerValue (val))
+    return false;
+
+  quantity = val.asInt64 ();
+  return quantity > 0 && quantity <= MAX_QUANTITY;
 }
 
 bool
