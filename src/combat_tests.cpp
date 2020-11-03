@@ -20,10 +20,12 @@
 
 #include "testutils.hpp"
 
+#include "database/account.hpp"
 #include "database/building.hpp"
 #include "database/character.hpp"
 #include "database/damagelists.hpp"
 #include "database/dbtest.hpp"
+#include "database/dex.hpp"
 #include "database/faction.hpp"
 #include "database/fighter.hpp"
 #include "database/ongoing.hpp"
@@ -2638,6 +2640,13 @@ class ProcessKillsBuildingTests : public ProcessKillsTests
 
 protected:
 
+  AccountsTable accounts;
+  DexOrderTable orders;
+
+  ProcessKillsBuildingTests ()
+    : accounts(db), orders(db)
+  {}
+
   void
   KillBuilding (const Database::IdT id)
   {
@@ -2697,6 +2706,49 @@ TEST_F (ProcessKillsBuildingTests, RemovesOngoings)
   EXPECT_EQ (ongoings.GetById (102), nullptr);
   EXPECT_EQ (ongoings.GetById (103), nullptr);
   EXPECT_NE (ongoings.GetById (104), nullptr);
+}
+
+TEST_F (ProcessKillsBuildingTests, RemovesOrders)
+{
+  accounts.CreateNew ("domob");
+
+  const auto id1
+      = buildings.CreateNew ("checkmark", "domob", Faction::RED)->GetId ();
+  const auto id2
+      = buildings.CreateNew ("checkmark", "domob", Faction::RED)->GetId ();
+
+  db.SetNextId (101);
+  orders.CreateNew (id1, "domob", DexOrder::Type::BID, "foo", 2, 5);
+  orders.CreateNew (id1, "domob", DexOrder::Type::ASK, "foo", 2, 10);
+  orders.CreateNew (id2, "domob", DexOrder::Type::ASK, "foo", 1, 1);
+
+  KillBuilding (id1);
+  EXPECT_EQ (orders.GetById (101), nullptr);
+  EXPECT_EQ (orders.GetById (102), nullptr);
+  EXPECT_NE (orders.GetById (103), nullptr);
+
+  KillBuilding (id2);
+  EXPECT_EQ (orders.GetById (103), nullptr);
+}
+
+TEST_F (ProcessKillsBuildingTests, RefundsBidCubits)
+{
+  accounts.CreateNew ("andy");
+  accounts.CreateNew ("domob");
+
+  const auto id
+      = buildings.CreateNew ("checkmark", "domob", Faction::RED)->GetId ();
+
+  db.SetNextId (101);
+  orders.CreateNew (id, "domob", DexOrder::Type::BID, "foo", 2, 5);
+  orders.CreateNew (id, "domob", DexOrder::Type::BID, "foo", 1, 1);
+  orders.CreateNew (id, "andy", DexOrder::Type::BID, "bar", 3, 3);
+  orders.CreateNew (id, "domob", DexOrder::Type::ASK, "foo", 1, 5);
+
+  KillBuilding (id);
+
+  EXPECT_EQ (accounts.GetByName ("andy")->GetBalance (), 9);
+  EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 11);
 }
 
 TEST_F (ProcessKillsBuildingTests, MayDropAnyInventoryItem)
@@ -2877,6 +2929,39 @@ TEST_F (ProcessKillsBuildingTests, MayDropBlueprintsFromConstruction)
     }
 
   LOG (INFO) << "Construction blueprint dropped " << dropped << " times";
+  EXPECT_GT (dropped, 0);
+}
+
+TEST_F (ProcessKillsBuildingTests, MayDropOrderItems)
+{
+  accounts.CreateNew ("domob");
+
+  const HexCoord pos(10, 20);
+  constexpr unsigned trials = 100;
+  unsigned dropped = 0;
+
+  for (unsigned i = 0; i < trials; ++i)
+    {
+      auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+      const auto bId = b->GetId ();
+      b->SetCentre (pos);
+      b.reset ();
+
+      orders.CreateNew (bId, "domob", DexOrder::Type::ASK, "foo", 3, 10);
+      orders.CreateNew (bId, "domob", DexOrder::Type::BID, "bar", 1, 1);
+
+      KillBuilding (bId);
+
+      auto l = loot.GetByCoord (pos);
+      EXPECT_EQ (l->GetInventory ().GetFungibleCount ("bar"), 0);
+      const auto cnt = l->GetInventory ().GetFungibleCount ("foo");
+      EXPECT_TRUE (cnt == 0 || cnt == 3);
+      if (cnt > 0)
+        ++dropped;
+      l->GetInventory ().Clear ();
+    }
+
+  LOG (INFO) << "Items from order " << dropped << " times";
   EXPECT_GT (dropped, 0);
 }
 
