@@ -332,6 +332,32 @@ BaseMoveProcessor::TryServiceOperations (const std::string& name,
     }
 }
 
+void
+BaseMoveProcessor::TryDexOperations (const std::string& name,
+                                     const Json::Value& mv)
+{
+  const auto& cmds = mv["x"];
+  if (!cmds.isArray ())
+    return;
+
+  const auto a = accounts.GetByName (name);
+  CHECK (a != nullptr);
+
+  for (const auto& op : cmds)
+    {
+      auto parsed = DexOperation::Parse (*a, op, ctx,
+                                         accounts,
+                                         buildings, buildingInv);
+      if (parsed == nullptr)
+        {
+          LOG (WARNING) << "Malformed DEX operation:\n" << op;
+          continue;
+        }
+      if (parsed->IsValid ())
+        PerformDexOperation (*parsed);
+    }
+}
+
 bool
 BaseMoveProcessor::ParseCoinTransferBurn (const Account& a,
                                           const Json::Value& moveObj,
@@ -1138,6 +1164,10 @@ MoveProcessor::ProcessOne (const Json::Value& moveObj)
   if (!ctx.Forks ().IsActive (Fork::GameStart))
     return;
 
+  /* Handle trading / DEX operations now.  They are independent of
+     account initialisation, but only start with the game start.  */
+  TryDexOperations (name, mv);
+
   /* We perform account updates first.  That ensures that it is possible to
      e.g. choose one's faction and create characters in a single move.  */
   TryAccountUpdate (name, mv["a"]);
@@ -1760,6 +1790,12 @@ void
 MoveProcessor::PerformServiceOperation (ServiceOperation& op)
 {
   op.Execute (rnd);
+}
+
+void
+MoveProcessor::PerformDexOperation (DexOperation& op)
+{
+  op.Execute ();
 }
 
 namespace

@@ -310,6 +310,18 @@ PendingState::AddServiceOperation (const ServiceOperation& op)
   GetAccountState (op.GetAccount ()).serviceOps.push_back (val);
 }
 
+void
+PendingState::AddDexOperation (const DexOperation& op)
+{
+  const auto val = op.ToPendingJson ();
+
+  VLOG (1)
+      << "Adding pending DEX operation for "
+      << op.GetAccount ().GetName () << ":\n" << val;
+
+  GetAccountState (op.GetAccount ()).dexOps.push_back (val);
+}
+
 bool
 PendingState::HasPendingWaypoints (const Character& c) const
 {
@@ -404,6 +416,14 @@ PendingState::AccountState::ToJson () const
       for (const auto& o : serviceOps)
         ops.append (o);
       res["serviceops"] = ops;
+    }
+
+  if (!dexOps.empty ())
+    {
+      Json::Value ops(Json::arrayValue);
+      for (const auto& o : dexOps)
+        ops.append (o);
+      res["dexops"] = ops;
     }
 
   return res;
@@ -534,6 +554,12 @@ PendingStateUpdater::PerformServiceOperation (ServiceOperation& op)
 }
 
 void
+PendingStateUpdater::PerformDexOperation (DexOperation& op)
+{
+  state.AddDexOperation (op);
+}
+
+void
 PendingStateUpdater::ProcessMove (const Json::Value& moveObj)
 {
   std::string name;
@@ -556,6 +582,8 @@ PendingStateUpdater::ProcessMove (const Json::Value& moveObj)
   CoinTransferBurn coinOps;
   if (ParseCoinTransferBurn (*a, mv, coinOps, burnt))
     state.AddCoinTransferBurn (*a, coinOps);
+
+  TryDexOperations (name, mv);
 
   /* If the account is not initialised yet, any other action is invalid anyway.
      If this is the init move itself, they would be actually fine, but we

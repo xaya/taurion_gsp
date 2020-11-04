@@ -3434,6 +3434,90 @@ TEST_F (ServicesMoveTests, ServicesAfterCharacterUpdates)
 
 /* ************************************************************************** */
 
+class DexMoveTests : public MoveProcessorTests
+{
+
+protected:
+
+  BuildingsTable buildings;
+  BuildingInventoriesTable inv;
+  CharacterTable characters;
+
+  DexMoveTests ()
+    : buildings(db), inv(db), characters(db)
+  {
+    db.SetNextId (100);
+    buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+    inv.Get (100, "domob")->GetInventory ().AddFungibleCount ("foo", 100);
+  }
+
+  /**
+   * Returns the balance of the given account for "foo" inside
+   * our test building.
+   */
+  Quantity
+  GetFooBalance (const std::string& account)
+  {
+    return inv.Get (100, account)->GetInventory ().GetFungibleCount ("foo");
+  }
+
+};
+
+TEST_F (DexMoveTests, Works)
+{
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"x": [
+        {"x": "invalid"},
+        {"b": 100, "i": "foo", "n": 10, "t": "andy"},
+        {"b": 100, "i": "foo", "n": 100, "t": "daniel"},
+        {"b": 100, "i": "foo", "n": 20, "t": "daniel"}
+      ]}
+    }
+  ])");
+
+  EXPECT_EQ (GetFooBalance ("domob"), 70);
+  EXPECT_EQ (GetFooBalance ("andy"), 10);
+  EXPECT_EQ (GetFooBalance ("daniel"), 20);
+}
+
+TEST_F (DexMoveTests, AfterCoinOperations)
+{
+  /* FIXME: Test that DEX operations are after coin operations once
+     we can do that (with bids/asks).  */
+}
+
+TEST_F (DexMoveTests, BeforeCharacterUpdates)
+{
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
+
+  db.SetNextId (200);
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  CHECK_EQ (c->GetId (), 200);
+  c->SetBuildingId (100);
+  c->MutableProto ().set_cargo_space (1'000);
+  c.reset ();
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {
+        "c": {"id": 200, "pu": {"f": {"foo": 999}}},
+        "x": [{"b": 100, "i": "foo", "n": 10, "t": "andy"}]
+      }
+    }
+  ])");
+
+  EXPECT_EQ (GetFooBalance ("domob"), 0);
+  EXPECT_EQ (GetFooBalance ("andy"), 10);
+
+  c = characters.GetById (200);
+  EXPECT_EQ (c->GetInventory ().GetFungibleCount ("foo"), 90);
+}
+
+/* ************************************************************************** */
+
 class GodModeTests : public MoveProcessorTests
 {
 
