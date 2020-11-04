@@ -28,6 +28,7 @@
 
 #include "database/account.hpp"
 #include "database/building.hpp"
+#include "database/dex.hpp"
 #include "database/moneysupply.hpp"
 #include "database/schema.hpp"
 
@@ -504,6 +505,34 @@ ValidateOngoingsLinks (Database& db)
   }
 }
 
+/**
+ * Validates that all DEX orders refer to valid accounts and buildings.
+ */
+void
+ValidateOrderLinks (Database& db)
+{
+  AccountsTable accounts(db);
+  BuildingsTable buildings(db);
+  DexOrderTable orders(db);
+
+  auto res = orders.QueryAll ();
+  while (res.Step ())
+    {
+      auto o = orders.GetFromResult (res);
+      CHECK (accounts.GetByName (o->GetAccount ()) != nullptr)
+          << "Order " << o->GetId ()
+          << " refers to non-existing account " << o->GetAccount ();
+
+      auto b = buildings.GetById (o->GetBuilding ());
+      CHECK (b != nullptr)
+          << "Order " << o->GetId ()
+          << " refers to non-existing building " << o->GetBuilding ();
+      CHECK (!b->GetProto ().foundation ())
+          << "Order " << o->GetId ()
+          << " is in foundation " << o->GetBuilding ();
+    }
+}
+
 } // anonymous namespace
 
 void
@@ -516,6 +545,7 @@ PXLogic::ValidateStateSlow (Database& db, const Context& ctx)
   ValidateCharacterLimit (db, ctx);
   ValidateBuildingInventories (db);
   ValidateOngoingsLinks (db);
+  ValidateOrderLinks (db);
 }
 
 } // namespace pxd

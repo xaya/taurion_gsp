@@ -28,6 +28,7 @@
 #include "database/character.hpp"
 #include "database/damagelists.hpp"
 #include "database/dbtest.hpp"
+#include "database/dex.hpp"
 #include "database/faction.hpp"
 #include "database/inventory.hpp"
 #include "database/ongoing.hpp"
@@ -67,13 +68,14 @@ protected:
   AccountsTable accounts;
   BuildingsTable buildings;
   CharacterTable characters;
+  DexOrderTable orders;
   BuildingInventoriesTable inv;
   GroundLootTable groundLoot;
   OngoingsTable ongoings;
   RegionsTable regions;
 
   PXLogicTests ()
-    : accounts(db), buildings(db), characters(db),
+    : accounts(db), buildings(db), characters(db), orders(db),
       inv(db), groundLoot(db), ongoings(db), regions(db, 0)
   {
     SetHeight (42);
@@ -1412,6 +1414,31 @@ TEST_F (ValidateStateTests, BuildingToOngoingsLink)
 
   ongoings.GetById (102)->MutableProto ().mutable_blueprint_copy ();
   EXPECT_DEATH (ValidateState (), "that is not a building construction");
+}
+
+TEST_F (ValidateStateTests, DexOrderLinks)
+{
+  accounts.CreateNew ("domob");
+  db.SetNextId (100);
+  CreateBuilding ("checkmark", "", Faction::ANCIENT);
+
+  db.SetNextId (201);
+  orders.CreateNew (100, "domob", DexOrder::Type::ASK, "foo", 1, 1);
+  ValidateState ();
+
+  orders.CreateNew (100, "invalid", DexOrder::Type::ASK, "foo", 1, 1);
+  EXPECT_DEATH (ValidateState (), "non-existing account");
+  orders.GetById (202)->Delete ();
+
+  orders.CreateNew (101, "domob", DexOrder::Type::ASK, "foo", 1, 1);
+  EXPECT_DEATH (ValidateState (), "non-existing building");
+  orders.GetById (203)->Delete ();
+
+  auto b = buildings.GetById (100);
+  b->MutableProto ().set_foundation (true);
+  b->MutableProto ().mutable_age_data ()->clear_finished_height ();
+  b.reset ();
+  EXPECT_DEATH (ValidateState (), "is in foundation");
 }
 
 /* ************************************************************************** */
