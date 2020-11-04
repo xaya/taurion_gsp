@@ -47,7 +47,8 @@ libtaurion_la_SOURCES = \
   protoutils.cpp \
   resourcedist.cpp \
   services.cpp \
-  spawn.cpp
+  spawn.cpp \
+  trading.cpp
 libtaurionheaders = \
   buildings.hpp \
   burnsale.hpp \
@@ -71,7 +72,8 @@ libtaurionheaders = \
   protoutils.hpp \
   resourcedist.hpp \
   services.hpp \
-  spawn.hpp
+  spawn.hpp \
+  trading.hpp
 
 tauriond_CXXFLAGS = \
   -I$(top_srcdir) \
@@ -154,7 +156,8 @@ tests_SOURCES = \
   resourcedist_tests.cpp \
   services_tests.cpp \
   spawn_tests.cpp \
-  testutils_tests.cpp
+  testutils_tests.cpp \
+  trading_tests.cpp
 check_HEADERS = \
   fame_tests.hpp \
   \
