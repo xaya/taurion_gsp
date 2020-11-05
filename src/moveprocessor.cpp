@@ -332,25 +332,6 @@ BaseMoveProcessor::TryServiceOperations (const std::string& name,
     }
 }
 
-namespace
-{
-
-/**
- * Extracts a vCHI amount from JSON, validating that it is non-negative
- * and below MAX_COIN_AMOUNT.
- */
-bool
-ExtractCoinAmount (const Json::Value& val, Amount& amount)
-{
-  if (!val.isInt64 ())
-    return false;
-
-  amount = val.asInt64 ();
-  return amount >= 0 && amount <= MAX_COIN_AMOUNT;
-}
-
-} // anonymous namespace
-
 bool
 BaseMoveProcessor::ParseCoinTransferBurn (const Account& a,
                                           const Json::Value& moveObj,
@@ -379,7 +360,7 @@ BaseMoveProcessor::ParseCoinTransferBurn (const Account& a,
     }
 
   const auto& burn = cmd["b"];
-  if (ExtractCoinAmount (burn, op.burnt))
+  if (CoinAmountFromJson (burn, op.burnt))
     {
       if (total + op.burnt <= balance)
         total += op.burnt;
@@ -404,7 +385,7 @@ BaseMoveProcessor::ParseCoinTransferBurn (const Account& a,
           const std::string to = it.key ().asString ();
 
           Amount amount;
-          if (!ExtractCoinAmount (*it, amount))
+          if (!CoinAmountFromJson (*it, amount))
             {
               LOG (WARNING)
                   << "Invalid coin transfer from " << a.GetName ()
@@ -2097,7 +2078,7 @@ MaybeGodGiftCoins (AccountsTable& tbl, MoneySupply& moneySupply,
         a = tbl.CreateNew (name);
 
       Amount val;
-      if (!ExtractCoinAmount (*it, val))
+      if (!CoinAmountFromJson (*it, val))
         {
           LOG (WARNING) << "God-mode gift of invalid amount: " << *it;
           continue;

@@ -31,6 +31,13 @@ namespace pxd
 namespace
 {
 
+/**
+ * The maximum amount of vCHI in a move.  This is consensus relevant.
+ * The value here is actually the total cap on vCHI (although that's not
+ * relevant in this context).
+ */
+constexpr Amount MAX_COIN_AMOUNT = 100'000'000'000;
+
 constexpr Database::IdT MAX_ID = 999999999;
 
 constexpr const char COORD_X[] = "x";
@@ -141,6 +148,16 @@ AmountFromJson (const Json::Value& val, Amount& amount)
   CHECK_LE (amount, MAX_AMOUNT);
 
   return true;
+}
+
+bool
+CoinAmountFromJson (const Json::Value& val, Amount& amount)
+{
+  if (!val.isInt64 () || !xaya::IsIntegerValue (val))
+    return false;
+
+  amount = val.asInt64 ();
+  return amount >= 0 && amount <= MAX_COIN_AMOUNT;
 }
 
 bool

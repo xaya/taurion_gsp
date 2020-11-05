@@ -133,6 +133,40 @@ TEST_F (JsonAmountTests, InvalidAmountFromJson)
     }
 }
 
+using CoinAmountJsonTests = testing::Test;
+
+TEST_F (CoinAmountJsonTests, Valid)
+{
+  Amount a;
+
+  ASSERT_TRUE (CoinAmountFromJson (ParseJson ("0"), a));
+  EXPECT_EQ (a, 0);
+
+  ASSERT_TRUE (CoinAmountFromJson (ParseJson ("42"), a));
+  EXPECT_EQ (a, 42);
+
+  ASSERT_TRUE (CoinAmountFromJson (ParseJson ("100000000000"), a));
+  EXPECT_EQ (a, 100'000'000'000);
+}
+
+TEST_F (CoinAmountJsonTests, OutOfRange)
+{
+  Amount a;
+  EXPECT_FALSE (CoinAmountFromJson (ParseJson ("-1"), a));
+  EXPECT_FALSE (CoinAmountFromJson (ParseJson ("-50"), a));
+  EXPECT_FALSE (CoinAmountFromJson (ParseJson ("100000000001"), a));
+}
+
+TEST_F (CoinAmountJsonTests, InvalidType)
+{
+  Amount a;
+  EXPECT_FALSE (CoinAmountFromJson (ParseJson ("null"), a));
+  EXPECT_FALSE (CoinAmountFromJson (ParseJson ("\"42\""), a));
+  EXPECT_FALSE (CoinAmountFromJson (ParseJson ("1.5"), a));
+  EXPECT_FALSE (CoinAmountFromJson (ParseJson ("10.0"), a));
+  EXPECT_FALSE (CoinAmountFromJson (ParseJson ("1e2"), a));
+}
+
 using QuantityJsonTests = testing::Test;
 
 TEST_F (QuantityJsonTests, Valid)

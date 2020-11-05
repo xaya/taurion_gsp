@@ -59,6 +59,12 @@ Json::Value AmountToJson (Amount amount);
 bool AmountFromJson (const Json::Value& val, Amount& amount);
 
 /**
+ * Parses a Cubit amount from JSON, and verifies that it is roughly in
+ * range, i.e. within [0, MAX_COIN_AMOUNT].
+ */
+bool CoinAmountFromJson (const Json::Value& val, Amount& amount);
+
+/**
  * Parses an item quantity from JSON.  Verifies that it is in the range
  * (0, MAX_QUANTITY].
  */
