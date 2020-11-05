@@ -23,6 +23,7 @@
 
 #include "database/account.hpp"
 #include "database/building.hpp"
+#include "database/dex.hpp"
 #include "database/inventory.hpp"
 
 #include <json/json.h>
@@ -50,6 +51,7 @@ protected:
   AccountsTable& accounts;
   BuildingsTable& buildings;
   BuildingInventoriesTable& buildingInv;
+  DexOrderTable& orders;
 
   /** The account triggering the operation.  */
   Account& account;
@@ -93,7 +95,8 @@ public:
       Account& acc, const Json::Value& data,
       const Context& ctx,
       AccountsTable& accounts,
-      BuildingsTable& buildings, BuildingInventoriesTable& inv);
+      BuildingsTable& buildings, BuildingInventoriesTable& inv,
+      DexOrderTable& orders);
 
 };
 

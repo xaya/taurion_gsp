@@ -41,11 +41,13 @@ private:
   AccountsTable& accounts;
   BuildingsTable& buildings;
   BuildingInventoriesTable& buildingInv;
+  DexOrderTable& orders;
 
   explicit ContextRefs (const Context& c,
                         AccountsTable& a,
-                        BuildingsTable& b, BuildingInventoriesTable& i)
-    : ctx(c), accounts(a), buildings(b), buildingInv(i)
+                        BuildingsTable& b, BuildingInventoriesTable& i,
+                        DexOrderTable& o)
+    : ctx(c), accounts(a), buildings(b), buildingInv(i), orders(o)
   {}
 
   friend class DexOperation;
@@ -80,6 +82,16 @@ protected:
                           const Quantity n)
     : DexOperation(a, r), building(b), item(i), quantity(n)
   {}
+
+  /**
+   * Returns an inventory handle for the account of this order
+   * inside the building.
+   */
+  BuildingInventoriesTable::Handle
+  GetInv () const
+  {
+    return buildingInv.Get (building, account.GetName ());
+  }
 
   /**
    * Checks if the general data pieces are valid (building exists,
@@ -168,8 +180,7 @@ TransferOperation::IsValid () const
   if (!IsItemOperationValid ())
     return false;
 
-  const auto inv = buildingInv.Get (building, account.GetName ());
-  const Quantity got = inv->GetInventory ().GetFungibleCount (item);
+  const Quantity got = GetInv ()->GetInventory ().GetFungibleCount (item);
   if (got < quantity)
     {
       LOG (WARNING)
@@ -202,10 +213,271 @@ TransferOperation::Execute ()
   if (accounts.GetByName (recipient) == nullptr)
     accounts.CreateNew (recipient);
 
-  buildingInv.Get (building, account.GetName ())
-      ->GetInventory ().AddFungibleCount (item, -quantity);
+  GetInv ()->GetInventory ().AddFungibleCount (item, -quantity);
   buildingInv.Get (building, recipient)
       ->GetInventory ().AddFungibleCount (item, quantity);
+}
+
+/* ************************************************************************** */
+
+/**
+ * A DEX operation to place a new order (either bid or ask).
+ */
+class NewOrderOperation : public ItemOperation
+{
+
+private:
+
+  /** String representation of this operation (for the pending JSON "op").  */
+  const std::string op;
+
+  /**
+   * Pays the given amount of Cubits to the given user name.  This takes
+   * care of handling the special case that the recipient is the account
+   * performing the current operation, in which case we must not instantiate
+   * a second Account instance.
+   */
+  void PayCoins (const std::string& recipient, Amount cost) const;
+
+protected:
+
+  /** The price of the order (in Cubits per unit).  */
+  const Amount price;
+
+  /**
+   * Pays the given amount in Cubits to the seller of an item (recipient),
+   * taking fees into account and paying them to the building owner / burning
+   * them instead.
+   */
+  void PayToSellerAndFee (const std::string& recipient, Amount cost) const;
+
+public:
+
+  explicit NewOrderOperation (Account& a, const ContextRefs& r,
+                              const std::string& o,
+                              const Database::IdT b, const std::string& i,
+                              const Quantity n, const Amount p)
+    : ItemOperation(a, r, b, i, n), op(o), price(p)
+  {}
+
+  Json::Value ToPendingJson () const override;
+
+};
+
+void
+NewOrderOperation::PayCoins (const std::string& recipient,
+                             const Amount cost) const
+{
+  if (cost == 0)
+    return;
+
+  if (recipient == account.GetName ())
+    account.AddBalance (cost);
+  else
+    {
+      auto a = accounts.GetByName (recipient);
+      if (a == nullptr)
+        a = accounts.CreateNew (recipient);
+      a->AddBalance (cost);
+    }
+}
+
+void
+NewOrderOperation::PayToSellerAndFee (const std::string& recipient,
+                                      const Amount cost) const
+{
+  CHECK_GE (cost, 0);
+
+  auto b = buildings.GetById (building);
+  CHECK (b != nullptr);
+
+  const int baseBps = ctx.RoConfig ()->params ().dex_fee_bps ();
+  const int ownerBps = b->GetProto ().dex_fee_bps ();
+  const int totalBps = baseBps + ownerBps;
+
+  if (b->GetFaction () == Faction::ANCIENT)
+    CHECK_EQ (ownerBps, 0);
+
+  /* The total is rounded up to the next Cubit.  This ensures that sellers
+     cannot try to dodge fees completely by splitting up orders, but it also
+     ensures that the most fee paid is one Cubit per fill.
+
+     The fee for the building owner is rounded down, so that there is no
+     extra incentive to split up orders into small parts and gain from
+     rounding up.  */
+
+  const Amount total = (cost * totalBps + 9'999) / 10'000;
+  const Amount owner = (cost * ownerBps) / 10'000;
+  const Amount payout = cost - total;
+  CHECK_GE (payout, 0);
+  CHECK_LE (owner + payout, cost);
+
+  PayCoins (buildings.GetById (building)->GetOwner (), owner);
+  PayCoins (recipient, payout);
+}
+
+Json::Value
+NewOrderOperation::ToPendingJson () const
+{
+  Json::Value res = PendingItemOperation ();
+  res["op"] = op;
+  res["price"] = IntToJson (price);
+  return res;
+}
+
+/* ************************************************************************** */
+
+/**
+ * An operation to place a bid (buy order).
+ */
+class BidOperation : public NewOrderOperation
+{
+
+public:
+
+  explicit BidOperation (Account& a, const ContextRefs& r,
+                         const Database::IdT b, const std::string& i,
+                         const Quantity n, const Amount p)
+    : NewOrderOperation(a, r, "bid", b, i, n, p)
+  {}
+
+  bool IsValid () const override;
+  void Execute () override;
+
+};
+
+bool
+BidOperation::IsValid () const
+{
+  if (!IsItemOperationValid ())
+    return false;
+
+  if (QuantityProduct (quantity, price) > account.GetBalance ())
+    {
+      LOG (WARNING)
+          << "User " << account.GetName ()
+          << " has only " << account.GetBalance () << " coins,"
+          << " can't place buy order:\n" << rawMove;
+      return false;
+    }
+
+  return true;
+}
+
+void
+BidOperation::Execute ()
+{
+  auto m = orders.QueryToMatchBid (building, item, price);
+  Quantity remaining = quantity;
+  while (m.Step () && remaining > 0)
+    {
+      auto o = orders.GetFromResult (m);
+      const Quantity cur = std::min (remaining, o->GetQuantity ());
+
+      /* The items sold have already been deducted from the seller's
+         account when the order was created.  So we just have to credit
+         them to the buyer, and transfer the Cubit payment.  */
+
+      GetInv ()->GetInventory ().AddFungibleCount (item, cur);
+
+      const Amount cost = QuantityProduct (cur, o->GetPrice ()).Extract ();
+      PayToSellerAndFee (o->GetAccount (), cost);
+      account.AddBalance (-cost);
+
+      o->ReduceQuantity (cur);
+      remaining -= cur;
+    }
+
+  CHECK_GE (remaining, 0);
+  if (remaining == 0)
+    return;
+
+  auto o = orders.CreateNew (building, account.GetName (),
+                             DexOrder::Type::BID, item, remaining, price);
+  VLOG (1)
+      << "Placing remaining " << remaining
+      << " units of order onto the orderbook: "
+      << "ID " << o->GetId () << "\n"
+      << rawMove;
+  account.AddBalance (-QuantityProduct (remaining, price).Extract ());
+}
+
+/**
+ * An operation to place an ask (sell order).
+ */
+class AskOperation : public NewOrderOperation
+{
+
+public:
+
+  explicit AskOperation (Account& a, const ContextRefs& r,
+                         const Database::IdT b, const std::string& i,
+                         const Quantity n, const Amount p)
+    : NewOrderOperation(a, r, "ask", b, i, n, p)
+  {}
+
+  bool IsValid () const override;
+  void Execute () override;
+
+};
+
+bool
+AskOperation::IsValid () const
+{
+  if (!IsItemOperationValid ())
+    return false;
+
+  const Quantity got = GetInv ()->GetInventory ().GetFungibleCount (item);
+  if (got < quantity)
+    {
+      LOG (WARNING)
+          << "User " << account.GetName () << " has only " << got
+          << " of " << item << " in building " << building
+          << ", cannot sell:\n" << rawMove;
+      return false;
+    }
+
+  return true;
+}
+
+void
+AskOperation::Execute ()
+{
+  auto m = orders.QueryToMatchAsk (building, item, price);
+  Quantity remaining = quantity;
+  while (m.Step () && remaining > 0)
+    {
+      auto o = orders.GetFromResult (m);
+      const Quantity cur = std::min (remaining, o->GetQuantity ());
+
+      /* The Cubits paid to the seller (from the existing bid order)
+         have already been deducted from the buyer's account when the
+         bid was placed.  Thus we just have to pay the seller (executing
+         this order) and transfer the items.  */
+
+      buildingInv.Get (building, o->GetAccount ())
+          ->GetInventory ().AddFungibleCount (item, cur);
+      GetInv ()->GetInventory ().AddFungibleCount (item, -cur);
+
+      const Amount cost = QuantityProduct (cur, o->GetPrice ()).Extract ();
+      PayToSellerAndFee (account.GetName (), cost);
+
+      o->ReduceQuantity (cur);
+      remaining -= cur;
+    }
+
+  CHECK_GE (remaining, 0);
+  if (remaining == 0)
+    return;
+
+  auto o = orders.CreateNew (building, account.GetName (),
+                             DexOrder::Type::ASK, item, remaining, price);
+  VLOG (1)
+      << "Placing remaining " << remaining
+      << " units of order onto the orderbook: "
+      << "ID " << o->GetId () << "\n"
+      << rawMove;
+  GetInv ()->GetInventory ().AddFungibleCount (item, -remaining);
 }
 
 /* ************************************************************************** */
@@ -214,7 +486,9 @@ TransferOperation::Execute ()
 
 DexOperation::DexOperation (Account& a, const ContextRefs& r)
   : ctx(r.ctx),
-    accounts(r.accounts), buildings(r.buildings), buildingInv(r.buildingInv),
+    accounts(r.accounts),
+    buildings(r.buildings), buildingInv(r.buildingInv),
+    orders(r.orders),
     account(a)
 {}
 
@@ -222,7 +496,8 @@ std::unique_ptr<DexOperation>
 DexOperation::Parse (Account& acc, const Json::Value& data,
                      const Context& ctx,
                      AccountsTable& accounts,
-                     BuildingsTable& buildings, BuildingInventoriesTable& inv)
+                     BuildingsTable& buildings, BuildingInventoriesTable& inv,
+                     DexOrderTable& dex)
 {
   if (!data.isObject ())
     return nullptr;
@@ -243,15 +518,39 @@ DexOperation::Parse (Account& acc, const Json::Value& data,
   if (!QuantityFromJson (data["n"], quantity))
     return nullptr;
 
-  const auto& recvVal = data["t"];
-  if (!recvVal.isString ())
-    return nullptr;
-  const std::string recipient = recvVal.asString ();
+  const ContextRefs refs(ctx, accounts, buildings, inv, dex);
+  std::unique_ptr<DexOperation> op;
 
-  const ContextRefs refs(ctx, accounts, buildings, inv);
-  auto op = std::make_unique<TransferOperation> (acc, refs, building, item,
-                                                 quantity, recipient);
-  op->rawMove = data;
+  /* Since we checked above that there are exactly four members
+     in the JSON object, at most one of the following if statements
+     can ever be true.  If none is true, then we end up with op being
+     still null at the end of the function.  */
+
+  const auto& recvVal = data["t"];
+  if (recvVal.isString ())
+    {
+      CHECK (op == nullptr);
+      op = std::make_unique<TransferOperation> (acc, refs, building, item,
+                                                quantity, recvVal.asString ());
+    }
+
+  Amount price;
+  if (CoinAmountFromJson (data["bp"], price))
+    {
+      CHECK (op == nullptr);
+      op = std::make_unique<BidOperation> (acc, refs, building, item,
+                                           quantity, price);
+    }
+  if (CoinAmountFromJson (data["ap"], price))
+    {
+      CHECK (op == nullptr);
+      op = std::make_unique<AskOperation> (acc, refs, building, item,
+                                           quantity, price);
+    }
+
+  if (op != nullptr)
+    op->rawMove = data;
+
   return op;
 }
 

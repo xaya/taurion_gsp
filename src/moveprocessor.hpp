@@ -29,6 +29,7 @@
 #include "database/building.hpp"
 #include "database/character.hpp"
 #include "database/database.hpp"
+#include "database/dex.hpp"
 #include "database/inventory.hpp"
 #include "database/itemcounts.hpp"
 #include "database/moneysupply.hpp"
@@ -124,6 +125,9 @@ protected:
 
   /** Access handle for building inventories.  */
   BuildingInventoriesTable buildingInv;
+
+  /** Access handle for DEX orders.  */
+  DexOrderTable orders;
 
   /** Item counts table.  */
   ItemCounts itemCounts;

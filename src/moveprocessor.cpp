@@ -62,7 +62,8 @@ BaseMoveProcessor::BaseMoveProcessor (Database& d, DynObstacles& o,
                                       const Context& c)
   : ctx(c), db(d), dyn(o),
     accounts(db), buildings(db), characters(db),
-    groundLoot(db), buildingInv(db), itemCounts(db), moneySupply(db),
+    groundLoot(db), buildingInv(db),
+    orders(db), itemCounts(db), moneySupply(db),
     ongoings(db), regions(db, ctx.Height ())
 {}
 
@@ -355,7 +356,8 @@ BaseMoveProcessor::TryDexOperations (const std::string& name,
     {
       auto parsed = DexOperation::Parse (*a, op, ctx,
                                          accounts,
-                                         buildings, buildingInv);
+                                         buildings, buildingInv,
+                                         orders);
       if (parsed == nullptr)
         {
           LOG (WARNING) << "Malformed DEX operation:\n" << op;

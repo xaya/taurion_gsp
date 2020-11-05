@@ -3487,9 +3487,10 @@ protected:
   BuildingsTable buildings;
   BuildingInventoriesTable inv;
   CharacterTable characters;
+  DexOrderTable orders;
 
   DexMoveTests ()
-    : buildings(db), inv(db), characters(db)
+    : buildings(db), inv(db), characters(db), orders(db)
   {
     db.SetNextId (100);
     buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
@@ -3529,8 +3530,25 @@ TEST_F (DexMoveTests, Works)
 
 TEST_F (DexMoveTests, AfterCoinOperations)
 {
-  /* FIXME: Test that DEX operations are after coin operations once
-     we can do that (with bids/asks).  */
+  accounts.CreateNew ("domob")->AddBalance (100);
+
+  db.SetNextId (101);
+  Process (R"([
+    {
+      "name": "domob",
+      "move":
+        {
+          "x": [{"b": 100, "i": "foo", "n": 6, "bp": 10}],
+          "vc": {"t": {"andy": 60}}
+        }
+    }
+  ])");
+
+  EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 40);
+  EXPECT_EQ (accounts.GetByName ("andy")->GetBalance (), 60);
+
+  EXPECT_EQ (orders.GetById (101), nullptr);
+  EXPECT_EQ (db.GetNextId (), 101);
 }
 
 TEST_F (DexMoveTests, BeforeCharacterUpdates)
