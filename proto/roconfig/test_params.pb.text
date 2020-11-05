@@ -9,6 +9,7 @@ params:
     bp_copy_blocks: 10
     construction_cost: 100
     construction_blocks: 10
+    dex_fee_bps: 1000  # 10% base fee for simpler numbers
 
     # We have tests that use up all materials (and then reprospect a region),
     # so that we need lower limits than on mainnet.

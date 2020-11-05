@@ -412,6 +412,7 @@ template <>
 
   res["rotationsteps"] = IntToJson (pb.shape_trafo ().rotation_steps ());
   res["servicefee"] = IntToJson (pb.service_fee_percent ());
+  res["dexfee"] = pb.dex_fee_bps () / 100.0;
 
   Json::Value tiles(Json::arrayValue);
   for (const auto& c : GetBuildingShape (b, ctx))

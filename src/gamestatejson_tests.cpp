@@ -870,11 +870,10 @@ TEST_F (BuildingJsonTests, Orderbook)
   })");
 }
 
-TEST_F (BuildingJsonTests, ServiceFees)
+TEST_F (BuildingJsonTests, ConfiguredFees)
 {
   auto b = tbl.CreateNew ("checkmark", "daniel", Faction::RED);
   ASSERT_EQ (b->GetId (), 1);
-  b->MutableProto ().set_service_fee_percent (42);
   b.reset ();
 
   ExpectStateJson (R"({
@@ -882,7 +881,24 @@ TEST_F (BuildingJsonTests, ServiceFees)
       [
         {
           "id": 1,
-          "servicefee": 42
+          "servicefee": 0,
+          "dexfee": 0.0
+        }
+      ]
+  })");
+
+  b = tbl.GetById (1);
+  b->MutableProto ().set_service_fee_percent (42);
+  b->MutableProto ().set_dex_fee_bps (1'725);
+  b.reset ();
+
+  ExpectStateJson (R"({
+    "buildings":
+      [
+        {
+          "id": 1,
+          "servicefee": 42,
+          "dexfee": 17.25
         }
       ]
   })");

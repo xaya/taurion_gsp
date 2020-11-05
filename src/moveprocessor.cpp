@@ -33,6 +33,8 @@
 #include "proto/character.pb.h"
 #include "proto/roconfig.hpp"
 
+#include <xayautil/jsonutils.hpp>
+
 #include <sstream>
 
 namespace pxd
@@ -44,6 +46,12 @@ namespace pxd
  * "completely scam" buildings.
  */
 static constexpr unsigned MAX_SERVICE_FEE_PERCENT = 1'000;
+
+/**
+ * The maximum allowed DEX fee an owner can configure for a building in
+ * basis points.  Any move setting a higher fee is invalid.
+ */
+static constexpr unsigned MAX_DEX_FEE_BPS = 3'000;
 
 /** Airdrop of vCHI for each new character during testing.  */
 static constexpr Amount VCHI_AIRDROP = 1'000;
@@ -1760,7 +1768,7 @@ namespace
 void
 MaybeUpdateServiceFee (Building& b, const Json::Value& upd)
 {
-  if (!upd.isUInt64 ())
+  if (!xaya::IsIntegerValue (upd) || !upd.isUInt64 ())
     return;
 
   const uint64_t val = upd.asUInt64 ();
@@ -1778,12 +1786,37 @@ MaybeUpdateServiceFee (Building& b, const Json::Value& upd)
   b.MutableProto ().set_service_fee_percent (val);
 }
 
+/**
+ * Tries to perform a DEX-fee update in a building.
+ */
+void
+MaybeUpdateDexFee (Building& b, const Json::Value& upd)
+{
+  if (!xaya::IsIntegerValue (upd) || !upd.isUInt64 ())
+    return;
+
+  const uint64_t val = upd.asUInt64 ();
+  if (val > MAX_DEX_FEE_BPS)
+    {
+      LOG (WARNING)
+          << "DEX fee of " << val << " basis points is too much for building "
+          << b.GetId () << " of " << b.GetOwner ();
+      return;
+    }
+
+  LOG (INFO)
+      << "Setting DEX fee for building " << b.GetId ()
+      << " to " << val << " basis points";
+  b.MutableProto ().set_dex_fee_bps (val);
+}
+
 } // anonymous namespace
 
 void
 MoveProcessor::PerformBuildingUpdate (Building& b, const Json::Value& upd)
 {
   MaybeUpdateServiceFee (b, upd["sf"]);
+  MaybeUpdateDexFee (b, upd["xf"]);
 }
 
 void

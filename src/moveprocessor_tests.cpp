@@ -3292,6 +3292,10 @@ TEST_F (BuildingUpdateTests, SetServiceFee)
     },
     {
       "name": "andy",
+      "move": {"b": {"id": 101, "sf": 42.0}}
+    },
+    {
+      "name": "andy",
       "move": {"b": {"id": 101, "sf": "42"}}
     },
     {
@@ -3303,6 +3307,47 @@ TEST_F (BuildingUpdateTests, SetServiceFee)
                 ->GetProto ().service_fee_percent (), 1'000);
   EXPECT_EQ (buildings.GetById (DOMOB_OWNED)
                 ->GetProto ().service_fee_percent (), 0);
+}
+
+TEST_F (BuildingUpdateTests, SetDexFee)
+{
+  Process (R"([
+    {
+      "name": "andy",
+      "move": {"b": {"id": 101, "xf": 3000}}
+    },
+    {
+      "name": "domob",
+      "move": {"b": {"id": 102, "xf": 100}}
+    }
+  ])");
+  EXPECT_EQ (buildings.GetById (ANDY_OWNED)->GetProto ().dex_fee_bps (), 3'000);
+  EXPECT_EQ (buildings.GetById (DOMOB_OWNED)->GetProto ().dex_fee_bps (), 100);
+
+  Process (R"([
+    {
+      "name": "andy",
+      "move": {"b": {"id": 101, "xf": 3001}}
+    },
+    {
+      "name": "andy",
+      "move": {"b": {"id": 101, "xf": -20}}
+    },
+    {
+      "name": "andy",
+      "move": {"b": {"id": 101, "xf": 42.0}}
+    },
+    {
+      "name": "andy",
+      "move": {"b": {"id": 101, "xf": "42"}}
+    },
+    {
+      "name": "domob",
+      "move": {"b": {"id": 102, "xf": 0}}
+    }
+  ])");
+  EXPECT_EQ (buildings.GetById (ANDY_OWNED)->GetProto ().dex_fee_bps (), 3'000);
+  EXPECT_EQ (buildings.GetById (DOMOB_OWNED)->GetProto ().dex_fee_bps (), 0);
 }
 
 /* ************************************************************************** */
