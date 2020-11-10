@@ -482,6 +482,99 @@ AskOperation::Execute ()
 
 /* ************************************************************************** */
 
+/**
+ * An operation that cancels an existing DEX order by ID.
+ */
+class CancelOrderOperation : public DexOperation
+{
+
+private:
+
+  /** The ID of the order to cancel.  */
+  const Database::IdT id;
+
+public:
+
+  explicit CancelOrderOperation (Account& a, const ContextRefs& r,
+                                 const Database::IdT o)
+    : DexOperation(a, r), id(o)
+  {}
+
+  bool IsValid () const override;
+  Json::Value ToPendingJson () const override;
+  void Execute () override;
+
+};
+
+bool
+CancelOrderOperation::IsValid () const
+{
+  auto o = orders.GetById (id);
+  if (o == nullptr)
+    {
+      LOG (WARNING) << "Invalid order to cancel: " << id;
+      return false;
+    }
+
+  if (o->GetAccount () != account.GetName ())
+    {
+      LOG (WARNING)
+          << "Order " << id << " is owned by " << o->GetAccount ()
+          << " and can't be cancelled by " << account.GetName ()
+          << ":\n" << rawMove;
+      return false;
+    }
+
+  return true;
+}
+
+Json::Value
+CancelOrderOperation::ToPendingJson () const
+{
+  Json::Value res(Json::objectValue);
+  res["op"] = "cancel";
+  res["order"] = IntToJson (id);
+  return res;
+}
+
+void
+CancelOrderOperation::Execute ()
+{
+  auto o = orders.GetById (id);
+  CHECK (o != nullptr) << "Order does not exist: " << id;
+
+  LOG (INFO)
+      << "Cancelling DEX order " << id
+      << " of " << o->GetAccount () << " in building " << o->GetBuilding ();
+
+  switch (o->GetType ())
+    {
+    case DexOrder::Type::BID:
+      {
+        const QuantityProduct prod(o->GetQuantity (), o->GetPrice ());
+        const Amount cost = prod.Extract ();
+        VLOG (1) << "Refunding " << cost << " coins to " << o->GetAccount ();
+        account.AddBalance (cost);
+        break;
+      }
+
+    case DexOrder::Type::ASK:
+      VLOG (1)
+          << "Refunding " << o->GetQuantity () << " of " << o->GetItem ()
+          << " to " << o->GetAccount () << " in " << o->GetBuilding ();
+      buildingInv.Get (o->GetBuilding (), o->GetAccount ())
+          ->GetInventory ().AddFungibleCount (o->GetItem (), o->GetQuantity ());
+      break;
+
+    default:
+      LOG (FATAL) << "Invalid order type: " << static_cast<int> (o->GetType ());
+    }
+
+  o->Delete ();
+}
+
+/* ************************************************************************** */
+
 } // anonymous namespace
 
 DexOperation::DexOperation (Account& a, const ContextRefs& r)
@@ -502,50 +595,65 @@ DexOperation::Parse (Account& acc, const Json::Value& data,
   if (!data.isObject ())
     return nullptr;
 
-  if (data.size () != 4)
-    return nullptr;
-
-  Database::IdT building;
-  if (!IdFromJson (data["b"], building))
-    return nullptr;
-
-  const auto& itmVal = data["i"];
-  if (!itmVal.isString ())
-    return nullptr;
-  const std::string item = itmVal.asString ();
-
-  Quantity quantity;
-  if (!QuantityFromJson (data["n"], quantity))
-    return nullptr;
-
   const ContextRefs refs(ctx, accounts, buildings, inv, dex);
   std::unique_ptr<DexOperation> op;
 
-  /* Since we checked above that there are exactly four members
-     in the JSON object, at most one of the following if statements
-     can ever be true.  If none is true, then we end up with op being
-     still null at the end of the function.  */
-
-  const auto& recvVal = data["t"];
-  if (recvVal.isString ())
+  /* Order cancellation is a special case.  */
+  if (data.size () == 1)
     {
-      CHECK (op == nullptr);
-      op = std::make_unique<TransferOperation> (acc, refs, building, item,
-                                                quantity, recvVal.asString ());
+      Database::IdT id;
+      if (!IdFromJson (data["c"], id))
+        return nullptr;
+
+      op = std::make_unique<CancelOrderOperation> (acc, refs, id);
     }
 
-  Amount price;
-  if (CoinAmountFromJson (data["bp"], price))
+  /* All other cases have a similar structure.  */
+  else
     {
-      CHECK (op == nullptr);
-      op = std::make_unique<BidOperation> (acc, refs, building, item,
-                                           quantity, price);
-    }
-  if (CoinAmountFromJson (data["ap"], price))
-    {
-      CHECK (op == nullptr);
-      op = std::make_unique<AskOperation> (acc, refs, building, item,
-                                           quantity, price);
+      if (data.size () != 4)
+        return nullptr;
+
+      Database::IdT building;
+      if (!IdFromJson (data["b"], building))
+        return nullptr;
+
+      const auto& itmVal = data["i"];
+      if (!itmVal.isString ())
+        return nullptr;
+      const std::string item = itmVal.asString ();
+
+      Quantity quantity;
+      if (!QuantityFromJson (data["n"], quantity))
+        return nullptr;
+
+      /* Since we checked above that there are exactly four members
+         in the JSON object, at most one of the following if statements
+         can ever be true.  If none is true, then we end up with op being
+         still null at the end of the function.  */
+
+      const auto& recvVal = data["t"];
+      if (recvVal.isString ())
+        {
+          CHECK (op == nullptr);
+          const auto recv = recvVal.asString ();
+          op = std::make_unique<TransferOperation> (acc, refs, building, item,
+                                                    quantity, recv);
+        }
+
+      Amount price;
+      if (CoinAmountFromJson (data["bp"], price))
+        {
+          CHECK (op == nullptr);
+          op = std::make_unique<BidOperation> (acc, refs, building, item,
+                                               quantity, price);
+        }
+      if (CoinAmountFromJson (data["ap"], price))
+        {
+          CHECK (op == nullptr);
+          op = std::make_unique<AskOperation> (acc, refs, building, item,
+                                               quantity, price);
+        }
     }
 
   if (op != nullptr)

@@ -365,6 +365,7 @@ TEST_F (NewOrderTests, InvalidFormat)
       R"({"b": 1, "i": "foo", "n": 5, "ap": "42"})",
       R"({"b": 1, "i": "foo", "n": 5, "ap": -5})",
       R"({"b": 1, "i": "foo", "n": 5, "ap": 100000000001})",
+      R"({"b": 1, "i": "foo", "n": 5, "ap": 1, "c": 42})",
     };
   for (const auto& t : tests)
     EXPECT_FALSE (IsValidFormat (t)) << "Expected to be invalid:\n" << t;
@@ -723,6 +724,75 @@ TEST_F (DexFeeTests, BuildingOwnerSells)
   PlaceOrder ("building", DexOrder::Type::BID, 1'000, 1);
   EXPECT_EQ (ItemBalance (1, "building", "foo"), 1'000);
   EXPECT_EQ (accounts.GetByName ("building")->GetBalance (), 1'000 - 100);
+}
+
+/* ************************************************************************** */
+
+using CancelOrderTests = DexOperationTests;
+
+TEST_F (CancelOrderTests, InvalidFormat)
+{
+  const std::string tests[] =
+    {
+      "42",
+      "[]",
+      "{}",
+      R"({"c": "42"})",
+      R"({"c": 0})",
+      R"({"c": -5})",
+      R"({"c": 1, "x": 2})",
+    };
+  for (const auto& t : tests)
+    EXPECT_FALSE (IsValidFormat (t)) << "Expected to be invalid:\n" << t;
+}
+
+TEST_F (CancelOrderTests, NonExistingOrder)
+{
+  EXPECT_FALSE (Process ("domob", R"({"c": 42})"));
+}
+
+TEST_F (CancelOrderTests, OnlyOwnerCanCancel)
+{
+  db.SetNextId (101);
+  orders.CreateNew (1, "domob", DexOrder::Type::BID, "foo", 1, 1);
+  EXPECT_FALSE (Process ("andy", R"({"c": 101})"));
+  EXPECT_TRUE (Process ("domob", R"({"c": 101})"));
+}
+
+TEST_F (CancelOrderTests, PendingJson)
+{
+  db.SetNextId (101);
+  orders.CreateNew (1, "domob", DexOrder::Type::BID, "foo", 1, 1);
+  EXPECT_TRUE (PartialJsonEqual (GetPending (R"({"c": 101})"), ParseJson (R"({
+    "op": "cancel",
+    "order": 101
+  })")));
+}
+
+TEST_F (CancelOrderTests, CancelBid)
+{
+  db.SetNextId (101);
+  orders.CreateNew (1, "domob", DexOrder::Type::BID, "foo", 2, 3);
+  ASSERT_TRUE (Process ("domob", R"({"c": 101})"));
+
+  EXPECT_EQ (orders.GetById (101), nullptr);
+  EXPECT_EQ (db.GetNextId (), 102);
+
+  EXPECT_EQ (ItemBalance (1, "domob", "foo"), 0);
+  EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 6);
+}
+
+TEST_F (CancelOrderTests, CancelAsk)
+{
+  db.SetNextId (101);
+  orders.CreateNew (1, "domob", DexOrder::Type::ASK, "foo", 2, 3);
+  ASSERT_TRUE (Process ("domob", R"({"c": 101})"));
+
+  EXPECT_EQ (orders.GetById (101), nullptr);
+  EXPECT_EQ (db.GetNextId (), 102);
+
+  EXPECT_EQ (ItemBalance (1, "domob", "foo"), 2);
+  EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 0);
 }
 
 /* ************************************************************************** */
