@@ -49,6 +49,12 @@ SQLiteGameDatabase::GetNextId ()
   return game.Ids ("pxd").GetNext ();
 }
 
+Database::IdT
+SQLiteGameDatabase::GetLogId ()
+{
+  return game.Ids ("log").GetNext ();
+}
+
 const BaseMap&
 PXLogic::GetBaseMap ()
 {

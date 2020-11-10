@@ -38,6 +38,12 @@ TestDatabase::GetNextId ()
   return nextId++;
 }
 
+Database::IdT
+TestDatabase::GetLogId ()
+{
+  return nextLogId++;
+}
+
 DBTestWithSchema::DBTestWithSchema ()
 {
   LOG (INFO) << "Setting up game-state schema in test database...";

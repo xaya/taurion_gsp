@@ -65,6 +65,7 @@ public:
   void operator= (const SQLiteGameDatabase&) = delete;
 
   Database::IdT GetNextId () override;
+  Database::IdT GetLogId () override;
 
 };
 
