@@ -263,5 +263,71 @@ TEST_F (DexOrderTableTests, ReservedQuantities)
 
 /* ************************************************************************** */
 
+class DexHistoryTests : public DBTestWithSchema
+{
+
+protected:
+
+  DexHistoryTable history;
+
+  DexHistoryTests ()
+    : history(db)
+  {}
+
+};
+
+TEST_F (DexHistoryTests, RecordTrade)
+{
+  db.SetNextId (42);
+
+  auto h = history.RecordTrade (10, 1'024, 3, "foo", 2, 3, "domob", "andy");
+  EXPECT_EQ (h->GetHeight (), 10);
+  EXPECT_EQ (h->GetTimestamp (), 1'024);
+  EXPECT_EQ (h->GetBuilding (), 3);
+  EXPECT_EQ (h->GetItem (), "foo");
+  EXPECT_EQ (h->GetQuantity (), 2);
+  EXPECT_EQ (h->GetPrice (), 3);
+  EXPECT_EQ (h->GetSeller (), "domob");
+  EXPECT_EQ (h->GetBuyer (), "andy");
+  h.reset ();
+
+  auto res = history.QueryForItem ("foo", 3);
+  ASSERT_TRUE (res.Step ());
+  h = history.GetFromResult (res);
+  EXPECT_EQ (h->GetHeight (), 10);
+  EXPECT_EQ (h->GetTimestamp (), 1'024);
+  EXPECT_EQ (h->GetBuilding (), 3);
+  EXPECT_EQ (h->GetItem (), "foo");
+  EXPECT_EQ (h->GetQuantity (), 2);
+  EXPECT_EQ (h->GetPrice (), 3);
+  EXPECT_EQ (h->GetSeller (), "domob");
+  EXPECT_EQ (h->GetBuyer (), "andy");
+  h.reset ();
+  EXPECT_FALSE (res.Step ());
+
+  /* The history entries should not use up normal IDs.  */
+  EXPECT_EQ (db.GetNextId (), 42);
+}
+
+TEST_F (DexHistoryTests, QueryForItem)
+{
+  history.RecordTrade (10, 1'024, 3, "foo", 1, 1, "domob", "andy");
+  history.RecordTrade (10, 1'024, 4, "foo", 2, 2, "domob", "andy");
+  history.RecordTrade (10, 1'024, 3, "bar", 3, 3, "domob", "andy");
+  history.RecordTrade (9, 987, 3, "foo", 4, 4, "domob", "andy");
+
+  EXPECT_FALSE (history.QueryForItem ("zerospace", 3).Step ());
+  EXPECT_FALSE (history.QueryForItem ("foo", 42).Step ());
+
+  auto res = history.QueryForItem ("foo", 3);
+  ASSERT_TRUE (res.Step ());
+  EXPECT_EQ (history.GetFromResult (res)->GetQuantity (), 1);
+  ASSERT_TRUE (res.Step ());
+  EXPECT_EQ (history.GetFromResult (res)->GetQuantity (), 4);
+  EXPECT_FALSE (res.Step ());
+}
+
+/* ************************************************************************** */
+
 } // anonymous namespace
 } // namespace pxd

@@ -386,6 +386,45 @@ CREATE INDEX IF NOT EXISTS `dex_orders_by_building`
 CREATE INDEX IF NOT EXISTS `dex_orders_by_price`
   ON `dex_orders` (`building`, `item`, `type`, `price`, `id`);
 
+-- Log table of all executed trades.  This is only written and never
+-- read during the state transition, so it is purely here to be queried
+-- by RPC and won't affect consensus.
+CREATE TABLE IF NOT EXISTS `dex_trade_history` (
+
+  -- The log ID of the trade, which is just there to order them by
+  -- creation time.
+  `id` INTEGER PRIMARY KEY,
+
+  -- The block height of the trade.
+  `height` INTEGER NOT NULL,
+
+  -- The block timestamp of the trade.
+  `time` INTEGER NOT NULL,
+
+  -- The building in which the trade took place.
+  `building` INTEGER NOT NULL,
+
+  -- The item traded.
+  `item` TEXT NOT NULL,
+
+  -- The traded quantity.
+  `quantity` INTEGER NOT NULL,
+
+  -- The trade price per unit.
+  `price` INTEGER NOT NULL,
+
+  -- The seller account.
+  `seller` TEXT NOT NULL,
+
+  -- The buyer account.
+  `buyer` TEXT NOT NULL
+
+);
+
+-- Querying of the price history by item and optionally building.
+CREATE INDEX IF NOT EXISTS `dex_trade_history_by_item_building`
+  ON `dex_trade_history` (`item`, `building`, `id`);
+
 -- =============================================================================
 
 -- Data about counts of items found for a particular type already (for

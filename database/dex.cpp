@@ -60,7 +60,7 @@ DexOrder::~DexOrder ()
 
   if (isNew)
     {
-      VLOG (1) << "Inserting new DEX order " << id << "into the database";
+      VLOG (1) << "Inserting new DEX order " << id << " into the database";
 
       CHECK_NE (buildingId, Database::EMPTY_ID)
           << "No building ID set for new order " << id;
@@ -349,6 +349,124 @@ DexOrderTable::DeleteForBuilding (const Database::IdT building)
   )");
   stmt.Bind (1, building);
   stmt.Execute ();
+}
+
+/* ************************************************************************** */
+
+DexTrade::DexTrade (Database& d)
+  : db(d), id(db.GetLogId ()),
+    height(0), time(0),
+    buildingId(Database::EMPTY_ID),
+    quantity(0), price(0),
+    isNew(true)
+{
+  VLOG (1) << "Created new DEX trade entry with ID " << id;
+}
+
+DexTrade::DexTrade (Database& d, const Database::Result<DexTradeResult>& res)
+  : db(d), isNew(false)
+{
+  height = res.Get<DexTradeResult::height> ();
+  time = res.Get<DexTradeResult::time> ();
+  buildingId = res.Get<DexTradeResult::building> ();
+  item = res.Get<DexTradeResult::item> ();
+  quantity = res.Get<DexTradeResult::quantity> ();
+  price = res.Get<DexTradeResult::price> ();
+  buyer = res.Get<DexTradeResult::buyer> ();
+  seller = res.Get<DexTradeResult::seller> ();
+}
+
+DexTrade::~DexTrade ()
+{
+  if (!isNew)
+    return;
+
+  VLOG (1) << "Inserting new DEX trade " << id << " into the database";
+
+  CHECK_GT (height, 0) << "No height set for trade entry " << id;
+  CHECK_GT (time, 0) << "No timestamp set for trade entry " << id;
+
+  CHECK_NE (buildingId, Database::EMPTY_ID)
+      << "No building ID set for trade entry " << id;
+  CHECK_NE (item, "")
+      << "No item type set for trade entry " << id;
+
+  CHECK_GT (quantity, 0)
+      << "No quantity set for trade entry " << id;
+  CHECK_LE (quantity, MAX_QUANTITY)
+      << "Invalid quantity for trade entry " << id;
+  CHECK_GE (price, 0)
+      << "Invalid (negative) price for trade entry " << id;
+
+  auto stmt = db.Prepare (R"(
+    INSERT INTO `dex_trade_history`
+      (`id`, `height`, `time`,
+       `building`, `item`,
+       `quantity`, `price`,
+       `seller`, `buyer`)
+      VALUES (?1, ?2, ?3,
+              ?4, ?5,
+              ?6, ?7,
+              ?8, ?9)
+  )");
+
+  stmt.Bind (1, id);
+  stmt.Bind (2, height);
+  stmt.Bind (3, time);
+  stmt.Bind (4, buildingId);
+  stmt.Bind (5, item);
+  stmt.Bind (6, quantity);
+  stmt.Bind (7, price);
+  stmt.Bind (8, seller);
+  stmt.Bind (9, buyer);
+
+  stmt.Execute ();
+}
+
+/* ************************************************************************** */
+
+DexHistoryTable::Handle
+DexHistoryTable::RecordTrade (const unsigned height, const int64_t time,
+                              const Database::IdT building,
+                              const std::string& item,
+                              const Quantity quantity, const Amount price,
+                              const std::string& seller,
+                              const std::string& buyer)
+{
+  Handle o(new DexTrade (db));
+
+  o->height = height;
+  o->time = time;
+  o->buildingId = building;
+  o->item = item;
+  o->quantity = quantity;
+  o->price = price;
+  o->seller = seller;
+  o->buyer = buyer;
+
+  return o;
+}
+
+DexHistoryTable::Handle
+DexHistoryTable::GetFromResult (
+    const Database::Result<DexTradeResult>& res) const
+{
+  return Handle (new DexTrade (db, res));
+}
+
+Database::Result<DexTradeResult>
+DexHistoryTable::QueryForItem (const std::string& item,
+                               const Database::IdT building) const
+{
+  auto stmt = db.Prepare (R"(
+    SELECT *
+      FROM `dex_trade_history`
+      WHERE `item` = ?1 AND `building` = ?2
+      ORDER BY `id`
+  )");
+  stmt.Bind (1, item);
+  stmt.Bind (2, building);
+  return stmt.Query<DexTradeResult> ();
 }
 
 /* ************************************************************************** */

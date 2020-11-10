@@ -29,6 +29,8 @@
 namespace pxd
 {
 
+/* ************************************************************************** */
+
 /**
  * Database result type for rows from the dex-orders table.
  */
@@ -272,6 +274,194 @@ public:
   void DeleteForBuilding (Database::IdT building);
 
 };
+
+/* ************************************************************************** */
+
+/**
+ * Database result type for rows from the trade-history table.
+ */
+struct DexTradeResult : public Database::ResultType
+{
+  RESULT_COLUMN (int64_t, height, 1);
+  RESULT_COLUMN (int64_t, time, 2);
+  RESULT_COLUMN (int64_t, building, 3);
+  RESULT_COLUMN (std::string, item, 4);
+  RESULT_COLUMN (int64_t, quantity, 5);
+  RESULT_COLUMN (int64_t, price, 6);
+  RESULT_COLUMN (std::string, seller, 7);
+  RESULT_COLUMN (std::string, buyer, 8);
+};
+
+/**
+ * Wrapper class around a DEX trade history result.  Rows can be created
+ * through DexHistoryTable and are then immutable.  They can also be queried
+ * from there and read.
+ */
+class DexTrade
+{
+
+private:
+
+  /** Database reference this belongs to.  */
+  Database& db;
+
+  /** The ID for this, if inserting a new entry.  */
+  Database::IdT id;
+
+  /** The block height of the trade.  */
+  unsigned height;
+
+  /** The timestamp of the trade.  */
+  int64_t time;
+
+  /** The building this is in.  */
+  Database::IdT buildingId;
+
+  /** The type of item.  */
+  std::string item;
+
+  /** The quantity of the item.  */
+  Quantity quantity;
+
+  /** The price in Cubits of one unit.  */
+  Amount price;
+
+  /** The seller account.  */
+  std::string seller;
+
+  /** The buyer account.  */
+  std::string buyer;
+
+  /** Whether or not this is a new instance.  */
+  bool isNew;
+
+  /**
+   * Constructs a new instance with auto-generated ID meant to be inserted
+   * into the database.
+   */
+  explicit DexTrade (Database& d);
+
+  /**
+   * Constructs an instance based on the given DB result set.  The result
+   * set should be constructed by a DexHistoryTable.  This instance
+   * will be immutable.
+   */
+  explicit DexTrade (Database& d,
+                     const Database::Result<DexTradeResult>& res);
+
+  friend class DexHistoryTable;
+
+public:
+
+  /**
+   * In the destructor, the underlying database is updated if this is a new
+   * entry to be inserted.
+   */
+  ~DexTrade ();
+
+  DexTrade () = delete;
+  DexTrade (const DexTrade&) = delete;
+  void operator= (const DexTrade&) = delete;
+
+  unsigned
+  GetHeight () const
+  {
+    return height;
+  }
+
+  int64_t
+  GetTimestamp () const
+  {
+    return time;
+  }
+
+  Database::IdT
+  GetBuilding () const
+  {
+    return buildingId;
+  }
+
+  const std::string&
+  GetItem () const
+  {
+    return item;
+  }
+
+  Quantity
+  GetQuantity () const
+  {
+    return quantity;
+  }
+
+  Amount
+  GetPrice () const
+  {
+    return price;
+  }
+
+  const std::string&
+  GetSeller () const
+  {
+    return seller;
+  }
+
+  const std::string&
+  GetBuyer () const
+  {
+    return buyer;
+  }
+
+};
+
+/**
+ * Utility class that handles querying the table of DEX trade history with the
+ * things needed, and also handles the creation of DexTrade instances.
+ */
+class DexHistoryTable
+{
+
+private:
+
+  /** The Database reference for creating queries.  */
+  Database& db;
+
+public:
+
+  /** Movable handle to an instance.  */
+  using Handle = std::unique_ptr<DexTrade>;
+
+  explicit DexHistoryTable (Database& d)
+    : db(d)
+  {}
+
+  DexHistoryTable () = delete;
+  DexHistoryTable (const DexHistoryTable&) = delete;
+  void operator= (const DexHistoryTable&) = delete;
+
+  /**
+   * Inserts a new entry into the database and returns a handle to it.
+   */
+  Handle RecordTrade (unsigned height, int64_t time,
+                      Database::IdT building, const std::string& item,
+                      Quantity quantity, Amount price,
+                      const std::string& seller, const std::string& buyer);
+
+  /**
+   * Returns a handle for the instance based on a Database::Result.
+   */
+  Handle GetFromResult (const Database::Result<DexTradeResult>& res) const;
+
+  /**
+   * Queries the database for the trade history of a particular item
+   * in a particular building.  Results are returned by increasing ID
+   * (corresponding from old to new).
+   */
+  Database::Result<DexTradeResult> QueryForItem (const std::string& item,
+                                                 Database::IdT building) const;
+
+};
+
+/* ************************************************************************** */
 
 } // namespace pxd
 
