@@ -129,6 +129,9 @@ protected:
   /** Access handle for DEX orders.  */
   DexOrderTable orders;
 
+  /** Database table for DEX trading history.  */
+  DexHistoryTable dexHistory;
+
   /** Item counts table.  */
   ItemCounts itemCounts;
 

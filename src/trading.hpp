@@ -52,6 +52,7 @@ protected:
   BuildingsTable& buildings;
   BuildingInventoriesTable& buildingInv;
   DexOrderTable& orders;
+  DexHistoryTable& history;
 
   /** The account triggering the operation.  */
   Account& account;
@@ -96,7 +97,7 @@ public:
       const Context& ctx,
       AccountsTable& accounts,
       BuildingsTable& buildings, BuildingInventoriesTable& inv,
-      DexOrderTable& orders);
+      DexOrderTable& orders, DexHistoryTable& history);
 
 };
 

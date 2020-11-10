@@ -58,7 +58,8 @@ private:
   Parse (Account& a, const Json::Value& op)
   {
     return DexOperation::Parse (a, op, ctx,
-                                accounts, buildings, buildingInv, orders);
+                                accounts, buildings, buildingInv,
+                                orders, history);
   }
 
 protected:
@@ -67,11 +68,12 @@ protected:
   BuildingsTable buildings;
   BuildingInventoriesTable buildingInv;
   DexOrderTable orders;
+  DexHistoryTable history;
 
   ContextForTesting ctx;
 
   DexOperationTests ()
-    : accounts(db), buildings(db), buildingInv(db), orders(db)
+    : accounts(db), buildings(db), buildingInv(db), orders(db), history(db)
   {
     accounts.CreateNew ("building")->SetFaction (Faction::RED);
     auto b = buildings.CreateNew ("checkmark", "building", Faction::RED);
@@ -289,6 +291,9 @@ protected:
 
   NewOrderTests ()
   {
+    ctx.SetHeight (10);
+    ctx.SetTimestamp (1'042);
+
     accounts.CreateNew ("andy")->AddBalance (1'000);
     accounts.CreateNew ("domob")->AddBalance (1'000);
 
@@ -640,6 +645,58 @@ TEST_F (OrderMatchingTests, FillingOwnOrder)
   EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 1'000 + 3);
   EXPECT_EQ (ItemBalance (1, "andy", "foo"), 100);
   EXPECT_EQ (ItemBalance (1, "domob", "foo"), 101);
+}
+
+TEST_F (OrderMatchingTests, TradeHistory)
+{
+  ctx.SetHeight (10);
+  ctx.SetTimestamp (100);
+  PlaceOrder ("andy", DexOrder::Type::BID, 2, 15);
+
+  ctx.SetHeight (11);
+  ctx.SetTimestamp (99);
+  PlaceOrder ("andy", DexOrder::Type::ASK, 3, 2);
+
+  /* Two normal IDs should have been used, for the placed remaining amounts
+     as new orders (but not for the trade logs).  */
+  EXPECT_EQ (db.GetNextId (), 203);
+
+  auto res = history.QueryForItem ("foo", 1);
+
+  ASSERT_TRUE (res.Step ());
+  auto h = history.GetFromResult (res);
+  EXPECT_EQ (h->GetHeight (), 10);
+  EXPECT_EQ (h->GetTimestamp (), 100);
+  EXPECT_EQ (h->GetBuilding (), 1);
+  EXPECT_EQ (h->GetItem (), "foo");
+  EXPECT_EQ (h->GetQuantity (), 1);
+  EXPECT_EQ (h->GetPrice (), 10);
+  EXPECT_EQ (h->GetSeller (), "domob");
+  EXPECT_EQ (h->GetBuyer (), "andy");
+
+  ASSERT_TRUE (res.Step ());
+  h = history.GetFromResult (res);
+  EXPECT_EQ (h->GetHeight (), 11);
+  EXPECT_EQ (h->GetTimestamp (), 99);
+  EXPECT_EQ (h->GetBuilding (), 1);
+  EXPECT_EQ (h->GetItem (), "foo");
+  EXPECT_EQ (h->GetQuantity (), 1);
+  EXPECT_EQ (h->GetPrice (), 15);
+  EXPECT_EQ (h->GetSeller (), "andy");
+  EXPECT_EQ (h->GetBuyer (), "andy");
+
+  ASSERT_TRUE (res.Step ());
+  h = history.GetFromResult (res);
+  EXPECT_EQ (h->GetHeight (), 11);
+  EXPECT_EQ (h->GetTimestamp (), 99);
+  EXPECT_EQ (h->GetBuilding (), 1);
+  EXPECT_EQ (h->GetItem (), "foo");
+  EXPECT_EQ (h->GetQuantity (), 1);
+  EXPECT_EQ (h->GetPrice (), 3);
+  EXPECT_EQ (h->GetSeller (), "andy");
+  EXPECT_EQ (h->GetBuyer (), "domob");
+
+  EXPECT_FALSE (res.Step ());
 }
 
 /* ************************************************************************** */

@@ -53,6 +53,7 @@ protected:
   BuildingInventoriesTable buildingInv;
   CharacterTable characters;
   DexOrderTable orders;
+  DexHistoryTable history;
   ItemCounts itemCounts;
   OngoingsTable ongoings;
   RegionsTable regions;
@@ -61,7 +62,7 @@ protected:
     : accounts(db),
       buildings(db), buildingInv(db),
       characters(db),
-      orders(db),
+      orders(db), history(db),
       itemCounts(db),
       ongoings(db),
       regions(db, 1'042)
@@ -714,7 +715,7 @@ TEST_F (PendingStateTests, DexOperations)
         "i": "foo",
         "n": 1,
         "t": "daniel"
-      })"), ctx, accounts, buildings, buildingInv, orders));
+      })"), ctx, accounts, buildings, buildingInv, orders, history));
   state.AddDexOperation (*DexOperation::Parse (
       *andy,
       ParseJson (R"({
@@ -722,7 +723,7 @@ TEST_F (PendingStateTests, DexOperations)
         "i": "bar",
         "n": 2,
         "t": "daniel"
-      })"), ctx, accounts, buildings, buildingInv, orders));
+      })"), ctx, accounts, buildings, buildingInv, orders, history));
   state.AddDexOperation (*DexOperation::Parse (
       *domob,
       ParseJson (R"({
@@ -730,7 +731,7 @@ TEST_F (PendingStateTests, DexOperations)
         "i": "foo",
         "n": 3,
         "t": "daniel"
-      })"), ctx, accounts, buildings, buildingInv, orders));
+      })"), ctx, accounts, buildings, buildingInv, orders, history));
 
   ExpectStateJson (R"(
     {

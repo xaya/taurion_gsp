@@ -42,12 +42,13 @@ private:
   BuildingsTable& buildings;
   BuildingInventoriesTable& buildingInv;
   DexOrderTable& orders;
+  DexHistoryTable& history;
 
   explicit ContextRefs (const Context& c,
                         AccountsTable& a,
                         BuildingsTable& b, BuildingInventoriesTable& i,
-                        DexOrderTable& o)
-    : ctx(c), accounts(a), buildings(b), buildingInv(i), orders(o)
+                        DexOrderTable& o, DexHistoryTable& h)
+    : ctx(c), accounts(a), buildings(b), buildingInv(i), orders(o), history(h)
   {}
 
   friend class DexOperation;
@@ -384,6 +385,10 @@ BidOperation::Execute ()
       PayToSellerAndFee (o->GetAccount (), cost);
       account.AddBalance (-cost);
 
+      history.RecordTrade (ctx.Height (), ctx.Timestamp (),
+                           building, item, cur, o->GetPrice (),
+                           o->GetAccount (), account.GetName ());
+
       o->ReduceQuantity (cur);
       remaining -= cur;
     }
@@ -461,6 +466,10 @@ AskOperation::Execute ()
 
       const Amount cost = QuantityProduct (cur, o->GetPrice ()).Extract ();
       PayToSellerAndFee (account.GetName (), cost);
+
+      history.RecordTrade (ctx.Height (), ctx.Timestamp (),
+                           building, item, cur, o->GetPrice (),
+                           account.GetName (), o->GetAccount ());
 
       o->ReduceQuantity (cur);
       remaining -= cur;
@@ -581,7 +590,7 @@ DexOperation::DexOperation (Account& a, const ContextRefs& r)
   : ctx(r.ctx),
     accounts(r.accounts),
     buildings(r.buildings), buildingInv(r.buildingInv),
-    orders(r.orders),
+    orders(r.orders), history(r.history),
     account(a)
 {}
 
@@ -590,12 +599,12 @@ DexOperation::Parse (Account& acc, const Json::Value& data,
                      const Context& ctx,
                      AccountsTable& accounts,
                      BuildingsTable& buildings, BuildingInventoriesTable& inv,
-                     DexOrderTable& dex)
+                     DexOrderTable& dex, DexHistoryTable& hist)
 {
   if (!data.isObject ())
     return nullptr;
 
-  const ContextRefs refs(ctx, accounts, buildings, inv, dex);
+  const ContextRefs refs(ctx, accounts, buildings, inv, dex, hist);
   std::unique_ptr<DexOperation> op;
 
   /* Order cancellation is a special case.  */
