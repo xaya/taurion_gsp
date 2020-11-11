@@ -3709,7 +3709,11 @@ TEST_F (GodModeTests, ValidDropLoot)
             },
             {
               "building": {"id": 100, "a": "domob"},
-              "fungible": {"foo": 42}
+              "fungible": {"foo": 22}
+            },
+            {
+              "building": {"id": 100, "a": "domob"},
+              "fungible": {"foo": 20}
             }
           ]
       }
@@ -3720,6 +3724,7 @@ TEST_F (GodModeTests, ValidDropLoot)
   EXPECT_EQ (h->GetInventory ().GetFungibleCount ("bar"), 1'000'000);
   auto i = buildingInv.Get (100, "domob");
   EXPECT_EQ (i->GetInventory ().GetFungibleCount ("foo"), 42);
+  EXPECT_NE (accounts.GetByName ("domob"), nullptr);
 }
 
 TEST_F (GodModeTests, GiftCoins)

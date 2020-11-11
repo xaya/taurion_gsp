@@ -1987,7 +1987,8 @@ ParseBuildingInventory (const Json::Value& val,
  * loot items on the ground.
  */
 void
-MaybeGodDropLoot (GroundLootTable& loot, BuildingInventoriesTable& buildingInv,
+MaybeGodDropLoot (AccountsTable& accounts, GroundLootTable& loot,
+                  BuildingInventoriesTable& buildingInv,
                   const Context& ctx, const Json::Value& cmd)
 {
   if (!cmd.isArray ())
@@ -2038,6 +2039,11 @@ MaybeGodDropLoot (GroundLootTable& loot, BuildingInventoriesTable& buildingInv,
           binv = buildingInv.Get (buildingId, name);
           inv = &binv->GetInventory ();
           where << " building " << buildingId << " / account " << name;
+
+          /* Make sure the account entry of the recipient exists (but it
+             is fine to leave it uninitialised).  */
+          if (accounts.GetByName (name) == nullptr)
+            accounts.CreateNew (name);
         }
 
       if (inv == nullptr)
@@ -2107,7 +2113,7 @@ MoveProcessor::HandleGodMode (const Json::Value& cmd)
   MaybeGodTeleport (characters, cmd["teleport"]);
   MaybeGodAllSetHp (buildings, characters, cmd["sethp"]);
   MaybeGodBuild (accounts, buildings, ctx, cmd["build"]);
-  MaybeGodDropLoot (groundLoot, buildingInv, ctx, cmd["drop"]);
+  MaybeGodDropLoot (accounts, groundLoot, buildingInv, ctx, cmd["drop"]);
   MaybeGodGiftCoins (accounts, moneySupply, cmd["giftcoins"]);
 }
 
