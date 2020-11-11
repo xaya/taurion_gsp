@@ -214,11 +214,21 @@ class Building (object):
     constr = self.data["construction"]
     return collections.Counter (constr["inventory"]["fungible"])
 
-  def getFungibleInventory (self, account):
-    inv = self.data["inventories"]
+  def getFungibleInventory (self, account, type="available"):
+    if type == "available":
+      key = "inventories"
+    elif type == "reserved":
+      key = "reserved"
+    else:
+      raise AssertionError (f"Unexpected type argument: {type}")
+
+    inv = self.data[key]
     if account not in inv:
       return collections.Counter ()
     return collections.Counter (inv[account]["fungible"])
+
+  def getOrderbook (self):
+    return self.data["orderbook"]
 
   def sendMove (self, mv):
     """
