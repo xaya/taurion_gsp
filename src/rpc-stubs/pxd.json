@@ -71,6 +71,15 @@
     "params": {},
     "returns": {}
   },
+  {
+    "name": "gettradehistory",
+    "params":
+      {
+        "item": "foo",
+        "building": 42
+      },
+    "returns": {}
+  },
 
   {
     "name": "getbootstrapdata",

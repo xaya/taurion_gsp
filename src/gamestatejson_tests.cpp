@@ -55,12 +55,8 @@ protected:
 
   ContextForTesting ctx;
 
-private:
-
   /** GameStateJson instance used in testing.  */
   GameStateJson converter;
-
-protected:
 
   GameStateJsonTests ()
     : converter(db, ctx)
@@ -1482,6 +1478,63 @@ TEST_F (PrizesJsonTests, Works)
           }
       }
   })");
+}
+
+/* ************************************************************************** */
+
+class TradeHistoryJsonTests : public GameStateJsonTests
+{
+
+protected:
+
+  DexHistoryTable history;
+
+  TradeHistoryJsonTests ()
+    : history(db)
+  {
+    history.RecordTrade (10, 1'024, 42, "foo", 2, 3, "domob", "andy");
+    history.RecordTrade (9, 987, 42, "foo", 5, 3, "andy", "domob");
+    history.RecordTrade (10, 1'024, 10, "foo", 1, 1, "domob", "andy");
+    history.RecordTrade (10, 1'024, 42, "bar", 1, 1, "domob", "andy");
+  }
+
+};
+
+TEST_F (TradeHistoryJsonTests, NoEntry)
+{
+  EXPECT_TRUE (PartialJsonEqual (converter.TradeHistory ("foo", 100),
+                                 ParseJson ("[]")));
+  EXPECT_TRUE (PartialJsonEqual (converter.TradeHistory ("zerospace", 42),
+                                 ParseJson ("[]")));
+}
+
+TEST_F (TradeHistoryJsonTests, ForItemAndBuilding)
+{
+  EXPECT_TRUE (PartialJsonEqual (converter.TradeHistory ("foo", 42),
+                                 ParseJson (R"([
+    {
+      "height": 10,
+      "timestamp": 1024,
+      "buildingid": 42,
+      "item": "foo",
+      "quantity": 2,
+      "price": 3,
+      "cost": 6,
+      "seller": "domob",
+      "buyer": "andy"
+    },
+    {
+      "height": 9,
+      "timestamp": 987,
+      "buildingid": 42,
+      "item": "foo",
+      "quantity": 5,
+      "price": 3,
+      "cost": 15,
+      "seller": "andy",
+      "buyer": "domob"
+    }
+  ])")));
 }
 
 /* ************************************************************************** */

@@ -587,6 +587,29 @@ template <>
   return res;
 }
 
+template <>
+  Json::Value
+  GameStateJson::Convert<DexTrade> (const DexTrade& t) const
+{
+  Json::Value res(Json::objectValue);
+
+  res["height"] = IntToJson (t.GetHeight ());
+  res["timestamp"] = IntToJson (t.GetTimestamp ());
+
+  res["buildingid"] = IntToJson (t.GetBuilding ());
+  res["item"] = t.GetItem ();
+
+  res["quantity"] = t.GetQuantity ();
+  res["price"] = t.GetPrice ();
+  const QuantityProduct cost(t.GetQuantity (), t.GetPrice ());
+  res["cost"] = IntToJson (cost.Extract ());
+
+  res["seller"] = t.GetSeller ();
+  res["buyer"] = t.GetBuyer ();
+
+  return res;
+}
+
 template <typename T, typename R>
   Json::Value
   GameStateJson::ResultsAsArray (T& tbl, Database::Result<R> res) const
@@ -737,6 +760,14 @@ GameStateJson::Regions (const unsigned h)
 {
   RegionsTable tbl(db, RegionsTable::HEIGHT_READONLY);
   return ResultsAsArray (tbl, tbl.QueryModifiedSince (h));
+}
+
+Json::Value
+GameStateJson::TradeHistory (const std::string& item,
+                             const Database::IdT building)
+{
+  DexHistoryTable tbl(db);
+  return ResultsAsArray (tbl, tbl.QueryForItem (item, building));
 }
 
 Json::Value

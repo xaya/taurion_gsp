@@ -129,6 +129,11 @@ public:
   Json::Value PrizeStats ();
 
   /**
+   * Returns the trade history for a given item and building.
+   */
+  Json::Value TradeHistory (const std::string& item, Database::IdT building);
+
+  /**
    * Returns the full game state JSON for the given Database handle.  The full
    * game state as JSON should mainly be used for debugging and testing, not
    * in production.  For that, more targeted RPC results should be used.
