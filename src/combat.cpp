@@ -20,8 +20,10 @@
 
 #include "modifier.hpp"
 
+#include "database/account.hpp"
 #include "database/building.hpp"
 #include "database/character.hpp"
+#include "database/dex.hpp"
 #include "database/fighter.hpp"
 #include "database/ongoing.hpp"
 #include "database/region.hpp"
@@ -1052,9 +1054,11 @@ private:
   DamageLists& damageLists;
   GroundLootTable& loot;
 
+  AccountsTable accounts;
   BuildingsTable buildings;
   BuildingInventoriesTable inventories;
   CharacterTable characters;
+  DexOrderTable orders;
   OngoingsTable ongoings;
   RegionsTable regions;
 
@@ -1077,8 +1081,8 @@ public:
   explicit KillProcessor (Database& db, DamageLists& dl, GroundLootTable& l,
                           xaya::Random& r, const Context& c)
     : rnd(r), ctx(c), damageLists(dl), loot(l),
-      buildings(db), inventories(db), characters(db),
-      ongoings(db), regions(db, ctx.Height ())
+      accounts(db), buildings(db), inventories(db), characters(db),
+      orders(db), ongoings(db), regions(db, ctx.Height ())
   {}
 
   KillProcessor () = delete;
@@ -1159,6 +1163,9 @@ KillProcessor::ProcessBuilding (const Database::IdT id)
      the building (all account inventories in the building plus the
      inventories of all characters inside).
 
+     Cubits reserved in open bids will be refunded to their owners,
+     and items reserved in asks will be added to the building inventory.
+
      In addition to that, we destroy all characters inside the building.  */
 
   Inventory totalInv;
@@ -1210,6 +1217,18 @@ KillProcessor::ProcessBuilding (const Database::IdT id)
       }
   }
 
+  for (const auto& entry : orders.GetReservedCoins (id))
+    {
+      auto a = accounts.GetByName (entry.first);
+      CHECK (a != nullptr);
+      a->AddBalance (entry.second);
+      VLOG (1)
+          << "Refunded " << entry.second << " coins to " << entry.first
+          << " for open bids in destroyed building " << id;
+    }
+  for (const auto& entry : orders.GetReservedQuantities (id))
+    totalInv += entry.second;
+
   auto b = buildings.GetById (id);
   CHECK (b != nullptr) << "Killed non-existant building " << id;
   if (b->GetProto ().has_construction_inventory ())
@@ -1245,6 +1264,7 @@ KillProcessor::ProcessBuilding (const Database::IdT id)
 
   inventories.RemoveBuilding (id);
   ongoings.DeleteForBuilding (id);
+  orders.DeleteForBuilding (id);
   buildings.DeleteById (id);
 }
 

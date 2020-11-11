@@ -88,6 +88,14 @@ public:
   virtual IdT GetNextId () = 0;
 
   /**
+   * Returns the next auto-generated ID that should be used for things
+   * that are not consensus relevant (and thus can be changed more easily).
+   * For instance, as keys into "events / log" tables that are just written
+   * and never read during the state transition.
+   */
+  virtual IdT GetLogId () = 0;
+
+  /**
    * Prepares an SQL statement and returns the wrapper object.
    */
   Statement Prepare (const std::string& sql);

@@ -26,6 +26,7 @@
 #include "database/building.hpp"
 #include "database/character.hpp"
 #include "database/dbtest.hpp"
+#include "database/dex.hpp"
 #include "database/itemcounts.hpp"
 #include "database/region.hpp"
 
@@ -51,6 +52,8 @@ protected:
   BuildingsTable buildings;
   BuildingInventoriesTable buildingInv;
   CharacterTable characters;
+  DexOrderTable orders;
+  DexHistoryTable history;
   ItemCounts itemCounts;
   OngoingsTable ongoings;
   RegionsTable regions;
@@ -59,6 +62,7 @@ protected:
     : accounts(db),
       buildings(db), buildingInv(db),
       characters(db),
+      orders(db), history(db),
       itemCounts(db),
       ongoings(db),
       regions(db, 1'042)
@@ -686,6 +690,60 @@ TEST_F (PendingStateTests, ServiceOperations)
           {
             "name": "domob",
             "serviceops": [{"building": 100}, {"building": 102}]
+          }
+        ]
+    }
+  )");
+}
+
+TEST_F (PendingStateTests, DexOperations)
+{
+  auto domob = accounts.CreateNew ("domob");
+  auto andy = accounts.CreateNew ("andy");
+
+  db.SetNextId (100);
+  buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+  buildingInv.Get (100, "domob")->GetInventory ()
+      .AddFungibleCount ("foo", 100);
+  buildingInv.Get (100, "andy")->GetInventory ()
+      .AddFungibleCount ("bar", 100);
+
+  state.AddDexOperation (*DexOperation::Parse (
+      *domob,
+      ParseJson (R"({
+        "b": 100,
+        "i": "foo",
+        "n": 1,
+        "t": "daniel"
+      })"), ctx, accounts, buildings, buildingInv, orders, history));
+  state.AddDexOperation (*DexOperation::Parse (
+      *andy,
+      ParseJson (R"({
+        "b": 100,
+        "i": "bar",
+        "n": 2,
+        "t": "daniel"
+      })"), ctx, accounts, buildings, buildingInv, orders, history));
+  state.AddDexOperation (*DexOperation::Parse (
+      *domob,
+      ParseJson (R"({
+        "b": 100,
+        "i": "foo",
+        "n": 3,
+        "t": "daniel"
+      })"), ctx, accounts, buildings, buildingInv, orders, history));
+
+  ExpectStateJson (R"(
+    {
+      "accounts":
+        [
+          {
+            "name": "andy",
+            "dexops": [{"num": 2}]
+          },
+          {
+            "name": "domob",
+            "dexops": [{"num": 1}, {"num": 3}]
           }
         ]
     }
@@ -1517,6 +1575,54 @@ TEST_F (PendingStateUpdaterTests, ServiceOperations)
               [
                 {"building": 100, "type": "refining", "input": {"test ore": 3}},
                 {"building": 100, "type": "refining", "input": {"test ore": 6}}
+              ]
+          }
+        ]
+    }
+  )");
+}
+
+TEST_F (PendingStateUpdaterTests, DexOperations)
+{
+  accounts.CreateNew ("domob");
+
+  db.SetNextId (100);
+  buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+  buildingInv.Get (100, "domob")->GetInventory ()
+      .AddFungibleCount ("foo", 10);
+
+  Process ("domob", R"({
+    "x":
+      [
+        {"b": 100, "i": "foo", "n": 3, "t": "andy"},
+        {"x": "invalid"},
+        {"b": 100, "i": "foo", "n": 100, "t": "andy"},
+        {"b": 100, "i": "foo", "n": 4, "t": "daniel"}
+      ]
+  })");
+
+  ExpectStateJson (R"(
+    {
+      "accounts":
+        [
+          {
+            "name": "domob",
+            "dexops":
+              [
+                {
+                  "building": 100,
+                  "op": "transfer",
+                  "item": "foo",
+                  "num": 3,
+                  "to": "andy"
+                },
+                {
+                  "building": 100,
+                  "op": "transfer",
+                  "item": "foo",
+                  "num": 4,
+                  "to": "daniel"
+                }
               ]
           }
         ]

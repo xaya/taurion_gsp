@@ -26,6 +26,7 @@
 #include "database/building.hpp"
 #include "database/character.hpp"
 #include "database/dbtest.hpp"
+#include "database/dex.hpp"
 #include "database/inventory.hpp"
 #include "database/itemcounts.hpp"
 #include "database/moneysupply.hpp"
@@ -54,12 +55,8 @@ protected:
 
   ContextForTesting ctx;
 
-private:
-
   /** GameStateJson instance used in testing.  */
   GameStateJson converter;
-
-protected:
 
   GameStateJsonTests ()
     : converter(db, ctx)
@@ -568,11 +565,34 @@ TEST_F (AccountJsonTests, UninitialisedBalance)
   a->AddBalance (42);
   a.reset ();
 
+  DexOrderTable orders(db);
+  orders.CreateNew (5, "bar", DexOrder::Type::BID, "foo", 2, 3);
+
   ExpectStateJson (R"({
     "accounts":
       [
-        {"name": "bar", "faction": null, "balance": 42, "minted": 10},
-        {"name": "foo", "faction": "r", "balance": 0, "minted": 0}
+        {
+          "name": "bar",
+          "faction": null,
+          "balance":
+            {
+              "available": 42,
+              "reserved": 6,
+              "total": 48
+            },
+          "minted": 10
+        },
+        {
+          "name": "foo",
+          "faction": "r",
+          "balance":
+            {
+              "available": 0,
+              "reserved": 0,
+              "total": 0
+            },
+          "minted": 0
+        }
       ]
   })");
 }
@@ -699,6 +719,15 @@ TEST_F (BuildingJsonTests, Inventories)
   inv.Get (1, "domob")->GetInventory ().SetFungibleCount ("foo", 2);
   inv.Get (42, "domob")->GetInventory ().SetFungibleCount ("foo", 100);
   inv.Get (1, "andy")->GetInventory ().SetFungibleCount ("bar", 1);
+
+  DexOrderTable orders(db);
+  orders.CreateNew (1, "domob", DexOrder::Type::ASK, "foo", 2, 10);
+  orders.CreateNew (1, "domob", DexOrder::Type::ASK, "foo", 2, 15);
+  orders.CreateNew (1, "domob", DexOrder::Type::ASK, "bar", 1, 10);
+  orders.CreateNew (1, "andy", DexOrder::Type::ASK, "foo", 5, 20);
+  orders.CreateNew (42, "domob", DexOrder::Type::ASK, "foo", 1, 1);
+  orders.CreateNew (1, "domob", DexOrder::Type::BID, "foo", 1, 1);
+
   ExpectStateJson (R"({
     "buildings":
       [
@@ -708,6 +737,11 @@ TEST_F (BuildingJsonTests, Inventories)
             {
               "andy": {"fungible": {"bar": 1}},
               "domob": {"fungible": {"foo": 2}}
+            },
+          "reserved":
+            {
+              "andy": {"fungible": {"foo": 5}},
+              "domob": {"fungible": {"foo": 4, "bar": 1}}
             }
         }
       ]
@@ -715,6 +749,8 @@ TEST_F (BuildingJsonTests, Inventories)
 
   inv.Get (1, "domob")->GetInventory ().SetFungibleCount ("foo", 0);
   inv.Get (1, "andy")->GetInventory ().SetFungibleCount ("bar", 0);
+  orders.DeleteForBuilding (1);
+
   ExpectStateJson (R"({
     "buildings":
       [
@@ -724,17 +760,116 @@ TEST_F (BuildingJsonTests, Inventories)
             {
               "andy": null,
               "domob": null
+            },
+          "reserved":
+            {
+              "andy": null,
+              "domob": null
             }
         }
       ]
   })");
 }
 
-TEST_F (BuildingJsonTests, ServiceFees)
+TEST_F (BuildingJsonTests, Orderbook)
+{
+  ASSERT_EQ (tbl.CreateNew ("checkmark", "", Faction::ANCIENT)->GetId (), 1);
+
+  db.SetNextId (101);
+  DexOrderTable orders(db);
+  orders.CreateNew (1, "domob", DexOrder::Type::BID, "foo", 2, 2);
+  orders.CreateNew (1, "andy", DexOrder::Type::BID, "foo", 1, 2);
+  orders.CreateNew (1, "domob", DexOrder::Type::BID, "foo", 1, 3);
+  orders.CreateNew (1, "domob", DexOrder::Type::ASK, "foo", 1, 8);
+  orders.CreateNew (1, "domob", DexOrder::Type::BID, "foo", 3, 1);
+  orders.CreateNew (1, "domob", DexOrder::Type::ASK, "foo", 1, 10);
+  orders.CreateNew (1, "domob", DexOrder::Type::BID, "bar", 1, 1);
+  orders.CreateNew (42, "domob", DexOrder::Type::BID, "foo", 1, 5);
+  orders.CreateNew (1, "domob", DexOrder::Type::ASK, "foo", 1, 9);
+
+  ExpectStateJson (R"({
+    "buildings":
+      [
+        {
+          "id": 1,
+          "orderbook":
+            {
+              "bar":
+                {
+                  "item": "bar",
+                  "bids":
+                    [
+                      {
+                        "id": 107,
+                        "account": "domob",
+                        "quantity": 1,
+                        "price": 1
+                      }
+                    ],
+                  "asks": []
+                },
+              "foo":
+                {
+                  "item": "foo",
+                  "bids":
+                    [
+                      {
+                        "id": 103,
+                        "account": "domob",
+                        "quantity": 1,
+                        "price": 3
+                      },
+                      {
+                        "id": 102,
+                        "account": "andy",
+                        "quantity": 1,
+                        "price": 2
+                      },
+                      {
+                        "id": 101,
+                        "account": "domob",
+                        "quantity": 2,
+                        "price": 2
+                      },
+                      {
+                        "id": 105,
+                        "account": "domob",
+                        "quantity": 3,
+                        "price": 1
+                      }
+                    ],
+                  "asks":
+                    [
+                      {
+                        "id": 104,
+                        "account": "domob",
+                        "quantity": 1,
+                        "price": 8
+                      },
+                      {
+                        "id": 109,
+                        "account": "domob",
+                        "quantity": 1,
+                        "price": 9
+                      },
+                      {
+                        "id": 106,
+                        "account": "domob",
+                        "quantity": 1,
+                        "price": 10
+                      }
+                    ]
+                }
+            }
+        }
+      ]
+  })");
+}
+
+TEST_F (BuildingJsonTests, ConfiguredFees)
 {
   auto b = tbl.CreateNew ("checkmark", "daniel", Faction::RED);
   ASSERT_EQ (b->GetId (), 1);
-  b->MutableProto ().set_service_fee_percent (42);
   b.reset ();
 
   ExpectStateJson (R"({
@@ -742,7 +877,24 @@ TEST_F (BuildingJsonTests, ServiceFees)
       [
         {
           "id": 1,
-          "servicefee": 42
+          "servicefee": 0,
+          "dexfee": 0.0
+        }
+      ]
+  })");
+
+  b = tbl.GetById (1);
+  b->MutableProto ().set_service_fee_percent (42);
+  b->MutableProto ().set_dex_fee_bps (1'725);
+  b.reset ();
+
+  ExpectStateJson (R"({
+    "buildings":
+      [
+        {
+          "id": 1,
+          "servicefee": 42,
+          "dexfee": 17.25
         }
       ]
   })");
@@ -1326,6 +1478,63 @@ TEST_F (PrizesJsonTests, Works)
           }
       }
   })");
+}
+
+/* ************************************************************************** */
+
+class TradeHistoryJsonTests : public GameStateJsonTests
+{
+
+protected:
+
+  DexHistoryTable history;
+
+  TradeHistoryJsonTests ()
+    : history(db)
+  {
+    history.RecordTrade (10, 1'024, 42, "foo", 2, 3, "domob", "andy");
+    history.RecordTrade (9, 987, 42, "foo", 5, 3, "andy", "domob");
+    history.RecordTrade (10, 1'024, 10, "foo", 1, 1, "domob", "andy");
+    history.RecordTrade (10, 1'024, 42, "bar", 1, 1, "domob", "andy");
+  }
+
+};
+
+TEST_F (TradeHistoryJsonTests, NoEntry)
+{
+  EXPECT_TRUE (PartialJsonEqual (converter.TradeHistory ("foo", 100),
+                                 ParseJson ("[]")));
+  EXPECT_TRUE (PartialJsonEqual (converter.TradeHistory ("zerospace", 42),
+                                 ParseJson ("[]")));
+}
+
+TEST_F (TradeHistoryJsonTests, ForItemAndBuilding)
+{
+  EXPECT_TRUE (PartialJsonEqual (converter.TradeHistory ("foo", 42),
+                                 ParseJson (R"([
+    {
+      "height": 10,
+      "timestamp": 1024,
+      "buildingid": 42,
+      "item": "foo",
+      "quantity": 2,
+      "price": 3,
+      "cost": 6,
+      "seller": "domob",
+      "buyer": "andy"
+    },
+    {
+      "height": 9,
+      "timestamp": 987,
+      "buildingid": 42,
+      "item": "foo",
+      "quantity": 5,
+      "price": 3,
+      "cost": 15,
+      "seller": "andy",
+      "buyer": "domob"
+    }
+  ])")));
 }
 
 /* ************************************************************************** */

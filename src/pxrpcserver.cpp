@@ -601,6 +601,19 @@ PXRpcServer::getprizestats ()
 }
 
 Json::Value
+PXRpcServer::gettradehistory (const int building, const std::string& item)
+{
+  LOG (INFO)
+      << "RPC method called: gettradehistory "
+      << item << " " << building;
+  return logic.GetCustomStateData (game,
+    [building, &item] (GameStateJson& gsj)
+      {
+        return gsj.TradeHistory (item, building);
+      });
+}
+
+Json::Value
 PXRpcServer::getbootstrapdata ()
 {
   LOG (INFO) << "RPC method called: getbootstrapdata";

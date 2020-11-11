@@ -3292,6 +3292,10 @@ TEST_F (BuildingUpdateTests, SetServiceFee)
     },
     {
       "name": "andy",
+      "move": {"b": {"id": 101, "sf": 42.0}}
+    },
+    {
+      "name": "andy",
       "move": {"b": {"id": 101, "sf": "42"}}
     },
     {
@@ -3303,6 +3307,47 @@ TEST_F (BuildingUpdateTests, SetServiceFee)
                 ->GetProto ().service_fee_percent (), 1'000);
   EXPECT_EQ (buildings.GetById (DOMOB_OWNED)
                 ->GetProto ().service_fee_percent (), 0);
+}
+
+TEST_F (BuildingUpdateTests, SetDexFee)
+{
+  Process (R"([
+    {
+      "name": "andy",
+      "move": {"b": {"id": 101, "xf": 3000}}
+    },
+    {
+      "name": "domob",
+      "move": {"b": {"id": 102, "xf": 100}}
+    }
+  ])");
+  EXPECT_EQ (buildings.GetById (ANDY_OWNED)->GetProto ().dex_fee_bps (), 3'000);
+  EXPECT_EQ (buildings.GetById (DOMOB_OWNED)->GetProto ().dex_fee_bps (), 100);
+
+  Process (R"([
+    {
+      "name": "andy",
+      "move": {"b": {"id": 101, "xf": 3001}}
+    },
+    {
+      "name": "andy",
+      "move": {"b": {"id": 101, "xf": -20}}
+    },
+    {
+      "name": "andy",
+      "move": {"b": {"id": 101, "xf": 42.0}}
+    },
+    {
+      "name": "andy",
+      "move": {"b": {"id": 101, "xf": "42"}}
+    },
+    {
+      "name": "domob",
+      "move": {"b": {"id": 102, "xf": 0}}
+    }
+  ])");
+  EXPECT_EQ (buildings.GetById (ANDY_OWNED)->GetProto ().dex_fee_bps (), 3'000);
+  EXPECT_EQ (buildings.GetById (DOMOB_OWNED)->GetProto ().dex_fee_bps (), 0);
 }
 
 /* ************************************************************************** */
@@ -3430,6 +3475,108 @@ TEST_F (ServicesMoveTests, ServicesAfterCharacterUpdates)
   EXPECT_FALSE (c->IsInBuilding ());
   EXPECT_EQ (c->GetHP ().armour (), 5);
   EXPECT_FALSE (c->IsBusy ());
+}
+
+/* ************************************************************************** */
+
+class DexMoveTests : public MoveProcessorTests
+{
+
+protected:
+
+  BuildingsTable buildings;
+  BuildingInventoriesTable inv;
+  CharacterTable characters;
+  DexOrderTable orders;
+
+  DexMoveTests ()
+    : buildings(db), inv(db), characters(db), orders(db)
+  {
+    db.SetNextId (100);
+    buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+    inv.Get (100, "domob")->GetInventory ().AddFungibleCount ("foo", 100);
+  }
+
+  /**
+   * Returns the balance of the given account for "foo" inside
+   * our test building.
+   */
+  Quantity
+  GetFooBalance (const std::string& account)
+  {
+    return inv.Get (100, account)->GetInventory ().GetFungibleCount ("foo");
+  }
+
+};
+
+TEST_F (DexMoveTests, Works)
+{
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"x": [
+        {"x": "invalid"},
+        {"b": 100, "i": "foo", "n": 10, "t": "andy"},
+        {"b": 100, "i": "foo", "n": 100, "t": "daniel"},
+        {"b": 100, "i": "foo", "n": 20, "t": "daniel"}
+      ]}
+    }
+  ])");
+
+  EXPECT_EQ (GetFooBalance ("domob"), 70);
+  EXPECT_EQ (GetFooBalance ("andy"), 10);
+  EXPECT_EQ (GetFooBalance ("daniel"), 20);
+}
+
+TEST_F (DexMoveTests, AfterCoinOperations)
+{
+  accounts.CreateNew ("domob")->AddBalance (100);
+
+  db.SetNextId (101);
+  Process (R"([
+    {
+      "name": "domob",
+      "move":
+        {
+          "x": [{"b": 100, "i": "foo", "n": 6, "bp": 10}],
+          "vc": {"t": {"andy": 60}}
+        }
+    }
+  ])");
+
+  EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 40);
+  EXPECT_EQ (accounts.GetByName ("andy")->GetBalance (), 60);
+
+  EXPECT_EQ (orders.GetById (101), nullptr);
+  EXPECT_EQ (db.GetNextId (), 101);
+}
+
+TEST_F (DexMoveTests, BeforeCharacterUpdates)
+{
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
+
+  db.SetNextId (200);
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  CHECK_EQ (c->GetId (), 200);
+  c->SetBuildingId (100);
+  c->MutableProto ().set_cargo_space (1'000);
+  c.reset ();
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {
+        "c": {"id": 200, "pu": {"f": {"foo": 999}}},
+        "x": [{"b": 100, "i": "foo", "n": 10, "t": "andy"}]
+      }
+    }
+  ])");
+
+  EXPECT_EQ (GetFooBalance ("domob"), 0);
+  EXPECT_EQ (GetFooBalance ("andy"), 10);
+
+  c = characters.GetById (200);
+  EXPECT_EQ (c->GetInventory ().GetFungibleCount ("foo"), 90);
 }
 
 /* ************************************************************************** */

@@ -49,6 +49,7 @@ class GodModeTest (PXTest):
       "centre": {"x": 100, "y": 150},
       "rotationsteps": 2,
       "servicefee": 0,
+      "dexfee": 0.0,
       "age": {"founded": height + 1, "finished": height + 1},
       "tiles":
         [
@@ -67,6 +68,8 @@ class GodModeTest (PXTest):
             },
         },
       "inventories": {},
+      "reserved": {},
+      "orderbook": {},
     })
     self.assertEqual (buildings[1003].data, {
       "id": 1003,
@@ -76,6 +79,7 @@ class GodModeTest (PXTest):
       "centre": {"x": -100, "y": -150},
       "rotationsteps": 0,
       "servicefee": 0,
+      "dexfee": 0.0,
       "age": {"founded": height + 2, "finished": height + 2},
       "tiles":
         [
@@ -94,6 +98,8 @@ class GodModeTest (PXTest):
             },
         },
       "inventories": {},
+      "reserved": {},
+      "orderbook": {},
     })
 
     self.mainLogger.info ("Testing teleport...")

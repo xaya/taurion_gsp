@@ -158,6 +158,12 @@ class PendingTest (PXTest):
     }, burn=0.01)
     self.sendMove ("andy", {
       "s": [{"b": building, "t": "ref", "i": "test ore", "n": 9}],
+      "x":
+        [
+          # The first one is invalid (insufficient balance).
+          {"b": building, "i": "foo", "n": 1_000, "bp": 10},
+          {"b": building, "i": "foo", "n": 1, "bp": 0},
+        ],
     })
 
     sleepSome ()
@@ -208,6 +214,16 @@ class PendingTest (PXTest):
                   "input": {"test ore": 9},
                   "output": {"bar": 6, "zerospace": 3},
                 }
+              ],
+            "dexops":
+              [
+                {
+                  "op": "bid",
+                  "building": building,
+                  "item": "foo",
+                  "num": 1,
+                  "price": 0,
+                },
               ],
           },
           {

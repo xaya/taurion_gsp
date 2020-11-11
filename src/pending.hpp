@@ -23,6 +23,7 @@
 #include "dynobstacles.hpp"
 #include "moveprocessor.hpp"
 #include "services.hpp"
+#include "trading.hpp"
 
 #include "database/character.hpp"
 #include "database/database.hpp"
@@ -145,6 +146,9 @@ private:
 
     /** The combined coin transfer / burn for this account.  */
     std::unique_ptr<CoinTransferBurn> coinOps;
+
+    /** Requested DEX / trading opreations (already as JSON).  */
+    std::vector<Json::Value> dexOps;
 
     /** Requested service operations (already as JSON).  */
     std::vector<Json::Value> serviceOps;
@@ -276,6 +280,11 @@ public:
   void AddServiceOperation (const ServiceOperation& op);
 
   /**
+   * Updates the state for a given account, adding a new DEX operation.
+   */
+  void AddDexOperation (const DexOperation& op);
+
+  /**
    * Returns true if the given character has pending waypoints.
    */
   bool HasPendingWaypoints (const Character& c) const;
@@ -308,6 +317,7 @@ protected:
   void PerformCharacterCreation (Account& acc, Faction f) override;
   void PerformCharacterUpdate (Character& c, const Json::Value& upd) override;
   void PerformServiceOperation (ServiceOperation& op) override;
+  void PerformDexOperation (DexOperation& op) override;
 
 public:
 

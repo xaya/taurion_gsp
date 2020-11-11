@@ -22,12 +22,14 @@
 #include "context.hpp"
 #include "dynobstacles.hpp"
 #include "services.hpp"
+#include "trading.hpp"
 
 #include "database/account.hpp"
 #include "database/amount.hpp"
 #include "database/building.hpp"
 #include "database/character.hpp"
 #include "database/database.hpp"
+#include "database/dex.hpp"
 #include "database/inventory.hpp"
 #include "database/itemcounts.hpp"
 #include "database/moneysupply.hpp"
@@ -123,6 +125,12 @@ protected:
 
   /** Access handle for building inventories.  */
   BuildingInventoriesTable buildingInv;
+
+  /** Access handle for DEX orders.  */
+  DexOrderTable orders;
+
+  /** Database table for DEX trading history.  */
+  DexHistoryTable dexHistory;
 
   /** Item counts table.  */
   ItemCounts itemCounts;
@@ -275,6 +283,13 @@ protected:
   void TryServiceOperations (const std::string& name, const Json::Value& mv);
 
   /**
+   * Parses and handles a potential move with requested DEX operations.
+   * Each valid operation will be passed to PerfromDexOperation for
+   * either execution or recording into the pending state.
+   */
+  void TryDexOperations (const std::string& name, const Json::Value& mv);
+
+  /**
    * This function is called when TryCharacterCreation found a creation that
    * is valid and should be performed.
    */
@@ -304,6 +319,14 @@ protected:
    */
   virtual void
   PerformServiceOperation (ServiceOperation& op)
+  {}
+
+  /**
+   * This function is called when TryDexOperations has found a valid
+   * DEX operation.
+   */
+  virtual void
+  PerformDexOperation (DexOperation& op)
   {}
 
 public:
@@ -432,6 +455,7 @@ protected:
   void PerformCharacterUpdate (Character& c, const Json::Value& mv) override;
   void PerformBuildingUpdate (Building& b, const Json::Value& mv) override;
   void PerformServiceOperation (ServiceOperation& op) override;
+  void PerformDexOperation (DexOperation& op) override;
 
 public:
 

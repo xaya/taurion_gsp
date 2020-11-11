@@ -80,6 +80,13 @@ message Building
   optional uint32 service_fee_percent = 6;
 
   /**
+   * The fee charged by the building owner for trades on the building's DEX.
+   * This is in basis points (1/100 of a percent) and paid by the seller
+   * from the received Cubits.
+   */
+  optional int32 dex_fee_bps = 7;
+
+  /**
    * Data about the building age, i.e. the block heights when it was founded
    * and finished.
    */
@@ -95,6 +102,6 @@ message Building
   }
 
   /** Age data for this building.  */
-  optional AgeData age_data = 7;
+  optional AgeData age_data = 8;
 
 }

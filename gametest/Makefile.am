@@ -23,6 +23,7 @@ REGTESTS = \
   combat_friendly.py \
   combat_targets.py \
   damage_lists.py \
+  dex.py \
   fame.py \
   findpath.py \
   fork_gamestart.py \

@@ -207,6 +207,7 @@ public:
   Json::Value getregions (int fromHeight) override;
   Json::Value getmoneysupply () override;
   Json::Value getprizestats () override;
+  Json::Value gettradehistory (int building, const std::string& item) override;
 
   Json::Value getbootstrapdata () override;
 

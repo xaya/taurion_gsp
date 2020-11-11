@@ -50,6 +50,9 @@ private:
   /** The next ID to give out.  */
   IdT nextId = 1;
 
+  /** The next log ID to give out.  */
+  IdT nextLogId = 1;
+
 public:
 
   TestDatabase ();
@@ -58,6 +61,7 @@ public:
   void operator= (const TestDatabase&) = delete;
 
   IdT GetNextId () override;
+  IdT GetLogId () override;
 
   /**
    * Sets the next ID to be given out.  This is useful for tests to force

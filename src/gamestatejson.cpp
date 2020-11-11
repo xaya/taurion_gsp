@@ -35,6 +35,8 @@
 #include "hexagonal/pathfinder.hpp"
 #include "proto/character.pb.h"
 
+#include <algorithm>
+
 namespace pxd
 {
 
@@ -308,8 +310,11 @@ template <>
 
   Json::Value res(Json::objectValue);
   res["name"] = a.GetName ();
-  res["balance"] = IntToJson (a.GetBalance ());
   res["minted"] = IntToJson (pb.burnsale_balance ());
+
+  Json::Value bal(Json::objectValue);
+  bal["available"] = IntToJson (a.GetBalance ());
+  res["balance"] = bal;
 
   if (a.IsInitialised ())
     {
@@ -320,6 +325,73 @@ template <>
 
   return res;
 }
+
+namespace
+{
+
+/**
+ * Builds up the orderbook of the DEX inside a given building and returns
+ * it as JSON.
+ */
+Json::Value
+GetOrderbookInBuilding (DexOrderTable& orders, const Database::IdT building)
+{
+  Json::Value book(Json::objectValue);
+
+  auto res = orders.QueryForBuilding (building);
+  while (res.Step ())
+    {
+      const auto o = orders.GetFromResult (res);
+
+      if (!book.isMember (o->GetItem ()))
+        {
+          Json::Value freshItem(Json::objectValue);
+          freshItem["item"] = o->GetItem ();
+          freshItem["bids"] = Json::Value (Json::arrayValue);
+          freshItem["asks"] = Json::Value (Json::arrayValue);
+          book[o->GetItem ()] = freshItem;
+        }
+      auto& itm = book[o->GetItem ()];
+      CHECK (itm.isObject ());
+
+      Json::Value cur(Json::objectValue);
+      cur["id"] = IntToJson (o->GetId ());
+      cur["account"] = o->GetAccount ();
+      cur["quantity"] = IntToJson (o->GetQuantity ());
+      cur["price"] = IntToJson (o->GetPrice ());
+
+      std::string key;
+      switch (o->GetType ())
+        {
+        case DexOrder::Type::BID:
+          key = "bids";
+          break;
+        case DexOrder::Type::ASK:
+          key = "asks";
+          break;
+        default:
+          LOG (FATAL)
+              << "Invalid order type: " << static_cast<int> (o->GetType ());
+        }
+
+      auto& orders = itm[key];
+      CHECK (orders.isArray ());
+      orders.append (cur);
+    }
+
+  /* QueryForBuilding orders the results increasing by price.  This means that
+     we want to reverse the order of all bids (so the best is listed first).  */
+  for (auto it = book.begin (); it != book.end (); ++it)
+    {
+      auto& bids = (*it)["bids"];
+      CHECK (bids.isArray ());
+      std::reverse (bids.begin (), bids.end ());
+    }
+
+  return book;
+}
+
+} // anonymous namespace
 
 template <>
   Json::Value
@@ -340,6 +412,7 @@ template <>
 
   res["rotationsteps"] = IntToJson (pb.shape_trafo ().rotation_steps ());
   res["servicefee"] = IntToJson (pb.service_fee_percent ());
+  res["dexfee"] = pb.dex_fee_bps () / 100.0;
 
   Json::Value tiles(Json::arrayValue);
   for (const auto& c : GetBuildingShape (b, ctx))
@@ -366,6 +439,13 @@ template <>
           inv[h->GetAccount ()] = Convert (h->GetInventory ());
         }
       res["inventories"] = inv;
+
+      Json::Value reserved(Json::objectValue);
+      for (const auto& entry : orders.GetReservedQuantities (b.GetId ()))
+        reserved[entry.first] = Convert (entry.second);
+      res["reserved"] = reserved;
+
+      res["orderbook"] = GetOrderbookInBuilding (orders, b.GetId ());
     }
 
   Json::Value age(Json::objectValue);
@@ -507,6 +587,29 @@ template <>
   return res;
 }
 
+template <>
+  Json::Value
+  GameStateJson::Convert<DexTrade> (const DexTrade& t) const
+{
+  Json::Value res(Json::objectValue);
+
+  res["height"] = IntToJson (t.GetHeight ());
+  res["timestamp"] = IntToJson (t.GetTimestamp ());
+
+  res["buildingid"] = IntToJson (t.GetBuilding ());
+  res["item"] = t.GetItem ();
+
+  res["quantity"] = t.GetQuantity ();
+  res["price"] = t.GetPrice ();
+  const QuantityProduct cost(t.GetQuantity (), t.GetPrice ());
+  res["cost"] = IntToJson (cost.Extract ());
+
+  res["seller"] = t.GetSeller ();
+  res["buyer"] = t.GetBuyer ();
+
+  return res;
+}
+
 template <typename T, typename R>
   Json::Value
   GameStateJson::ResultsAsArray (T& tbl, Database::Result<R> res) const
@@ -599,7 +702,29 @@ Json::Value
 GameStateJson::Accounts ()
 {
   AccountsTable tbl(db);
-  return ResultsAsArray (tbl, tbl.QueryAll ());
+  Json::Value res = ResultsAsArray (tbl, tbl.QueryAll ());
+
+  /* Add in also the Cubit balances reserved in open bids.  */
+  const auto reserved = orders.GetReservedCoins ();
+  for (auto& entry : res)
+    {
+      const auto& nmVal = entry["name"];
+      CHECK (nmVal.isString ());
+      const auto mit = reserved.find (nmVal.asString ());
+
+      Amount cur;
+      if (mit == reserved.end ())
+        cur = 0;
+      else
+        cur = mit->second;
+
+      auto& bal = entry["balance"];
+      CHECK (bal.isObject ());
+      bal["reserved"] = IntToJson (cur);
+      bal["total"] = IntToJson (cur + bal["available"].asInt64 ());
+    }
+
+  return res;
 }
 
 Json::Value
@@ -635,6 +760,14 @@ GameStateJson::Regions (const unsigned h)
 {
   RegionsTable tbl(db, RegionsTable::HEIGHT_READONLY);
   return ResultsAsArray (tbl, tbl.QueryModifiedSince (h));
+}
+
+Json::Value
+GameStateJson::TradeHistory (const std::string& item,
+                             const Database::IdT building)
+{
+  DexHistoryTable tbl(db);
+  return ResultsAsArray (tbl, tbl.QueryForItem (item, building));
 }
 
 Json::Value
