@@ -1023,7 +1023,7 @@ ParseBuildingConfig (const Context& ctx, const Json::Value& build,
     }
 
   val = build["rot"];
-  if (!val.isUInt () || val.asUInt () > 5)
+  if (!xaya::IsIntegerValue (val) || !val.isUInt () || val.asUInt () > 5)
     {
       LOG (WARNING) << "Building element has invalid rotation: " << build;
       return false;
@@ -1240,7 +1240,7 @@ MaybeSetCharacterSpeed (Character& c, const Json::Value& upd)
 {
   CHECK (upd.isObject ());
   const auto& val = upd["speed"];
-  if (!val.isUInt64 ())
+  if (!xaya::IsIntegerValue (val) || !val.isUInt64 ())
     return;
 
   if (!c.GetProto ().has_movement ())
@@ -1921,17 +1921,17 @@ template <typename T>
       auto& maxHP = *c->MutableRegenData ().mutable_max_hp ();
 
       Json::Value val = entry["a"];
-      if (val.isUInt64 ())
+      if (xaya::IsIntegerValue (val) && val.isUInt64 ())
         hp.set_armour (val.asUInt64 ());
       val = entry["s"];
-      if (val.isUInt64 ())
+      if (xaya::IsIntegerValue (val) && val.isUInt64 ())
         hp.set_shield (val.asUInt64 ());
 
       val = entry["ma"];
-      if (val.isUInt64 ())
+      if (xaya::IsIntegerValue (val) && val.isUInt64 ())
         maxHP.set_armour (val.asUInt64 ());
       val = entry["ms"];
-      if (val.isUInt64 ())
+      if (xaya::IsIntegerValue (val) && val.isUInt64 ())
         maxHP.set_shield (val.asUInt64 ());
     }
 }

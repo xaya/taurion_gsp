@@ -65,6 +65,8 @@ TEST_F (JsonCoordTests, InvalidCoordFromJson)
 {
   for (const auto& str : {"42", "true", R"("foo")", "[1,2,3]",
                           "{}", R"({"x": 5})", R"({"x": 1.5, "y": 42})",
+                          R"({"x": 1.0, "y": 0})",
+                          R"({"x": 1, "y": 2e2})",
                           R"({"x": -1, "y": 1000000000})",
                           R"({"x": 0, "y": 0, "foo": 0})"})
     {
@@ -220,7 +222,9 @@ TEST_F (IdFromJsonTests, Valid)
 
 TEST_F (IdFromJsonTests, Invalid)
 {
-  for (const std::string str : {"{}", "0", "999999999", "-10", "1.5", "null"})
+  for (const std::string str : {"{}", "null",
+                                "0", "999999999",
+                                "-10", "1.5", "42.0", "2e2"})
     {
       Database::IdT id;
       EXPECT_FALSE (IdFromJson (ParseJson (str), id)) << str;

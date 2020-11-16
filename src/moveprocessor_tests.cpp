@@ -1168,6 +1168,10 @@ TEST_F (CharacterUpdateTests, ChosenSpeedInvalid)
     },
     {
       "name": "domob",
+      "move": {"c": {"id": 1, "speed": 5e0}}
+    },
+    {
+      "name": "domob",
       "move": {"c": {"id": 1, "speed": 5.2}}
     },
     {
@@ -1733,6 +1737,10 @@ TEST_F (FoundBuildingMoveTests, InvalidFormat)
     {
       "name": "domob",
       "move": {"c": {"id": 1, "fb": {"t": "huesli", "rot": -1}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"id": 1, "fb": {"t": "huesli", "rot": 4.0}}}
     },
     {
       "name": "domob",
@@ -3672,7 +3680,8 @@ TEST_F (GodModeTests, SetHp)
             "c":
               [
                 {"id": 2, "a": 5},
-                {"id": 1, "a": 32, "s": 15, "ma": -5, "ms": false, "x": "y"}
+                {"id": 1, "a": 32, "s": 15, "ma": -5, "ms": false, "x": "y"},
+                {"id": 1, "a": 1.0, "s": 2e2, "ma": 5.0, "ms": 3e1}
               ]
           }
       }

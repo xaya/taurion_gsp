@@ -89,7 +89,8 @@ CoordFromJson (const Json::Value& val, HexCoord& c)
       return false;
     }
 
-  if (!xMember->isInt64 () || !yMember->isInt64 ())
+  if (!xMember->isInt64 () || !xaya::IsIntegerValue (*xMember)
+        || !yMember->isInt64 () || !xaya::IsIntegerValue (*yMember))
     {
       VLOG (1)
           << "Invalid HexCoord: JSON value " << val
@@ -173,7 +174,7 @@ QuantityFromJson (const Json::Value& val, Quantity& quantity)
 bool
 IdFromJson (const Json::Value& val, Database::IdT& id)
 {
-  if (!val.isUInt64 ())
+  if (!val.isUInt64 () || !xaya::IsIntegerValue (val))
     return false;
 
   id = val.asUInt64 ();
