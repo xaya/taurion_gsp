@@ -1077,6 +1077,20 @@ BaseMoveProcessor::ParseFoundBuilding (const Character& c,
       return false;
     }
 
+  if (roData.construction ().has_faction ())
+    {
+      const auto roFaction
+          = FactionFromString (roData.construction ().faction ());
+      if (roFaction != c.GetFaction ())
+        {
+          LOG (WARNING)
+              << "Building " << type
+              << " cannot be constructed by " << c.GetOwner ()
+              << " of faction " << FactionToString (c.GetFaction ());
+          return false;
+        }
+    }
+
   const auto& inv = c.GetInventory ();
   for (const auto& entry : roData.construction ().foundation ())
     {

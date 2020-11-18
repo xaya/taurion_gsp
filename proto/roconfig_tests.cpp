@@ -168,6 +168,35 @@ TEST_F (RoItemsTests, PrizeItems)
 
 /* ************************************************************************** */
 
+using RoBuildingsTests = RoItemsTests;
+
+TEST_F (RoBuildingsTests, FactionFromNamePrefix)
+{
+  EXPECT_FALSE (cfg.Building ("obelisk1").has_construction ());
+  EXPECT_FALSE (cfg.Building ("r c1").has_construction ());
+  EXPECT_EQ (cfg.Building ("r r").construction ().faction (), "r");
+  EXPECT_EQ (cfg.Building ("b cc").construction ().faction (), "b");
+  EXPECT_EQ (cfg.Building ("g vb").construction ().faction (), "g");
+}
+
+TEST_F (RoBuildingsTests, MainnetBuildableHasFaction)
+{
+  /* All buildings that can be built by players in the mainnet
+     config should have a faction (via name prefix).  */
+
+  const RoConfig main(xaya::Chain::MAIN);
+  for (const auto& b : main->building_types ())
+    {
+      const auto& data = main.Building (b.first);
+      ASSERT_TRUE (!data.has_construction ()
+                      || data.construction ().has_faction ())
+          << "Building type " << b.first
+          << " is constructible on mainnet but doesn't have a faction";
+    }
+}
+
+/* ************************************************************************** */
+
 class RoConfigSanityTests : public testing::Test
 {
 
@@ -422,6 +451,12 @@ RoConfigSanityTests::IsConfigValid (const RoConfig& cfg)
             || b.full_building ().combat_data ().has_target_size ())
         {
           LOG (WARNING) << "Building has a target size: " << entry.first;
+          return false;
+        }
+
+      if (b.construction ().has_faction ())
+        {
+          LOG (WARNING) << "Building has explicit faction set: " << entry.first;
           return false;
         }
     }

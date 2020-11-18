@@ -69,6 +69,11 @@ struct RoConfig::Data
   std::unordered_map<std::string, std::unique_ptr<const proto::ItemData>>
       constructedItems;
 
+  /** Cache for constructed building data, similar to the items.  */
+  mutable
+  std::unordered_map<std::string, std::unique_ptr<const proto::BuildingData>>
+      constructedBuildings;
+
 };
 
 RoConfig::Data* RoConfig::mainnet = nullptr;
@@ -147,16 +152,80 @@ RoConfig::operator-> () const
   return &(operator* ());
 }
 
+/* ************************************************************************** */
+
+namespace
+{
+
+/** Prefixes for buildings that indicate a faction.  */
+const std::pair<std::string, std::string> BUILDING_FACTION_PREFIXES[] =
+  {
+    {"r ", "r"},
+    {"g ", "g"},
+    {"b ", "b"},
+  };
+
+/**
+ * Returns true if the given string starts with some prefix.
+ */
+bool
+StartsWith (const std::string& str, const std::string& prefix)
+{
+  return str.substr (0, prefix.size ()) == prefix;
+}
+
+/**
+ * Constructs the final building data proto for the given name.  This takes
+ * processing like adding the faction from the name prefix into account.
+ * May return null if the name does not correspond to a valid building.
+ */
+std::unique_ptr<const proto::BuildingData>
+ConstructBuildingData (const RoConfig& cfg, const std::string& name)
+{
+  const auto mit = cfg->building_types ().find (name);
+  if (mit == cfg->building_types ().end ())
+    return nullptr;
+
+  auto res = std::make_unique<proto::BuildingData> (mit->second);
+
+  /* If the name matches a given prefix for a faction, set it in the
+     construction data.  */
+  if (res->has_construction ())
+    {
+      auto* constr = res->mutable_construction ();
+      CHECK (!constr->has_faction ());
+
+      for (const auto& fp : BUILDING_FACTION_PREFIXES)
+        if (StartsWith (name, fp.first))
+          {
+            VLOG (1)
+                << "Building type " << name
+                << " is of faction " << fp.second;
+            constr->set_faction (fp.second);
+            break;
+          }
+    }
+
+  return res;
+}
+
+} // anonymous namespace
+
 const proto::BuildingData*
 RoConfig::BuildingOrNull (const std::string& type) const
 {
-  const auto& buildings = (*this)->building_types ();
+  std::lock_guard<std::recursive_mutex> lock(data->mut);
 
-  const auto mit = buildings.find (type);
-  if (mit == buildings.end ())
+  const auto mit = data->constructedBuildings.find (type);
+  if (mit != data->constructedBuildings.end ())
+    return mit->second.get ();
+
+  auto newData = ConstructBuildingData (*this, type);
+  if (newData == nullptr)
     return nullptr;
 
-  return &mit->second;
+  CHECK (data->constructedBuildings.emplace (type, newData.get ()).second);
+  return newData.release ();
 }
 
 const proto::BuildingData&

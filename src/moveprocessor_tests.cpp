@@ -1831,6 +1831,31 @@ TEST_F (FoundBuildingMoveTests, CannotPlaceBuilding)
   EXPECT_EQ (buildings.GetById (101), nullptr);
 }
 
+TEST_F (FoundBuildingMoveTests, FactionCheck)
+{
+  ASSERT_EQ (GetTest ()->GetFaction (), Faction::RED);
+  GetTest ()->GetInventory ().AddFungibleCount ("foo", 10);
+
+  db.SetNextId (101);
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"id": 1, "fb": {"t": "g test", "rot": 0}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"id": 1, "fb": {"t": "r test", "rot": 0}}}
+    }
+  ])");
+
+  auto b = buildings.GetById (101);
+  ASSERT_NE (b, nullptr);
+  EXPECT_EQ (b->GetType (), "r test");
+  b.reset ();
+
+  EXPECT_EQ (buildings.GetById (102), nullptr);
+}
+
 TEST_F (FoundBuildingMoveTests, Success)
 {
   ctx.SetHeight (10);

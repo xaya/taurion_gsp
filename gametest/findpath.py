@@ -285,17 +285,17 @@ class FindPathTest (PXTest):
     # ensure that it can be passed directly back to setpathdata.
     buildings = [[]]
 
-    self.build ("r rt", None,
+    self.build ("huesli", None,
                 offsetCoord (longA, {"x": 1, "y": 0}, False), rot=0)
-    self.build ("r rt", None,
+    self.build ("huesli", None,
                 offsetCoord (longA, {"x": 1, "y": -1}, False), rot=0)
-    self.build ("r rt", None,
+    self.build ("huesli", None,
                 offsetCoord (longA, {"x": 0, "y": 1}, False), rot=0)
     buildings.append (self.getRpc ("getbuildings"))
 
-    self.build ("r rt", None,
+    self.build ("huesli", None,
                 offsetCoord (longA, {"x": 0, "y": -1}, False), rot=0)
-    self.build ("r rt", None,
+    self.build ("huesli", None,
                 offsetCoord (longA, {"x": -1, "y": 1}, False), rot=0)
     buildings.append (self.getRpc ("getbuildings"))
 

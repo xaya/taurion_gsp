@@ -326,6 +326,13 @@ message BuildingData
      */
     optional uint32 blocks = 3;
 
+    /**
+     * The faction of this building type.  If this is set, then only players
+     * with a matching faction can build it.  This is inferred from the
+     * building name in roconfig data and only set at runtime.
+     */
+    optional string faction = 4;
+
   }
 
   /** The data for constructing this building.  */
