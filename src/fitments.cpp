@@ -68,6 +68,20 @@ CheckVehicleFitments (const std::string& vehicle,
               << vehicleData.vehicle ().size ();
           return false;
         }
+
+      /* Apply faction restrictions only if both the vehicle and fitment
+         have a faction set.  This allows faction-specific fitments to be used
+         on "neutral" test vehicles.  On mainnet, none of the vehicles is
+         actually neutral.  */
+      if (fitmentData.has_faction () && vehicleData.has_faction ()
+            && fitmentData.faction () != vehicleData.faction ())
+        {
+          VLOG (1)
+              << "Fitment " << f << " of faction " << fitmentData.faction ()
+              << " cannot fit vehicle " << vehicle
+              << " of faction " << vehicleData.faction ();
+          return false;
+        }
     }
 
   /* Now check up the required stats against the vehicle.  */

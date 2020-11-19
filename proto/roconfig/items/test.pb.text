@@ -100,6 +100,21 @@ fungible_items:
       }
   }
 
+# Faction-restricted fitment.
+fungible_items:
+  {
+    key: "red fitment"
+    value:
+      {
+        space: 1
+        complexity: 1
+        with_blueprint: true
+        construction_resources: { key: "foo" value: 1 }
+        faction: "r"
+        fitment: { slot: "high" }
+      }
+  }
+
 # Strong complexity multiplier for testing its effect.
 fungible_items:
   {
