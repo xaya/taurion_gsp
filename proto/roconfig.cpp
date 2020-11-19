@@ -252,6 +252,14 @@ constexpr const char* SUFFIX_PRIZE = " prize";
 /** Space usage of a blueprint.  */
 constexpr const unsigned BLUEPRINT_SPACE = 1;
 
+/** Prefixes for vehicles that indicate a faction.  */
+const std::pair<std::string, std::string> VEHICLE_FACTION_PREFIXES[] =
+  {
+    {"rv ", "r"},
+    {"gv ", "g"},
+    {"bv ", "b"},
+  };
+
 /**
  * Tries to strip the given suffix of an item name.  Returns true and the
  * base name (without suffix) if successful, and false otherwise (i.e. if
@@ -343,7 +351,30 @@ ConstructItemData (const RoConfig& cfg, const std::string& item)
         }
     }
 
-  return nullptr;
+  const auto& baseData = cfg->fungible_items ();
+  const auto mit = baseData.find (item);
+  if (mit == baseData.end ())
+    return nullptr;
+
+  auto res = std::make_unique<proto::ItemData> (mit->second);
+
+  /* If this is a vehicle, check the name prefixes to apply a faction
+     if one of them matches.  */
+  if (res->has_vehicle ())
+    {
+      CHECK (!res->has_faction ());
+      for (const auto& fp : VEHICLE_FACTION_PREFIXES)
+        if (StartsWith (item, fp.first))
+          {
+            VLOG (1)
+                << "Vehicle type " << item
+                << " is of faction " << fp.second;
+            res->set_faction (fp.second);
+            break;
+          }
+    }
+
+  return res;
 }
 
 } // anonymous namespace
@@ -351,21 +382,11 @@ ConstructItemData (const RoConfig& cfg, const std::string& item)
 const proto::ItemData*
 RoConfig::ItemOrNull (const std::string& item) const
 {
-  {
-    std::lock_guard<std::recursive_mutex> lock(data->mut);
-    const auto mit = data->constructedItems.find (item);
-    if (mit != data->constructedItems.end ())
-      return mit->second.get ();
-  }
-
-  {
-    const auto& baseData = (*this)->fungible_items ();
-    const auto mit = baseData.find (item);
-    if (mit != baseData.end ())
-      return &mit->second;
-  }
-
   std::lock_guard<std::recursive_mutex> lock(data->mut);
+
+  const auto mit = data->constructedItems.find (item);
+  if (mit != data->constructedItems.end ())
+    return mit->second.get ();
 
   auto newData = ConstructItemData (*this, item);
   if (newData == nullptr)

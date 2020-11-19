@@ -166,6 +166,30 @@ TEST_F (RoItemsTests, PrizeItems)
     }
 }
 
+TEST_F (RoItemsTests, VehicleFactions)
+{
+  EXPECT_FALSE (cfg.Item ("lf gun").has_faction ());
+  EXPECT_FALSE (cfg.Item ("basetank").has_faction ());
+  EXPECT_EQ (cfg.Item ("rv st").faction (), "r");
+  EXPECT_EQ (cfg.Item ("gv ma").faction (), "g");
+  EXPECT_EQ (cfg.Item ("bv vlt").faction (), "b");
+}
+
+TEST_F (RoItemsTests, MainnetVehiclesHaveFaction)
+{
+  /* All vehicles available on mainnet should have a faction associated
+     to them via the item prefix.  */
+
+  const RoConfig main(xaya::Chain::MAIN);
+  for (const auto& i : main->fungible_items ())
+    {
+      const auto& data = main.Item (i.first);
+      ASSERT_TRUE (!data.has_vehicle () || data.has_faction ())
+          << "Vehicle " << i.first
+          << " available on mainnet has no faction set";
+    }
+}
+
 /* ************************************************************************** */
 
 using RoBuildingsTests = RoItemsTests;
@@ -330,6 +354,13 @@ RoConfigSanityTests::IsConfigValid (const RoConfig& cfg)
         {
           LOG (WARNING)
               << "Item construction data is invalid for " << entry.first;
+          return false;
+        }
+
+      if (i.has_faction () && !i.has_fitment ())
+        {
+          LOG (WARNING)
+              << "Non-fitment item " << entry.first << " has explicit faction";
           return false;
         }
 

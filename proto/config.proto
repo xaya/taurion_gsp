@@ -236,6 +236,17 @@ message ItemData
    */
   map<string, uint32> construction_resources = 4;
 
+  /**
+   * If this item is a fitment or vehicle and specific to a particular faction,
+   * then this field indicates that faction.  May be null for faction-neutral
+   * items, e.g. most fitments.
+   *
+   * For fitments, this has to be explicitly set in the roconfig data.
+   * For vehicles, it is deduced from the name prefix (e.g. "rv ") via
+   * the RoConfig logic.
+   */
+  optional string faction = 5;
+
   oneof type
   {
 
