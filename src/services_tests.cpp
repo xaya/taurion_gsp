@@ -1268,6 +1268,35 @@ TEST_F (ConstructionTests, MissingBlueprints)
   })"));
 }
 
+TEST_F (ConstructionTests, FactionRestrictions)
+{
+  auto a = accounts.CreateNew ("green");
+  a->SetFaction (Faction::GREEN);
+  a->AddBalance (1'000'000);
+  a.reset ();
+
+  auto i = inv.Get (ANCIENT_BUILDING, "green");
+  i->GetInventory ().AddFungibleCount ("foo", 10);
+  i->GetInventory ().AddFungibleCount ("red fitment bpo", 1);
+  i = inv.Get (ANCIENT_BUILDING, "domob");
+  i->GetInventory ().AddFungibleCount ("foo", 10);
+  i->GetInventory ().AddFungibleCount ("red fitment bpo", 1);
+  i.reset ();
+
+  EXPECT_FALSE (Process ("green", R"({
+    "t": "bld",
+    "b": 100,
+    "i": "red fitment bpo",
+    "n": 1
+  })"));
+  EXPECT_TRUE (Process ("domob", R"({
+    "t": "bld",
+    "b": 100,
+    "i": "red fitment bpo",
+    "n": 1
+  })"));
+}
+
 TEST_F (ConstructionTests, RequiredServiceType)
 {
   inv.Get (ANCIENT_BUILDING, "domob")

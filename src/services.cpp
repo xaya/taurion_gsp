@@ -863,6 +863,21 @@ ConstructionOperation::IsValid () const
   if (num <= 0)
     return false;
 
+  if (outputData->has_faction ())
+    {
+      const auto roFaction = FactionFromString (outputData->faction ());
+      const auto userFaction = GetAccount ().GetFaction ();
+      if (roFaction != userFaction)
+        {
+          LOG (WARNING)
+              << "Item " << output
+              << " of faction " << FactionToString (roFaction)
+              << " cannot be constructed by user " << GetAccount ().GetName ()
+              << " of faction " << FactionToString (userFaction);
+          return false;
+        }
+    }
+
   auto& inv = GetBaseInventory ();
   for (const auto& entry : outputData->construction_resources ())
     {
