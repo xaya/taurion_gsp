@@ -177,6 +177,7 @@ fungible_items:
             cost: 10
             possible_outputs: "bow bpo"
             possible_outputs: "sword bpo"
+            possible_outputs: "red fitment bpo"
           }
       }
   }

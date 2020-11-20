@@ -137,15 +137,20 @@ TEST_F (RoItemsTests, Blueprints)
 
   const auto& orig = cfg.Item ("bow bpo");
   ASSERT_TRUE (orig.has_is_blueprint ());
+  EXPECT_FALSE (orig.has_faction ());
   EXPECT_EQ (orig.space (), 1);
   EXPECT_EQ (orig.is_blueprint ().for_item (), "bow");
   EXPECT_TRUE (orig.is_blueprint ().original ());
 
   const auto& copy = cfg.Item ("bow bpc");
   ASSERT_TRUE (copy.has_is_blueprint ());
+  EXPECT_FALSE (orig.has_faction ());
   EXPECT_EQ (copy.space (), 1);
   EXPECT_EQ (copy.is_blueprint ().for_item (), "bow");
   EXPECT_FALSE (copy.is_blueprint ().original ());
+
+  EXPECT_EQ (cfg.Item ("red fitment bpo").faction (), "r");
+  EXPECT_EQ (cfg.Item ("red fitment bpc").faction (), "r");
 }
 
 TEST_F (RoItemsTests, PrizeItems)

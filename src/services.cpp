@@ -581,13 +581,28 @@ RevEngOperation::ExecuteSpecific (xaya::Random& rnd)
   auto& inv = GetBaseInventory ();
   inv.AddFungibleCount (type, -num);
 
-  const size_t numOptions = revEngData->possible_outputs_size ();
-  CHECK_GT (numOptions, 0);
+  /* When reverse engineering, only "neutral" items as well as items
+     of a faction matching the current user are possible outcomes.
+     We find the list first, and then do a single roll (rather than repeated
+     rolls for invalid selections).  */
+  const auto userFaction = GetAccount ().GetFaction ();
+  std::vector<std::string> possibleOutputs;
+  for (const auto& o : revEngData->possible_outputs ())
+    {
+      const auto& od = ctx.RoConfig ().Item (o);
+      if (!od.has_faction ()
+            || FactionFromString (od.faction ()) == userFaction)
+        {
+          VLOG (1) << "Possible reveng output for " << type << ": " << o;
+          possibleOutputs.push_back (o);
+        }
+    }
+  CHECK (!possibleOutputs.empty ());
 
   for (unsigned trial = 0; trial < num; ++trial)
     {
-      const size_t chosenOption = rnd.NextInt (numOptions);
-      const std::string outType = revEngData->possible_outputs (chosenOption);
+      const size_t chosenOption = rnd.NextInt (possibleOutputs.size ());
+      const std::string outType = possibleOutputs[chosenOption];
 
       const unsigned existingCount = itemCounts.GetFound (outType);
       const unsigned chance = ctx.Params ().RevEngSuccessChance (existingCount);

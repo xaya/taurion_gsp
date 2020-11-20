@@ -320,6 +320,8 @@ ConstructItemData (const RoConfig& cfg, const std::string& item)
       res->set_space (BLUEPRINT_SPACE);
       auto* bp = res->mutable_is_blueprint ();
       bp->set_for_item (baseName);
+      if (base->has_faction ())
+        res->set_faction (base->faction ());
       bp->set_original (true);
       return res;
     }
@@ -331,6 +333,8 @@ ConstructItemData (const RoConfig& cfg, const std::string& item)
       res->set_space (BLUEPRINT_SPACE);
       auto* bp = res->mutable_is_blueprint ();
       bp->set_for_item (baseName);
+      if (base->has_faction ())
+        res->set_faction (base->faction ());
       bp->set_original (false);
       return res;
     }

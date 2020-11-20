@@ -22,6 +22,8 @@
 
 #include "database/dbtest.hpp"
 
+#include <xayautil/hash.hpp>
+
 #include <gtest/gtest.h>
 
 namespace pxd
@@ -35,8 +37,6 @@ class ServicesTests : public DBTestWithSchema
 {
 
 private:
-
-  TestRandom rnd;
 
   /**
    * Parses an operation for the given account and from JSON.
@@ -54,6 +54,7 @@ protected:
   /** ID of an ancient building with all services.  */
   static constexpr Database::IdT ANCIENT_BUILDING = 100;
 
+  TestRandom rnd;
   ContextForTesting ctx;
 
   AccountsTable accounts;
@@ -965,9 +966,11 @@ TEST_F (RevEngTests, OneItem)
   EXPECT_EQ (i->GetInventory ().GetFungibleCount ("test artefact"), 2);
   const auto bow = i->GetInventory ().GetFungibleCount ("bow bpo");
   const auto sword = i->GetInventory ().GetFungibleCount ("sword bpo");
-  EXPECT_EQ (bow + sword, 1);
+  const auto red = i->GetInventory ().GetFungibleCount ("red fitment bpo");
+  EXPECT_EQ (bow + sword + red, 1);
   EXPECT_EQ (itemCounts.GetFound ("bow bpo"), bow);
   EXPECT_EQ (itemCounts.GetFound ("sword bpo"), sword);
+  EXPECT_EQ (itemCounts.GetFound ("red fitment bpo"), red);
 }
 
 TEST_F (RevEngTests, ManyTries)
@@ -990,11 +993,65 @@ TEST_F (RevEngTests, ManyTries)
   auto i = inv.Get (ANCIENT_BUILDING, "domob");
   const auto bow = i->GetInventory ().GetFungibleCount ("bow bpo");
   const auto sword = i->GetInventory ().GetFungibleCount ("sword bpo");
-  LOG (INFO) << "Found " << bow << " bows and " << sword << " swords";
+  const auto red = i->GetInventory ().GetFungibleCount ("red fitment bpo");
+  LOG (INFO)
+      << "Found " << bow << " bows, "
+      << sword << " swords and "
+      << red << " red-only fitments";
   EXPECT_GT (bow, 0);
   EXPECT_GT (sword, bow);
+  EXPECT_GT (red, 0);
   EXPECT_EQ (itemCounts.GetFound ("bow bpo"), bow + bowOffset);
   EXPECT_EQ (itemCounts.GetFound ("sword bpo"), sword);
+  EXPECT_EQ (itemCounts.GetFound ("red fitment bpo"), red);
+}
+
+TEST_F (RevEngTests, FactionRestriction)
+{
+  /* A green account should not be able to get the red-only fitment
+     from reverse engineering, even with many tries.  Also it should
+     use up exactly one random number per try, and not e.g. do re-rolls
+     when picking one fitment that isn't available.  */
+
+  constexpr unsigned trials = 1'000;
+
+  auto a = accounts.CreateNew ("green");
+  a->SetFaction (Faction::GREEN);
+  a->AddBalance (1'000'000);
+  a.reset ();
+
+  inv.Get (ANCIENT_BUILDING, "green")
+      ->GetInventory ().AddFungibleCount ("test artefact", trials);
+
+  rnd.Seed (xaya::SHA256::Hash ("foo"));
+  ASSERT_TRUE (Process ("green", R"({
+    "t": "rve",
+    "b": 100,
+    "i": "test artefact",
+    "n": 1000
+  })"));
+
+  auto i = inv.Get (ANCIENT_BUILDING, "green");
+  const auto bow = i->GetInventory ().GetFungibleCount ("bow bpo");
+  const auto sword = i->GetInventory ().GetFungibleCount ("sword bpo");
+  const auto red = i->GetInventory ().GetFungibleCount ("red fitment bpo");
+  LOG (INFO)
+      << "Found " << bow << " bows, "
+      << sword << " swords and "
+      << red << " red-only fitments";
+  EXPECT_GT (bow, 0);
+  EXPECT_GT (sword, 0);
+  EXPECT_EQ (red, 0);
+
+  const auto actualNext = rnd.Next<uint64_t> ();
+  rnd.Seed (xaya::SHA256::Hash ("foo"));
+  for (unsigned i = 0; i < trials; ++i)
+    {
+      rnd.NextInt (100);
+      rnd.ProbabilityRoll (1, 1'000);
+    }
+  EXPECT_EQ (actualNext, rnd.Next<uint64_t> ())
+      << "Wrong number of random numbers used for reverse engineering";
 }
 
 TEST_F (RevEngTests, PendingJson)

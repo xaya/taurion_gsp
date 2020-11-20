@@ -34,7 +34,7 @@ class ServicesRevEngTest (PXTest):
     building = 1001
     self.assertEqual (self.getBuildings ()[building].getType (), "ancient1")
 
-    self.initAccount ("domob", "r")
+    self.initAccount ("domob", "g")
     self.generate (1)
     self.giftCoins ({"domob": 100})
     self.dropIntoBuilding (building, "domob", {"test artefact": 10})
