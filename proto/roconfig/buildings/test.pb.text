@@ -80,3 +80,50 @@ building_types:
           }
       }
   }
+
+# Faction-specific test buildings.
+building_types:
+  {
+    key: "r test"
+    value:
+      {
+        enter_radius: 5
+        shape_tiles: { x: 0 y: 0 }
+        construction:
+          {
+            foundation: { key: "foo" value: 1 }
+            full_building: { key: "foo" value: 1 }
+            blocks: 1
+          }
+      }
+  }
+building_types:
+  {
+    key: "g test"
+    value:
+      {
+        enter_radius: 5
+        shape_tiles: { x: 0 y: 0 }
+        construction:
+          {
+            foundation: { key: "foo" value: 1 }
+            full_building: { key: "foo" value: 1 }
+            blocks: 1
+          }
+      }
+  }
+building_types:
+  {
+    key: "b test"
+    value:
+      {
+        enter_radius: 5
+        shape_tiles: { x: 0 y: 0 }
+        construction:
+          {
+            foundation: { key: "foo" value: 1 }
+            full_building: { key: "foo" value: 1 }
+            blocks: 1
+          }
+      }
+  }

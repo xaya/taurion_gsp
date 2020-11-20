@@ -36,10 +36,11 @@ class BuildingFoundationsTest (PXTest):
     pos = {"x": 0, "y": 0}
     self.dropLoot (pos, {"foo": 100})
     self.moveCharactersTo ({"domob": pos})
-    self.getCharacters ()["domob"].sendMove ({"pu": {"f": {"foo": 4}}})
+    self.getCharacters ()["domob"].sendMove ({"pu": {"f": {"foo": 10}}})
     self.generate (1)
 
     self.mainLogger.info ("Building foundations...")
+    numBefore = len (self.getBuildings ())
     # It is actually possible to build *two* foundations (or more)
     # in a single block in the way done below.
     c = self.getCharacters ()["domob"]
@@ -47,19 +48,27 @@ class BuildingFoundationsTest (PXTest):
       "fb": {"t": "huesli", "rot": 0},
       "xb": {},
     })
+    # This one won't work due to faction mismatch.
     c.sendMove ({
-      "fb": {"t": "huesli", "rot": 0},
+      "fb": {"t": "g test", "rot": 0},
+      "xb": {},
+    })
+    # This will be fine.
+    c.sendMove ({
+      "fb": {"t": "r test", "rot": 0},
       "xb": {},
     })
     self.generate (1)
 
     buildings = self.getBuildings ()
+    self.assertEqual (len (buildings), numBefore + 2)
     bIds = list (buildings.keys ())[-2:]
     for b in bIds:
       self.assertEqual (buildings[b].isFoundation (), True)
       self.assertEqual (buildings[b].getOwner (), "domob")
       self.assertEqual (buildings[b].getFaction (), "r")
-      self.assertEqual (buildings[b].getType (), "huesli")
+    self.assertEqual (buildings[bIds[0]].getType (), "huesli")
+    self.assertEqual (buildings[bIds[1]].getType (), "r test")
 
     self.mainLogger.info ("Dropping into foundation...")
     self.dropLoot (self.getCharacters ()["domob"].getPosition (),
@@ -72,7 +81,7 @@ class BuildingFoundationsTest (PXTest):
     self.getCharacters ()["domob"].sendMove ({"drop": {"f": {"zerospace": 5}}})
     self.generate (1)
     c = self.getCharacters ()["domob"]
-    self.assertEqual (c.getFungibleInventory (), {})
+    self.assertEqual (c.getFungibleInventory (), {"foo": 7})
     b = self.getBuildings ()[bIds[1]]
     self.assertEqual (b.getConstructionInventory (), {"zerospace": 5})
 
@@ -86,7 +95,7 @@ class BuildingFoundationsTest (PXTest):
 
     c = self.getCharacters ()["domob"]
     self.assertEqual (c.data["fitments"], ["sword"])
-    self.assertEqual (c.getFungibleInventory (), {})
+    self.assertEqual (c.getFungibleInventory (), {"foo": 7})
 
     self.setCharactersHP ({
       "domob": {"a": 10},

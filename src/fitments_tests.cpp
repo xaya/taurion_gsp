@@ -73,6 +73,15 @@ TEST_F (CheckVehicleFitmentsTests, VehicleSize)
   EXPECT_TRUE (CheckVehicleFitments ("chariot", {"only medium"}, ctx));
 }
 
+TEST_F (CheckVehicleFitmentsTests, FactionRestrictions)
+{
+  EXPECT_TRUE (CheckVehicleFitments ("basetank", {"bow"}, ctx));
+  EXPECT_TRUE (CheckVehicleFitments ("rv vla", {"bow"}, ctx));
+  EXPECT_TRUE (CheckVehicleFitments ("basetank", {"red fitment"}, ctx));
+  EXPECT_TRUE (CheckVehicleFitments ("rv vla", {"red fitment"}, ctx));
+  EXPECT_FALSE (CheckVehicleFitments ("gv vla", {"red fitment"}, ctx));
+}
+
 /* ************************************************************************** */
 
 class DeriveCharacterStatsTests : public DBTestWithSchema

@@ -934,6 +934,7 @@ fungible_items:
         with_blueprint: true
         construction_resources: { key: "mat a" value: 2500 }
         construction_resources: { key: "mat b" value: 2500 }
+        faction: "r"
         fitment:
           {
             slot: "high"
@@ -959,6 +960,7 @@ fungible_items:
         construction_resources: { key: "mat a" value: 4500 }
         construction_resources: { key: "mat b" value: 4500 }
         construction_resources: { key: "mat f" value: 1000 }
+        faction: "r"
         fitment:
           {
             slot: "high"
@@ -985,6 +987,7 @@ fungible_items:
         construction_resources: { key: "mat b" value: 24000 }
         construction_resources: { key: "mat f" value: 9000 }
         construction_resources: { key: "mat g" value: 3000 }
+        faction: "r"
         fitment:
           {
             slot: "high"
@@ -1016,6 +1019,7 @@ fungible_items:
         construction_resources: { key: "mat g" value: 6000 }
         construction_resources: { key: "mat h" value: 4800 }
         construction_resources: { key: "mat i" value: 1200 }
+        faction: "r"
         fitment:
           {
             slot: "high"
@@ -1040,6 +1044,7 @@ fungible_items:
         with_blueprint: true
         construction_resources: { key: "mat a" value: 2500 }
         construction_resources: { key: "mat b" value: 2500 }
+        faction: "r"
         fitment:
           {
             slot: "high"
@@ -1064,6 +1069,7 @@ fungible_items:
         construction_resources: { key: "mat a" value: 4500 }
         construction_resources: { key: "mat b" value: 4500 }
         construction_resources: { key: "mat f" value: 1000 }
+        faction: "r"
         fitment:
           {
             slot: "high"
@@ -1089,6 +1095,7 @@ fungible_items:
         construction_resources: { key: "mat b" value: 24000 }
         construction_resources: { key: "mat f" value: 9000 }
         construction_resources: { key: "mat g" value: 3000 }
+        faction: "r"
         fitment:
           {
             slot: "high"
@@ -1119,6 +1126,7 @@ fungible_items:
         construction_resources: { key: "mat g" value: 6000 }
         construction_resources: { key: "mat h" value: 4800 }
         construction_resources: { key: "mat i" value: 1200 }
+        faction: "r"
         fitment:
           {
             slot: "high"
@@ -1804,6 +1812,7 @@ fungible_items:
         with_blueprint: true
         construction_resources: { key: "mat a" value: 2500 }
         construction_resources: { key: "mat b" value: 2500 }
+        faction: "b"
         fitment:
           {
             slot: "mid"
@@ -1828,6 +1837,7 @@ fungible_items:
         construction_resources: { key: "mat a" value: 4500 }
         construction_resources: { key: "mat b" value: 4500 }
         construction_resources: { key: "mat f" value: 1000 }
+        faction: "b"
         fitment:
           {
             slot: "mid"
@@ -1853,6 +1863,7 @@ fungible_items:
         construction_resources: { key: "mat b" value: 24000 }
         construction_resources: { key: "mat f" value: 9000 }
         construction_resources: { key: "mat g" value: 3000 }
+        faction: "b"
         fitment:
           {
             slot: "mid"
@@ -1883,6 +1894,7 @@ fungible_items:
         construction_resources: { key: "mat g" value: 6000 }
         construction_resources: { key: "mat h" value: 4800 }
         construction_resources: { key: "mat i" value: 1200 }
+        faction: "b"
         fitment:
           {
             slot: "mid"
@@ -1913,6 +1925,7 @@ fungible_items:
         construction_resources: { key: "mat g" value: 6000 }
         construction_resources: { key: "mat h" value: 4800 }
         construction_resources: { key: "mat i" value: 1200 }
+        faction: "b"
         fitment:
           {
             slot: "mid"
@@ -2386,6 +2399,7 @@ fungible_items:
         with_blueprint: true
         construction_resources: { key: "mat a" value: 2500 }
         construction_resources: { key: "mat b" value: 2500 }
+        faction: "g"
         fitment:
           {
             slot: "low"
@@ -2412,6 +2426,7 @@ fungible_items:
         construction_resources: { key: "mat a" value: 4500 }
         construction_resources: { key: "mat b" value: 4500 }
         construction_resources: { key: "mat f" value: 1000 }
+        faction: "g"
         fitment:
           {
             slot: "low"
@@ -2439,6 +2454,7 @@ fungible_items:
         construction_resources: { key: "mat b" value: 24000 }
         construction_resources: { key: "mat f" value: 9000 }
         construction_resources: { key: "mat g" value: 3000 }
+        faction: "g"
         fitment:
           {
             slot: "low"
@@ -2471,6 +2487,7 @@ fungible_items:
         construction_resources: { key: "mat g" value: 6000 }
         construction_resources: { key: "mat h" value: 4800 }
         construction_resources: { key: "mat i" value: 1200 }
+        faction: "g"
         fitment:
           {
             slot: "low"
@@ -2496,6 +2513,7 @@ fungible_items:
         with_blueprint: true
         construction_resources: { key: "mat a" value: 2500 }
         construction_resources: { key: "mat b" value: 2500 }
+        faction: "g"
         fitment:
           {
             slot: "low"
@@ -2517,6 +2535,7 @@ fungible_items:
         construction_resources: { key: "mat a" value: 4500 }
         construction_resources: { key: "mat b" value: 4500 }
         construction_resources: { key: "mat f" value: 1000 }
+        faction: "g"
         fitment:
           {
             slot: "low"
@@ -2539,6 +2558,7 @@ fungible_items:
         construction_resources: { key: "mat b" value: 24000 }
         construction_resources: { key: "mat f" value: 9000 }
         construction_resources: { key: "mat g" value: 3000 }
+        faction: "g"
         fitment:
           {
             slot: "low"
@@ -2566,6 +2586,7 @@ fungible_items:
         construction_resources: { key: "mat g" value: 6000 }
         construction_resources: { key: "mat h" value: 4800 }
         construction_resources: { key: "mat i" value: 1200 }
+        faction: "g"
         fitment:
           {
             slot: "low"

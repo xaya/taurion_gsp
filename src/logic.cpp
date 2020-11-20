@@ -266,6 +266,18 @@ ValidateBuildings (Database& db, const Context& ctx)
           CHECK_LE (pb.age_data ().finished_height (), ctx.Height ())
               << "Building " << b->GetId () << " is finished in the future";
         }
+
+      const auto& ro = ctx.RoConfig ().Building (b->GetType ());
+      const auto& constr = ro.construction ();
+      if (constr.has_faction ())
+        {
+          const auto roFaction = FactionFromString (constr.faction ());
+          CHECK (b->GetFaction () == roFaction)
+              << "Building " << b->GetId ()
+              << " is of faction " << FactionToString (b->GetFaction ())
+              << " but the base data requires faction "
+              << FactionToString (roFaction);
+        }
     }
 }
 

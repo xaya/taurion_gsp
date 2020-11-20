@@ -137,15 +137,20 @@ TEST_F (RoItemsTests, Blueprints)
 
   const auto& orig = cfg.Item ("bow bpo");
   ASSERT_TRUE (orig.has_is_blueprint ());
+  EXPECT_FALSE (orig.has_faction ());
   EXPECT_EQ (orig.space (), 1);
   EXPECT_EQ (orig.is_blueprint ().for_item (), "bow");
   EXPECT_TRUE (orig.is_blueprint ().original ());
 
   const auto& copy = cfg.Item ("bow bpc");
   ASSERT_TRUE (copy.has_is_blueprint ());
+  EXPECT_FALSE (orig.has_faction ());
   EXPECT_EQ (copy.space (), 1);
   EXPECT_EQ (copy.is_blueprint ().for_item (), "bow");
   EXPECT_FALSE (copy.is_blueprint ().original ());
+
+  EXPECT_EQ (cfg.Item ("red fitment bpo").faction (), "r");
+  EXPECT_EQ (cfg.Item ("red fitment bpc").faction (), "r");
 }
 
 TEST_F (RoItemsTests, PrizeItems)
@@ -163,6 +168,59 @@ TEST_F (RoItemsTests, PrizeItems)
           EXPECT_TRUE (itm->has_prize ()) << "Not a prize: " << p.name ();
           EXPECT_EQ (itm->space (), 0);
         }
+    }
+}
+
+TEST_F (RoItemsTests, VehicleFactions)
+{
+  EXPECT_FALSE (cfg.Item ("lf gun").has_faction ());
+  EXPECT_FALSE (cfg.Item ("basetank").has_faction ());
+  EXPECT_EQ (cfg.Item ("rv st").faction (), "r");
+  EXPECT_EQ (cfg.Item ("gv ma").faction (), "g");
+  EXPECT_EQ (cfg.Item ("bv vlt").faction (), "b");
+}
+
+TEST_F (RoItemsTests, MainnetVehiclesHaveFaction)
+{
+  /* All vehicles available on mainnet should have a faction associated
+     to them via the item prefix.  */
+
+  const RoConfig main(xaya::Chain::MAIN);
+  for (const auto& i : main->fungible_items ())
+    {
+      const auto& data = main.Item (i.first);
+      ASSERT_TRUE (!data.has_vehicle () || data.has_faction ())
+          << "Vehicle " << i.first
+          << " available on mainnet has no faction set";
+    }
+}
+
+/* ************************************************************************** */
+
+using RoBuildingsTests = RoItemsTests;
+
+TEST_F (RoBuildingsTests, FactionFromNamePrefix)
+{
+  EXPECT_FALSE (cfg.Building ("obelisk1").has_construction ());
+  EXPECT_FALSE (cfg.Building ("r c1").has_construction ());
+  EXPECT_EQ (cfg.Building ("r r").construction ().faction (), "r");
+  EXPECT_EQ (cfg.Building ("b cc").construction ().faction (), "b");
+  EXPECT_EQ (cfg.Building ("g vb").construction ().faction (), "g");
+}
+
+TEST_F (RoBuildingsTests, MainnetBuildableHasFaction)
+{
+  /* All buildings that can be built by players in the mainnet
+     config should have a faction (via name prefix).  */
+
+  const RoConfig main(xaya::Chain::MAIN);
+  for (const auto& b : main->building_types ())
+    {
+      const auto& data = main.Building (b.first);
+      ASSERT_TRUE (!data.has_construction ()
+                      || data.construction ().has_faction ())
+          << "Building type " << b.first
+          << " is constructible on mainnet but doesn't have a faction";
     }
 }
 
@@ -304,6 +362,13 @@ RoConfigSanityTests::IsConfigValid (const RoConfig& cfg)
           return false;
         }
 
+      if (i.has_faction () && !i.has_fitment ())
+        {
+          LOG (WARNING)
+              << "Non-fitment item " << entry.first << " has explicit faction";
+          return false;
+        }
+
       if (i.has_refines ())
         {
           const auto& ref = i.refines ();
@@ -422,6 +487,12 @@ RoConfigSanityTests::IsConfigValid (const RoConfig& cfg)
             || b.full_building ().combat_data ().has_target_size ())
         {
           LOG (WARNING) << "Building has a target size: " << entry.first;
+          return false;
+        }
+
+      if (b.construction ().has_faction ())
+        {
+          LOG (WARNING) << "Building has explicit faction set: " << entry.first;
           return false;
         }
     }

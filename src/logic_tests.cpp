@@ -1178,11 +1178,11 @@ TEST_F (ValidateStateTests, CharacterFactions)
   ValidateState ();
 }
 
-TEST_F (ValidateStateTests, BuildingFactions)
+TEST_F (ValidateStateTests, BuildingOwnerFactions)
 {
-  CreateBuilding ("refinery", "", Faction::ANCIENT);
+  CreateBuilding ("ancient1", "", Faction::ANCIENT);
 
-  auto h = CreateBuilding ("turret", "domob", Faction::RED);
+  auto h = CreateBuilding ("checkmark", "domob", Faction::RED);
   const auto id = h->GetId ();
   h.reset ();
   EXPECT_DEATH (ValidateState (), "owned by uninitialised account");
@@ -1231,6 +1231,28 @@ TEST_F (ValidateStateTests, BuildingAgeData)
   EXPECT_DEATH (ValidateState (), "finished in the future");
 
   ctx.SetHeight (11);
+  ValidateState ();
+}
+
+TEST_F (ValidateStateTests, BuildingConstructionFaction)
+{
+  accounts.CreateNew ("red")->SetFaction (Faction::RED);
+  accounts.CreateNew ("green")->SetFaction (Faction::GREEN);
+
+  CreateBuilding ("checkmark", "", Faction::ANCIENT);
+  CreateBuilding ("checkmark", "red", Faction::RED);
+  CreateBuilding ("r test", "red", Faction::RED);
+  CreateBuilding ("g test", "green", Faction::GREEN);
+  ValidateState ();
+
+  auto id = CreateBuilding ("r test", "green", Faction::GREEN)->GetId ();
+  EXPECT_DEATH (ValidateState (), "base data requires faction");
+  buildings.DeleteById (id);
+
+  id = CreateBuilding ("r test", "", Faction::ANCIENT)->GetId ();
+  EXPECT_DEATH (ValidateState (), "base data requires faction");
+  buildings.DeleteById (id);
+
   ValidateState ();
 }
 
