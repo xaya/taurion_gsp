@@ -111,7 +111,11 @@ template <typename Col>
   Database::Result<T>::GetProto () const
 {
   const int ind = ColumnIndex<Col> ();
-  return LazyProto<typename Col::Type> (stmt.GetBlob (ind));
+
+  LazyProto<typename Col::Type> res(stmt.GetBlob (ind));
+  res.SetArena (db->arena);
+
+  return res;
 }
 
 } // namespace pxd

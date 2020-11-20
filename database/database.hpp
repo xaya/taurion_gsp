@@ -24,6 +24,7 @@
 #include <xayagame/sqlitegame.hpp>
 #include <xayagame/sqlitestorage.hpp>
 
+#include <google/protobuf/arena.h>
 #include <google/protobuf/message.h>
 
 #include <sqlite3.h>
@@ -51,6 +52,9 @@ private:
 
   /** Underlying SQLiteDatabase from libxayagame.  */
   xaya::SQLiteDatabase* db = nullptr;
+
+  /** Protocol buffer arena used for protos extracted from the database.  */
+  google::protobuf::Arena arena;
 
 protected:
 
