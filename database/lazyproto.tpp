@@ -29,13 +29,67 @@ template <typename Proto>
 {}
 
 template <typename Proto>
+  LazyProto<Proto>::~LazyProto ()
+{
+  if (arena == nullptr)
+    delete msg;
+}
+
+template <typename Proto>
+  LazyProto<Proto>::LazyProto (LazyProto&& o)
+{
+  *this = std::move (o);
+}
+
+template <typename Proto>
+  LazyProto<Proto>&
+  LazyProto<Proto>::operator= (LazyProto&& o)
+{
+  if (arena == nullptr)
+    delete msg;
+
+  arena = o.arena;
+  data = std::move (o.data);
+  msg = o.msg;
+  state = o.state;
+
+  o.msg = nullptr;
+  o.state = State::UNINITIALISED;
+
+  return *this;
+}
+
+template <typename Proto>
+  void
+  LazyProto<Proto>::SetArena (google::protobuf::Arena& a)
+{
+  CHECK (state == State::UNINITIALISED || state == State::UNPARSED);
+  CHECK (msg == nullptr);
+  CHECK (arena == nullptr);
+  arena = &a;
+}
+
+template <typename Proto>
+  inline void
+  LazyProto<Proto>::EnsureAllocated () const
+{
+  if (msg != nullptr)
+    return;
+
+  CHECK (state == State::UNINITIALISED || state == State::UNPARSED);
+  msg = google::protobuf::Arena::CreateMessage<Proto> (arena);
+}
+
+template <typename Proto>
   inline void
   LazyProto<Proto>::EnsureParsed () const
 {
+  EnsureAllocated ();
+
   switch (state)
     {
     case State::UNPARSED:
-      CHECK (msg.ParseFromString (data));
+      CHECK (msg->ParseFromString (data));
       state = State::UNMODIFIED;
       return;
 
@@ -52,8 +106,9 @@ template <typename Proto>
   void
   LazyProto<Proto>::SetToDefault ()
 {
+  EnsureAllocated ();
   data.clear ();
-  msg.Clear ();
+  msg->Clear ();
   state = State::UNMODIFIED;
 }
 
@@ -62,7 +117,7 @@ template <typename Proto>
   LazyProto<Proto>::Get () const
 {
   EnsureParsed ();
-  return msg;
+  return *msg;
 }
 
 template <typename Proto>
@@ -71,7 +126,7 @@ template <typename Proto>
 {
   EnsureParsed ();
   state = State::MODIFIED;
-  return msg;
+  return *msg;
 }
 
 template <typename Proto>
@@ -101,7 +156,8 @@ template <typename Proto>
       return data;
 
     case State::MODIFIED:
-      CHECK (msg.SerializeToString (&data));
+      CHECK (msg != nullptr);
+      CHECK (msg->SerializeToString (&data));
       return data;
 
     default:

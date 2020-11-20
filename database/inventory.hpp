@@ -178,7 +178,9 @@ public:
   Inventory& operator= (LazyProto<proto::Inventory>&& d);
 
   Inventory (const Inventory&) = delete;
+  Inventory (const LazyProto<proto::Inventory>&) = delete;
   void operator= (const Inventory&) = delete;
+  void operator= (const LazyProto<proto::Inventory>&) = delete;
 
   friend bool operator== (const Inventory& a, const Inventory& b);
 
