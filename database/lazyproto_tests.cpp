@@ -21,17 +21,29 @@
 #include "hexagonal/coord.hpp"
 #include "proto/geometry.pb.h"
 
+#include <google/protobuf/arena.h>
 #include <gtest/gtest.h>
 
 namespace pxd
 {
 
-class LazyProtoTests : public testing::Test
+/**
+ * Test suite for basic LazyProto operations.  This is parametrised by
+ * a bool, which indicates whether or not to use an arena.
+ */
+class LazyProtoTests : public testing::TestWithParam<bool>
 {
 
 protected:
 
+  google::protobuf::Arena arena;
   LazyProto<proto::HexCoord> lazy;
+
+  LazyProtoTests ()
+  {
+    if (GetParam ())
+      lazy.SetArena (arena);
+  }
 
   /**
    * Sets our LazyProto instance based on the given coordinate.
@@ -46,7 +58,10 @@ protected:
     std::string bytes;
     CHECK (pb.SerializeToString (&bytes));
 
-    lazy = LazyProto<proto::HexCoord> (std::move (bytes));
+    LazyProto<proto::HexCoord> other(std::move (bytes));
+    if (GetParam ())
+      other.SetArena (arena);
+    lazy = std::move (other);
   }
 
   /**
@@ -55,7 +70,7 @@ protected:
   bool
   IsProtoParsed () const
   {
-    return lazy.msg.has_x () || lazy.msg.has_y ();
+    return lazy.msg != nullptr && (lazy.msg->has_x () || lazy.msg->has_y ());
   }
 
   /**
@@ -68,7 +83,8 @@ protected:
   IsSerialisationCached ()
   {
     const std::string before = lazy.GetSerialised ();
-    lazy.msg.set_x (-12345);
+    lazy.EnsureAllocated ();
+    lazy.msg->set_x (-12345);
     const std::string after = lazy.GetSerialised ();
 
     return before == after;
@@ -79,7 +95,7 @@ protected:
 namespace
 {
 
-TEST_F (LazyProtoTests, SetToDefault)
+TEST_P (LazyProtoTests, SetToDefault)
 {
   SetToCoord (HexCoord (42, -5));
 
@@ -92,7 +108,7 @@ TEST_F (LazyProtoTests, SetToDefault)
   EXPECT_TRUE (IsSerialisationCached ());
 }
 
-TEST_F (LazyProtoTests, ProtoNotParsed)
+TEST_P (LazyProtoTests, ProtoNotParsed)
 {
   SetToCoord (HexCoord (42, -5));
   const std::string bytes = lazy.GetSerialised ();
@@ -107,7 +123,7 @@ TEST_F (LazyProtoTests, ProtoNotParsed)
   EXPECT_EQ (pb.y (), -5);
 }
 
-TEST_F (LazyProtoTests, ProtoNotModified)
+TEST_P (LazyProtoTests, ProtoNotModified)
 {
   SetToCoord (HexCoord (42, -5));
 
@@ -119,7 +135,7 @@ TEST_F (LazyProtoTests, ProtoNotModified)
   EXPECT_TRUE (IsSerialisationCached ());
 }
 
-TEST_F (LazyProtoTests, ProtoModified)
+TEST_P (LazyProtoTests, ProtoModified)
 {
   SetToCoord (HexCoord (42, -5));
   lazy.Mutable ().set_x (-10);
@@ -138,7 +154,7 @@ TEST_F (LazyProtoTests, ProtoModified)
   EXPECT_EQ (pb.y (), -5);
 }
 
-TEST_F (LazyProtoTests, IsEmpty)
+TEST_P (LazyProtoTests, IsEmpty)
 {
   SetToCoord (HexCoord (42, -5));
   EXPECT_FALSE (lazy.IsEmpty ());
@@ -150,6 +166,9 @@ TEST_F (LazyProtoTests, IsEmpty)
   lazy.Mutable ();
   EXPECT_FALSE (lazy.IsEmpty ());
 }
+
+INSTANTIATE_TEST_SUITE_P (WithAndWithoutArena, LazyProtoTests,
+                          testing::Values (false, true));
 
 } // anonymous namespace
 } // namespace pxd

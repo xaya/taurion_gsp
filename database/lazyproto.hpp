@@ -19,6 +19,8 @@
 #ifndef DATABASE_LAZYPROTO_HPP
 #define DATABASE_LAZYPROTO_HPP
 
+#include <google/protobuf/arena.h>
+
 #include <string>
 
 namespace pxd
@@ -64,14 +66,26 @@ private:
 
   };
 
+  /** The arena used to allocate the parsed message, if any.  */
+  google::protobuf::Arena* arena = nullptr;
+
   /** The raw bytes of the protocol buffer.  */
   mutable std::string data;
 
-  /** The parsed protocol buffer.  */
-  mutable Proto msg;
+  /**
+   * The parsed protocol buffer.  If we have an arena set, it is allocated
+   * on and owned by the arena.  If no arena is set, the instance is owned
+   * by the LazyProto instance and will be destructed accordingly.
+   */
+  mutable Proto* msg = nullptr;
 
   /** Current state of this lazy proto.  */
   mutable State state = State::UNINITIALISED;
+
+  /**
+   * Ensures that we have an allocated message.
+   */
+  void EnsureAllocated () const;
 
   /**
    * Ensures that the protocol buffer is parsed.
@@ -89,12 +103,20 @@ public:
    */
   explicit LazyProto (std::string&& d);
 
+  ~LazyProto ();
+
   /* A LazyProto can be moved but not copied.  */
-  LazyProto (LazyProto&&) = default;
-  LazyProto& operator= (LazyProto&&) = default;
+  LazyProto (LazyProto&&);
+  LazyProto& operator= (LazyProto&&);
 
   LazyProto (const LazyProto&) = delete;
   void operator= (const LazyProto&) = delete;
+
+  /**
+   * Enables an arena for this instance.  This must only be called if the
+   * message is not yet allocated, i.e. the state is unparsed or uninitialised.
+   */
+  void SetArena (google::protobuf::Arena& a);
 
   /**
    * Initialises the protocol buffer value as "empty" (i.e. default-constructed
