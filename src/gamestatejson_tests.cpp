@@ -877,15 +877,18 @@ TEST_F (BuildingJsonTests, ConfiguredFees)
       [
         {
           "id": 1,
-          "servicefee": 0,
-          "dexfee": 0.0
+          "config":
+            {
+              "servicefee": null,
+              "dexfee": null
+            }
         }
       ]
   })");
 
   b = tbl.GetById (1);
-  b->MutableProto ().set_service_fee_percent (42);
-  b->MutableProto ().set_dex_fee_bps (1'725);
+  b->MutableProto ().mutable_config ()->set_service_fee_percent (42);
+  b->MutableProto ().mutable_config ()->set_dex_fee_bps (1'725);
   b.reset ();
 
   ExpectStateJson (R"({
@@ -893,8 +896,11 @@ TEST_F (BuildingJsonTests, ConfiguredFees)
       [
         {
           "id": 1,
-          "servicefee": 42,
-          "dexfee": 17.25
+          "config":
+            {
+              "servicefee": 42,
+              "dexfee": 17.25
+            }
         }
       ]
   })");

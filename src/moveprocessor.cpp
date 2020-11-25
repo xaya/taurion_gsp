@@ -1800,7 +1800,7 @@ MaybeUpdateServiceFee (Building& b, const Json::Value& upd)
   LOG (INFO)
       << "Setting service fee for building " << b.GetId ()
       << " to " << val << "%";
-  b.MutableProto ().set_service_fee_percent (val);
+  b.MutableProto ().mutable_config ()->set_service_fee_percent (val);
 }
 
 /**
@@ -1824,7 +1824,7 @@ MaybeUpdateDexFee (Building& b, const Json::Value& upd)
   LOG (INFO)
       << "Setting DEX fee for building " << b.GetId ()
       << " to " << val << " basis points";
-  b.MutableProto ().set_dex_fee_bps (val);
+  b.MutableProto ().mutable_config ()->set_dex_fee_bps (val);
 }
 
 } // anonymous namespace

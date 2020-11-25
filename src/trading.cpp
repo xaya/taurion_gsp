@@ -293,7 +293,7 @@ NewOrderOperation::PayToSellerAndFee (const std::string& recipient,
   CHECK (b != nullptr);
 
   const int baseBps = ctx.RoConfig ()->params ().dex_fee_bps ();
-  const int ownerBps = b->GetProto ().dex_fee_bps ();
+  const int ownerBps = b->GetProto ().config ().dex_fee_bps ();
   const int totalBps = baseBps + ownerBps;
 
   if (b->GetFaction () == Faction::ANCIENT)

@@ -1038,7 +1038,8 @@ ServiceOperation::GetCosts (Amount& base, Amount& fee) const
   /* Otherwise the service fee is determined as a percentage of the base cost,
      with the percentage given by the building configuration.  The result
      is rounded up.  */
-  fee = (base * building->GetProto ().service_fee_percent () + 99) / 100;
+  const auto& cfg = building->GetProto ().config ();
+  fee = (base * cfg.service_fee_percent () + 99) / 100;
 }
 
 std::string

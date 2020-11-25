@@ -326,6 +326,19 @@ template <>
   return res;
 }
 
+template <>
+  Json::Value
+  GameStateJson::Convert<proto::Building::Config> (
+      const proto::Building::Config& cfg) const
+{
+  Json::Value res(Json::objectValue);
+  if (cfg.has_service_fee_percent ())
+    res["servicefee"] = IntToJson (cfg.service_fee_percent ());
+  if (cfg.has_dex_fee_bps ())
+    res["dexfee"] = cfg.dex_fee_bps () / 100.0;
+  return res;
+}
+
 namespace
 {
 
@@ -411,8 +424,7 @@ template <>
   res["centre"] = CoordToJson (b.GetCentre ());
 
   res["rotationsteps"] = IntToJson (pb.shape_trafo ().rotation_steps ());
-  res["servicefee"] = IntToJson (pb.service_fee_percent ());
-  res["dexfee"] = pb.dex_fee_bps () / 100.0;
+  res["config"] = Convert (pb.config ());
 
   Json::Value tiles(Json::arrayValue);
   for (const auto& c : GetBuildingShape (b, ctx))

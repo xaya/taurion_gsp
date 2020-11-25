@@ -42,7 +42,8 @@ class GetServiceInfoTest (PXTest):
 
     self.getBuildings ()[building].sendMove ({"sf": 50})
     self.generate (1)
-    self.assertEqual (self.getBuildings ()[building].data["servicefee"], 50)
+    b = self.getBuildings ()[building]
+    self.assertEqual (b.data["config"]["servicefee"], 50)
 
     self.dropIntoBuilding (building, "andy", {"test ore": 3})
 

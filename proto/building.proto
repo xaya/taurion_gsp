@@ -74,18 +74,30 @@ message Building
   optional CombatData combat_data = 5;
 
   /**
-   * The service fee that users need to pay to the building owner for using
-   * services in the building.  This is a percentage of the service's base
-   * fee (the burnt amount).
+   * Configuration data for a building, which can be changed by the
+   * building's owner at will.
    */
-  optional uint32 service_fee_percent = 6;
+  message Config
+  {
 
-  /**
-   * The fee charged by the building owner for trades on the building's DEX.
-   * This is in basis points (1/100 of a percent) and paid by the seller
-   * from the received Cubits.
-   */
-  optional int32 dex_fee_bps = 7;
+    /**
+     * The service fee that users need to pay to the building owner for using
+     * services in the building.  This is a percentage of the service's base
+     * fee (the burnt amount).
+     */
+    optional uint32 service_fee_percent = 1;
+
+    /**
+     * The fee charged by the building owner for trades on the building's DEX.
+     * This is in basis points (1/100 of a percent) and paid by the seller
+     * from the received Cubits.
+     */
+    optional int32 dex_fee_bps = 2;
+
+  }
+
+  /** The current configuration for the building.  */
+  optional Config config = 6;
 
   /**
    * Data about the building age, i.e. the block heights when it was founded
@@ -103,6 +115,6 @@ message Building
   }
 
   /** Age data for this building.  */
-  optional AgeData age_data = 8;
+  optional AgeData age_data = 7;
 
 }

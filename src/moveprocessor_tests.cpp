@@ -3238,8 +3238,7 @@ TEST_F (BuildingUpdateTests, InvalidFormat)
     }
   ])");
 
-  EXPECT_FALSE (buildings.GetById (DOMOB_OWNED)
-                  ->GetProto ().has_service_fee_percent ());
+  EXPECT_FALSE (buildings.GetById (DOMOB_OWNED)->GetProto ().has_config ());
 }
 
 TEST_F (BuildingUpdateTests, NonExistantBuilding)
@@ -3250,8 +3249,7 @@ TEST_F (BuildingUpdateTests, NonExistantBuilding)
       "move": {"b": {"id": 12345, "sf": 10}}
     }
   ])");
-  EXPECT_FALSE (buildings.GetById (DOMOB_OWNED)
-                  ->GetProto ().has_service_fee_percent ());
+  EXPECT_FALSE (buildings.GetById (DOMOB_OWNED)->GetProto ().has_config ());
 }
 
 TEST_F (BuildingUpdateTests, AncientCannotBeUpdated)
@@ -3262,8 +3260,7 @@ TEST_F (BuildingUpdateTests, AncientCannotBeUpdated)
       "move": {"b": {"id": 100, "sf": 10}}
     }
   ])");
-  EXPECT_FALSE (buildings.GetById (ANCIENT)
-                  ->GetProto ().has_service_fee_percent ());
+  EXPECT_FALSE (buildings.GetById (ANCIENT)->GetProto ().has_config ());
 }
 
 TEST_F (BuildingUpdateTests, NotOwner)
@@ -3274,8 +3271,7 @@ TEST_F (BuildingUpdateTests, NotOwner)
       "move": {"b": {"id": 101, "sf": 10}}
     }
   ])");
-  EXPECT_FALSE (buildings.GetById (ANDY_OWNED)
-                  ->GetProto ().has_service_fee_percent ());
+  EXPECT_FALSE (buildings.GetById (ANDY_OWNED)->GetProto ().has_config ());
 }
 
 TEST_F (BuildingUpdateTests, ArrayUpdate)
@@ -3291,10 +3287,9 @@ TEST_F (BuildingUpdateTests, ArrayUpdate)
       ]}
     }
   ])");
-  EXPECT_FALSE (buildings.GetById (ANDY_OWNED)
-                  ->GetProto ().has_service_fee_percent ());
+  EXPECT_FALSE (buildings.GetById (ANDY_OWNED)->GetProto ().has_config ());
   EXPECT_EQ (buildings.GetById (DOMOB_OWNED)
-                ->GetProto ().service_fee_percent (), 70);
+                ->GetProto ().config ().service_fee_percent (), 70);
 }
 
 TEST_F (BuildingUpdateTests, SetServiceFee)
@@ -3310,9 +3305,9 @@ TEST_F (BuildingUpdateTests, SetServiceFee)
     }
   ])");
   EXPECT_EQ (buildings.GetById (ANDY_OWNED)
-                ->GetProto ().service_fee_percent (), 1'000);
+                ->GetProto ().config ().service_fee_percent (), 1'000);
   EXPECT_EQ (buildings.GetById (DOMOB_OWNED)
-                ->GetProto ().service_fee_percent (), 1);
+                ->GetProto ().config ().service_fee_percent (), 1);
 
   Process (R"([
     {
@@ -3337,9 +3332,9 @@ TEST_F (BuildingUpdateTests, SetServiceFee)
     }
   ])");
   EXPECT_EQ (buildings.GetById (ANDY_OWNED)
-                ->GetProto ().service_fee_percent (), 1'000);
+                ->GetProto ().config ().service_fee_percent (), 1'000);
   EXPECT_EQ (buildings.GetById (DOMOB_OWNED)
-                ->GetProto ().service_fee_percent (), 0);
+                ->GetProto ().config ().service_fee_percent (), 0);
 }
 
 TEST_F (BuildingUpdateTests, SetDexFee)
@@ -3354,8 +3349,12 @@ TEST_F (BuildingUpdateTests, SetDexFee)
       "move": {"b": {"id": 102, "xf": 100}}
     }
   ])");
-  EXPECT_EQ (buildings.GetById (ANDY_OWNED)->GetProto ().dex_fee_bps (), 3'000);
-  EXPECT_EQ (buildings.GetById (DOMOB_OWNED)->GetProto ().dex_fee_bps (), 100);
+  EXPECT_EQ (buildings.GetById (ANDY_OWNED)
+                ->GetProto ().config ().dex_fee_bps (),
+             3'000);
+  EXPECT_EQ (buildings.GetById (DOMOB_OWNED)
+                ->GetProto ().config ().dex_fee_bps (),
+             100);
 
   Process (R"([
     {
@@ -3379,8 +3378,12 @@ TEST_F (BuildingUpdateTests, SetDexFee)
       "move": {"b": {"id": 102, "xf": 0}}
     }
   ])");
-  EXPECT_EQ (buildings.GetById (ANDY_OWNED)->GetProto ().dex_fee_bps (), 3'000);
-  EXPECT_EQ (buildings.GetById (DOMOB_OWNED)->GetProto ().dex_fee_bps (), 0);
+  EXPECT_EQ (buildings.GetById (ANDY_OWNED)
+                ->GetProto ().config ().dex_fee_bps (),
+             3'000);
+  EXPECT_EQ (buildings.GetById (DOMOB_OWNED)
+                ->GetProto ().config ().dex_fee_bps (),
+             0);
 }
 
 /* ************************************************************************** */

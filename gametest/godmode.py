@@ -48,8 +48,7 @@ class GodModeTest (PXTest):
       "faction": "a",
       "centre": {"x": 100, "y": 150},
       "rotationsteps": 2,
-      "servicefee": 0,
-      "dexfee": 0.0,
+      "config": {},
       "age": {"founded": height + 1, "finished": height + 1},
       "tiles":
         [
@@ -78,8 +77,7 @@ class GodModeTest (PXTest):
       "owner": "domob",
       "centre": {"x": -100, "y": -150},
       "rotationsteps": 0,
-      "servicefee": 0,
-      "dexfee": 0.0,
+      "config": {},
       "age": {"founded": height + 2, "finished": height + 2},
       "tiles":
         [

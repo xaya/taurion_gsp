@@ -517,7 +517,8 @@ protected:
        owner fee to -10%, which offsets the base fee on regtest completely.
        This obviously only works by changing the value directly, and won't
        be possible to do in the real game through moves.  */
-    buildings.GetById (1)->MutableProto ().set_dex_fee_bps (-1'000);
+    buildings.GetById (1)
+        ->MutableProto ().mutable_config ()->set_dex_fee_bps (-1'000);
     accounts.GetByName ("building")->AddBalance (1'000'000);
 
     /* Future orders (placed by the test) will have IDs from 201.  */
@@ -715,7 +716,8 @@ protected:
         ->GetInventory ().AddFungibleCount ("foo", 1'000);
 
     /* Owner fee in the tests is 20%, for a total fee of 30%.  */
-    buildings.GetById (1)->MutableProto ().set_dex_fee_bps (2'000);
+    buildings.GetById (1)
+        ->MutableProto ().mutable_config ()->set_dex_fee_bps (2'000);
 
     db.SetNextId (101);
   }

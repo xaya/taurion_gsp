@@ -247,7 +247,7 @@ TEST_F (ServicesTests, PendingJson)
 
   auto b = buildings.CreateNew ("ancient1", "andy", Faction::RED);
   ASSERT_EQ (b->GetId (), 101);
-  b->MutableProto ().set_service_fee_percent (50);
+  b->MutableProto ().mutable_config ()->set_service_fee_percent (50);
   b.reset ();
 
   inv.Get (101, "domob")->GetInventory ().AddFungibleCount ("test ore", 10);
@@ -310,7 +310,8 @@ TEST_F (ServicesFeeTests, NoFeeInAncientBuilding)
 
 TEST_F (ServicesFeeTests, NoFeeInOwnBuilding)
 {
-  buildings.GetById (101)->MutableProto ().set_service_fee_percent (50);
+  buildings.GetById (101)
+      ->MutableProto ().mutable_config ()->set_service_fee_percent (50);
   ASSERT_TRUE (Process ("andy", R"({
     "t": "ref",
     "b": 101,
@@ -324,7 +325,7 @@ TEST_F (ServicesFeeTests, InsufficientBalanceWithFee)
 {
   auto b = buildings.CreateNew ("ancient1", "domob", Faction::RED);
   ASSERT_EQ (b->GetId (), 102);
-  b->MutableProto ().set_service_fee_percent (50);
+  b->MutableProto ().mutable_config ()->set_service_fee_percent (50);
   b.reset ();
 
   inv.Get (102, "andy")
@@ -341,7 +342,8 @@ TEST_F (ServicesFeeTests, InsufficientBalanceWithFee)
 
 TEST_F (ServicesFeeTests, NormalFeePayment)
 {
-  buildings.GetById (101)->MutableProto ().set_service_fee_percent (50);
+  buildings.GetById (101)
+      ->MutableProto ().mutable_config ()->set_service_fee_percent (50);
   ASSERT_TRUE (Process ("domob", R"({
     "t": "ref",
     "b": 101,
@@ -354,7 +356,8 @@ TEST_F (ServicesFeeTests, NormalFeePayment)
 
 TEST_F (ServicesFeeTests, ZeroFeePossible)
 {
-  buildings.GetById (101)->MutableProto ().set_service_fee_percent (0);
+  buildings.GetById (101)
+      ->MutableProto ().mutable_config ()->set_service_fee_percent (0);
   ASSERT_TRUE (Process ("domob", R"({
     "t": "ref",
     "b": 101,
@@ -367,7 +370,8 @@ TEST_F (ServicesFeeTests, ZeroFeePossible)
 
 TEST_F (ServicesFeeTests, FeeRoundedUp)
 {
-  buildings.GetById (101)->MutableProto ().set_service_fee_percent (1);
+  buildings.GetById (101)
+      ->MutableProto ().mutable_config ()->set_service_fee_percent (1);
   ASSERT_TRUE (Process ("domob", R"({
     "t": "ref",
     "b": 101,
