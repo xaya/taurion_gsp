@@ -129,6 +129,7 @@ RoConfig::RoConfig (const xaya::Chain chain)
         pb.MergeFrom (pb.testnet_merge ());
       if (mergeRegtest)
         {
+          pb.clear_safe_zones ();
           pb.mutable_params ()->clear_prizes ();
           pb.MergeFrom (pb.regtest_merge ());
         }

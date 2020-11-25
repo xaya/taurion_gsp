@@ -73,6 +73,11 @@ CanPlaceBuilding (const std::string& type,
           VLOG (1) << "Position " << c << " is not passable in the base map";
           return false;
         }
+      if (ctx.Map ().SafeZones ().IsNoCombat (c))
+        {
+          VLOG (1) << "Position " << c << " is a no-combat zone, can't build";
+          return false;
+        }
       if (!dyn.IsFree (c))
         {
           VLOG (1) << "Position " << c << " has a dynamic obstacle";
