@@ -1,4 +1,4 @@
-# For testing, we use these additional safe zones which will remain
+# For testing, we use these safe zones instead which will remain
 # unchanged even if we decide to move around or tweak the safe zones
 # in the main game.
 

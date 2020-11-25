@@ -36,9 +36,9 @@ namespace
 {
 
 /** Position where prizes are won with normal chance.  */
-constexpr HexCoord POS_NORMAL_PRIZES(4'000, 0);
+constexpr HexCoord POS_NORMAL_PRIZES(2'042, 0);
 /** Position with low chance for prizes.  */
-constexpr HexCoord POS_LOW_PRIZES(2'000, -2'650);
+constexpr HexCoord POS_LOW_PRIZES(-2'042, 1'000);
 
 /* ************************************************************************** */
 
@@ -251,8 +251,8 @@ TEST_F (FinishProspectingTests, Prizes)
   EXPECT_EQ (foundMap["gold"], 3);
   EXPECT_EQ (foundMap["bronze"], 1);
   /* Expected value is 1000.  */
-  EXPECT_GE (foundMap["silver"], 950);
-  EXPECT_LE (foundMap["silver"], 1050);
+  EXPECT_GE (foundMap["silver"], 900);
+  EXPECT_LE (foundMap["silver"], 1'100);
 }
 
 TEST_F (FinishProspectingTests, FewerPrizesInLowPrizeZone)
