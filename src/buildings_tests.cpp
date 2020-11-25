@@ -146,6 +146,19 @@ TEST_F (CanPlaceBuildingTests, Impassable)
   EXPECT_FALSE (CanPlace ("huesli", 0, impassable));
 }
 
+TEST_F (CanPlaceBuildingTests, SafeZone)
+{
+  const HexCoord neutral(2'042, 0);
+  const HexCoord starter(-2'042, 100);
+  ASSERT_TRUE (ctx.Map ().SafeZones ().IsNoCombat (neutral));
+  ASSERT_TRUE (ctx.Map ().SafeZones ().IsNoCombat (starter));
+  ASSERT_EQ (ctx.Map ().SafeZones ().StarterFor (neutral), Faction::INVALID);
+  ASSERT_EQ (ctx.Map ().SafeZones ().StarterFor (starter), Faction::RED);
+
+  EXPECT_FALSE (CanPlace ("huesli", 0, neutral));
+  EXPECT_FALSE (CanPlace ("huesli", 0, starter));
+}
+
 TEST_F (CanPlaceBuildingTests, DynObstacle)
 {
   characters.CreateNew ("domob", Faction::RED)->SetPosition (HexCoord (0, 0));
