@@ -557,6 +557,11 @@ template <>
       res["operation"] = "build";
       break;
 
+    case proto::OngoingOperation::kBuildingUpdate:
+      res["operation"] = "config";
+      res["newconfig"] = Convert (pb.building_update ().new_config ());
+      break;
+
     default:
       LOG (FATAL) << "Unexpected ongoing operation case: " << pb.op_case ();
     }

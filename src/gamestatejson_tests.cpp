@@ -1249,6 +1249,51 @@ TEST_F (OngoingsJsonTests, BuildingConstruction)
   })");
 }
 
+TEST_F (OngoingsJsonTests, BuildingConfigUpdate)
+{
+  auto op = tbl.CreateNew (1);
+  ASSERT_EQ (op->GetId (), 1);
+  op->SetBuildingId (42);
+  op->MutableProto ().mutable_building_update ();
+  op.reset ();
+
+  ExpectStateJson (R"({
+    "ongoings":
+      [
+        {
+          "id": 1,
+          "operation": "config",
+          "newconfig":
+            {
+              "servicefee": null,
+              "dexfee": null
+            }
+        }
+      ]
+  })");
+
+  op = tbl.GetById (1);
+  auto* upd = op->MutableProto ().mutable_building_update ();
+  upd->mutable_new_config ()->set_service_fee_percent (2);
+  upd->mutable_new_config ()->set_dex_fee_bps (150);
+  op.reset ();
+
+  ExpectStateJson (R"({
+    "ongoings":
+      [
+        {
+          "id": 1,
+          "operation": "config",
+          "newconfig":
+            {
+              "servicefee": 2,
+              "dexfee": 1.5
+            }
+        }
+      ]
+  })");
+}
+
 /* ************************************************************************** */
 
 class RegionJsonTests : public GameStateJsonTests

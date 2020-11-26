@@ -359,5 +359,74 @@ TEST_F (OngoingsTests, BuildingConstruction)
   EXPECT_EQ (GetNumOngoing (), 0);
 }
 
+TEST_F (OngoingsTests, BuildingConfigUpdate)
+{
+  auto b = buildings.CreateNew ("huesli", "domob", Faction::RED);
+  const auto bId = b->GetId ();
+  b->MutableProto ().mutable_config ()->set_dex_fee_bps (42);
+  b->MutableProto ().mutable_config ()->set_service_fee_percent (1);
+
+  auto op = AddOp (*b);
+  op->SetHeight (10);
+  auto* cfg = op->MutableProto ().mutable_building_update ();
+  cfg->mutable_new_config ()->set_dex_fee_bps (50);
+  op.reset ();
+
+  op = AddOp (*b);
+  op->SetHeight (11);
+  cfg = op->MutableProto ().mutable_building_update ();
+  cfg->mutable_new_config ()->set_service_fee_percent (2);
+  op.reset ();
+
+  op = AddOp (*b);
+  op->SetHeight (12);
+  op->MutableProto ().mutable_building_update ();
+  op.reset ();
+
+  op = AddOp (*b);
+  op->SetHeight (13);
+  op->MutableProto ().mutable_building_update ();
+  cfg->mutable_new_config ()->set_service_fee_percent (3);
+  op.reset ();
+
+  op = AddOp (*b);
+  op->SetHeight (13);
+  op->MutableProto ().mutable_building_update ();
+  cfg->mutable_new_config ()->set_service_fee_percent (4);
+  op.reset ();
+
+  b.reset ();
+
+  ctx.SetHeight (9);
+  ProcessAllOngoings (db, rnd, ctx);
+  b = buildings.GetById (bId);
+  EXPECT_EQ (b->GetProto ().config ().dex_fee_bps (), 42);
+  EXPECT_EQ (b->GetProto ().config ().service_fee_percent (), 1);
+
+  ctx.SetHeight (10);
+  ProcessAllOngoings (db, rnd, ctx);
+  b = buildings.GetById (bId);
+  EXPECT_EQ (b->GetProto ().config ().dex_fee_bps (), 50);
+  EXPECT_EQ (b->GetProto ().config ().service_fee_percent (), 1);
+
+  ctx.SetHeight (11);
+  ProcessAllOngoings (db, rnd, ctx);
+  b = buildings.GetById (bId);
+  EXPECT_EQ (b->GetProto ().config ().dex_fee_bps (), 50);
+  EXPECT_EQ (b->GetProto ().config ().service_fee_percent (), 2);
+
+  ctx.SetHeight (12);
+  ProcessAllOngoings (db, rnd, ctx);
+  b = buildings.GetById (bId);
+  EXPECT_EQ (b->GetProto ().config ().dex_fee_bps (), 50);
+  EXPECT_EQ (b->GetProto ().config ().service_fee_percent (), 2);
+
+  ctx.SetHeight (13);
+  ProcessAllOngoings (db, rnd, ctx);
+  b = buildings.GetById (bId);
+  EXPECT_EQ (b->GetProto ().config ().dex_fee_bps (), 50);
+  EXPECT_EQ (b->GetProto ().config ().service_fee_percent (), 4);
+}
+
 } // anonymous namespace
 } // namespace pxd

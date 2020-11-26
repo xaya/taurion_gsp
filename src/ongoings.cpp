@@ -203,6 +203,20 @@ ProcessAllOngoings (Database& db, xaya::Random& rnd, const Context& ctx)
           FinishBuildingConstruction (*b, ctx, buildingInv);
           break;
 
+        case proto::OngoingOperation::kBuildingUpdate:
+          {
+            CHECK (b != nullptr);
+            const auto& newConfig
+                = op->GetProto ().building_update ().new_config ();
+            LOG (INFO)
+                << "Executing delayed config update for building "
+                << b->GetId () << ":\n" << newConfig.DebugString ();
+            /* We want to merge here rather than assign, so that fields
+               unset in the newConfig are left untouched.  */
+            b->MutableProto ().mutable_config ()->MergeFrom (newConfig);
+            break;
+          }
+
         default:
           LOG (FATAL)
               << "Unexpected operation case: " << op->GetProto ().op_case ();
