@@ -1780,51 +1780,45 @@ namespace
 {
 
 /**
- * Tries to perform a service-fee update in a building.
+ * Tries to extract a service-fee update for a building into
+ * the new configuration proto.
  */
-void
-MaybeUpdateServiceFee (Building& b, const Json::Value& upd)
+bool
+MaybeUpdateServiceFee (const Json::Value& upd, proto::Building::Config& cfg)
 {
   if (!xaya::IsIntegerValue (upd) || !upd.isUInt64 ())
-    return;
+    return false;
 
   const uint64_t val = upd.asUInt64 ();
   if (val > MAX_SERVICE_FEE_PERCENT)
     {
-      LOG (WARNING)
-          << "Service fee " << val << "% is too much for building "
-          << b.GetId () << " of " << b.GetOwner ();
-      return;
+      LOG (WARNING) << "Service fee " << val << "% is too much";
+      return false;
     }
 
-  LOG (INFO)
-      << "Setting service fee for building " << b.GetId ()
-      << " to " << val << "%";
-  b.MutableProto ().mutable_config ()->set_service_fee_percent (val);
+  cfg.set_service_fee_percent (val);
+  return true;
 }
 
 /**
- * Tries to perform a DEX-fee update in a building.
+ * Tries to extract a DEX-fee update in a building into
+ * the new configuration proto.
  */
-void
-MaybeUpdateDexFee (Building& b, const Json::Value& upd)
+bool
+MaybeUpdateDexFee (const Json::Value& upd, proto::Building::Config& cfg)
 {
   if (!xaya::IsIntegerValue (upd) || !upd.isUInt64 ())
-    return;
+    return false;
 
   const uint64_t val = upd.asUInt64 ();
   if (val > MAX_DEX_FEE_BPS)
     {
-      LOG (WARNING)
-          << "DEX fee of " << val << " basis points is too much for building "
-          << b.GetId () << " of " << b.GetOwner ();
-      return;
+      LOG (WARNING) << "DEX fee of " << val << " basis points is too";
+      return false;
     }
 
-  LOG (INFO)
-      << "Setting DEX fee for building " << b.GetId ()
-      << " to " << val << " basis points";
-  b.MutableProto ().mutable_config ()->set_dex_fee_bps (val);
+  cfg.set_dex_fee_bps (val);
+  return true;
 }
 
 } // anonymous namespace
@@ -1832,8 +1826,27 @@ MaybeUpdateDexFee (Building& b, const Json::Value& upd)
 void
 MoveProcessor::PerformBuildingUpdate (Building& b, const Json::Value& upd)
 {
-  MaybeUpdateServiceFee (b, upd["sf"]);
-  MaybeUpdateDexFee (b, upd["xf"]);
+  proto::Building::Config newConfig;
+
+  bool updated = false;
+  if (MaybeUpdateServiceFee (upd["sf"], newConfig))
+    updated = true;
+  if (MaybeUpdateDexFee (upd["xf"], newConfig))
+    updated = true;
+
+  if (!updated)
+    return;
+
+  LOG (INFO)
+      << "Scheduling building configuration update for " << b.GetId () << ":\n"
+      << newConfig.DebugString ();
+
+  auto op = ongoings.CreateNew (ctx.Height ());
+  op->SetHeight (
+      ctx.Height () + ctx.RoConfig ()->params ().building_update_delay ());
+  op->SetBuildingId (b.GetId ());
+  *op->MutableProto ().mutable_building_update ()->mutable_new_config ()
+      = newConfig;
 }
 
 void

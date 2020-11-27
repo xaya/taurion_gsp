@@ -572,25 +572,31 @@ message Params
   /** Nubmer of blocks for constructing an item, per complexity.  */
   optional uint32 construction_blocks = 11;
 
+  /**
+   * Delay (in blocks) until an owner-initiated update to the building
+   * configuration takes effect.
+   */
+  optional uint32 building_update_delay = 12;
+
   /** Base fee (which is burnt) paid by sellers on the DEX in basis points.  */
-  optional uint32 dex_fee_bps = 12;
+  optional uint32 dex_fee_bps = 13;
 
   /** Minimum units of ore found in a prospected region.  */
-  optional int64 min_region_ore = 13;
+  optional int64 min_region_ore = 14;
   /** Maximum units of ore found in a prospected region.  */
-  optional int64 max_region_ore = 14;
+  optional int64 max_region_ore = 15;
 
   /** The address to which developer payments should be sent.  */
-  optional string dev_addr = 15;
+  optional string dev_addr = 16;
 
   /** Whether or not god mode is enabled.  */
-  optional bool god_mode = 16;
+  optional bool god_mode = 17;
 
   /** Spawn areas for the factions (with the "r", "g", "b" string as key).  */
-  map<string, SpawnArea> spawn_areas = 17;
+  map<string, SpawnArea> spawn_areas = 18;
 
   /** Data about the burnsale schedule.  */
-  repeated BurnsaleStage burnsale_stages = 18;
+  repeated BurnsaleStage burnsale_stages = 19;
 
   /**
    * Prospecting prizes.  They are just a list and not a map, because the
@@ -600,7 +606,7 @@ message Params
    * It is replaced rather than concatenated (which would be the default
    * behaviour for proto merge).
    */
-  repeated ProspectingPrize prizes = 19;
+  repeated ProspectingPrize prizes = 20;
 
 }
 

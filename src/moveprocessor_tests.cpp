@@ -3198,14 +3198,16 @@ protected:
   static constexpr Database::IdT DOMOB_OWNED = 102;
 
   BuildingsTable buildings;
+  OngoingsTable ongoings;
 
   BuildingUpdateTests ()
-    : buildings(db)
+    : buildings(db), ongoings(db)
   {
     accounts.CreateNew ("domob")->SetFaction (Faction::RED);
     accounts.CreateNew ("andy")->SetFaction (Faction::RED);
 
     db.SetNextId (100);
+    ctx.SetHeight (10);
 
     auto b = buildings.CreateNew ("ancient1", "", Faction::ANCIENT);
     CHECK_EQ (b->GetId (), ANCIENT);
@@ -3220,7 +3222,17 @@ protected:
     b->SetCentre (HexCoord (10, 10));
   }
 
+  void
+  ExpectNoOngoings ()
+  {
+    ASSERT_FALSE (ongoings.QueryAll ().Step ());
+  }
+
 };
+
+constexpr Database::IdT BuildingUpdateTests::ANCIENT;
+constexpr Database::IdT BuildingUpdateTests::ANDY_OWNED;
+constexpr Database::IdT BuildingUpdateTests::DOMOB_OWNED;
 
 TEST_F (BuildingUpdateTests, InvalidFormat)
 {
@@ -3239,6 +3251,7 @@ TEST_F (BuildingUpdateTests, InvalidFormat)
   ])");
 
   EXPECT_FALSE (buildings.GetById (DOMOB_OWNED)->GetProto ().has_config ());
+  ExpectNoOngoings ();
 }
 
 TEST_F (BuildingUpdateTests, NonExistantBuilding)
@@ -3250,6 +3263,7 @@ TEST_F (BuildingUpdateTests, NonExistantBuilding)
     }
   ])");
   EXPECT_FALSE (buildings.GetById (DOMOB_OWNED)->GetProto ().has_config ());
+  ExpectNoOngoings ();
 }
 
 TEST_F (BuildingUpdateTests, AncientCannotBeUpdated)
@@ -3261,6 +3275,7 @@ TEST_F (BuildingUpdateTests, AncientCannotBeUpdated)
     }
   ])");
   EXPECT_FALSE (buildings.GetById (ANCIENT)->GetProto ().has_config ());
+  ExpectNoOngoings ();
 }
 
 TEST_F (BuildingUpdateTests, NotOwner)
@@ -3272,6 +3287,7 @@ TEST_F (BuildingUpdateTests, NotOwner)
     }
   ])");
   EXPECT_FALSE (buildings.GetById (ANDY_OWNED)->GetProto ().has_config ());
+  ExpectNoOngoings ();
 }
 
 TEST_F (BuildingUpdateTests, ArrayUpdate)
@@ -3287,28 +3303,35 @@ TEST_F (BuildingUpdateTests, ArrayUpdate)
       ]}
     }
   ])");
+
   EXPECT_FALSE (buildings.GetById (ANDY_OWNED)->GetProto ().has_config ());
-  EXPECT_EQ (buildings.GetById (DOMOB_OWNED)
-                ->GetProto ().config ().service_fee_percent (), 70);
+  EXPECT_FALSE (buildings.GetById (DOMOB_OWNED)->GetProto ().has_config ());
+
+  auto res = ongoings.QueryAll ();
+
+  ASSERT_TRUE (res.Step ());
+  auto op = ongoings.GetFromResult (res);
+  EXPECT_EQ (op->GetCharacterId (), Database::EMPTY_ID);
+  EXPECT_EQ (op->GetBuildingId (), DOMOB_OWNED);
+  EXPECT_EQ (op->GetHeight (), 20);
+  const auto* upd = &op->GetProto ().building_update ();
+  EXPECT_EQ (upd->new_config ().service_fee_percent (), 10);
+  EXPECT_FALSE (upd->new_config ().has_dex_fee_bps ());
+
+  ASSERT_TRUE (res.Step ());
+  op = ongoings.GetFromResult (res);
+  EXPECT_EQ (op->GetCharacterId (), Database::EMPTY_ID);
+  EXPECT_EQ (op->GetBuildingId (), DOMOB_OWNED);
+  EXPECT_EQ (op->GetHeight (), 20);
+  upd = &op->GetProto ().building_update ();
+  EXPECT_EQ (upd->new_config ().service_fee_percent (), 70);
+  EXPECT_FALSE (upd->new_config ().has_dex_fee_bps ());
+
+  EXPECT_FALSE (res.Step ());
 }
 
 TEST_F (BuildingUpdateTests, SetServiceFee)
 {
-  Process (R"([
-    {
-      "name": "andy",
-      "move": {"b": {"id": 101, "x": 42, "sf": 1000}}
-    },
-    {
-      "name": "domob",
-      "move": {"b": [{"id": 101, "sf": 0}, {"id": 102, "sf": 1}]}
-    }
-  ])");
-  EXPECT_EQ (buildings.GetById (ANDY_OWNED)
-                ->GetProto ().config ().service_fee_percent (), 1'000);
-  EXPECT_EQ (buildings.GetById (DOMOB_OWNED)
-                ->GetProto ().config ().service_fee_percent (), 1);
-
   Process (R"([
     {
       "name": "andy",
@@ -3325,37 +3348,47 @@ TEST_F (BuildingUpdateTests, SetServiceFee)
     {
       "name": "andy",
       "move": {"b": {"id": 101, "sf": "42"}}
+    }
+  ])");
+  EXPECT_FALSE (buildings.GetById (ANDY_OWNED)->GetProto ().has_config ());
+  ExpectNoOngoings ();
+
+  Process (R"([
+    {
+      "name": "andy",
+      "move": {"b": {"id": 101, "x": 42, "sf": 1000}}
     },
     {
       "name": "domob",
       "move": {"b": {"id": 102, "sf": 0}}
     }
   ])");
-  EXPECT_EQ (buildings.GetById (ANDY_OWNED)
-                ->GetProto ().config ().service_fee_percent (), 1'000);
-  EXPECT_EQ (buildings.GetById (DOMOB_OWNED)
-                ->GetProto ().config ().service_fee_percent (), 0);
+
+  EXPECT_FALSE (buildings.GetById (ANDY_OWNED)->GetProto ().has_config ());
+  EXPECT_FALSE (buildings.GetById (DOMOB_OWNED)->GetProto ().has_config ());
+
+  auto res = ongoings.QueryAll ();
+
+  ASSERT_TRUE (res.Step ());
+  auto op = ongoings.GetFromResult (res);
+  EXPECT_EQ (op->GetBuildingId (), ANDY_OWNED);
+  const auto* upd = &op->GetProto ().building_update ();
+  EXPECT_EQ (upd->new_config ().service_fee_percent (), 1'000);
+  EXPECT_FALSE (upd->new_config ().has_dex_fee_bps ());
+
+  ASSERT_TRUE (res.Step ());
+  op = ongoings.GetFromResult (res);
+  EXPECT_EQ (op->GetBuildingId (), DOMOB_OWNED);
+  upd = &op->GetProto ().building_update ();
+  EXPECT_TRUE (upd->new_config ().has_service_fee_percent ());
+  EXPECT_EQ (upd->new_config ().service_fee_percent (), 0);
+  EXPECT_FALSE (upd->new_config ().has_dex_fee_bps ());
+
+  EXPECT_FALSE (res.Step ());
 }
 
 TEST_F (BuildingUpdateTests, SetDexFee)
 {
-  Process (R"([
-    {
-      "name": "andy",
-      "move": {"b": {"id": 101, "xf": 3000}}
-    },
-    {
-      "name": "domob",
-      "move": {"b": {"id": 102, "xf": 100}}
-    }
-  ])");
-  EXPECT_EQ (buildings.GetById (ANDY_OWNED)
-                ->GetProto ().config ().dex_fee_bps (),
-             3'000);
-  EXPECT_EQ (buildings.GetById (DOMOB_OWNED)
-                ->GetProto ().config ().dex_fee_bps (),
-             100);
-
   Process (R"([
     {
       "name": "andy",
@@ -3372,18 +3405,43 @@ TEST_F (BuildingUpdateTests, SetDexFee)
     {
       "name": "andy",
       "move": {"b": {"id": 101, "xf": "42"}}
+    }
+  ])");
+  EXPECT_FALSE (buildings.GetById (ANDY_OWNED)->GetProto ().has_config ());
+  ExpectNoOngoings ();
+
+  Process (R"([
+    {
+      "name": "andy",
+      "move": {"b": {"id": 101, "xf": 3000}}
     },
     {
       "name": "domob",
       "move": {"b": {"id": 102, "xf": 0}}
     }
   ])");
-  EXPECT_EQ (buildings.GetById (ANDY_OWNED)
-                ->GetProto ().config ().dex_fee_bps (),
-             3'000);
-  EXPECT_EQ (buildings.GetById (DOMOB_OWNED)
-                ->GetProto ().config ().dex_fee_bps (),
-             0);
+
+  EXPECT_FALSE (buildings.GetById (ANDY_OWNED)->GetProto ().has_config ());
+  EXPECT_FALSE (buildings.GetById (DOMOB_OWNED)->GetProto ().has_config ());
+
+  auto res = ongoings.QueryAll ();
+
+  ASSERT_TRUE (res.Step ());
+  auto op = ongoings.GetFromResult (res);
+  EXPECT_EQ (op->GetBuildingId (), ANDY_OWNED);
+  const auto* upd = &op->GetProto ().building_update ();
+  EXPECT_EQ (upd->new_config ().dex_fee_bps (), 3'000);
+  EXPECT_FALSE (upd->new_config ().has_service_fee_percent ());
+
+  ASSERT_TRUE (res.Step ());
+  op = ongoings.GetFromResult (res);
+  EXPECT_EQ (op->GetBuildingId (), DOMOB_OWNED);
+  upd = &op->GetProto ().building_update ();
+  EXPECT_TRUE (upd->new_config ().has_dex_fee_bps ());
+  EXPECT_EQ (upd->new_config ().dex_fee_bps (), 0);
+  EXPECT_FALSE (upd->new_config ().has_service_fee_percent ());
+
+  EXPECT_FALSE (res.Step ());
 }
 
 /* ************************************************************************** */

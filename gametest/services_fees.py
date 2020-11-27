@@ -46,7 +46,7 @@ class ServicesFeesTest (PXTest):
 
     self.mainLogger.info ("Setting service fee...")
     self.getBuildings ()[domob].sendMove ({"sf": 50})
-    self.generate (1)
+    self.generate (11)
     b = self.getBuildings ()[domob]
     self.assertEqual (b.data["config"]["servicefee"], 50)
 

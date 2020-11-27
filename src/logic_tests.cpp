@@ -19,6 +19,7 @@
 #include "logic.hpp"
 
 #include "fame_tests.hpp"
+#include "jsonutils.hpp"
 #include "params.hpp"
 #include "protoutils.hpp"
 #include "testutils.hpp"
@@ -82,15 +83,14 @@ protected:
   }
 
   /**
-   * Builds a blockData JSON value from the given moves (JSON serialised
-   * to a string).
+   * Builds a blockData JSON value from the given moves.
    */
   Json::Value
-  BuildBlockData (const std::string& movesStr)
+  BuildBlockData (const Json::Value& moves)
   {
     Json::Value blockData(Json::objectValue);
     blockData["admin"] = Json::Value (Json::arrayValue);
-    blockData["moves"] = ParseJson (movesStr);
+    blockData["moves"] = moves;
 
     Json::Value meta(Json::objectValue);
     meta["height"] = ctx.Height ();
@@ -151,7 +151,17 @@ protected:
   void
   UpdateState (const std::string& movesStr)
   {
-    UpdateStateWithData (BuildBlockData (movesStr));
+    UpdateStateJson (ParseJson (movesStr));
+  }
+
+  /**
+   * Updates the state as with UpdateState, but with moves given
+   * already as JSON value.
+   */
+  void
+  UpdateStateJson (const Json::Value& moves)
+  {
+    UpdateStateWithData (BuildBlockData (moves));
   }
 
   /**
@@ -173,7 +183,7 @@ protected:
   void
   UpdateStateWithFame (FameUpdater& fame, const std::string& moveStr)
   {
-    const auto blockData = BuildBlockData (moveStr);
+    const auto blockData = BuildBlockData (ParseJson (moveStr));
     PXLogic::UpdateState (db, fame, rnd, ctx, blockData);
   }
 
@@ -612,7 +622,7 @@ TEST_F (PXLogicTests, DamageLists)
   UpdateState ("[]");
 
   /* Deal damage, which should be recorded in the damage list.  */
-  Json::Value blockData = BuildBlockData ("[]");
+  Json::Value blockData = BuildBlockData (ParseJson ("[]"));
   blockData["block"]["height"] = 100;
   UpdateStateWithData (blockData);
   EXPECT_EQ (dl.GetAttackers (idTarget),
@@ -624,14 +634,14 @@ TEST_F (PXLogicTests, DamageLists)
   c.reset ();
 
   /* The damage list entry should still be present 99 blocks after.  */
-  blockData = BuildBlockData ("[]");
+  blockData = BuildBlockData (ParseJson ("[]"));
   blockData["block"]["height"] = 199;
   UpdateStateWithData (blockData);
   EXPECT_EQ (dl.GetAttackers (idTarget),
              DamageLists::Attackers ({idAttacker}));
 
   /* The entry should be removed at block 200.  */
-  blockData = BuildBlockData ("[]");
+  blockData = BuildBlockData (ParseJson ("[]"));
   blockData["block"]["height"] = 200;
   UpdateStateWithData (blockData);
   EXPECT_EQ (dl.GetAttackers (idTarget), DamageLists::Attackers ({}));
@@ -1013,12 +1023,12 @@ TEST_F (PXLogicTests, MiningWhenReprospected)
      mining gracefully.  We can only reprospect after using up the resources,
      which means that we need to mine for one turn before.  */
   UpdateState ("[]");
-  auto data = BuildBlockData (R"([
+  auto data = BuildBlockData (ParseJson (R"([
     {
       "name": "domob",
       "move": {"c": {"id": 1, "prospect": {}}}
     }
-  ])");
+  ])"));
   data["block"]["height"] = 200;
   UpdateStateWithData (data);
 
@@ -1151,6 +1161,78 @@ TEST_F (PXLogicTests, EnterAndExitBuildingWhenOutside)
   c = characters.GetById (2);
   ASSERT_TRUE (c->IsInBuilding ());
   EXPECT_EQ (c->GetBuildingId (), 1);
+}
+
+TEST_F (PXLogicTests, BuildingUpdateVsOperations)
+{
+  accounts.CreateNew ("owner")->SetFaction (Faction::RED);
+  accounts.CreateNew ("buyer")->SetFaction (Faction::RED);
+  accounts.CreateNew ("seller")->SetFaction (Faction::RED);
+  accounts.CreateNew ("user")->SetFaction (Faction::RED);
+
+  auto b = CreateBuilding ("itemmaker", "owner", Faction::RED);
+  ASSERT_EQ (b->GetId (), 1);
+  b.reset ();
+
+  /* We want to execute both DEX trades and services inside the building
+     to verify the fees charged for them (based on how/when fee updates
+     of the building owner take effect).  Set up all we need so that
+     we can do those operations.  */
+  accounts.GetByName ("buyer")->AddBalance (1'000'000);
+  inv.Get (1, "seller")->GetInventory ().AddFungibleCount ("foo", 100);
+  accounts.GetByName ("user")->AddBalance (1'000);
+  inv.Get (1, "user")->GetInventory ().AddFungibleCount ("sword bpo", 1);
+  inv.Get (1, "user")->GetInventory ().AddFungibleCount ("zerospace", 10);
+  UpdateState (R"([
+    {
+      "name": "buyer",
+      "move": {"x": [{"b": 1, "i": "foo", "n": 100, "bp": 100}]}
+    }
+  ])");
+
+  /* Increase fees in the building on each block.  When they hit 100% for
+     services and 100 bps (1%) for DEX trades, actually perform the actions.  */
+  for (int i = 1; i <= 200; ++i)
+    {
+      ctx.SetHeight (ctx.Height () + 1);
+
+      auto moves = ParseJson (R"([
+        {
+          "name": "owner",
+          "move": {"b": {"id": 1}}
+        }
+      ])");
+      auto& bMove = moves[0]["move"]["b"];
+      bMove["sf"] = IntToJson (i);
+      bMove["xf"] = IntToJson (i);
+
+      /* The ongoing operations are processed before moves.  So if the
+         building update had a delay of only one block, the previous block's
+         update would be active now (i.e. the fee would be i-1).  The real
+         delay on regtest is 10 blocks, so the fee in effect is i-10.  */
+      if (i == 110)
+        {
+          moves.append (ParseJson (R"({
+            "name": "seller",
+            "move": {"x": [{"b": 1, "i": "foo", "n": 100, "ap": 100}]}
+          })"));
+          moves.append (ParseJson (R"({
+            "name": "user",
+            "move": {"s": [{"b": 1, "t": "bld", "i": "sword bpo", "n": 1}]}
+          })"));
+        }
+
+      UpdateStateJson (moves);
+    }
+
+  /* Both the trade and item construction should have been executed with
+     fee 100 (100% for construction, 1% for the trade).  The trade nets
+     10k Cubits in total, so 1k Cubits for the base fee and 100 Cubits for
+     the building owner.  The item construction costs 100 Cubits base fee,
+     so also 100 Cubits in fees for the building.  */
+  EXPECT_EQ (accounts.GetByName ("owner")->GetBalance (), 200);
+  EXPECT_EQ (accounts.GetByName ("seller")->GetBalance (), 10'000 - 1'100);
+  EXPECT_EQ (accounts.GetByName ("buyer")->GetBalance (), 1'000'000 - 10'000);
 }
 
 /* ************************************************************************** */

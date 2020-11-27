@@ -41,7 +41,7 @@ class GetServiceInfoTest (PXTest):
     self.assertEqual (self.getBuildings ()[building].getOwner (), "domob")
 
     self.getBuildings ()[building].sendMove ({"sf": 50})
-    self.generate (1)
+    self.generate (11)
     b = self.getBuildings ()[building]
     self.assertEqual (b.data["config"]["servicefee"], 50)
 
