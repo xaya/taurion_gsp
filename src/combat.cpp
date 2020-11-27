@@ -308,9 +308,12 @@ TargetFindingProcessor::SelectNormalTarget (const CombatModifier& mod,
       CHECK_GT (curDist, closestRange);
     });
 
-  VLOG (1)
-      << "Found " << res.enemyTargets.size () << " targets in closest range "
-      << closestRange << " around " << pos;
+  if (res.enemyTargets.empty ())
+    VLOG (1) << "Found no targets around " << pos;
+  else
+    VLOG (1)
+        << "Found " << res.enemyTargets.size () << " targets in closest range "
+        << closestRange << " around " << pos;
 }
 
 void
@@ -355,7 +358,7 @@ TargetFindingProcessor::SelectTarget (FighterTable::Handle f)
     {
       VLOG (1)
           << "Not selecting targets for fighter in no-combat zone:\n"
-          << f->GetIdAsTarget ().DebugString ();
+          << res.f->GetIdAsTarget ().DebugString ();
       CHECK (res.enemyTargets.empty ());
       res.hasFriendlyTarget = false;
       return res;
