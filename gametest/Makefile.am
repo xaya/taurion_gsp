@@ -8,6 +8,7 @@ REGTESTS = \
   accounts.py \
   buildings_basic.py \
   buildings_combat.py \
+  buildings_config.py \
   buildings_construction.py \
   buildings_enterexit.py \
   buildings_foundations.py \

@@ -87,7 +87,9 @@ class DexTest (PXTest):
     self.giftCoins ({"buyer": 1_000})
     self.dropIntoBuilding (self.buildingId, "seller", {"foo": 10, "bar": 20})
 
-    self.generate (1)
+    # Make sure to wait long enough for the building update
+    # to have taken effect.
+    self.generate (10)
     reorgBlk = self.rpc.xaya.getbestblockhash ()
 
     self.mainLogger.info ("Transferring assets...")
@@ -109,7 +111,9 @@ class DexTest (PXTest):
     self.expectItems (self.buildingId, "gifted", {"foo": 0, "bar": 5})
 
     self.mainLogger.info ("Placing orders...")
-    firstOrderId = self.buildingId + 1
+    # After placing the building, one ID is also used up for the
+    # ongoing operation that updates the DEX fee.
+    firstOrderId = self.buildingId + 2
     self.sendMove ("seller", {"x": [
       {
         "b": self.buildingId,

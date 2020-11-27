@@ -15,6 +15,7 @@ params:
     construction_cost: 1
     construction_blocks: 1
 
+    building_update_delay: 120
     dex_fee_bps: 300  # 3% base fee for sellers
 
     min_region_ore: 2000000

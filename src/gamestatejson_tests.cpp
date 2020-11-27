@@ -877,15 +877,18 @@ TEST_F (BuildingJsonTests, ConfiguredFees)
       [
         {
           "id": 1,
-          "servicefee": 0,
-          "dexfee": 0.0
+          "config":
+            {
+              "servicefee": null,
+              "dexfee": null
+            }
         }
       ]
   })");
 
   b = tbl.GetById (1);
-  b->MutableProto ().set_service_fee_percent (42);
-  b->MutableProto ().set_dex_fee_bps (1'725);
+  b->MutableProto ().mutable_config ()->set_service_fee_percent (42);
+  b->MutableProto ().mutable_config ()->set_dex_fee_bps (1'725);
   b.reset ();
 
   ExpectStateJson (R"({
@@ -893,8 +896,11 @@ TEST_F (BuildingJsonTests, ConfiguredFees)
       [
         {
           "id": 1,
-          "servicefee": 42,
-          "dexfee": 17.25
+          "config":
+            {
+              "servicefee": 42,
+              "dexfee": 17.25
+            }
         }
       ]
   })");
@@ -1238,6 +1244,51 @@ TEST_F (OngoingsJsonTests, BuildingConstruction)
           "id": 1,
           "operation": "build",
           "buildingid": 42
+        }
+      ]
+  })");
+}
+
+TEST_F (OngoingsJsonTests, BuildingConfigUpdate)
+{
+  auto op = tbl.CreateNew (1);
+  ASSERT_EQ (op->GetId (), 1);
+  op->SetBuildingId (42);
+  op->MutableProto ().mutable_building_update ();
+  op.reset ();
+
+  ExpectStateJson (R"({
+    "ongoings":
+      [
+        {
+          "id": 1,
+          "operation": "config",
+          "newconfig":
+            {
+              "servicefee": null,
+              "dexfee": null
+            }
+        }
+      ]
+  })");
+
+  op = tbl.GetById (1);
+  auto* upd = op->MutableProto ().mutable_building_update ();
+  upd->mutable_new_config ()->set_service_fee_percent (2);
+  upd->mutable_new_config ()->set_dex_fee_bps (150);
+  op.reset ();
+
+  ExpectStateJson (R"({
+    "ongoings":
+      [
+        {
+          "id": 1,
+          "operation": "config",
+          "newconfig":
+            {
+              "servicefee": 2,
+              "dexfee": 1.5
+            }
         }
       ]
   })");

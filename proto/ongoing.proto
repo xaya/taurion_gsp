@@ -19,6 +19,8 @@
 syntax = "proto2";
 option cc_enable_arenas = true;
 
+import "proto/building.proto";
+
 package pxd.proto;
 
 /**
@@ -122,6 +124,19 @@ message BuildingConstruction
 }
 
 /**
+ * An operation for changing the owner-configurable building data.  This is
+ * delayed to prevent frontrunning.  At the end of the ongoing operation,
+ * the data will be updated in the building itself.
+ */
+message BuildingConfigUpdate
+{
+
+  /** The new configuration data.  */
+  optional Building.Config new_config = 1;
+
+}
+
+/**
  * Data about an ongoing operation.
  */
 message OngoingOperation
@@ -141,6 +156,7 @@ message OngoingOperation
     BlueprintCopy blueprint_copy = 103;
     ItemConstruction item_construction = 104;
     BuildingConstruction building_construction = 105;
+    BuildingConfigUpdate building_update = 106;
   }
 
   /* The database stores extra data directly in columns:
