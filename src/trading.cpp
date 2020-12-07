@@ -313,7 +313,12 @@ NewOrderOperation::PayToSellerAndFee (const std::string& recipient,
   CHECK_GE (payout, 0);
   CHECK_LE (owner + payout, cost);
 
-  PayCoins (buildings.GetById (building)->GetOwner (), owner);
+  /* We need to make sure GetOwner is not called in case of an ancient
+     building, thus check the amount (which will be zero for ancient
+     buildings per code above) even though it will be checked
+     again in PayCoins.  */
+  if (owner > 0)
+    PayCoins (buildings.GetById (building)->GetOwner (), owner);
   PayCoins (recipient, payout);
 }
 

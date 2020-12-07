@@ -738,6 +738,35 @@ TEST_F (DexFeeTests, BasicFeeDistribution)
   EXPECT_EQ (ItemBalance (1, "domob", "foo"), 98);
 }
 
+TEST_F (DexFeeTests, AncientBuilding)
+{
+  auto b = buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+  CHECK_EQ (b->GetId (), 101);
+  b.reset ();
+  buildingInv.Get (101, "domob")
+      ->GetInventory ().AddFungibleCount ("foo", 1'000);
+
+  ASSERT_TRUE (Process ("domob", R"({
+    "b": 101,
+    "i": "foo",
+    "n": 10,
+    "ap": 10
+  })"));
+  ASSERT_TRUE (Process ("andy", R"({
+    "b": 101,
+    "i": "foo",
+    "n": 10,
+    "bp": 10
+  })"));
+
+  EXPECT_EQ (accounts.GetByName ("andy")->GetBalance (), 1'000 - 100);
+  EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 1'000 + 90);
+  EXPECT_EQ (accounts.GetByName ("building")->GetBalance (), 1'000);
+
+  EXPECT_EQ (ItemBalance (101, "andy", "foo"), 10);
+  EXPECT_EQ (ItemBalance (101, "domob", "foo"), 990);
+}
+
 TEST_F (DexFeeTests, ZeroPrice)
 {
   PlaceOrder ("domob", DexOrder::Type::ASK, 1, 0);
