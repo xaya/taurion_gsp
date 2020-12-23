@@ -48,17 +48,6 @@ Json::Value CoordToJson (const HexCoord& c);
 bool CoordFromJson (const Json::Value& val, HexCoord& c);
 
 /**
- * Encodes a CHI amount into a JSON value.
- */
-Json::Value AmountToJson (Amount amount);
-
-/**
- * Parses a JSON value into a CHI amount.  Returns false if the value is
- * not valid.
- */
-bool AmountFromJson (const Json::Value& val, Amount& amount);
-
-/**
  * Parses a Cubit amount from JSON, and verifies that it is roughly in
  * range, i.e. within [0, MAX_COIN_AMOUNT].
  */

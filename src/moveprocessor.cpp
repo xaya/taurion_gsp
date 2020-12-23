@@ -93,10 +93,10 @@ BaseMoveProcessor::ExtractMoveBasics (const Json::Value& moveObj,
   const auto& outVal = moveObj["out"];
   const auto& devAddr = ctx.RoConfig ()->params ().dev_addr ();
   if (outVal.isObject () && outVal.isMember (devAddr))
-    CHECK (AmountFromJson (outVal[devAddr], paidToDev));
+    CHECK (xaya::ChiAmountFromJson (outVal[devAddr], paidToDev));
 
   if (moveObj.isMember ("burnt"))
-    CHECK (AmountFromJson (moveObj["burnt"], burnt));
+    CHECK (xaya::ChiAmountFromJson (moveObj["burnt"], burnt));
   else
     burnt = 0;
 

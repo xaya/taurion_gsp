@@ -30,6 +30,8 @@
 #include "database/itemcounts.hpp"
 #include "database/region.hpp"
 
+#include <xayautil/jsonutils.hpp>
+
 #include <gtest/gtest.h>
 
 namespace pxd
@@ -783,9 +785,9 @@ protected:
 
     if (paidToDev != 0)
       moveObj["out"][ctx.RoConfig ()->params ().dev_addr ()]
-          = AmountToJson (paidToDev);
+          = xaya::ChiAmountToJson (paidToDev);
     if (burntChi != 0)
-      moveObj["burnt"] = AmountToJson (burntChi);
+      moveObj["burnt"] = xaya::ChiAmountToJson (burntChi);
 
     DynObstacles dyn(db, ctx);
     PendingStateUpdater updater(db, dyn, state, ctx);

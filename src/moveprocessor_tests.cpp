@@ -24,6 +24,8 @@
 
 #include "database/dbtest.hpp"
 
+#include <xayautil/jsonutils.hpp>
+
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
@@ -89,7 +91,7 @@ protected:
     Json::Value val = ParseJson (str);
     for (auto& entry : val)
       entry["out"][ctx.RoConfig ()->params ().dev_addr ()]
-          = AmountToJson (amount);
+          = xaya::ChiAmountToJson (amount);
 
     DynObstacles dyn(db, ctx);
     MoveProcessor mvProc(db, dyn, rnd, ctx);
