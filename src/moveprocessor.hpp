@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -91,6 +91,14 @@ struct CoinTransferBurn
  */
 class BaseMoveProcessor
 {
+
+private:
+
+  /**
+   * Tries to parse updates to a building from a move.  When successful,
+   * the corresponding Perform* functions will be called on the instance.
+   */
+  void TryBuildingUpdate (Building& b, const Json::Value& upd);
 
 protected:
 
@@ -307,10 +315,11 @@ protected:
 
   /**
    * This function is called when TryBuildingUpdates found a valid update
-   * that should be performed.
+   * to the building configuration, that should be scheduled.
    */
   virtual void
-  PerformBuildingUpdate (Building& b, const Json::Value& upd)
+  PerformBuildingConfigUpdate (Building& b,
+                               const proto::Building::Config& newConfig)
   {}
 
   /**
@@ -453,7 +462,8 @@ protected:
 
   void PerformCharacterCreation (Account& acc, Faction f) override;
   void PerformCharacterUpdate (Character& c, const Json::Value& mv) override;
-  void PerformBuildingUpdate (Building& b, const Json::Value& mv) override;
+  void PerformBuildingConfigUpdate (
+      Building& b, const proto::Building::Config& newConfig) override;
   void PerformServiceOperation (ServiceOperation& op) override;
   void PerformDexOperation (DexOperation& op) override;
 

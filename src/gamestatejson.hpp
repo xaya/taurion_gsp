@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@
 #include "database/dex.hpp"
 #include "database/inventory.hpp"
 #include "mapdata/basemap.hpp"
+#include "proto/building.pb.h"
 
 #include <json/json.h>
 
@@ -78,6 +79,13 @@ public:
   GameStateJson () = delete;
   GameStateJson (const GameStateJson&) = delete;
   void operator= (const GameStateJson&) = delete;
+
+  /**
+   * Converts a building configuration proto to JSON.  This does not need
+   * any members and can thus be static (and is being used as such from
+   * the pending code).
+   */
+  static Json::Value Convert (const proto::Building::Config& val);
 
   /**
    * Converts a state instance (like a Character or Region) to the corresponding

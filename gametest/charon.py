@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2020  Autonomous Worlds Ltd
+#   Copyright (C) 2020-2021  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -193,6 +193,7 @@ class CharonTest (PXTest):
       w.assertRunning ()
       self.createCharacters ("domob", 1)
       self.assertEqual (w.wait ()["pending"], {
+        "buildings": [],
         "characters": [],
         "newcharacters":
           [

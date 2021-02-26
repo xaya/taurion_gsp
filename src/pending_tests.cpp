@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -89,6 +89,7 @@ TEST_F (PendingStateTests, Empty)
 {
   ExpectStateJson (R"(
     {
+      "buildings": [],
       "characters": [],
       "newcharacters": [],
       "accounts": []
@@ -107,6 +108,12 @@ TEST_F (PendingStateTests, Clear)
   state.AddCoinTransferBurn (*a, coinOp);
   a.reset ();
 
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  proto::Building::Config newCfg;
+  newCfg.set_service_fee_percent (3);
+  state.AddBuildingConfig (*b, newCfg);
+  b.reset ();
+
   state.AddCharacterCreation ("domob", Faction::RED);
 
   auto h = characters.CreateNew ("domob", Faction::RED);
@@ -118,6 +125,7 @@ TEST_F (PendingStateTests, Clear)
 
   ExpectStateJson (R"(
     {
+      "buildings": [{}],
       "characters": [{}],
       "newcharacters": [{}],
       "accounts": [{}]
@@ -127,9 +135,55 @@ TEST_F (PendingStateTests, Clear)
   state.Clear ();
   ExpectStateJson (R"(
     {
+      "buildings": [],
       "characters": [],
       "newcharacters": [],
       "accounts": []
+    }
+  )");
+}
+
+TEST_F (PendingStateTests, BuildingConfig)
+{
+  auto b1 = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  auto b2 = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+
+  ASSERT_EQ (b1->GetId (), 1);
+  ASSERT_EQ (b2->GetId (), 2);
+
+  proto::Building::Config cfg;
+  cfg.set_service_fee_percent (3);
+  cfg.set_dex_fee_bps (10);
+  state.AddBuildingConfig (*b1, cfg);
+
+  cfg.Clear ();
+  cfg.set_service_fee_percent (5);
+  state.AddBuildingConfig (*b2, cfg);
+
+  cfg.Clear ();
+  cfg.set_service_fee_percent (1);
+  state.AddBuildingConfig (*b1, cfg);
+
+  ExpectStateJson (R"(
+    {
+      "buildings":
+        [
+          {
+            "id": 1,
+            "newconfig":
+              {
+                "servicefee": 1,
+                "dexfee": 0.1
+              }
+          },
+          {
+            "id": 2,
+            "newconfig":
+              {
+                "servicefee": 5
+              }
+          }
+        ]
     }
   )");
 }
@@ -825,6 +879,38 @@ protected:
   }
 
 };
+
+TEST_F (PendingStateUpdaterTests, BuildingConfig)
+{
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
+  accounts.CreateNew ("andy")->SetFaction (Faction::RED);
+
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  ASSERT_EQ (b->GetId (), 1);
+  b.reset ();
+
+  b = buildings.CreateNew ("checkmark", "andy", Faction::RED);
+  ASSERT_EQ (b->GetId (), 2);
+  b->SetCentre (HexCoord (20, 30));
+  b.reset ();
+
+  Process ("domob", R"({
+    "b":
+      [
+        {"id": 1, "sf": 2},
+        {"id": 2, "sf": 3}
+      ]
+  })");
+
+  ExpectStateJson (R"(
+    {
+      "buildings":
+        [
+          {"id": 1, "newconfig": {"servicefee": 2}}
+        ]
+    }
+  )");
+}
 
 TEST_F (PendingStateUpdaterTests, AccountNotInitialised)
 {

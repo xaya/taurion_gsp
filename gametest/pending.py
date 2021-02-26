@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2019-2020  Autonomous Worlds Ltd
+#   Copyright (C) 2019-2021  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -64,11 +64,11 @@ class PendingTest (PXTest):
     self.moveCharactersTo ({
       "domob": positionProspect,
       "miner": positionMining,
-      "inbuilding": offsetCoord (positionBuilding, {"x": 30, "y": 0}, False),
-      "inbuilding 2": offsetCoord (positionBuilding, {"x": -30, "y": 0}, False),
+      "inbuilding": offsetCoord (positionBuilding, {"x": 10, "y": 0}, False),
+      "inbuilding 2": offsetCoord (positionBuilding, {"x": -10, "y": 0}, False),
     })
 
-    self.build ("ancient1", None, positionBuilding, 0)
+    self.build ("b cc", "inbuilding", positionBuilding, 0)
     building = list (self.getBuildings ().keys ())[-1]
     self.dropIntoBuilding (building, "andy", {"foo": 100, "test ore": 10})
     self.getCharacters ()["inbuilding"].sendMove ({"eb": building})
@@ -78,6 +78,7 @@ class PendingTest (PXTest):
     self.generate (15)
     self.syncGame ()
     self.assertEqual (self.getPendingState (), {
+      "buildings": [],
       "characters": [],
       "newcharacters": [],
       "accounts": [],
@@ -103,6 +104,7 @@ class PendingTest (PXTest):
         [
           {"name": "domob", "creations": [{"faction": "r"}]},
         ],
+      "buildings": [],
       "accounts": [],
     })
 
@@ -144,6 +146,7 @@ class PendingTest (PXTest):
           {"name": "andy", "creations": [{"faction": "b"}]},
           {"name": "domob", "creations": [{"faction": "r"}] * 2},
         ],
+      "buildings": [],
       "accounts": [],
     })
 
@@ -166,9 +169,18 @@ class PendingTest (PXTest):
         ],
     })
 
+    self.getBuildings ()[building].sendMove ({"sf": 3})
+
     sleepSome ()
     oldPending = self.getPendingState ()
     self.assertEqual (oldPending, {
+      "buildings":
+        [
+          {
+            "id": building,
+            "newconfig": {"servicefee": 3},
+          },
+        ],
       "characters":
         [
           {
@@ -237,6 +249,7 @@ class PendingTest (PXTest):
     self.generate (1)
     self.syncGame ()
     self.assertEqual (self.getPendingState (), {
+      "buildings": [],
       "characters": [],
       "newcharacters": [],
       "accounts": [],
@@ -292,6 +305,7 @@ class PendingTest (PXTest):
             "drop": False,
           }
         ],
+      "buildings": [],
       "newcharacters": [],
       "accounts": [],
     })

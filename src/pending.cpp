@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,9 +18,12 @@
 
 #include "pending.hpp"
 
+#include "gamestatejson.hpp"
 #include "jsonutils.hpp"
 #include "protoutils.hpp"
 #include "logic.hpp"
+
+#include <type_traits>
 
 namespace pxd
 {
@@ -30,9 +33,29 @@ namespace pxd
 void
 PendingState::Clear ()
 {
+  buildings.clear ();
   characters.clear ();
   newCharacters.clear ();
   accounts.clear ();
+}
+
+PendingState::BuildingState&
+PendingState::GetBuildingState (const Building& b)
+{
+  const auto id = b.GetId ();
+
+  const auto mit = buildings.find (id);
+  if (mit == buildings.end ())
+    {
+      const auto ins = buildings.emplace (id, BuildingState ());
+      CHECK (ins.second);
+      VLOG (1)
+          << "Building " << id << " was not yet pending, added pending entry";
+      return ins.first->second;
+    }
+
+  VLOG (1) << "Building " << id << " is already pending, updating entry";
+  return mit->second;
 }
 
 PendingState::CharacterState&
@@ -71,6 +94,17 @@ PendingState::GetAccountState (const Account& a)
 
   VLOG (1) << "Account " << name << " is already pending, updating entry";
   return mit->second;
+}
+
+void
+PendingState::AddBuildingConfig (const Building& b,
+                                 const proto::Building::Config& newConfig)
+{
+  VLOG (1)
+      << "Adding pending building config for " << b.GetId ()
+      << ":\n" << newConfig.DebugString ();
+  auto& state = GetBuildingState (b);
+  state.newConfig.MergeFrom (newConfig);
 }
 
 void
@@ -336,6 +370,18 @@ PendingState::HasPendingWaypoints (const Character& c) const
 }
 
 Json::Value
+PendingState::BuildingState::ToJson () const
+{
+  Json::Value res(Json::objectValue);
+
+  const auto cfg = GameStateJson::Convert (newConfig);
+  if (!cfg.empty ())
+    res["newconfig"] = cfg;
+
+  return res;
+}
+
+Json::Value
 PendingState::CharacterState::ToJson () const
 {
   Json::Value res(Json::objectValue);
@@ -429,19 +475,40 @@ PendingState::AccountState::ToJson () const
   return res;
 }
 
+namespace
+{
+
+/**
+ * Converts a map of entries (building, character, account states) to
+ * a JSON array.
+ */
+template <typename Map>
+  Json::Value
+  StateMapToJsonArray (const Map& m, const std::string& keyField)
+{
+  Json::Value res(Json::arrayValue);
+  for (const auto& entry : m)
+    {
+      auto val = entry.second.ToJson ();
+      if (std::is_integral<typename Map::key_type>::value)
+        val[keyField] = IntToJson (entry.first);
+      else
+        val[keyField] = entry.first;
+      res.append (val);
+    }
+  return res;
+}
+
+} // anonymous namespace
+
 Json::Value
 PendingState::ToJson () const
 {
   Json::Value res(Json::objectValue);
 
-  Json::Value chJson(Json::arrayValue);
-  for (const auto& entry : characters)
-    {
-      auto val = entry.second.ToJson ();
-      val["id"] = IntToJson (entry.first);
-      chJson.append (val);
-    }
-  res["characters"] = chJson;
+  res["buildings"] = StateMapToJsonArray (buildings, "id");
+  res["characters"] = StateMapToJsonArray (characters, "id");
+  res["accounts"] = StateMapToJsonArray (accounts, "name");
 
   Json::Value newCh(Json::arrayValue);
   for (const auto& entry : newCharacters)
@@ -458,19 +525,17 @@ PendingState::ToJson () const
     }
   res["newcharacters"] = newCh;
 
-  Json::Value aJson(Json::arrayValue);
-  for (const auto& entry : accounts)
-    {
-      auto val = entry.second.ToJson ();
-      val["name"] = entry.first;
-      aJson.append (val);
-    }
-  res["accounts"] = aJson;
-
   return res;
 }
 
 /* ************************************************************************** */
+
+void
+PendingStateUpdater::PerformBuildingConfigUpdate (
+    Building& b, const proto::Building::Config& newConfig)
+{
+  state.AddBuildingConfig (b, newConfig);
+}
 
 void
 PendingStateUpdater::PerformCharacterCreation (Account& acc, const Faction f)
@@ -594,6 +659,7 @@ PendingStateUpdater::ProcessMove (const Json::Value& moveObj)
   TryCharacterUpdates (name, mv);
   TryCharacterCreation (name, mv, paidToDev);
 
+  TryBuildingUpdates (name, mv);
   TryServiceOperations (name, mv);
 }
 
