@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -54,6 +54,30 @@ class PendingState
 {
 
 private:
+
+  /**
+   * Pending updates to a building.
+   */
+  struct BuildingState
+  {
+
+    /** The new configuration that will be scheduled.  */
+    proto::Building::Config newConfig;
+
+    /**
+     * The account name the building is being sent to (if any).  If there
+     * are multiple, the last one (although typically in such a situation
+     * it will be incorrect, since the move validation is done based on
+     * the confirmed owner and not the actual "current" one).
+     */
+    std::string sentTo;
+
+    /**
+     * Returns the JSON representation of the pending state.
+     */
+    Json::Value ToJson () const;
+
+  };
 
   /**
    * Pending state of one character.
@@ -160,6 +184,9 @@ private:
 
   };
 
+  /** Pending modifications to buildings.  */
+  std::map<Database::IdT, BuildingState> buildings;
+
   /** Pending modifications to characters.  */
   std::map<Database::IdT, CharacterState> characters;
 
@@ -168,6 +195,12 @@ private:
 
   /** Pending updates by account name.  */
   std::map<std::string, AccountState> accounts;
+
+  /**
+   * Returns the pending building state for the given instance, creating
+   * a new empty one if needed.
+   */
+  BuildingState& GetBuildingState (const Building& b);
 
   /**
    * Returns the pending character state for the given instance, creating one
@@ -194,6 +227,17 @@ public:
    * situation without any pending moves).
    */
   void Clear ();
+
+  /**
+   * Updates the state for a new building configuration being scheduled.
+   */
+  void AddBuildingConfig (const Building& b,
+                          const proto::Building::Config& newConfig);
+
+  /**
+   * Updates the state for a building transfer.
+   */
+  void AddBuildingTransfer (const Building& b, const std::string& newOwner);
 
   /**
    * Updates the state for waypoints found for a character in a pending move.
@@ -316,6 +360,11 @@ protected:
 
   void PerformCharacterCreation (Account& acc, Faction f) override;
   void PerformCharacterUpdate (Character& c, const Json::Value& upd) override;
+
+  void PerformBuildingConfigUpdate (
+      Building& b, const proto::Building::Config& newConfig) override;
+  void PerformBuildingTransfer (Building& b, const Account& newOwner) override;
+
   void PerformServiceOperation (ServiceOperation& op) override;
   void PerformDexOperation (DexOperation& op) override;
 

@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -237,6 +237,98 @@ BaseMoveProcessor::TryCharacterUpdates (const std::string& name,
     }
 }
 
+namespace
+{
+
+/**
+ * Tries to extract a service-fee update for a building into
+ * the new configuration proto.
+ */
+bool
+MaybeUpdateServiceFee (const Json::Value& upd, proto::Building::Config& cfg)
+{
+  if (!xaya::IsIntegerValue (upd) || !upd.isUInt64 ())
+    return false;
+
+  const uint64_t val = upd.asUInt64 ();
+  if (val > MAX_SERVICE_FEE_PERCENT)
+    {
+      LOG (WARNING) << "Service fee " << val << "% is too much";
+      return false;
+    }
+
+  cfg.set_service_fee_percent (val);
+  return true;
+}
+
+/**
+ * Tries to extract a DEX-fee update in a building into
+ * the new configuration proto.
+ */
+bool
+MaybeUpdateDexFee (const Json::Value& upd, proto::Building::Config& cfg)
+{
+  if (!xaya::IsIntegerValue (upd) || !upd.isUInt64 ())
+    return false;
+
+  const uint64_t val = upd.asUInt64 ();
+  if (val > MAX_DEX_FEE_BPS)
+    {
+      LOG (WARNING) << "DEX fee of " << val << " basis points is too";
+      return false;
+    }
+
+  cfg.set_dex_fee_bps (val);
+  return true;
+}
+
+} // anonymous namespace
+
+void
+BaseMoveProcessor::MaybeTransferBuilding (Building& b, const Json::Value& upd)
+{
+  CHECK (upd.isObject ());
+  const auto& sendToVal = upd["send"];
+  if (!sendToVal.isString ())
+    return;
+  const std::string sendTo = sendToVal.asString ();
+
+  const auto a = accounts.GetByName (sendTo);
+  if (a == nullptr || !a->IsInitialised ())
+    {
+      LOG (WARNING)
+          << "Can't send building " << b.GetId ()
+          << " to uninitialised account " << sendTo;
+      return;
+    }
+  if (a->GetFaction () != b.GetFaction ())
+    {
+      LOG (WARNING)
+          << "Can't send building " << b.GetId ()
+          << " to account " << sendTo << " of different faction";
+      return;
+    }
+
+  PerformBuildingTransfer (b, *a);
+}
+
+void
+BaseMoveProcessor::TryBuildingUpdate (Building& b, const Json::Value& upd)
+{
+  proto::Building::Config newConfig;
+
+  bool updated = false;
+  if (MaybeUpdateServiceFee (upd["sf"], newConfig))
+    updated = true;
+  if (MaybeUpdateDexFee (upd["xf"], newConfig))
+    updated = true;
+
+  if (updated)
+    PerformBuildingConfigUpdate (b, newConfig);
+
+  MaybeTransferBuilding (b, upd);
+}
+
 void
 BaseMoveProcessor::TryBuildingUpdates (const std::string& name,
                                        const Json::Value& mv)
@@ -297,7 +389,7 @@ BaseMoveProcessor::TryBuildingUpdates (const std::string& name,
           continue;
         }
 
-      PerformBuildingUpdate (*b, op);
+      TryBuildingUpdate (*b, op);
     }
 }
 
@@ -1776,67 +1868,10 @@ MoveProcessor::PerformCharacterUpdate (Character& c, const Json::Value& upd)
   MaybeExitBuilding (c, upd);
 }
 
-namespace
-{
-
-/**
- * Tries to extract a service-fee update for a building into
- * the new configuration proto.
- */
-bool
-MaybeUpdateServiceFee (const Json::Value& upd, proto::Building::Config& cfg)
-{
-  if (!xaya::IsIntegerValue (upd) || !upd.isUInt64 ())
-    return false;
-
-  const uint64_t val = upd.asUInt64 ();
-  if (val > MAX_SERVICE_FEE_PERCENT)
-    {
-      LOG (WARNING) << "Service fee " << val << "% is too much";
-      return false;
-    }
-
-  cfg.set_service_fee_percent (val);
-  return true;
-}
-
-/**
- * Tries to extract a DEX-fee update in a building into
- * the new configuration proto.
- */
-bool
-MaybeUpdateDexFee (const Json::Value& upd, proto::Building::Config& cfg)
-{
-  if (!xaya::IsIntegerValue (upd) || !upd.isUInt64 ())
-    return false;
-
-  const uint64_t val = upd.asUInt64 ();
-  if (val > MAX_DEX_FEE_BPS)
-    {
-      LOG (WARNING) << "DEX fee of " << val << " basis points is too";
-      return false;
-    }
-
-  cfg.set_dex_fee_bps (val);
-  return true;
-}
-
-} // anonymous namespace
-
 void
-MoveProcessor::PerformBuildingUpdate (Building& b, const Json::Value& upd)
+MoveProcessor::PerformBuildingConfigUpdate (
+    Building& b, const proto::Building::Config& newConfig)
 {
-  proto::Building::Config newConfig;
-
-  bool updated = false;
-  if (MaybeUpdateServiceFee (upd["sf"], newConfig))
-    updated = true;
-  if (MaybeUpdateDexFee (upd["xf"], newConfig))
-    updated = true;
-
-  if (!updated)
-    return;
-
   LOG (INFO)
       << "Scheduling building configuration update for " << b.GetId () << ":\n"
       << newConfig.DebugString ();
@@ -1847,6 +1882,15 @@ MoveProcessor::PerformBuildingUpdate (Building& b, const Json::Value& upd)
   op->SetBuildingId (b.GetId ());
   *op->MutableProto ().mutable_building_update ()->mutable_new_config ()
       = newConfig;
+}
+
+void
+MoveProcessor::PerformBuildingTransfer (Building& b, const Account& newOwner)
+{
+  VLOG (1)
+      << "Sending building " << b.GetId ()
+      << " from " << b.GetOwner () << " to " << newOwner.GetName ();
+  b.SetOwner (newOwner.GetName ());
 }
 
 void
