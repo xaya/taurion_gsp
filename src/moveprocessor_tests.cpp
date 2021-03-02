@@ -3446,6 +3446,51 @@ TEST_F (BuildingUpdateTests, SetDexFee)
   EXPECT_FALSE (res.Step ());
 }
 
+TEST_F (BuildingUpdateTests, Transfer)
+{
+  accounts.CreateNew ("blue")->SetFaction (Faction::BLUE);
+  accounts.CreateNew ("uninit");
+
+  /* A bunch of invalid transfer commands.  */
+  Process (R"([
+    {
+      "name": "andy",
+      "move": {"b": [
+        {"id": 101, "send": null},
+        {"id": 101, "send": 42},
+        {"id": 101, "send": "blue"},
+        {"id": 101, "send": "uninit"},
+        {"id": 101, "send": "nonexistant"},
+        {"id": 101, "sf": 1}
+      ]}
+    }
+  ])");
+  EXPECT_EQ (buildings.GetById (ANDY_OWNED)->GetOwner (), "andy");
+
+  auto res = ongoings.QueryAll ();
+  ASSERT_TRUE (res.Step ());
+  ASSERT_FALSE (res.Step ());
+
+  /* Valid transfers (at least until the building is moved out).  */
+  Process (R"([
+    {
+      "name": "andy",
+      "move": {"b": [
+        {"id": 101, "send": "andy"},
+        {"id": 101, "sf": 2},
+        {"id": 101, "send": "domob"},
+        {"id": 101, "send": "andy"}
+      ]}
+    }
+  ])");
+  EXPECT_EQ (buildings.GetById (ANDY_OWNED)->GetOwner (), "domob");
+
+  res = ongoings.QueryAll ();
+  ASSERT_TRUE (res.Step ());
+  ASSERT_TRUE (res.Step ());
+  ASSERT_FALSE (res.Step ());
+}
+
 /* ************************************************************************** */
 
 class ServicesMoveTests : public MoveProcessorTests

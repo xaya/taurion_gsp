@@ -285,6 +285,34 @@ MaybeUpdateDexFee (const Json::Value& upd, proto::Building::Config& cfg)
 } // anonymous namespace
 
 void
+BaseMoveProcessor::MaybeTransferBuilding (Building& b, const Json::Value& upd)
+{
+  CHECK (upd.isObject ());
+  const auto& sendToVal = upd["send"];
+  if (!sendToVal.isString ())
+    return;
+  const std::string sendTo = sendToVal.asString ();
+
+  const auto a = accounts.GetByName (sendTo);
+  if (a == nullptr || !a->IsInitialised ())
+    {
+      LOG (WARNING)
+          << "Can't send building " << b.GetId ()
+          << " to uninitialised account " << sendTo;
+      return;
+    }
+  if (a->GetFaction () != b.GetFaction ())
+    {
+      LOG (WARNING)
+          << "Can't send building " << b.GetId ()
+          << " to account " << sendTo << " of different faction";
+      return;
+    }
+
+  PerformBuildingTransfer (b, *a);
+}
+
+void
 BaseMoveProcessor::TryBuildingUpdate (Building& b, const Json::Value& upd)
 {
   proto::Building::Config newConfig;
@@ -297,6 +325,8 @@ BaseMoveProcessor::TryBuildingUpdate (Building& b, const Json::Value& upd)
 
   if (updated)
     PerformBuildingConfigUpdate (b, newConfig);
+
+  MaybeTransferBuilding (b, upd);
 }
 
 void
@@ -1852,6 +1882,15 @@ MoveProcessor::PerformBuildingConfigUpdate (
   op->SetBuildingId (b.GetId ());
   *op->MutableProto ().mutable_building_update ()->mutable_new_config ()
       = newConfig;
+}
+
+void
+MoveProcessor::PerformBuildingTransfer (Building& b, const Account& newOwner)
+{
+  VLOG (1)
+      << "Sending building " << b.GetId ()
+      << " from " << b.GetOwner () << " to " << newOwner.GetName ();
+  b.SetOwner (newOwner.GetName ());
 }
 
 void

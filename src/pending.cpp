@@ -108,6 +108,16 @@ PendingState::AddBuildingConfig (const Building& b,
 }
 
 void
+PendingState::AddBuildingTransfer (const Building& b,
+                                   const std::string& newOwner)
+{
+  VLOG (1)
+      << "Adding pending building transfer of " << b.GetId ()
+      << " to account " << newOwner;
+  GetBuildingState (b).sentTo = newOwner;
+}
+
+void
 PendingState::AddCharacterWaypoints (const Character& ch,
                                      const std::vector<HexCoord>& wp,
                                      const bool replace)
@@ -378,6 +388,9 @@ PendingState::BuildingState::ToJson () const
   if (!cfg.empty ())
     res["newconfig"] = cfg;
 
+  if (!sentTo.empty ())
+    res["sentto"] = sentTo;
+
   return res;
 }
 
@@ -535,6 +548,13 @@ PendingStateUpdater::PerformBuildingConfigUpdate (
     Building& b, const proto::Building::Config& newConfig)
 {
   state.AddBuildingConfig (b, newConfig);
+}
+
+void
+PendingStateUpdater::PerformBuildingTransfer (Building& b,
+                                              const Account& newOwner)
+{
+  state.AddBuildingTransfer (b, newOwner.GetName ());
 }
 
 void

@@ -170,6 +170,7 @@ TEST_F (PendingStateTests, BuildingConfig)
         [
           {
             "id": 1,
+            "sentto": null,
             "newconfig":
               {
                 "servicefee": 1,
@@ -182,6 +183,28 @@ TEST_F (PendingStateTests, BuildingConfig)
               {
                 "servicefee": 5
               }
+          }
+        ]
+    }
+  )");
+}
+
+TEST_F (PendingStateTests, BuildingTransfer)
+{
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  ASSERT_EQ (b->GetId (), 1);
+
+  state.AddBuildingTransfer (*b, "andy");
+  state.AddBuildingTransfer (*b, "daniel");
+
+  ExpectStateJson (R"(
+    {
+      "buildings":
+        [
+          {
+            "id": 1,
+            "sentto": "daniel",
+            "newconfig": null
           }
         ]
     }
@@ -907,6 +930,44 @@ TEST_F (PendingStateUpdaterTests, BuildingConfig)
       "buildings":
         [
           {"id": 1, "newconfig": {"servicefee": 2}}
+        ]
+    }
+  )");
+}
+
+TEST_F (PendingStateUpdaterTests, BuildingTransfer)
+{
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
+  accounts.CreateNew ("andy")->SetFaction (Faction::RED);
+
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  ASSERT_EQ (b->GetId (), 1);
+  b.reset ();
+
+  Process ("domob", R"({
+    "b":
+      [
+        {"id": 1, "send": "nonexistant"}
+      ]
+  })");
+  ExpectStateJson (R"(
+    {
+      "buildings": []
+    }
+  )");
+
+  Process ("domob", R"({
+    "b":
+      [
+        {"id": 1, "send": "domob"},
+        {"id": 1, "send": "andy"}
+      ]
+  })");
+  ExpectStateJson (R"(
+    {
+      "buildings":
+        [
+          {"id": 1, "sentto": "andy"}
         ]
     }
   )");

@@ -65,6 +65,14 @@ private:
     proto::Building::Config newConfig;
 
     /**
+     * The account name the building is being sent to (if any).  If there
+     * are multiple, the last one (although typically in such a situation
+     * it will be incorrect, since the move validation is done based on
+     * the confirmed owner and not the actual "current" one).
+     */
+    std::string sentTo;
+
+    /**
      * Returns the JSON representation of the pending state.
      */
     Json::Value ToJson () const;
@@ -227,6 +235,11 @@ public:
                           const proto::Building::Config& newConfig);
 
   /**
+   * Updates the state for a building transfer.
+   */
+  void AddBuildingTransfer (const Building& b, const std::string& newOwner);
+
+  /**
    * Updates the state for waypoints found for a character in a pending move.
    * If replace is true, we erase any existing waypoints in the pending state.
    * Otherwise, we add to them.
@@ -345,10 +358,13 @@ private:
 
 protected:
 
-  void PerformBuildingConfigUpdate (
-      Building& b, const proto::Building::Config& newConfig) override;
   void PerformCharacterCreation (Account& acc, Faction f) override;
   void PerformCharacterUpdate (Character& c, const Json::Value& upd) override;
+
+  void PerformBuildingConfigUpdate (
+      Building& b, const proto::Building::Config& newConfig) override;
+  void PerformBuildingTransfer (Building& b, const Account& newOwner) override;
+
   void PerformServiceOperation (ServiceOperation& op) override;
   void PerformDexOperation (DexOperation& op) override;
 

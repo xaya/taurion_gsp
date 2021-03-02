@@ -95,6 +95,13 @@ class BaseMoveProcessor
 private:
 
   /**
+   * Tries to parse a "send building" command from the JSON update
+   * of a building and validate it.  If it is valid, the PerformBuildingTransfer
+   * function is called.
+   */
+  void MaybeTransferBuilding (Building& b, const Json::Value& upd);
+
+  /**
    * Tries to parse updates to a building from a move.  When successful,
    * the corresponding Perform* functions will be called on the instance.
    */
@@ -323,6 +330,14 @@ protected:
   {}
 
   /**
+   * This function is called when TryBuildingUpdates found a valid
+   * transfer of a building to a new owner.
+   */
+  virtual void
+  PerformBuildingTransfer (Building& b, const Account& newOwner)
+  {}
+
+  /**
    * This function is called when TryServiceOperations found a valid
    * service operation.
    */
@@ -462,8 +477,11 @@ protected:
 
   void PerformCharacterCreation (Account& acc, Faction f) override;
   void PerformCharacterUpdate (Character& c, const Json::Value& mv) override;
+
   void PerformBuildingConfigUpdate (
       Building& b, const proto::Building::Config& newConfig) override;
+  void PerformBuildingTransfer (Building& b, const Account& newOwner) override;
+
   void PerformServiceOperation (ServiceOperation& op) override;
   void PerformDexOperation (DexOperation& op) override;
 
