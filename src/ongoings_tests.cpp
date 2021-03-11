@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2020  Autonomous Worlds Ltd
+    Copyright (C) 2020-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -402,30 +402,35 @@ TEST_F (OngoingsTests, BuildingConfigUpdate)
   b = buildings.GetById (bId);
   EXPECT_EQ (b->GetProto ().config ().dex_fee_bps (), 42);
   EXPECT_EQ (b->GetProto ().config ().service_fee_percent (), 1);
+  b.reset ();
 
   ctx.SetHeight (10);
   ProcessAllOngoings (db, rnd, ctx);
   b = buildings.GetById (bId);
   EXPECT_EQ (b->GetProto ().config ().dex_fee_bps (), 50);
   EXPECT_EQ (b->GetProto ().config ().service_fee_percent (), 1);
+  b.reset ();
 
   ctx.SetHeight (11);
   ProcessAllOngoings (db, rnd, ctx);
   b = buildings.GetById (bId);
   EXPECT_EQ (b->GetProto ().config ().dex_fee_bps (), 50);
   EXPECT_EQ (b->GetProto ().config ().service_fee_percent (), 2);
+  b.reset ();
 
   ctx.SetHeight (12);
   ProcessAllOngoings (db, rnd, ctx);
   b = buildings.GetById (bId);
   EXPECT_EQ (b->GetProto ().config ().dex_fee_bps (), 50);
   EXPECT_EQ (b->GetProto ().config ().service_fee_percent (), 2);
+  b.reset ();
 
   ctx.SetHeight (13);
   ProcessAllOngoings (db, rnd, ctx);
   b = buildings.GetById (bId);
   EXPECT_EQ (b->GetProto ().config ().dex_fee_bps (), 50);
   EXPECT_EQ (b->GetProto ().config ().service_fee_percent (), 4);
+  b.reset ();
 }
 
 } // anonymous namespace

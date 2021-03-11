@@ -323,7 +323,7 @@ NewOrderOperation::PayToSellerAndFee (const std::string& recipient,
      buildings per code above) even though it will be checked
      again in PayCoins.  */
   if (owner > 0)
-    PayCoins (buildings.GetById (building)->GetOwner (), owner);
+    PayCoins (b->GetOwner (), owner);
   PayCoins (recipient, payout);
 }
 

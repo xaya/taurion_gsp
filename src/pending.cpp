@@ -567,10 +567,6 @@ void
 PendingStateUpdater::PerformCharacterUpdate (Character& c,
                                              const Json::Value& upd)
 {
-  BuildingsTable::Handle b;
-  if (c.IsInBuilding ())
-    b = buildings.GetById (c.GetBuildingId ());
-
   Database::IdT regionId;
   if (ParseCharacterProspecting (c, upd, regionId))
     state.AddCharacterProspecting (c, regionId);
@@ -582,6 +578,10 @@ PendingStateUpdater::PerformCharacterUpdate (Character& c,
   items = ParseDropPickupFungible (upd["pu"]);
   if (!items.empty ())
     {
+      BuildingsTable::Handle b;
+      if (c.IsInBuilding ())
+        b = buildings.GetById (c.GetBuildingId ());
+
       if (b != nullptr && b->GetProto ().foundation ())
         LOG (WARNING)
             << "Ignoring pending move for character " << c.GetId ()
