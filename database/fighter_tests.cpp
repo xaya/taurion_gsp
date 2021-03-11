@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -259,6 +259,7 @@ TEST_F (FighterTableTests, Effects)
   targetId.set_id (cId);
   f = tbl.GetForTarget(targetId);
   EXPECT_EQ (f->GetEffects ().speed ().percent (), 20);
+  f.reset ();
 
   tbl.ClearAllEffects ();
 

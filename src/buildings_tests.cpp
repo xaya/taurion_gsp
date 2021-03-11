@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2020  Autonomous Worlds Ltd
+    Copyright (C) 2020-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -360,6 +360,7 @@ TEST_F (ProcessEnterBuildingsTests, EnteringEffects)
   EXPECT_EQ (c->GetEnterBuilding (), Database::EMPTY_ID);
   EXPECT_FALSE (c->HasTarget ());
   EXPECT_FALSE (dyn->HasVehicle (HexCoord (5, 0)));
+  c.reset ();
 
   /* Movement is stopped.  */
   c = GetCharacter (10);

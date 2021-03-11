@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -317,6 +317,7 @@ TEST_F (TargetSelectionTests, ClosestTarget)
       const auto& t = c->GetTarget ();
       EXPECT_EQ (t.type (), proto::TargetId::TYPE_CHARACTER);
       EXPECT_EQ (t.id (), idTarget);
+      c.reset ();
     }
 }
 
@@ -619,6 +620,8 @@ TEST_F (TargetSelectionTests, Randomisation)
       const auto mit = targetMap.find (t.id ());
       ASSERT_NE (mit, targetMap.end ());
       ++cnt[mit->second];
+
+      c.reset ();
     }
 
   for (unsigned i = 0; i < nTargets; ++i)
@@ -3109,7 +3112,8 @@ TEST_F (RegenerateHpTests, Works)
   EXPECT_EQ (c->GetHP ().other (), 42); \
   EXPECT_EQ (c->GetHP ().mhp ().other (), 42); \
   EXPECT_EQ (c->GetHP ().type (), t.fullAfter); \
-  EXPECT_EQ (c->GetHP ().mhp ().type (), t.mhpAfter);
+  EXPECT_EQ (c->GetHP ().mhp ().type (), t.mhpAfter); \
+  c.reset ();
 
       DO_TEST(shield, armour)
       DO_TEST(armour, shield)

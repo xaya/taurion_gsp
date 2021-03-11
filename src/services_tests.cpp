@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2020  Autonomous Worlds Ltd
+    Copyright (C) 2020-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -843,6 +843,8 @@ TEST_F (RepairTests, AlreadyRepairing)
   ASSERT_TRUE (c->IsBusy ());
   auto op = ongoings.GetById (c->GetProto ().ongoing ());
   EXPECT_EQ (op->GetHeight (), 101);
+  op.reset ();
+  c.reset ();
 
   EXPECT_FALSE (Process ("domob", R"({
     "t": "fix",

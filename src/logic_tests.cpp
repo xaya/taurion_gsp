@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -432,6 +432,7 @@ TEST_F (PXLogicTests, RangeReduction)
           c = characters.GetById (id);
           EXPECT_TRUE (c->GetEffects ().has_range ());
           EXPECT_FALSE (c->HasTarget ());
+          c.reset ();
         }
 
       UpdateState ("[]");
@@ -440,6 +441,7 @@ TEST_F (PXLogicTests, RangeReduction)
           c = characters.GetById (id);
           EXPECT_FALSE (c->GetEffects ().has_range ());
           EXPECT_TRUE (c->HasTarget ());
+          c.reset ();
         }
     }
 }
