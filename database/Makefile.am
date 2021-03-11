@@ -29,7 +29,8 @@ libdatabase_la_SOURCES = \
   ongoing.cpp \
   region.cpp \
   schema.cpp \
-  target.cpp
+  target.cpp \
+  uniquehandles.cpp
 noinst_HEADERS = \
   amount.hpp \
   account.hpp \
@@ -49,7 +50,8 @@ noinst_HEADERS = \
   lazyproto.hpp lazyproto.tpp \
   region.hpp \
   schema.hpp \
-  target.hpp
+  target.hpp \
+  uniquehandles.hpp uniquehandles.tpp
 
 check_LTLIBRARIES = libdbtest.la
 check_PROGRAMS = tests benchmarks
@@ -97,7 +99,8 @@ tests_SOURCES = \
   ongoing_tests.cpp \
   region_tests.cpp \
   schema_tests.cpp \
-  target_tests.cpp
+  target_tests.cpp \
+  uniquehandles_tests.cpp
 
 benchmarks_CXXFLAGS = \
   -I$(top_srcdir) \
