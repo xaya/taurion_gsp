@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,7 +22,9 @@ namespace pxd
 {
 
 Region::Region (Database& d, const unsigned h, const RegionMap::IdT i)
-  : db(d), currentHeight(h), id(i), resourceLeft(0), dirtyFields(false)
+  : db(d), currentHeight(h), id(i),
+    tracker(db.TrackHandle ("region", id)),
+    resourceLeft(0), dirtyFields(false)
 {
   VLOG (1) << "Created instance for empty region with ID " << id;
   data.SetToDefault ();
@@ -33,6 +35,8 @@ Region::Region (Database& d, const unsigned h,
   : db(d), currentHeight(h), dirtyFields(false)
 {
   id = res.Get<RegionResult::id> ();
+  tracker = db.TrackHandle ("region", id);
+
   resourceLeft = res.Get<RegionResult::resourceleft> ();
   data = res.GetProto<RegionResult::proto> ();
 

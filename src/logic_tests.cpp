@@ -826,6 +826,7 @@ TEST_F (PXLogicTests, ProspectingUserKilled)
 
   auto r = regions.GetById (region);
   EXPECT_EQ (r->GetProto ().prospecting_character (), 2);
+  r.reset ();
 
   /* Process another round, where the prospecting character is killed.  Thus
      the other is able to start prospecting at the same spot.  */
@@ -880,6 +881,7 @@ TEST_F (PXLogicTests, FinishingProspecting)
   auto r = regions.GetById (region);
   EXPECT_EQ (r->GetProto ().prospecting_character (), 1);
   EXPECT_FALSE (r->GetProto ().has_prospection ());
+  r.reset ();
 
   /* Process the next block which finishes prospecting.  We should be able
      to do a movement command right away as well, since the busy state is
