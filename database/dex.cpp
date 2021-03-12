@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2020  Autonomous Worlds Ltd
+    Copyright (C) 2020-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@ namespace pxd
 
 DexOrder::DexOrder (Database& d)
   : db(d), id(db.GetNextId ()),
+    tracker(db.TrackHandle ("dex order", id)),
     buildingId(Database::EMPTY_ID),
     type(Type::INVALID),
     quantity(0), price(0),
@@ -39,6 +40,8 @@ DexOrder::DexOrder (Database& d, const Database::Result<DexOrderResult>& res)
   : db(d), isNew(false), dirty(false)
 {
   id = res.Get<DexOrderResult::id> ();
+  tracker = db.TrackHandle ("dex order", id);
+
   buildingId = res.Get<DexOrderResult::building> ();
   account = res.Get<DexOrderResult::account> ();
   type = static_cast<Type> (res.Get<DexOrderResult::type> ());
@@ -355,6 +358,7 @@ DexOrderTable::DeleteForBuilding (const Database::IdT building)
 
 DexTrade::DexTrade (Database& d)
   : db(d), id(db.GetLogId ()),
+    tracker(db.TrackHandle ("dex trade", id)),
     height(0), time(0),
     buildingId(Database::EMPTY_ID),
     quantity(0), price(0),
@@ -366,6 +370,9 @@ DexTrade::DexTrade (Database& d)
 DexTrade::DexTrade (Database& d, const Database::Result<DexTradeResult>& res)
   : db(d), isNew(false)
 {
+  id = res.Get<DexTradeResult::id> ();
+  tracker = db.TrackHandle ("dex trade", id);
+
   height = res.Get<DexTradeResult::height> ();
   time = res.Get<DexTradeResult::time> ();
   buildingId = res.Get<DexTradeResult::building> ();

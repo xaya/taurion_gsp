@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2020  Autonomous Worlds Ltd
+    Copyright (C) 2020-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -74,6 +74,9 @@ private:
 
   /** The underlying ID in the database.  */
   Database::IdT id;
+
+  /** The UniqueHandles tracker for this instance.  */
+  Database::HandleTracker tracker;
 
   /** The building this is in.  */
   Database::IdT buildingId;
@@ -282,14 +285,15 @@ public:
  */
 struct DexTradeResult : public Database::ResultType
 {
-  RESULT_COLUMN (int64_t, height, 1);
-  RESULT_COLUMN (int64_t, time, 2);
-  RESULT_COLUMN (int64_t, building, 3);
-  RESULT_COLUMN (std::string, item, 4);
-  RESULT_COLUMN (int64_t, quantity, 5);
-  RESULT_COLUMN (int64_t, price, 6);
-  RESULT_COLUMN (std::string, seller, 7);
-  RESULT_COLUMN (std::string, buyer, 8);
+  RESULT_COLUMN (int64_t, id, 1);
+  RESULT_COLUMN (int64_t, height, 2);
+  RESULT_COLUMN (int64_t, time, 3);
+  RESULT_COLUMN (int64_t, building, 4);
+  RESULT_COLUMN (std::string, item, 5);
+  RESULT_COLUMN (int64_t, quantity, 6);
+  RESULT_COLUMN (int64_t, price, 7);
+  RESULT_COLUMN (std::string, seller, 8);
+  RESULT_COLUMN (std::string, buyer, 9);
 };
 
 /**
@@ -305,8 +309,11 @@ private:
   /** Database reference this belongs to.  */
   Database& db;
 
-  /** The ID for this, if inserting a new entry.  */
+  /** The ID for this trade entry.  */
   Database::IdT id;
+
+  /** The UniqueHandles tracker for this instance.  */
+  Database::HandleTracker tracker;
 
   /** The block height of the trade.  */
   unsigned height;
