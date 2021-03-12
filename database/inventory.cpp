@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,6 +20,8 @@
 
 #include <glog/logging.h>
 #include <google/protobuf/util/message_differencer.h>
+
+#include <sstream>
 
 using google::protobuf::util::MessageDifferencer;
 
@@ -248,7 +250,7 @@ Inventory::operator+= (const Inventory& other)
 /* ************************************************************************** */
 
 GroundLoot::GroundLoot (Database& d, const HexCoord& pos)
-  : db(d), coord(pos)
+  : db(d), coord(pos), tracker(db.TrackHandle ("ground loot", coord))
 {
   VLOG (1) << "Constructed an empty ground-loot instance for " << coord;
 }
@@ -258,6 +260,8 @@ GroundLoot::GroundLoot (Database& d,
   : db(d)
 {
   coord = GetCoordFromColumn (res);
+  tracker = db.TrackHandle ("ground loot", coord);
+
   inventory = res.GetProto<GroundLootResult::inventory> ();
   VLOG (1) << "Created ground-loot instance for " << coord << " from database";
 }
@@ -331,9 +335,29 @@ GroundLootTable::QueryNonEmpty ()
 
 /* ************************************************************************** */
 
+namespace
+{
+
+/**
+ * Constructs the ID used to identify handles of BuildingInventory
+ * database entries with UniqueHandles.  Unlike most other places, the
+ * ID is not just a single variable that can be serialised in a stream,
+ * but a pair of (building, account).
+ */
+std::string
+GetInventoryHandleId (const Database::IdT building, const std::string& account)
+{
+  std::ostringstream res;
+  res << account << " in " << building;
+  return res.str ();
+}
+
+} // anonymous namespace
+
 BuildingInventory::BuildingInventory (Database& d, const Database::IdT b,
                                       const std::string& a)
-  : db(d), building(b), account(a)
+  : db(d), building(b), account(a),
+    tracker(db.TrackHandle ("building inventory", GetInventoryHandleId (b, a)))
 {
   VLOG (1)
       << "Constructed an empty building inventory for building " << building
@@ -346,6 +370,9 @@ BuildingInventory::BuildingInventory (
 {
   building = res.Get<BuildingInventoryResult::building> ();
   account = res.Get<BuildingInventoryResult::account> ();
+  tracker = db.TrackHandle ("building inventory",
+                            GetInventoryHandleId (building, account));
+
   inventory = res.GetProto<BuildingInventoryResult::inventory> ();
   VLOG (1)
       << "Created building inventory for building " << building
