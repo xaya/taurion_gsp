@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -273,6 +273,9 @@ private:
   /** The coordinate of this loot tile.  */
   HexCoord coord;
 
+  /** The UniqueHandles tracker for this instance.  */
+  Database::HandleTracker tracker;
+
   /** The associated loot.  */
   Inventory inventory;
 
@@ -394,6 +397,9 @@ private:
 
   /** The account this is for.  */
   std::string account;
+
+  /** The UniqueHandles tracker for this instance.  */
+  Database::HandleTracker tracker;
 
   /** The associated loot.  */
   Inventory inventory;

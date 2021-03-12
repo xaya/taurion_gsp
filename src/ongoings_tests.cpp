@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2020  Autonomous Worlds Ltd
+    Copyright (C) 2020-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -125,6 +125,7 @@ TEST_F (OngoingsTests, ProcessedByHeight)
   EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpc"), 0);
   EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("sword bpc"), 0);
   EXPECT_EQ (GetNumOngoing (), 2);
+  inv.reset ();
 
   ctx.SetHeight (10);
   ProcessAllOngoings (db, rnd, ctx);
@@ -133,6 +134,7 @@ TEST_F (OngoingsTests, ProcessedByHeight)
   EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpc"), 1);
   EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("sword bpc"), 0);
   EXPECT_EQ (GetNumOngoing (), 1);
+  inv.reset ();
 
   ctx.SetHeight (14);
   ProcessAllOngoings (db, rnd, ctx);
@@ -141,6 +143,7 @@ TEST_F (OngoingsTests, ProcessedByHeight)
   EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpc"), 1);
   EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("sword bpc"), 0);
   EXPECT_EQ (GetNumOngoing (), 1);
+  inv.reset ();
 
   ctx.SetHeight (15);
   ProcessAllOngoings (db, rnd, ctx);
@@ -149,6 +152,7 @@ TEST_F (OngoingsTests, ProcessedByHeight)
   EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpc"), 1);
   EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("sword bpc"), 1);
   EXPECT_EQ (GetNumOngoing (), 0);
+  inv.reset ();
 }
 
 TEST_F (OngoingsTests, ArmourRepair)
@@ -236,6 +240,7 @@ TEST_F (OngoingsTests, BlueprintCopy)
       inv = buildingInv.Get (bId, "domob");
       EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpo"), 0);
       EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpc"), 10 + i);
+      inv.reset ();
 
       ASSERT_EQ (GetNumOngoing (), 1);
       ASSERT_EQ (ongoings.GetById (opId)->GetHeight (), (i + 1) * baseDuration);
@@ -282,6 +287,7 @@ TEST_F (OngoingsTests, ItemConstructionFromOriginal)
       EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpo"), 10);
       EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow bpc"), 0);
       EXPECT_EQ (inv->GetInventory ().GetFungibleCount ("bow"), i);
+      inv.reset ();
 
       ASSERT_EQ (GetNumOngoing (), 1);
       ASSERT_EQ (ongoings.GetById (opId)->GetHeight (), (i + 1) * baseDuration);
@@ -402,30 +408,35 @@ TEST_F (OngoingsTests, BuildingConfigUpdate)
   b = buildings.GetById (bId);
   EXPECT_EQ (b->GetProto ().config ().dex_fee_bps (), 42);
   EXPECT_EQ (b->GetProto ().config ().service_fee_percent (), 1);
+  b.reset ();
 
   ctx.SetHeight (10);
   ProcessAllOngoings (db, rnd, ctx);
   b = buildings.GetById (bId);
   EXPECT_EQ (b->GetProto ().config ().dex_fee_bps (), 50);
   EXPECT_EQ (b->GetProto ().config ().service_fee_percent (), 1);
+  b.reset ();
 
   ctx.SetHeight (11);
   ProcessAllOngoings (db, rnd, ctx);
   b = buildings.GetById (bId);
   EXPECT_EQ (b->GetProto ().config ().dex_fee_bps (), 50);
   EXPECT_EQ (b->GetProto ().config ().service_fee_percent (), 2);
+  b.reset ();
 
   ctx.SetHeight (12);
   ProcessAllOngoings (db, rnd, ctx);
   b = buildings.GetById (bId);
   EXPECT_EQ (b->GetProto ().config ().dex_fee_bps (), 50);
   EXPECT_EQ (b->GetProto ().config ().service_fee_percent (), 2);
+  b.reset ();
 
   ctx.SetHeight (13);
   ProcessAllOngoings (db, rnd, ctx);
   b = buildings.GetById (bId);
   EXPECT_EQ (b->GetProto ().config ().dex_fee_bps (), 50);
   EXPECT_EQ (b->GetProto ().config ().service_fee_percent (), 4);
+  b.reset ();
 }
 
 } // anonymous namespace

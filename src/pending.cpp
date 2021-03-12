@@ -567,10 +567,6 @@ void
 PendingStateUpdater::PerformCharacterUpdate (Character& c,
                                              const Json::Value& upd)
 {
-  BuildingsTable::Handle b;
-  if (c.IsInBuilding ())
-    b = buildings.GetById (c.GetBuildingId ());
-
   Database::IdT regionId;
   if (ParseCharacterProspecting (c, upd, regionId))
     state.AddCharacterProspecting (c, regionId);
@@ -582,6 +578,10 @@ PendingStateUpdater::PerformCharacterUpdate (Character& c,
   items = ParseDropPickupFungible (upd["pu"]);
   if (!items.empty ())
     {
+      BuildingsTable::Handle b;
+      if (c.IsInBuilding ())
+        b = buildings.GetById (c.GetBuildingId ());
+
       if (b != nullptr && b->GetProto ().foundation ())
         LOG (WARNING)
             << "Ignoring pending move for character " << c.GetId ()
@@ -663,17 +663,24 @@ PendingStateUpdater::ProcessMove (const Json::Value& moveObj)
           << " does not exist, ignoring pending move " << moveObj;
       return;
     }
+  const bool accountInit = a->IsInitialised ();
 
   CoinTransferBurn coinOps;
   if (ParseCoinTransferBurn (*a, mv, coinOps, burnt))
     state.AddCoinTransferBurn (*a, coinOps);
+
+  /* Release the account again.  It is not needed anymore, and some of
+     the further operations may allocate another Account handle for
+     the current name (while it is not allowed to have two active ones
+     in parallel).  */
+  a.reset ();
 
   TryDexOperations (name, mv);
 
   /* If the account is not initialised yet, any other action is invalid anyway.
      If this is the init move itself, they would be actually fine, but we
      ignore this edge case for pending processing.  */
-  if (!a->IsInitialised ())
+  if (!accountInit)
     return;
 
   TryCharacterUpdates (name, mv);

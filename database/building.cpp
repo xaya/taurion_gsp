@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2020  Autonomous Worlds Ltd
+    Copyright (C) 2020-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,7 +25,9 @@ namespace pxd
 
 Building::Building (Database& d, const std::string& t,
                     const std::string& o, const Faction f)
-  : CombatEntity(d), id(db.GetNextId ()), type(t), owner(o), faction(f),
+  : CombatEntity(d), id(db.GetNextId ()),
+    tracker(db.TrackHandle ("building", id)),
+    type(t), owner(o), faction(f),
     pos(0, 0), dirtyFields(true)
 {
   VLOG (1)
@@ -42,6 +44,8 @@ Building::Building (Database& d, const Database::Result<BuildingResult>& res)
   : CombatEntity(d, res), dirtyFields(false)
 {
   id = res.Get<BuildingResult::id> ();
+  tracker = db.TrackHandle ("building", id);
+
   type = res.Get<BuildingResult::type> ();
   faction = GetFactionFromColumn (res);
   if (faction != Faction::ANCIENT)

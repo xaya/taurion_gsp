@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2020  Autonomous Worlds Ltd
+    Copyright (C) 2020-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,7 +22,8 @@ namespace pxd
 {
 
 OngoingOperation::OngoingOperation (Database& d, const unsigned startHeight)
-  : db(d), id(db.GetNextId ()), height(0),
+  : db(d), id(db.GetNextId ()), tracker(db.TrackHandle ("ongoing", id)),
+    height(0),
     characterId(Database::EMPTY_ID), buildingId(Database::EMPTY_ID),
     dirtyFields(true)
 {
@@ -36,6 +37,8 @@ OngoingOperation::OngoingOperation (Database& d,
   : db(d), dirtyFields(false)
 {
   id = res.Get<OngoingResult::id> ();
+  tracker = db.TrackHandle ("ongoing", id);
+
   height = res.Get<OngoingResult::height> ();
   characterId = res.Get<OngoingResult::character> ();
   buildingId = res.Get<OngoingResult::building> ();

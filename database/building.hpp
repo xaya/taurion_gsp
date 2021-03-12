@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2020  Autonomous Worlds Ltd
+    Copyright (C) 2020-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -56,6 +56,9 @@ private:
 
   /** The ID of the building.  */
   Database::IdT id;
+
+  /** The UniqueHandles tracker for this instance.  */
+  Database::HandleTracker tracker;
 
   /** The building's type.  This is immutable.  */
   std::string type;

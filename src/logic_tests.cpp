@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -432,6 +432,7 @@ TEST_F (PXLogicTests, RangeReduction)
           c = characters.GetById (id);
           EXPECT_TRUE (c->GetEffects ().has_range ());
           EXPECT_FALSE (c->HasTarget ());
+          c.reset ();
         }
 
       UpdateState ("[]");
@@ -440,6 +441,7 @@ TEST_F (PXLogicTests, RangeReduction)
           c = characters.GetById (id);
           EXPECT_FALSE (c->GetEffects ().has_range ());
           EXPECT_TRUE (c->HasTarget ());
+          c.reset ();
         }
     }
 }
@@ -824,6 +826,7 @@ TEST_F (PXLogicTests, ProspectingUserKilled)
 
   auto r = regions.GetById (region);
   EXPECT_EQ (r->GetProto ().prospecting_character (), 2);
+  r.reset ();
 
   /* Process another round, where the prospecting character is killed.  Thus
      the other is able to start prospecting at the same spot.  */
@@ -878,6 +881,7 @@ TEST_F (PXLogicTests, FinishingProspecting)
   auto r = regions.GetById (region);
   EXPECT_EQ (r->GetProto ().prospecting_character (), 1);
   EXPECT_FALSE (r->GetProto ().has_prospection ());
+  r.reset ();
 
   /* Process the next block which finishes prospecting.  We should be able
      to do a movement command right away as well, since the busy state is

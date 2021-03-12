@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2020  Autonomous Worlds Ltd
+    Copyright (C) 2020-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -211,6 +211,11 @@ TransferOperation::Execute ()
       << " inside " << building
       << " from " << account.GetName () << " to " << recipient;
 
+  /* If sender and recipient are the same, skip the operation and
+     in particular avoid creating another instance of the Account handle.  */
+  if (recipient == account.GetName ())
+    return;
+
   if (accounts.GetByName (recipient) == nullptr)
     accounts.CreateNew (recipient);
 
@@ -318,7 +323,7 @@ NewOrderOperation::PayToSellerAndFee (const std::string& recipient,
      buildings per code above) even though it will be checked
      again in PayCoins.  */
   if (owner > 0)
-    PayCoins (buildings.GetById (building)->GetOwner (), owner);
+    PayCoins (b->GetOwner (), owner);
   PayCoins (recipient, payout);
 }
 

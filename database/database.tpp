@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,6 +24,13 @@
 
 namespace pxd
 {
+
+template <typename T>
+  Database::HandleTracker
+  Database::TrackHandle (const std::string& type, const T& id)
+{
+  return std::make_unique<UniqueHandles::Tracker> (handleTracker, type, id);
+}
 
 template <typename T>
   Database::Result<T>

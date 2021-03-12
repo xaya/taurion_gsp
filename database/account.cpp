@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,7 +22,8 @@ namespace pxd
 {
 
 Account::Account (Database& d, const std::string& n)
-  : db(d), name(n), faction(Faction::INVALID), dirtyFields(true)
+  : db(d), name(n), tracker(db.TrackHandle ("account", n)),
+    faction(Faction::INVALID), dirtyFields(true)
 {
   VLOG (1) << "Created instance for newly initialised account " << name;
   data.SetToDefault ();
@@ -33,6 +34,8 @@ Account::Account (Database& d, const Database::Result<AccountResult>& res)
   : db(d), dirtyFields(false)
 {
   name = res.Get<AccountResult::name> ();
+  tracker = d.TrackHandle ("account", name);
+
   faction = GetNullableFactionFromColumn (res);
   data = res.GetProto<AccountResult::proto> ();
 

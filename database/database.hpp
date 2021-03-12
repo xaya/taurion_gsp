@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 #define DATABASE_DATABASE_HPP
 
 #include "lazyproto.hpp"
+#include "uniquehandles.hpp"
 
 #include <xayagame/sqlitegame.hpp>
 #include <xayagame/sqlitestorage.hpp>
@@ -30,6 +31,7 @@
 #include <sqlite3.h>
 
 #include <array>
+#include <memory>
 #include <string>
 #include <type_traits>
 
@@ -56,6 +58,9 @@ private:
   /** Protocol buffer arena used for protos extracted from the database.  */
   google::protobuf::Arena arena;
 
+  /** Tracker for active handles in this database.  */
+  UniqueHandles handleTracker;
+
 protected:
 
   Database () = default;
@@ -72,6 +77,9 @@ public:
 
   using IdT = xaya::SQLiteGame::IdT;
   static constexpr IdT EMPTY_ID = xaya::SQLiteGame::EMPTY_ID;
+
+  /** A UniqueHandles tracker for this database.  */
+  using HandleTracker = std::unique_ptr<UniqueHandles::Tracker>;
 
   template <typename T>
     class Result;
@@ -112,6 +120,12 @@ public:
   {
     return *db;
   }
+
+  /**
+   * Constructs a new tracker for a handle in this instance's UniqueHandles.
+   */
+  template <typename T>
+    HandleTracker TrackHandle (const std::string& type, const T& id);
 
 };
 
