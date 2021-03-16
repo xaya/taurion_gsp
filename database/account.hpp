@@ -23,6 +23,7 @@
 #include "database.hpp"
 #include "faction.hpp"
 #include "lazyproto.hpp"
+#include "skills.hpp"
 
 #include "proto/account.pb.h"
 
@@ -64,6 +65,9 @@ private:
 
   /** General proto data.  */
   LazyProto<proto::Account> data;
+
+  /** The skills instance for this account.  */
+  std::unique_ptr<SkillManager> skills;
 
   /** Whether or not this is dirty in the fields (like faction).  */
   bool dirtyFields;
@@ -141,6 +145,18 @@ public:
   GetBalance () const
   {
     return data.Get ().balance ();
+  }
+
+  SkillManager&
+  Skills ()
+  {
+    return *skills;
+  }
+
+  const SkillManager&
+  Skills () const
+  {
+    return *skills;
   }
 
 };

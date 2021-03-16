@@ -29,6 +29,7 @@ libdatabase_la_SOURCES = \
   ongoing.cpp \
   region.cpp \
   schema.cpp \
+  skills.cpp \
   target.cpp \
   uniquehandles.cpp
 noinst_HEADERS = \
@@ -50,6 +51,7 @@ noinst_HEADERS = \
   lazyproto.hpp lazyproto.tpp \
   region.hpp \
   schema.hpp \
+  skills.hpp \
   target.hpp \
   uniquehandles.hpp uniquehandles.tpp
 
@@ -99,6 +101,7 @@ tests_SOURCES = \
   ongoing_tests.cpp \
   region_tests.cpp \
   schema_tests.cpp \
+  skills_tests.cpp \
   target_tests.cpp \
   uniquehandles_tests.cpp
 

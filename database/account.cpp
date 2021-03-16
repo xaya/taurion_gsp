@@ -23,7 +23,9 @@ namespace pxd
 
 Account::Account (Database& d, const std::string& n)
   : db(d), name(n), tracker(db.TrackHandle ("account", n)),
-    faction(Faction::INVALID), dirtyFields(true)
+    faction(Faction::INVALID),
+    skills(new SkillManager (db, name)),
+    dirtyFields(true)
 {
   VLOG (1) << "Created instance for newly initialised account " << name;
   data.SetToDefault ();
@@ -38,6 +40,8 @@ Account::Account (Database& d, const Database::Result<AccountResult>& res)
 
   faction = GetNullableFactionFromColumn (res);
   data = res.GetProto<AccountResult::proto> ();
+
+  skills.reset (new SkillManager (db, name));
 
   VLOG (1) << "Created account instance for " << name << " from database";
 }

@@ -1,5 +1,5 @@
 --  GSP for the Taurion blockchain game
---  Copyright (C) 2019-2020  Autonomous Worlds Ltd
+--  Copyright (C) 2019-2021  Autonomous Worlds Ltd
 --
 --  This program is free software: you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -255,6 +255,25 @@ CREATE TABLE IF NOT EXISTS `accounts` (
 
   -- Additional data for the account as a serialised Account proto.
   `proto` BLOB NOT NULL
+
+);
+
+-- Individual entries counting the XP that an account has for a particular
+-- skill.  These are missing initially (corresponding to zero XP), and get
+-- added as the XP are increased.
+CREATE TABLE IF NOT EXISTS `account_xps` (
+
+  -- The name of the account this is for.
+  `name` TEXT NOT NULL,
+
+  -- The skill this is for.  Skills are numbered based on the enum
+  -- values from the SkillType protocol buffer enum.
+  `skill` INTEGER NOT NULL,
+
+  -- Total number of XP accrued for this skill so far.
+  `xp` INTEGER NOT NULL,
+
+  PRIMARY KEY (`name`, `skill`)
 
 );
 

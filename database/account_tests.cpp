@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -86,6 +86,34 @@ TEST_F (AccountTests, Balance)
   EXPECT_EQ (a->GetBalance (), 30);
   a->AddBalance (-30);
   EXPECT_EQ (a->GetBalance (), 0);
+  a.reset ();
+}
+
+TEST_F (AccountTests, Skills)
+{
+  auto a = tbl.CreateNew ("foobar");
+  EXPECT_EQ (a->Skills ()[proto::SKILL_BUILDING].GetXp (), 0);
+  a->Skills ()[proto::SKILL_BUILDING].AddXp (10);
+  EXPECT_EQ (a->Skills ()[proto::SKILL_BUILDING].GetXp (), 10);
+  EXPECT_EQ (a->Skills ()[proto::SKILL_COMBAT].GetXp (), 0);
+  a.reset ();
+
+  a = tbl.CreateNew ("baz");
+  EXPECT_EQ (a->Skills ()[proto::SKILL_BUILDING].GetXp (), 0);
+  a->Skills ()[proto::SKILL_COMBAT].AddXp (10);
+  a->Skills ()[proto::SKILL_COMBAT].AddXp (10);
+  EXPECT_EQ (a->Skills ()[proto::SKILL_BUILDING].GetXp (), 0);
+  EXPECT_EQ (a->Skills ()[proto::SKILL_COMBAT].GetXp (), 20);
+  a.reset ();
+
+  a = tbl.GetByName ("foobar");
+  EXPECT_EQ (a->Skills ()[proto::SKILL_BUILDING].GetXp (), 10);
+  a->Skills ()[proto::SKILL_BUILDING].AddXp (5);
+  EXPECT_EQ (a->Skills ()[proto::SKILL_BUILDING].GetXp (), 15);
+  a.reset ();
+
+  a = tbl.GetByName ("foobar");
+  EXPECT_EQ (a->Skills ()[proto::SKILL_BUILDING].GetXp (), 15);
   a.reset ();
 }
 
