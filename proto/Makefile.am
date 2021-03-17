@@ -6,6 +6,7 @@ ROCONFIG_TEXT_PROTOS = \
   roconfig/params.pb.text \
   roconfig/resourcedist.pb.text \
   roconfig/safezones.pb.text \
+  roconfig/skills.pb.text \
   \
   roconfig/items/artefacts.pb.text \
   roconfig/items/fitments.pb.text \

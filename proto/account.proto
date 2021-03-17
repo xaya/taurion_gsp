@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2020  Autonomous Worlds Ltd
+    Copyright (C) 2020-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -48,4 +48,23 @@ message Account
    */
   optional uint64 burnsale_balance = 4;
 
+}
+
+/**
+ * The different skills that exist in the game.  The numerical values
+ * are used as keys in the database for counting the XPs.  Also they are
+ * supposed to be contiguous, so that we can use a proto repeated field
+ * as replacement for a "map" (which doesn't work with enum keys).
+ */
+enum SkillType
+{
+  SKILL_SCOUTING = 1;
+  SKILL_MINING = 2;
+  SKILL_REFINING = 3;
+  SKILL_TRANSPORTATION = 4;
+  SKILL_COMBAT = 5;
+  SKILL_CRAFTING = 6;
+  SKILL_BUILDING = 7;
+  SKILL_TRADING = 8;
+  SKILL_RESEARCH = 9;
 }

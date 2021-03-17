@@ -1,0 +1,57 @@
+# The entry at index zero is an empty placeholder, so that the others
+# match up their enum value and index into the repeated field.
+skills: {}
+
+skills:
+  {
+    type: SKILL_SCOUTING
+    name: "scouting"
+  }
+
+skills:
+  {
+    type: SKILL_MINING
+    name: "mining"
+  }
+
+skills:
+  {
+    type: SKILL_REFINING
+    name: "refining"
+  }
+
+skills:
+  {
+    type: SKILL_TRANSPORTATION
+    name: "transportation"
+  }
+
+skills:
+  {
+    type: SKILL_COMBAT
+    name: "combat"
+  }
+
+skills:
+  {
+    type: SKILL_CRAFTING
+    name: "crafting"
+  }
+
+skills:
+  {
+    type: SKILL_BUILDING
+    name: "building"
+  }
+
+skills:
+  {
+    type: SKILL_TRADING
+    name: "trading"
+  }
+
+skills:
+  {
+    type: SKILL_RESEARCH
+    name: "research"
+  }

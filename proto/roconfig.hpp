@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,9 +19,12 @@
 #ifndef PROTO_ROCONFIG_HPP
 #define PROTO_ROCONFIG_HPP
 
+#include "account.pb.h"
 #include "config.pb.h"
 
 #include <xayagame/gamelogic.hpp>
+
+#include <set>
 
 namespace pxd
 {
@@ -105,6 +108,17 @@ public:
    * Looks up building data and asserts it exists.
    */
   const proto::BuildingData& Building (const std::string& type) const;
+
+  /**
+   * Looks up and returns the config data for a particular skill.
+   */
+  const proto::SkillData& Skill (proto::SkillType type) const;
+
+  /**
+   * Returns all skill types from the config, for situations that need
+   * to iterate them.
+   */
+  std::set<proto::SkillType> AllSkillTypes () const;
 
 };
 

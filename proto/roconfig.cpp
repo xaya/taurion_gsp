@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -151,6 +151,37 @@ const proto::ConfigData*
 RoConfig::operator-> () const
 {
   return &(operator* ());
+}
+
+const proto::SkillData&
+RoConfig::Skill (const proto::SkillType type) const
+{
+  const auto& skills = operator* ().skills ();
+  CHECK_GE (type, 1);
+  CHECK_LT (type, skills.size ());
+
+  const auto& res = skills[type];
+  CHECK (res.has_type ());
+  CHECK_EQ (res.type (), type);
+
+  return res;
+}
+
+std::set<proto::SkillType>
+RoConfig::AllSkillTypes () const
+{
+  const auto& skills = operator* ().skills ();
+
+  std::set<proto::SkillType> res;
+  for (const auto& entry : skills)
+    {
+      if (entry.has_type ())
+        CHECK (res.insert (entry.type ()).second);
+    }
+
+  CHECK_EQ (res.size (), skills.size () - 1);
+
+  return res;
 }
 
 /* ************************************************************************** */

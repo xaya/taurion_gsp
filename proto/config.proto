@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 syntax = "proto2";
 option cc_enable_arenas = true;
 
+import "proto/account.proto";
 import "proto/building.proto";
 import "proto/character.proto";
 import "proto/combat.proto";
@@ -373,6 +374,22 @@ message BuildingData
 /* ************************************************************************** */
 
 /**
+ * Configuration data for a particular skill in the character progression.
+ */
+message SkillData
+{
+
+  /** The skill this is about.  */
+  optional SkillType type = 1;
+
+  /** The skill's name, as e.g. used in JSON field names.  */
+  optional string name = 2;
+
+}
+
+/* ************************************************************************** */
+
+/**
  * Data for the resource distribution on the map (when prospecting).
  * This is based on multiple "areas" where one or two resources occur.
  * Each area has a central x/y coordinate.  Then within a core L1 radius
@@ -629,17 +646,29 @@ message ConfigData
   /** Known types of buildings.  */
   map<string, BuildingData> building_types = 2;
 
+  /**
+   * Configuration data for all skills that exist.  Since we can't have
+   * a map keyed by SkillType (which is an enum), this is a normal
+   * array (repeated field).  But the array is laid out so that the
+   * integer value of the skill enum matches the index of the corresponding
+   * configuration entry, and this is enforced by the sanity checks.
+   *
+   * Since skill enum values start at one, the first entry here (index zero)
+   * is an empty proto.
+   */
+  repeated SkillData skills = 3;
+
   /** Distribution of resources for prospecting.  */
-  optional ResourceDistribution resource_dist = 3;
+  optional ResourceDistribution resource_dist = 4;
 
   /** Initial buildings (ancient buildings and starter zones).  */
-  repeated InitialBuilding initial_buildings = 4;
+  repeated InitialBuilding initial_buildings = 5;
 
   /** Safe and starter zones.  */
-  repeated SafeZone safe_zones = 5;
+  repeated SafeZone safe_zones = 6;
 
   /** Basic parameters.  */
-  optional Params params = 6;
+  optional Params params = 7;
 
   /**
    * The testnet-specific configuration data.  This is merged into the main

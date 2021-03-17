@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -105,6 +105,13 @@ TEST (RoConfigTests, Building)
   const RoConfig cfg(xaya::Chain::REGTEST);
   EXPECT_EQ (cfg.BuildingOrNull ("invalid building"), nullptr);
   EXPECT_GT (cfg.Building ("ancient1").enter_radius (), 0);
+}
+
+TEST (RoConfigTests, Skills)
+{
+  const RoConfig cfg(xaya::Chain::MAIN);
+  for (const auto s : cfg.AllSkillTypes ())
+    EXPECT_EQ (s, cfg.Skill (s).type ());
 }
 
 /* ************************************************************************** */
@@ -335,6 +342,11 @@ private:
     return true;
   }
 
+  /**
+   * Checks if the skill data is valid for the given instance.
+   */
+  static bool CheckSkillData (const RoConfig& cfg);
+
 protected:
 
   /**
@@ -345,6 +357,43 @@ protected:
   static bool IsConfigValid (const RoConfig& cfg);
 
 };
+
+bool
+RoConfigSanityTests::CheckSkillData (const RoConfig& cfg)
+{
+  const auto& skills = cfg->skills ();
+  for (int i = 0; i < skills.size (); ++i)
+    {
+      if (i == 0)
+        {
+          if (skills[i].has_type ())
+            {
+              LOG (WARNING) << "Zero skills entry is not empty";
+              return false;
+            }
+          continue;
+        }
+
+      const auto& data = skills[i];
+      if (!data.has_type ())
+        {
+          LOG (WARNING) << "Skills entry " << i << " is empty";
+          return false;
+        }
+      if (data.type () != i)
+        {
+          LOG (WARNING) << "Skills entry type mismatch for " << i;
+          return false;
+        }
+      if (&data != &cfg.Skill (data.type ()))
+        {
+          LOG (WARNING) << "Mismatch to RoConfig::Skill with " << i;
+          return false;
+        }
+    }
+
+  return true;
+}
 
 bool
 RoConfigSanityTests::IsConfigValid (const RoConfig& cfg)
@@ -540,6 +589,9 @@ RoConfigSanityTests::IsConfigValid (const RoConfig& cfg)
         LOG (WARNING) << "Invalid type for initial building: " << ib.type ();
         return false;
       }
+
+  if (!CheckSkillData (cfg))
+    return false;
 
   return true;
 }
