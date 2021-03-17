@@ -307,6 +307,7 @@ template <>
   GameStateJson::Convert<Account> (const Account& a) const
 {
   const auto& pb = a.GetProto ();
+  const auto& cfg = ctx.RoConfig ();
 
   Json::Value res(Json::objectValue);
   res["name"] = a.GetName ();
@@ -316,12 +317,24 @@ template <>
   bal["available"] = IntToJson (a.GetBalance ());
   res["balance"] = bal;
 
-  if (a.IsInitialised ())
+  if (!a.IsInitialised ())
+    return res;
+
+  res["faction"] = FactionToString (a.GetFaction ());
+  res["kills"] = IntToJson (pb.kills ());
+  res["fame"] = IntToJson (pb.fame ());
+
+  Json::Value skills(Json::objectValue);
+  for (const auto s : cfg.AllSkillTypes ())
     {
-      res["faction"] = FactionToString (a.GetFaction ());
-      res["kills"] = IntToJson (pb.kills ());
-      res["fame"] = IntToJson (pb.fame ());
+      const auto& data = a.Skills ()[s];
+
+      Json::Value cur(Json::objectValue);
+      cur["xp"] = IntToJson (data.GetXp ());
+
+      skills[cfg.Skill (s).name ()] = cur;
     }
+  res["skills"] = skills;
 
   return res;
 }

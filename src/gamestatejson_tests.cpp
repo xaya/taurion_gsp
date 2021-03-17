@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -592,6 +592,38 @@ TEST_F (AccountJsonTests, UninitialisedBalance)
               "total": 0
             },
           "minted": 0
+        }
+      ]
+  })");
+}
+
+TEST_F (AccountJsonTests, Skills)
+{
+  tbl.CreateNew ("uninit");
+
+  auto a = tbl.CreateNew ("domob");
+  a->SetFaction (Faction::RED);
+  a->Skills ()[proto::SKILL_BUILDING].AddXp (10);
+  a.reset ();
+
+  /* We only check two skills:  One with data, and one without; the
+     actual JSON will contain data for all skills, but we don't have to
+     explicitly list all the other ones without data.  */
+
+  ExpectStateJson (R"({
+    "accounts":
+      [
+        {
+          "name": "domob",
+          "skills":
+            {
+              "building": {"xp": 10},
+              "combat": {"xp": 0}
+            }
+        },
+        {
+          "name": "uninit",
+          "skills": null
         }
       ]
   })");
