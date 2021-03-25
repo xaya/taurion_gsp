@@ -34,16 +34,14 @@ import threading
 import time
 
 
-# Accounts on chat.xaya.io (XID mainnet) for use with testing.
-# See src/testutils.cpp for more details.
+# Configuration for the test XMPP server used, which is the local
+# test environment from Charon.
 TEST_ACCOUNTS = [
-  ("xmpptest1", "CkEfa5+WT2Rc5/TiMDhMynAbSJ+DY9FmE5lcWgWMRQWUBV5UQsgjiBWL302N4k"
-                "dLZYygJVBVx3vYsDNUx8xBbw27WA=="),
-  ("xmpptest2", "CkEgOEFNwRdLQ6uD543MJLSzip7mTahM1we9GDl3S5NlR49nrJ0JxcFfQmDbbF"
-                "4C4OpqSlTpx8OG6xtFjCUMLh/AGA=="),
+  ("xmpptest1", "password"),
+  ("xmpptest2", "password"),
 ]
-XMPP_SERVER = "chat.xaya.io"
-PUBSUB = "pubsub.chat.xaya.io"
+XMPP_SERVER = "localhost"
+PUBSUB = "pubsub.localhost"
 
 
 # Port and URL for the local REST API used for bootstrap data.
@@ -63,7 +61,7 @@ def getTestCaFile ():
 
   charon = os.getenv ("CHARON_PREFIX")
   assert charon is not None, "CHARON_PREFIX must be set"
-  return os.path.join (charon, "share", "charon", "letsencrypt.pem")
+  return os.path.join (charon, "share", "charon", "testenv.pem")
 
 
 class CharonClient ():
