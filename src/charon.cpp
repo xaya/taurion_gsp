@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2020  Autonomous Worlds Ltd
+    Copyright (C) 2020-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -55,6 +55,9 @@ DEFINE_string (charon, "",
 DEFINE_string (charon_server_jid, "", "Bare or full JID for the Charon server");
 DEFINE_string (charon_client_jid, "", "Bare or full JID for the Charon client");
 DEFINE_string (charon_password, "", "XMPP password for the Charon JID");
+DEFINE_string (charon_cafile, "",
+               "if set, use this file as TLS trust root for the"
+               " XMPP connection instead of the system default");
 DEFINE_int32 (charon_priority, 0, "Priority for the XMPP connection");
 
 DEFINE_string (charon_pubsub_service, "",
@@ -65,9 +68,9 @@ DEFINE_int32 (charon_timeout_ms, 3000,
 
 DEFINE_string (rest_endpoint, "https://rest.taurion.io",
                "URL for the REST API that is used in the Charon client");
-DEFINE_string (cafile, "",
+DEFINE_string (rest_cafile, "",
                "if set, trust these certificates for TLS"
-               " instead of the cURL default");
+               " instead of the cURL default for the REST endpoint");
 
 /** Interval for Charon server reconnects.  */
 const auto RECONNECT_INTERVAL = std::chrono::seconds (5);
@@ -215,6 +218,9 @@ public:
                      &PXRpcServer::waitforchangeI);
     AddNotification (std::make_unique<charon::PendingChangeNotification> (),
                      &PXRpcServer::waitforpendingchangeI);
+
+    if (!FLAGS_charon_cafile.empty ())
+      srv.SetRootCA (FLAGS_charon_cafile);
   }
 
   void
@@ -402,12 +408,15 @@ public:
     : client(serverJid, GetBackendVersion (), clientJid, password),
       rest(FLAGS_rest_endpoint)
   {
+    if (!FLAGS_charon_cafile.empty ())
+      client.SetRootCA (FLAGS_charon_cafile);
+
     LOG (INFO)
         << "Using " << serverJid << " as Charon server,"
         << " requiring backend version " << GetBackendVersion ();
     LOG (INFO)
         << "REST endpoint: " << FLAGS_rest_endpoint;
-    rest.SetCaFile (FLAGS_cafile);
+    rest.SetCaFile (FLAGS_rest_cafile);
   }
 
   /**
