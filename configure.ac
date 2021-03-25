@@ -64,6 +64,12 @@ AC_CHECK_LIB(gmp, __gmpz_init, ,
 AC_SUBST(GMP_CFLAGS, )
 AC_SUBST(GMP_LIBS, -lgmp)
 
+# FIXME: We need the Charon installation prefix, since we want to
+# access the testenv.pem certificate installed there.  For now, we
+# just assume it is the default /usr/local, but ideally we should detect
+# it for Charon itself.
+AC_SUBST(CHARON_PREFIX, /usr/local)
+
 AC_CONFIG_FILES([
   Makefile \
   data/Makefile \

@@ -55,6 +55,17 @@ def testAccountJid (acc):
   return "%s@%s" % (acc[0], XMPP_SERVER)
 
 
+def getTestCaFile ():
+  """
+  Returns the CA trust root file that should be used in the test
+  for the XMPP server connection.
+  """
+
+  charon = os.getenv ("CHARON_PREFIX")
+  assert charon is not None, "CHARON_PREFIX must be set"
+  return os.path.join (charon, "share", "charon", "letsencrypt.pem")
+
+
 class CharonClient ():
   """
   Wrapper around a running tauriond process that is started as Charon client
@@ -89,6 +100,7 @@ class CharonClient ():
     args.extend (["--charon_server_jid", testAccountJid (TEST_ACCOUNTS[0])])
     args.extend (["--charon_client_jid", testAccountJid (TEST_ACCOUNTS[1])])
     args.extend (["--charon_password", TEST_ACCOUNTS[1][1]])
+    args.extend (["--charon_cafile", getTestCaFile ()])
 
     envVars = dict (os.environ)
     envVars["GLOG_log_dir"] = self.datadir
@@ -148,6 +160,7 @@ class CharonTest (PXTest):
     args.extend (["--charon_pubsub_service", PUBSUB])
     args.extend (["--charon_server_jid", testAccountJid (TEST_ACCOUNTS[0])])
     args.extend (["--charon_password", TEST_ACCOUNTS[0][1]])
+    args.extend (["--charon_cafile", getTestCaFile ()])
     args.extend (["--rest_port", str (REST_PORT)])
     self.startGameDaemon (extraArgs=args)
 
