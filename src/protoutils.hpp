@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -38,6 +38,16 @@ proto::HexCoord CoordToProto (const HexCoord& c);
  * Converts a HexCoord in protocol buffer form to the real object.
  */
 HexCoord CoordFromProto (const proto::HexCoord& pb);
+
+/**
+ * Converts a coordinate difference in protocol buffer to
+ * the HexCoord::Difference instance.
+ */
+inline HexCoord::Difference
+CoordDiffFromProto (const proto::HexCoord& pb)
+{
+  return CoordFromProto (pb) - HexCoord ();
+}
 
 /**
  * Adds a vector of coordinates to a repeated field in the protocol buffer.

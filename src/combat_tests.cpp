@@ -1127,7 +1127,7 @@ TEST_F (DealDamageTests, FriendlyAttack)
 
   c = characters.CreateNew ("domob", Faction::RED);
   const auto idOutOfRange = c->GetId ();
-  c->SetPosition (NOT_SAFE + HexCoord (100, 100));
+  c->SetPosition (NOT_SAFE + HexCoord::Difference (100, 100));
   NoAttacks (*c);
   c.reset ();
 

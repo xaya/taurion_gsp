@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -82,6 +82,7 @@ MovementLongHaul (benchmark::State& state)
   ContextForTesting ctx;
 
   const HexCoord::IntT dist = state.range (0);
+  const HexCoord::Difference diff(dist, 0);
 
   InitialiseAccount (db);
 
@@ -102,7 +103,7 @@ MovementLongHaul (benchmark::State& state)
         h->SetPosition (origin);
         auto* mv = h->MutableProto ().mutable_movement ();
         auto* wp = mv->mutable_waypoints ();
-        *wp->Add () = CoordToProto (origin + HexCoord (dist, 0));
+        *wp->Add () = CoordToProto (origin + diff);
       }
       DynObstacles dyn(db, ctx);
       state.ResumeTiming ();
@@ -114,7 +115,7 @@ MovementLongHaul (benchmark::State& state)
       while (tbl.GetById (id)->GetProto ().has_movement ());
 
       state.PauseTiming ();
-      CHECK_EQ (tbl.GetById (id)->GetPosition (), HexCoord (dist, 0) + origin);
+      CHECK_EQ (tbl.GetById (id)->GetPosition (), origin + diff);
       state.ResumeTiming ();
     }
 }

@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -3011,7 +3011,7 @@ TEST_F (ProspectingMoveTests, OrderOfCharactersInAMove)
   GetTest ()->SetPosition (HexCoord (0, 0));
 
   auto c = SetupCharacter (9, "domob");
-  c->SetPosition (pos + HexCoord (1, 0));
+  c->SetPosition (pos + HexCoord::Difference (1, 0));
   c->MutableProto ().set_prospecting_blocks (10);
   c.reset ();
 
