@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,34 +31,54 @@ PathFinder::StepPath (const HexCoord& source) const
   return Stepper (*this, source);
 }
 
+bool
+PathFinder::Stepper::TryStep (const HexCoord& target, DistanceT& step)
+{
+  const auto curDist = finder.distances->Get (position);
+  CHECK (curDist != NO_CONNECTION);
+
+  if (!finder.distances->IsInRange (target))
+    return false;
+  const auto dist = finder.distances->Get (target);
+  if (dist == NO_CONNECTION)
+    return false;
+
+  step = finder.edges (position, target);
+  if (step == NO_CONNECTION)
+    return false;
+  const auto fullDist = dist + step;
+
+  if (fullDist == curDist)
+    {
+      lastDirection = target - position;
+      position = target;
+      return true;
+    }
+
+  CHECK_GT (fullDist, curDist);
+  return false;
+}
+
 PathFinder::DistanceT
 PathFinder::Stepper::Next ()
 {
   CHECK (HasMore ());
 
-  const auto curDist = finder.distances->Get (position);
-  CHECK (curDist != NO_CONNECTION);
+  /* We try to continue the last direction, as long as it is an optimal
+     path.  This helps to avoid spurious turns when moving around obstacles,
+     and minimises (at least in a greedy way) the number of waypoints needed
+     for the final path.  */
+  DistanceT step;
+  if (lastDirection != HexCoord::Difference ())
+    {
+      const auto continued = position + lastDirection;
+      if (TryStep (continued, step))
+        return step;
+    }
 
   for (const auto& n : position.Neighbours ())
-    {
-      if (!finder.distances->IsInRange (n))
-        continue;
-      const auto dist = finder.distances->Get (n);
-      if (dist == NO_CONNECTION)
-        continue;
-
-      const auto thisStep = finder.edges (position, n);
-      if (thisStep == NO_CONNECTION)
-        continue;
-      const auto fullDist = dist + thisStep;
-
-      if (fullDist == curDist)
-        {
-          position = n;
-          return thisStep;
-        }
-      CHECK_GT (fullDist, curDist);
-    }
+    if (TryStep (n, step))
+      return step;
 
   LOG (FATAL) << "No good neighbour found along path";
 }
