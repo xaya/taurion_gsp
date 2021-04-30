@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -178,7 +178,7 @@ GetCharacterSpeed (const Character& c)
  */
 template <typename Fcn>
   bool
-  StepCharacter (Character& c, const HexCoord& dir,
+  StepCharacter (Character& c, const HexCoord::Difference& dir,
                  const Context& ctx, Fcn edges)
 {
   const auto& pos = c.GetPosition ();
@@ -295,7 +295,7 @@ template <typename Fcn>
           nextWp = CoordFromProto (wp[0]);
         }
 
-      HexCoord dir;
+      HexCoord::Difference dir;
       {
         const auto& pos = c.GetPosition ();
         HexCoord::IntT steps;

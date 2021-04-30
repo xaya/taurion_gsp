@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -334,7 +334,7 @@ NonStateRpcServer::findpath (const Json::Value& exbuildings,
     {
       path.Next ();
 
-      HexCoord dir;
+      HexCoord::Difference dir;
       HexCoord::IntT steps;
       if (!wp.back ().IsPrincipalDirectionTo (path.GetPosition (), dir, steps))
         wp.push_back (prev);
