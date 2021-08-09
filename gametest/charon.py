@@ -164,7 +164,7 @@ class CharonTest (PXTest):
 
     self.mainLogger.info ("Starting tauriond as Charon client...")
     with CharonClient (self.args.game_daemon,
-                       self.basedir, self.basePort + 10) as client:
+                       self.basedir, next (self.ports)) as client:
 
       self.mainLogger.info ("Testing local RPC...")
       pos = {"x": 10, "y": 50}
