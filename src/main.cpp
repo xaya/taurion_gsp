@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -44,6 +44,8 @@ namespace
 
 DEFINE_string (xaya_rpc_url, "",
                "URL at which Xaya Core's JSON-RPC interface is available");
+DEFINE_int32 (xaya_rpc_protocol, 1,
+              "JSON-RPC version for connecting to Xaya Core");
 DEFINE_int32 (game_rpc_port, 0,
               "the port at which the game's JSON-RPC server will be started"
               " (if non-zero)");
@@ -175,6 +177,7 @@ main (int argc, char** argv)
 
   xaya::GameDaemonConfiguration config;
   config.XayaRpcUrl = FLAGS_xaya_rpc_url;
+  config.XayaJsonRpcProtocol = FLAGS_xaya_rpc_protocol;
   if (FLAGS_game_rpc_port != 0)
     {
       config.GameRpcServer = xaya::RpcServerType::HTTP;
