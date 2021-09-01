@@ -340,6 +340,22 @@ class PXTest (XayaGameTest):
 
     return self.getCustomState ("data", method, *args, **kwargs)
 
+  def sendMove (self, name, move, options={}, burn=0):
+    """
+    Sends a move, and optionally includes a coin burn.
+    """
+
+    opt = copy.deepcopy (options)
+
+    if burn > 0:
+      if "burn" not in opt:
+        opt["burn"] = {}
+      key = "g/%s" % self.gameId
+      assert key not in opt["burn"]
+      opt["burn"][key] = burn
+
+    return super ().sendMove (name, move, opt)
+
   def moveWithPayment (self, name, move, devAmount):
     """
     Sends a move (name_update for the given name) and also includes the
