@@ -204,6 +204,7 @@ class BasicProspectingTest (PXTest):
     r = self.getRegionAt (self.offset)
     c = self.getCharacters ()["target"]
     c.sendMove ({"prospect": {}})
+    sleepSome ()
     self.assertEqual (self.getPendingState ()["characters"], [
       {
         "id": c.getId (),
