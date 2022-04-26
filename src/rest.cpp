@@ -1,4 +1,4 @@
-// Copyright (C) 2020 The Xaya developers
+// Copyright (C) 2020-2022 The Xaya developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -49,6 +49,12 @@ RestApi::ComputeBootstrapData ()
 RestApi::SuccessResult
 RestApi::Process (const std::string& url)
 {
+  SuccessResult res;
+  if (HandleState (url, game, res))
+    return res;
+  if (HandleHealthz (url, game, res))
+    return res;
+
   std::string remainder;
   if (MatchEndpoint (url, "/bootstrap.json.gz", remainder) && remainder == "")
     {
