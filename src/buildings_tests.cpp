@@ -118,19 +118,19 @@ TEST_F (CanPlaceBuildingTests, Ok)
 {
   /* Some offset added to all coordinates to make the situation fit
      into one region entirely.  */
-  const HexCoord offs(-1, -5);
+  const HexCoord::Difference offs(-1, -5);
 
   tbl.CreateNew ("huesli", "", Faction::ANCIENT)
-      ->SetCentre (offs + HexCoord (-1, 0));
+      ->SetCentre (HexCoord (-1, 0) + offs);
 
   characters.CreateNew ("domob", Faction::RED)
-      ->SetPosition (offs + HexCoord (2, 0));
+      ->SetPosition (HexCoord (2, 0) + offs);
   characters.CreateNew ("andy", Faction::GREEN)
-      ->SetPosition (offs + HexCoord (0, -1));
+      ->SetPosition (HexCoord (0, -1) + offs);
   characters.CreateNew ("daniel", Faction::BLUE)
-      ->SetPosition (offs + HexCoord (0, 3));
+      ->SetPosition (HexCoord (0, 3) + offs);
 
-  EXPECT_TRUE (CanPlace ("checkmark", 0, offs));
+  EXPECT_TRUE (CanPlace ("checkmark", 0, HexCoord () + offs));
 }
 
 TEST_F (CanPlaceBuildingTests, OutOfMap)
@@ -168,7 +168,7 @@ TEST_F (CanPlaceBuildingTests, DynObstacle)
 TEST_F (CanPlaceBuildingTests, MultiRegion)
 {
   const HexCoord pos(0, 0);
-  const HexCoord outside(pos + HexCoord (0, 2));
+  const HexCoord outside(pos + HexCoord::Difference (0, 2));
   ASSERT_NE (ctx.Map ().Regions ().GetRegionId (pos),
              ctx.Map ().Regions ().GetRegionId (outside));
 

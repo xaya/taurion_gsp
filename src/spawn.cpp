@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -60,7 +60,7 @@ RandomSpawnLocation (const HexCoord& centre, const HexCoord::IntT radius,
       const HexCoord::IntT xOffs = rnd.NextInt (2 * radius + 1) - radius;
       const HexCoord::IntT yOffs = rnd.NextInt (2 * radius + 1) - radius;
 
-      res += HexCoord (xOffs, yOffs);
+      res += HexCoord::Difference (xOffs, yOffs);
 
       if (HexCoord::DistanceL1 (res, centre) <= radius)
         {

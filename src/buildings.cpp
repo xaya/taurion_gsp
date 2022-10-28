@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2020  Autonomous Worlds Ltd
+    Copyright (C) 2020-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -43,10 +43,9 @@ GetBuildingShape (const std::string& type,
   res.reserve (roData.shape_tiles ().size ());
   for (const auto& pbTile : roData.shape_tiles ())
     {
-      HexCoord c = CoordFromProto (pbTile);
-      c = c.RotateCW (trafo.rotation_steps ()); 
-      c += pos;
-      res.push_back (c);
+      HexCoord::Difference d = CoordDiffFromProto (pbTile);
+      d = d.RotateCW (trafo.rotation_steps ());
+      res.push_back (pos + d);
     }
 
   return res;
