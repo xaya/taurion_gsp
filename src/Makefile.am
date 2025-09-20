@@ -1,3 +1,5 @@
+.PHONY: build-tests
+
 noinst_LTLIBRARIES = libtaurion.la
 bin_PROGRAMS = tauriond
 dist_noinst_SCRIPTS = update-version.sh
@@ -104,6 +106,8 @@ noinst_HEADERS = $(libtaurionheaders) $(tauriondheaders)
 check_LTLIBRARIES = libtestutils.la
 check_PROGRAMS = tests benchmarks
 TESTS = tests benchmarks
+
+build-tests: $(check_PROGRAMS)
 
 libtestutils_la_CXXFLAGS = \
   -I$(top_srcdir) \
