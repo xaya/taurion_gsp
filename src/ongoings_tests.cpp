@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2020-2021  Autonomous Worlds Ltd
+    Copyright (C) 2020-2025  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -392,12 +392,14 @@ TEST_F (OngoingsTests, BuildingConfigUpdate)
   op = AddOp (*b);
   op->SetHeight (13);
   op->MutableProto ().mutable_building_update ();
+  cfg = op->MutableProto ().mutable_building_update ();
   cfg->mutable_new_config ()->set_service_fee_percent (3);
   op.reset ();
 
   op = AddOp (*b);
   op->SetHeight (13);
   op->MutableProto ().mutable_building_update ();
+  cfg = op->MutableProto ().mutable_building_update ();
   cfg->mutable_new_config ()->set_service_fee_percent (4);
   op.reset ();
 
