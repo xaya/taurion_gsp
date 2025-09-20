@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2019-2020  Autonomous Worlds Ltd
+#   Copyright (C) 2019-2025  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -26,9 +26,6 @@ from pxtest import PXTest
 class BuildingsEnterExitTest (PXTest):
 
   def run (self):
-    self.collectPremine ()
-    self.splitPremine ()
-
     self.mainLogger.info ("Placing a building...")
     self.build ("checkmark", None, {"x": 0, "y": 0}, rot=0)
     building = 1001
@@ -46,7 +43,7 @@ class BuildingsEnterExitTest (PXTest):
       "eb": building
     })
     self.generate (2)
-    reorgBlock = self.rpc.xaya.getbestblockhash ()
+    self.snapshot = self.env.snapshot ()
 
     c = self.getCharacters ()["domob"]
     self.assertEqual (c.isInBuilding (), False)
@@ -85,15 +82,12 @@ class BuildingsEnterExitTest (PXTest):
     assert "target" not in chars["andy"].data["combat"]
     assert "target" not in chars["domob"].data["combat"]
 
-    # Before doing the reorg, make sure this is the longest chain.
-    self.generate (100)
-    self.testReorg (reorgBlock)
+    self.testReorg ()
 
-  def testReorg (self, blk):
+  def testReorg (self):
     self.mainLogger.info ("Testing reorg...")
 
-    originalState = self.getGameState ()
-    self.rpc.xaya.invalidateblock (blk)
+    self.snapshot.restore ()
 
     self.getCharacters ()["domob"].sendMove ({"eb": None})
     self.generate (20)
@@ -101,9 +95,6 @@ class BuildingsEnterExitTest (PXTest):
     self.assertEqual (c.isInBuilding (), False)
     self.assertEqual (c.getPosition (), {"x": 3, "y": 0})
     assert "enterbuilding" not in c.data
-
-    self.rpc.xaya.reconsiderblock (blk)
-    self.expectGameState (originalState)
     
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2019-2020  Autonomous Worlds Ltd
+#   Copyright (C) 2019-2025  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -72,8 +72,6 @@ class FindPathTest (PXTest):
     return val
 
   def run (self):
-    self.collectPremine ()
-
     # Pair of coordinates that are next to each other, but where one
     # is an obstacle.
     obstacle = {"x": 0, "y": 505}

@@ -2,7 +2,7 @@
 # coding=utf8
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2019-2020  Autonomous Worlds Ltd
+#   Copyright (C) 2019-2025  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -43,9 +43,11 @@ class CharactersTest (PXTest):
       c.expectPartial (expected[nm])
 
   def run (self):
-    self.collectPremine ()
-
     cost = self.roConfig ().params.character_cost
+
+    self.env.register ("p", "domob")
+    self.generate (1)
+    self.snapshot = self.env.snapshot ()
 
     self.mainLogger.info ("Creating first character...")
     self.moveWithPayment ("adam", {
@@ -150,21 +152,15 @@ class CharactersTest (PXTest):
     """
 
     self.mainLogger.info ("Testing a reorg...")
-    originalState = self.getGameState ()
 
-    blk = self.rpc.xaya.getblockhash (1)
-    self.rpc.xaya.invalidateblock (blk)
+    self.snapshot.restore ()
 
-    self.collectPremine ()
     self.initAccount ("domob", "r")
     self.createCharacters ("domob")
     self.generate (1)
     self.expectPartial ({
       "domob": {"owner": "domob"},
     })
-
-    self.rpc.xaya.reconsiderblock (blk)
-    self.expectGameState (originalState)
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2019-2020  Autonomous Worlds Ltd
+#   Copyright (C) 2019-2025  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -29,8 +29,6 @@ class MiningTest (PXTest):
     return self.getCharacters ()[charName].data["mining"]["active"]
 
   def run (self):
-    self.collectPremine ()
-
     self.pos = [{"x": 10, "y": 100}]
     self.pos.append (offsetCoord (self.pos[0], {"x": 1, "y": 0}, False))
     self.assertEqual (self.getRegionAt (self.pos[0]).getId (),
@@ -53,6 +51,7 @@ class MiningTest (PXTest):
     # We need at least some of the resource in the region in order to allow
     # the remaining parts of the test to work as expected.  Thus we try
     # to re-roll prospection as needed in order to achieve that.
+    snapshot = self.env.snapshot ()
     while True:
       self.generate (1)
       typ, self.amount = self.getRegionAt (self.pos[0]).getResource ()
@@ -62,14 +61,14 @@ class MiningTest (PXTest):
         break
 
       self.log.warning ("Too little resources, retrying...")
-      self.rpc.xaya.invalidateblock (self.rpc.xaya.getbestblockhash ())
+      snapshot.restore ()
 
     # In case we found a prospecting prize, we need to remember this for
     # the reorg test.
     self.preReorgInv = self.getCharacters ()["domob"].getFungibleInventory ()
 
+    self.snapshot = self.env.snapshot ()
     self.generate (1)
-    self.reorgBlock = self.rpc.xaya.getbestblockhash ()
 
     self.mainLogger.info ("Starting to mine...")
     self.getCharacters ()["domob"].sendMove ({"mine": {}})
@@ -122,9 +121,8 @@ class MiningTest (PXTest):
 
   def testReorg (self):
     self.mainLogger.info ("Testing a reorg...")
-    oldState = self.getGameState ()
 
-    self.rpc.xaya.invalidateblock (self.reorgBlock)
+    self.snapshot.restore ()
     self.generate (20)
 
     self.assertEqual (self.isMining ("domob"), False)
@@ -135,9 +133,6 @@ class MiningTest (PXTest):
 
     _, remaining = self.getRegionAt (self.pos[0]).getResource ()
     self.assertEqual (remaining, self.amount)
-
-    self.rpc.xaya.reconsiderblock (self.reorgBlock)
-    self.expectGameState (oldState)
 
 
 if __name__ == "__main__":

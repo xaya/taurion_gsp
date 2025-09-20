@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2020  Autonomous Worlds Ltd
+#   Copyright (C) 2020-2025  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@ class ModifiedRegionsTest (PXTest):
     data = self.rpc.game.getregionat (coord=pos)
 
     self.moveCharactersTo ({"prospector": pos})
-    h = self.rpc.xaya.getblockcount ()
+    _, h = self.env.getChainTip ()
 
     self.getCharacters ()["prospector"].sendMove ({"prospect": {}})
     self.generate (15)
@@ -51,8 +51,6 @@ class ModifiedRegionsTest (PXTest):
     return set ({r["id"] for r in data})
 
   def run (self):
-    self.collectPremine ()
-
     self.initAccount ("prospector", "r")
     self.createCharacters ("prospector")
     self.generate (1)

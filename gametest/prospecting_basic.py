@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2019-2020  Autonomous Worlds Ltd
+#   Copyright (C) 2019-2025  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -38,8 +38,6 @@ class BasicProspectingTest (PXTest):
     self.assertEqual (region.data["prospection"]["name"], name)
 
   def run (self):
-    self.collectPremine ()
-
     self.mainLogger.info ("Setting up test characters...")
     self.initAccount ("target", "r")
     self.createCharacters ("target")
@@ -99,8 +97,8 @@ class BasicProspectingTest (PXTest):
     self.assertEqual (c.getBusy (), None)
     region = self.getRegionAt (pos)
     self.assertEqual (region.data["prospection"]["name"], "target")
-    self.assertEqual (region.data["prospection"]["height"],
-                      self.rpc.xaya.getblockcount ())
+    _, height = self.env.getChainTip ()
+    self.assertEqual (region.data["prospection"]["height"], height)
 
     # Move towards attackers and prospect there, but have the character
     # killed before it is done.
@@ -142,7 +140,7 @@ class BasicProspectingTest (PXTest):
     # Check that the first goes through and the second is ignored.
     self.mainLogger.info ("Competing prospectors...")
 
-    self.reorgBlock = self.rpc.xaya.getbestblockhash ()
+    self.snapshot = self.env.snapshot ()
     self.getCharacters ()[self.prospectors[0]].sendMove ({"prospect": {}})
     self.generate (1)
     self.getCharacters ()[self.prospectors[1]].sendMove ({"prospect": {}})
@@ -248,10 +246,8 @@ class BasicProspectingTest (PXTest):
     """
 
     self.mainLogger.info ("Testing a reorg...")
-    bestBlk = self.rpc.xaya.getbestblockhash ()
-    originalState = self.getGameState ()
 
-    self.rpc.xaya.invalidateblock (self.reorgBlock)
+    self.snapshot.restore ()
     self.getCharacters ()[self.prospectors[1]].sendMove ({"prospect": {}})
     self.generate (1)
     region = self.getRegionAt (self.offset)
@@ -266,10 +262,6 @@ class BasicProspectingTest (PXTest):
     self.assertEqual (self.getCharacters ()[self.prospectors[1]].getBusy (),
                       None)
     self.expectProspectedBy (self.offset, self.prospectors[1])
-
-    self.rpc.xaya.reconsiderblock (self.reorgBlock)
-    self.assertEqual (self.rpc.xaya.getbestblockhash (), bestBlk)
-    self.expectGameState (originalState)
 
 
 if __name__ == "__main__":

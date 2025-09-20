@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2019-2020  Autonomous Worlds Ltd
+#   Copyright (C) 2019-2025  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -27,8 +27,6 @@ from pxtest import PXTest
 class BuildingsBasicTest (PXTest):
 
   def run (self):
-    self.collectPremine ()
-
     self.mainLogger.info ("Creating and moving test character...")
     self.initAccount ("domob", "r")
     self.createCharacters ("domob")
@@ -36,7 +34,7 @@ class BuildingsBasicTest (PXTest):
     self.moveCharactersTo ({"domob": {"x": -20, "y": 0}})
     self.getCharacters ()["domob"].moveTowards ({"x": 20, "y": 0})
     self.generate (3)
-    reorgBlock = self.rpc.xaya.getbestblockhash ()
+    self.snapshot = self.env.snapshot ()
 
     self.mainLogger.info ("Checking for ancient buildings...")
     self.ancientBuildings = self.getBuildings ()
@@ -68,22 +66,18 @@ class BuildingsBasicTest (PXTest):
     self.assertEqual (c.isMoving (), False)
     self.assertEqual (c.getPosition (), {"x": -1, "y": 0})
 
-    self.testReorg (reorgBlock)
+    self.testReorg ()
 
-  def testReorg (self, blk):
+  def testReorg (self):
     self.mainLogger.info ("Testing reorg...")
 
-    originalState = self.getGameState ()
-    self.rpc.xaya.invalidateblock (blk)
+    self.snapshot.restore ()
 
     self.generate (20)
     self.assertEqual ([b.data for b in self.getBuildings ().values ()],
                       [b.data for b in self.ancientBuildings.values ()])
     self.assertEqual (self.getCharacters ()["domob"].getPosition (),
                       {"x": 20, "y": 0})
-
-    self.rpc.xaya.reconsiderblock (blk)
-    self.expectGameState (originalState)
     
 
 if __name__ == "__main__":

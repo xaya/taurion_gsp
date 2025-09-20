@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2020  Autonomous Worlds Ltd
+#   Copyright (C) 2020-2025  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -26,9 +26,6 @@ from pxtest import PXTest, offsetCoord
 class ServicesRefiningTest (PXTest):
 
   def run (self):
-    self.collectPremine ()
-    self.splitPremine ()
-
     self.mainLogger.info ("Setting up initial situation...")
     self.build ("ancient1", None, {"x": 100, "y": 0}, 0)
     self.build ("ancient1", None, {"x": 0, "y": 100}, 0)
@@ -44,7 +41,7 @@ class ServicesRefiningTest (PXTest):
       self.dropIntoBuilding (b, "domob", {"test ore": 3})
 
     self.generate (1)
-    reorgBlk = self.rpc.xaya.getbestblockhash ()
+    self.snapshot = self.env.snapshot ()
 
     self.mainLogger.info ("Performing refine operation...")
     self.sendMove ("domob", {"s": [
@@ -65,7 +62,7 @@ class ServicesRefiningTest (PXTest):
     self.testMobileRefinery (buildings[0])
 
     self.generate (20)
-    self.testReorg (reorgBlk, buildings)
+    self.testReorg (buildings)
 
   def testMobileRefinery (self, bId):
     self.mainLogger.info ("Testing mobile refinery...")
@@ -103,11 +100,10 @@ class ServicesRefiningTest (PXTest):
       "zerospace": 1,
     })
 
-  def testReorg (self, blk, buildings):
+  def testReorg (self, buildings):
     self.mainLogger.info ("Testing reorg...")
 
-    originalState = self.getGameState ()
-    self.rpc.xaya.invalidateblock (blk)
+    self.snapshot.restore ()
 
     self.sendMove ("domob", {"s": [
       {"b": b, "t": "ref", "i": "test ore", "n": 3}
@@ -123,9 +119,6 @@ class ServicesRefiningTest (PXTest):
     self.assertEqual (b[buildings[0]].getFungibleInventory ("domob"), {
       "test ore": 3,
     })
-
-    self.rpc.xaya.reconsiderblock (blk)
-    self.expectGameState (originalState)
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2019-2020  Autonomous Worlds Ltd
+#   Copyright (C) 2019-2025  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -27,8 +27,6 @@ from pxtest import PXTest
 class SplitStateRpcsTest (PXTest):
 
   def run (self):
-    self.collectPremine ()
-
     # Set up a non-trivial situation, where we have characters, prospected
     # regions, kills/fame, buildings, ground loot and ongoing operations.
     self.initAccount ("prospector", "r")

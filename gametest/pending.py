@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2019-2021  Autonomous Worlds Ltd
+#   Copyright (C) 2019-2025  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -37,8 +37,6 @@ def sleepSome ():
 class PendingTest (PXTest):
 
   def run (self):
-    self.collectPremine ()
-
     # Some well-defined position that we use, which also reflects the
     # region that will be prospected.  We use a different position and
     # region for mining.
@@ -255,13 +253,7 @@ class PendingTest (PXTest):
       "accounts": [],
     })
 
-    self.mainLogger.info ("Unconfirming the moves...")
-    blk = self.rpc.xaya.getbestblockhash ()
-    self.rpc.xaya.invalidateblock (blk)
-    sleepSome ()
-    self.assertEqual (self.getPendingState (), oldPending)
     self.generate (50)
-
     self.testDynObstacles ()
 
   def testDynObstacles (self):

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2019-2020  Autonomous Worlds Ltd
+#   Copyright (C) 2019-2025  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -26,8 +26,6 @@ from pxtest import PXTest
 class BuildingsInventoriesTest (PXTest):
 
   def run (self):
-    self.collectPremine ()
-
     self.mainLogger.info ("Placing a building and some loot...")
     self.build ("checkmark", None, {"x": 0, "y": 0}, rot=0)
     building = 1001
@@ -35,7 +33,7 @@ class BuildingsInventoriesTest (PXTest):
     self.pos = {"x": 3, "y": 0}
     self.dropLoot (self.pos, {"foo": 1, "zerospace": 5})
     self.generate (1)
-    reorgBlock = self.rpc.xaya.getbestblockhash ()
+    self.snapshot = self.env.snapshot ()
 
     self.mainLogger.info ("Entering building with character...")
     self.initAccount ("domob", "r")
@@ -85,21 +83,17 @@ class BuildingsInventoriesTest (PXTest):
     b = self.getBuildings ()[building]
     self.assertEqual (b.getFungibleInventory ("domob"), {})
 
-    self.testReorg (reorgBlock)
+    self.testReorg ()
 
-  def testReorg (self, blk):
+  def testReorg (self):
     self.mainLogger.info ("Testing reorg...")
 
-    originalState = self.getGameState ()
-    self.rpc.xaya.invalidateblock (blk)
+    self.snapshot.restore ()
 
     self.assertEqual (self.getLoot (self.pos), {
       "foo": 1,
       "zerospace": 5,
     })
-
-    self.rpc.xaya.reconsiderblock (blk)
-    self.expectGameState (originalState)
     
 
 if __name__ == "__main__":

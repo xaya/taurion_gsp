@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2020  Autonomous Worlds Ltd
+#   Copyright (C) 2020-2025  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -69,10 +69,15 @@ class DexTest (PXTest):
         self.assertEqual (invAvailable[k], v)
         self.assertEqual (invReserved[k], 0)
 
-  def run (self):
-    self.collectPremine ()
-    self.splitPremine ()
+  def getTipInfo (self):
+    """
+    Returns height and timestamp of the current tip block.
+    """
 
+    data = self.env.evm.w3.eth.get_block ("latest")
+    return data["number"], data["timestamp"]
+
+  def run (self):
     self.mainLogger.info ("Setting up test situation...")
     # No need to initialise accounts.  DEX operations also work
     # without a chosen faction.  Only the building owner has to
@@ -90,7 +95,7 @@ class DexTest (PXTest):
     # Make sure to wait long enough for the building update
     # to have taken effect.
     self.generate (10)
-    reorgBlk = self.rpc.xaya.getbestblockhash ()
+    self.snapshot = self.env.snapshot ()
 
     self.mainLogger.info ("Transferring assets...")
     self.sendMove ("seller", {"x": [{
@@ -236,7 +241,7 @@ class DexTest (PXTest):
       },
     ]})
     self.generate (1)
-    blk1 = self.rpc.xaya.getblockheader (self.rpc.xaya.getbestblockhash ())
+    height1, time1 = self.getTipInfo ()
     self.sendMove ("buyer", {"x": [
       {
         "b": self.buildingId,
@@ -246,7 +251,7 @@ class DexTest (PXTest):
       },
     ]})
     self.generate (1)
-    blk2 = self.rpc.xaya.getblockheader (self.rpc.xaya.getbestblockhash ())
+    height2, time2 = self.getTipInfo ()
     self.expectBalances ({
       "buyer": (590, 200),
       "seller": 210 - 2 * 21,
@@ -277,8 +282,8 @@ class DexTest (PXTest):
     self.assertEqual (self.getRpc ("gettradehistory",
                                    item="foo", building=self.buildingId), [
       {
-        "height": blk1["height"],
-        "timestamp": blk1["time"],
+        "height": height1,
+        "timestamp": time1,
         "buildingid": self.buildingId,
         "item": "foo",
         "price": 10,
@@ -288,8 +293,8 @@ class DexTest (PXTest):
         "buyer": "buyer",
       },
       {
-        "height": blk2["height"],
-        "timestamp": blk2["time"],
+        "height": height2,
+        "timestamp": time2,
         "buildingid": self.buildingId,
         "item": "foo",
         "price": 0,
@@ -299,8 +304,8 @@ class DexTest (PXTest):
         "buyer": "buyer",
       },
       {
-        "height": blk2["height"],
-        "timestamp": blk2["time"],
+        "height": height2,
+        "timestamp": time2,
         "buildingid": self.buildingId,
         "item": "foo",
         "price": 100,
@@ -311,16 +316,12 @@ class DexTest (PXTest):
       },
     ])
 
-    self.testReorg (reorgBlk)
+    self.testReorg ()
 
-  def testReorg (self, blk):
+  def testReorg (self):
     self.mainLogger.info ("Testing reorg...")
 
-    originalState = self.getGameState ()
-    originalHistory = self.getRpc ("gettradehistory",
-                                   item="foo", building=self.buildingId)
-    self.rpc.xaya.invalidateblock (blk)
-
+    self.snapshot.restore ()
     self.expectBalances ({
       "buyer": 1_000,
       "seller": 0,
@@ -334,12 +335,6 @@ class DexTest (PXTest):
     self.assertEqual (self.getRpc ("gettradehistory",
                                    item="foo", building=self.buildingId),
                       [])
-
-    self.rpc.xaya.reconsiderblock (blk)
-    self.expectGameState (originalState)
-    self.assertEqual (self.getRpc ("gettradehistory",
-                                   item="foo", building=self.buildingId),
-                      originalHistory)
 
 
 if __name__ == "__main__":

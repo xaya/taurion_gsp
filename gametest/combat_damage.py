@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2019-2020  Autonomous Worlds Ltd
+#   Copyright (C) 2019-2025  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -40,8 +40,6 @@ class CombatDamageTest (PXTest):
     return hp["current"], hp["max"]
 
   def run (self):
-    self.collectPremine ()
-
     numAttackers = 5
 
     self.mainLogger.info ("Creating test characters...")
@@ -71,7 +69,7 @@ class CombatDamageTest (PXTest):
     assert hp["armour"] < maxHP["armour"]
     assert hp["shield"] < 2
 
-    self.restoreBlock = self.rpc.xaya.getbestblockhash ()
+    self.snapshot = self.env.snapshot ()
 
     self.mainLogger.info ("Regenerating shield...")
     self.moveCharactersTo ({"target": outOfRange})
@@ -98,18 +96,14 @@ class CombatDamageTest (PXTest):
     """
 
     self.mainLogger.info ("Testing a reorg...")
-    originalState = self.getGameState ()
 
-    self.rpc.xaya.invalidateblock (self.restoreBlock)
+    self.snapshot.restore ()
 
     self.moveCharactersTo ({"target": self.inRange})
     self.setCharactersHP ({"target": {"a": 1, "s": 0}})
     self.generate (5)
     hp, maxHP = self.getTargetHP ()
     assert (hp is None) and (maxHP is None)
-
-    self.rpc.xaya.reconsiderblock (self.restoreBlock)
-    self.expectGameState (originalState)
 
 
 if __name__ == "__main__":
