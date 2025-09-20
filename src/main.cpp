@@ -18,7 +18,6 @@
 
 #include "config.h"
 
-#include "charon.hpp"
 #include "logic.hpp"
 #include "pending.hpp"
 #include "pxrpcserver.hpp"
@@ -107,10 +106,6 @@ public:
   {
     std::vector<std::unique_ptr<xaya::GameComponent>> res;
 
-    auto charonSrv = MaybeBuildCharonServer (game, rules);
-    if (charonSrv != nullptr)
-      res.push_back (std::move (charonSrv));
-
     if (restPort != 0)
       res.push_back (std::make_unique<pxd::RestApi> (game, rules, restPort));
 
@@ -140,29 +135,6 @@ main (int argc, char** argv)
       << "Slow assertions are enabled.  This is fine for testing, but will"
          " slow down syncing";
 #endif // ENABLE_SLOW_ASSERTS
-
-  auto charonClient = pxd::MaybeBuildCharonClient ();
-  if (charonClient != nullptr)
-    {
-      std::unique_ptr<jsonrpc::HttpServer> srv;
-      if (FLAGS_game_rpc_port != 0)
-        {
-          srv = std::make_unique<jsonrpc::HttpServer> (FLAGS_game_rpc_port);
-          if (FLAGS_game_rpc_listen_locally)
-            srv->BindLocalhost ();
-          charonClient->SetupLocalRpc (*srv);
-          LOG (INFO)
-              << "Starting local RPC interface at port " << FLAGS_game_rpc_port;
-        }
-
-      charonClient->Run ();
-
-      /* We have to explicitly free the CharonClient instance here already
-         before its associated HttpServer goes out of scope.  */
-      charonClient.reset ();
-
-      return EXIT_SUCCESS;;
-    }
 
   if (FLAGS_xaya_rpc_url.empty ())
     {

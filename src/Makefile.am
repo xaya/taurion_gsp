@@ -88,12 +88,10 @@ tauriond_LDADD = \
   $(JSON_LIBS) $(MHD_LIBS) \
   $(GLOG_LIBS) $(GFLAGS_LIBS) $(PROTOBUF_LIBS)
 tauriond_SOURCES = main.cpp \
-  charon.cpp \
   pxrpcserver.cpp \
   rest.cpp \
   version.cpp
 tauriondheaders = \
-  charon.hpp \
   pxrpcserver.hpp \
   rest.hpp \
   version.hpp \
