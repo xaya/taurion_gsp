@@ -1,5 +1,6 @@
 AM_TESTS_ENVIRONMENT = \
-  PYTHONPATH=$(PYTHONPATH):$(top_srcdir)
+  VIRTUAL_ENV=$(VIRTUAL_ENV) \
+  PYTHONPATH=$(top_srcdir)
 
 TEST_LIBRARY = \
   pxtest.py
