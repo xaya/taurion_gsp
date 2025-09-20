@@ -1,3 +1,5 @@
+.PHONY: build-tests
+
 noinst_PROGRAMS = roconfig_gen
 noinst_LTLIBRARIES = libpxproto.la
 
@@ -138,6 +140,8 @@ noinst_PYTHON = \
 
 check_PROGRAMS = tests
 TESTS = tests
+
+build-tests: $(check_PROGRAMS)
 
 tests_CXXFLAGS = \
   -I$(top_srcdir) \

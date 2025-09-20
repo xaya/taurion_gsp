@@ -1,3 +1,5 @@
+.PHONY: build-tests
+
 noinst_LTLIBRARIES = libmapdata.la
 noinst_PROGRAMS = procmap
 
@@ -39,6 +41,8 @@ noinst_HEADERS = \
 
 check_PROGRAMS = tests benchmarks
 TESTS = tests benchmarks
+
+build-tests: $(check_PROGRAMS)
 
 tests_CXXFLAGS = \
   -I$(top_srcdir) \

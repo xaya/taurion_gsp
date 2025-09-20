@@ -1,3 +1,5 @@
+.PHONY: build-tests
+
 noinst_LTLIBRARIES = libhexagonal.la
 
 libhexagonal_la_CXXFLAGS = $(GLOG_CFLAGS)
@@ -14,6 +16,8 @@ noinst_HEADERS = \
 check_LTLIBRARIES = libbenchmain.la
 check_PROGRAMS = tests benchmarks
 TESTS = tests benchmarks
+
+build-tests: $(check_PROGRAMS)
 
 libbenchmain_la_CXXFLAGS = $(BENCHMARK_CFLAGS) $(GLOG_CFLAGS)
 libbenchmain_la_LIBADD = $(BENCHMARK_LIBS) $(GLOG_LIBS)

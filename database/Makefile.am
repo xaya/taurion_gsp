@@ -1,3 +1,5 @@
+.PHONY: build-tests
+
 noinst_LTLIBRARIES = libdatabase.la
 
 EXTRA_DIST = schema.sql schema_head.cpp schema_tail.cpp
@@ -56,6 +58,8 @@ noinst_HEADERS = \
 check_LTLIBRARIES = libdbtest.la
 check_PROGRAMS = tests benchmarks
 TESTS = tests benchmarks
+
+build-tests: $(check_PROGRAMS)
 
 libdbtest_la_CXXFLAGS = \
   $(XAYAGAME_CFLAGS) \
