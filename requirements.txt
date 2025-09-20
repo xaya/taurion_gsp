@@ -1,0 +1,4 @@
+jsonrpclib-pelix
+protobuf
+web3==7
+xayax
