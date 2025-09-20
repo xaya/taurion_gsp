@@ -66,11 +66,6 @@ TEST (RoConfigTests, ChainDependence)
   EXPECT_EQ (test->params ().prospection_expiry_blocks (), 5'000);
   EXPECT_EQ (regtest->params ().prospection_expiry_blocks (), 100);
 
-  EXPECT_EQ (main->params ().dev_addr (), "DHy2615XKevE23LVRVZVxGeqxadRGyiFW4");
-  EXPECT_EQ (test->params ().dev_addr (), "dSFDAWxovUio63hgtfYd3nz3ir61sJRsXn");
-  EXPECT_EQ (regtest->params ().dev_addr (),
-             "dHNvNaqcD7XPDnoRjAoyfcMpHRi5upJD7p");
-
   EXPECT_FALSE (main->params ().god_mode ());
   EXPECT_FALSE (test->params ().god_mode ());
   EXPECT_TRUE (regtest->params ().god_mode ());

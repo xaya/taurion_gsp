@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2021  Autonomous Worlds Ltd
+    Copyright (C) 2019-2025  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -159,10 +159,8 @@ main (int argc, char** argv)
   config.EnablePruning = FLAGS_enable_pruning;
   config.DataDirectory = FLAGS_datadir;
 
-  /* We need support for coin burns, which was implemented in
-     https://github.com/xaya/xaya/pull/103 and is included in
-     versions from 1.4 up.  */
-  config.MinXayaVersion = 1040000;
+  /* We use Xaya X Eth, which reports its version as 1.0.0.0 initially.  */
+  config.MinXayaVersion = 1'00'00'00;
 
   pxd::PXLogic rules;
   PXInstanceFactory instanceFact(rules);

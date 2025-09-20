@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2025  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -89,16 +89,19 @@ RoConfig::RoConfig (const xaya::Chain chain)
   switch (chain)
     {
     case xaya::Chain::MAIN:
+    case xaya::Chain::POLYGON:
       instancePtr = &mainnet;
       mergeTestnet = false;
       mergeRegtest = false;
       break;
     case xaya::Chain::TEST:
+    case xaya::Chain::MUMBAI:
       instancePtr = &testnet;
       mergeTestnet = true;
       mergeRegtest = false;
       break;
     case xaya::Chain::REGTEST:
+    case xaya::Chain::GANACHE:
       instancePtr = &regtest;
       mergeTestnet = true;
       mergeRegtest = true;

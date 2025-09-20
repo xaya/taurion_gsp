@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2020  Autonomous Worlds Ltd
+    Copyright (C) 2020-2025  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -59,7 +59,6 @@ const std::unordered_map<Fork, ForkData> FORK_HEIGHTS =
       {
         {
           {xaya::Chain::MAIN, 3'000'000},
-          {xaya::Chain::TEST, 150'000},
           {xaya::Chain::REGTEST, 100},
         },
         nullptr,
@@ -69,8 +68,7 @@ const std::unordered_map<Fork, ForkData> FORK_HEIGHTS =
       Fork::GameStart,
       {
         {
-          {xaya::Chain::MAIN, 2'250'000},
-          {xaya::Chain::TEST, 112'000},
+          {xaya::Chain::MAIN, 76'690'000},
           {xaya::Chain::REGTEST, 0},
         },
         &FLAGS_fork_height_gamestart,
@@ -79,6 +77,28 @@ const std::unordered_map<Fork, ForkData> FORK_HEIGHTS =
   };
 
 } // anonymous namespace
+
+xaya::Chain
+ForkHandler::TranslateChain (const xaya::Chain c)
+{
+  switch (c)
+    {
+    case xaya::Chain::MAIN:
+    case xaya::Chain::POLYGON:
+      return xaya::Chain::MAIN;
+
+    case xaya::Chain::TEST:
+    case xaya::Chain::MUMBAI:
+      return xaya::Chain::TEST;
+
+    case xaya::Chain::REGTEST:
+    case xaya::Chain::GANACHE:
+      return xaya::Chain::REGTEST;
+
+    default:
+      LOG (FATAL) << "Unexpected chain: " << xaya::ChainToString (c);
+    }
+}
 
 bool
 ForkHandler::IsActive (const Fork f) const

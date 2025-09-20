@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2025  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -135,22 +135,17 @@ PXLogic::GetInitialStateBlock (unsigned& height,
   const xaya::Chain chain = GetChain ();
   switch (chain)
     {
-    case xaya::Chain::MAIN:
-      height = 2'128'750;
+    case xaya::Chain::POLYGON:
+      height = 76'690'000;
       hashHex
-          = "f7b5247531e0b2aabafa1219d6bdaf695bef95cfc2409c18d5286c7896912961";
+          = "97cfbed2133010eb3134ceb65ec9ae46ed76d996f0dfcee84d022d95ab468be1";
       break;
 
-    case xaya::Chain::TEST:
-      height = 112'000;
-      hashHex
-          = "9c5b83a5caaf7f4ce17cc1f38fdb1ed3e3e3e98e43d23d19a4810767d7df38b9";
-      break;
-
-    case xaya::Chain::REGTEST:
+    case xaya::Chain::GANACHE:
       height = 0;
-      hashHex
-          = "6f750b36d22f1dc3d0a6e483af45301022646dfc3b3ba2187865f5a7d6d83ab1";
+      /* Ganache does not have a fixed genesis block.  So leave the block
+         hash open and just accept any at height 0.  */
+      hashHex = "";
       break;
 
     default:
