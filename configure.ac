@@ -71,7 +71,6 @@ AC_SUBST(CHARON_PREFIX, /usr/local)
 
 AC_CONFIG_FILES([
   Makefile \
-  data/Makefile \
   database/Makefile \
   gametest/Makefile \
   hexagonal/Makefile \
