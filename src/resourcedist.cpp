@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2025  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -100,7 +100,7 @@ struct AvailableResource
   struct Comparator
   {
     bool
-    operator() (const AvailableResource& a, const AvailableResource& b)
+    operator() (const AvailableResource& a, const AvailableResource& b) const
     {
       if (a.type != b.type)
         return a.type < b.type;

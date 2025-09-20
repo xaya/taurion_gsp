@@ -142,11 +142,11 @@ TESTS = tests
 tests_CXXFLAGS = \
   -I$(top_srcdir) \
   $(GTEST_MAIN_CFLAGS) \
-  $(GTEST_CFLAGS) $(GLOG_CFLAGS) $(PROTOBUF_CFLAGS)
+  $(GTEST_CFLAGS) $(JSON_CFLAGS) $(GLOG_CFLAGS) $(PROTOBUF_CFLAGS)
 tests_LDADD = \
   $(builddir)/libpxproto.la \
   $(GTEST_MAIN_LIBS) \
-  $(GTEST_LIBS) $(GLOG_LIBS) $(PROTOBUF_LIBS)
+  $(GTEST_LIBS) $(JSON_LIBS) $(GLOG_LIBS) $(PROTOBUF_LIBS)
 tests_SOURCES = \
   roconfig_tests.cpp
 
@@ -155,6 +155,7 @@ tests_SOURCES = \
 %_pb2.py: $(top_srcdir)/proto/%.proto
 	protoc -I$(top_srcdir) --python_out=$(top_builddir) "$<"
 
+roconfig_gen.cpp: $(PROTOS:.proto=.pb.h)
 roconfig_gen.cpp: roconfig_gen_head.cpp $(ROCONFIG_TEXT_PROTOS) roconfig_gen_mid.cpp $(ROCONFIG_TEXT_PROTOS_REGTEST) roconfig_gen_tail.cpp
 	cat $^ >$@
 

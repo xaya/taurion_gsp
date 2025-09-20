@@ -13,12 +13,12 @@ CLEANFILES = $(UNCOMPRESSED) tiledata.cpp $(BLOBS)
 
 libmapdata_la_CXXFLAGS = \
   -I$(top_srcdir) \
-  $(GLOG_CFLAGS)
+  $(JSON_CFLAGS) $(GLOG_CFLAGS)
 libmapdata_la_LIBADD = \
   $(top_builddir)/database/libdatabase.la \
   $(top_builddir)/hexagonal/libhexagonal.la \
   $(top_builddir)/proto/libpxproto.la \
-  $(GLOG_LIBS)
+  $(JSON_LIBS) $(GLOG_LIBS)
 libmapdata_la_SOURCES = \
   basemap.cpp \
   regionmap.cpp \
@@ -43,14 +43,14 @@ TESTS = tests benchmarks
 tests_CXXFLAGS = \
   -I$(top_srcdir) \
   $(GTEST_MAIN_CFLAGS) \
-  $(GTEST_CFLAGS) $(GLOG_CFLAGS)
+  $(GTEST_CFLAGS) $(JSON_CFLAGS) $(GLOG_CFLAGS)
 tests_LDADD = \
   $(builddir)/libmapdata.la \
   $(top_builddir)/database/libdatabase.la \
   $(top_builddir)/hexagonal/libhexagonal.la \
   $(top_builddir)/proto/libpxproto.la \
   $(GTEST_MAIN_LIBS) \
-  $(GTEST_LIBS) $(GLOG_LIBS)
+  $(GTEST_LIBS) $(JSON_LIBS) $(GLOG_LIBS)
 tests_SOURCES = \
   basemap_tests.cpp \
   dyntiles_tests.cpp \
@@ -62,14 +62,14 @@ tests_SOURCES = \
 
 benchmarks_CXXFLAGS = \
   -I$(top_srcdir) \
-  $(GLOG_CFLAGS) $(BENCHMARK_CFLAGS)
+  $(JSON_CFLAGS) $(GLOG_CFLAGS) $(BENCHMARK_CFLAGS)
 benchmarks_LDADD = \
   $(builddir)/libmapdata.la \
   $(top_builddir)/database/libdatabase.la \
   $(top_builddir)/hexagonal/libbenchmain.la \
   $(top_builddir)/hexagonal/libhexagonal.la \
   $(top_builddir)/proto/libpxproto.la \
-  $(GLOG_LIBS) $(BENCHMARK_LIBS)
+  $(JSON_LIBS) $(GLOG_LIBS) $(BENCHMARK_LIBS)
 benchmarks_SOURCES = \
   dyntiles_bench.cpp \
   regionmap_bench.cpp \

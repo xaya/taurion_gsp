@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2020  Autonomous Worlds Ltd
+    Copyright (C) 2020-2025  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,6 +47,15 @@ namespace pxd
  */
 class ServiceOperation
 {
+
+protected:
+
+  /**
+   * Utility class that wraps all database table and context references
+   * needed to construct a ServiceOperation instance, so we can easily pass
+   * them around without ever-growing argument lists.
+   */
+  class ContextRefs;
 
 private:
 
@@ -95,14 +104,17 @@ private:
    */
   void GetCosts (Amount& base, Amount& fee) const;
 
-protected:
-
   /**
-   * Utility class that wraps all database table and context references
-   * needed to construct a ServiceOperation instance, so we can easily pass
-   * them around without ever-growing argument lists.
+   * Basic parser routine for the common case of (item type, amount) as
+   * additional data in the JSON.  This is shared between refinery, reveng,
+   * blueprint copy and construction.
    */
-  class ContextRefs;
+  template <typename T>
+    static std::unique_ptr<T> ParseItemAmount (
+        Account& acc, BuildingsTable::Handle b,
+        const Json::Value& data, const ContextRefs& refs);
+
+protected:
 
   /** Context for parameters and such.  */
   const Context& ctx;
