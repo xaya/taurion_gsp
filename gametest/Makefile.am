@@ -1,5 +1,4 @@
 AM_TESTS_ENVIRONMENT = \
-  CHARON_PREFIX=$(CHARON_PREFIX) \
   PYTHONPATH=$(PYTHONPATH):$(top_srcdir)
 
 TEST_LIBRARY = \
@@ -17,7 +16,6 @@ REGTESTS = \
   burnsale.py \
   character_limit.py \
   characters.py \
-  charon.py \
   coinops.py \
   combat_aoe.py \
   combat_damage.py \
