@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2020  Autonomous Worlds Ltd
+    Copyright (C) 2020-2025  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -59,33 +59,6 @@ public:
 
 namespace
 {
-
-/**
- * Basic parser routine for the common case of (item type, amount) as additional
- * data in the JSON.  This is shared between refinery, reveng, blueprint copy
- * and construction.
- */
-template <typename T>
-  std::unique_ptr<T>
-  ParseItemAmount (Account& acc, BuildingsTable::Handle b,
-                   const Json::Value& data,
-                   const ServiceOperation::ContextRefs& refs)
-{
-  CHECK (data.isObject ());
-  if (data.size () != 4)
-    return nullptr;
-
-  const auto& type = data["i"];
-  if (!type.isString ())
-    return nullptr;
-
-  Quantity amount;
-  if (!QuantityFromJson (data["n"], amount))
-    return nullptr;
-
-  return std::make_unique<T> (acc, std::move (b),
-                              type.asString (), amount, refs);
-}
 
 /* ************************************************************************** */
 
@@ -1169,6 +1142,28 @@ ServiceOperation::Execute (xaya::Random& rnd)
     }
 
   ExecuteSpecific (rnd);
+}
+
+template <typename T>
+  std::unique_ptr<T>
+  ServiceOperation::ParseItemAmount (
+      Account& acc, BuildingsTable::Handle b,
+      const Json::Value& data, const ContextRefs& refs)
+{
+  CHECK (data.isObject ());
+  if (data.size () != 4)
+    return nullptr;
+
+  const auto& type = data["i"];
+  if (!type.isString ())
+    return nullptr;
+
+  Quantity amount;
+  if (!QuantityFromJson (data["n"], amount))
+    return nullptr;
+
+  return std::make_unique<T> (acc, std::move (b),
+                              type.asString (), amount, refs);
 }
 
 std::unique_ptr<ServiceOperation>
