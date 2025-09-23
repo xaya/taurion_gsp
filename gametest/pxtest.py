@@ -345,6 +345,10 @@ class PXTest (XayaXGameTest):
     Sends a move, and optionally includes a coin burn.
     """
 
+    if burn > 0:
+      assert send is None
+      send = (self.roConfig ().params.burn_addr, int (burn * COIN))
+
     return super ().sendMove (name, move, send=send)
 
   def moveWithPayment (self, name, move, devAmount):
