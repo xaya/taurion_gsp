@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -56,38 +56,48 @@ TEST_F (CoordTests, LessThan)
   EXPECT_FALSE (c < b);
 }
 
-TEST_F (CoordTests, Arithmetic)
+TEST_F (CoordTests, DifferenceArithmetic)
 {
-  HexCoord test(-2, 5);
-  EXPECT_EQ (2 * test, HexCoord (-4, 10));
-  EXPECT_EQ (0 * test, HexCoord (0, 0));
-  EXPECT_EQ (-1 * test, HexCoord (2, -5));
+  HexCoord::Difference diff(-2, 5);
+  EXPECT_EQ (2 * diff, HexCoord::Difference (-4, 10));
+  EXPECT_EQ (0 * diff, HexCoord::Difference (0, 0));
+  EXPECT_EQ (-1 * diff, HexCoord::Difference (2, -5));
 
-  test += HexCoord (5, -5);
-  EXPECT_EQ (test, HexCoord (3, 0));
+  diff = HexCoord (10, 2) - HexCoord (3, -5);
+  EXPECT_EQ (diff, HexCoord::Difference (7, 7));
 
-  EXPECT_EQ (HexCoord (1, 2) + HexCoord (-5, 3), HexCoord (-4, 5));
+  HexCoord pos(-2, 5);
+  pos += HexCoord::Difference (5, -5);
+  EXPECT_EQ (pos, HexCoord (3, 0));
+
+  EXPECT_EQ (pos + diff, HexCoord (10, 7));
 }
 
 TEST_F (CoordTests, Rotation)
 {
-  EXPECT_EQ (HexCoord (1, 2).RotateCW (0), HexCoord (1, 2));
-  EXPECT_EQ (HexCoord (1, 2).RotateCW (1), HexCoord (3, -1));
-  EXPECT_EQ (HexCoord (1, 2).RotateCW (2), HexCoord (2, -3));
-  EXPECT_EQ (HexCoord (1, 2).RotateCW (3), HexCoord (-1, -2));
-  EXPECT_EQ (HexCoord (1, 2).RotateCW (4), HexCoord (-3, 1));
-  EXPECT_EQ (HexCoord (1, 2).RotateCW (5), HexCoord (-2, 3));
+  EXPECT_EQ (HexCoord::Difference (1, 2).RotateCW (0),
+             HexCoord::Difference (1, 2));
+  EXPECT_EQ (HexCoord::Difference (1, 2).RotateCW (1),
+             HexCoord::Difference (3, -1));
+  EXPECT_EQ (HexCoord::Difference (1, 2).RotateCW (2),
+             HexCoord::Difference (2, -3));
+  EXPECT_EQ (HexCoord::Difference (1, 2).RotateCW (3),
+             HexCoord::Difference (-1, -2));
+  EXPECT_EQ (HexCoord::Difference (1, 2).RotateCW (4),
+             HexCoord::Difference (-3, 1));
+  EXPECT_EQ (HexCoord::Difference (1, 2).RotateCW (5),
+             HexCoord::Difference (-2, 3));
 
   /* This is a chained rotation that will come out to zero, but
      verifies various cases other than the basic rotations.  */
-  EXPECT_EQ (HexCoord (1, 2)
+  EXPECT_EQ (HexCoord::Difference (1, 2)
                 .RotateCW (20)
                 .RotateCW (-30)
                 .RotateCW (1)
                 .RotateCW (2)
                 .RotateCW (3)
                 .RotateCW (4),
-             HexCoord (1, 2));
+             HexCoord::Difference (1, 2));
 }
 
 TEST_F (CoordTests, DistanceL1)
@@ -171,42 +181,42 @@ TEST_F (CoordTests, IsPrincipalDirectionTo)
 {
   constexpr HexCoord base(42, -10);
 
-  constexpr HexCoord nonPrincipal[] =
+  constexpr HexCoord::Difference nonPrincipal[] =
     {
-      HexCoord (1, 1),
-      HexCoord (-1, -1),
-      HexCoord (2, 3),
-      HexCoord (-5, -5),
-      HexCoord (3, 10),
-      HexCoord (0, 0),
-      base + HexCoord (1, 0),
+      HexCoord::Difference (1, 1),
+      HexCoord::Difference (-1, -1),
+      HexCoord::Difference (2, 3),
+      HexCoord::Difference (-5, -5),
+      HexCoord::Difference (3, 10),
+      HexCoord::Difference (0, 0),
+      HexCoord::Difference (base.GetX () + 1, base.GetY () + 0),
     };
   for (const auto& dir : nonPrincipal)
     {
-      HexCoord d;
+      HexCoord::Difference d;
       HexCoord::IntT steps;
       ASSERT_FALSE (base.IsPrincipalDirectionTo (base + dir, d, steps));
     }
 
-  constexpr HexCoord isPrincipal[] =
+  constexpr HexCoord::Difference isPrincipal[] =
     {
-      HexCoord (-1, 0),
-      HexCoord (1, 0),
-      HexCoord (0, -1),
-      HexCoord (0, 1),
-      HexCoord (-1, 1),
-      HexCoord (1, -1),
-      HexCoord (10, -10),
-      HexCoord (0, 42),
-      HexCoord (100, 0),
+      HexCoord::Difference (-1, 0),
+      HexCoord::Difference (1, 0),
+      HexCoord::Difference (0, -1),
+      HexCoord::Difference (0, 1),
+      HexCoord::Difference (-1, 1),
+      HexCoord::Difference (1, -1),
+      HexCoord::Difference (10, -10),
+      HexCoord::Difference (0, 42),
+      HexCoord::Difference (100, 0),
     };
   for (const auto& dir : isPrincipal)
     {
-      HexCoord d;
+      HexCoord::Difference d;
       HexCoord::IntT steps;
       ASSERT_TRUE (base.IsPrincipalDirectionTo (base + dir, d, steps));
       ASSERT_EQ (steps * d, dir);
-      ASSERT_EQ (HexCoord::DistanceL1 (HexCoord (), d), 1);
+      ASSERT_EQ (HexCoord::DistanceL1 (HexCoord (), HexCoord () + d), 1);
     }
 }
 

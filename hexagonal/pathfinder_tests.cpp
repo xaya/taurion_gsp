@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -255,52 +255,44 @@ TEST_F (PathFinderTests, MultipleSteppers)
               });
 }
 
-TEST_F (PathFinderTests, RepathingWithEachStep)
+TEST_F (PathFinderTests, StepperAvoidsTurns)
 {
-  /* This test verifies that we get the same "tail" part of a path if we
-     do a fresh path-finding from an intermediate position.  That ensures
-     that we will get consistent results while a character moves towards
-     the next waypoint, independently of when exactly we do recalculations
-     of the remaining path (from current position to that waypoint).  */
+  /* Stepping a path tries the directions according to a fixed order
+     (when multiple paths have the same ultimate length), but it should
+     also avoid turns as much as possible and keep directions once chosen
+     and not zig-zag around.  To test this, we use a map that looks like this:
 
-  const HexCoord source(-20, 0);
-  const HexCoord target(-20, 2);
+      . . . x .
+     . . . # .
+      o # . . .
 
-  std::vector<std::pair<HexCoord, PathFinder::DistanceT>> fullPath;
-  {
-    PathFinder finder(target);
-    PathFinder::DistanceT dist = finder.Compute (&EdgeWeight, source, 100);
-    ASSERT_NE (dist, PathFinder::NO_CONNECTION);
+     Here, o is the origin and also the start point, # are obstacles, . are
+     free spaces and x is the target of the path.  The direction preference
+     in general is "east" before "north east".
 
-    auto s = finder.StepPath (source);
-    fullPath.emplace_back (s.GetPosition (), dist);
-    while (s.HasMore ())
-      {
-        dist -= s.Next ();
-        fullPath.emplace_back (s.GetPosition (), dist);
-      }
-    ASSERT_EQ (dist, 0);
-    ASSERT_EQ (s.GetPosition (), target);
-  }
+     So by strictly following the direction preference at each step, the
+     stepper would go NE, E, NE, E.  But instead, to avoid the extra turns,
+     it should now go NE, NE, E, E.  */
 
-  for (auto i = fullPath.cbegin (); i != fullPath.cend (); ++i)
+  const auto edges = [] (const HexCoord& from, const HexCoord& to)
+                        -> PathFinder::DistanceT
     {
-      PathFinder finder(target);
-      ASSERT_EQ (finder.Compute (&EdgeWeight, i->first, 100), i->second);
+      if (to == HexCoord (1, 0) || to == HexCoord (2, 1))
+        return PathFinder::NO_CONNECTION;
 
-      auto s = finder.StepPath (i->first);
-      for (auto j = i; ; )
-        {
-          EXPECT_EQ (s.GetPosition (), j->first);
+      return 1;
+    };
 
-          ++j;
-          if (j == fullPath.cend ())
-            break;
+  PathFinder finder(HexCoord (2, 2));
+  ASSERT_EQ (finder.Compute (edges, HexCoord (0, 0), 10), 4);
 
-          ASSERT_TRUE (s.HasMore ());
-          s.Next ();
-        }
-    }
+  AssertPath (finder.StepPath (HexCoord (0, 0)),
+              HexCoord (0, 0), {
+                  {HexCoord (0, 1), 1},
+                  {HexCoord (0, 2), 1},
+                  {HexCoord (1, 2), 1},
+                  {HexCoord (2, 2), 1},
+              });
 }
 
 } // anonymous namespace

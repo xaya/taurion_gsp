@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -40,6 +40,18 @@ operator!= (const HexCoord& a, const HexCoord& b)
 }
 
 inline bool
+operator== (const HexCoord::Difference& a, const HexCoord::Difference& b)
+{
+  return a.x == b.x && a.y == b.y;
+}
+
+inline bool
+operator!= (const HexCoord::Difference& a, const HexCoord::Difference& b)
+{
+  return !(a == b);
+}
+
+inline bool
 operator< (const HexCoord& a, const HexCoord& b)
 {
   if (a.x != b.x)
@@ -55,22 +67,28 @@ operator<< (std::ostream& out, const HexCoord& c)
 }
 
 inline void
-HexCoord::operator+= (const HexCoord& delta)
+HexCoord::operator+= (const HexCoord::Difference& delta)
 {
-  x += delta.GetX ();
-  y += delta.GetY ();
+  x += delta.x;
+  y += delta.y;
+}
+
+inline constexpr HexCoord::Difference
+operator* (const HexCoord::IntT f, const HexCoord::Difference& d)
+{
+  return HexCoord::Difference (f * d.x, f * d.y);
 }
 
 inline constexpr HexCoord
-operator* (const HexCoord::IntT f, const HexCoord& c)
+operator+ (const HexCoord& a, const HexCoord::Difference& b)
 {
-  return HexCoord (f * c.GetX (), f * c.GetY ());
+  return HexCoord (a.GetX () + b.x, a.GetY () + b.y);
 }
 
-inline constexpr HexCoord
-operator+ (const HexCoord& a, const HexCoord& b)
+inline constexpr HexCoord::Difference
+operator- (const HexCoord& a, const HexCoord& b)
 {
-  return HexCoord (a.GetX () + b.GetX (), a.GetY () + b.GetY ());
+  return HexCoord::Difference (a.x - b.x, a.y - b.y);
 }
 
 inline constexpr HexCoord::IntT
@@ -79,8 +97,8 @@ HexCoord::GetZ () const
   return -x - y;
 }
 
-inline HexCoord
-HexCoord::RotateCW (int steps) const
+inline HexCoord::Difference
+HexCoord::Difference::RotateCW (int steps) const
 {
   steps %= 6;
   if (steps < 0)
@@ -95,19 +113,19 @@ HexCoord::RotateCW (int steps) const
       return *this;
 
     case 1:
-      return HexCoord (-GetZ (), -GetX ());
+      return Difference (x + y, -x);
 
     case 2:
-      return HexCoord (GetY (), GetZ ());
+      return Difference (y, -(x + y));
 
     case 3:
-      return HexCoord (-GetX (), -GetY ());
+      return Difference (-x, -y);
 
     case 4:
-      return HexCoord (GetZ (), GetX ());
+      return Difference (-(x + y), x);
 
     case 5:
-      return HexCoord (-GetY (), -GetZ ());
+      return Difference (-y, x + y);
 
     default:
       LOG (FATAL) << "Unexpected rotation steps: " << steps;
@@ -116,24 +134,24 @@ HexCoord::RotateCW (int steps) const
 
 inline bool
 HexCoord::IsPrincipalDirectionTo (const HexCoord& target,
-                                  HexCoord& dir, IntT& steps) const
+                                  Difference& dir, IntT& steps) const
 {
-  const HexCoord diff(target.GetX () - GetX (), target.GetY () - GetY ());
+  const auto diff = target - *this;
   steps = -1;
 
-  if (diff.GetX () == 0)
-    steps = std::abs (diff.GetY ());
-  else if (diff.GetY () == 0)
-    steps = std::abs (diff.GetX ());
-  else if (diff.GetX () + diff.GetY () == 0)
-    steps = std::abs (diff.GetX ());
+  if (diff.x == 0)
+    steps = std::abs (diff.y);
+  else if (diff.y == 0)
+    steps = std::abs (diff.x);
+  else if (diff.x + diff.y == 0)
+    steps = std::abs (diff.x);
 
   if (steps == -1 || steps == 0)
     return false;
 
   CHECK_GT (steps, 0);
-  dir.x = diff.GetX () / steps;
-  dir.y = diff.GetY () / steps;
+  dir.x = diff.x / steps;
+  dir.y = diff.y / steps;
   return true;
 }
 
@@ -178,14 +196,14 @@ HexCoord::NeighbourList::ConstIterator::operator* () const
   /* The six principal directions that we have.  The order here is important,
      as it e.g. also specifies how neighbours are enumerated and thus how
      the path finder orders paths of the same length.  */
-  constexpr std::array<HexCoord, 6> dirs =
+  constexpr std::array<HexCoord::Difference, 6> dirs =
     {
-      HexCoord (1, 0),
-      HexCoord (-1, 0),
-      HexCoord (0, 1),
-      HexCoord (0, -1),
-      HexCoord (1, -1),
-      HexCoord (-1, 1),
+      HexCoord::Difference (1, 0),
+      HexCoord::Difference (-1, 0),
+      HexCoord::Difference (0, 1),
+      HexCoord::Difference (0, -1),
+      HexCoord::Difference (1, -1),
+      HexCoord::Difference (-1, 1),
     };
 
   if (next >= 0 && next < dirs.size ())

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2019-2020  Autonomous Worlds Ltd
+#   Copyright (C) 2019-2021  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -275,10 +275,8 @@ class FindPathTest (PXTest):
 
     # This is a very long path.  Make sure its encoded form is relatively
     # small, though.
-    assert len (path["wp"]) > 100
-    assert len (path["encoded"]) < 750
     serialised = json.dumps (path["wp"], separators=(",", ":"))
-    assert len (serialised) > 3000
+    assert len (path["encoded"]) < len (serialised)
 
     # Now place buildings in two steps on the map, which make the path from
     # longA to longB further.  We use the outputs of getbuildings itself, to

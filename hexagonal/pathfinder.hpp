@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019  Autonomous Worlds Ltd
+    Copyright (C) 2019-2021  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -132,7 +132,7 @@ public:
  * Utility class that resembles an "iterator" for stepping along the shortest
  * path found between two coordinates.
  */
-class PathFinder::Stepper final
+class PathFinder::Stepper
 {
 
 private:
@@ -143,9 +143,20 @@ private:
   /** The current position along the path.  */
   HexCoord position;
 
+  /** The direction we stepped previously (zero if this is the first step).  */
+  HexCoord::Difference lastDirection;
+
   inline explicit Stepper (const PathFinder& f, const HexCoord& source)
     : finder(f), position(source)
   {}
+
+  /**
+   * Checks if stepping from the current position to the given target is an
+   * optimal step (i.e. possible at all, and the edge weight matches the
+   * difference in the finder's distance man).  If it is, updates the current
+   * position to the target, and returns true.
+   */
+  bool TryStep (const HexCoord& target, DistanceT& step);
 
   friend class PathFinder;
 
