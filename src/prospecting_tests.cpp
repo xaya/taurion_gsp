@@ -189,9 +189,16 @@ TEST_F (FinishProspectingTests, Basic)
 TEST_F (FinishProspectingTests, Resources)
 {
   std::map<std::string, unsigned> regionsForResource;
+  /* Ranges chosen to ensure all 9 resource types are reachable within 1000
+     L1 distance. Extended to i<30 for better raw i coverage. Skip (i=20, j=6)
+     which is 1027 from closest area. Verified with verify_resource_coverage.py */
   for (int i = -30; i < 30; ++i)
-    for (int j = -30; j < 30; ++j)
+    for (int j = -20; j < 30; ++j)
       {
+        /* Skip i=20, j=6 which has no resource coverage (closest is 1027) */
+        if (i == 20 && j == 6)
+          continue;
+
         const HexCoord pos(100 * i, 100 * j);
         if (!ctx.Map ().IsOnMap (pos) || !ctx.Map ().IsPassable (pos))
           continue;

@@ -50,15 +50,17 @@ protected:
 
 TEST_F (BaseMapTests, IsOnMap)
 {
-  EXPECT_TRUE (map.IsOnMap (HexCoord (0, -4064)));
-  EXPECT_TRUE (map.IsOnMap (HexCoord (0, 4064)));
-  EXPECT_FALSE (map.IsOnMap (HexCoord (0, -4065)));
-  EXPECT_FALSE (map.IsOnMap (HexCoord (0, 4065)));
+  // Y boundary tests (X=0 is valid at all Y values within range)
+  EXPECT_TRUE (map.IsOnMap (HexCoord (0, -4096)));   // minY
+  EXPECT_TRUE (map.IsOnMap (HexCoord (0, 4095)));    // maxY
+  EXPECT_FALSE (map.IsOnMap (HexCoord (0, -4097)));  // below minY
+  EXPECT_FALSE (map.IsOnMap (HexCoord (0, 4096)));   // above maxY
 
-  EXPECT_TRUE (map.IsOnMap (HexCoord (-4064, 0)));
-  EXPECT_TRUE (map.IsOnMap (HexCoord (4064, 0)));
-  EXPECT_FALSE (map.IsOnMap (HexCoord (-4065, 0)));
-  EXPECT_FALSE (map.IsOnMap (HexCoord (4065, 0)));
+  // X boundary tests at Y=0 (at center row, X ranges -4096 to 4095)
+  EXPECT_TRUE (map.IsOnMap (HexCoord (-4096, 0)));
+  EXPECT_TRUE (map.IsOnMap (HexCoord (4095, 0)));
+  EXPECT_FALSE (map.IsOnMap (HexCoord (-4097, 0)));
+  EXPECT_FALSE (map.IsOnMap (HexCoord (4096, 0)));
 }
 
 TEST_F (BaseMapTests, MatchesOriginalObstacleData)
@@ -89,8 +91,9 @@ TEST_F (BaseMapTests, EdgeWeights)
   const HexCoord b(1, 0);
   EXPECT_EQ (map.GetEdgeWeight (a, b), 1000);
 
-  const HexCoord outside(-4065, 0);
-  const HexCoord inside(-4064, 0);
+  // Test edge weight at X boundary (Y=0 row: X ranges -4096 to 4095)
+  const HexCoord outside(-4097, 0);
+  const HexCoord inside(-4096, 0);
   ASSERT_FALSE (map.IsOnMap (outside));
   ASSERT_TRUE (map.IsOnMap (inside));
   EXPECT_EQ (map.GetEdgeWeight (inside, outside), PathFinder::NO_CONNECTION);

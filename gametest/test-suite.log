@@ -1,0 +1,520 @@
+===========================================
+   tauriond 0.4: gametest/test-suite.log
+===========================================
+
+# TOTAL: 46
+# PASS:  0
+# SKIP:  0
+# XFAIL: 0
+# FAIL:  46
+# XPASS: 0
+# ERROR: 0
+
+.. contents:: :depth: 2
+
+FAIL: accounts.py
+=================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./accounts.py", line 24, in <module>
+    from pxtest import PXTest
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL accounts.py (exit status: 1)
+
+FAIL: buildings_basic.py
+========================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./buildings_basic.py", line 24, in <module>
+    from pxtest import PXTest
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL buildings_basic.py (exit status: 1)
+
+FAIL: buildings_combat.py
+=========================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./buildings_combat.py", line 23, in <module>
+    from pxtest import PXTest
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL buildings_combat.py (exit status: 1)
+
+FAIL: buildings_config.py
+=========================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./buildings_config.py", line 23, in <module>
+    from pxtest import PXTest
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL buildings_config.py (exit status: 1)
+
+FAIL: buildings_construction.py
+===============================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./buildings_construction.py", line 23, in <module>
+    from pxtest import PXTest
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL buildings_construction.py (exit status: 1)
+
+FAIL: buildings_enterexit.py
+============================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./buildings_enterexit.py", line 23, in <module>
+    from pxtest import PXTest
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL buildings_enterexit.py (exit status: 1)
+
+FAIL: buildings_foundations.py
+==============================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./buildings_foundations.py", line 23, in <module>
+    from pxtest import PXTest
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL buildings_foundations.py (exit status: 1)
+
+FAIL: buildings_inventory.py
+============================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./buildings_inventory.py", line 23, in <module>
+    from pxtest import PXTest
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL buildings_inventory.py (exit status: 1)
+
+FAIL: burnsale.py
+=================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./burnsale.py", line 23, in <module>
+    from pxtest import PXTest
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL burnsale.py (exit status: 1)
+
+FAIL: character_limit.py
+========================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./character_limit.py", line 23, in <module>
+    from pxtest import PXTest
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL character_limit.py (exit status: 1)
+
+FAIL: characters.py
+===================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./characters.py", line 25, in <module>
+    from pxtest import PXTest
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL characters.py (exit status: 1)
+
+FAIL: coinops.py
+================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./coinops.py", line 23, in <module>
+    from pxtest import PXTest
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL coinops.py (exit status: 1)
+
+FAIL: combat_aoe.py
+===================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./combat_aoe.py", line 23, in <module>
+    from pxtest import PXTest, offsetCoord
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL combat_aoe.py (exit status: 1)
+
+FAIL: combat_damage.py
+======================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./combat_damage.py", line 23, in <module>
+    from pxtest import PXTest, offsetCoord
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL combat_damage.py (exit status: 1)
+
+FAIL: combat_effects.py
+=======================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./combat_effects.py", line 23, in <module>
+    from pxtest import PXTest, offsetCoord
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL combat_effects.py (exit status: 1)
+
+FAIL: combat_friendly.py
+========================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./combat_friendly.py", line 23, in <module>
+    from pxtest import PXTest, offsetCoord
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL combat_friendly.py (exit status: 1)
+
+FAIL: combat_targets.py
+=======================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./combat_targets.py", line 23, in <module>
+    from pxtest import PXTest, offsetCoord
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL combat_targets.py (exit status: 1)
+
+FAIL: damage_lists.py
+=====================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./damage_lists.py", line 23, in <module>
+    from pxtest import PXTest, offsetCoord
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL damage_lists.py (exit status: 1)
+
+FAIL: dex.py
+============
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./dex.py", line 23, in <module>
+    from pxtest import PXTest
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL dex.py (exit status: 1)
+
+FAIL: fame.py
+=============
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./fame.py", line 23, in <module>
+    from pxtest import PXTest
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL fame.py (exit status: 1)
+
+FAIL: findpath.py
+=================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./findpath.py", line 23, in <module>
+    from pxtest import PXTest, offsetCoord
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL findpath.py (exit status: 1)
+
+FAIL: fork_gamestart.py
+=======================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./fork_gamestart.py", line 25, in <module>
+    from pxtest import PXTest
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL fork_gamestart.py (exit status: 1)
+
+FAIL: getbuildingshape.py
+=========================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./getbuildingshape.py", line 23, in <module>
+    from pxtest import PXTest
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL getbuildingshape.py (exit status: 1)
+
+FAIL: getregionat.py
+====================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./getregionat.py", line 19, in <module>
+    from pxtest import PXTest
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL getregionat.py (exit status: 1)
+
+FAIL: getserviceinfo.py
+=======================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./getserviceinfo.py", line 19, in <module>
+    from pxtest import PXTest
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL getserviceinfo.py (exit status: 1)
+
+FAIL: getversion.py
+===================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./getversion.py", line 23, in <module>
+    from pxtest import PXTest
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL getversion.py (exit status: 1)
+
+FAIL: godmode.py
+================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./godmode.py", line 23, in <module>
+    from pxtest import PXTest
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL godmode.py (exit status: 1)
+
+FAIL: loot.py
+=============
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./loot.py", line 24, in <module>
+    from pxtest import PXTest
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL loot.py (exit status: 1)
+
+FAIL: mining.py
+===============
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./mining.py", line 23, in <module>
+    from pxtest import PXTest, offsetCoord
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL mining.py (exit status: 1)
+
+FAIL: modifiedregions.py
+========================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./modifiedregions.py", line 23, in <module>
+    from pxtest import PXTest
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL modifiedregions.py (exit status: 1)
+
+FAIL: movement.py
+=================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./movement.py", line 23, in <module>
+    from pxtest import PXTest, offsetCoord
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL movement.py (exit status: 1)
+
+FAIL: multiupdate.py
+====================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./multiupdate.py", line 23, in <module>
+    from pxtest import PXTest, offsetCoord
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL multiupdate.py (exit status: 1)
+
+FAIL: pending.py
+================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./pending.py", line 23, in <module>
+    from pxtest import PXTest, offsetCoord
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL pending.py (exit status: 1)
+
+FAIL: prospecting_basic.py
+==========================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./prospecting_basic.py", line 24, in <module>
+    from pxtest import PXTest, offsetCoord
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL prospecting_basic.py (exit status: 1)
+
+FAIL: prospecting_prizes.py
+===========================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./prospecting_prizes.py", line 23, in <module>
+    from pxtest import PXTest
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL prospecting_prizes.py (exit status: 1)
+
+FAIL: prospecting_resources.py
+==============================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./prospecting_resources.py", line 25, in <module>
+    from pxtest import PXTest
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL prospecting_resources.py (exit status: 1)
+
+FAIL: safezones.py
+==================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./safezones.py", line 23, in <module>
+    from pxtest import PXTest, offsetCoord
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL safezones.py (exit status: 1)
+
+FAIL: services_bpcopy.py
+========================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./services_bpcopy.py", line 23, in <module>
+    from pxtest import PXTest
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL services_bpcopy.py (exit status: 1)
+
+FAIL: services_construction.py
+==============================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./services_construction.py", line 23, in <module>
+    from pxtest import PXTest
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL services_construction.py (exit status: 1)
+
+FAIL: services_fees.py
+======================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./services_fees.py", line 23, in <module>
+    from pxtest import PXTest
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL services_fees.py (exit status: 1)
+
+FAIL: services_refining.py
+==========================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./services_refining.py", line 23, in <module>
+    from pxtest import PXTest, offsetCoord
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL services_refining.py (exit status: 1)
+
+FAIL: services_repair.py
+========================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./services_repair.py", line 23, in <module>
+    from pxtest import PXTest
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL services_repair.py (exit status: 1)
+
+FAIL: services_reveng.py
+========================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./services_reveng.py", line 23, in <module>
+    from pxtest import PXTest
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL services_reveng.py (exit status: 1)
+
+FAIL: spawn.py
+==============
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./spawn.py", line 23, in <module>
+    from pxtest import PXTest, offsetCoord
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL spawn.py (exit status: 1)
+
+FAIL: splitstaterpcs.py
+=======================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./splitstaterpcs.py", line 24, in <module>
+    from pxtest import PXTest
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL splitstaterpcs.py (exit status: 1)
+
+FAIL: vehiclefitments.py
+========================
+
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./vehiclefitments.py", line 23, in <module>
+    from pxtest import PXTest
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL vehiclefitments.py (exit status: 1)
+

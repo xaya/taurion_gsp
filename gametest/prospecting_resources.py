@@ -25,7 +25,7 @@ in the unit tests.
 from pxtest import PXTest
 
 # Coordinate where there is no available resource.
-NOTHING = {"x": -211, "y": -4064}
+NOTHING = {"x": -211, "y": -4096}
 
 # Coordinates with just one type of resource.
 ONLY_A = {"x": -3456, "y": -1215}

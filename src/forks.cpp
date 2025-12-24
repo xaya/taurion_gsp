@@ -68,7 +68,7 @@ const std::unordered_map<Fork, ForkData> FORK_HEIGHTS =
       Fork::GameStart,
       {
         {
-          {xaya::Chain::MAIN, 76'690'000},
+          {xaya::Chain::MAIN, 80'528'098},
           {xaya::Chain::REGTEST, 0},
         },
         &FLAGS_fork_height_gamestart,

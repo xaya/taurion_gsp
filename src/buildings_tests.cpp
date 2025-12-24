@@ -117,8 +117,8 @@ protected:
 TEST_F (CanPlaceBuildingTests, Ok)
 {
   /* Some offset added to all coordinates to make the situation fit
-     into one region entirely.  */
-  const HexCoord offs(-1, -5);
+     into one region entirely.  Updated for current region data.  */
+  const HexCoord offs(-50, -50);
 
   tbl.CreateNew ("huesli", "", Faction::ANCIENT)
       ->SetCentre (offs + HexCoord (-1, 0));

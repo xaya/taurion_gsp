@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./prospecting_prizes.py", line 23, in <module>
+    from pxtest import PXTest
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL prospecting_prizes.py (exit status: 1)

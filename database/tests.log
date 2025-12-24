@@ -1,0 +1,740 @@
+Running main() from /home/ryumaster/googletest/googletest/src/gtest_main.cc
+[==========] Running 147 tests from 33 test suites.
+[----------] Global test environment set-up.
+[----------] 4 tests from AccountTests
+[ RUN      ] AccountTests.DefaultData
+WARNING: Logging before InitGoogleLogging() is written to STDERR
+I20251224 03:06:49.402719 289212 sqlitestorage.cpp:328] Using SQLite version 3.45.1 (library version: 3.45.1)
+I20251224 03:06:49.402932 289212 sqlitestorage.cpp:339] Configured SQLite error handler
+I20251224 03:06:49.403343 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:49.403652 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:49.403720 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] AccountTests.DefaultData (8 ms)
+[ RUN      ] AccountTests.UpdateFields
+I20251224 03:06:49.411703 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:49.411859 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:49.411897 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] AccountTests.UpdateFields (6 ms)
+[ RUN      ] AccountTests.UpdateProto
+I20251224 03:06:49.418665 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:49.418838 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:49.418875 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] AccountTests.UpdateProto (6 ms)
+[ RUN      ] AccountTests.Balance
+I20251224 03:06:49.425390 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:49.425578 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:49.425626 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] AccountTests.Balance (6 ms)
+[----------] 4 tests from AccountTests (29 ms total)
+
+[----------] 4 tests from AccountsTableTests
+[ RUN      ] AccountsTableTests.CreateAlreadyExisting
+I20251224 03:06:49.432251 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:49.432405 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:49.432464 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] AccountsTableTests.CreateAlreadyExisting (437 ms)
+[ RUN      ] AccountsTableTests.QueryAll
+I20251224 03:06:49.870136 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:49.870365 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:49.870409 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] AccountsTableTests.QueryAll (7 ms)
+[ RUN      ] AccountsTableTests.QueryInitialised
+I20251224 03:06:49.877566 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:49.877732 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:49.877771 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] AccountsTableTests.QueryInitialised (6 ms)
+[ RUN      ] AccountsTableTests.GetByName
+I20251224 03:06:49.884564 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:49.884729 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:49.884768 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] AccountsTableTests.GetByName (6 ms)
+[----------] 4 tests from AccountsTableTests (458 ms total)
+
+[----------] 5 tests from BuildingTests
+[ RUN      ] BuildingTests.Creation
+I20251224 03:06:49.891166 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:49.891320 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:49.891359 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] BuildingTests.Creation (6 ms)
+[ RUN      ] BuildingTests.ModificationOfProto
+I20251224 03:06:49.897564 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:49.897706 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:49.897739 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] BuildingTests.ModificationOfProto (5 ms)
+[ RUN      ] BuildingTests.ModificationOfFields
+I20251224 03:06:49.903601 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:49.903739 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:49.903774 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] BuildingTests.ModificationOfFields (5 ms)
+[ RUN      ] BuildingTests.CombatFields
+I20251224 03:06:49.909631 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:49.909771 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:49.909806 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] BuildingTests.CombatFields (6 ms)
+[ RUN      ] BuildingTests.CombatEffects
+I20251224 03:06:49.916031 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:49.916173 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:49.916208 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] BuildingTests.CombatEffects (6 ms)
+[----------] 5 tests from BuildingTests (31 ms total)
+
+[----------] 7 tests from BuildingsTableTests
+[ RUN      ] BuildingsTableTests.GetById
+I20251224 03:06:49.922529 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:49.922695 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:49.922735 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] BuildingsTableTests.GetById (6 ms)
+[ RUN      ] BuildingsTableTests.QueryAll
+I20251224 03:06:49.929352 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:49.929534 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:49.929584 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] BuildingsTableTests.QueryAll (7 ms)
+[ RUN      ] BuildingsTableTests.QueryWithAttacks
+I20251224 03:06:49.936681 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:49.936839 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:49.936877 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] BuildingsTableTests.QueryWithAttacks (6 ms)
+[ RUN      ] BuildingsTableTests.QueryForRegen
+I20251224 03:06:49.943264 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:49.943404 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:49.943456 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] BuildingsTableTests.QueryForRegen (6 ms)
+[ RUN      ] BuildingsTableTests.QueryWithTarget
+I20251224 03:06:49.949388 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:49.949544 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:49.949587 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] BuildingsTableTests.QueryWithTarget (6 ms)
+[ RUN      ] BuildingsTableTests.DeleteById
+I20251224 03:06:49.956079 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:49.956223 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:49.956256 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] BuildingsTableTests.DeleteById (6 ms)
+[ RUN      ] BuildingsTableTests.ClearAllEffects
+I20251224 03:06:49.962184 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:49.962324 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:49.962357 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] BuildingsTableTests.ClearAllEffects (6 ms)
+[----------] 7 tests from BuildingsTableTests (46 ms total)
+
+[----------] 9 tests from CharacterTests
+[ RUN      ] CharacterTests.Creation
+I20251224 03:06:49.968818 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:49.968963 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:49.968998 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] CharacterTests.Creation (6 ms)
+[ RUN      ] CharacterTests.ModificationWithProto
+I20251224 03:06:49.975214 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:49.975356 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:49.975390 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] CharacterTests.ModificationWithProto (6 ms)
+[ RUN      ] CharacterTests.ModificationFieldsOnly
+I20251224 03:06:49.981889 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:49.982029 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:49.982064 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] CharacterTests.ModificationFieldsOnly (6 ms)
+[ RUN      ] CharacterTests.Target
+I20251224 03:06:49.988471 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:49.988638 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:49.988678 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] CharacterTests.Target (7 ms)
+[ RUN      ] CharacterTests.FriendlyTargets
+I20251224 03:06:49.995738 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:49.995898 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:49.995939 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] CharacterTests.FriendlyTargets (6 ms)
+[ RUN      ] CharacterTests.Inventory
+I20251224 03:06:50.002252 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:50.002393 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:50.002426 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] CharacterTests.Inventory (6 ms)
+[ RUN      ] CharacterTests.CombatEffects
+I20251224 03:06:50.008541 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:50.008690 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:50.008725 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] CharacterTests.CombatEffects (6 ms)
+[ RUN      ] CharacterTests.AttackRange
+I20251224 03:06:50.014645 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:50.014784 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:50.014819 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] CharacterTests.AttackRange (6 ms)
+[ RUN      ] CharacterTests.UsedCargoSpace
+I20251224 03:06:50.021031 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:50.021173 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:50.021206 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+I20251224 03:06:50.026662 289212 roconfig.cpp:116] Initialising hard-coded ConfigData proto instance...
+[       OK ] CharacterTests.UsedCargoSpace (17 ms)
+[----------] 9 tests from CharacterTests (69 ms total)
+
+[----------] 13 tests from CharacterTableTests
+[ RUN      ] CharacterTableTests.GetById
+I20251224 03:06:50.038362 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:50.038533 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:50.038576 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] CharacterTableTests.GetById (6 ms)
+[ RUN      ] CharacterTableTests.QueryForOwner
+I20251224 03:06:50.044602 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:50.044744 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:50.044777 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] CharacterTableTests.QueryForOwner (6 ms)
+[ RUN      ] CharacterTableTests.QueryForBuilding
+I20251224 03:06:50.051015 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:50.051155 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:50.051189 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] CharacterTableTests.QueryForBuilding (6 ms)
+[ RUN      ] CharacterTableTests.QueryMoving
+I20251224 03:06:50.057871 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:50.058012 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:50.058046 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] CharacterTableTests.QueryMoving (6 ms)
+[ RUN      ] CharacterTableTests.QueryMining
+I20251224 03:06:50.064073 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:50.064213 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:50.064246 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] CharacterTableTests.QueryMining (6 ms)
+[ RUN      ] CharacterTableTests.QueryWithAttacks
+I20251224 03:06:50.070307 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:50.070467 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:50.070511 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] CharacterTableTests.QueryWithAttacks (13 ms)
+[ RUN      ] CharacterTableTests.QueryForRegen
+I20251224 03:06:50.084228 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:50.084379 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:50.084415 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] CharacterTableTests.QueryForRegen (8 ms)
+[ RUN      ] CharacterTableTests.QueryWithTarget
+I20251224 03:06:50.092427 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:50.092607 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:50.092641 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] CharacterTableTests.QueryWithTarget (7 ms)
+[ RUN      ] CharacterTableTests.QueryForEnterBuilding
+I20251224 03:06:50.099550 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:50.099702 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:50.099737 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] CharacterTableTests.QueryForEnterBuilding (6 ms)
+[ RUN      ] CharacterTableTests.ProcessAllPositions
+I20251224 03:06:50.105810 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:50.105952 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:50.105986 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] CharacterTableTests.ProcessAllPositions (6 ms)
+[ RUN      ] CharacterTableTests.DeleteById
+I20251224 03:06:50.112005 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:50.112146 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:50.112179 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] CharacterTableTests.DeleteById (6 ms)
+[ RUN      ] CharacterTableTests.CountForOwner
+I20251224 03:06:50.118338 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:50.118498 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:50.118539 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] CharacterTableTests.CountForOwner (6 ms)
+[ RUN      ] CharacterTableTests.ClearAllEffects
+I20251224 03:06:50.124531 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:50.124675 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:50.124711 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] CharacterTableTests.ClearAllEffects (11 ms)
+[----------] 13 tests from CharacterTableTests (97 ms total)
+
+[----------] 3 tests from ComputeCanRegenTests
+[ RUN      ] ComputeCanRegenTests.CanRegenerate
+[       OK ] ComputeCanRegenTests.CanRegenerate (2 ms)
+[ RUN      ] ComputeCanRegenTests.NoRegeneration
+[       OK ] ComputeCanRegenTests.NoRegeneration (0 ms)
+[ RUN      ] ComputeCanRegenTests.FullHp
+[       OK ] ComputeCanRegenTests.FullHp (0 ms)
+[----------] 3 tests from ComputeCanRegenTests (3 ms total)
+
+[----------] 5 tests from FindAttackRangeTests
+[ RUN      ] FindAttackRangeTests.NoAttacks
+[       OK ] FindAttackRangeTests.NoAttacks (0 ms)
+[ RUN      ] FindAttackRangeTests.MaximumRange
+[       OK ] FindAttackRangeTests.MaximumRange (0 ms)
+[ RUN      ] FindAttackRangeTests.AreaAttacks
+[       OK ] FindAttackRangeTests.AreaAttacks (0 ms)
+[ RUN      ] FindAttackRangeTests.ZeroRange
+[       OK ] FindAttackRangeTests.ZeroRange (0 ms)
+[ RUN      ] FindAttackRangeTests.Friendly
+[       OK ] FindAttackRangeTests.Friendly (0 ms)
+[----------] 5 tests from FindAttackRangeTests (0 ms total)
+
+[----------] 1 test from CoordDatabaseTests
+[ RUN      ] CoordDatabaseTests.RoundTrip
+I20251224 03:06:50.139402 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:50.139657 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+[       OK ] CoordDatabaseTests.RoundTrip (1 ms)
+[----------] 1 test from CoordDatabaseTests (1 ms total)
+
+[----------] 6 tests from DamageListsTests
+[ RUN      ] DamageListsTests.Basic
+I20251224 03:06:50.140568 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:50.140785 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:50.140832 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] DamageListsTests.Basic (7 ms)
+[ RUN      ] DamageListsTests.RemoveCharacter
+I20251224 03:06:50.148368 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:50.148530 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:50.148571 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] DamageListsTests.RemoveCharacter (5 ms)
+[ RUN      ] DamageListsTests.RemoveOld
+I20251224 03:06:50.154347 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:50.154507 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:50.154551 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] DamageListsTests.RemoveOld (5 ms)
+[ RUN      ] DamageListsTests.RefreshHeight
+I20251224 03:06:50.159870 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:50.159994 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:50.160025 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] DamageListsTests.RefreshHeight (5 ms)
+[ RUN      ] DamageListsTests.RemoveOldLargeN
+I20251224 03:06:50.165187 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:50.165313 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:50.165342 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] DamageListsTests.RemoveOldLargeN (5 ms)
+[ RUN      ] DamageListsTests.WithoutHeight
+I20251224 03:06:50.170804 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:50.170941 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:50.170975 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] DamageListsTests.WithoutHeight (837 ms)
+[----------] 6 tests from DamageListsTests (868 ms total)
+
+[----------] 4 tests from DatabaseTests
+[ RUN      ] DatabaseTests.BindingAndQuery
+I20251224 03:06:51.008674 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:51.008944 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:51.009346 289212 database_tests.cpp:89] Verifying golden data with ID 10...
+I20251224 03:06:51.009424 289212 database_tests.cpp:89] Verifying golden data with ID 9223372036854775807...
+[       OK ] DatabaseTests.BindingAndQuery (1 ms)
+[ RUN      ] DatabaseTests.StatementReset
+I20251224 03:06:51.009660 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:51.009801 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+[       OK ] DatabaseTests.StatementReset (0 ms)
+[ RUN      ] DatabaseTests.ProtoIsOverwritten
+I20251224 03:06:51.010275 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:51.010418 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+[       OK ] DatabaseTests.ProtoIsOverwritten (0 ms)
+[ RUN      ] DatabaseTests.ResultProperties
+I20251224 03:06:51.010855 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:51.010973 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+[       OK ] DatabaseTests.ResultProperties (0 ms)
+[----------] 4 tests from DatabaseTests (2 ms total)
+
+[----------] 3 tests from DexOrderTests
+[ RUN      ] DexOrderTests.Creation
+I20251224 03:06:51.011379 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:51.011547 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:51.011595 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] DexOrderTests.Creation (6 ms)
+[ RUN      ] DexOrderTests.QuantityReduction
+I20251224 03:06:51.017648 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:51.017784 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:51.017817 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] DexOrderTests.QuantityReduction (5 ms)
+[ RUN      ] DexOrderTests.ExplicitDelete
+I20251224 03:06:51.023612 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:51.023748 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:51.023782 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] DexOrderTests.ExplicitDelete (5 ms)
+[----------] 3 tests from DexOrderTests (18 ms total)
+
+[----------] 6 tests from DexOrderTableTests
+[ RUN      ] DexOrderTableTests.QueryAll
+I20251224 03:06:51.029554 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:51.029699 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:51.029732 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] DexOrderTableTests.QueryAll (5 ms)
+[ RUN      ] DexOrderTableTests.QueryForBuilding
+I20251224 03:06:51.035360 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:51.035516 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:51.035557 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] DexOrderTableTests.QueryForBuilding (5 ms)
+[ RUN      ] DexOrderTableTests.DeleteForBuilding
+I20251224 03:06:51.041322 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:51.041479 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:51.041520 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] DexOrderTableTests.DeleteForBuilding (5 ms)
+[ RUN      ] DexOrderTableTests.QueryToMatch
+I20251224 03:06:51.047214 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:51.047348 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:51.047381 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] DexOrderTableTests.QueryToMatch (6 ms)
+[ RUN      ] DexOrderTableTests.ReservedCoins
+I20251224 03:06:51.053519 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:51.053664 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:51.053697 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] DexOrderTableTests.ReservedCoins (5 ms)
+[ RUN      ] DexOrderTableTests.ReservedQuantities
+I20251224 03:06:51.059367 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:51.059514 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:51.059552 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] DexOrderTableTests.ReservedQuantities (5 ms)
+[----------] 6 tests from DexOrderTableTests (35 ms total)
+
+[----------] 2 tests from DexHistoryTests
+[ RUN      ] DexHistoryTests.RecordTrade
+I20251224 03:06:51.065062 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:51.065192 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:51.065222 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] DexHistoryTests.RecordTrade (5 ms)
+[ RUN      ] DexHistoryTests.QueryForItem
+I20251224 03:06:51.070463 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:51.070592 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:51.070622 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] DexHistoryTests.QueryForItem (5 ms)
+[----------] 2 tests from DexHistoryTests (10 ms total)
+
+[----------] 2 tests from FactionStringTests
+[ RUN      ] FactionStringTests.RoundTrip
+[       OK ] FactionStringTests.RoundTrip (0 ms)
+[ RUN      ] FactionStringTests.InvalidString
+W20251224 03:06:51.075718 289212 faction.cpp:60] String is not a valid faction: 
+W20251224 03:06:51.075752 289212 faction.cpp:60] String is not a valid faction: x
+W20251224 03:06:51.075768 289212 faction.cpp:60] String is not a valid faction: invalid
+[       OK ] FactionStringTests.InvalidString (0 ms)
+[----------] 2 tests from FactionStringTests (0 ms total)
+
+[----------] 3 tests from FactionDatabaseTests
+[ RUN      ] FactionDatabaseTests.RoundTrip
+I20251224 03:06:51.075896 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:51.076011 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+[       OK ] FactionDatabaseTests.RoundTrip (0 ms)
+[ RUN      ] FactionDatabaseTests.Null
+I20251224 03:06:51.076483 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:51.076601 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+E20251224 03:06:51.076820 289212 sqlitestorage.cpp:316] SQLite error (code 28): double-quoted string literal: "foo"
+[       OK ] FactionDatabaseTests.Null (387 ms)
+[ RUN      ] FactionDatabaseTests.Invalid
+I20251224 03:06:51.464031 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:51.464237 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+E20251224 03:06:51.464635 289212 sqlitestorage.cpp:316] SQLite error (code 28): double-quoted string literal: "foo"
+[       OK ] FactionDatabaseTests.Invalid (848 ms)
+[----------] 3 tests from FactionDatabaseTests (1236 ms total)
+
+[----------] 5 tests from FighterTableTests
+[ RUN      ] FighterTableTests.GetForTarget
+I20251224 03:06:52.312183 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:52.312390 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:52.312427 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] FighterTableTests.GetForTarget (7 ms)
+[ RUN      ] FighterTableTests.ProcessWithAttacks
+I20251224 03:06:52.319332 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:52.319494 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:52.319535 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] FighterTableTests.ProcessWithAttacks (6 ms)
+[ RUN      ] FighterTableTests.ProcessForRegen
+I20251224 03:06:52.325924 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:52.326063 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:52.326097 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] FighterTableTests.ProcessForRegen (6 ms)
+[ RUN      ] FighterTableTests.ProcessWithTarget
+I20251224 03:06:52.332301 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:52.332468 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:52.332525 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] FighterTableTests.ProcessWithTarget (6 ms)
+[ RUN      ] FighterTableTests.Effects
+I20251224 03:06:52.338819 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:52.338956 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:52.338990 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] FighterTableTests.Effects (6 ms)
+[----------] 5 tests from FighterTableTests (33 ms total)
+
+[----------] 4 tests from QuantityProductTests
+[ RUN      ] QuantityProductTests.Initialisation
+[       OK ] QuantityProductTests.Initialisation (0 ms)
+[ RUN      ] QuantityProductTests.AddProduct
+[       OK ] QuantityProductTests.AddProduct (0 ms)
+[ RUN      ] QuantityProductTests.Comparison
+[       OK ] QuantityProductTests.Comparison (0 ms)
+[ RUN      ] QuantityProductTests.Overflows
+[       OK ] QuantityProductTests.Overflows (776 ms)
+[----------] 4 tests from QuantityProductTests (776 ms total)
+
+[----------] 7 tests from InventoryTests
+[ RUN      ] InventoryTests.DefaultData
+[       OK ] InventoryTests.DefaultData (0 ms)
+[ RUN      ] InventoryTests.FromProto
+[       OK ] InventoryTests.FromProto (0 ms)
+[ RUN      ] InventoryTests.Modification
+[       OK ] InventoryTests.Modification (0 ms)
+[ RUN      ] InventoryTests.Equality
+[       OK ] InventoryTests.Equality (0 ms)
+[ RUN      ] InventoryTests.Clear
+[       OK ] InventoryTests.Clear (0 ms)
+[ RUN      ] InventoryTests.AdditionOfOtherInventory
+[       OK ] InventoryTests.AdditionOfOtherInventory (0 ms)
+[ RUN      ] InventoryTests.ProtoRef
+[       OK ] InventoryTests.ProtoRef (407 ms)
+[----------] 7 tests from InventoryTests (407 ms total)
+
+[----------] 3 tests from GroundLootTests
+[ RUN      ] GroundLootTests.DefaultData
+I20251224 03:06:53.529676 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:53.529911 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:53.529968 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] GroundLootTests.DefaultData (6 ms)
+[ RUN      ] GroundLootTests.Update
+I20251224 03:06:53.536286 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:53.536422 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:53.536474 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] GroundLootTests.Update (5 ms)
+[ RUN      ] GroundLootTests.Removal
+I20251224 03:06:53.542217 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:53.542351 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:53.542382 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] GroundLootTests.Removal (5 ms)
+[----------] 3 tests from GroundLootTests (18 ms total)
+
+[----------] 1 test from GroundLootTableTests
+[ RUN      ] GroundLootTableTests.QueryNonEmpty
+I20251224 03:06:53.548108 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:53.548246 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:53.548280 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] GroundLootTableTests.QueryNonEmpty (5 ms)
+[----------] 1 test from GroundLootTableTests (6 ms total)
+
+[----------] 3 tests from BuildingInventoryTests
+[ RUN      ] BuildingInventoryTests.DefaultData
+I20251224 03:06:53.554144 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:53.554282 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:53.554315 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] BuildingInventoryTests.DefaultData (5 ms)
+[ RUN      ] BuildingInventoryTests.Update
+I20251224 03:06:53.559736 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:53.559859 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:53.559888 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] BuildingInventoryTests.Update (5 ms)
+[ RUN      ] BuildingInventoryTests.Removal
+I20251224 03:06:53.565050 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:53.565173 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:53.565202 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] BuildingInventoryTests.Removal (5 ms)
+[----------] 3 tests from BuildingInventoryTests (16 ms total)
+
+[----------] 3 tests from BuildingInventoriesTableTests
+[ RUN      ] BuildingInventoriesTableTests.QueryAll
+I20251224 03:06:53.570710 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:53.570834 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:53.570865 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] BuildingInventoriesTableTests.QueryAll (5 ms)
+[ RUN      ] BuildingInventoriesTableTests.QueryForBuilding
+I20251224 03:06:53.576002 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:53.576124 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:53.576155 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] BuildingInventoriesTableTests.QueryForBuilding (5 ms)
+[ RUN      ] BuildingInventoriesTableTests.RemoveBuilding
+I20251224 03:06:53.581326 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:53.581467 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:53.581506 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] BuildingInventoriesTableTests.RemoveBuilding (5 ms)
+[----------] 3 tests from BuildingInventoriesTableTests (16 ms total)
+
+[----------] 2 tests from ItemCountsTests
+[ RUN      ] ItemCountsTests.GetFound
+I20251224 03:06:53.586853 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:53.586978 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:53.587007 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] ItemCountsTests.GetFound (5 ms)
+[ RUN      ] ItemCountsTests.IncrementFound
+I20251224 03:06:53.592535 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:53.592664 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:53.592693 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] ItemCountsTests.IncrementFound (5 ms)
+[----------] 2 tests from ItemCountsTests (10 ms total)
+
+[----------] 4 tests from MoneySupplyTests
+[ RUN      ] MoneySupplyTests.GetAndIncrement
+I20251224 03:06:53.597735 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:53.597857 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:53.597887 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] MoneySupplyTests.GetAndIncrement (5 ms)
+[ RUN      ] MoneySupplyTests.AllKeys
+I20251224 03:06:53.603035 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:53.603158 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:53.603188 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] MoneySupplyTests.AllKeys (5 ms)
+[ RUN      ] MoneySupplyTests.DoubleInitialisation
+I20251224 03:06:53.608114 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:53.608235 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:53.608264 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] MoneySupplyTests.DoubleInitialisation (386 ms)
+[ RUN      ] MoneySupplyTests.InvalidCalls
+I20251224 03:06:53.994828 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:53.995035 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:53.995071 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] MoneySupplyTests.InvalidCalls (1567 ms)
+[----------] 4 tests from MoneySupplyTests (1964 ms total)
+
+[----------] 2 tests from OngoingOperationTests
+[ RUN      ] OngoingOperationTests.DefaultData
+I20251224 03:06:55.562166 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:55.562377 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:55.562413 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] OngoingOperationTests.DefaultData (6 ms)
+[ RUN      ] OngoingOperationTests.Update
+I20251224 03:06:55.568363 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:55.568519 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:55.568560 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] OngoingOperationTests.Update (5 ms)
+[----------] 2 tests from OngoingOperationTests (12 ms total)
+
+[----------] 6 tests from OngoingsTableTests
+[ RUN      ] OngoingsTableTests.QueryAll
+I20251224 03:06:55.574287 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:55.574430 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:55.574481 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] OngoingsTableTests.QueryAll (5 ms)
+[ RUN      ] OngoingsTableTests.QueryForHeight
+I20251224 03:06:55.580101 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:55.580255 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:55.580288 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] OngoingsTableTests.QueryForHeight (5 ms)
+[ RUN      ] OngoingsTableTests.QueryForBuilding
+I20251224 03:06:55.585695 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:55.585817 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:55.585845 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] OngoingsTableTests.QueryForBuilding (5 ms)
+[ RUN      ] OngoingsTableTests.DeleteForCharacter
+I20251224 03:06:55.590942 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:55.591063 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:55.591091 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] OngoingsTableTests.DeleteForCharacter (5 ms)
+[ RUN      ] OngoingsTableTests.DeleteForBuilding
+I20251224 03:06:55.596299 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:55.596421 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:55.596472 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] OngoingsTableTests.DeleteForBuilding (5 ms)
+[ RUN      ] OngoingsTableTests.DeleteForHeight
+I20251224 03:06:55.601612 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:55.601734 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:55.601764 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] OngoingsTableTests.DeleteForHeight (5 ms)
+[----------] 6 tests from OngoingsTableTests (33 ms total)
+
+[----------] 6 tests from RegionTests
+[ RUN      ] RegionTests.DefaultData
+I20251224 03:06:55.607530 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:55.607663 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:55.607693 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] RegionTests.DefaultData (5 ms)
+[ RUN      ] RegionTests.UpdateWithProto
+I20251224 03:06:55.612730 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:55.612852 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:55.612882 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] RegionTests.UpdateWithProto (5 ms)
+[ RUN      ] RegionTests.UpdateOnlyFields
+I20251224 03:06:55.617908 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:55.618029 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:55.618058 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] RegionTests.UpdateOnlyFields (5 ms)
+[ RUN      ] RegionTests.IdZero
+I20251224 03:06:55.623171 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:55.623294 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:55.623323 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] RegionTests.IdZero (5 ms)
+[ RUN      ] RegionTests.DefaultNotWritten
+I20251224 03:06:55.628340 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:55.628479 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:55.628515 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] RegionTests.DefaultNotWritten (5 ms)
+[ RUN      ] RegionTests.ReadOnlyTable
+I20251224 03:06:55.633510 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:55.633634 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:55.633679 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] RegionTests.ReadOnlyTable (778 ms)
+[----------] 6 tests from RegionTests (804 ms total)
+
+[----------] 2 tests from RegionsTableTests
+[ RUN      ] RegionsTableTests.QueryNonTrivial
+I20251224 03:06:56.411839 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:56.412050 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:56.412093 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] RegionsTableTests.QueryNonTrivial (6 ms)
+[ RUN      ] RegionsTableTests.QueryModifiedSince
+I20251224 03:06:56.418565 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:56.418709 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:56.418743 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] RegionsTableTests.QueryModifiedSince (6 ms)
+[----------] 2 tests from RegionsTableTests (12 ms total)
+
+[----------] 2 tests from SchemaTests
+[ RUN      ] SchemaTests.Works
+I20251224 03:06:56.424728 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:56.424866 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+[       OK ] SchemaTests.Works (5 ms)
+[ RUN      ] SchemaTests.TwiceIsOk
+I20251224 03:06:56.430379 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:56.430538 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+[       OK ] SchemaTests.TwiceIsOk (5 ms)
+[----------] 2 tests from SchemaTests (11 ms total)
+
+[----------] 7 tests from TargetFinderTests
+[ RUN      ] TargetFinderTests.CharacterFactions
+I20251224 03:06:56.436180 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:56.436300 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:56.436331 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] TargetFinderTests.CharacterFactions (5 ms)
+[ RUN      ] TargetFinderTests.InBuilding
+I20251224 03:06:56.441915 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:56.442041 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:56.442070 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] TargetFinderTests.InBuilding (5 ms)
+[ RUN      ] TargetFinderTests.CharacterRange
+I20251224 03:06:56.447361 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:56.447504 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:56.447541 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] TargetFinderTests.CharacterRange (30 ms)
+[ RUN      ] TargetFinderTests.BuildingFactions
+I20251224 03:06:56.477723 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:56.477856 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:56.477886 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] TargetFinderTests.BuildingFactions (5 ms)
+[ RUN      ] TargetFinderTests.BuildingsAndCharacters
+I20251224 03:06:56.483408 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:56.483559 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:56.483592 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] TargetFinderTests.BuildingsAndCharacters (5 ms)
+[ RUN      ] TargetFinderTests.Friendlies
+I20251224 03:06:56.489121 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:56.489246 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:56.489275 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] TargetFinderTests.Friendlies (5 ms)
+[ RUN      ] TargetFinderTests.FriendlyAndEnemies
+I20251224 03:06:56.495070 289212 sqlitestorage.cpp:352] Opened SQLite database successfully: test
+W20251224 03:06:56.495199 289212 sqlitestorage.cpp:365] Failed to set WAL mode, journaling is memory
+I20251224 03:06:56.495229 289212 dbtest.cpp:49] Setting up game-state schema in test database...
+[       OK ] TargetFinderTests.FriendlyAndEnemies (5 ms)
+[----------] 7 tests from TargetFinderTests (64 ms total)
+
+[----------] 3 tests from UniqueHandlesTests
+[ RUN      ] UniqueHandlesTests.AddRemove
+[       OK ] UniqueHandlesTests.AddRemove (804 ms)
+[ RUN      ] UniqueHandlesTests.DestructorCheck
+[       OK ] UniqueHandlesTests.DestructorCheck (384 ms)
+[ RUN      ] UniqueHandlesTests.Tracker
+[       OK ] UniqueHandlesTests.Tracker (383 ms)
+[----------] 3 tests from UniqueHandlesTests (1573 ms total)
+
+[----------] 10 tests from WithAndWithoutArena/LazyProtoTests
+[ RUN      ] WithAndWithoutArena/LazyProtoTests.SetToDefault/0
+[       OK ] WithAndWithoutArena/LazyProtoTests.SetToDefault/0 (0 ms)
+[ RUN      ] WithAndWithoutArena/LazyProtoTests.SetToDefault/1
+[       OK ] WithAndWithoutArena/LazyProtoTests.SetToDefault/1 (0 ms)
+[ RUN      ] WithAndWithoutArena/LazyProtoTests.ProtoNotParsed/0
+[       OK ] WithAndWithoutArena/LazyProtoTests.ProtoNotParsed/0 (0 ms)
+[ RUN      ] WithAndWithoutArena/LazyProtoTests.ProtoNotParsed/1
+[       OK ] WithAndWithoutArena/LazyProtoTests.ProtoNotParsed/1 (0 ms)
+[ RUN      ] WithAndWithoutArena/LazyProtoTests.ProtoNotModified/0
+[       OK ] WithAndWithoutArena/LazyProtoTests.ProtoNotModified/0 (0 ms)
+[ RUN      ] WithAndWithoutArena/LazyProtoTests.ProtoNotModified/1
+[       OK ] WithAndWithoutArena/LazyProtoTests.ProtoNotModified/1 (0 ms)
+[ RUN      ] WithAndWithoutArena/LazyProtoTests.ProtoModified/0
+[       OK ] WithAndWithoutArena/LazyProtoTests.ProtoModified/0 (0 ms)
+[ RUN      ] WithAndWithoutArena/LazyProtoTests.ProtoModified/1
+[       OK ] WithAndWithoutArena/LazyProtoTests.ProtoModified/1 (0 ms)
+[ RUN      ] WithAndWithoutArena/LazyProtoTests.IsEmpty/0
+[       OK ] WithAndWithoutArena/LazyProtoTests.IsEmpty/0 (0 ms)
+[ RUN      ] WithAndWithoutArena/LazyProtoTests.IsEmpty/1
+[       OK ] WithAndWithoutArena/LazyProtoTests.IsEmpty/1 (0 ms)
+[----------] 10 tests from WithAndWithoutArena/LazyProtoTests (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 147 tests from 33 test suites ran. (8671 ms total)
+[  PASSED  ] 147 tests.
+PASS tests (exit status: 0)

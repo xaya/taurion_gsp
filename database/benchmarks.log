@@ -1,0 +1,52 @@
+2025-12-24T03:06:58+01:00
+Running ./benchmarks
+Run on (8 X 4000 MHz CPU s)
+CPU Caches:
+  L1 Data 32 KiB (x4)
+  L1 Instruction 32 KiB (x4)
+  L2 Unified 256 KiB (x4)
+  L3 Unified 8192 KiB (x1)
+Load Average: 1.59, 0.48, 0.26
+***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.
+***WARNING*** Library was built as DEBUG. Timings may be affected.
+---------------------------------------------------------------------------
+Benchmark                                 Time             CPU   Iterations
+---------------------------------------------------------------------------
+CharacterLookupSimple/10/1/0           16.2 us         16.2 us        41303
+CharacterLookupSimple/10/1/100         16.9 us         16.8 us        41111
+CharacterLookupSimple/10/1/1000        19.0 us         19.0 us        35176
+CharacterLookupSimple/10/10/100         171 us          171 us         3513
+CharacterLookupSimple/1000/1/100       19.3 us         19.2 us        40641
+CharacterLookupProto/1/0               17.3 us         17.3 us        42184
+CharacterLookupProto/1/10              22.4 us         22.4 us        30731
+CharacterLookupProto/1/100             39.1 us         39.1 us        17772
+CharacterLookupProto/1/1000             187 us          187 us         3710
+CharacterLookupProto/10/100             386 us          386 us         1802
+CharacterQuery/100/0                  0.479 ms        0.479 ms         1379
+CharacterQuery/100/10                 0.458 ms        0.457 ms         1460
+CharacterQuery/100/100                0.485 ms        0.485 ms         1356
+CharacterQuery/100/1000               0.661 ms        0.661 ms         1049
+CharacterQuery/1000/10                 4.61 ms         4.61 ms          152
+CharacterQuery/10000/10                45.6 ms         45.6 ms           16
+CharacterQuery/100000/10                483 ms          483 ms            2
+CharacterFieldsUpdate/1/0              50.9 us         50.8 us        12983
+CharacterFieldsUpdate/1/10             48.0 us         48.0 us        13414
+CharacterFieldsUpdate/1/100            54.6 us         54.4 us        11055
+CharacterFieldsUpdate/1/1000           59.3 us         59.2 us        11982
+CharacterFieldsUpdate/10/100            525 us          525 us         1335
+CharacterProtoUpdate/1/0               70.2 us         70.2 us         9687
+CharacterProtoUpdate/1/10              79.0 us         78.9 us         9593
+CharacterProtoUpdate/1/100              105 us          105 us         6839
+CharacterProtoUpdate/1/1000             289 us          289 us         2423
+CharacterProtoUpdate/10/100            1093 us         1093 us          656
+TargetFinding/10/1/0/0/0               10.0 us         10.0 us        69518
+TargetFinding/10/100/0/0/0              169 us          169 us         4342
+TargetFinding/10/10000/0/0/0          17898 us        17892 us           36
+TargetFinding/100/1/0/0/0              9.58 us         9.52 us        71277
+TargetFinding/100/100/0/0/0             166 us          166 us         4298
+TargetFinding/100/10000/0/0/0         16950 us        16946 us           42
+TargetFinding/100/100/0/0/100           202 us          202 us         3308
+TargetFinding/100/100/0/0/1000          537 us          537 us         1343
+TargetFinding/10/100/10000/0/0         2475 us         2475 us          279
+TargetFinding/10/100/0/10000/0          167 us          167 us         4388
+PASS benchmarks (exit status: 0)

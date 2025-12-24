@@ -53,7 +53,7 @@ extern const size_t offsetForY[];
  * std::array.  It is only checked against the actual data from the raw
  * map files using static_assert.
  */
-constexpr size_t numTiles = 66'080'641;
+constexpr size_t numTiles = 67'108'864;
 
 namespace obstacles
 {

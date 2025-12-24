@@ -1,0 +1,47 @@
+Running main() from /home/ryumaster/googletest/googletest/src/gtest_main.cc
+[==========] Running 12 tests from 4 test suites.
+[----------] Global test environment set-up.
+[----------] 4 tests from RoConfigTests
+[ RUN      ] RoConfigTests.ConstructionWorks
+WARNING: Logging before InitGoogleLogging() is written to STDERR
+I20251224 03:06:48.236717 289148 roconfig.cpp:116] Initialising hard-coded ConfigData proto instance...
+I20251224 03:06:48.249334 289148 roconfig.cpp:116] Initialising hard-coded ConfigData proto instance...
+I20251224 03:06:48.261353 289148 roconfig.cpp:116] Initialising hard-coded ConfigData proto instance...
+[       OK ] RoConfigTests.ConstructionWorks (37 ms)
+[ RUN      ] RoConfigTests.ProtoIsSingleton
+[       OK ] RoConfigTests.ProtoIsSingleton (0 ms)
+[ RUN      ] RoConfigTests.ChainDependence
+[       OK ] RoConfigTests.ChainDependence (0 ms)
+[ RUN      ] RoConfigTests.Building
+[       OK ] RoConfigTests.Building (0 ms)
+[----------] 4 tests from RoConfigTests (37 ms total)
+
+[----------] 5 tests from RoItemsTests
+[ RUN      ] RoItemsTests.BasicItem
+[       OK ] RoItemsTests.BasicItem (0 ms)
+[ RUN      ] RoItemsTests.Blueprints
+[       OK ] RoItemsTests.Blueprints (0 ms)
+[ RUN      ] RoItemsTests.PrizeItems
+[       OK ] RoItemsTests.PrizeItems (0 ms)
+[ RUN      ] RoItemsTests.VehicleFactions
+[       OK ] RoItemsTests.VehicleFactions (0 ms)
+[ RUN      ] RoItemsTests.MainnetVehiclesHaveFaction
+[       OK ] RoItemsTests.MainnetVehiclesHaveFaction (1 ms)
+[----------] 5 tests from RoItemsTests (1 ms total)
+
+[----------] 2 tests from RoBuildingsTests
+[ RUN      ] RoBuildingsTests.FactionFromNamePrefix
+[       OK ] RoBuildingsTests.FactionFromNamePrefix (1 ms)
+[ RUN      ] RoBuildingsTests.MainnetBuildableHasFaction
+[       OK ] RoBuildingsTests.MainnetBuildableHasFaction (8 ms)
+[----------] 2 tests from RoBuildingsTests (9 ms total)
+
+[----------] 1 test from RoConfigSanityTests
+[ RUN      ] RoConfigSanityTests.Valid
+[       OK ] RoConfigSanityTests.Valid (17 ms)
+[----------] 1 test from RoConfigSanityTests (17 ms total)
+
+[----------] Global test environment tear-down
+[==========] 12 tests from 4 test suites ran. (66 ms total)
+[  PASSED  ] 12 tests.
+PASS tests (exit status: 0)

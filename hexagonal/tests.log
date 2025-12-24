@@ -1,0 +1,73 @@
+Running main() from /home/ryumaster/googletest/googletest/src/gtest_main.cc
+[==========] Running 27 tests from 4 test suites.
+[----------] Global test environment set-up.
+[----------] 10 tests from CoordTests
+[ RUN      ] CoordTests.Equality
+[       OK ] CoordTests.Equality (0 ms)
+[ RUN      ] CoordTests.LessThan
+[       OK ] CoordTests.LessThan (0 ms)
+[ RUN      ] CoordTests.Arithmetic
+[       OK ] CoordTests.Arithmetic (0 ms)
+[ RUN      ] CoordTests.Rotation
+[       OK ] CoordTests.Rotation (0 ms)
+[ RUN      ] CoordTests.DistanceL1
+[       OK ] CoordTests.DistanceL1 (0 ms)
+[ RUN      ] CoordTests.Hashing
+[       OK ] CoordTests.Hashing (0 ms)
+[ RUN      ] CoordTests.UnorderedSet
+[       OK ] CoordTests.UnorderedSet (0 ms)
+[ RUN      ] CoordTests.Neighbours
+[       OK ] CoordTests.Neighbours (0 ms)
+[ RUN      ] CoordTests.IsPrincipalDirectionTo
+[       OK ] CoordTests.IsPrincipalDirectionTo (0 ms)
+[ RUN      ] CoordTests.StreamOutput
+[       OK ] CoordTests.StreamOutput (0 ms)
+[----------] 10 tests from CoordTests (0 ms total)
+
+[----------] 10 tests from PathFinderTests
+[ RUN      ] PathFinderTests.BasicPath
+[       OK ] PathFinderTests.BasicPath (0 ms)
+[ RUN      ] PathFinderTests.SourceIsTarget
+[       OK ] PathFinderTests.SourceIsTarget (0 ms)
+[ RUN      ] PathFinderTests.FullRange
+[       OK ] PathFinderTests.FullRange (0 ms)
+[ RUN      ] PathFinderTests.ThroughX
+[       OK ] PathFinderTests.ThroughX (0 ms)
+[ RUN      ] PathFinderTests.NoPathWithinRange
+[       OK ] PathFinderTests.NoPathWithinRange (0 ms)
+[ RUN      ] PathFinderTests.OutOfL1Range
+[       OK ] PathFinderTests.OutOfL1Range (0 ms)
+[ RUN      ] PathFinderTests.ToObstacle
+[       OK ] PathFinderTests.ToObstacle (77 ms)
+[ RUN      ] PathFinderTests.FromObstacle
+[       OK ] PathFinderTests.FromObstacle (0 ms)
+[ RUN      ] PathFinderTests.MultipleSteppers
+[       OK ] PathFinderTests.MultipleSteppers (0 ms)
+[ RUN      ] PathFinderTests.RepathingWithEachStep
+[       OK ] PathFinderTests.RepathingWithEachStep (43 ms)
+[----------] 10 tests from PathFinderTests (121 ms total)
+
+[----------] 4 tests from RangeMapTests
+[ RUN      ] RangeMapTests.FullRangeAccess
+[       OK ] RangeMapTests.FullRangeAccess (0 ms)
+[ RUN      ] RangeMapTests.IsInRange
+[       OK ] RangeMapTests.IsInRange (0 ms)
+[ RUN      ] RangeMapTests.ZeroRange
+[       OK ] RangeMapTests.ZeroRange (0 ms)
+[ RUN      ] RangeMapTests.BoolValues
+[       OK ] RangeMapTests.BoolValues (0 ms)
+[----------] 4 tests from RangeMapTests (0 ms total)
+
+[----------] 3 tests from L1RingTests
+[ RUN      ] L1RingTests.RadiusZero
+[       OK ] L1RingTests.RadiusZero (0 ms)
+[ RUN      ] L1RingTests.Golden
+[       OK ] L1RingTests.Golden (0 ms)
+[ RUN      ] L1RingTests.VariousRadii
+[       OK ] L1RingTests.VariousRadii (13 ms)
+[----------] 3 tests from L1RingTests (13 ms total)
+
+[----------] Global test environment tear-down
+[==========] 27 tests from 4 test suites ran. (135 ms total)
+[  PASSED  ] 27 tests.
+PASS tests (exit status: 0)

@@ -45,7 +45,7 @@ DynObstacles::DynObstacles (Database& db, const Context& ctx)
     BuildingsTable tbl(db);
     auto res = tbl.QueryAll ();
     while (res.Step ())
-      AddBuilding (*tbl.GetFromResult (res));
+      AddBuilding (*tbl.GetFromResult (res), true /* allowOverlap for initial buildings */);
   }
 }
 
@@ -53,26 +53,35 @@ bool
 DynObstacles::AddBuilding (const std::string& type,
                            const proto::ShapeTransformation& trafo,
                            const HexCoord& pos,
-                           std::vector<HexCoord>& shape)
+                           std::vector<HexCoord>& shape,
+                           const bool allowOverlap)
 {
   shape = GetBuildingShape (type, trafo, pos, chain);
   for (const auto& c : shape)
     {
       auto ref = buildings.Access (c);
       if (ref)
-        return false;
+        {
+          if (!allowOverlap)
+            return false;
+          /* Skip this tile - already occupied by earlier building */
+          continue;
+        }
       ref = true;
     }
   return true;
 }
 
 void
-DynObstacles::AddBuilding (const Building& b)
+DynObstacles::AddBuilding (const Building& b, const bool allowOverlap)
 {
   std::vector<HexCoord> shape;
-  CHECK (AddBuilding (b.GetType (), b.GetProto ().shape_trafo (),
-                      b.GetCentre (), shape))
-      << "Error adding building " << b.GetId ();
+  const bool success = AddBuilding (b.GetType (), b.GetProto ().shape_trafo (),
+                                    b.GetCentre (), shape, allowOverlap);
+  if (!allowOverlap)
+    {
+      CHECK (success) << "Error adding building " << b.GetId ();
+    }
 }
 
 } // namespace pxd

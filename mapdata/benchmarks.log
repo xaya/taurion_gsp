@@ -1,0 +1,36 @@
+2025-12-24T03:08:59+01:00
+Running ./benchmarks
+Run on (8 X 4000 MHz CPU s)
+CPU Caches:
+  L1 Data 32 KiB (x4)
+  L1 Instruction 32 KiB (x4)
+  L2 Unified 256 KiB (x4)
+  L3 Unified 8192 KiB (x1)
+Load Average: 1.23, 0.74, 0.39
+***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.
+***WARNING*** Library was built as DEBUG. Timings may be affected.
+---------------------------------------------------------------------------------
+Benchmark                                       Time             CPU   Iterations
+---------------------------------------------------------------------------------
+DynTilesBoolConstruction                     2.30 us         2.30 us       274327
+DynTilesBoolDoubleUpdate/100000              20.2 ms         20.2 ms           37
+DynTilesBoolDoubleUpdate/1000000             78.3 ms         78.3 ms            7
+DynTilesBoolReadDefault/1000/100             1.65 ms         1.65 ms          410
+DynTilesBoolReadDefault/1000/1000            10.9 ms         10.9 ms           60
+DynTilesBoolReadDefault/10000/100            29.5 ms         29.5 ms           23
+DynTilesBoolReadDefault/10000/1000            167 ms          167 ms            4
+DynTilesBoolReadInitialised/1000/100         1.18 ms         1.18 ms          596
+DynTilesBoolReadInitialised/1000/1000        11.1 ms         11.1 ms           65
+DynTilesBoolReadInitialised/10000/100        16.8 ms         16.8 ms           42
+DynTilesBoolReadInitialised/10000/1000        152 ms          152 ms            5
+GetRegionId/1000                            0.535 ms        0.536 ms         1364
+GetRegionId/1000000                           573 ms          573 ms            1
+GetRegionShape                               93.5 us         93.5 us         7260
+SafeZonesConstructor/main                    82.5 ms         82.4 ms            8
+SafeZonesConstructor/test                    82.3 ms         82.3 ms            8
+SafeZonesConstructor/regtest                 55.3 ms         55.3 ms           13
+SafeZonesIsNoCombat/1000                     40.5 us         39.9 us        19036
+SafeZonesIsNoCombat/1000000                 33977 us        33970 us           21
+SafeZonesStarterFor/1000                     38.0 us         38.2 us        17942
+SafeZonesStarterFor/1000000                 34060 us        34053 us           21
+PASS benchmarks (exit status: 0)

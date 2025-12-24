@@ -47,8 +47,9 @@ protected:
 
 TEST_F (RegionMapTests, OutOfMap)
 {
-  EXPECT_NE (rm.GetRegionId (HexCoord (0, 4064)), RegionMap::OUT_OF_MAP);
-  EXPECT_EQ (rm.GetRegionId (HexCoord (0, 4065)), RegionMap::OUT_OF_MAP);
+  // Y=4095 is maxY (on map), Y=4096 is above maxY (out of map)
+  EXPECT_NE (rm.GetRegionId (HexCoord (0, 4095)), RegionMap::OUT_OF_MAP);
+  EXPECT_EQ (rm.GetRegionId (HexCoord (0, 4096)), RegionMap::OUT_OF_MAP);
 }
 
 TEST_F (RegionMapTests, MatchesOriginalData)
@@ -76,13 +77,14 @@ TEST_F (RegionMapTests, MatchesOriginalData)
 
 TEST_F (RegionMapTests, GetRegionShape)
 {
+  // Test boundary coordinates for 8192 map (minY=-4096, maxY=4095)
   const HexCoord coords[] =
     {
-      HexCoord (0, -4064),
-      HexCoord (0, 4064),
-      HexCoord (-4064, 0),
-      HexCoord (4064, 0),
-      HexCoord (0, 0),
+      HexCoord (0, -4096),   // minY
+      HexCoord (0, 4095),    // maxY
+      HexCoord (-4096, 0),   // minX at Y=0
+      HexCoord (4095, 0),    // maxX at Y=0
+      HexCoord (0, 0),       // center
     };
 
   for (const auto& c : coords)

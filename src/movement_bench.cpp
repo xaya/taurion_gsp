@@ -90,8 +90,8 @@ MovementLongHaul (benchmark::State& state)
 
   /* We start travelling from a non-zero origin.  The coordinate is chosen
      such that movement from it in positive x direction is free for a long
-     enough path.  */
-  const HexCoord origin(1'000, -2'636);
+     enough path.  Updated for current splatmap obstacle data.  */
+  const HexCoord origin(-100, -2'440);
 
   for (auto _ : state)
     {

@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/./buildings_config.py", line 23, in <module>
+    from pxtest import PXTest
+  File "/home/ryumaster/Desktop/taurion/taurion_gsp/gametest/pxtest.py", line 17, in <module>
+    from xayax.gametest import XayaXGameTest
+ModuleNotFoundError: No module named 'xayax'
+FAIL buildings_config.py (exit status: 1)

@@ -101,16 +101,19 @@ public:
    * Adds a building from the raw data (without requiring a Building instance).
    * Also exposes the building's shape to the caller for further processing.
    * Returns false if adding failed, e.g. because the buildings overlap.
+   * If allowOverlap is true, overlapping tiles are skipped (first building wins).
    */
   bool AddBuilding (const std::string& type,
                     const proto::ShapeTransformation& trafo,
                     const HexCoord& pos,
-                    std::vector<HexCoord>& shape);
+                    std::vector<HexCoord>& shape,
+                    bool allowOverlap = false);
 
   /**
-   * Adds a new building.  CHECK-fails if something goes wrong.
+   * Adds a new building.  CHECK-fails if something goes wrong (unless
+   * allowOverlap is true, in which case overlapping tiles are skipped).
    */
-  void AddBuilding (const Building& b);
+  void AddBuilding (const Building& b, bool allowOverlap = false);
 
 };
 
