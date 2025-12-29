@@ -185,13 +185,18 @@ BaseMoveProcessor::TryCharacterUpdates (const std::string& name,
       ops.append (cmd);
     }
   else
-    return;
+    {
+      LOG (WARNING) << "[MOVE_REJECTED] Player '" << name
+                    << "': 'c' field is neither array nor object, ignoring";
+      return;
+    }
 
   for (const auto& op : ops)
     {
       if (!op.isObject ())
         {
-          LOG (WARNING) << "Character update entry is not an object: " << op;
+          LOG (WARNING) << "[MOVE_REJECTED] Player '" << name
+                        << "': Character update entry is not an object: " << op;
           continue;
         }
 
@@ -202,7 +207,8 @@ BaseMoveProcessor::TryCharacterUpdates (const std::string& name,
       Json::Value ids;
       if (idOrIds.isNull ())
         {
-          LOG (WARNING) << "Missing ID in character update entry: " << op;
+          LOG (WARNING) << "[MOVE_REJECTED] Player '" << name
+                        << "': Missing 'id' field in character update: " << op;
           continue;
         }
       else if (idOrIds.isArray ())
@@ -215,24 +221,25 @@ BaseMoveProcessor::TryCharacterUpdates (const std::string& name,
           Database::IdT id;
           if (!IdFromJson (idVal, id))
             {
-              LOG (WARNING)
-                  << "Invalid ID in character update entry: " << idVal;
+              LOG (WARNING) << "[MOVE_REJECTED] Player '" << name
+                            << "': Invalid character ID format: " << idVal
+                            << " (must be positive integer < 999999999)";
               continue;
             }
 
           auto c = characters.GetById (id);
           if (c == nullptr)
             {
-              LOG (WARNING) << "Character ID does not exist: " << id;
+              LOG (WARNING) << "[MOVE_REJECTED] Player '" << name
+                            << "': Character ID " << id << " does not exist";
               continue;
             }
 
           if (c->GetOwner () != name)
             {
-              LOG (WARNING)
-                  << "User " << name
-                  << " is not allowed to update character owned by "
-                  << c->GetOwner ();
+              LOG (WARNING) << "[MOVE_REJECTED] Player '" << name
+                            << "': Cannot update character " << id
+                            << " - owned by '" << c->GetOwner () << "'";
               continue;
             }
 
@@ -565,38 +572,49 @@ BaseMoveProcessor::ParseCharacterWaypoints (const Character& c,
   if (wpVal.isNull ())
     {
       wp.clear ();
+      LOG (INFO) << "[MOVE_OK] Character " << c.GetId ()
+                 << " (owner: " << c.GetOwner () << "): Stopping movement";
       return true;
     }
 
   if (!wpVal.isString ())
     {
-      LOG (WARNING) << "Expected string for encoded waypoints: " << upd;
+      LOG (WARNING) << "[MOVE_REJECTED] Character " << c.GetId ()
+                    << " (owner: " << c.GetOwner ()
+                    << "): 'wp' field must be a string (encoded waypoints), got: "
+                    << wpVal.type ();
       return false;
     }
 
   if (c.IsBusy ())
     {
-      LOG (WARNING)
-          << "Character " << c.GetId () << " is busy, can't set waypoints";
+      LOG (WARNING) << "[MOVE_REJECTED] Character " << c.GetId ()
+                    << " (owner: " << c.GetOwner ()
+                    << "): Cannot set waypoints - character is busy with ongoing operation";
       return false;
     }
 
   if (c.IsInBuilding ())
     {
-      LOG (WARNING)
-          << "Character " << c.GetId ()
-          << " is inside a building, can't set waypoints";
+      LOG (WARNING) << "[MOVE_REJECTED] Character " << c.GetId ()
+                    << " (owner: " << c.GetOwner ()
+                    << "): Cannot set waypoints - character is inside building "
+                    << c.GetBuildingId ();
       return false;
     }
 
   if (!DecodeWaypoints (wpVal.asString (), wp))
     {
-      LOG (WARNING)
-          << "Invalid waypoints given for character " << c.GetId ()
-          << ", not updating movement";
+      LOG (WARNING) << "[MOVE_REJECTED] Character " << c.GetId ()
+                    << " (owner: " << c.GetOwner ()
+                    << "): Failed to decode waypoints - invalid encoding or format. "
+                    << "First 100 chars: " << wpVal.asString ().substr (0, 100);
       return false;
     }
 
+  LOG (INFO) << "[MOVE_OK] Character " << c.GetId ()
+             << " (owner: " << c.GetOwner ()
+             << "): Setting " << wp.size () << " waypoints";
   return true;
 }
 
@@ -619,20 +637,24 @@ BaseMoveProcessor::ParseCharacterWaypointExtension (const Character& c,
   const auto& pb = c.GetProto ();
   if (!pendingWp && pb.movement ().waypoints ().empty ())
     {
-      LOG (WARNING)
-          << "Character " << c.GetId ()
-          << " is not moving, can't extend waypoints";
+      LOG (WARNING) << "[MOVE_REJECTED] Character " << c.GetId ()
+                    << " (owner: " << c.GetOwner ()
+                    << "): Cannot extend waypoints - character is not moving";
       return false;
     }
 
   if (!DecodeWaypoints (wpx.asString (), wp))
     {
-      LOG (WARNING)
-          << "Invalid waypoints given for character " << c.GetId ()
-          << ", not extending movement";
+      LOG (WARNING) << "[MOVE_REJECTED] Character " << c.GetId ()
+                    << " (owner: " << c.GetOwner ()
+                    << "): Failed to decode waypoint extension. "
+                    << "First 100 chars: " << wpx.asString ().substr (0, 100);
       return false;
     }
 
+  LOG (INFO) << "[MOVE_OK] Character " << c.GetId ()
+             << " (owner: " << c.GetOwner ()
+             << "): Extending path with " << wp.size () << " waypoints";
   return true;
 }
 
@@ -647,9 +669,10 @@ BaseMoveProcessor::ParseEnterBuilding (const Character& c,
 
   if (c.IsInBuilding ())
     {
-      LOG (WARNING)
-          << "Character " << c.GetId ()
-          << " is in building, can't enter another one";
+      LOG (WARNING) << "[MOVE_REJECTED] Character " << c.GetId ()
+                    << " (owner: " << c.GetOwner ()
+                    << "): Already in building " << c.GetBuildingId ()
+                    << ", can't enter another";
       return false;
     }
 
@@ -658,9 +681,9 @@ BaseMoveProcessor::ParseEnterBuilding (const Character& c,
   /* null value means to cancel any entering.  */
   if (val.isNull ())
     {
-      VLOG (1)
-          << "Character " << c.GetId ()
-          << " no longer wants to enter a building";
+      LOG (INFO) << "[MOVE_OK] Character " << c.GetId ()
+                 << " (owner: " << c.GetOwner ()
+                 << "): Cancelling enter building request";
       buildingId = Database::EMPTY_ID;
       return true;
     }
@@ -668,14 +691,18 @@ BaseMoveProcessor::ParseEnterBuilding (const Character& c,
   /* Otherwise, see if this is a valid building ID.  */
   if (!IdFromJson (val, buildingId))
     {
-      LOG (WARNING) << "Not a building ID: " << val;
+      LOG (WARNING) << "[MOVE_REJECTED] Character " << c.GetId ()
+                    << " (owner: " << c.GetOwner ()
+                    << "): Invalid building ID: " << val;
       return false;
     }
 
   auto b = buildings.GetById (buildingId);
   if (b == nullptr)
     {
-      LOG (WARNING) << "Building does not exist: " << val;
+      LOG (WARNING) << "[MOVE_REJECTED] Character " << c.GetId ()
+                    << " (owner: " << c.GetOwner ()
+                    << "): Building " << buildingId << " does not exist";
       return false;
     }
 
@@ -684,16 +711,17 @@ BaseMoveProcessor::ParseEnterBuilding (const Character& c,
   if (b->GetFaction () != Faction::ANCIENT
         && b->GetFaction () != c.GetFaction ())
     {
-      LOG (WARNING)
-          << "Character " << c.GetId ()
-          << " can't enter building " << buildingId
-          << " of different faction";
+      LOG (WARNING) << "[MOVE_REJECTED] Character " << c.GetId ()
+                    << " (owner: " << c.GetOwner ()
+                    << ", faction: " << FactionToString (c.GetFaction ())
+                    << "): Cannot enter building " << buildingId
+                    << " of faction " << FactionToString (b->GetFaction ());
       return false;
     }
 
-  VLOG (1)
-      << "Character " << c.GetId ()
-      << " wants to enter building " << buildingId;
+  LOG (INFO) << "[MOVE_OK] Character " << c.GetId ()
+             << " (owner: " << c.GetOwner ()
+             << "): Queuing to enter building " << buildingId;
 
   return true;
 }
@@ -709,27 +737,31 @@ BaseMoveProcessor::ParseExitBuilding (const Character& c,
 
   if (val.size () != 0)
     {
-      LOG (WARNING) << "Invalid exit-building move: " << upd;
+      LOG (WARNING) << "[MOVE_REJECTED] Character " << c.GetId ()
+                    << " (owner: " << c.GetOwner ()
+                    << "): Invalid exit-building move format: " << upd;
       return false;
     }
 
   if (c.IsBusy ())
     {
-      LOG (WARNING)
-          << "Character " << c.GetId () << " is busy, can't exit building";
+      LOG (WARNING) << "[MOVE_REJECTED] Character " << c.GetId ()
+                    << " (owner: " << c.GetOwner ()
+                    << "): Cannot exit building - character is busy";
       return false;
     }
 
   if (!c.IsInBuilding ())
     {
-      LOG (WARNING)
-          << "Character " << c.GetId () << " is not in building and can't exit";
+      LOG (WARNING) << "[MOVE_REJECTED] Character " << c.GetId ()
+                    << " (owner: " << c.GetOwner ()
+                    << "): Cannot exit - not in any building";
       return false;
     }
 
-  VLOG (1)
-      << "Character " << c.GetId ()
-      << " will exit building " << c.GetBuildingId ();
+  LOG (INFO) << "[MOVE_OK] Character " << c.GetId ()
+             << " (owner: " << c.GetOwner ()
+             << "): Exiting building " << c.GetBuildingId ();
 
   return true;
 }

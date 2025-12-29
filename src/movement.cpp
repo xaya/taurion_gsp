@@ -80,30 +80,36 @@ DecodeWaypoints (const std::string& encoded, std::vector<HexCoord>& wp)
   if (!xaya::UncompressJson (encoded, MAX_WAYPOINT_SIZE, 3,
                              jsonWp, uncompressed))
     {
-      LOG (WARNING)
-          << "Failed to decode waypoint string:\n"
-          << encoded.substr (0, 1'024);
+      LOG (WARNING) << "[WAYPOINT_DECODE_FAILED] Cannot decompress waypoint data. "
+                    << "Expected base64-encoded raw deflate (zlib windowBits=-15). "
+                    << "Encoded length: " << encoded.size ()
+                    << ", First 100 chars: " << encoded.substr (0, 100);
       return false;
     }
 
   if (!jsonWp.isArray ())
     {
-      LOG (WARNING) << "Decoded waypoints are not an array:\n" << jsonWp;
+      LOG (WARNING) << "[WAYPOINT_DECODE_FAILED] Decoded JSON is not an array. "
+                    << "Expected: [{\"x\":N,\"y\":N},...], Got: " << jsonWp;
       return false;
     }
 
   wp.clear ();
+  size_t idx = 0;
   for (const auto& entry : jsonWp)
     {
       HexCoord c;
       if (!CoordFromJson (entry, c))
         {
-          LOG (WARNING) << "Invalid waypoint: " << entry;
+          LOG (WARNING) << "[WAYPOINT_DECODE_FAILED] Invalid waypoint at index "
+                        << idx << ". Expected {\"x\":int,\"y\":int}, got: " << entry;
           return false;
         }
       wp.push_back (c);
+      ++idx;
     }
 
+  VLOG (1) << "[WAYPOINT_DECODE_OK] Decoded " << wp.size () << " waypoints";
   return true;
 }
 

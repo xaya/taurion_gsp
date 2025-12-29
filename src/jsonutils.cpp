@@ -64,8 +64,9 @@ CoordFromJson (const Json::Value& val, HexCoord& c)
 {
   if (!val.isObject ())
     {
-      VLOG (1)
-          << "Invalid HexCoord: JSON value " << val << " is not an object";
+      LOG (WARNING)
+          << "[COORD_PARSE_FAILED] JSON value is not an object. "
+          << "Expected: {\"x\":int,\"y\":int}, Got: " << val;
       return false;
     }
 
@@ -74,26 +75,26 @@ CoordFromJson (const Json::Value& val, HexCoord& c)
 
   if (xMember == nullptr || yMember == nullptr)
     {
-      VLOG (1)
-          << "Invalid HexCoord: JSON value " << val
-          << " must have 'x' and 'y' members";
+      LOG (WARNING)
+          << "[COORD_PARSE_FAILED] Missing 'x' or 'y' member. "
+          << "Expected: {\"x\":int,\"y\":int}, Got: " << val;
       return false;
     }
 
   if (val.size () != 2)
     {
-      VLOG (1)
-          << "Invalid HexCoord: JSON value " << val
-          << " has extra members";
+      LOG (WARNING)
+          << "[COORD_PARSE_FAILED] Extra members in coordinate object. "
+          << "Expected only 'x' and 'y', Got: " << val;
       return false;
     }
 
   if (!xMember->isInt64 () || !xaya::IsIntegerValue (*xMember)
         || !yMember->isInt64 () || !xaya::IsIntegerValue (*yMember))
     {
-      VLOG (1)
-          << "Invalid HexCoord: JSON value " << val
-          << " has non-int64 coordinates";
+      LOG (WARNING)
+          << "[COORD_PARSE_FAILED] Non-integer coordinates. "
+          << "Expected: {\"x\":int,\"y\":int}, Got: " << val;
       return false;
     }
 
@@ -103,18 +104,23 @@ CoordFromJson (const Json::Value& val, HexCoord& c)
   using intLimits = std::numeric_limits<HexCoord::IntT>;
   if (x < intLimits::min () || x > intLimits::max ())
     {
-      VLOG (1)
-          << "Invalid HexCoord: x coordinate " << x << " is out of range";
+      LOG (WARNING)
+          << "[COORD_PARSE_FAILED] x coordinate out of range. "
+          << "Value: " << x << ", Valid range: ["
+          << intLimits::min () << ", " << intLimits::max () << "]";
       return false;
     }
   if (y < intLimits::min () || y > intLimits::max ())
     {
-      VLOG (1)
-          << "Invalid HexCoord: y coordinate " << y << " is out of range";
+      LOG (WARNING)
+          << "[COORD_PARSE_FAILED] y coordinate out of range. "
+          << "Value: " << y << ", Valid range: ["
+          << intLimits::min () << ", " << intLimits::max () << "]";
       return false;
     }
 
   c = HexCoord (x, y);
+  VLOG (1) << "[COORD_PARSE_OK] Parsed coordinate: (" << x << ", " << y << ")";
   return true;
 }
 
