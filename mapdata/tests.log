@@ -4,39 +4,39 @@ Running main() from /home/ryumaster/googletest/googletest/src/gtest_main.cc
 [----------] 3 tests from BaseMapTests
 [ RUN      ] BaseMapTests.IsOnMap
 WARNING: Logging before InitGoogleLogging() is written to STDERR
-I20251224 03:08:01.016585 289431 roconfig.cpp:116] Initialising hard-coded ConfigData proto instance...
-[       OK ] BaseMapTests.IsOnMap (86 ms)
+I20251227 01:00:50.229866 2187918 roconfig.cpp:116] Initialising hard-coded ConfigData proto instance...
+[       OK ] BaseMapTests.IsOnMap (18 ms)
 [ RUN      ] BaseMapTests.MatchesOriginalObstacleData
-I20251224 03:08:01.160399 289431 basemap_tests.cpp:72] Checking IsPassable for 8192 * 8192 = 67108864 tiles
-[       OK ] BaseMapTests.MatchesOriginalObstacleData (16986 ms)
+I20251227 01:00:50.263365 2187918 basemap_tests.cpp:72] Checking IsPassable for 8192 * 8192 = 67108864 tiles
+[       OK ] BaseMapTests.MatchesOriginalObstacleData (5171 ms)
 [ RUN      ] BaseMapTests.EdgeWeights
-[       OK ] BaseMapTests.EdgeWeights (56 ms)
-[----------] 3 tests from BaseMapTests (17129 ms total)
+[       OK ] BaseMapTests.EdgeWeights (17 ms)
+[----------] 3 tests from BaseMapTests (5208 ms total)
 
 [----------] 1 test from DynTilesTests
 [ RUN      ] DynTilesTests.FullMap
-[       OK ] DynTilesTests.FullMap (1864 ms)
-[----------] 1 test from DynTilesTests (1864 ms total)
+[       OK ] DynTilesTests.FullMap (653 ms)
+[----------] 1 test from DynTilesTests (653 ms total)
 
 [----------] 3 tests from RegionMapTests
 [ RUN      ] RegionMapTests.OutOfMap
 [       OK ] RegionMapTests.OutOfMap (0 ms)
 [ RUN      ] RegionMapTests.MatchesOriginalData
-I20251224 03:08:20.010526 289431 regionmap_tests.cpp:63] Checking region map for 8192 * 8192 = 67108864 tiles
-[       OK ] RegionMapTests.MatchesOriginalData (22787 ms)
+I20251227 01:00:56.091820 2187918 regionmap_tests.cpp:63] Checking region map for 8192 * 8192 = 67108864 tiles
+[       OK ] RegionMapTests.MatchesOriginalData (7479 ms)
 [ RUN      ] RegionMapTests.GetRegionShape
-[       OK ] RegionMapTests.GetRegionShape (1 ms)
+[       OK ] RegionMapTests.GetRegionShape (0 ms)
 [ DISABLED ] RegionMapTests.DISABLED_ExhaustiveRegionShapes
-[----------] 3 tests from RegionMapTests (22788 ms total)
+[----------] 3 tests from RegionMapTests (7480 ms total)
 
 [----------] 3 tests from SafeZonesTests
 [ RUN      ] SafeZonesTests.IsNoCombat
-[       OK ] SafeZonesTests.IsNoCombat (58 ms)
+[       OK ] SafeZonesTests.IsNoCombat (18 ms)
 [ RUN      ] SafeZonesTests.StarterFor
-[       OK ] SafeZonesTests.StarterFor (58 ms)
+[       OK ] SafeZonesTests.StarterFor (17 ms)
 [ RUN      ] SafeZonesTests.Exhaustive
-[       OK ] SafeZonesTests.Exhaustive (16423 ms)
-[----------] 3 tests from SafeZonesTests (16540 ms total)
+[       OK ] SafeZonesTests.Exhaustive (5149 ms)
+[----------] 3 tests from SafeZonesTests (5185 ms total)
 
 [----------] 2 tests from SparseMapTests
 [ RUN      ] SparseMapTests.BasicAccess
@@ -46,7 +46,7 @@ I20251224 03:08:20.010526 289431 regionmap_tests.cpp:63] Checking region map for
 [----------] 2 tests from SparseMapTests (0 ms total)
 
 [----------] Global test environment tear-down
-[==========] 12 tests from 5 test suites ran. (58323 ms total)
+[==========] 12 tests from 5 test suites ran. (18527 ms total)
 [  PASSED  ] 12 tests.
 
   YOU HAVE 1 DISABLED TEST

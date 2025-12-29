@@ -1,4 +1,4 @@
-2025-12-24T03:06:41+01:00
+2025-12-27T00:58:22+01:00
 Running ./benchmarks
 Run on (8 X 4000 MHz CPU s)
 CPU Caches:
@@ -6,16 +6,16 @@ CPU Caches:
   L1 Instruction 32 KiB (x4)
   L2 Unified 256 KiB (x4)
   L3 Unified 8192 KiB (x1)
-Load Average: 0.19, 0.15, 0.15
+Load Average: 0.68, 0.74, 0.47
 ***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.
 ***WARNING*** Library was built as DEBUG. Timings may be affected.
 -----------------------------------------------------------
 Benchmark                 Time             CPU   Iterations
 -----------------------------------------------------------
-PathToTarget/1        0.002 ms        0.002 ms       261507
-PathToTarget/10       0.086 ms        0.086 ms         7372
-PathToTarget/100       15.7 ms         15.7 ms           49
-PathStepping/1        0.073 us        0.073 us      9681493
-PathStepping/10       0.382 us        0.381 us      1687452
-PathStepping/100       3.48 us         3.48 us       201220
+PathToTarget/1        0.000 ms        0.000 ms      1459332
+PathToTarget/10       0.021 ms        0.021 ms        32976
+PathToTarget/100       3.53 ms         3.53 ms          199
+PathStepping/1        0.015 us        0.015 us     47943794
+PathStepping/10       0.107 us        0.107 us      6516531
+PathStepping/100       1.05 us         1.05 us       664016
 PASS benchmarks (exit status: 0)

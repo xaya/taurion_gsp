@@ -38,14 +38,14 @@ Running main() from /home/ryumaster/googletest/googletest/src/gtest_main.cc
 [ RUN      ] PathFinderTests.OutOfL1Range
 [       OK ] PathFinderTests.OutOfL1Range (0 ms)
 [ RUN      ] PathFinderTests.ToObstacle
-[       OK ] PathFinderTests.ToObstacle (77 ms)
+[       OK ] PathFinderTests.ToObstacle (18 ms)
 [ RUN      ] PathFinderTests.FromObstacle
 [       OK ] PathFinderTests.FromObstacle (0 ms)
 [ RUN      ] PathFinderTests.MultipleSteppers
 [       OK ] PathFinderTests.MultipleSteppers (0 ms)
 [ RUN      ] PathFinderTests.RepathingWithEachStep
-[       OK ] PathFinderTests.RepathingWithEachStep (43 ms)
-[----------] 10 tests from PathFinderTests (121 ms total)
+[       OK ] PathFinderTests.RepathingWithEachStep (8 ms)
+[----------] 10 tests from PathFinderTests (27 ms total)
 
 [----------] 4 tests from RangeMapTests
 [ RUN      ] RangeMapTests.FullRangeAccess
@@ -64,10 +64,10 @@ Running main() from /home/ryumaster/googletest/googletest/src/gtest_main.cc
 [ RUN      ] L1RingTests.Golden
 [       OK ] L1RingTests.Golden (0 ms)
 [ RUN      ] L1RingTests.VariousRadii
-[       OK ] L1RingTests.VariousRadii (13 ms)
-[----------] 3 tests from L1RingTests (13 ms total)
+[       OK ] L1RingTests.VariousRadii (2 ms)
+[----------] 3 tests from L1RingTests (2 ms total)
 
 [----------] Global test environment tear-down
-[==========] 27 tests from 4 test suites ran. (135 ms total)
+[==========] 27 tests from 4 test suites ran. (30 ms total)
 [  PASSED  ] 27 tests.
 PASS tests (exit status: 0)

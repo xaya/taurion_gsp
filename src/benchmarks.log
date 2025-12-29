@@ -1,8 +1,8 @@
 WARNING: Logging before InitGoogleLogging() is written to STDERR
-I20251224 03:10:40.809096 290492 roconfig.cpp:116] Initialising hard-coded ConfigData proto instance...
-I20251224 03:10:40.917083 290492 roconfig.cpp:116] Initialising hard-coded ConfigData proto instance...
-I20251224 03:10:41.031071 290492 roconfig.cpp:116] Initialising hard-coded ConfigData proto instance...
-2025-12-24T03:10:41+01:00
+I20251227 01:04:25.313066 2190328 roconfig.cpp:116] Initialising hard-coded ConfigData proto instance...
+I20251227 01:04:25.338164 2190328 roconfig.cpp:116] Initialising hard-coded ConfigData proto instance...
+I20251227 01:04:25.361809 2190328 roconfig.cpp:116] Initialising hard-coded ConfigData proto instance...
+2025-12-27T01:04:25+01:00
 Running ./benchmarks
 Run on (8 X 4000 MHz CPU s)
 CPU Caches:
@@ -10,39 +10,39 @@ CPU Caches:
   L1 Instruction 32 KiB (x4)
   L2 Unified 256 KiB (x4)
   L3 Unified 8192 KiB (x1)
-Load Average: 1.32, 0.93, 0.50
+Load Average: 1.05, 0.97, 0.67
 ***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.
 ***WARNING*** Library was built as DEBUG. Timings may be affected.
 ----------------------------------------------------------------------------
 Benchmark                                  Time             CPU   Iterations
 ----------------------------------------------------------------------------
-CombatHpUpdate/100/0/1                  16.2 ms         16.2 ms           45
-CombatHpUpdate/100/0/10                 66.6 ms         66.6 ms           11
-CombatHpUpdate/10000/0/1                1396 ms         1396 ms            1
-CombatHpUpdate/10000/0/10               6983 ms         6981 ms            1
-CombatHpUpdate/100/10000/1              21.5 ms         21.5 ms           33
-CombatHpUpdate/10000/10000/10           7094 ms         7091 ms            1
-CombatKills/100/0/1                     19.7 ms         19.7 ms           38
-CombatKills/100/0/10                    73.1 ms         73.1 ms           10
-CombatKills/10000/0/1                   2164 ms         2163 ms            1
-CombatKills/10000/0/10                  7881 ms         7879 ms            1
-CombatKills/100/10000/1                 28.7 ms         28.7 ms           24
-CombatKills/10000/10000/10              7764 ms         7762 ms            1
-TargetSelectionFriendly/10/1/1         0.243 ms        0.243 ms         2886
-TargetSelectionFriendly/100/1/1         6.20 ms         6.20 ms          121
-TargetSelectionFriendly/1000/1/1         409 ms          409 ms            2
-TargetSelectionFriendly/100/10/1         270 ms          270 ms            3
-TargetSelectionFriendly/100/1/10        57.6 ms         57.5 ms           11
-TargetSelectionFriendly/10/10/100        460 ms          460 ms            2
-TargetSelectionFriendly/10/100/10       2673 ms         2672 ms            1
-TargetSelectionEnemies/10/1/1           1.52 ms         1.52 ms          607
-TargetSelectionEnemies/100/1/1          23.1 ms         23.0 ms           22
-TargetSelectionEnemies/1000/1/1         1276 ms         1275 ms            1
-TargetSelectionEnemies/100/10/1          468 ms          468 ms            2
-TargetSelectionEnemies/100/1/10          236 ms          236 ms            3
-TargetSelectionEnemies/10/10/100        1695 ms         1695 ms            1
-TargetSelectionEnemies/10/100/10        3982 ms         3981 ms            1
-MovementLongHaul/10                    0.871 ms        0.870 ms          801
-MovementLongHaul/100                    8.29 ms         8.29 ms           86
-MovementLongHaul/1000                   80.7 ms         80.6 ms            8
+CombatHpUpdate/100/0/1                  4.15 ms         4.15 ms          173
+CombatHpUpdate/100/0/10                 19.8 ms         19.8 ms           38
+CombatHpUpdate/10000/0/1                 379 ms          379 ms            2
+CombatHpUpdate/10000/0/10               2070 ms         2070 ms            1
+CombatHpUpdate/100/10000/1              7.00 ms         7.00 ms          103
+CombatHpUpdate/10000/10000/10           2093 ms         2093 ms            1
+CombatKills/100/0/1                     6.45 ms         6.42 ms          120
+CombatKills/100/0/10                    21.9 ms         21.9 ms           34
+CombatKills/10000/0/1                    613 ms          610 ms            1
+CombatKills/10000/0/10                  2364 ms         2363 ms            1
+CombatKills/100/10000/1                 9.69 ms         9.69 ms           76
+CombatKills/10000/10000/10              2498 ms         2497 ms            1
+TargetSelectionFriendly/10/1/1         0.075 ms        0.075 ms         9144
+TargetSelectionFriendly/100/1/1         1.79 ms         1.79 ms          390
+TargetSelectionFriendly/1000/1/1         134 ms          133 ms            5
+TargetSelectionFriendly/100/10/1        86.6 ms         86.6 ms            8
+TargetSelectionFriendly/100/1/10        18.1 ms         18.1 ms           39
+TargetSelectionFriendly/10/10/100        146 ms          146 ms            5
+TargetSelectionFriendly/10/100/10        840 ms          840 ms            1
+TargetSelectionEnemies/10/1/1          0.339 ms        0.339 ms         2109
+TargetSelectionEnemies/100/1/1          6.62 ms         6.62 ms          107
+TargetSelectionEnemies/1000/1/1          400 ms          399 ms            2
+TargetSelectionEnemies/100/10/1          140 ms          140 ms            5
+TargetSelectionEnemies/100/1/10         70.7 ms         70.7 ms           10
+TargetSelectionEnemies/10/10/100         495 ms          495 ms            2
+TargetSelectionEnemies/10/100/10        1370 ms         1366 ms            1
+MovementLongHaul/10                    0.282 ms        0.282 ms         2557
+MovementLongHaul/100                    2.72 ms         2.72 ms          255
+MovementLongHaul/1000                   26.0 ms         26.0 ms           26
 PASS benchmarks (exit status: 0)

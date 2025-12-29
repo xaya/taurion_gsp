@@ -1,4 +1,4 @@
-2025-12-24T03:08:59+01:00
+2025-12-27T01:01:08+01:00
 Running ./benchmarks
 Run on (8 X 4000 MHz CPU s)
 CPU Caches:
@@ -6,31 +6,31 @@ CPU Caches:
   L1 Instruction 32 KiB (x4)
   L2 Unified 256 KiB (x4)
   L3 Unified 8192 KiB (x1)
-Load Average: 1.23, 0.74, 0.39
+Load Average: 1.10, 0.89, 0.58
 ***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.
 ***WARNING*** Library was built as DEBUG. Timings may be affected.
 ---------------------------------------------------------------------------------
 Benchmark                                       Time             CPU   Iterations
 ---------------------------------------------------------------------------------
-DynTilesBoolConstruction                     2.30 us         2.30 us       274327
-DynTilesBoolDoubleUpdate/100000              20.2 ms         20.2 ms           37
-DynTilesBoolDoubleUpdate/1000000             78.3 ms         78.3 ms            7
-DynTilesBoolReadDefault/1000/100             1.65 ms         1.65 ms          410
-DynTilesBoolReadDefault/1000/1000            10.9 ms         10.9 ms           60
-DynTilesBoolReadDefault/10000/100            29.5 ms         29.5 ms           23
-DynTilesBoolReadDefault/10000/1000            167 ms          167 ms            4
-DynTilesBoolReadInitialised/1000/100         1.18 ms         1.18 ms          596
-DynTilesBoolReadInitialised/1000/1000        11.1 ms         11.1 ms           65
-DynTilesBoolReadInitialised/10000/100        16.8 ms         16.8 ms           42
-DynTilesBoolReadInitialised/10000/1000        152 ms          152 ms            5
-GetRegionId/1000                            0.535 ms        0.536 ms         1364
-GetRegionId/1000000                           573 ms          573 ms            1
-GetRegionShape                               93.5 us         93.5 us         7260
-SafeZonesConstructor/main                    82.5 ms         82.4 ms            8
-SafeZonesConstructor/test                    82.3 ms         82.3 ms            8
-SafeZonesConstructor/regtest                 55.3 ms         55.3 ms           13
-SafeZonesIsNoCombat/1000                     40.5 us         39.9 us        19036
-SafeZonesIsNoCombat/1000000                 33977 us        33970 us           21
-SafeZonesStarterFor/1000                     38.0 us         38.2 us        17942
-SafeZonesStarterFor/1000000                 34060 us        34053 us           21
+DynTilesBoolConstruction                    0.997 us        0.997 us       789505
+DynTilesBoolDoubleUpdate/100000              8.35 ms         8.34 ms           79
+DynTilesBoolDoubleUpdate/1000000             27.9 ms         27.9 ms           25
+DynTilesBoolReadDefault/1000/100            0.662 ms        0.662 ms         1090
+DynTilesBoolReadDefault/1000/1000            3.96 ms         3.95 ms          159
+DynTilesBoolReadDefault/10000/100            9.65 ms         9.65 ms           71
+DynTilesBoolReadDefault/10000/1000           55.1 ms         55.0 ms           13
+DynTilesBoolReadInitialised/1000/100        0.350 ms        0.350 ms         1862
+DynTilesBoolReadInitialised/1000/1000        3.18 ms         3.18 ms          220
+DynTilesBoolReadInitialised/10000/100        4.75 ms         4.74 ms          144
+DynTilesBoolReadInitialised/10000/1000       42.7 ms         42.7 ms           16
+GetRegionId/1000                            0.148 ms        0.148 ms         4731
+GetRegionId/1000000                           145 ms          145 ms            5
+GetRegionShape                               28.8 us         28.9 us        24134
+SafeZonesConstructor/main                    26.6 ms         26.6 ms           26
+SafeZonesConstructor/test                    26.8 ms         26.8 ms           27
+SafeZonesConstructor/regtest                 17.5 ms         17.5 ms           40
+SafeZonesIsNoCombat/1000                     17.3 us         17.3 us        40840
+SafeZonesIsNoCombat/1000000                 14297 us        14297 us           49
+SafeZonesStarterFor/1000                     17.3 us         17.3 us        40348
+SafeZonesStarterFor/1000000                 14342 us        14341 us           48
 PASS benchmarks (exit status: 0)
