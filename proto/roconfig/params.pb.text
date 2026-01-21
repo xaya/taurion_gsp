@@ -28,7 +28,7 @@ params:
     # periodically be bridged to Ethereum and burnt there.
     burn_addr: "0x2659deaa71B51124bA6e6493b795486b3027Dbc9"
 
-    god_mode: false
+    god_mode: true
 
     spawn_areas:
       {
