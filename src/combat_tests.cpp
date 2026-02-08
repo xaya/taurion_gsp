@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2021  Autonomous Worlds Ltd
+    Copyright (C) 2019-2026  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 */
 
 #include "combat.hpp"
+#include "dynobstacles.hpp"
 
 #include "testutils.hpp"
 
@@ -2481,7 +2482,13 @@ protected:
     proto::TargetId targetId;
     targetId.set_type (proto::TargetId::TYPE_CHARACTER);
     targetId.set_id (id);
-    ProcessKills (db, dl, loot, {targetId}, rnd, ctx);
+
+    /* We use a temporary DynObstacles instance here, to ensure it
+       matches the current state of the map (including characters that
+       were added for the test for instance).  Tests that specifically
+       verify the DynObstacles changes call ProcessKills directly.  */
+    DynObstacles dyn(db, ctx);
+    ProcessKills (db, dyn, dl, loot, {targetId}, rnd, ctx);
   }
 
 };
@@ -2491,7 +2498,10 @@ TEST_F (ProcessKillsCharacterTests, DeletesCharacters)
   const auto id1 = characters.CreateNew ("domob", Faction::RED)->GetId ();
   const auto id2 = characters.CreateNew ("domob", Faction::RED)->GetId ();
 
-  ProcessKills (db, dl, loot, {}, rnd, ctx);
+  {
+    DynObstacles dyn(db, ctx);
+    ProcessKills (db, dyn, dl, loot, {}, rnd, ctx);
+  }
   EXPECT_TRUE (characters.GetById (id1) != nullptr);
   EXPECT_TRUE (characters.GetById (id2) != nullptr);
 
@@ -2499,6 +2509,23 @@ TEST_F (ProcessKillsCharacterTests, DeletesCharacters)
 
   EXPECT_TRUE (characters.GetById (id1) != nullptr);
   EXPECT_TRUE (characters.GetById (id2) == nullptr);
+}
+
+TEST_F (ProcessKillsCharacterTests, UpdatesDynObstacles)
+{
+  const HexCoord pos(10, 5);
+  const auto id = characters.CreateNew ("domob", Faction::RED)->GetId ();
+  characters.GetById (id)->SetPosition (pos);
+
+  DynObstacles dyn(db, ctx);
+  ASSERT_TRUE (dyn.HasVehicle (pos));
+
+  proto::TargetId targetId;
+  targetId.set_type (proto::TargetId::TYPE_CHARACTER);
+  targetId.set_id (id);
+  ProcessKills (db, dyn, dl, loot, {targetId}, rnd, ctx);
+
+  EXPECT_FALSE (dyn.HasVehicle (pos));
 }
 
 TEST_F (ProcessKillsCharacterTests, RemovesFromDamageLists)
@@ -2656,15 +2683,20 @@ protected:
     proto::TargetId targetId;
     targetId.set_type (proto::TargetId::TYPE_BUILDING);
     targetId.set_id (id);
-    ProcessKills (db, dl, loot, {targetId}, rnd, ctx);
+
+    DynObstacles dyn(db, ctx);
+    ProcessKills (db, dyn, dl, loot, {targetId}, rnd, ctx);
   }
 
 };
 
 TEST_F (ProcessKillsBuildingTests, RemovesBuildingAndInventories)
 {
-  const auto id1
-      = buildings.CreateNew ("checkmark", "", Faction::ANCIENT)->GetId ();
+  auto b = buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+  b->SetCentre (HexCoord (10, 5));
+  const auto id1 = b->GetId ();
+  b.reset ();
+
   const auto id2
       = buildings.CreateNew ("checkmark", "domob", Faction::RED)->GetId ();
 
@@ -2674,7 +2706,7 @@ TEST_F (ProcessKillsBuildingTests, RemovesBuildingAndInventories)
   KillBuilding (id2);
 
   ASSERT_EQ (buildings.GetById (id2), nullptr);
-  auto b = buildings.GetById (id1);
+  b = buildings.GetById (id1);
   ASSERT_NE (b, nullptr);
   EXPECT_EQ (b->GetId (), id1);
 
@@ -2685,6 +2717,25 @@ TEST_F (ProcessKillsBuildingTests, RemovesBuildingAndInventories)
   EXPECT_EQ (i->GetAccount (), "domob");
   EXPECT_EQ (i->GetInventory ().GetFungibleCount ("foo"), 10);
   EXPECT_FALSE (res.Step ());
+}
+
+TEST_F (ProcessKillsBuildingTests, UpdatesDynObstacles)
+{
+  const HexCoord pos(10, 5);
+  auto b = buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+  b->SetCentre (pos);
+  const auto id = b->GetId ();
+  b.reset ();
+
+  DynObstacles dyn(db, ctx);
+  ASSERT_TRUE (dyn.IsBuilding (pos));
+
+  proto::TargetId targetId;
+  targetId.set_type (proto::TargetId::TYPE_BUILDING);
+  targetId.set_id (id);
+  ProcessKills (db, dyn, dl, loot, {targetId}, rnd, ctx);
+
+  EXPECT_FALSE (dyn.IsBuilding (pos));
 }
 
 TEST_F (ProcessKillsBuildingTests, RemovesOngoings)
@@ -2715,8 +2766,11 @@ TEST_F (ProcessKillsBuildingTests, RemovesOrders)
 {
   accounts.CreateNew ("domob");
 
-  const auto id1
-      = buildings.CreateNew ("checkmark", "domob", Faction::RED)->GetId ();
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  b->SetCentre (HexCoord (10, 5));
+  const auto id1 = b->GetId ();
+  b.reset ();
+
   const auto id2
       = buildings.CreateNew ("checkmark", "domob", Faction::RED)->GetId ();
 

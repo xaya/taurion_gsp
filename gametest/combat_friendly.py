@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2020-2025  Autonomous Worlds Ltd
+#   Copyright (C) 2020-2026  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -51,7 +51,9 @@ class CombatFriendlyTest (PXTest):
     self.setCharactersHP ({"domob": {"s": 0}})
 
     self.mainLogger.info ("Regenerating out of range...")
-    self.generate (3)
+    # After sethp, one round of regeneration is already taking place in the
+    # same block.  So in total, this will be three rounds.
+    self.generate (2)
     self.expectShield ("domob", 1.5)
 
     self.mainLogger.info ("Moving into range...")
@@ -59,7 +61,7 @@ class CombatFriendlyTest (PXTest):
       "domob": {"x": 0, "y": 1},
     })
     # Moving the character into range mines one block, which regenerates
-    # normally and applies targeting.  From then on, the boosted rate
+    # normally and then applies targeting.  From then on, the boosted rate
     # is applied.
     self.generate (3)
     self.expectShield ("domob", 2 + 3 * 0.5 * 1.15)
@@ -68,11 +70,10 @@ class CombatFriendlyTest (PXTest):
     self.moveCharactersTo ({
       "domob": {"x": 1, "y": 1},
     })
-    # Moving out of range mines a block during whose regeneration phase
-    # the effect is still in place (as the movement happens afterwards).
-    # Then only normal regeneration is active.
+    # Moving out of range will immediately put the character out of range,
+    # so that only the normal regeneration takes place.
     self.generate (5)
-    self.expectShield ("domob", 2 + 4 * 0.5 * 1.15 + 5 * 0.5)
+    self.expectShield ("domob", 2 + 3 * 0.5 * 1.15 + 6 * 0.5)
 
 
 if __name__ == "__main__":

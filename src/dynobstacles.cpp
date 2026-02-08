@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2026  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -81,6 +81,20 @@ DynObstacles::AddBuilding (const Building& b, const bool allowOverlap)
   if (!allowOverlap)
     {
       CHECK (success) << "Error adding building " << b.GetId ();
+    }
+}
+
+void
+DynObstacles::RemoveBuilding (const Building& b)
+{
+  const auto shape
+      = GetBuildingShape (b.GetType (), b.GetProto ().shape_trafo (),
+                          b.GetCentre (), chain);
+  for (const auto& c : shape)
+    {
+      auto ref = buildings.Access (c);
+      CHECK (ref) << "Error removing building " << b.GetId ();
+      ref = false;
     }
 }
 

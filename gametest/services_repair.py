@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2020-2025  Autonomous Worlds Ltd
+#   Copyright (C) 2020-2026  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -66,6 +66,10 @@ class ServicesRepairTest (PXTest):
     })
 
     self.mainLogger.info ("Finishing the repair...")
+    # We can only exit the building once the repair is done.
+    c.sendMove ({"xb": {}})
+    self.generate (1)
+    self.assertEqual (self.getCharacters ()["domob"].isInBuilding (), True)
     c.sendMove ({"xb": {}})
     self.generate (1)
     c = self.getCharacters ()["domob"]

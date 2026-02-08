@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2026  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -114,6 +114,11 @@ public:
    * allowOverlap is true, in which case overlapping tiles are skipped).
    */
   void AddBuilding (const Building& b, bool allowOverlap = false);
+
+  /**
+   * Removes a building.
+   */
+  void RemoveBuilding (const Building& b);
 
 };
 

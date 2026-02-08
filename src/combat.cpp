@@ -1054,6 +1054,7 @@ private:
   xaya::Random& rnd;
   const Context& ctx;
 
+  DynObstacles& dyn;
   DamageLists& damageLists;
   GroundLootTable& loot;
 
@@ -1081,9 +1082,10 @@ private:
 
 public:
 
-  explicit KillProcessor (Database& db, DamageLists& dl, GroundLootTable& l,
+  explicit KillProcessor (Database& db, DynObstacles& dyno,
+                          DamageLists& dl, GroundLootTable& l,
                           xaya::Random& r, const Context& c)
-    : rnd(r), ctx(c), damageLists(dl), loot(l),
+    : rnd(r), ctx(c), dyn(dyno), damageLists(dl), loot(l),
       accounts(db), buildings(db), inventories(db), characters(db),
       orders(db), ongoings(db), regions(db, ctx.Height ())
   {}
@@ -1155,6 +1157,7 @@ KillProcessor::ProcessCharacter (const Database::IdT id)
         }
     }
 
+  dyn.RemoveVehicle (pos);
   DeleteCharacter (std::move (c));
 }
 
@@ -1237,6 +1240,8 @@ KillProcessor::ProcessBuilding (const Database::IdT id)
   if (b->GetProto ().has_construction_inventory ())
     totalInv += Inventory (b->GetProto ().construction_inventory ());
 
+  dyn.RemoveBuilding (*b);
+
   /* The underlying proto map does not have a well-defined order.  Since the
      random rolls depend on the other, make sure to explicitly sort the
      the list of inventory positions.  */
@@ -1274,11 +1279,12 @@ KillProcessor::ProcessBuilding (const Database::IdT id)
 } // anonymous namespace
 
 void
-ProcessKills (Database& db, DamageLists& dl, GroundLootTable& loot,
+ProcessKills (Database& db, DynObstacles& dyn,
+              DamageLists& dl, GroundLootTable& loot,
               const std::set<TargetKey>& dead,
               xaya::Random& rnd, const Context& ctx)
 {
-  KillProcessor proc(db, dl, loot, rnd, ctx);
+  KillProcessor proc(db, dyn, dl, loot, rnd, ctx);
 
   for (const auto& id : dead)
     switch (id.first)
@@ -1378,8 +1384,8 @@ RegenerateHP (Database& db)
 /* ************************************************************************** */
 
 void
-AllHpUpdates (Database& db, FameUpdater& fame, xaya::Random& rnd,
-              const Context& ctx)
+AllHpUpdates (Database& db, DynObstacles& dyn, FameUpdater& fame,
+              xaya::Random& rnd, const Context& ctx)
 {
   const auto dead = DealCombatDamage (db, fame.GetDamageLists (), rnd, ctx);
 
@@ -1387,7 +1393,7 @@ AllHpUpdates (Database& db, FameUpdater& fame, xaya::Random& rnd,
     fame.UpdateForKill (id.ToProto ());
 
   GroundLootTable loot(db);
-  ProcessKills (db, fame.GetDamageLists (), loot, dead, rnd, ctx);
+  ProcessKills (db, dyn, fame.GetDamageLists (), loot, dead, rnd, ctx);
 
   RegenerateHP (db);
 }

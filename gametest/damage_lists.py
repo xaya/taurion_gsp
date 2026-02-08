@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2019-2025  Autonomous Worlds Ltd
+#   Copyright (C) 2019-2026  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -82,14 +82,14 @@ class DamageListsTest (PXTest):
       self.expectAttackers ("attacker 2", ["target"])
 
     # Move the target out of range and verify timeout of the damage list.
-    # Note that the block generated during moveCharactersTo still performs
-    # an attack before processing the move, so that the damage list entries
-    # are refreshed.
+    # The block mined during moveCharactersTo already moves the target
+    # out of range before updating the damage lists, so it counts towards
+    # the timeout as well.
     self.mainLogger.info ("Letting damage list time out...")
     self.moveCharactersTo ({
       "target": offsetCoord ({"x": -100, "y": 0}, self.offset, False),
     })
-    self.generate (99)
+    self.generate (98)
     self.expectAttackers ("target", ["attacker", "attacker 2"])
     self.generate (1)
     self.expectAttackers ("target", [])

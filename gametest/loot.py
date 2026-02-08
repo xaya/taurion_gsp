@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2019-2025  Autonomous Worlds Ltd
+#   Copyright (C) 2019-2026  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -52,6 +52,7 @@ class LootTest (PXTest):
     self.initAccount ("red", "r")
     self.createCharacters ("red")
     self.generate (1)
+    self.changeCharacterVehicle ("red", "light attacker")
     self.moveCharactersTo ({"red": {"x": 1, "y": 2}})
     self.generate (1)
     self.getCharacters ()["red"].sendMove ({"pu": {"f": {"zerospace": 1000}}})
@@ -149,22 +150,22 @@ class LootTest (PXTest):
     self.initAccount ("green", "g")
     self.createCharacters ("green")
     self.generate (1)
-    self.changeCharacterVehicle ("green", "light attacker")
+    self.changeCharacterVehicle ("green", "chariot")
+    self.setCharactersHP ({
+      "red": {"a": 1, "s": 0},
+    })
     self.moveCharactersTo ({
       "red": {"x": 100, "y": 100},
       "green": {"x": 100, "y": 100},
     })
-    self.setCharactersHP ({
-      "red": {"a": 1, "s": 0},
-    })
     self.assertEqual (self.getCharacters ()["red"].getFungibleInventory (), {
       "zerospace": 9,
     })
+    self.generate (1)
+    assert "red" not in self.getCharacters ()
     self.getCharacters ()["green"].sendMove ({"pu": {"f": {"zerospace": 5}}})
     self.generate (1)
-    chars = self.getCharacters ()
-    assert "red" not in chars
-    self.assertEqual (chars["green"].getFungibleInventory (), {
+    self.assertEqual (self.getCharacters ()["green"].getFungibleInventory (), {
       "zerospace": 5,
     })
     self.assertEqual (self.getRpc ("getgroundloot"), [
