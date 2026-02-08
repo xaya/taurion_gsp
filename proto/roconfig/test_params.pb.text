@@ -17,7 +17,6 @@ params:
     min_region_ore: 10
     max_region_ore: 20
 
-    dev_addr: "dHNvNaqcD7XPDnoRjAoyfcMpHRi5upJD7p"
     god_mode: true
 
     # The list of prizes replaces the mainnet list (rather than being

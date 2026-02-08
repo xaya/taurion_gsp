@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2020  Autonomous Worlds Ltd
+#   Copyright (C) 2020-2025  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -26,9 +26,6 @@ from pxtest import PXTest
 class ServicesRevEngTest (PXTest):
 
   def run (self):
-    self.collectPremine ()
-    self.splitPremine ()
-
     self.mainLogger.info ("Setting up initial situation...")
     self.build ("ancient1", None, {"x": 0, "y": 0}, 0)
     building = 1001
@@ -40,20 +37,21 @@ class ServicesRevEngTest (PXTest):
     self.dropIntoBuilding (building, "domob", {"test artefact": 10})
 
     self.mainLogger.info ("Re-rolls of first reveng...")
+    snapshot = self.env.snapshot ()
     trials = 10
     # On regtest, the first reveng operation is guaranteed to succeed.
     # If we keep undoing and redoing (fresh) blocks, we will always be in
     # that situation; this ensures (among other things) that undoing the
     # item counter works.
     found = {}
-    self.sendMove ("domob", {"s": [{
-      "t": "rve",
-      "b": building,
-      "i": "test artefact",
-      "n": 1,
-    }]})
     for _ in range (trials):
-      self.assertEqual (len (self.rpc.xaya.name_pending ("p/domob")), 1)
+      snapshot.restore ()
+      self.sendMove ("domob", {"s": [{
+        "t": "rve",
+        "b": building,
+        "i": "test artefact",
+        "n": 1,
+      }]})
       self.generate (1)
       inv = self.getBuildings ()[building].getFungibleInventory ("domob")
       for t, n in inv.items ():
@@ -63,7 +61,6 @@ class ServicesRevEngTest (PXTest):
         if t not in found:
           found[t] = 0
         found[t] += 1
-      self.rpc.xaya.invalidateblock (self.rpc.xaya.getbestblockhash ())
     self.assertEqual (set (found.keys ()), set (["bow bpo", "sword bpo"]))
     self.assertEqual (found["bow bpo"] + found["sword bpo"], trials)
     assert found["bow bpo"] > 0

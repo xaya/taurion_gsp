@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2019-2020  Autonomous Worlds Ltd
+#   Copyright (C) 2019-2025  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -40,12 +40,15 @@ class ProspectingResourcesTest (PXTest):
   def prospectAt (self, pos):
     """
     Prospects the region at the given coordinate and returns the found
-    resource type and amount.
+    resource type and amount.  Also returns a snapshot of before the block
+    is mined that triggers the random draw.
     """
 
     self.moveCharactersTo ({"domob": pos})
     self.getCharacters ()["domob"].sendMove ({"prospect": {}})
-    self.generate (11)
+    self.generate (10)
+    snapshot = self.env.snapshot ()
+    self.generate (1)
 
     r = self.getRegionAt (pos)
     self.assertEqual (r.data["prospection"]["name"], "domob")
@@ -53,31 +56,29 @@ class ProspectingResourcesTest (PXTest):
     typ, amount = r.getResource ()
     self.log.info ("Found %d of %s at (%d, %d)"
                     % (amount, typ, pos["x"], pos["y"]))
-    return typ, amount
+    return typ, amount, snapshot
 
   def run (self):
-    self.collectPremine ()
-
     self.initAccount ("domob", "r")
     c = self.createCharacters ("domob")
     self.generate (1)
 
     self.mainLogger.info ("Nothing to be found...")
-    typ, amount = self.prospectAt (NOTHING)
+    typ, amount, _ = self.prospectAt (NOTHING)
     self.assertEqual ((typ, amount), ("raw a", 0))
 
     self.mainLogger.info ("Only type a to be found...")
-    typ, amount = self.prospectAt (ONLY_A)
+    typ, amount, _ = self.prospectAt (ONLY_A)
     self.assertEqual (typ, "raw a")
     assert amount > 0
 
     self.mainLogger.info ("Only type f to be found...")
-    typ, amount = self.prospectAt (ONLY_F)
+    typ, amount, _ = self.prospectAt (ONLY_F)
     self.assertEqual (typ, "raw f")
     assert amount > 0
 
     self.mainLogger.info ("Two types...")
-    typ, amount = self.prospectAt (I_AND_H)
+    typ, amount, snapshot = self.prospectAt (I_AND_H)
     found = {"raw h": False, "raw i": False}
     while True:
       assert amount > 0
@@ -87,8 +88,7 @@ class ProspectingResourcesTest (PXTest):
       if found["raw h"] and found["raw i"]:
         break
 
-      blk = self.rpc.xaya.getbestblockhash ()
-      self.rpc.xaya.invalidateblock (blk)
+      snapshot.restore ()
       self.generate (1)
 
       r = self.getRegionAt (I_AND_H)

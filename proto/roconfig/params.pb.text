@@ -21,9 +21,12 @@ params:
     min_region_ore: 2000000
     max_region_ore: 100000000
 
-    # The address configured here (for mainnet) is the premine address of Xaya
-    # controlled by the Xaya team.  See also Xaya Core's src/chainparams.cpp.
-    dev_addr: "DHy2615XKevE23LVRVZVxGeqxadRGyiFW4"
+    # The address configured here (for mainnet) is a multisig address controlled
+    # by the Xaya team.
+    dev_addr: "0xb960bECa8623165a3094a629d6A4775857a14d28"
+    # This address is controlled by the Xaya team.  WCHI sent here will
+    # periodically be bridged to Ethereum and burnt there.
+    burn_addr: "0x2659deaa71B51124bA6e6493b795486b3027Dbc9"
 
     god_mode: false
 

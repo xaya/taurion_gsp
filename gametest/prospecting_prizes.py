@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2019-2020  Autonomous Worlds Ltd
+#   Copyright (C) 2019-2025  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -52,8 +52,6 @@ class ProspectingPrizesTest (PXTest):
     return res
 
   def run (self):
-    self.collectPremine ()
-
     # First test:  Try and retry (with a reorg) prospecting in the
     # same region to get both a silver tier and not silver.
     self.mainLogger.info ("Testing randomisation of prizes...")
@@ -66,10 +64,10 @@ class ProspectingPrizesTest (PXTest):
     stillNeedSilver = True
     blk = None
     self.getCharacters ()["prize trier"].sendMove ({"prospect": {}})
-    self.generate (9)
+    self.generate (10)
+    snapshot = self.env.snapshot ()
     while stillNeedNoSilver or stillNeedSilver:
-      self.generate (1)
-      blk = self.rpc.xaya.getbestblockhash ()
+      snapshot.restore ()
       self.generate (1)
 
       prosp = self.getRegionAt (POS).data["prospection"]
@@ -80,14 +78,7 @@ class ProspectingPrizesTest (PXTest):
       else:
         stillNeedNoSilver = False
 
-      self.rpc.xaya.invalidateblock (blk)
-
-    assert blk is not None
-    blkOldTime = blk
-
-    # Restore the last randomised attempt.  Else we might end up with
-    # a long invalid chain, which can confuse the reorg test.
-    self.rpc.xaya.reconsiderblock (blkOldTime)
+      snapshot.restore ()
 
     # Prospect in some regions and verify some basic expectations
     # on the number of prizes found.

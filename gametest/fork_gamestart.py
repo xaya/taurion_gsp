@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2020  Autonomous Worlds Ltd
+#   Copyright (C) 2020-2025  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -29,7 +29,6 @@ class ForkGameStartTest (PXTest):
 
   def run (self):
     self.recreateGameDaemon (extraArgs=["-fork_height_gamestart=100"])
-    self.collectPremine ()
 
     self.sendMove ("domob", {
       "vc": {"m": {}, "b": 10, "t": {"daniel": 100}}
@@ -38,7 +37,8 @@ class ForkGameStartTest (PXTest):
     self.createCharacters ("domob")
     self.generate (1)
 
-    assert self.rpc.xaya.getblockcount () < 100
+    _, height = self.env.getChainTip ()
+    assert height < 100
 
     accounts = self.getAccounts ()
     self.assertEqual (accounts["domob"].getBalance (), 10_000 - 10 - 100)

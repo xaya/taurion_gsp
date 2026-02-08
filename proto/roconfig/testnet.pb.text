@@ -1,7 +1,1 @@
-testnet_merge:
-  {
-    params:
-      {
-        dev_addr: "dSFDAWxovUio63hgtfYd3nz3ir61sJRsXn"
-      }
-  }
+testnet_merge: {}

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2019-2020  Autonomous Worlds Ltd
+#   Copyright (C) 2019-2025  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -52,8 +52,6 @@ class CombatTargetTest (PXTest):
     raise AssertionError ("Character with id %d not found" % charId)
 
   def run (self):
-    self.collectPremine ()
-
     self.mainLogger.info ("Creating test characters...")
     self.initAccount ("red", "r")
     self.createCharacters ("red")
@@ -80,6 +78,7 @@ class CombatTargetTest (PXTest):
     self.mainLogger.info ("Testing randomised target selection...")
     cnts = {"green": 0, "green 2": 0}
     rolls = 10
+    snapshot = self.env.snapshot ()
     for _ in range (rolls):
       self.generate (1)
       self.assertEqual (self.getTargetCharacter ("green"), "red")
@@ -90,7 +89,7 @@ class CombatTargetTest (PXTest):
       cnts[fooTarget] += 1
       # Invalidate the last block so that we reroll the randomisation
       # with the next generated block.
-      self.rpc.xaya.invalidateblock (self.rpc.xaya.getbestblockhash ())
+      snapshot.restore ()
     for key, cnt in cnts.items ():
       self.log.info ("Target %s selected %d / %d times" % (key, cnt, rolls))
       assert cnt > 0

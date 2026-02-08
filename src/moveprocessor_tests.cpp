@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2025  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -91,6 +91,22 @@ protected:
     Json::Value val = ParseJson (str);
     for (auto& entry : val)
       entry["out"][ctx.RoConfig ()->params ().dev_addr ()]
+          = xaya::ChiAmountToJson (amount);
+
+    DynObstacles dyn(db, ctx);
+    MoveProcessor mvProc(db, dyn, rnd, ctx);
+    mvProc.ProcessAll (val);
+  }
+
+  /**
+   * Processes the given data as string, adding the given amount as burn
+   * payment to each entry.
+   */
+  void ProcessWithBurn (const std::string& str, const Amount amount)
+  {
+    Json::Value val = ParseJson (str);
+    for (auto& entry : val)
+      entry["out"][ctx.RoConfig ()->params ().burn_addr ()]
           = xaya::ChiAmountToJson (amount);
 
     DynObstacles dyn(db, ctx);
@@ -268,11 +284,13 @@ TEST_F (CoinOperationTests, Invalid)
     {"name": "domob", "move": {"vc": {"t": {"other": 1000000001}}}},
     {"name": "domob", "move": {"vc": {"t": {"other": 1.999999}}}},
     {"name": "domob", "move": {"vc": {"t": {"other": 101}}}},
-    {"name": "domob", "move": {"vc": {"m": {"x": "foo"}}}, "burnt": 1.0},
-    {"name": "domob", "move": {"vc": {"m": null}}, "burnt": 1.0},
-    {"name": "domob", "move": {"vc": {"m": []}}, "burnt": 1.0},
-    {"name": "domob", "move": {"vc": {}}, "burnt": 1.0}
   ])");
+  ProcessWithBurn (R"([
+    {"name": "domob", "move": {"vc": {"m": {"x": "foo"}}}},
+    {"name": "domob", "move": {"vc": {"m": null}}},
+    {"name": "domob", "move": {"vc": {"m": []}}},
+    {"name": "domob", "move": {"vc": {}}}
+  ])", COIN);
 
   ExpectBalances ({{"domob", 100}, {"other", 0}});
 }
@@ -346,10 +364,12 @@ TEST_F (CoinOperationTests, Minting)
 {
   accounts.CreateNew ("andy")->SetFaction (Faction::RED);
 
-  Process (R"([
-    {"name": "domob", "move": {"vc": {"m": {}}}, "burnt": 1000000},
-    {"name": "andy", "move": {"vc": {"m": {}}}, "burnt": 2.00019999}
-  ])");
+  ProcessWithBurn (R"([
+    {"name": "domob", "move": {"vc": {"m": {}}}}
+  ])", 1'000'000 * COIN);
+  ProcessWithBurn (R"([
+    {"name": "andy", "move": {"vc": {"m": {}}}}
+  ])", 2 * COIN + 19'999);
 
   ExpectBalances ({{"domob", 10'000'000'000}});
 
@@ -359,10 +379,12 @@ TEST_F (CoinOperationTests, Minting)
 
 TEST_F (CoinOperationTests, BurnsaleBalance)
 {
-  Process (R"([
-    {"name": "domob", "move": {"vc": {"m": {}}}, "burnt": 0.1},
-    {"name": "domob", "move": {"vc": {"b": 10}}, "burnt": 1}
-  ])");
+  ProcessWithBurn (R"([
+    {"name": "domob", "move": {"vc": {"m": {}}}},
+  ])", COIN / 10);
+  ProcessWithBurn (R"([
+    {"name": "domob", "move": {"vc": {"b": 10}}}
+  ])", COIN);
 
   ExpectBalances ({{"domob", 990}});
   EXPECT_EQ (accounts.GetByName ("domob")->GetProto ().burnsale_balance (),
@@ -371,29 +393,29 @@ TEST_F (CoinOperationTests, BurnsaleBalance)
 
 TEST_F (CoinOperationTests, MintBeforeBurnBeforeTransfer)
 {
-  Process (R"([
-    {"name": "domob", "burnt": 0.01, "move": {"vc":
+  ProcessWithBurn (R"([
+    {"name": "domob", "move": {"vc":
       {
         "m": {},
         "b": 90,
         "t": {"other": 20}
       }}
     }
-  ])");
+  ])", COIN / 100);
 
   ExpectBalances ({
     {"domob", 10},
     {"other", 0},
   });
 
-  Process (R"([
-    {"name": "domob", "burnt": 0.01, "move": {"vc":
+  ProcessWithBurn (R"([
+    {"name": "domob", "move": {"vc":
       {
         "m": {},
         "t": {"other": 20}
       }}
     }
-  ])");
+  ])", COIN / 100);
 
   ExpectBalances ({
     {"domob", 10 + 80},
@@ -448,8 +470,10 @@ TEST_F (GameStartTests, Before)
   ctx.SetHeight (99);
   accounts.CreateNew ("domob")->AddBalance (100);
 
+  ProcessWithBurn (R"([
+    {"name": "andy", "move": {"vc": {"m": {}}}}
+  ])", COIN);
   Process (R"([
-    {"name": "andy", "move": {"vc": {"m": {}}}, "burnt": 1},
     {"name": "domob", "move": {"vc": {"b": 10}}},
     {"name": "domob", "move": {"vc": {"t": {"daniel": 5}}}},
     {"name": "domob", "move": {"a": {"init": {"faction": "r"}}}}

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2019-2020  Autonomous Worlds Ltd
+#   Copyright (C) 2019-2025  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -26,8 +26,6 @@ from pxtest import PXTest, offsetCoord
 class MultiUpdateTest (PXTest):
 
   def run (self):
-    self.collectPremine ()
-
     self.mainLogger.info ("Creating test character...")
     self.initAccount ("domob", "r")
     self.createCharacters ("domob")

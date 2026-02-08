@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2020  Autonomous Worlds Ltd
+#   Copyright (C) 2020-2025  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -26,9 +26,6 @@ from pxtest import PXTest
 class ServicesBlueprintCopyTest (PXTest):
 
   def run (self):
-    self.collectPremine ()
-    self.splitPremine ()
-
     self.mainLogger.info ("Setting up initial situation...")
     self.build ("ancient1", None, {"x": 0, "y": 0}, 0)
     building = 1001
@@ -53,7 +50,7 @@ class ServicesBlueprintCopyTest (PXTest):
     self.assertEqual (self.getAccounts ()["domob"].getBalance (), 500)
     b = self.getBuildings ()[building]
     self.assertEqual (b.getFungibleInventory ("domob"), {})
-    start = self.rpc.xaya.getblockcount ()
+    _, start = self.env.getChainTip ()
     self.assertEqual (self.getRpc ("getongoings"), [
       {
         "id": 1002,

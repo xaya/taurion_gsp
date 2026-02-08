@@ -59,9 +59,12 @@ Params::RevEngSuccessChance (const unsigned existingBp) const
     {
     case xaya::Chain::MAIN:
     case xaya::Chain::TEST:
+    case xaya::Chain::POLYGON:
+    case xaya::Chain::MUMBAI:
       base = 10;
       break;
     case xaya::Chain::REGTEST:
+    case xaya::Chain::GANACHE:
       base = 1;
       break;
     default:

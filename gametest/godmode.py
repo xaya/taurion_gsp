@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2019-2020  Autonomous Worlds Ltd
+#   Copyright (C) 2019-2025  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -26,8 +26,6 @@ from pxtest import PXTest
 class GodModeTest (PXTest):
 
   def run (self):
-    self.collectPremine ()
-
     self.initAccount ("domob", "r")
     self.createCharacters ("domob")
     self.generate (1)
@@ -37,7 +35,7 @@ class GodModeTest (PXTest):
     self.mainLogger.info ("Testing build...")
     # Base height for building age.  Each build function call mines
     # a block on top of it.
-    height = self.rpc.xaya.getblockcount ()
+    _, height = self.env.getChainTip ()
     self.build ("checkmark", None, {"x": 100, "y": 150}, rot=2)
     self.build ("checkmark", "domob", {"x": -100, "y": -150}, rot=0)
     buildings = self.getBuildings ()

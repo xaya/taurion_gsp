@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2019-2020  Autonomous Worlds Ltd
+#   Copyright (C) 2019-2025  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -110,8 +110,6 @@ class MovementTest (PXTest):
     assert mv is None
 
   def run (self):
-    self.collectPremine ()
-
     self.mainLogger.info ("Creating test character...")
     self.initAccount ("domob", "g")
     self.createCharacters ("domob")
@@ -135,11 +133,11 @@ class MovementTest (PXTest):
       {"x": -9, "y": 6},
     ]
     self.setWaypoints ("domob", wp)
+    self.snapshot = self.env.snapshot ()
     self.generate (1)
     pos, mv = self.getMovement ("domob")
     self.assertEqual (mv["partialstep"], 0)
     self.assertEqual (pos, {"x": 3, "y": 0})
-    self.reorgBlock = self.rpc.xaya.getbestblockhash ()
 
     self.mainLogger.info ("Finishing the movement...")
     self.expectMovement ("domob", wp)
@@ -401,18 +399,14 @@ class MovementTest (PXTest):
     """
 
     self.mainLogger.info ("Testing a reorg...")
-    originalState = self.getGameState ()
 
-    self.rpc.xaya.invalidateblock (self.reorgBlock)
+    self.snapshot.restore ()
 
     wp = [
       {"x": -5, "y": 5},
     ]
     self.setWaypoints ("domob", wp)
     self.expectMovement ("domob", wp)
-
-    self.rpc.xaya.reconsiderblock (self.reorgBlock)
-    self.expectGameState (originalState)
 
 
 if __name__ == "__main__":

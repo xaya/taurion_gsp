@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2020  Autonomous Worlds Ltd
+    Copyright (C) 2020-2025  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -60,10 +60,15 @@ private:
   /** The block height this is for.  */
   const unsigned height;
 
+  /**
+   * Translates a chain like MAIN to POLYGON.
+   */
+  static xaya::Chain TranslateChain (xaya::Chain c);
+
 public:
 
   explicit ForkHandler (const xaya::Chain c, const unsigned h)
-    : chain(c), height(h)
+    : chain(TranslateChain (c)), height(h)
   {}
 
   ForkHandler () = delete;

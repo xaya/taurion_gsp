@@ -1,5 +1,5 @@
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2019-2020  Autonomous Worlds Ltd
+#   Copyright (C) 2019-2025  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -14,17 +14,19 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from xayagametest.testcase import XayaGameTest
+from xayax.gametest import XayaXGameTest
 
 from proto import config_pb2
 
 import collections
+from contextlib import contextmanager
 import copy
 import os
 import os.path
 
 
 GAMEID = "tn"
+COIN = 10**8
 
 
 def offsetCoord (c, offs, inverse):
@@ -99,7 +101,8 @@ class Character (object):
           assert o["characterid"] == self.getId ()
           del o["characterid"]
           del o["start_height"]
-          o["blocks"] = o["end_height"] - self.test.rpc.xaya.getblockcount ()
+          _, height = self.test.env.getChainTip ()
+          o["blocks"] = o["end_height"] - height
           del o["end_height"]
           return o
       raise AssertionError ("Character busy %d not found in ongoings", opId)
@@ -204,7 +207,8 @@ class Building (object):
         assert o["buildingid"] == self.getId ()
         del o["buildingid"]
         del o["start_height"]
-        o["blocks"] = o["end_height"] - self.test.rpc.xaya.getblockcount ()
+        _, height = self.test.env.getChainTip ()
+        o["blocks"] = o["end_height"] - height
         del o["end_height"]
         return o
 
@@ -284,7 +288,7 @@ class Region (object):
     return self.data["resource"]["type"], self.data["resource"]["amount"]
 
 
-class PXTest (XayaGameTest):
+class PXTest (XayaXGameTest):
   """
   Integration test for the Tauron game daemon.
   """
@@ -308,29 +312,25 @@ class PXTest (XayaGameTest):
 
     return os.path.join (top, *parts)
 
-  def splitPremine (self):
-    """
-    Splits the premine coin into smaller outputs, so that there are more
-    than a single outputs in the wallet.  Some tests require this or else
-    name_update's will fail for some reason.
-    """
-
-    for i in range (10):
-      self.rpc.xaya.sendtoaddress (self.rpc.xaya.getnewaddress (), 100)
-    self.generate (1)
+  @contextmanager
+  def runBaseChainEnvironment (self):
+    with self.runXayaXEthEnvironment () as env:
+      yield env
 
   def advanceToHeight (self, targetHeight):
     """
     Mines blocks until we are exactly at the given target height.
     """
 
-    n = targetHeight - self.rpc.xaya.getblockcount ()
+    _, curHeight = self.env.getChainTip ()
+    n = targetHeight - curHeight
 
     assert n >= 0
     if n > 0:
       self.generate (n)
 
-    self.assertEqual (self.rpc.xaya.getblockcount (), targetHeight)
+    _, curHeight = self.env.getChainTip ()
+    self.assertEqual (curHeight, targetHeight)
 
   def getRpc (self, method, *args, **kwargs):
     """
@@ -340,21 +340,16 @@ class PXTest (XayaGameTest):
 
     return self.getCustomState ("data", method, *args, **kwargs)
 
-  def sendMove (self, name, move, options={}, burn=0):
+  def sendMove (self, name, move, send=None, burn=0):
     """
     Sends a move, and optionally includes a coin burn.
     """
 
-    opt = copy.deepcopy (options)
-
     if burn > 0:
-      if "burn" not in opt:
-        opt["burn"] = {}
-      key = "g/%s" % self.gameId
-      assert key not in opt["burn"]
-      opt["burn"][key] = burn
+      assert send is None
+      send = (self.roConfig ().params.burn_addr, int (burn * COIN))
 
-    return super ().sendMove (name, move, opt)
+    return super ().sendMove (name, move, send=send)
 
   def moveWithPayment (self, name, move, devAmount):
     """
@@ -363,7 +358,7 @@ class PXTest (XayaGameTest):
     """
 
     addr = self.roConfig ().params.dev_addr
-    return self.sendMove (name, move, {"sendCoins": {addr: devAmount}})
+    return self.sendMove (name, move, send=(addr, int (devAmount * COIN)))
 
   def roConfig (self):
     """

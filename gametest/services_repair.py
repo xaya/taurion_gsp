@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2020  Autonomous Worlds Ltd
+#   Copyright (C) 2020-2025  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -26,9 +26,6 @@ from pxtest import PXTest
 class ServicesRepairTest (PXTest):
 
   def run (self):
-    self.collectPremine ()
-    self.splitPremine ()
-
     self.mainLogger.info ("Setting up initial situation...")
     self.build ("ancient1", None, {"x": 0, "y": 0}, 0)
     building = 1001
@@ -45,8 +42,7 @@ class ServicesRepairTest (PXTest):
     self.getCharacters ()["domob"].sendMove ({"eb": building})
     self.generate (1)
 
-    self.generate (1)
-    reorgBlk = self.rpc.xaya.getbestblockhash ()
+    self.snapshot = self.env.snapshot ()
 
     self.mainLogger.info ("Starting repair...")
     self.sendMove ("domob", {"s": [
@@ -78,13 +74,12 @@ class ServicesRepairTest (PXTest):
     self.assertEqual (c.getBusy (), None)
 
     self.generate (20)
-    self.testReorg (reorgBlk, building, cId)
+    self.testReorg (building, cId)
 
-  def testReorg (self, blk, building, cId):
+  def testReorg (self, building, cId):
     self.mainLogger.info ("Testing reorg...")
 
-    originalState = self.getGameState ()
-    self.rpc.xaya.invalidateblock (blk)
+    self.snapshot.restore ()
 
     # We leave the building now instead of requesting a repair to create
     # an alternative reality.
@@ -95,9 +90,6 @@ class ServicesRepairTest (PXTest):
     self.assertEqual (c.isInBuilding (), False)
     self.assertEqual (c.data["combat"]["hp"]["current"]["armour"], 20)
     self.assertEqual (c.getBusy (), None)
-
-    self.rpc.xaya.reconsiderblock (blk)
-    self.expectGameState (originalState)
 
 
 if __name__ == "__main__":

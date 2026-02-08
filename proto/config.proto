@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2025  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -588,15 +588,17 @@ message Params
 
   /** The address to which developer payments should be sent.  */
   optional string dev_addr = 16;
+  /** The address to which burn payments should be sent.  */
+  optional string burn_addr = 17;
 
   /** Whether or not god mode is enabled.  */
-  optional bool god_mode = 17;
+  optional bool god_mode = 18;
 
   /** Spawn areas for the factions (with the "r", "g", "b" string as key).  */
-  map<string, SpawnArea> spawn_areas = 18;
+  map<string, SpawnArea> spawn_areas = 19;
 
   /** Data about the burnsale schedule.  */
-  repeated BurnsaleStage burnsale_stages = 19;
+  repeated BurnsaleStage burnsale_stages = 20;
 
   /**
    * Prospecting prizes.  They are just a list and not a map, because the
@@ -606,7 +608,7 @@ message Params
    * It is replaced rather than concatenated (which would be the default
    * behaviour for proto merge).
    */
-  repeated ProspectingPrize prizes = 20;
+  repeated ProspectingPrize prizes = 21;
 
 }
 

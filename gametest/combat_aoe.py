@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2020  Autonomous Worlds Ltd
+#   Copyright (C) 2020-2025  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -54,8 +54,6 @@ class CombatAoETest (PXTest):
         self.assertEqual (c[nm].data["combat"]["hp"]["current"]["armour"], 100)
 
   def run (self):
-    self.collectPremine ()
-
     self.mainLogger.info ("Creating test characters...")
     self.initAccount ("attacker", "r")
     self.createCharacters ("attacker")
