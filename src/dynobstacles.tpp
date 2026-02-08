@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2026  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -38,7 +38,7 @@ DynObstacles::HasVehicle (const HexCoord& c) const
 inline bool
 DynObstacles::IsFree (const HexCoord& c) const
 {
-  return !buildings.Get (c) && !HasVehicle (c);
+  return !IsBuilding (c) && !HasVehicle (c);
 }
 
 inline void
