@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2019-2025  Autonomous Worlds Ltd
+#   Copyright (C) 2019-2026  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -119,7 +119,9 @@ class GodModeTest (PXTest):
     })
     self.generate (1)
     hp = self.getCharacters ()["domob"].data["combat"]["hp"]
-    self.assertEqual (hp["current"], {"armour": 32, "shield": 15})
+    # The unit has shield regeneration, which applies after the
+    # sethp command is processed.
+    self.assertEqual (hp["current"], {"armour": 32, "shield": 16})
     self.assertEqual (hp["max"], {"armour": 100, "shield": 90})
 
     self.mainLogger.info ("Testing sethp for buildings...")

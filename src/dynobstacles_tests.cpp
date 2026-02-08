@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2026  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -91,7 +91,7 @@ TEST_F (DynObstaclesTests, Modifications)
   EXPECT_TRUE (dyn.IsBuilding (HexCoord (1, 0)));
 }
 
-TEST_F (DynObstaclesTests, AddingBuildings)
+TEST_F (DynObstaclesTests, AddingRemovingBuildings)
 {
   auto b1 = buildings.CreateNew ("checkmark", "", Faction::RED);
   auto b2 = buildings.CreateNew ("checkmark", "", Faction::GREEN);
@@ -116,6 +116,12 @@ TEST_F (DynObstaclesTests, AddingBuildings)
     ASSERT_FALSE (dyn.AddBuilding (b1->GetType (),
                                    b1->GetProto ().shape_trafo (),
                                    b1->GetCentre (), shape));
+    EXPECT_TRUE (dyn.IsBuilding (HexCoord (0, 0)));
+    dyn.RemoveBuilding (*b1);
+    EXPECT_FALSE (dyn.IsBuilding (HexCoord (0, 0)));
+    ASSERT_TRUE (dyn.AddBuilding (b1->GetType (),
+                                  b1->GetProto ().shape_trafo (),
+                                  b1->GetCentre (), shape));
   }
 }
 

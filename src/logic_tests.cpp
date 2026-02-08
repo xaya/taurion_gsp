@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2021  Autonomous Worlds Ltd
+    Copyright (C) 2019-2026  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -587,9 +587,9 @@ TEST_F (PXLogicTests, PickUpDeadDrop)
   c->MutableHP ().set_armour (0);
   c.reset ();
 
-  /* Now the attack should kill the target.  The attacker should be able to
-     pick up the dropped loot right at the same time, because kills are
-     processed at the beginning of a block, before handling moves.  */
+  /* Now the attack should kill the target.  The attacker is not immediately
+     able to pick up the dropped loot, because moves (like the pick up) are
+     done at the start of the block, and the kill happens only later.  */
   UpdateState (R"([
     {
       "name": "attacker",
@@ -600,7 +600,20 @@ TEST_F (PXLogicTests, PickUpDeadDrop)
   EXPECT_TRUE (characters.GetById (idTarget) == nullptr);
   c = characters.GetById (idAttacker);
   ASSERT_TRUE (c != nullptr);
+  EXPECT_EQ (c->GetInventory ().GetFungibleCount ("foo"), 0);
+  c.reset ();
+
+  /* In the next move, the pickup can happen.  */
+  UpdateState (R"([
+    {
+      "name": "attacker",
+      "move": {"c": {"id": 1, "pu": {"f": {"foo": 3}}}}
+    }
+  ])");
+  c = characters.GetById (idAttacker);
+  ASSERT_TRUE (c != nullptr);
   EXPECT_EQ (c->GetInventory ().GetFungibleCount ("foo"), 3);
+  c.reset ();
 }
 
 TEST_F (PXLogicTests, DamageLists)
@@ -828,8 +841,10 @@ TEST_F (PXLogicTests, ProspectingUserKilled)
   EXPECT_EQ (r->GetProto ().prospecting_character (), 2);
   r.reset ();
 
-  /* Process another round, where the prospecting character is killed.  Thus
-     the other is able to start prospecting at the same spot.  */
+  /* Process another round, where the prospecting character is killed.  This
+     happens after move processing, so the other character is not yet able
+     to start prospecting at the same instant (but the prospection
+     is cancelled).  */
   UpdateState (R"([
     {
       "name": "domob",
@@ -839,12 +854,9 @@ TEST_F (PXLogicTests, ProspectingUserKilled)
 
   EXPECT_TRUE (characters.GetById (2) == nullptr);
 
-  c = characters.GetById (1);
-  EXPECT_TRUE (c->IsBusy ());
-
   r = regions.GetById (region);
-  EXPECT_EQ (r->GetProto ().prospecting_character (), 1);
-  EXPECT_FALSE (r->GetProto ().has_prospection ());
+  EXPECT_EQ (r->GetProto ().prospecting_character (), 0);
+  r.reset ();
 }
 
 TEST_F (PXLogicTests, FinishingProspecting)
@@ -883,9 +895,9 @@ TEST_F (PXLogicTests, FinishingProspecting)
   EXPECT_FALSE (r->GetProto ().has_prospection ());
   r.reset ();
 
-  /* Process the next block which finishes prospecting.  We should be able
-     to do a movement command right away as well, since the busy state is
-     processed before the moves.  */
+  /* Process the next block which finishes prospecting.  We cannot do
+     another command just yet, though, as moves are processed before
+     anything else (including when the prospection finishes).  */
   UpdateState (R"([
     {
       "name": "domob",
@@ -895,58 +907,13 @@ TEST_F (PXLogicTests, FinishingProspecting)
 
   c = characters.GetById (1);
   EXPECT_FALSE (c->IsBusy ());
-  EXPECT_TRUE (c->GetProto ().has_movement ());
+  EXPECT_FALSE (c->GetProto ().has_movement ());
+  c.reset ();
 
   r = regions.GetById (region);
   EXPECT_FALSE (r->GetProto ().has_prospecting_character ());
   EXPECT_EQ (r->GetProto ().prospection ().name (), "domob");
-}
-
-TEST_F (PXLogicTests, MiningRightAfterProspecting)
-{
-  const HexCoord pos(5, 5);
-  const auto region = ctx.Map ().Regions ().GetRegionId (pos);
-
-  auto c = CreateCharacter ("domob", Faction::RED);
-  ASSERT_EQ (c->GetId (), 1);
-  c->SetPosition (pos);
-  c->MutableProto ().mutable_combat_data ();
-  c->MutableProto ().mutable_mining ()->mutable_rate ()->set_min (1);
-  c->MutableProto ().mutable_mining ()->mutable_rate ()->set_max (1);
-  c->MutableProto ().set_prospecting_blocks (10);
-  c->MutableProto ().set_cargo_space (100);
-  c.reset ();
-
-  /* Prospect the region with the character.  */
-  UpdateState (R"([
-    {
-      "name": "domob",
-      "move": {"c": {"id": 1, "prospect": {}}}
-    }
-  ])");
-  c = characters.GetById (1);
-  auto op = ongoings.GetById (c->GetProto ().ongoing ());
-  SetHeight (op->GetHeight ());
-  op.reset ();
-  c.reset ();
-
-  /* In the next block, prospecting will be finished.  We can already start
-     mining the now-prospected region immediately.  */
-  UpdateState (R"([
-    {
-      "name": "domob",
-      "move": {"c": {"id": 1, "mine": {}}}
-    }
-  ])");
-
-  auto r = regions.GetById (region);
-  const std::string type = r->GetProto ().prospection ().resource ();
-  LOG (INFO) << "Resource found: " << type;
-
-  c = characters.GetById (1);
-  EXPECT_FALSE (c->IsBusy ());
-  EXPECT_TRUE (c->GetProto ().mining ().active ());
-  EXPECT_EQ (c->GetInventory ().GetFungibleCount (type), 1);
+  r.reset ();
 }
 
 TEST_F (PXLogicTests, MiningAndDropping)
@@ -1210,11 +1177,12 @@ TEST_F (PXLogicTests, BuildingUpdateVsOperations)
       bMove["sf"] = IntToJson (i);
       bMove["xf"] = IntToJson (i);
 
-      /* The ongoing operations are processed before moves.  So if the
+      /* Moves are processed before ongoing operations.  So if the
          building update had a delay of only one block, the previous block's
-         update would be active now (i.e. the fee would be i-1).  The real
-         delay on regtest is 10 blocks, so the fee in effect is i-10.  */
-      if (i == 110)
+         update would become active in this block *after* current moves, and
+         thus the active fee for current moves would be i-2.  The real
+         delay on regtest is 10 blocks, so the fee in effect is i-11.  */
+      if (i == 111)
         {
           moves.append (ParseJson (R"({
             "name": "seller",

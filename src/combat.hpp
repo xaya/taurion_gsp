@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2026  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 #define PXD_COMBAT_HPP
 
 #include "context.hpp"
+#include "dynobstacles.hpp"
 #include "fame.hpp"
 
 #include "database/damagelists.hpp"
@@ -86,7 +87,8 @@ std::set<TargetKey> DealCombatDamage (Database& db, DamageLists& dl,
  * Processes killed fighers from the given list, actually performing the
  * necessary database changes for having them dead.
  */
-void ProcessKills (Database& db, DamageLists& dl, GroundLootTable& loot,
+void ProcessKills (Database& db, DynObstacles& dyn,
+                   DamageLists& dl, GroundLootTable& loot,
                    const std::set<TargetKey>& dead,
                    xaya::Random& rnd, const Context& ctx);
 
@@ -98,9 +100,11 @@ void RegenerateHP (Database& db);
 /**
  * Runs the three coupled steps to update HP at the beginning of computing
  * a block:  Dealing damage, handling kills and regenerating.
+ *
+ * Characters that are killed are removed from the obstacle map.
  */
-void AllHpUpdates (Database& db, FameUpdater& fame, xaya::Random& rnd,
-                   const Context& ctx);
+void AllHpUpdates (Database& db, DynObstacles& dyn, FameUpdater& fame,
+                   xaya::Random& rnd, const Context& ctx);
 
 } // namespace pxd
 
