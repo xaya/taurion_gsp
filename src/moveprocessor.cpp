@@ -2275,6 +2275,61 @@ MaybeGodGiftCoins (AccountsTable& tbl, MoneySupply& moneySupply,
     }
 }
 
+void
+MaybeGodSetChar (CharacterTable& tbl, const Context& ctx,
+                 const Json::Value& cmd)
+{
+  if (!cmd.isArray ())
+    return;
+
+  for (const auto& entry : cmd)
+    {
+      if (!entry.isObject ())
+        { LOG (WARNING) << "Invalid setchar entry: " << entry; continue; }
+
+      Database::IdT id;
+      if (!IdFromJson (entry["id"], id))
+        { LOG (WARNING) << "Invalid ID in setchar: " << entry; continue; }
+
+      auto c = tbl.GetById (id);
+      if (c == nullptr)
+        { LOG (WARNING) << "Character not found: " << id; continue; }
+
+      // Set vehicle type if specified
+      const auto& vVal = entry["v"];
+      if (vVal.isString ())
+        {
+          const std::string vehicle = vVal.asString ();
+          const auto& itemData = ctx.RoConfig ().Item (vehicle);
+          if (!itemData.has_vehicle ())
+            {
+              LOG (WARNING) << "Not a valid vehicle: " << vehicle;
+              continue;
+            }
+          LOG (INFO) << "God: setting character " << id
+                     << " vehicle to " << vehicle;
+          c->MutableProto ().set_vehicle (vehicle);
+        }
+
+      // Set fitments if specified
+      const auto& fVal = entry["f"];
+      if (fVal.isArray ())
+        {
+          c->MutableProto ().clear_fitments ();
+          for (const auto& f : fVal)
+            {
+              if (f.isString ())
+                c->MutableProto ().add_fitments (f.asString ());
+            }
+          LOG (INFO) << "God: set " << fVal.size ()
+                     << " fitments on character " << id;
+        }
+
+      // Recalculate all stats from vehicle + fitments, reset HP to max
+      DeriveCharacterStats (*c, ctx);
+    }
+}
+
 } // anonymous namespace
 
 void
@@ -2294,6 +2349,7 @@ MoveProcessor::HandleGodMode (const Json::Value& cmd)
   MaybeGodBuild (accounts, buildings, ctx, cmd["build"]);
   MaybeGodDropLoot (accounts, groundLoot, buildingInv, ctx, cmd["drop"]);
   MaybeGodGiftCoins (accounts, moneySupply, cmd["giftcoins"]);
+  MaybeGodSetChar (characters, ctx, cmd["setchar"]);
 }
 
 void
