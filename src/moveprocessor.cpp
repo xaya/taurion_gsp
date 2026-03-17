@@ -2311,17 +2311,28 @@ MaybeGodSetChar (CharacterTable& tbl, const Context& ctx,
           c->MutableProto ().set_vehicle (vehicle);
         }
 
-      // Set fitments if specified
+      // Set fitments if specified (validate each against proto config)
       const auto& fVal = entry["f"];
       if (fVal.isArray ())
         {
           c->MutableProto ().clear_fitments ();
+          int added = 0;
           for (const auto& f : fVal)
             {
-              if (f.isString ())
-                c->MutableProto ().add_fitments (f.asString ());
+              if (!f.isString ())
+                continue;
+              const std::string fitName = f.asString ();
+              const auto& fitData = ctx.RoConfig ().Item (fitName);
+              if (!fitData.has_fitment ())
+                {
+                  LOG (WARNING) << "God: skipping invalid fitment '"
+                                << fitName << "' on character " << id;
+                  continue;
+                }
+              c->MutableProto ().add_fitments (fitName);
+              ++added;
             }
-          LOG (INFO) << "God: set " << fVal.size ()
+          LOG (INFO) << "God: set " << added
                      << " fitments on character " << id;
         }
 
@@ -2344,12 +2355,12 @@ MoveProcessor::HandleGodMode (const Json::Value& cmd)
       return;
     }
 
+  MaybeGodSetChar (characters, ctx, cmd["setchar"]);  // Must run before sethp (DeriveCharacterStats resets HP)
   MaybeGodTeleport (characters, cmd["teleport"]);
   MaybeGodAllSetHp (buildings, characters, cmd["sethp"]);
   MaybeGodBuild (accounts, buildings, ctx, cmd["build"]);
   MaybeGodDropLoot (accounts, groundLoot, buildingInv, ctx, cmd["drop"]);
   MaybeGodGiftCoins (accounts, moneySupply, cmd["giftcoins"]);
-  MaybeGodSetChar (characters, ctx, cmd["setchar"]);
 }
 
 void
