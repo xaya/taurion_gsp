@@ -18,13 +18,13 @@ CLEANFILES = $(RPC_STUBS)
 
 libtaurion_la_CXXFLAGS = \
   -I$(top_srcdir) \
-  $(XAYAGAME_CFLAGS) $(JSON_CFLAGS) \
+  $(XAYAGAME_CFLAGS) $(XAYAUTIL_CFLAGS) $(JSON_CFLAGS) \
   $(GLOG_CFLAGS) $(GFLAGS_CFLAGS) $(PROTOBUF_CFLAGS)
 libtaurion_la_LIBADD = \
   $(top_builddir)/database/libdatabase.la \
   $(top_builddir)/hexagonal/libhexagonal.la \
   $(top_builddir)/proto/libpxproto.la \
-  $(XAYAGAME_LIBS) $(JSON_LIBS) \
+  $(XAYAGAME_LIBS) $(XAYAUTIL_LIBS) $(JSON_LIBS) \
   $(GLOG_LIBS) $(GFLAGS_LIBS) $(PROTOBUF_LIBS)
 libtaurion_la_SOURCES = \
   buildings.cpp \
@@ -79,14 +79,14 @@ libtaurionheaders = \
 
 tauriond_CXXFLAGS = \
   -I$(top_srcdir) \
-  $(XAYAGAME_CFLAGS) $(CHARON_CFLAGS) \
+  $(XAYAGAME_CFLAGS) $(XAYAUTIL_CFLAGS) \
   $(JSON_CFLAGS) $(MHD_CLFGAS) \
   $(GLOG_CFLAGS) $(GFLAGS_CFLAGS) $(PROTOBUF_CFLAGS)
 tauriond_LDADD = \
   $(builddir)/libtaurion.la \
   $(top_builddir)/mapdata/libmapdata.la \
   $(top_builddir)/database/libdatabase.la \
-  $(XAYAGAME_LIBS) $(CHARON_LIBS) \
+  $(XAYAGAME_LIBS) $(XAYAUTIL_LIBS) \
   $(JSON_LIBS) $(MHD_LIBS) \
   $(GLOG_LIBS) $(GFLAGS_LIBS) $(PROTOBUF_LIBS)
 tauriond_SOURCES = main.cpp \
@@ -111,18 +111,19 @@ build-tests: $(check_PROGRAMS)
 
 libtestutils_la_CXXFLAGS = \
   -I$(top_srcdir) \
-  $(XAYAGAME_CFLAGS) $(JSON_CFLAGS)
+  $(XAYAGAME_CFLAGS) $(XAYAUTIL_CFLAGS) $(JSON_CFLAGS)
 libtestutils_la_LIBADD = \
   $(builddir)/libtaurion.la \
   $(top_builddir)/mapdata/libmapdata.la \
   $(top_builddir)/hexagonal/libhexagonal.la \
-  $(XAYAGAME_LIBS) $(JSON_LIBS)
+  $(XAYAGAME_LIBS) $(XAYAUTIL_LIBS) $(JSON_LIBS)
 libtestutils_la_SOURCES = \
   testutils.cpp
 
 tests_CXXFLAGS = \
   -I$(top_srcdir) \
   $(GTEST_MAIN_CFLAGS) \
+  $(XAYAGAME_CFLAGS) $(XAYAUTIL_CFLAGS) \
   $(JSON_CFLAGS) $(GTEST_CFLAGS) \
   $(GLOG_CFLAGS) $(GFLAGS_CFLAGS) $(PROTOBUF_CFLAGS)
 tests_LDADD = \
@@ -134,6 +135,7 @@ tests_LDADD = \
   $(top_builddir)/mapdata/libmapdata.la \
   $(top_builddir)/proto/libpxproto.la \
   $(GTEST_MAIN_LIBS) \
+  $(XAYAGAME_LIBS) $(XAYAUTIL_LIBS) \
   $(JSON_LIBS) $(GTEST_LIBS) \
   $(GLOG_LIBS) $(GFLAGS_LIBS) $(PROTOBUF_LIBS)
 tests_SOURCES = \
@@ -167,6 +169,7 @@ check_HEADERS = \
 
 benchmarks_CXXFLAGS = \
   -I$(top_srcdir) \
+  $(XAYAGAME_CFLAGS) $(XAYAUTIL_CFLAGS) \
   $(JSON_CFLAGS) $(GLOG_CFLAGS) $(PROTOBUF_CFLAGS) $(BENCHMARK_CFLAGS)
 benchmarks_LDADD = \
   $(builddir)/libtaurion.la \
@@ -177,6 +180,7 @@ benchmarks_LDADD = \
   $(top_builddir)/hexagonal/libhexagonal.la \
   $(top_builddir)/mapdata/libmapdata.la \
   $(top_builddir)/proto/libpxproto.la \
+  $(XAYAGAME_LIBS) $(XAYAUTIL_LIBS) \
   $(JSON_LIBS) $(GLOG_LIBS) $(PROTOBUF_LIBS) $(BENCHMARK_LIBS)
 benchmarks_SOURCES = \
   combat_damage_bench.cpp \
