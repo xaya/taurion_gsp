@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2021  Autonomous Worlds Ltd
+    Copyright (C) 2019-2026  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -106,6 +106,17 @@ public:
    * and never read during the state transition.
    */
   virtual IdT GetLogId () = 0;
+
+  /**
+   * Returns data about the last superblock processed in the database, or
+   * returns false if none is stored yet.
+   */
+  bool LastSuperBlock (unsigned& height, int64_t& timestamp) const;
+
+  /**
+   * Updates the last superblock referenced to the given data.
+   */
+  void SetSuperBlock (unsigned height, int64_t timestamp);
 
   /**
    * Prepares an SQL statement and returns the wrapper object.
