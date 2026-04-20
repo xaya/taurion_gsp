@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2026  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -205,6 +205,26 @@ TEST_F (DatabaseTests, ResultProperties)
   auto stmt = db.Prepare ("SELECT * FROM `test`");
   auto res = stmt.Query<TestResult> ();
   EXPECT_EQ (&res.GetDatabase (), &db);
+}
+
+using SuperBlockTests = DBTestWithSchema;
+
+TEST_F (SuperBlockTests, Works)
+{
+  unsigned height;
+  int64_t timestamp;
+
+  ASSERT_FALSE (db.LastSuperBlock (height, timestamp));
+
+  db.SetSuperBlock (5, 1'000);
+  ASSERT_TRUE (db.LastSuperBlock (height, timestamp));
+  EXPECT_EQ (height, 5);
+  EXPECT_EQ (timestamp, 1'000);
+
+  db.SetSuperBlock (7, 2'000);
+  ASSERT_TRUE (db.LastSuperBlock (height, timestamp));
+  EXPECT_EQ (height, 7);
+  EXPECT_EQ (timestamp, 2'000);
 }
 
 } // anonymous namespace
