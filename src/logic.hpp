@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2026  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -100,7 +100,9 @@ private:
    * the instance in tests.
    */
   static void UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
-                           const Context& ctx, const Json::Value& blockData);
+                           const Context& ctx,
+                           bool superBlock,
+                           const Json::Value& blockData);
 
   /**
    * Performs (potentially slow) validations on the current database state.
@@ -127,6 +129,9 @@ protected:
                     const Json::Value& blockData) override;
 
   Json::Value GetStateAsJson (const xaya::SQLiteDatabase& db) override;
+  Json::Value GetCustomInstanceState (const xaya::SQLiteDatabase& db,
+                                      const xaya::uint256& hash,
+                                      unsigned height) override;
 
 public:
 

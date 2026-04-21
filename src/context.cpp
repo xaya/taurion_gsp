@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2026  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,13 +25,14 @@ namespace pxd
 
 Context::Context (const xaya::Chain c)
   : map(nullptr), chain(c),
-    height(0), timestamp(NO_TIMESTAMP)
+    height(0), blockHeight(0),
+    timestamp(NO_TIMESTAMP)
 {}
 
 Context::Context (const xaya::Chain c, const BaseMap& m,
-                  const unsigned h, const int64_t ts)
+                  const unsigned h, const unsigned bh, const int64_t ts)
   : map(&m), chain(c),
-    height(h), timestamp(ts)
+    height(h), blockHeight(bh), timestamp(ts)
 {
   RefreshInstances ();
 }
@@ -56,6 +57,13 @@ Context::Timestamp () const
 {
   CHECK_NE (timestamp, NO_TIMESTAMP);
   return timestamp;
+}
+
+unsigned
+Context::BlockHeight () const
+{
+  CHECK_NE (blockHeight, NO_HEIGHT);
+  return blockHeight;
 }
 
 } // namespace pxd

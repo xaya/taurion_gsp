@@ -153,7 +153,7 @@ ProcessAllOngoings (Database& db, xaya::Random& rnd, const Context& ctx)
   BuildingInventoriesTable buildingInv(db);
   CharacterTable characters(db);
   OngoingsTable ongoings(db);
-  RegionsTable regions(db, ctx.Height ());
+  RegionsTable regions(db, ctx.BlockHeight ());
 
   auto res = ongoings.QueryForHeight (ctx.Height ());
   while (res.Step ())

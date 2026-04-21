@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2026  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1586,6 +1586,29 @@ TEST_F (TradeHistoryJsonTests, ForItemAndBuilding)
       "buyer": "domob"
     }
   ])")));
+}
+
+/* ************************************************************************** */
+
+using SuperBlockJsonTests = GameStateJsonTests;
+
+TEST_F (SuperBlockJsonTests, NoSuperBlock)
+{
+  EXPECT_TRUE (PartialJsonEqual (converter.SuperBlock (),
+                                 ParseJson (R"({"exists": false})")));
+}
+
+TEST_F (SuperBlockJsonTests, HasSuperBlock)
+{
+  db.SetSuperBlock (42, 123);
+  EXPECT_TRUE (PartialJsonEqual (converter.SuperBlock (),
+                                 ParseJson (R"(
+      {
+        "exists": true,
+        "height": 42,
+        "timestamp": 123
+      }
+  )")));
 }
 
 /* ************************************************************************** */

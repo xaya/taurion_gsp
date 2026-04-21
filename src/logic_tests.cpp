@@ -80,10 +80,12 @@ protected:
       inv(db), groundLoot(db), ongoings(db), regions(db, 0)
   {
     SetHeight (42);
+    ctx.SetBlockHeight (100);
+    ctx.SetTimestamp (1'500'000'000);
   }
 
   /**
-   * Builds a blockData JSON value from the given moves.
+   * Builds a dummy blockData JSON value from the given moves.
    */
   Json::Value
   BuildBlockData (const Json::Value& moves)
@@ -91,12 +93,6 @@ protected:
     Json::Value blockData(Json::objectValue);
     blockData["admin"] = Json::Value (Json::arrayValue);
     blockData["moves"] = moves;
-
-    Json::Value meta(Json::objectValue);
-    meta["height"] = ctx.Height ();
-    meta["timestamp"] = 1500000000;
-    blockData["block"] = meta;
-
     return blockData;
   }
 
@@ -161,19 +157,19 @@ protected:
   void
   UpdateStateJson (const Json::Value& moves)
   {
-    UpdateStateWithData (BuildBlockData (moves));
+    UpdateStateWithHeight (moves, ctx.Height ());
   }
 
   /**
-   * Calls PXLogic::UpdateState with the given block data and our params, RNG
-   * and stuff.  This is a more general variant of UpdateState(std::string),
-   * where the block data can be modified to include extra stuff (e.g. a block
-   * height of our choosing).
+   * Calls PXLogic::UpdateState with the given moves and superblock height.
    */
   void
-  UpdateStateWithData (const Json::Value& blockData)
+  UpdateStateWithHeight (const Json::Value& moves, const unsigned sbHeight)
   {
-    PXLogic::UpdateState (db, rnd, ctx.Chain (), ctx.Map (), blockData);
+    Context newCtx(ctx.Chain (), ctx.Map (),
+                   sbHeight, ctx.BlockHeight (), ctx.Timestamp ());
+    FameUpdater fame(db, newCtx);
+    PXLogic::UpdateState (db, fame, rnd, newCtx, true, BuildBlockData (moves));
   }
 
   /**
@@ -184,7 +180,7 @@ protected:
   UpdateStateWithFame (FameUpdater& fame, const std::string& moveStr)
   {
     const auto blockData = BuildBlockData (ParseJson (moveStr));
-    PXLogic::UpdateState (db, fame, rnd, ctx, blockData);
+    PXLogic::UpdateState (db, fame, rnd, ctx, true, blockData);
   }
 
   /**
@@ -637,9 +633,7 @@ TEST_F (PXLogicTests, DamageLists)
   UpdateState ("[]");
 
   /* Deal damage, which should be recorded in the damage list.  */
-  Json::Value blockData = BuildBlockData (ParseJson ("[]"));
-  blockData["block"]["height"] = 100;
-  UpdateStateWithData (blockData);
+  UpdateStateWithHeight (ParseJson ("[]"), 100);
   EXPECT_EQ (dl.GetAttackers (idTarget),
              DamageLists::Attackers ({idAttacker}));
 
@@ -649,16 +643,12 @@ TEST_F (PXLogicTests, DamageLists)
   c.reset ();
 
   /* The damage list entry should still be present 99 blocks after.  */
-  blockData = BuildBlockData (ParseJson ("[]"));
-  blockData["block"]["height"] = 199;
-  UpdateStateWithData (blockData);
+  UpdateStateWithHeight (ParseJson ("[]"), 199);
   EXPECT_EQ (dl.GetAttackers (idTarget),
              DamageLists::Attackers ({idAttacker}));
 
   /* The entry should be removed at block 200.  */
-  blockData = BuildBlockData (ParseJson ("[]"));
-  blockData["block"]["height"] = 200;
-  UpdateStateWithData (blockData);
+  UpdateStateWithHeight (ParseJson ("[]"), 200);
   EXPECT_EQ (dl.GetAttackers (idTarget), DamageLists::Attackers ({}));
 }
 
@@ -994,14 +984,13 @@ TEST_F (PXLogicTests, MiningWhenReprospected)
      mining gracefully.  We can only reprospect after using up the resources,
      which means that we need to mine for one turn before.  */
   UpdateState ("[]");
-  auto data = BuildBlockData (ParseJson (R"([
+  const auto moves = ParseJson (R"([
     {
       "name": "domob",
       "move": {"c": {"id": 1, "prospect": {}}}
     }
-  ])"));
-  data["block"]["height"] = 200;
-  UpdateStateWithData (data);
+  ])");
+  UpdateStateWithHeight (moves, 200);
 
   c = characters.GetById (1);
   EXPECT_TRUE (c->IsBusy ());
@@ -1166,6 +1155,7 @@ TEST_F (PXLogicTests, BuildingUpdateVsOperations)
   for (int i = 1; i <= 200; ++i)
     {
       ctx.SetHeight (ctx.Height () + 1);
+      ctx.SetBlockHeight (ctx.BlockHeight () + 1);
 
       auto moves = ParseJson (R"([
         {

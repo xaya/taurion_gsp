@@ -1087,7 +1087,7 @@ public:
                           xaya::Random& r, const Context& c)
     : rnd(r), ctx(c), dyn(dyno), damageLists(dl), loot(l),
       accounts(db), buildings(db), inventories(db), characters(db),
-      orders(db), ongoings(db), regions(db, ctx.Height ())
+      orders(db), ongoings(db), regions(db, ctx.BlockHeight ())
   {}
 
   KillProcessor () = delete;

@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2020  Autonomous Worlds Ltd
+    Copyright (C) 2020-2026  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -292,6 +292,7 @@ protected:
   NewOrderTests ()
   {
     ctx.SetHeight (10);
+    ctx.SetBlockHeight (50);
     ctx.SetTimestamp (1'042);
 
     accounts.CreateNew ("andy")->AddBalance (1'000);
@@ -651,10 +652,12 @@ TEST_F (OrderMatchingTests, FillingOwnOrder)
 TEST_F (OrderMatchingTests, TradeHistory)
 {
   ctx.SetHeight (10);
+  ctx.SetBlockHeight (100);
   ctx.SetTimestamp (100);
   PlaceOrder ("andy", DexOrder::Type::BID, 2, 15);
 
   ctx.SetHeight (11);
+  ctx.SetBlockHeight (101);
   ctx.SetTimestamp (99);
   PlaceOrder ("andy", DexOrder::Type::ASK, 3, 2);
 
@@ -666,7 +669,7 @@ TEST_F (OrderMatchingTests, TradeHistory)
 
   ASSERT_TRUE (res.Step ());
   auto h = history.GetFromResult (res);
-  EXPECT_EQ (h->GetHeight (), 10);
+  EXPECT_EQ (h->GetHeight (), 100);
   EXPECT_EQ (h->GetTimestamp (), 100);
   EXPECT_EQ (h->GetBuilding (), 1);
   EXPECT_EQ (h->GetItem (), "foo");
@@ -677,7 +680,7 @@ TEST_F (OrderMatchingTests, TradeHistory)
 
   ASSERT_TRUE (res.Step ());
   h = history.GetFromResult (res);
-  EXPECT_EQ (h->GetHeight (), 11);
+  EXPECT_EQ (h->GetHeight (), 101);
   EXPECT_EQ (h->GetTimestamp (), 99);
   EXPECT_EQ (h->GetBuilding (), 1);
   EXPECT_EQ (h->GetItem (), "foo");
@@ -688,7 +691,7 @@ TEST_F (OrderMatchingTests, TradeHistory)
 
   ASSERT_TRUE (res.Step ());
   h = history.GetFromResult (res);
-  EXPECT_EQ (h->GetHeight (), 11);
+  EXPECT_EQ (h->GetHeight (), 101);
   EXPECT_EQ (h->GetTimestamp (), 99);
   EXPECT_EQ (h->GetBuilding (), 1);
   EXPECT_EQ (h->GetItem (), "foo");

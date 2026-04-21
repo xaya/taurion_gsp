@@ -2581,7 +2581,8 @@ TEST_F (ProcessKillsCharacterTests, CancelsProspection)
   c.reset ();
 
   ctx.SetHeight (1'042);
-  RegionsTable regions(db, ctx.Height ());
+  ctx.SetBlockHeight (1'042);
+  RegionsTable regions(db, ctx.BlockHeight ());
   auto r = regions.GetById (regionId);
   r->MutableProto ().set_prospecting_character (id);
   r.reset ();
