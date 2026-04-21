@@ -317,6 +317,23 @@ class PXTest (XayaXGameTest):
     with self.runXayaXEthEnvironment () as env:
       yield env
 
+  def generate (self, n, superblocks=True):
+    """
+    Generates n blocks, by default generating only superblocks by
+    advancing the timestamp accordingly on each block.
+    """
+
+    if not superblocks:
+      super.generate (n)
+      return
+
+    lastTime = self.w3.eth.get_block ("latest")["timestamp"]
+    delta = self.roConfig ().params.superblock_seconds
+
+    for i in range (n):
+      self.env.setMockTime (lastTime + (i + 1) * delta)
+      super ().generate (1)
+
   def advanceToHeight (self, targetHeight):
     """
     Mines blocks until we are exactly at the given target height.
