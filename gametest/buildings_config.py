@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2020-2025  Autonomous Worlds Ltd
+#   Copyright (C) 2020-2026  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -49,7 +49,7 @@ class BuildingsConfigTest (PXTest):
     of the operation relative to current block height.
     """
 
-    _, height = self.env.getChainTip ()
+    height = self.getSuperblockHeight ()
     ongoings = self.getRpc ("getongoings")
     actual = []
     for o in ongoings:

@@ -35,7 +35,7 @@ class GodModeTest (PXTest):
     self.mainLogger.info ("Testing build...")
     # Base height for building age.  Each build function call mines
     # a block on top of it.
-    _, height = self.env.getChainTip ()
+    height = self.getSuperblockHeight ()
     self.build ("checkmark", None, {"x": 100, "y": 150}, rot=2)
     self.build ("checkmark", "domob", {"x": -100, "y": -150}, rot=0)
     buildings = self.getBuildings ()

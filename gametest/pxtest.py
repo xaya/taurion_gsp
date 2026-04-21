@@ -1,5 +1,5 @@
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2019-2025  Autonomous Worlds Ltd
+#   Copyright (C) 2019-2026  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -101,7 +101,7 @@ class Character (object):
           assert o["characterid"] == self.getId ()
           del o["characterid"]
           del o["start_height"]
-          _, height = self.test.env.getChainTip ()
+          height = self.test.getSuperblockHeight ()
           o["blocks"] = o["end_height"] - height
           del o["end_height"]
           return o
@@ -207,7 +207,7 @@ class Building (object):
         assert o["buildingid"] == self.getId ()
         del o["buildingid"]
         del o["start_height"]
-        _, height = self.test.env.getChainTip ()
+        height = self.test.getSuperblockHeight ()
         o["blocks"] = o["end_height"] - height
         del o["end_height"]
         return o
@@ -317,19 +317,46 @@ class PXTest (XayaXGameTest):
     with self.runXayaXEthEnvironment () as env:
       yield env
 
-  def advanceToHeight (self, targetHeight):
+  def generate (self, n, superblocks=True):
     """
-    Mines blocks until we are exactly at the given target height.
+    Generates n blocks, by default generating only superblocks by
+    advancing the timestamp accordingly on each block.
     """
 
-    _, curHeight = self.env.getChainTip ()
+    if not superblocks:
+      super ().generate (n)
+      return
+
+    lastTime = self.w3.eth.get_block ("latest")["timestamp"]
+    delta = self.roConfig ().params.superblock_seconds
+
+    for i in range (n):
+      self.env.setMockTime (lastTime + (i + 1) * delta)
+      super ().generate (1)
+
+  def getSuperblockHeight (self):
+    """
+    Returns the current superblock height the GSP is on.
+    """
+
+    self.syncGame ()
+    data = self.rpc.game.getnullstate ()
+    return data["custom"]["superblock"]["height"]
+
+  def advanceToHeight (self, targetHeight):
+    """
+    Mines blocks until we are exactly at the given target height,
+    in superblocks.
+    """
+
+    curHeight = self.getSuperblockHeight ()
     n = targetHeight - curHeight
 
     assert n >= 0
     if n > 0:
       self.generate (n)
 
-    _, curHeight = self.env.getChainTip ()
+    curHeight = self.getSuperblockHeight ()
     self.assertEqual (curHeight, targetHeight)
 
   def getRpc (self, method, *args, **kwargs):
