@@ -31,6 +31,7 @@
 #include "database/dex.hpp"
 #include "database/moneysupply.hpp"
 #include "database/schema.hpp"
+#include "proto/roconfig.hpp"
 
 #include <glog/logging.h>
 
@@ -78,44 +79,72 @@ PXLogic::UpdateState (Database& db, xaya::Random& rnd,
 {
   const auto& blockMeta = blockData["block"];
   CHECK (blockMeta.isObject ());
-  const auto& heightVal = blockMeta["height"];
-  CHECK (heightVal.isUInt64 ());
-  const unsigned height = heightVal.asUInt64 ();
   const auto& timestampVal = blockMeta["timestamp"];
   CHECK (timestampVal.isInt64 ());
   const int64_t timestamp = timestampVal.asInt64 ();
 
-  Context ctx(chain, map, height, timestamp);
+  const RoConfig cfg(chain);
+
+  unsigned sbHeight;
+  int64_t sbTimestamp;
+  bool isNextSuperBlock;
+  if (db.LastSuperBlock (sbHeight, sbTimestamp))
+    {
+      const int64_t nextSB = sbTimestamp + cfg->params ().superblock_seconds ();
+      isNextSuperBlock = (nextSB <= timestamp);
+    }
+  else
+    {
+      sbHeight = 0;
+      isNextSuperBlock = true;
+    }
+
+  /* The timestamp is (apart from triggering superblocks) only used for
+     historical records about DEX trades, we can just use the real block
+     timestamp for that.  The superblock height is the previous one +1:  For
+     a superblock, that is what it will be; and for a non-superblock, that is
+     the superblock height at which the next processing will be performed and
+     we want to use that (similar to pending moves).  */
+  Context ctx(chain, map, sbHeight + 1, timestamp);
 
   FameUpdater fame(db, ctx);
-  UpdateState (db, fame, rnd, ctx, blockData);
+  UpdateState (db, fame, rnd, ctx, isNextSuperBlock, blockData);
+
+  if (isNextSuperBlock)
+    db.SetSuperBlock (sbHeight + 1, timestamp);
 }
 
 void
 PXLogic::UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
-                      const Context& ctx, const Json::Value& blockData)
+                      const Context& ctx,
+                      const bool superBlock, const Json::Value& blockData)
 {
   DynObstacles dyn(db, ctx);
   MoveProcessor mvProc(db, dyn, rnd, ctx);
   mvProc.ProcessAdmin (blockData["admin"]);
   mvProc.ProcessAll (blockData["moves"]);
 
-  fame.GetDamageLists ().RemoveOld (
-      ctx.RoConfig ()->params ().damage_list_blocks ());
+  if (superBlock)
+    {
+      LOG (INFO) << "Processing super block height " << ctx.Height ();
 
-  AllHpUpdates (db, dyn, fame, rnd, ctx);
-  ProcessAllOngoings (db, rnd, ctx);
+      fame.GetDamageLists ().RemoveOld (
+          ctx.RoConfig ()->params ().damage_list_blocks ());
 
-  ProcessAllMining (db, rnd, ctx);
-  ProcessAllMovement (db, dyn, ctx);
+      AllHpUpdates (db, dyn, fame, rnd, ctx);
+      ProcessAllOngoings (db, rnd, ctx);
 
-  /* Entering buildings should be after moves and movement, so that players
-     enter as soon as possible (perhaps in the same instant the move for it
-     gets confirmed).  It should be before combat targets, so that players
-     entering a building won't be attacked any more.  */
-  ProcessEnterBuildings (db, dyn, ctx);
+      ProcessAllMining (db, rnd, ctx);
+      ProcessAllMovement (db, dyn, ctx);
 
-  FindCombatTargets (db, rnd, ctx);
+      /* Entering buildings should be after moves and movement, so that players
+         enter as soon as possible (perhaps in the same instant the move for it
+         gets confirmed).  It should be before combat targets, so that players
+         entering a building won't be attacked any more.  */
+      ProcessEnterBuildings (db, dyn, ctx);
+
+      FindCombatTargets (db, rnd, ctx);
+    }
 
 #ifdef ENABLE_SLOW_ASSERTS
   ValidateStateSlow (db, ctx);

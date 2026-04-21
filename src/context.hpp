@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2026  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -61,9 +61,11 @@ private:
   std::unique_ptr<ForkHandler> forks;
 
   /**
-   * The current block's height.  This is set to the confirmed height plus
-   * one for processing pending moves, as that corresponds to the expected
-   * height at which the move will be confirmed.
+   * The current superblock's height.  This is set to the confirmed height plus
+   * one for processing pending moves as well as moves in blocks that are
+   * not superblocks, as that corresponds to the expected
+   * height at which the move will be confirmed / "effectively confirmed"
+   * with processing other than just moves happening afterwards.
    */
   unsigned height;
 

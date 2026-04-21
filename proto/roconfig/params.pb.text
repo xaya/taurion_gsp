@@ -1,5 +1,7 @@
 params:
   {
+    superblock_seconds: 30
+
     character_cost: 10
     character_limit: 20
 
