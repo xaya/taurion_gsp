@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2020-2021  Autonomous Worlds Ltd
+    Copyright (C) 2020-2026  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -395,7 +395,7 @@ BidOperation::Execute ()
       PayToSellerAndFee (o->GetAccount (), cost);
       account.AddBalance (-cost);
 
-      history.RecordTrade (ctx.Height (), ctx.Timestamp (),
+      history.RecordTrade (ctx.BlockHeight (), ctx.Timestamp (),
                            building, item, cur, o->GetPrice (),
                            o->GetAccount (), account.GetName ());
 
@@ -477,7 +477,7 @@ AskOperation::Execute ()
       const Amount cost = QuantityProduct (cur, o->GetPrice ()).Extract ();
       PayToSellerAndFee (account.GetName (), cost);
 
-      history.RecordTrade (ctx.Height (), ctx.Timestamp (),
+      history.RecordTrade (ctx.BlockHeight (), ctx.Timestamp (),
                            building, item, cur, o->GetPrice (),
                            account.GetName (), o->GetAccount ());
 

@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2026  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -61,11 +61,20 @@ private:
   std::unique_ptr<ForkHandler> forks;
 
   /**
-   * The current block's height.  This is set to the confirmed height plus
-   * one for processing pending moves, as that corresponds to the expected
-   * height at which the move will be confirmed.
+   * The current superblock's height.  This is set to the confirmed height plus
+   * one for processing pending moves as well as moves in blocks that are
+   * not superblocks, as that corresponds to the expected
+   * height at which the move will be confirmed / "effectively confirmed"
+   * with processing other than just moves happening afterwards.
    */
   unsigned height;
+
+  /**
+   * The real block height corresponding to the Context.  This tracks the
+   * actual chain block height, in contrast to the modified "height" field
+   * which tracks the game's virtual pacing (superblocks).
+   */
+  unsigned blockHeight;
 
   /**
    * The timestamp of the current block.  Unset for pending moves and it must
@@ -100,7 +109,8 @@ public:
   /**
    * Constructs an instance based on the given data.
    */
-  explicit Context (xaya::Chain c, const BaseMap& m, unsigned h, int64_t ts);
+  explicit Context (xaya::Chain c, const BaseMap& m,
+                    unsigned h, unsigned bh, int64_t ts);
 
   xaya::Chain
   Chain () const
@@ -133,10 +143,20 @@ public:
   }
 
   /**
-   * Returns the context's block height.  Must not be used if NO_HEIGHT was
-   * passed to the constructor.
+   * Returns the context's superblock height.  This is what should be mainly
+   * used for game logic, such as combat, movement, durations of certain
+   * operations and all things like that, which are based on a specific
+   * pace for the game.
+   *
+   * Must not be used if NO_HEIGHT was passed to the constructor.
    */
   unsigned Height () const;
+
+  /**
+   * Returns the context's real block height.  Must not be used if NO_HEIGHT
+   * was passed to the constructor.
+   */
+  unsigned BlockHeight () const;
 
   /**
    * Returns the context's block timestamp.  This must not be called for

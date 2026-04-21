@@ -65,7 +65,7 @@ BaseMoveProcessor::BaseMoveProcessor (Database& d, DynObstacles& o,
     groundLoot(db), buildingInv(db),
     orders(db), dexHistory(db),
     itemCounts(db), moneySupply(db),
-    ongoings(db), regions(db, ctx.Height ())
+    ongoings(db), regions(db, ctx.BlockHeight ())
 {}
 
 bool

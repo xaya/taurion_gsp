@@ -41,7 +41,7 @@ void
 ProcessAllMining (Database& db, xaya::Random& rnd, const Context& ctx)
 {
   CharacterTable characters(db);
-  RegionsTable regions(db, ctx.Height ());
+  RegionsTable regions(db, ctx.BlockHeight ());
 
   auto res = characters.QueryMining ();
   while (res.Step ())

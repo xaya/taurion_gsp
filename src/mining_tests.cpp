@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2026  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -48,10 +48,11 @@ protected:
   const RegionMap::IdT region;
 
   MiningTests ()
-    : characters(db), regions(db, 1'042),
+    : characters(db), regions(db, 1'024),
       pos(-10, 42), region(ctx.Map ().Regions ().GetRegionId (pos))
   {
-    ctx.SetHeight (1'042);
+    ctx.SetHeight (1'024);
+    ctx.SetBlockHeight (1'042);
 
     auto c = GetTest ();
     c->SetPosition (pos);

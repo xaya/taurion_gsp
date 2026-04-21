@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2021  Autonomous Worlds Ltd
+    Copyright (C) 2019-2026  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -783,6 +783,25 @@ GameStateJson::TradeHistory (const std::string& item,
 {
   DexHistoryTable tbl(db);
   return ResultsAsArray (tbl, tbl.QueryForItem (item, building));
+}
+
+Json::Value
+GameStateJson::SuperBlock ()
+{
+  unsigned height;
+  int64_t ts;
+
+  Json::Value res(Json::objectValue);
+  if (db.LastSuperBlock (height, ts))
+    {
+      res["exists"] = true;
+      res["height"] = IntToJson (height);
+      res["timestamp"] = IntToJson (ts);
+    }
+  else
+    res["exists"] = false;
+
+  return res;
 }
 
 Json::Value
