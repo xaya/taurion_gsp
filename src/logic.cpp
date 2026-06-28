@@ -136,9 +136,9 @@ PXLogic::GetInitialStateBlock (unsigned& height,
   switch (chain)
     {
     case xaya::Chain::POLYGON:
-      height = 84'322'989;
+      height = 89'298'809;
       hashHex
-          = "ca8c6a61ca79a3fcd36de6e20a3dfa5ce8386021069387b214e2628f3b2a3e6e";
+          = "d1c7f16ba1378d2302751edbaf7feb35dd5d9bdbb257616280c93bbe35f933f6";
       break;
 
     case xaya::Chain::GANACHE:
