@@ -115,6 +115,7 @@ private:
 
   friend class PXLogicTests;
   friend class PXRpcServer;
+  friend class SuperblockTests;
   friend class SQLiteGameDatabase;
 
 protected:

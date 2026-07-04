@@ -51,6 +51,7 @@ REGTESTS = \
   services_reveng.py \
   spawn.py \
   splitstaterpcs.py \
+  superblocks.py \
   vehiclefitments.py
 
 EXTRA_DIST = $(REGTESTS) $(TEST_LIBRARY)
