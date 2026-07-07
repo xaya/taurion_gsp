@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2020-2025  Autonomous Worlds Ltd
+    Copyright (C) 2020-2026  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -197,6 +197,7 @@ TEST_F (OngoingsTests, Prospection)
   c.reset ();
 
   RegionsTable regions(db, 5);
+  ctx.SetBlockHeight (5);
   regions.GetById (region)->MutableProto ().set_prospecting_character (cId);
 
   ctx.SetHeight (10);

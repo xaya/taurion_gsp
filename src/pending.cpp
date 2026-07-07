@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2021  Autonomous Worlds Ltd
+    Copyright (C) 2019-2026  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -714,8 +714,13 @@ PendingMoves::AddPendingMove (const Json::Value& mv)
   const auto& heightVal = blk["height"];
   CHECK (heightVal.isUInt ());
 
+  unsigned sbHeight = 0;
+  int64_t sbTimestamp;
+  if (dbObj.LastSuperBlock (sbHeight, sbTimestamp))
+    sbHeight += 1;
+
   const Context ctx(GetChain (), rules.GetBaseMap (),
-                    heightVal.asUInt () + 1, Context::NO_TIMESTAMP);
+                    sbHeight, heightVal.asUInt () + 1, Context::NO_TIMESTAMP);
 
   if (dyn == nullptr)
     dyn = std::make_unique<DynObstacles> (dbObj, ctx);

@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2021  Autonomous Worlds Ltd
+    Copyright (C) 2019-2026  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -140,6 +140,11 @@ public:
    * Returns the trade history for a given item and building.
    */
   Json::Value TradeHistory (const std::string& item, Database::IdT building);
+
+  /**
+   * Returns data about the current superblock state.
+   */
+  Json::Value SuperBlock ();
 
   /**
    * Returns the full game state JSON for the given Database handle.  The full

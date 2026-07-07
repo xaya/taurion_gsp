@@ -1,5 +1,5 @@
 --  GSP for the Taurion blockchain game
---  Copyright (C) 2019-2020  Autonomous Worlds Ltd
+--  Copyright (C) 2019-2026  Autonomous Worlds Ltd
 --
 --  This program is free software: you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -13,6 +13,31 @@
 --
 --  You should have received a copy of the GNU General Public License
 --  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+-- =============================================================================
+
+-- Data about "superblocks".  While every block of the underlying blockchain
+-- is processed for moves, only certain blocks trigger other game elements
+-- (such as movement, ongoing operations or HP updates).  This is to give
+-- the game a well-defined pace in terms of real time, independent of the
+-- potentially very fast blocks of the base chain.
+--
+-- "Superblocks" are the blocks that trigger these specific updates.  They
+-- happen in pre-defined intervals of real time.  In the game state (this table)
+-- we store the last superblock processed, with the timestamp (so we know
+-- when the next should trigger) and an effective "block height" based on
+-- the number of superblocks since genesis.  This height is what we use
+-- in the game as "block height".
+CREATE TABLE IF NOT EXISTS `superblocks` (
+
+  -- The "superblock height", starting at zero for genesis and incremented
+  -- for each superblock triggered.
+  `height` INTEGER PRIMARY KEY,
+
+  -- The timestamp of this block.
+  `time` INTEGER NOT NULL
+
+);
 
 -- =============================================================================
 

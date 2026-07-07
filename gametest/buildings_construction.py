@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2020-2025  Autonomous Worlds Ltd
+#   Copyright (C) 2020-2026  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -46,7 +46,7 @@ class BuildingConstructionTest (PXTest):
     })
     self.generate (1)
 
-    _, foundedHeight = self.env.getChainTip ()
+    foundedHeight = self.getSuperblockHeight ()
     buildings = self.getBuildings ()
     bId = list (buildings.keys ())[-1]
     self.assertEqual (buildings[bId].isFoundation (), True)
@@ -74,7 +74,7 @@ class BuildingConstructionTest (PXTest):
 
     self.mainLogger.info ("Finishing construction...")
     self.generate (1)
-    _, finishedHeight = self.env.getChainTip ()
+    finishedHeight = self.getSuperblockHeight ()
     b = self.getBuildings ()[bId]
     self.assertEqual (b.isFoundation (), False)
     self.assertEqual (b.getFungibleInventory ("domob"), {

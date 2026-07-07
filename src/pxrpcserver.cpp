@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2026  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -631,8 +631,13 @@ PXRpcServer::getserviceinfo (const std::string& name, const Json::Value& op)
   return logic.GetCustomStateData (game,
     [&] (Database& db, const xaya::uint256& hash, const unsigned height)
     {
+      unsigned sbHeight = 0;
+      int64_t sbTimestamp;
+      if (db.LastSuperBlock (sbHeight, sbTimestamp))
+        sbHeight += 1;
+
       const Context ctx(logic.GetChain (), logic.GetBaseMap (),
-                        height + 1, Context::NO_TIMESTAMP);
+                        sbHeight, height + 1, Context::NO_TIMESTAMP);
 
       AccountsTable accounts(db);
       BuildingsTable buildings(db);

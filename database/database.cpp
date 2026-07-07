@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2021  Autonomous Worlds Ltd
+    Copyright (C) 2019-2026  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -37,6 +37,59 @@ Database::Prepare (const std::string& sql)
 {
   CHECK (db != nullptr) << "Database has not been set";
   return Statement (*this, db->Prepare (sql));
+}
+
+namespace
+{
+
+/**
+ * Database result for the superblocks table.
+ */
+struct SuperBlocksResult : public Database::ResultType
+{
+  RESULT_COLUMN (int64_t, height, 1);
+  RESULT_COLUMN (int64_t, time, 2);
+};
+
+} // anonymous namespace
+
+bool
+Database::LastSuperBlock (unsigned& height, int64_t& timestamp) const
+{
+  auto stmt = const_cast<Database*> (this)->Prepare (R"(
+    SELECT `height`, `time`
+      FROM `superblocks`
+      ORDER BY `height` DESC
+      LIMIT 1
+  )");
+  auto res = stmt.Query<SuperBlocksResult> ();
+
+  if (!res.Step ())
+    return false;
+
+  height = res.Get<SuperBlocksResult::height> ();
+  timestamp = res.Get<SuperBlocksResult::time> ();
+
+  CHECK (!res.Step ());
+
+  return true;
+}
+
+void
+Database::SetSuperBlock (const unsigned height, const int64_t timestamp)
+{
+  /* We only need to keep the current superblock, and can remove the previous
+     one from the table.  */
+  Prepare ("DELETE FROM `superblocks`").Execute ();
+
+  auto stmt = Prepare (R"(
+    INSERT INTO `superblocks`
+      (`height`, `time`)
+      VALUES (?1, ?2)
+  )");
+  stmt.Bind (1, height);
+  stmt.Bind (2, timestamp);
+  stmt.Execute ();
 }
 
 void

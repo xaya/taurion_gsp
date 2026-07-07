@@ -58,32 +58,32 @@ namespace pxd
 class PXLogicTests : public DBTestWithSchema
 {
 
-private:
-
-  TestRandom rnd;
-
 protected:
 
+  TestRandom rnd;
   ContextForTesting ctx;
 
   AccountsTable accounts;
   BuildingsTable buildings;
   CharacterTable characters;
   DexOrderTable orders;
+  DexHistoryTable trades;
   BuildingInventoriesTable inv;
   GroundLootTable groundLoot;
   OngoingsTable ongoings;
   RegionsTable regions;
 
   PXLogicTests ()
-    : accounts(db), buildings(db), characters(db), orders(db),
+    : accounts(db), buildings(db), characters(db), orders(db), trades(db),
       inv(db), groundLoot(db), ongoings(db), regions(db, 0)
   {
     SetHeight (42);
+    ctx.SetBlockHeight (100);
+    ctx.SetTimestamp (1'500'000'000);
   }
 
   /**
-   * Builds a blockData JSON value from the given moves.
+   * Builds a dummy blockData JSON value from the given moves.
    */
   Json::Value
   BuildBlockData (const Json::Value& moves)
@@ -91,12 +91,6 @@ protected:
     Json::Value blockData(Json::objectValue);
     blockData["admin"] = Json::Value (Json::arrayValue);
     blockData["moves"] = moves;
-
-    Json::Value meta(Json::objectValue);
-    meta["height"] = ctx.Height ();
-    meta["timestamp"] = 1500000000;
-    blockData["block"] = meta;
-
     return blockData;
   }
 
@@ -134,7 +128,7 @@ protected:
   }
 
   /**
-   * Sets the block height for processing the next block.
+   * Sets the superblock height for processing the next block.
    */
   void
   SetHeight (const unsigned h)
@@ -161,19 +155,19 @@ protected:
   void
   UpdateStateJson (const Json::Value& moves)
   {
-    UpdateStateWithData (BuildBlockData (moves));
+    UpdateStateWithHeight (moves, ctx.Height ());
   }
 
   /**
-   * Calls PXLogic::UpdateState with the given block data and our params, RNG
-   * and stuff.  This is a more general variant of UpdateState(std::string),
-   * where the block data can be modified to include extra stuff (e.g. a block
-   * height of our choosing).
+   * Calls PXLogic::UpdateState with the given moves and superblock height.
    */
   void
-  UpdateStateWithData (const Json::Value& blockData)
+  UpdateStateWithHeight (const Json::Value& moves, const unsigned sbHeight)
   {
-    PXLogic::UpdateState (db, rnd, ctx.Chain (), ctx.Map (), blockData);
+    Context newCtx(ctx.Chain (), ctx.Map (),
+                   sbHeight, ctx.BlockHeight (), ctx.Timestamp ());
+    FameUpdater fame(db, newCtx);
+    PXLogic::UpdateState (db, fame, rnd, newCtx, true, BuildBlockData (moves));
   }
 
   /**
@@ -184,7 +178,7 @@ protected:
   UpdateStateWithFame (FameUpdater& fame, const std::string& moveStr)
   {
     const auto blockData = BuildBlockData (ParseJson (moveStr));
-    PXLogic::UpdateState (db, fame, rnd, ctx, blockData);
+    PXLogic::UpdateState (db, fame, rnd, ctx, true, blockData);
   }
 
   /**
@@ -637,9 +631,7 @@ TEST_F (PXLogicTests, DamageLists)
   UpdateState ("[]");
 
   /* Deal damage, which should be recorded in the damage list.  */
-  Json::Value blockData = BuildBlockData (ParseJson ("[]"));
-  blockData["block"]["height"] = 100;
-  UpdateStateWithData (blockData);
+  UpdateStateWithHeight (ParseJson ("[]"), 100);
   EXPECT_EQ (dl.GetAttackers (idTarget),
              DamageLists::Attackers ({idAttacker}));
 
@@ -649,16 +641,12 @@ TEST_F (PXLogicTests, DamageLists)
   c.reset ();
 
   /* The damage list entry should still be present 99 blocks after.  */
-  blockData = BuildBlockData (ParseJson ("[]"));
-  blockData["block"]["height"] = 199;
-  UpdateStateWithData (blockData);
+  UpdateStateWithHeight (ParseJson ("[]"), 199);
   EXPECT_EQ (dl.GetAttackers (idTarget),
              DamageLists::Attackers ({idAttacker}));
 
   /* The entry should be removed at block 200.  */
-  blockData = BuildBlockData (ParseJson ("[]"));
-  blockData["block"]["height"] = 200;
-  UpdateStateWithData (blockData);
+  UpdateStateWithHeight (ParseJson ("[]"), 200);
   EXPECT_EQ (dl.GetAttackers (idTarget), DamageLists::Attackers ({}));
 }
 
@@ -994,14 +982,13 @@ TEST_F (PXLogicTests, MiningWhenReprospected)
      mining gracefully.  We can only reprospect after using up the resources,
      which means that we need to mine for one turn before.  */
   UpdateState ("[]");
-  auto data = BuildBlockData (ParseJson (R"([
+  const auto moves = ParseJson (R"([
     {
       "name": "domob",
       "move": {"c": {"id": 1, "prospect": {}}}
     }
-  ])"));
-  data["block"]["height"] = 200;
-  UpdateStateWithData (data);
+  ])");
+  UpdateStateWithHeight (moves, 200);
 
   c = characters.GetById (1);
   EXPECT_TRUE (c->IsBusy ());
@@ -1166,6 +1153,7 @@ TEST_F (PXLogicTests, BuildingUpdateVsOperations)
   for (int i = 1; i <= 200; ++i)
     {
       ctx.SetHeight (ctx.Height () + 1);
+      ctx.SetBlockHeight (ctx.BlockHeight () + 1);
 
       auto moves = ParseJson (R"([
         {
@@ -1205,6 +1193,202 @@ TEST_F (PXLogicTests, BuildingUpdateVsOperations)
   EXPECT_EQ (accounts.GetByName ("owner")->GetBalance (), 200);
   EXPECT_EQ (accounts.GetByName ("seller")->GetBalance (), 10'000 - 1'100);
   EXPECT_EQ (accounts.GetByName ("buyer")->GetBalance (), 1'000'000 - 10'000);
+}
+
+/* ************************************************************************** */
+
+} // anonymous namespace
+
+class SuperblockTests : public PXLogicTests
+{
+
+protected:
+
+  /**
+   * A character that is moving with unit speed (one hex per superblock)
+   * from the centre outwards.
+   */
+  Database::IdT cidMoving;
+
+  /** Real time used for the genesis block.  */
+  static inline constexpr int64_t start = 100;
+
+  /** Step (in seconds) between superblocks.  */
+  const int64_t step;
+
+  /* Variables to hold the result of LastSuperBlock calls.  */
+  unsigned sbHeight;
+  int64_t sbTime;
+
+  SuperblockTests ()
+    : step(ctx.RoConfig ()->params ().superblock_seconds ())
+  {
+    /* Set up a character moving with speed one from the centre outwards,
+       so we can track movement as something that happens per superblock.  */
+    auto c = CreateCharacter ("moving", Faction::RED);
+    cidMoving = c->GetId ();
+    c->SetPosition (HexCoord (0, 0));
+    c->MutableProto ().set_speed (1'000);
+    AddRepeatedCoords (
+        {HexCoord (100, 0)},
+        *c->MutableProto ().mutable_movement ()->mutable_waypoints ());
+    c.reset ();
+  }
+
+  /**
+   * Returns the number of steps that the test character has moved already,
+   * which corresponds to the number of superblocks processed.
+   */
+  unsigned
+  GetStepsMoved ()
+  {
+    return characters.GetById (cidMoving)->GetPosition ().GetX ();
+  }
+
+  /**
+   * Calls UpdateState with custom moves and block data, going through
+   * the outer function that reads the block data and decides about whether
+   * or not to do a superblock.
+   */
+  void
+  UpdateForBlock (const unsigned height, const int64_t timestamp,
+                  const Json::Value& moves)
+  {
+    Json::Value blockData = BuildBlockData (moves);
+    blockData["block"] = Json::Value (Json::objectValue);
+    blockData["block"]["height"] = IntToJson (height);
+    blockData["block"]["timestamp"] = IntToJson (timestamp);
+
+    PXLogic::UpdateState (db, rnd, ctx.Chain (), ctx.Map (), blockData);
+  }
+
+};
+
+namespace
+{
+
+TEST_F (SuperblockTests, FirstBlockIsSuperblock)
+{
+  ASSERT_FALSE (db.LastSuperBlock (sbHeight, sbTime));
+  EXPECT_EQ (GetStepsMoved (), 0);
+
+  UpdateForBlock (42, start, ParseJson ("[]"));
+
+  ASSERT_TRUE (db.LastSuperBlock (sbHeight, sbTime));
+  EXPECT_EQ (sbHeight, 1);
+  EXPECT_EQ (sbTime, start);
+  EXPECT_EQ (GetStepsMoved (), 1);
+}
+
+TEST_F (SuperblockTests, NextSuperblocksByTime)
+{
+  UpdateForBlock (42, start, ParseJson ("[]"));
+
+  /* This is not a superblock.  */
+  UpdateForBlock (43, start + step - 1, ParseJson ("[]"));
+  ASSERT_TRUE (db.LastSuperBlock (sbHeight, sbTime));
+  EXPECT_EQ (sbHeight, 1);
+  EXPECT_EQ (sbTime, start);
+  EXPECT_EQ (GetStepsMoved (), 1);
+
+  /* This is a superblock (just one, even though long time).  */
+  UpdateForBlock (43, start + 10 * step + 1, ParseJson ("[]"));
+  ASSERT_TRUE (db.LastSuperBlock (sbHeight, sbTime));
+  EXPECT_EQ (sbHeight, 2);
+  EXPECT_EQ (sbTime, start + 10 * step + 1);
+  EXPECT_EQ (GetStepsMoved (), 2);
+
+  /* This is not a superblock.  */
+  UpdateForBlock (43, start + 11 * step, ParseJson ("[]"));
+  ASSERT_TRUE (db.LastSuperBlock (sbHeight, sbTime));
+  EXPECT_EQ (sbHeight, 2);
+  EXPECT_EQ (sbTime, start + 10 * step + 1);
+  EXPECT_EQ (GetStepsMoved (), 2);
+
+  /* This is one again.  */
+  UpdateForBlock (43, start + 11 * step + 1, ParseJson ("[]"));
+  ASSERT_TRUE (db.LastSuperBlock (sbHeight, sbTime));
+  EXPECT_EQ (sbHeight, 3);
+  EXPECT_EQ (sbTime, start + 11 * step + 1);
+  EXPECT_EQ (GetStepsMoved (), 3);
+}
+
+TEST_F (SuperblockTests, SuperblockHeightUsedCorrectly)
+{
+  UpdateForBlock (42, start, ParseJson ("[]"));
+  UpdateForBlock (43, start + step, ParseJson ("[]"));
+
+  db.SetNextId (100);
+  auto c = CreateCharacter ("builder", Faction::GREEN);
+  ASSERT_EQ (c->GetId (), 100);
+  c->SetPosition (HexCoord (0, 0));
+  c->MutableProto ().set_cargo_space (1'000);
+  c->GetInventory ().AddFungibleCount ("foo", 10);
+  c.reset ();
+
+  /* This is not a superblock, and the building foundation move
+     will record the next superblock height as "founded".  It will be
+     processed, though.  */
+  db.SetNextId (200);
+  UpdateForBlock (44, start + 2 * step - 1, ParseJson (R"([
+    {
+      "name": "builder",
+      "move": {"c": {"id": 100, "fb": {"t": "huesli", "rot": 0}}}
+    },
+  ])"));
+
+  /* We had two superblocks so far.  */
+  ASSERT_TRUE (db.LastSuperBlock (sbHeight, sbTime));
+  EXPECT_EQ (sbHeight, 2);
+  EXPECT_EQ (sbTime, start + step);
+  EXPECT_EQ (GetStepsMoved (), 2);
+
+  /* Verify the building.  The founded height is the next superblock height,
+     similar to pending moves.  */
+  EXPECT_EQ (buildings.GetById (200)
+                ->GetProto ().age_data ().founded_height (),
+             sbHeight + 1);
+}
+
+TEST_F (SuperblockTests, BlockHeightAndTimeUsed)
+{
+  UpdateForBlock (42, start, ParseJson ("[]"));
+  UpdateForBlock (43, start + step, ParseJson ("[]"));
+
+  db.SetNextId (100);
+  CreateBuilding ("checkmark", "", Faction::ANCIENT);
+
+  accounts.CreateNew ("buyer")->SetFaction (Faction::RED);
+  accounts.GetByName ("buyer")->AddBalance (1'000'000);
+  accounts.CreateNew ("seller")->SetFaction (Faction::RED);
+  inv.Get (100, "seller")->GetInventory ().AddFungibleCount ("foo", 100);
+
+  db.SetNextId (200);
+  orders.CreateNew (100, "buyer", DexOrder::Type::BID, "foo", 1, 100);
+
+  /* This is a non-superblock, executing a DEX trade.  The real block height
+     and timestamp will get recorded.  */
+  UpdateForBlock (44, start + step + 1, ParseJson (R"([
+    {
+      "name": "seller",
+      "move": {"x": [{"b": 100, "i": "foo", "n": 1, "ap": 100}]}
+    }
+  ])"));
+
+  /* Sanity check that the trade went through.  */
+  EXPECT_EQ (inv.Get (100, "seller")->GetInventory ().GetFungibleCount ("foo"),
+             99);
+  EXPECT_EQ (inv.Get (100, "buyer")->GetInventory ().GetFungibleCount ("foo"),
+             1);
+
+  /* Verify the historical records made against the non-superblock real
+     block height and timestamp.  */
+  auto res = trades.QueryForItem ("foo", 100);
+  ASSERT_TRUE (res.Step ());
+  auto trade = trades.GetFromResult (res);
+  EXPECT_EQ (trade->GetHeight (), 44);
+  EXPECT_EQ (trade->GetTimestamp (), start + step + 1);
+  EXPECT_FALSE (res.Step ());
 }
 
 /* ************************************************************************** */
