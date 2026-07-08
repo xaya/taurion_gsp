@@ -19,6 +19,7 @@
 #include "gamestatejson.hpp"
 
 #include "buildings.hpp"
+#include "jobs.hpp"
 #include "jsonutils.hpp"
 #include "modifier.hpp"
 #include "protoutils.hpp"
@@ -647,45 +648,10 @@ template <>
   if (j.GetFaction () != Faction::INVALID)
     res["faction"] = FactionToString (j.GetFaction ());
 
-  switch (j.GetType ())
-    {
-    case Job::Type::TRANSPORT:
-      res["type"] = "transport";
-      break;
-    case Job::Type::HAUL:
-      res["type"] = "haul";
-      break;
-    case Job::Type::WANTED:
-      res["type"] = "wanted";
-      break;
-    case Job::Type::PROTECT:
-      res["type"] = "protect";
-      break;
-    case Job::Type::DESTROY:
-      res["type"] = "destroy";
-      break;
-    case Job::Type::ESCORT:
-      res["type"] = "escort";
-      break;
-    case Job::Type::BODYGUARD:
-      res["type"] = "bodyguard";
-      break;
-    case Job::Type::PATROL:
-      res["type"] = "patrol";
-      break;
-    case Job::Type::RENTAL:
-      res["type"] = "rental";
-      break;
-    case Job::Type::AD:
-      res["type"] = "ad";
-      break;
-    case Job::Type::TOLL:
-      res["type"] = "toll";
-      break;
-    default:
-      res["type"] = "unknown";
-      break;
-    }
+  /* Type name and linked-entity kind both derive from the predicate
+     registry, so they can never drift from the game logic.  */
+  const char* typeName = JobTypeName (j.GetType ());
+  res["type"] = typeName != nullptr ? typeName : "unknown";
 
   switch (j.GetStatus ())
     {
@@ -705,19 +671,14 @@ template <>
   if (j.HasDeadline ())
     res["deadline"] = IntToJson (j.GetDeadline ());
 
-  /* The linked entity is a character for the character-fate types and a
-     building for everything else that links one.  */
   if (j.GetLinkedId () != Database::EMPTY_ID)
-    switch (j.GetType ())
-      {
-      case Job::Type::BODYGUARD:
-      case Job::Type::TOLL:
-        res["character"] = IntToJson (j.GetLinkedId ());
-        break;
-      default:
-        res["building"] = IntToJson (j.GetLinkedId ());
-        break;
-      }
+    {
+      const auto* pred = PredicateForType (j.GetType ());
+      const bool isChar
+          = pred != nullptr
+              && pred->LinkedEntityKind () == JobLinkedKind::CHARACTER;
+      res[isChar ? "character" : "building"] = IntToJson (j.GetLinkedId ());
+    }
   if (!j.GetLinkedName ().empty ())
     res["target"] = j.GetLinkedName ();
 
@@ -727,13 +688,11 @@ template <>
   if (!designated.empty ())
     res["designated"] = designated;
 
-  /* Renders an outstanding manifest as an {item: quantity} object.  */
-  const auto itemsJson = [] (const proto::Inventory& m)
+  /* Renders an outstanding manifest as an {item: quantity} object, through
+     the same inventory conversion the rest of the state JSON uses.  */
+  const auto itemsJson = [this] (const proto::Inventory& m)
     {
-      Json::Value items(Json::objectValue);
-      for (const auto& entry : m.fungible ())
-        items[entry.first] = IntToJson (entry.second);
-      return items;
+      return Convert (Inventory (m))["fungible"];
     };
 
   switch (pb.kind_case ())

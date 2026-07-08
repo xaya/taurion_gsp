@@ -1399,12 +1399,16 @@ AllHpUpdates (Database& db, DynObstacles& dyn, FameUpdater& fame,
 
   /* The pre-removal pass: fame and wanted-bounty attribution both need the
      damage lists and the victims' still-live rows, before ProcessKills tears
-     them down.  */
-  JobsBountyTracker bounties(db, ctx, fame.GetDamageLists ());
-  for (const auto& id : dead)
+     them down.  The tracker (and its bounty-name query) is only constructed
+     when something actually died.  */
+  if (!dead.empty ())
     {
-      fame.UpdateForKill (id.ToProto ());
-      bounties.UpdateForKill (id.ToProto ());
+      JobsBountyTracker bounties(db, ctx, fame.GetDamageLists ());
+      for (const auto& id : dead)
+        {
+          fame.UpdateForKill (id.ToProto ());
+          bounties.UpdateForKill (id.ToProto ());
+        }
     }
 
   GroundLootTable loot(db);

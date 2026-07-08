@@ -137,6 +137,18 @@ enum class FulfilResult
 };
 
 /**
+ * What kind of entity a job type stores in linked_id.  This is a predicate
+ * property so the state validator and the JSON rendering derive it from the
+ * one per-type object instead of keeping parallel type switches in sync.
+ */
+enum class JobLinkedKind
+{
+  NONE,
+  BUILDING,
+  CHARACTER,
+};
+
+/**
  * The one per-type object.  A job type implements this; everything else
  * (escrow, the t/s/a/c/f dispatch, assign/accept/cancel, the expiry and kill
  * sweeps, reserved-balance sums, completion counters) is the shared core.
@@ -193,6 +205,28 @@ public:
   AudienceFaction (const Account& poster) const
   {
     return poster.GetFaction ();
+  }
+
+  /**
+   * What kind of entity this type stores in linked_id (NONE if it never
+   * links one).  Types that set linked_id in ApplyPost must override this.
+   */
+  virtual JobLinkedKind
+  LinkedEntityKind () const
+  {
+    return JobLinkedKind::NONE;
+  }
+
+  /**
+   * Whether this type settles through the character-kill hook (OnTargetKill).
+   * Gates the kill attribution, so a future type reusing the linked_name
+   * column for another purpose is never swept into a settlement path it
+   * does not implement.
+   */
+  virtual bool
+  SettlesOnTargetKill () const
+  {
+    return false;
   }
 
   /**
@@ -280,10 +314,13 @@ public:
   /**
    * Settles a job whose linked entity (building or character) was destroyed
    * (confirmed block only).  The caller deletes the row afterwards.  Types
-   * that never set linked_id must never receive this call.
+   * that never set linked_id keep this default, which must never be reached.
    */
-  virtual void OnLinkedEntityDestroyed (const JobContext& jc,
-                                        Job& job) const = 0;
+  virtual void
+  OnLinkedEntityDestroyed (const JobContext& jc, Job& job) const
+  {
+    LOG (FATAL) << "Job " << job.GetId () << " has no linked entity";
+  }
 
   /**
    * Pays out for one qualifying kill on a linked_name job (the wanted-bounty
@@ -309,6 +346,9 @@ const JobPredicate* PredicateForType (Job::Type type);
 
 /** Maps a POST move type name ("transport", ...) to a Job::Type.  */
 Job::Type JobTypeFromString (const std::string& name);
+
+/** Returns the move/JSON name for a job type, or nullptr if unknown.  */
+const char* JobTypeName (Job::Type type);
 
 /* ************************************************************************** */
 /* The generic move-op lifecycle.                                             */

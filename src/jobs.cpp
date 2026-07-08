@@ -26,6 +26,7 @@
 #include <glog/logging.h>
 
 #include <algorithm>
+#include <limits>
 #include <map>
 #include <string>
 #include <vector>
@@ -84,6 +85,46 @@ BumpJobStats (Account& a, const bool completed, const Amount value)
 }
 
 /**
+ * Validates that a job's terms carry zero worker collateral (the open-claim
+ * and payer/payee-swapped types, where nobody posts a bond).  The generic
+ * parse has already verified "co" is a well-formed amount.
+ */
+bool
+RequireZeroCollateral (const Json::Value& terms, const char* what)
+{
+  Amount collateral;
+  CHECK (CoinAmountFromJson (terms["co"], collateral));
+  if (collateral != 0)
+    {
+      LOG (WARNING) << what << " takes no collateral";
+      return false;
+    }
+  return true;
+}
+
+/**
+ * Parses a character id out of the given terms field and validates that it
+ * exists and is owned by the poster (the protectee / traveller checks).
+ */
+bool
+ValidateOwnedCharacter (const JobContext& jc, const Json::Value& terms,
+                        const char* field, const Account& poster,
+                        const char* label, Database::IdT& id)
+{
+  if (!IdFromJson (terms[field], id))
+    return false;
+  const auto c = jc.characters.GetById (id);
+  if (c == nullptr || c->GetOwner () != poster.GetName ())
+    {
+      LOG (WARNING)
+          << label << " " << id << " missing or not owned by "
+          << poster.GetName ();
+      return false;
+    }
+  return true;
+}
+
+/**
  * Hook-path settlement: the job succeeded (success-on-expiry types).  Pays
  * the worker the reward plus their collateral back and bumps their counters.
  * Must not be called while any account handle is live.
@@ -132,6 +173,32 @@ VoidJobAtHook (const JobContext& jc, const Job& job)
       ReleaseJobCoins (*worker, job.GetCollateral ());
     }
 }
+
+/**
+ * Shared base for every type that settles only through the block hooks
+ * (expiry / entity death / target kill) and therefore rejects any fulfil op.
+ */
+class HookSettledPredicate : public JobPredicate
+{
+
+public:
+
+  bool
+  CanFulfil (const JobContext& jc, const Job& job, const Account& executor,
+             const Json::Value& args) const override
+  {
+    /* Settles at a hook; a stray fulfil is rejected.  */
+    return false;
+  }
+
+  FulfilResult
+  DoFulfil (const JobContext& jc, Job& job, Account& executor,
+            const Json::Value& args) const override
+  {
+    LOG (FATAL) << "Job " << job.GetId () << " cannot be fulfilled";
+  }
+
+};
 
 /* ************************************************************************** */
 /* Delivery family (transport + haul).                                        */
@@ -372,8 +439,7 @@ DeliveryPredicate::DoFulfil (const JobContext& jc, Job& job, Account& executor,
           src->GetInventory ().AddFungibleCount (entry.first, -entry.second);
       }
       auto tgt = jc.buildingInv.Get (destB, job.GetPoster ());
-      for (const auto& entry : outstanding)
-        tgt->GetInventory ().AddFungibleCount (entry.first, entry.second);
+      tgt->GetInventory () += Inventory (Manifest (job));
     }
 
   LOG (INFO)
@@ -435,6 +501,12 @@ private:
   }
 
 public:
+
+  JobLinkedKind
+  LinkedEntityKind () const override
+  {
+    return JobLinkedKind::BUILDING;
+  }
 
   bool ValidatePost (const JobContext& jc, const Account& poster,
                      const Json::Value& terms) const override;
@@ -538,14 +610,38 @@ private:
   ReturnGoodsToPoster (const JobContext& jc, const Job& job) const
   {
     const auto& hp = job.GetProto ().haul ();
-    std::map<std::string, Quantity> manifest;
-    SnapshotManifest (hp.manifest (), manifest);
     auto inv = jc.buildingInv.Get (hp.source_building (), job.GetPoster ());
-    for (const auto& entry : manifest)
-      inv->GetInventory ().AddFungibleCount (entry.first, entry.second);
+    inv->GetInventory () += Inventory (hp.manifest ());
   }
 
 public:
+
+  JobLinkedKind
+  LinkedEntityKind () const override
+  {
+    return JobLinkedKind::BUILDING;
+  }
+
+  /**
+   * Re-verifies the destination still exists at accept time.  While OPEN the
+   * linked entity watches the SOURCE, so a destination destroyed in between
+   * would otherwise slip through and leave the accepted job pointing at a
+   * dead building the worker can never deliver to.
+   */
+  bool
+  ValidateAccept (const JobContext& jc, const Job& job,
+                  const Account& worker) const override
+  {
+    const auto dest = job.GetProto ().haul ().dest_building ();
+    if (jc.buildings.GetById (dest) == nullptr)
+      {
+        LOG (WARNING)
+            << "Haul destination " << dest << " of job " << job.GetId ()
+            << " no longer exists";
+        return false;
+      }
+    return true;
+  }
 
   bool ValidatePost (const JobContext& jc, const Account& poster,
                      const Json::Value& terms) const override;
@@ -649,12 +745,9 @@ HaulPredicate::OnAccept (const JobContext& jc, Job& job, Account& worker) const
   /* Hand the reserved goods to the worker's inventory at the source, ready
      to be loaded and hauled.  From here on they are in the worker's custody
      (the collateral is the poster's cover).  */
-  std::map<std::string, Quantity> manifest;
-  SnapshotManifest (hp.manifest (), manifest);
   {
     auto inv = jc.buildingInv.Get (hp.source_building (), worker.GetName ());
-    for (const auto& entry : manifest)
-      inv->GetInventory ().AddFungibleCount (entry.first, entry.second);
+    inv->GetInventory () += Inventory (hp.manifest ());
   }
 
   job.SetLinkedId (hp.dest_building ());
@@ -688,15 +781,11 @@ HaulPredicate::OnLinkedEntityDestroyed (const JobContext& jc, Job& job) const
          the job voids, the reward refunds, and the goods drop as ground loot
          at the source (its inventories are about to be dropped likewise).  */
       const auto& hp = job.GetProto ().haul ();
-      std::map<std::string, Quantity> manifest;
-      SnapshotManifest (hp.manifest (), manifest);
       {
         const auto b = jc.buildings.GetById (hp.source_building ());
         CHECK (b != nullptr);
         auto ground = jc.groundLoot.GetByCoord (b->GetCentre ());
-        for (const auto& entry : manifest)
-          ground->GetInventory ().AddFungibleCount (entry.first,
-                                                    entry.second);
+        ground->GetInventory () += Inventory (hp.manifest ());
       }
       LOG (INFO)
           << "Voided open haul job " << job.GetId () << ": source building "
@@ -723,13 +812,19 @@ HaulPredicate::OnLinkedEntityDestroyed (const JobContext& jc, Job& job) const
  * collateral, no fulfil op -- settlement happens entirely at the kill hook,
  * and the only exit is the notice-based cancel.
  */
-class WantedPredicate : public JobPredicate
+class WantedPredicate : public HookSettledPredicate
 {
 
 public:
 
   bool
   IsStanding () const override
+  {
+    return true;
+  }
+
+  bool
+  SettlesOnTargetKill () const override
   {
     return true;
   }
@@ -755,21 +850,6 @@ public:
     return false;
   }
 
-  bool
-  CanFulfil (const JobContext& jc, const Job& job, const Account& executor,
-             const Json::Value& args) const override
-  {
-    /* Settles at the kill hook; a stray fulfil is rejected.  */
-    return false;
-  }
-
-  FulfilResult
-  DoFulfil (const JobContext& jc, Job& job, Account& executor,
-            const Json::Value& args) const override
-  {
-    LOG (FATAL) << "Wanted job " << job.GetId () << " cannot be fulfilled";
-  }
-
   void
   OnExpire (const JobContext& jc, Job& job) const override
   {
@@ -780,12 +860,6 @@ public:
         << "Wanted board " << job.GetId () << " closed; refunding unearned "
         << job.GetReward () << " to " << job.GetPoster ();
     VoidJobAtHook (jc, job);
-  }
-
-  void
-  OnLinkedEntityDestroyed (const JobContext& jc, Job& job) const override
-  {
-    LOG (FATAL) << "Wanted job " << job.GetId () << " has no linked entity";
   }
 
   bool OnTargetKill (const JobContext& jc, Job& job,
@@ -824,15 +898,11 @@ WantedPredicate::ValidatePost (const JobContext& jc, const Account& poster,
       return false;
     }
 
-  Amount reward, collateral;
-  if (!CoinAmountFromJson (terms["r"], reward)
-        || !CoinAmountFromJson (terms["co"], collateral))
+  if (!RequireZeroCollateral (terms, "A wanted board"))
     return false;
-  if (collateral != 0)
-    {
-      LOG (WARNING) << "A wanted board takes no collateral";
-      return false;
-    }
+
+  Amount reward;
+  CHECK (CoinAmountFromJson (terms["r"], reward));
   if (reward / quota < 1)
     {
       LOG (WARNING)
@@ -910,13 +980,40 @@ WantedPredicate::OnTargetKill (const JobContext& jc, Job& job,
  * concrete outcomes mirror each other: protect/bodyguard succeed on
  * survival, destroy succeeds on destruction.
  */
-class EntityFatePredicate : public JobPredicate
+class EntityFatePredicate : public HookSettledPredicate
 {
 
 private:
 
   /** Whether the linked entity's DESTRUCTION is the success case.  */
   virtual bool DestructionIsSuccess () const = 0;
+
+  /**
+   * The one shared settlement: an OPEN job always voids; an ACCEPTED one
+   * succeeds or fails purely by whether the entity's fate matches the type's
+   * success case.  Kills run before the expiry sweep, so "alive at expiry"
+   * is well-defined.
+   */
+  void
+  Settle (const JobContext& jc, Job& job, const bool destroyed) const
+  {
+    if (job.GetStatus () != Job::Status::ACCEPTED)
+      {
+        VoidJobAtHook (jc, job);
+        return;
+      }
+
+    const bool success = (destroyed == DestructionIsSuccess ());
+    LOG (INFO)
+        << "Job " << job.GetId () << ": entity " << job.GetLinkedId ()
+        << (destroyed ? " destroyed" : " alive at the deadline")
+        << ", worker " << job.GetWorker ()
+        << (success ? " succeeded" : " failed");
+    if (success)
+      SettleSuccessAtHook (jc, job);
+    else
+      SettleFailureAtHook (jc, job);
+  }
 
 public:
 
@@ -926,74 +1023,16 @@ public:
     return true;
   }
 
-  bool
-  CanFulfil (const JobContext& jc, const Job& job, const Account& executor,
-             const Json::Value& args) const override
-  {
-    /* Settles at the entity hook or at expiry; a stray fulfil is rejected. */
-    return false;
-  }
-
-  FulfilResult
-  DoFulfil (const JobContext& jc, Job& job, Account& executor,
-            const Json::Value& args) const override
-  {
-    LOG (FATAL) << "Job " << job.GetId () << " cannot be fulfilled";
-  }
-
   void
   OnExpire (const JobContext& jc, Job& job) const override
   {
-    if (job.GetStatus () != Job::Status::ACCEPTED)
-      {
-        VoidJobAtHook (jc, job);
-        return;
-      }
-
-    /* Kills run before the expiry sweep, so reaching this means the entity
-       is alive at the deadline: success for protect/bodyguard, failure for
-       destroy.  */
-    if (DestructionIsSuccess ())
-      {
-        LOG (INFO)
-            << "Job " << job.GetId () << " expired with entity "
-            << job.GetLinkedId () << " still standing: worker "
-            << job.GetWorker () << " failed";
-        SettleFailureAtHook (jc, job);
-      }
-    else
-      {
-        LOG (INFO)
-            << "Job " << job.GetId () << " expired with entity "
-            << job.GetLinkedId () << " alive: worker "
-            << job.GetWorker () << " succeeded";
-        SettleSuccessAtHook (jc, job);
-      }
+    Settle (jc, job, false);
   }
 
   void
   OnLinkedEntityDestroyed (const JobContext& jc, Job& job) const override
   {
-    if (job.GetStatus () != Job::Status::ACCEPTED)
-      {
-        VoidJobAtHook (jc, job);
-        return;
-      }
-
-    if (DestructionIsSuccess ())
-      {
-        LOG (INFO)
-            << "Job " << job.GetId () << ": entity " << job.GetLinkedId ()
-            << " destroyed, worker " << job.GetWorker () << " succeeded";
-        SettleSuccessAtHook (jc, job);
-      }
-    else
-      {
-        LOG (INFO)
-            << "Job " << job.GetId () << ": entity " << job.GetLinkedId ()
-            << " destroyed, worker " << job.GetWorker () << " failed";
-        SettleFailureAtHook (jc, job);
-      }
+    Settle (jc, job, true);
   }
 
 };
@@ -1032,6 +1071,12 @@ private:
 
 public:
 
+  JobLinkedKind
+  LinkedEntityKind () const override
+  {
+    return JobLinkedKind::BUILDING;
+  }
+
   bool
   ValidatePost (const JobContext& jc, const Account& poster,
                 const Json::Value& terms) const override
@@ -1065,6 +1110,12 @@ private:
   }
 
 public:
+
+  JobLinkedKind
+  LinkedEntityKind () const override
+  {
+    return JobLinkedKind::BUILDING;
+  }
 
   Faction
   AudienceFaction (const Account& poster) const override
@@ -1110,22 +1161,19 @@ private:
 
 public:
 
+  JobLinkedKind
+  LinkedEntityKind () const override
+  {
+    return JobLinkedKind::CHARACTER;
+  }
+
   bool
   ValidatePost (const JobContext& jc, const Account& poster,
                 const Json::Value& terms) const override
   {
     Database::IdT id;
-    if (!IdFromJson (terms["ch"], id))
-      return false;
-    const auto c = jc.characters.GetById (id);
-    if (c == nullptr || c->GetOwner () != poster.GetName ())
-      {
-        LOG (WARNING)
-            << "Bodyguard target " << id << " missing or not owned by "
-            << poster.GetName ();
-        return false;
-      }
-    return true;
+    return ValidateOwnedCharacter (jc, terms, "ch", poster,
+                                   "Bodyguard target", id);
   }
 
   void
@@ -1164,18 +1212,9 @@ public:
                 const Json::Value& terms) const override
   {
     Database::IdT chId;
-    if (!IdFromJson (terms["ch"], chId))
+    if (!ValidateOwnedCharacter (jc, terms, "ch", poster,
+                                 "Escort protectee", chId))
       return false;
-    {
-      const auto c = jc.characters.GetById (chId);
-      if (c == nullptr || c->GetOwner () != poster.GetName ())
-        {
-          LOG (WARNING)
-              << "Escort protectee " << chId << " missing or not owned by "
-              << poster.GetName ();
-          return false;
-        }
-    }
 
     Database::IdT destB;
     if (!IdFromJson (terms["to"], destB))
@@ -1243,12 +1282,6 @@ public:
       VoidJobAtHook (jc, job);
   }
 
-  void
-  OnLinkedEntityDestroyed (const JobContext& jc, Job& job) const override
-  {
-    LOG (FATAL) << "Escort job " << job.GetId () << " has no linked entity";
-  }
-
 };
 
 /* ************************************************************************** */
@@ -1268,8 +1301,20 @@ public:
   ValidatePost (const JobContext& jc, const Account& poster,
                 const Json::Value& terms) const override
   {
-    if (!terms["x"].isInt () || !terms["y"].isInt ())
-      return false;
+    /* The centre must fit HexCoord's coordinate type, or it would be
+       silently narrowed when the check-in validation builds the HexCoord.  */
+    using CoordLimits = std::numeric_limits<HexCoord::IntT>;
+    for (const auto* axis : {"x", "y"})
+      {
+        if (!terms[axis].isInt ())
+          return false;
+        const auto val = terms[axis].asInt ();
+        if (val < CoordLimits::min () || val > CoordLimits::max ())
+          {
+            LOG (WARNING) << "Patrol centre out of range: " << val;
+            return false;
+          }
+      }
 
     if (!terms["rad"].isUInt () || !terms["k"].isUInt ()
           || !terms["sp"].isUInt ())
@@ -1385,12 +1430,6 @@ public:
       VoidJobAtHook (jc, job);
   }
 
-  void
-  OnLinkedEntityDestroyed (const JobContext& jc, Job& job) const override
-  {
-    LOG (FATAL) << "Patrol job " << job.GetId () << " has no linked entity";
-  }
-
 };
 
 /* ************************************************************************** */
@@ -1443,8 +1482,11 @@ private:
 
   /**
    * Splits the escrow for a clean return: rent to the lessor, deposit back
-   * to the renter, completion counters for both sides.  The renter handle is
-   * passed in (the fulfil path already holds it); the lessor is fetched.
+   * to the renter, completion counters for both sides.  The lessor earned
+   * the rent, so only their value counter grows; the renter's completed
+   * count records their return reliability without inflating their value by
+   * coins they merely paid.  The renter handle is passed in (the fulfil path
+   * already holds it); the lessor is fetched.
    */
   static void
   SettleCleanReturn (const JobContext& jc, const Job& job, Account& renter)
@@ -1456,7 +1498,7 @@ private:
       BumpJobStats (*lessor, true, rent);
     }
     ReleaseJobCoins (renter, job.GetReward () - rent);
-    BumpJobStats (renter, true, rent);
+    BumpJobStats (renter, true, 0);
   }
 
 public:
@@ -1487,16 +1529,12 @@ public:
     if (!QuantityFromJson (terms["n"], count) || count <= 0)
       return false;
 
-    Amount reward, collateral, rent;
-    if (!CoinAmountFromJson (terms["r"], reward)
-          || !CoinAmountFromJson (terms["co"], collateral)
-          || !CoinAmountFromJson (terms["rent"], rent))
+    if (!RequireZeroCollateral (terms, "A rental"))
       return false;
-    if (collateral != 0)
-      {
-        LOG (WARNING) << "A rental takes no worker collateral";
-        return false;
-      }
+    Amount reward, rent;
+    if (!CoinAmountFromJson (terms["rent"], rent))
+      return false;
+    CHECK (CoinAmountFromJson (terms["r"], reward));
     if (rent > reward)
       {
         LOG (WARNING)
@@ -1640,12 +1678,6 @@ public:
     BumpJobStats (*renter, false, 0);
   }
 
-  void
-  OnLinkedEntityDestroyed (const JobContext& jc, Job& job) const override
-  {
-    LOG (FATAL) << "Rental job " << job.GetId () << " has no linked entity";
-  }
-
 };
 
 /* ************************************************************************** */
@@ -1659,7 +1691,7 @@ public:
  * accept, rendering is unconditional -- the owner has no take-down lever for
  * the paid period, and clients render only hash-matching content.
  */
-class AdPredicate : public JobPredicate
+class AdPredicate : public HookSettledPredicate
 {
 
 public:
@@ -1668,6 +1700,12 @@ public:
   RequiresApproval () const override
   {
     return true;
+  }
+
+  JobLinkedKind
+  LinkedEntityKind () const override
+  {
+    return JobLinkedKind::BUILDING;
   }
 
   Faction
@@ -1680,15 +1718,8 @@ public:
   ValidatePost (const JobContext& jc, const Account& poster,
                 const Json::Value& terms) const override
   {
-    Amount reward, collateral;
-    if (!CoinAmountFromJson (terms["r"], reward)
-          || !CoinAmountFromJson (terms["co"], collateral))
+    if (!RequireZeroCollateral (terms, "An ad-slot rental"))
       return false;
-    if (collateral != 0)
-      {
-        LOG (WARNING) << "An ad-slot rental takes no collateral";
-        return false;
-      }
 
     if (!terms["slot"].isUInt ())
       return false;
@@ -1752,21 +1783,6 @@ public:
     return true;
   }
 
-  bool
-  CanFulfil (const JobContext& jc, const Job& job, const Account& executor,
-             const Json::Value& args) const override
-  {
-    /* Settles at expiry; a stray fulfil is rejected.  */
-    return false;
-  }
-
-  FulfilResult
-  DoFulfil (const JobContext& jc, Job& job, Account& executor,
-            const Json::Value& args) const override
-  {
-    LOG (FATAL) << "Ad job " << job.GetId () << " cannot be fulfilled";
-  }
-
   void
   OnExpire (const JobContext& jc, Job& job) const override
   {
@@ -1803,7 +1819,7 @@ public:
  * paid only if the traveller's character (the linked_id) survives the
  * window; if it dies -- by anyone's hand -- the toll refunds.
  */
-class TollPredicate : public JobPredicate
+class TollPredicate : public HookSettledPredicate
 {
 
 public:
@@ -1812,6 +1828,12 @@ public:
   RequiresApproval () const override
   {
     return true;
+  }
+
+  JobLinkedKind
+  LinkedEntityKind () const override
+  {
+    return JobLinkedKind::CHARACTER;
   }
 
   Faction
@@ -1824,29 +1846,13 @@ public:
   ValidatePost (const JobContext& jc, const Account& poster,
                 const Json::Value& terms) const override
   {
-    Amount reward, collateral;
-    if (!CoinAmountFromJson (terms["r"], reward)
-          || !CoinAmountFromJson (terms["co"], collateral))
+    if (!RequireZeroCollateral (terms, "A toll"))
       return false;
-    if (collateral != 0)
-      {
-        LOG (WARNING) << "A toll takes no collateral";
-        return false;
-      }
 
     Database::IdT chId;
-    if (!IdFromJson (terms["ch"], chId))
+    if (!ValidateOwnedCharacter (jc, terms, "ch", poster, "Toll traveller",
+                                 chId))
       return false;
-    {
-      const auto c = jc.characters.GetById (chId);
-      if (c == nullptr || c->GetOwner () != poster.GetName ())
-        {
-          LOG (WARNING)
-              << "Toll traveller " << chId << " missing or not owned by "
-              << poster.GetName ();
-          return false;
-        }
-    }
 
     if (!terms["w"].isString ())
       return false;
@@ -1872,21 +1878,6 @@ public:
     job.SetLinkedId (chId);
     job.MutableProto ().mutable_toll ();
     job.MutableProto ().set_designated_worker (terms["w"].asString ());
-  }
-
-  bool
-  CanFulfil (const JobContext& jc, const Job& job, const Account& executor,
-             const Json::Value& args) const override
-  {
-    /* Settles at expiry or the entity hook; a stray fulfil is rejected.  */
-    return false;
-  }
-
-  FulfilResult
-  DoFulfil (const JobContext& jc, Job& job, Account& executor,
-            const Json::Value& args) const override
-  {
-    LOG (FATAL) << "Toll job " << job.GetId () << " cannot be fulfilled";
   }
 
   void
@@ -1933,66 +1924,60 @@ const RentalPredicate RENTAL_PREDICATE;
 const AdPredicate AD_PREDICATE;
 const TollPredicate TOLL_PREDICATE;
 
+/**
+ * The one place a job type is registered: enum value, move/JSON name and
+ * predicate object.  Every lookup (name -> type, type -> predicate,
+ * type -> name) derives from this table, so a new type cannot be half-wired.
+ */
+struct JobTypeEntry
+{
+  Job::Type type;
+  const char* name;
+  const JobPredicate* predicate;
+};
+
+const JobTypeEntry JOB_TYPE_REGISTRY[] =
+  {
+    {Job::Type::TRANSPORT, "transport", &TRANSPORT_PREDICATE},
+    {Job::Type::HAUL, "haul", &HAUL_PREDICATE},
+    {Job::Type::WANTED, "wanted", &WANTED_PREDICATE},
+    {Job::Type::PROTECT, "protect", &PROTECT_PREDICATE},
+    {Job::Type::DESTROY, "destroy", &DESTROY_PREDICATE},
+    {Job::Type::ESCORT, "escort", &ESCORT_PREDICATE},
+    {Job::Type::BODYGUARD, "bodyguard", &BODYGUARD_PREDICATE},
+    {Job::Type::PATROL, "patrol", &PATROL_PREDICATE},
+    {Job::Type::RENTAL, "rental", &RENTAL_PREDICATE},
+    {Job::Type::AD, "ad", &AD_PREDICATE},
+    {Job::Type::TOLL, "toll", &TOLL_PREDICATE},
+  };
+
 } // anonymous namespace
 
 Job::Type
 JobTypeFromString (const std::string& name)
 {
-  if (name == "transport")
-    return Job::Type::TRANSPORT;
-  if (name == "haul")
-    return Job::Type::HAUL;
-  if (name == "wanted")
-    return Job::Type::WANTED;
-  if (name == "protect")
-    return Job::Type::PROTECT;
-  if (name == "destroy")
-    return Job::Type::DESTROY;
-  if (name == "escort")
-    return Job::Type::ESCORT;
-  if (name == "bodyguard")
-    return Job::Type::BODYGUARD;
-  if (name == "patrol")
-    return Job::Type::PATROL;
-  if (name == "rental")
-    return Job::Type::RENTAL;
-  if (name == "ad")
-    return Job::Type::AD;
-  if (name == "toll")
-    return Job::Type::TOLL;
+  for (const auto& entry : JOB_TYPE_REGISTRY)
+    if (name == entry.name)
+      return entry.type;
   return Job::Type::INVALID;
 }
 
 const JobPredicate*
 PredicateForType (const Job::Type type)
 {
-  switch (type)
-    {
-    case Job::Type::TRANSPORT:
-      return &TRANSPORT_PREDICATE;
-    case Job::Type::HAUL:
-      return &HAUL_PREDICATE;
-    case Job::Type::WANTED:
-      return &WANTED_PREDICATE;
-    case Job::Type::PROTECT:
-      return &PROTECT_PREDICATE;
-    case Job::Type::DESTROY:
-      return &DESTROY_PREDICATE;
-    case Job::Type::ESCORT:
-      return &ESCORT_PREDICATE;
-    case Job::Type::BODYGUARD:
-      return &BODYGUARD_PREDICATE;
-    case Job::Type::PATROL:
-      return &PATROL_PREDICATE;
-    case Job::Type::RENTAL:
-      return &RENTAL_PREDICATE;
-    case Job::Type::AD:
-      return &AD_PREDICATE;
-    case Job::Type::TOLL:
-      return &TOLL_PREDICATE;
-    default:
-      return nullptr;
-    }
+  for (const auto& entry : JOB_TYPE_REGISTRY)
+    if (type == entry.type)
+      return entry.predicate;
+  return nullptr;
+}
+
+const char*
+JobTypeName (const Job::Type type)
+{
+  for (const auto& entry : JOB_TYPE_REGISTRY)
+    if (type == entry.type)
+      return entry.name;
+  return nullptr;
 }
 
 /* ************************************************************************** */
@@ -2780,7 +2765,12 @@ JobsBountyTracker::UpdateForKill (const proto::TargetId& target)
   if (owners.empty ())
     return;
 
-  /* Pay one tranche per pool on this name (stacked bounties all pay).  */
+  /* Pay one tranche per pool on this name (stacked bounties all pay).  The
+     name set is a block-start snapshot, so it can be stale within the block:
+     if an earlier kill in this very block drained and deleted the last pool
+     on the name, the query comes back empty -- drop the name and move on
+     (this must NOT be a CHECK, or a target losing more characters than the
+     pool has tranches in one block would halt every node).  */
   std::vector<Database::IdT> pools;
   {
     JobsTable jobs(db);
@@ -2788,7 +2778,11 @@ JobsBountyTracker::UpdateForKill (const proto::TargetId& target)
     while (res.Step ())
       pools.push_back (jobs.GetFromResult (res)->GetId ());
   }
-  CHECK (!pools.empty ());
+  if (pools.empty ())
+    {
+      bountyNames.erase (victimOwner);
+      return;
+    }
 
   BlockHookTables tables(db);
   const JobContext jc = tables.MakeContext (ctx);
@@ -2798,6 +2792,10 @@ JobsBountyTracker::UpdateForKill (const proto::TargetId& target)
       CHECK (j != nullptr);
       const auto* pred = PredicateForType (j->GetType ());
       CHECK (pred != nullptr);
+      /* Only types that actually settle on kills take a payout; a future
+         type reusing linked_name for something else is left alone.  */
+      if (!pred->SettlesOnTargetKill ())
+        continue;
       const bool drained = pred->OnTargetKill (jc, *j, owners);
       j.reset ();
       if (drained)
@@ -2859,29 +2857,25 @@ ValidateJobs (Database& db)
         CHECK (accounts.GetByName (j->GetLinkedName ()) != nullptr)
             << "Job " << id << " targets an unknown account";
 
-      /* The linked entity, when set, must exist and be of the kind the type
-         links to.  */
+      /* The linked entity, when set, must exist and be of the kind the
+         type's predicate declares -- derived, not a parallel type list.  */
       const auto linked = j->GetLinkedId ();
-      switch (j->GetType ())
+      switch (pred->LinkedEntityKind ())
         {
-        case Job::Type::TRANSPORT:
-        case Job::Type::HAUL:
-        case Job::Type::PROTECT:
-        case Job::Type::DESTROY:
-        case Job::Type::AD:
+        case JobLinkedKind::BUILDING:
           CHECK (linked != Database::EMPTY_ID
                     && buildings.GetById (linked) != nullptr)
               << "Job " << id << " links to an unknown building";
           break;
-        case Job::Type::BODYGUARD:
-        case Job::Type::TOLL:
+        case JobLinkedKind::CHARACTER:
           CHECK (linked != Database::EMPTY_ID
                     && characters.GetById (linked) != nullptr)
               << "Job " << id << " links to an unknown character";
           break;
-        default:
+        case JobLinkedKind::NONE:
           CHECK_EQ (linked, Database::EMPTY_ID)
               << "Job " << id << " should not have a linked entity";
+          break;
         }
     }
 }

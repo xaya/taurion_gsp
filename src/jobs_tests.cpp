@@ -583,7 +583,11 @@ TEST_F (JobsTests, FulfilRejects)
   EXPECT_FALSE (Process ("courier",
       base + R"(,"ch":)" + std::to_string (chIrrelevant) + "}"));
 
-  /* Own-inventory variant with nothing staged.  */
+  /* Own-inventory variant with nothing staged, and with only a PARTIAL
+     stage: this variant is all-at-once, so partial coverage must reject
+     (bit-by-bit delivery is the cargo variant's job).  */
+  EXPECT_FALSE (Process ("courier", base + "}"));
+  StageGoods (1, "courier", {{"foo", 4}});
   EXPECT_FALSE (Process ("courier", base + "}"));
 
   /* A different account (not the worker) cannot fulfil.  */
@@ -779,6 +783,17 @@ TEST_F (HaulTests, OpenExpiryReturnsGoods)
   EXPECT_EQ (Balance ("poster"), 1000000 - 20);
 }
 
+TEST_F (HaulTests, AcceptRejectedWhenDestinationDead)
+{
+  /* While OPEN the linked entity watches the SOURCE, so a destroyed
+     destination is only caught by re-validating it at accept time --
+     otherwise the accepted job would link a dead building and trap the
+     worker's collateral on an undeliverable contract.  */
+  const auto id = PostHaul ();
+  buildings.DeleteById (4);
+  EXPECT_FALSE (Process ("courier", R"({"a":)" + std::to_string (id) + "}"));
+}
+
 TEST_F (HaulTests, AcceptHandsGoodsAndDeliveryCompletes)
 {
   const auto id = PostHaul ();
@@ -940,6 +955,38 @@ TEST_F (WantedTests, UnrelatedDeathIsNoOp)
   const auto hunter = MakeCharacterAt ("green", HexCoord (6, 5));
   KillWithAttackers (victim, {hunter});
   EXPECT_EQ (jobs.GetById (id)->GetProto ().wanted ().remaining (), 3);
+}
+
+TEST_F (WantedTests, SameBlockKillsBeyondPoolDoNotCrash)
+{
+  /* Production constructs ONE tracker per block: if the target loses more
+     characters in a block than the pool has tranches, the later kills hit a
+     stale name-set entry and must be a graceful no-op (this was a
+     CHECK-abort -- a chain halt -- before the fix).  */
+  ASSERT_TRUE (Process ("poster",
+      R"({"t":"wanted","r":3000,"co":0,"name":"green","n":1})"));
+  const auto id = OnlyJobId ();
+
+  const auto v1 = MakeCharacterAt ("green", HexCoord (5, 5));
+  const auto v2 = MakeCharacterAt ("green", HexCoord (5, 6));
+  const auto hunter = MakeCharacterAt ("courier", HexCoord (6, 5));
+
+  DamageLists dl(db, ctx.Height ());
+  dl.AddEntry (v1, hunter);
+  dl.AddEntry (v2, hunter);
+
+  JobsBountyTracker tracker(db, ctx, dl);
+  proto::TargetId target;
+  target.set_type (proto::TargetId::TYPE_CHARACTER);
+
+  target.set_id (v1);
+  tracker.UpdateForKill (target);   // drains and deletes the pool
+  EXPECT_FALSE (JobExists (id));
+
+  target.set_id (v2);
+  tracker.UpdateForKill (target);   // stale set entry: must no-op
+
+  EXPECT_EQ (Balance ("courier"), 1000000 + 3000);
 }
 
 TEST_F (WantedTests, PoolDrainsAndBurnsDust)
@@ -1272,6 +1319,10 @@ TEST_F (PatrolTests, PostRejects)
       R"({"t":"patrol","d":86400,"r":10,"co":0,"x":0,"y":0,"rad":10,"k":0,"sp":600})"));
   EXPECT_FALSE (Process ("poster",
       R"({"t":"patrol","d":3600,"r":10,"co":0,"x":0,"y":0,"rad":10,"k":10,"sp":600})"));
+  /* A centre outside HexCoord's int16 range would be silently narrowed at
+     check-in time -- it must be rejected at post.  */
+  EXPECT_FALSE (Process ("poster",
+      R"({"t":"patrol","d":86400,"r":10,"co":0,"x":100000,"y":0,"rad":10,"k":3,"sp":600})"));
 }
 
 TEST_F (PatrolTests, CheckInsProgressAndComplete)
@@ -1384,7 +1435,9 @@ TEST_F (RentalTests, LifecycleCleanReturn)
   /* Poster: -1000 escrow - 10 fee + 700 deposit back = -310.  */
   EXPECT_EQ (Balance ("poster"), 1000000 - 10 - 300);
   EXPECT_EQ (Balance ("courier"), 1000000 + 300);
-  EXPECT_EQ (JobStats ("poster"), std::make_tuple (1u, 0u, 300));
+  /* Both sides record the completion, but only the lessor EARNED the rent;
+     the renter's value counter must not inflate with coins they paid.  */
+  EXPECT_EQ (JobStats ("poster"), std::make_tuple (1u, 0u, 0));
   EXPECT_EQ (JobStats ("courier"), std::make_tuple (1u, 0u, 300));
 }
 
