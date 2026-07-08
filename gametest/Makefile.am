@@ -25,6 +25,7 @@ REGTESTS = \
   combat_targets.py \
   damage_lists.py \
   dex.py \
+  jobs_transport.py \
   fame.py \
   findpath.py \
   fork_gamestart.py \

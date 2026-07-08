@@ -40,6 +40,11 @@
     "returns": {}
   },
   {
+    "name": "getjobs",
+    "params": {},
+    "returns": {}
+  },
+  {
     "name": "getcharacters",
     "params": {},
     "returns": {}

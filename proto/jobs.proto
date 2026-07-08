@@ -1,0 +1,72 @@
+/*
+    GSP for the Taurion blockchain game
+    Copyright (C) 2020-2021  Autonomous Worlds Ltd
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
+syntax = "proto2";
+option cc_enable_arenas = true;
+
+import "proto/inventory.proto";
+
+package pxd.proto;
+
+/**
+ * Payload for a transport job: the "container" of goods that must be procured
+ * (from anywhere) and delivered to the destination building.  The manifest
+ * reuses the Inventory proto, so a single job can carry one item type in bulk
+ * (e.g. 10000 material) or several different item types at once.  The
+ * destination building is the job's linked_id column, not a proto field.
+ */
+message TransportPayload
+{
+
+  /** The items (item type -> quantity) that must be delivered.  */
+  optional Inventory manifest = 1;
+
+}
+
+/**
+ * Type-specific and generic-but-not-column payload for a job on the jobs
+ * board.  Everything the board, the expiry sweep and the kill-hook must
+ * filter, sort or sum on lives in a real table column (see database/schema.sql
+ * and database/jobs.hpp); only what follows lives in this blob.
+ *
+ * Consensus hygiene: the state hash covers the raw serialised bytes and
+ * protobuf map ordering is not guaranteed, so this proto uses scalars and
+ * sorted repeated fields only -- never a proto `map` that a consensus decision
+ * iterates.
+ */
+message JobData
+{
+
+  /**
+   * The designated worker (see the assign op).  Set by the poster; for the
+   * approval-required types nobody may accept until the accepting worker
+   * matches this, and for other exclusive types it is optional (unset means
+   * anyone of the audience faction may accept).
+   */
+  optional string designated_worker = 1;
+
+  /**
+   * The type-specific payload.  Exactly one is set, matching the `type`
+   * column.  New job types add a new payload message here.
+   */
+  oneof kind
+  {
+    TransportPayload transport = 101;
+  }
+
+}

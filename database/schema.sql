@@ -521,3 +521,90 @@ CREATE INDEX IF NOT EXISTS `ongoing_operations_by_building`
   ON `ongoing_operations` (`building`);
 
 -- =============================================================================
+
+-- Jobs board: player-posted, coin-escrowed jobs.  For now the only kind is
+-- "transport" (a procurement-and-delivery bounty), but this is a generic
+-- table: the `type` column discriminates the job kind and the type-specific
+-- payload lives in the `proto` blob.  Everything the board, the expiry sweep
+-- and the kill-hook must filter, sort or sum on is a real column (mirroring
+-- the dex_orders design), so the board query and reserved-balance sums are
+-- plain SQL statements and idle jobs never need to be read or rewritten.
+CREATE TABLE IF NOT EXISTS `jobs` (
+
+  -- Unique ID of the job (used in assign / accept / cancel / fulfil moves).
+  `id` INTEGER PRIMARY KEY,
+
+  -- The job kind.  The numeric values match the Job::Type enum in jobs.hpp.
+  `type` INTEGER NOT NULL,
+
+  -- Lifecycle status.  The numeric values match the Job::Status enum in
+  -- jobs.hpp.  Terminal transitions (fulfil / cancel / expire / void) DELETE
+  -- the row, so the table stays bounded.
+  `status` INTEGER NOT NULL,
+
+  -- The audience faction: who may accept/fulfil (and, for open-claim types,
+  -- who sees it on their board).  NULL means all factions (cross-faction
+  -- types like toll / ad-slot; wanted-bounty = all but the target's).
+  `faction` INTEGER NULL,
+
+  -- The account that posted the job (locks the reward on posting).
+  `poster` TEXT NOT NULL,
+
+  -- The account that accepted the job (locks the collateral on accepting).
+  -- NULL while the job is still OPEN.
+  `worker` TEXT NULL,
+
+  -- The reward, in vCHI.  Stored in a column (not the proto) so the board can
+  -- ORDER BY price and reserved rewards can be summed with a single
+  -- statement.  For a part-drained bounty pool this is the *remaining* escrow.
+  `reward` INTEGER NOT NULL,
+
+  -- The collateral the worker locks on accepting, in vCHI.  Stored in a
+  -- column so reserved collateral can likewise be summed for balance display.
+  `collateral` INTEGER NOT NULL,
+
+  -- Absolute block-consensus timestamp (seconds) at which the job expires.
+  -- Seconds (not block height) so deadlines are immune to cadence changes.
+  -- NULL for the *standing* class (wanted-bounty), which is never swept; a
+  -- NULL here must never be read as 0, or every standing job would expire.
+  `deadline` INTEGER NULL,
+
+  -- The entity whose destruction the job's fate is tied to (transport: the
+  -- destination building B).  Swept by the kill-hook when that entity dies.
+  -- NULL for types with no linked entity (escort, patrol, rentals).
+  `linked_id` INTEGER NULL,
+
+  -- The account name whose characters a job targets (wanted-bounty).  Resolved
+  -- by the per-character kill attribution.  NULL for every other type.
+  `linked_name` TEXT NULL,
+
+  -- Type-specific payload (the item manifest, designated worker, per-type
+  -- running state, ...) as a serialised JobData proto.
+  `proto` BLOB NOT NULL
+
+);
+
+-- Expiry sweep ("non-standing jobs due at or before the current timestamp")
+-- and "expiring soon" ordering for the board.  Standing jobs (NULL deadline)
+-- are naturally excluded by the WHERE deadline IS NOT NULL clause.
+CREATE INDEX IF NOT EXISTS `jobs_by_deadline` ON `jobs` (`deadline`);
+
+-- Board scope: a faction's jobs of a given status and kind (then ORDER BY
+-- reward for the price-sorted board).
+CREATE INDEX IF NOT EXISTS `jobs_by_faction`
+  ON `jobs` (`faction`, `status`, `type`);
+
+-- Kill-hook sweep when a linked entity (e.g. a transport destination) is
+-- destroyed + "jobs tied to entity X".
+CREATE INDEX IF NOT EXISTS `jobs_by_linked_id` ON `jobs` (`linked_id`);
+
+-- Per-character kill lookup for wanted-bounties ("bounties on this account").
+CREATE INDEX IF NOT EXISTS `jobs_by_linked_name` ON `jobs` (`linked_name`);
+
+-- "My posted jobs" + reserved-reward sum for an account.
+CREATE INDEX IF NOT EXISTS `jobs_by_poster` ON `jobs` (`poster`);
+
+-- "My accepted jobs" + reserved-collateral sum for an account.
+CREATE INDEX IF NOT EXISTS `jobs_by_worker` ON `jobs` (`worker`);
+
+-- =============================================================================

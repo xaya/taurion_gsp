@@ -65,7 +65,7 @@ BaseMoveProcessor::BaseMoveProcessor (Database& d, DynObstacles& o,
     groundLoot(db), buildingInv(db),
     orders(db), dexHistory(db),
     itemCounts(db), moneySupply(db),
-    ongoings(db), regions(db, ctx.BlockHeight ())
+    ongoings(db), jobs(db), regions(db, ctx.BlockHeight ())
 {}
 
 bool
@@ -462,6 +462,32 @@ BaseMoveProcessor::TryDexOperations (const std::string& name,
         }
       if (parsed->IsValid ())
         PerformDexOperation (*parsed);
+    }
+}
+
+void
+BaseMoveProcessor::TryJobOperations (const std::string& name,
+                                     const Json::Value& mv)
+{
+  const auto& cmds = mv["j"];
+  if (!cmds.isArray ())
+    return;
+
+  const auto a = accounts.GetByName (name);
+  CHECK (a != nullptr);
+
+  const JobContext jc{ctx, accounts, buildings, buildingInv, characters,
+                      ongoings, jobs};
+  for (const auto& op : cmds)
+    {
+      auto parsed = JobOperation::Parse (*a, op, jc);
+      if (parsed == nullptr)
+        {
+          LOG (WARNING) << "Malformed job operation:\n" << op;
+          continue;
+        }
+      if (parsed->IsValid ())
+        PerformJobOperation (*parsed);
     }
 }
 
@@ -1318,6 +1344,12 @@ MoveProcessor::ProcessOne (const Json::Value& moveObj)
   TryBuildingUpdates (name, mv);
   TryServiceOperations (name, mv);
 
+  /* Job-board operations run last so a move can bundle character/building
+     updates (e.g. a hull swap-back or a cargo drop) that must settle before
+     the job's fulfil is checked (design section 3.3, normative order).  Like
+     the other post-init operations, they require an initialised account.  */
+  TryJobOperations (name, mv);
+
   /* If any burnt or paid-to-dev coins are left, it means probably something
      has gone wrong and the user overpaid due to a frontend bug.  */
   LOG_IF (WARNING, paidToDev > 0 || burnt > 0)
@@ -1905,6 +1937,12 @@ MoveProcessor::PerformServiceOperation (ServiceOperation& op)
 
 void
 MoveProcessor::PerformDexOperation (DexOperation& op)
+{
+  op.Execute ();
+}
+
+void
+MoveProcessor::PerformJobOperation (JobOperation& op)
 {
   op.Execute ();
 }

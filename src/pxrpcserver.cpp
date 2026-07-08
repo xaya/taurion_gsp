@@ -523,6 +523,17 @@ PXRpcServer::getbuildings ()
 }
 
 Json::Value
+PXRpcServer::getjobs ()
+{
+  LOG (INFO) << "RPC method called: getjobs";
+  return logic.GetCustomStateData (game,
+    [] (GameStateJson& gsj)
+      {
+        return gsj.Jobs ();
+      });
+}
+
+Json::Value
 PXRpcServer::getcharacters ()
 {
   LOG (INFO) << "RPC method called: getcharacters";

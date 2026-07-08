@@ -21,6 +21,7 @@
 
 #include "context.hpp"
 #include "dynobstacles.hpp"
+#include "jobs.hpp"
 #include "services.hpp"
 #include "trading.hpp"
 
@@ -155,6 +156,9 @@ protected:
 
   /** Ongoing operations table.  */
   OngoingsTable ongoings;
+
+  /** Access handle for the jobs board table.  */
+  JobsTable jobs;
 
   /** Access to the regions table.  */
   RegionsTable regions;
@@ -305,6 +309,13 @@ protected:
   void TryDexOperations (const std::string& name, const Json::Value& mv);
 
   /**
+   * Parses and handles a potential move with requested job-board operations.
+   * Each valid operation will be passed to PerformJobOperation for either
+   * execution or recording into the pending state.
+   */
+  void TryJobOperations (const std::string& name, const Json::Value& mv);
+
+  /**
    * This function is called when TryCharacterCreation found a creation that
    * is valid and should be performed.
    */
@@ -351,6 +362,14 @@ protected:
    */
   virtual void
   PerformDexOperation (DexOperation& op)
+  {}
+
+  /**
+   * This function is called when TryJobOperations has found a valid
+   * job-board operation.
+   */
+  virtual void
+  PerformJobOperation (JobOperation& op)
   {}
 
 public:
@@ -484,6 +503,7 @@ protected:
 
   void PerformServiceOperation (ServiceOperation& op) override;
   void PerformDexOperation (DexOperation& op) override;
+  void PerformJobOperation (JobOperation& op) override;
 
 public:
 

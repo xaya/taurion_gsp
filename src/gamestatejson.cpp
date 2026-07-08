@@ -29,6 +29,7 @@
 #include "database/character.hpp"
 #include "database/faction.hpp"
 #include "database/itemcounts.hpp"
+#include "database/jobs.hpp"
 #include "database/moneysupply.hpp"
 #include "database/ongoing.hpp"
 #include "database/region.hpp"
@@ -625,6 +626,67 @@ template <>
   return res;
 }
 
+template <>
+  Json::Value
+  GameStateJson::Convert<Job> (const Job& j) const
+{
+  Json::Value res(Json::objectValue);
+
+  res["id"] = IntToJson (j.GetId ());
+  res["poster"] = j.GetPoster ();
+  if (!j.GetWorker ().empty ())
+    res["worker"] = j.GetWorker ();
+  if (j.GetFaction () != Faction::INVALID)
+    res["faction"] = FactionToString (j.GetFaction ());
+
+  switch (j.GetType ())
+    {
+    case Job::Type::TRANSPORT:
+      res["type"] = "transport";
+      break;
+    default:
+      res["type"] = "unknown";
+      break;
+    }
+
+  switch (j.GetStatus ())
+    {
+    case Job::Status::OPEN:
+      res["state"] = "open";
+      break;
+    case Job::Status::ACCEPTED:
+      res["state"] = "accepted";
+      break;
+    default:
+      res["state"] = "unknown";
+      break;
+    }
+
+  res["reward"] = IntToJson (j.GetReward ());
+  res["collateral"] = IntToJson (j.GetCollateral ());
+  if (j.HasDeadline ())
+    res["deadline"] = IntToJson (j.GetDeadline ());
+  if (j.GetLinkedId () != Database::EMPTY_ID)
+    res["building"] = IntToJson (j.GetLinkedId ());
+  if (!j.GetLinkedName ().empty ())
+    res["target"] = j.GetLinkedName ();
+
+  const auto& designated = j.GetProto ().designated_worker ();
+  if (!designated.empty ())
+    res["designated"] = designated;
+
+  if (j.GetProto ().has_transport ())
+    {
+      Json::Value items(Json::objectValue);
+      for (const auto& entry
+             : j.GetProto ().transport ().manifest ().fungible ())
+        items[entry.first] = IntToJson (entry.second);
+      res["items"] = items;
+    }
+
+  return res;
+}
+
 template <typename T, typename R>
   Json::Value
   GameStateJson::ResultsAsArray (T& tbl, Database::Result<R> res) const
@@ -719,19 +781,24 @@ GameStateJson::Accounts ()
   AccountsTable tbl(db);
   Json::Value res = ResultsAsArray (tbl, tbl.QueryAll ());
 
-  /* Add in also the Cubit balances reserved in open bids.  */
-  const auto reserved = orders.GetReservedCoins ();
+  /* Add in the coins reserved by an account: DEX open bids plus jobs-board
+     escrow (posted rewards + accepted-job collateral).  */
+  const auto dexReserved = orders.GetReservedCoins ();
+  JobsTable jobs(db);
+  const auto jobReserved = jobs.GetReservedCoins ();
   for (auto& entry : res)
     {
       const auto& nmVal = entry["name"];
       CHECK (nmVal.isString ());
-      const auto mit = reserved.find (nmVal.asString ());
+      const std::string nm = nmVal.asString ();
 
-      Amount cur;
-      if (mit == reserved.end ())
-        cur = 0;
-      else
-        cur = mit->second;
+      Amount cur = 0;
+      const auto dit = dexReserved.find (nm);
+      if (dit != dexReserved.end ())
+        cur += dit->second;
+      const auto jit = jobReserved.find (nm);
+      if (jit != jobReserved.end ())
+        cur += jit->second;
 
       auto& bal = entry["balance"];
       CHECK (bal.isObject ());
@@ -746,6 +813,13 @@ Json::Value
 GameStateJson::Buildings ()
 {
   BuildingsTable tbl(db);
+  return ResultsAsArray (tbl, tbl.QueryAll ());
+}
+
+Json::Value
+GameStateJson::Jobs ()
+{
+  JobsTable tbl(db);
   return ResultsAsArray (tbl, tbl.QueryAll ());
 }
 
@@ -814,6 +888,7 @@ GameStateJson::FullState ()
   res["characters"] = Characters ();
   res["groundloot"] = GroundLoot ();
   res["ongoings"] = OngoingOperations ();
+  res["jobs"] = Jobs ();
   res["moneysupply"] = MoneySupply ();
   res["regions"] = Regions (0);
   res["prizes"] = PrizeStats ();

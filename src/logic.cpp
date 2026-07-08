@@ -23,6 +23,7 @@
 #include "dynobstacles.hpp"
 #include "mining.hpp"
 #include "movement.hpp"
+#include "jobs.hpp"
 #include "moveprocessor.hpp"
 #include "ongoings.hpp"
 
@@ -136,6 +137,7 @@ PXLogic::UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
 
       AllHpUpdates (db, dyn, fame, rnd, ctx);
       ProcessAllOngoings (db, rnd, ctx);
+      ExpireJobs (db, ctx);
 
       ProcessAllMining (db, rnd, ctx);
       ProcessAllMovement (db, dyn, ctx);

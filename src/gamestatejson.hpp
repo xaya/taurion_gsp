@@ -105,6 +105,11 @@ public:
   Json::Value Buildings ();
 
   /**
+   * Returns the JSON data representing all jobs on the jobs board.
+   */
+  Json::Value Jobs ();
+
+  /**
    * Returns the JSON data representing all characters in the game state.
    */
   Json::Value Characters ();

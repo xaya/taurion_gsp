@@ -20,6 +20,15 @@ params:
     building_update_delay: 120
     dex_fee_bps: 300  # 3% base fee for sellers
 
+    # Jobs board.  Deadlines are in seconds (absolute consensus timestamp),
+    # so they do not depend on the block cadence.
+    job_post_fee_min: 1        # 1 vCHI minimum, burned
+    job_post_fee_bps: 100      # 1% of the reward
+    min_job_duration: 3600     # 1 hour
+    max_job_duration: 2592000  # 30 days
+    min_accept_runway: 3600    # must have >= 1 hour left to accept
+    max_manifest_entries: 20
+
     min_region_ore: 2000000
     max_region_ore: 100000000
 

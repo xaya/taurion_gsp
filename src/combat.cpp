@@ -18,6 +18,7 @@
 
 #include "combat.hpp"
 
+#include "jobs.hpp"
 #include "modifier.hpp"
 
 #include "database/account.hpp"
@@ -1294,6 +1295,10 @@ ProcessKills (Database& db, DynObstacles& dyn,
         break;
 
       case proto::TargetId::TYPE_BUILDING:
+        /* Void or reassign any transport jobs destined here while the building
+           row still exists and before the kill-processor takes a handle to
+           it.  */
+        OnBuildingDestroyed (db, ctx, id.second);
         proc.ProcessBuilding (id.second);
         break;
 

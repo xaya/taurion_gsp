@@ -613,6 +613,35 @@ message Params
    */
   repeated ProspectingPrize prizes = 22;
 
+  /**
+   * Minimum posting fee (in vCHI, burned) for a jobs-board job.  The actual
+   * fee is max(job_post_fee_min, reward * job_post_fee_bps / 10000), so spam
+   * costs real money at any reward size.
+   */
+  optional int64 job_post_fee_min = 23;
+
+  /** Proportional part of the posting fee, in basis points of the reward.  */
+  optional uint32 job_post_fee_bps = 24;
+
+  /**
+   * Minimum job deadline, in seconds.  Deadlines are stored as an absolute
+   * block-consensus timestamp (ctx.Timestamp() + the requested duration), so
+   * they are immune to block-cadence changes (e.g. super-blocks).
+   */
+  optional int64 min_job_duration = 25;
+
+  /** Maximum job deadline, in seconds.  */
+  optional int64 max_job_duration = 26;
+
+  /**
+   * An accept is rejected if fewer than this many seconds of deadline runway
+   * remain, which kills the accept-at-the-deadline collateral-forfeit trap.
+   */
+  optional int64 min_accept_runway = 27;
+
+  /** Maximum number of distinct item types allowed in a job manifest.  */
+  optional uint32 max_manifest_entries = 28;
+
 }
 
 /* ************************************************************************** */
