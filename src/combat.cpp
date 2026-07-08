@@ -1291,14 +1291,17 @@ ProcessKills (Database& db, DynObstacles& dyn,
     switch (id.first)
       {
       case proto::TargetId::TYPE_CHARACTER:
+        /* Settle any jobs tied to this character (bodyguard, toll) while its
+           row still exists.  */
+        OnJobEntityDestroyed (db, ctx, id.second);
         proc.ProcessCharacter (id.second);
         break;
 
       case proto::TargetId::TYPE_BUILDING:
-        /* Void or reassign any transport jobs destined here while the building
-           row still exists and before the kill-processor takes a handle to
-           it.  */
-        OnBuildingDestroyed (db, ctx, id.second);
+        /* Settle any jobs tied to this building (deliveries, protect,
+           destroy, ad slots) while the building row still exists and before
+           the kill-processor takes a handle to it.  */
+        OnJobEntityDestroyed (db, ctx, id.second);
         proc.ProcessBuilding (id.second);
         break;
 
@@ -1394,8 +1397,15 @@ AllHpUpdates (Database& db, DynObstacles& dyn, FameUpdater& fame,
 {
   const auto dead = DealCombatDamage (db, fame.GetDamageLists (), rnd, ctx);
 
+  /* The pre-removal pass: fame and wanted-bounty attribution both need the
+     damage lists and the victims' still-live rows, before ProcessKills tears
+     them down.  */
+  JobsBountyTracker bounties(db, ctx, fame.GetDamageLists ());
   for (const auto& id : dead)
-    fame.UpdateForKill (id.ToProto ());
+    {
+      fame.UpdateForKill (id.ToProto ());
+      bounties.UpdateForKill (id.ToProto ());
+    }
 
   GroundLootTable loot(db);
   ProcessKills (db, dyn, fame.GetDamageLists (), loot, dead, rnd, ctx);

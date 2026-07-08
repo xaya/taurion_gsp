@@ -322,6 +322,14 @@ template <>
       res["faction"] = FactionToString (a.GetFaction ());
       res["kills"] = IntToJson (pb.kills ());
       res["fame"] = IntToJson (pb.fame ());
+
+      /* The jobs-board completion counters (the on-chain reputation
+         artifact): what the approval flow reads to vet applicants.  */
+      Json::Value jobstats(Json::objectValue);
+      jobstats["completed"] = IntToJson (pb.jobs_completed ());
+      jobstats["failed"] = IntToJson (pb.jobs_failed ());
+      jobstats["value"] = IntToJson (pb.jobs_value_completed ());
+      res["jobstats"] = jobstats;
     }
 
   return res;
@@ -644,6 +652,36 @@ template <>
     case Job::Type::TRANSPORT:
       res["type"] = "transport";
       break;
+    case Job::Type::HAUL:
+      res["type"] = "haul";
+      break;
+    case Job::Type::WANTED:
+      res["type"] = "wanted";
+      break;
+    case Job::Type::PROTECT:
+      res["type"] = "protect";
+      break;
+    case Job::Type::DESTROY:
+      res["type"] = "destroy";
+      break;
+    case Job::Type::ESCORT:
+      res["type"] = "escort";
+      break;
+    case Job::Type::BODYGUARD:
+      res["type"] = "bodyguard";
+      break;
+    case Job::Type::PATROL:
+      res["type"] = "patrol";
+      break;
+    case Job::Type::RENTAL:
+      res["type"] = "rental";
+      break;
+    case Job::Type::AD:
+      res["type"] = "ad";
+      break;
+    case Job::Type::TOLL:
+      res["type"] = "toll";
+      break;
     default:
       res["type"] = "unknown";
       break;
@@ -666,22 +704,97 @@ template <>
   res["collateral"] = IntToJson (j.GetCollateral ());
   if (j.HasDeadline ())
     res["deadline"] = IntToJson (j.GetDeadline ());
+
+  /* The linked entity is a character for the character-fate types and a
+     building for everything else that links one.  */
   if (j.GetLinkedId () != Database::EMPTY_ID)
-    res["building"] = IntToJson (j.GetLinkedId ());
+    switch (j.GetType ())
+      {
+      case Job::Type::BODYGUARD:
+      case Job::Type::TOLL:
+        res["character"] = IntToJson (j.GetLinkedId ());
+        break;
+      default:
+        res["building"] = IntToJson (j.GetLinkedId ());
+        break;
+      }
   if (!j.GetLinkedName ().empty ())
     res["target"] = j.GetLinkedName ();
 
-  const auto& designated = j.GetProto ().designated_worker ();
+  const auto& pb = j.GetProto ();
+
+  const auto& designated = pb.designated_worker ();
   if (!designated.empty ())
     res["designated"] = designated;
 
-  if (j.GetProto ().has_transport ())
+  /* Renders an outstanding manifest as an {item: quantity} object.  */
+  const auto itemsJson = [] (const proto::Inventory& m)
     {
       Json::Value items(Json::objectValue);
-      for (const auto& entry
-             : j.GetProto ().transport ().manifest ().fungible ())
+      for (const auto& entry : m.fungible ())
         items[entry.first] = IntToJson (entry.second);
-      res["items"] = items;
+      return items;
+    };
+
+  switch (pb.kind_case ())
+    {
+    case proto::JobData::kTransport:
+      res["items"] = itemsJson (pb.transport ().manifest ());
+      break;
+
+    case proto::JobData::kHaul:
+      res["items"] = itemsJson (pb.haul ().manifest ());
+      res["from"] = IntToJson (pb.haul ().source_building ());
+      res["to"] = IntToJson (pb.haul ().dest_building ());
+      break;
+
+    case proto::JobData::kWanted:
+      res["quota"] = IntToJson (pb.wanted ().quota ());
+      res["remaining"] = IntToJson (pb.wanted ().remaining ());
+      res["tranche"] = IntToJson (pb.wanted ().tranche ());
+      /* A standing pool with a deadline is one that has been given notice.  */
+      if (j.HasDeadline ())
+        res["closing"] = true;
+      break;
+
+    case proto::JobData::kEscort:
+      res["character"] = IntToJson (pb.escort ().protected_character ());
+      res["to"] = IntToJson (pb.escort ().dest_building ());
+      break;
+
+    case proto::JobData::kPatrol:
+      {
+        const auto& pp = pb.patrol ();
+        Json::Value area(Json::objectValue);
+        area["x"] = pp.centre_x ();
+        area["y"] = pp.centre_y ();
+        area["radius"] = IntToJson (pp.radius ());
+        res["area"] = area;
+        res["checkins"] = IntToJson (pp.checkins_required ());
+        res["done"] = IntToJson (pp.checkins_done ());
+        res["spacing"] = IntToJson (pp.min_spacing ());
+      }
+      break;
+
+    case proto::JobData::kRental:
+      {
+        const auto& rp = pb.rental ();
+        res["item"] = rp.item ();
+        res["count"] = IntToJson (rp.count ());
+        res["rent"] = IntToJson (rp.rent ());
+        res["building"] = IntToJson (rp.building ());
+      }
+      break;
+
+    case proto::JobData::kAd:
+      res["slot"] = IntToJson (pb.ad ().slot ());
+      res["hash"] = pb.ad ().content_hash ();
+      break;
+
+    default:
+      /* protect / destroy / bodyguard / toll carry no extra payload beyond
+         the linked entity already rendered above.  */
+      break;
     }
 
   return res;

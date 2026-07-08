@@ -25,8 +25,12 @@
     to one worker who locks a collateral bond.  This module holds the whole
     subsystem: the coin escrow, the per-type predicate interface, the generic
     move-op lifecycle (t/s/a/c/f), and the per-block expiry + kill hooks.  The
-    only per-type code is a JobPredicate object (see TransportPredicate); the
-    rest is type-independent.
+    only per-type code is a JobPredicate object; the rest is type-independent.
+
+    The catalogue carried on this one core: transport / haul /
+    construction-supply (delivery), the standing wanted board, protect and
+    destroy building, escort / bodyguard / patrol, rentals of packaged items,
+    and ad-slot / toll rentals where the poster is the payer.
 
     Confirmed-only: job moves are processed only in the confirmed block path
     (MoveProcessor), never in the pending path (PendingStateUpdater does not
@@ -39,15 +43,20 @@
 #include "database/account.hpp"
 #include "database/building.hpp"
 #include "database/character.hpp"
+#include "database/damagelists.hpp"
 #include "database/inventory.hpp"
 #include "database/jobs.hpp"
 #include "database/ongoing.hpp"
+
+#include "proto/combat.pb.h"
 
 #include <json/json.h>
 
 #include <glog/logging.h>
 
 #include <memory>
+#include <set>
+#include <string>
 
 namespace pxd
 {
@@ -103,6 +112,7 @@ struct JobContext
   BuildingInventoriesTable& buildingInv;
   CharacterTable& characters;
   OngoingsTable& ongoings;
+  GroundLootTable& groundLoot;
   JobsTable& jobs;
 };
 
@@ -129,8 +139,9 @@ enum class FulfilResult
 /**
  * The one per-type object.  A job type implements this; everything else
  * (escrow, the t/s/a/c/f dispatch, assign/accept/cancel, the expiry and kill
- * sweeps, reserved-balance sums) is the shared core.  Adding a type = adding
- * one predicate object and registering it in PredicateForType.
+ * sweeps, reserved-balance sums, completion counters) is the shared core.
+ * Adding a type = adding one predicate object and registering it in
+ * PredicateForType.
  */
 class JobPredicate
 {
@@ -141,12 +152,47 @@ public:
 
   /**
    * Whether accepting this type requires the poster to have designated the
-   * worker up front (the approval-required types: protect / destroy / escort).
+   * worker up front: the approval types (protect / destroy / escort /
+   * bodyguard) and the payee types where the designated worker IS the
+   * counterparty (rental / ad-slot / toll).
    */
   virtual bool
   RequiresApproval () const
   {
     return false;
+  }
+
+  /**
+   * Whether this is the standing duration class: posted without a deadline
+   * and never swept, with the notice-based cancel as its only exit.  Only
+   * the wanted board is standing; no other type may be.
+   */
+  virtual bool
+  IsStanding () const
+  {
+    return false;
+  }
+
+  /**
+   * Whether the FULFIL op is submitted by the poster rather than the worker.
+   * True only for rentals, where the poster (renter) returns the goods and
+   * the designated worker (lessor) is the payee.
+   */
+  virtual bool
+  PosterFulfils () const
+  {
+    return false;
+  }
+
+  /**
+   * The audience faction stored on the job row: who may accept / fulfil (and
+   * whose board shows it).  Defaults to the poster's faction; the open types
+   * (wanted, destroy, ad-slot, toll) override to INVALID = all factions.
+   */
+  virtual Faction
+  AudienceFaction (const Account& poster) const
+  {
+    return poster.GetFaction ();
   }
 
   /**
@@ -159,44 +205,99 @@ public:
 
   /**
    * Applies the (already-validated) terms to the freshly-created OPEN job:
-   * fills the linked entity, any audience-faction override and the proto
-   * payload.  Called from POST after the generic escrow + row creation.
+   * fills the linked entity / target name, the designated worker for the
+   * payee types, and the proto payload.  May also move goods (haul reserves
+   * the manifest out of the poster's inventory here).  Called from POST after
+   * the generic escrow + row creation.
    */
-  virtual void ApplyPost (const JobContext& jc, const Account& poster,
+  virtual void ApplyPost (const JobContext& jc, Account& poster,
                           const Json::Value& terms, Job& job) const = 0;
 
   /**
-   * Checks whether `worker` can fulfil `job` with `args` (no state change).
-   * Called from the fulfil op's validation.
+   * Type-specific extra validation of an ACCEPT (no state change), on top of
+   * the generic audience / designation / runway / collateral checks.  The
+   * open-claim types return false unconditionally (they have no accept step);
+   * rental verifies the lessor holds the goods; ad-slot that the accepting
+   * worker still owns the building.
+   */
+  virtual bool
+  ValidateAccept (const JobContext& jc, const Job& job,
+                  const Account& worker) const
+  {
+    return true;
+  }
+
+  /**
+   * Type-specific side effect of a successful ACCEPT, after the generic
+   * collateral lock and status change.  Rental moves the rented items from
+   * the lessor to the renter; haul hands the reserved goods to the worker and
+   * re-links the job from the source to the destination building.
+   */
+  virtual void
+  OnAccept (const JobContext& jc, Job& job, Account& worker) const
+  {}
+
+  /**
+   * Type-specific side effect of a (non-standing) CANCEL, before the generic
+   * reward refund and row deletion.  Haul returns the reserved goods to the
+   * poster here.
+   */
+  virtual void
+  OnCancel (const JobContext& jc, Job& job) const
+  {}
+
+  /**
+   * Checks whether the executor can fulfil `job` with `args` (no state
+   * change).  The executor is the worker, or the poster for PosterFulfils
+   * types.  Called from the fulfil op's validation; the hook-settled types
+   * (wanted / protect / destroy / bodyguard / ad / toll) reject any fulfil.
    */
   virtual bool CanFulfil (const JobContext& jc, const Job& job,
-                          const Account& worker,
+                          const Account& executor,
                           const Json::Value& args) const = 0;
 
   /**
-   * Performs the fulfil: moves the type-specific goods and settles the coins.
-   * Returns COMPLETE (the generic op then deletes the row) or PROGRESS (the
-   * row stays, with the mutated proto persisted).  Must not delete the row.
+   * Performs the fulfil: moves the type-specific goods and settles the coins
+   * and completion counters.  Returns COMPLETE (the generic op then deletes
+   * the row) or PROGRESS (the row stays, with the mutated proto persisted --
+   * patrol check-ins and partial cargo deliveries).  Must not delete the row.
    */
   virtual FulfilResult DoFulfil (const JobContext& jc, Job& job,
-                                 Account& worker,
+                                 Account& executor,
                                  const Json::Value& args) const = 0;
 
   /**
    * Settles a job whose deadline has passed (confirmed block only).  Handles
    * both the OPEN case (always void + refund the poster) and the ACCEPTED
-   * case (type-specific: transport fails and forfeits collateral to the
-   * poster; success-on-expiry types pay the worker).  The caller deletes the
-   * row afterwards.
+   * case (type-specific: the delivery family fails and forfeits collateral to
+   * the poster; the success-on-expiry types -- protect, bodyguard, ad-slot,
+   * toll -- pay the worker).  Kills are processed before the expiry sweep
+   * within a block, so "alive at expiry" is well-defined.  The caller deletes
+   * the row afterwards.
    */
   virtual void OnExpire (const JobContext& jc, Job& job) const = 0;
 
   /**
-   * Settles a job whose linked entity was destroyed (confirmed block only).
-   * The caller deletes the row afterwards.
+   * Settles a job whose linked entity (building or character) was destroyed
+   * (confirmed block only).  The caller deletes the row afterwards.  Types
+   * that never set linked_id must never receive this call.
    */
   virtual void OnLinkedEntityDestroyed (const JobContext& jc,
                                         Job& job) const = 0;
+
+  /**
+   * Pays out for one qualifying kill on a linked_name job (the wanted-bounty
+   * pool): one tranche split across the distinct killer accounts.  Returns
+   * true when the pool is drained and the caller should delete the row.
+   * Only the wanted type implements this.
+   */
+  virtual bool
+  OnTargetKill (const JobContext& jc, Job& job,
+                const std::set<std::string>& killOwners) const
+  {
+    LOG (FATAL)
+        << "Job " << job.GetId () << " has no target-kill settlement";
+  }
 
 };
 
@@ -271,19 +372,74 @@ public:
 /**
  * Expires all non-standing jobs whose deadline has been reached at the current
  * block timestamp, running each type's OnExpire settlement and deleting the
- * rows.  Called once per block; on the (vast majority of) blocks where nothing
- * is due it is an indexed no-op that touches no rows.
+ * rows.  Called once per block AFTER kill processing (the normative phase
+ * order: an entity dying in the boundary block is a death, not a survival);
+ * on the (vast majority of) blocks where nothing is due it is an indexed
+ * no-op that touches no rows.
  */
 void ExpireJobs (Database& db, const Context& ctx);
 
 /**
- * Handles all jobs linked to a building that is being destroyed, running each
- * type's OnLinkedEntityDestroyed settlement and deleting the rows.  Must be
- * called from the combat kill-processor while the building row still exists.
- * Runs only on the rare event of a building death.
+ * Handles all jobs linked to an entity (building or character) that is being
+ * destroyed, running each type's OnLinkedEntityDestroyed settlement and
+ * deleting the rows.  Must be called from the combat kill-processor while the
+ * entity row still exists.  Runs only on the rare event of an actual death,
+ * and is an indexed no-op when no job is linked to the entity.
  */
-void OnBuildingDestroyed (Database& db, const Context& ctx,
-                          Database::IdT buildingId);
+void OnJobEntityDestroyed (Database& db, const Context& ctx,
+                           Database::IdT entityId);
+
+/**
+ * Per-block resolver for the wanted board: pays bounty tranches for
+ * qualifying character kills.  Constructed once per block alongside the
+ * FameUpdater and fed every kill from the same pre-removal pass (damage lists
+ * and victim rows still live), sharing fame's distinct-owner derivation
+ * semantics.  The constructor loads the (small, bounded) set of names under
+ * an active bounty, so the common per-death path is one hash lookup and SQL
+ * is only issued for actual bounty events -- the mega-battle perf guard.
+ */
+class JobsBountyTracker
+{
+
+private:
+
+  Database& db;
+  const Context& ctx;
+
+  /** The block's damage lists (owned by the FameUpdater).  */
+  const DamageLists& dl;
+
+  /** Character table for owner lookups on still-live rows.  */
+  CharacterTable characters;
+
+  /** Names under an active bounty, loaded once per block.  */
+  std::set<std::string> bountyNames;
+
+public:
+
+  explicit JobsBountyTracker (Database& d, const Context& c,
+                              const DamageLists& l);
+
+  JobsBountyTracker () = delete;
+  JobsBountyTracker (const JobsBountyTracker&) = delete;
+  void operator= (const JobsBountyTracker&) = delete;
+
+  /**
+   * Processes one killed fighter: if it is a character whose owner is under
+   * bounty, pays one tranche per pool on that name, split across the distinct
+   * accounts on the victim's damage list.  Kills with an empty owner set
+   * (e.g. turret-only damage) pay nothing and consume nothing.
+   */
+  void UpdateForKill (const proto::TargetId& target);
+
+};
+
+/**
+ * Validates jobs-table invariants as part of ValidateStateSlow: poster /
+ * worker accounts exist and match the status, linked entities exist, and
+ * only standing types lack a deadline.
+ */
+void ValidateJobs (Database& db);
 
 } // namespace pxd
 

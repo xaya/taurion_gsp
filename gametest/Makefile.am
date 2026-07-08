@@ -25,7 +25,6 @@ REGTESTS = \
   combat_targets.py \
   damage_lists.py \
   dex.py \
-  jobs_transport.py \
   fame.py \
   findpath.py \
   fork_gamestart.py \
@@ -33,6 +32,10 @@ REGTESTS = \
   getregionat.py \
   getserviceinfo.py \
   getversion.py \
+  jobs_bounty.py \
+  jobs_protection.py \
+  jobs_rentals.py \
+  jobs_transport.py \
   godmode.py \
   loot.py \
   mining.py \

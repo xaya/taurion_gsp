@@ -220,6 +220,47 @@ JobsTable::QueryForLinkedId (const Database::IdT entity)
   return stmt.Query<JobResult> ();
 }
 
+Database::Result<JobResult>
+JobsTable::QueryForLinkedName (const std::string& name)
+{
+  auto stmt = db.Prepare (R"(
+    SELECT *
+      FROM `jobs`
+      WHERE `linked_name` = ?1
+      ORDER BY `id`
+  )");
+  stmt.Bind (1, name);
+  return stmt.Query<JobResult> ();
+}
+
+namespace
+{
+
+/** Result type for the distinct bounty-name query.  */
+struct LinkedNameResult : public Database::ResultType
+{
+  RESULT_COLUMN (std::string, name, 1);
+};
+
+} // anonymous namespace
+
+std::set<std::string>
+JobsTable::GetActiveBountyNames () const
+{
+  auto stmt = db.Prepare (R"(
+    SELECT DISTINCT `linked_name` AS `name`
+      FROM `jobs`
+      WHERE `linked_name` IS NOT NULL
+  )");
+
+  std::set<std::string> names;
+  auto res = stmt.Query<LinkedNameResult> ();
+  while (res.Step ())
+    names.insert (res.Get<LinkedNameResult::name> ());
+
+  return names;
+}
+
 void
 JobsTable::DeleteById (const Database::IdT id)
 {

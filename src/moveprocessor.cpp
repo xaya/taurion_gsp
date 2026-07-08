@@ -477,7 +477,7 @@ BaseMoveProcessor::TryJobOperations (const std::string& name,
   CHECK (a != nullptr);
 
   const JobContext jc{ctx, accounts, buildings, buildingInv, characters,
-                      ongoings, jobs};
+                      ongoings, groundLoot, jobs};
   for (const auto& op : cmds)
     {
       auto parsed = JobOperation::Parse (*a, op, jc);

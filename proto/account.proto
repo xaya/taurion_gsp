@@ -48,4 +48,14 @@ message Account
    */
   optional uint64 burnsale_balance = 4;
 
+  /**
+   * Jobs-board completion counters (the on-chain completion artifact the
+   * reputation layer reads).  Bumped by the jobs subsystem at settlement:
+   * completed / value on a successful settle, failed on an expiry forfeit.
+   * O(1) state; the rich per-job history lives off-chain in the indexer.
+   */
+  optional uint32 jobs_completed = 5;
+  optional uint32 jobs_failed = 6;
+  optional uint64 jobs_value_completed = 7;
+
 }

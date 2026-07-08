@@ -28,6 +28,8 @@ params:
     max_job_duration: 2592000  # 30 days
     min_accept_runway: 3600    # must have >= 1 hour left to accept
     max_manifest_entries: 20
+    bounty_cancel_notice: 604800  # 7 days' notice to close a wanted board
+    max_bounty_quota: 25
 
     min_region_ore: 2000000
     max_region_ore: 100000000

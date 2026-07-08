@@ -612,6 +612,7 @@ PXLogic::ValidateStateSlow (Database& db, const Context& ctx)
   ValidateBuildingInventories (db);
   ValidateOngoingsLinks (db);
   ValidateOrderLinks (db);
+  ValidateJobs (db);
 }
 
 } // namespace pxd

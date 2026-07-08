@@ -28,6 +28,7 @@
 
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 
 namespace pxd
@@ -66,12 +67,23 @@ class Job
 public:
 
   /**
-   * The kind of job.  The numeric values match the `type` database column.
+   * The kind of job.  The numeric values match the `type` database column
+   * and are consensus-relevant (never renumber).
    */
   enum class Type
   {
     INVALID = -1,
     TRANSPORT = 0,
+    HAUL = 1,
+    WANTED = 2,
+    PROTECT = 3,
+    DESTROY = 4,
+    ESCORT = 5,
+    BODYGUARD = 6,
+    PATROL = 7,
+    RENTAL = 8,
+    AD = 9,
+    TOLL = 10,
   };
 
   /**
@@ -220,6 +232,18 @@ public:
     return reward;
   }
 
+  /**
+   * Updates the reward column.  Used only by the wanted-bounty pool, where
+   * the column tracks the REMAINING (un-paid) escrow as tranches pay out,
+   * keeping balance.reserved a plain SUM.
+   */
+  void
+  SetReward (const Amount r)
+  {
+    reward = r;
+    dirtyFields = true;
+  }
+
   Amount
   GetCollateral () const
   {
@@ -351,6 +375,21 @@ public:
    * when a linked entity (e.g. a transport destination) is destroyed.
    */
   Database::Result<JobResult> QueryForLinkedId (Database::IdT entity);
+
+  /**
+   * Queries for all jobs whose linked_name is the given account -- the
+   * wanted-bounties on that name.  Used by the kill attribution when one of
+   * the account's characters dies.
+   */
+  Database::Result<JobResult> QueryForLinkedName (const std::string& name);
+
+  /**
+   * Returns the set of account names under an active bounty (the distinct
+   * non-NULL linked_name values).  The per-block kill attribution loads this
+   * once and only issues per-death SQL for names in it, keeping the common
+   * death path to a hash lookup (the mega-battle perf guard).
+   */
+  std::set<std::string> GetActiveBountyNames () const;
 
   /**
    * Deletes the job with the given ID.  Used on every terminal transition

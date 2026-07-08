@@ -158,6 +158,50 @@ TEST_F (JobsTableTests, QueryForLinkedId)
   EXPECT_THAT (got, ElementsAre (201, 203));
 }
 
+TEST_F (JobsTableTests, QueryForLinkedName)
+{
+  db.SetNextId (301);
+  /* Two bounties on the same name (stacked pools), one on another, and a
+     transport row whose NULL linked_name must never match.  */
+  tbl.CreateNew (Job::Type::WANTED, Faction::INVALID, "poster", 100, 0)
+      ->SetLinkedName ("badguy");
+  tbl.CreateNew (Job::Type::WANTED, Faction::INVALID, "poster", 100, 0)
+      ->SetLinkedName ("other");
+  tbl.CreateNew (Job::Type::WANTED, Faction::INVALID, "poster", 100, 0)
+      ->SetLinkedName ("badguy");
+  CreateTransport (Faction::RED, "poster", 1, 0, 10, 1).reset ();
+
+  std::vector<Database::IdT> got;
+  auto res = tbl.QueryForLinkedName ("badguy");
+  while (res.Step ())
+    got.push_back (tbl.GetFromResult (res)->GetId ());
+  EXPECT_THAT (got, ElementsAre (301, 303));
+
+  EXPECT_THAT (tbl.GetActiveBountyNames (),
+               ElementsAre ("badguy", "other"));
+}
+
+TEST_F (JobsTableTests, SetRewardDrainsPool)
+{
+  /* The wanted pool decrements the reward column as tranches pay out; the
+     reserved-coins SUM must track the remaining escrow.  */
+  Database::IdT id;
+  {
+    auto j = tbl.CreateNew (Job::Type::WANTED, Faction::INVALID, "poster",
+                            9000, 0);
+    j->SetLinkedName ("badguy");
+    id = j->GetId ();
+  }
+
+  {
+    auto j = tbl.GetById (id);
+    j->SetReward (j->GetReward () - 3000);
+  }
+
+  EXPECT_EQ (tbl.GetById (id)->GetReward (), 6000);
+  EXPECT_THAT (tbl.GetReservedCoins (), ElementsAre (Pair ("poster", 6000)));
+}
+
 TEST_F (JobsTableTests, ReservedCoins)
 {
   /* poster: two posted rewards (2000 + 500); worker: one accepted collateral

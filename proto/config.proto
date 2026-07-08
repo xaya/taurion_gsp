@@ -642,6 +642,17 @@ message Params
   /** Maximum number of distinct item types allowed in a job manifest.  */
   optional uint32 max_manifest_entries = 28;
 
+  /**
+   * Notice period (in seconds) for cancelling a standing wanted-bounty.  A
+   * cancel does not delete the pool; it sets the deadline this far out, kills
+   * during the window still pay, and only the unearned remainder refunds when
+   * the notice expires.  The anti-rug-pull for standing jobs.
+   */
+  optional int64 bounty_cancel_notice = 29;
+
+  /** Maximum kill quota (pool tranches) for a single wanted-bounty.  */
+  optional uint32 max_bounty_quota = 30;
+
 }
 
 /* ************************************************************************** */

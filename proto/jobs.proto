@@ -29,13 +29,204 @@ package pxd.proto;
  * reuses the Inventory proto, so a single job can carry one item type in bulk
  * (e.g. 10000 material) or several different item types at once.  The
  * destination building is the job's linked_id column, not a proto field.
+ *
+ * The manifest holds the OUTSTANDING goods: partial deliveries from character
+ * cargo (the progress-fulfil variant) shrink it, and the job completes when it
+ * is empty.  Consensus code only ever touches it through a sorted snapshot
+ * (std::map), never by iterating the proto map directly.
  */
 message TransportPayload
 {
 
-  /** The items (item type -> quantity) that must be delivered.  */
+  /** The items (item type -> quantity) still to be delivered.  */
   optional Inventory manifest = 1;
 
+}
+
+/**
+ * Payload for a haul job: like transport, but the POSTER supplies the goods.
+ * They are taken out of the poster's inventory at the source building when
+ * the job is posted (reserved by the job), handed to the worker's inventory
+ * at the source on accept, and must then be delivered to the destination.
+ * The linked_id column is the source building while OPEN (its destruction
+ * voids the job and drops the reserved goods as ground loot) and swaps to the
+ * destination building on accept.
+ */
+message HaulPayload
+{
+
+  /** The items still to be delivered (see TransportPayload).  */
+  optional Inventory manifest = 1;
+
+  /** The source building A the goods start from.  */
+  optional uint64 source_building = 2;
+
+  /** The destination building B the goods must reach.  */
+  optional uint64 dest_building = 3;
+
+}
+
+/**
+ * Payload for a standing wanted-bounty on an account name (the job's
+ * linked_name column).  The reward is a pool of `quota` equal tranches; each
+ * qualifying kill of one of the target's characters pays out one tranche,
+ * split equally across the distinct accounts on the victim's damage list.
+ * The `reward` column always holds the remaining (un-paid) escrow.
+ */
+message WantedPayload
+{
+
+  /** The total number of kills the pool pays for (N as posted).  */
+  optional uint32 quota = 1;
+
+  /** How many tranches are still unpaid.  The pool completes at zero.  */
+  optional uint32 remaining = 2;
+
+  /**
+   * The fixed per-kill tranche, floor(reward / quota) at post time.  Division
+   * dust (both from this and from splitting a tranche across multiple
+   * killers) is burned, never redistributed.
+   */
+  optional uint64 tranche = 3;
+
+}
+
+/**
+ * Payload for a protect-building job: the protected building is the job's
+ * linked_id.  Success is survival to the deadline (settles in OnExpire while
+ * ACCEPTED); the entity hook fails it if the building dies first.
+ */
+message ProtectPayload
+{
+}
+
+/**
+ * Payload for a destroy-building job: the target building is the job's
+ * linked_id.  Success is the building's destruction (by anyone) before the
+ * deadline; expiry while ACCEPTED is the failure case.
+ */
+message DestroyPayload
+{
+}
+
+/**
+ * Payload for an escort job: the worker must get the poster's character to
+ * the destination building alive.  Settlement is a single-moment fulfil op
+ * checked against this data; there is no linked entity (a dead protectee
+ * simply makes the job unfulfillable, and it expires).
+ */
+message EscortPayload
+{
+
+  /** The poster's character that must arrive alive.  */
+  optional uint64 protected_character = 1;
+
+  /** The destination building it must reach (docked inside).  */
+  optional uint64 dest_building = 2;
+
+}
+
+/**
+ * Payload for a bodyguard job: keep the poster's character (the job's
+ * linked_id) alive until the deadline.  The protect-building predicate with a
+ * character as the linked entity: success settles in OnExpire while ACCEPTED,
+ * and the entity hook fails it the moment the character dies.
+ */
+message BodyguardPayload
+{
+}
+
+/**
+ * Payload for a patrol job: the worker checks in K times from inside the
+ * area, each at least `min_spacing` seconds after the previous one.  The only
+ * job type with on-chain progress state (the Progress fulfil outcome).
+ */
+message PatrolPayload
+{
+
+  /** The patrol area centre (axial hex coordinates).  */
+  optional sint32 centre_x = 1;
+  optional sint32 centre_y = 2;
+
+  /** The area radius as an L1 hex distance from the centre.  */
+  optional uint32 radius = 3;
+
+  /** The total number of check-ins required (K).  */
+  optional uint32 checkins_required = 4;
+
+  /** Minimum seconds between consecutive check-ins.  */
+  optional uint32 min_spacing = 5;
+
+  /** How many valid check-ins have been recorded so far.  */
+  optional uint32 checkins_done = 6;
+
+  /** Consensus timestamp of the most recent check-in (0 if none yet).  */
+  optional int64 last_checkin = 7;
+
+}
+
+/**
+ * Payload for a rental: a fungible item lent by count and returned by count.
+ * The poster is the RENTER (payer) and the designated worker the lessor
+ * (payee) -- payer/payee are swapped versus a normal job.  The escrowed
+ * reward is rent + security deposit in one amount; `rent` records the split.
+ * Accepting moves the items from the lessor's inventory at the building to
+ * the renter's; the return transfer happens in the renter's fulfil (or the
+ * same check at expiry).  No linked entity and no HP snapshot: "same count
+ * back" is the whole test, and a lost item is a non-return the deposit
+ * covers.
+ */
+message RentalPayload
+{
+
+  /** The rented item type.  */
+  optional string item = 1;
+
+  /** How many units are rented.  */
+  optional uint64 count = 2;
+
+  /**
+   * The rent portion of the escrowed reward.  On a clean return the lessor
+   * receives this and the renter gets the rest (the deposit) back; on a
+   * non-return the lessor receives the whole escrow.
+   */
+  optional uint64 rent = 3;
+
+  /** The building where handover and return take place.  */
+  optional uint64 building = 4;
+
+}
+
+/**
+ * Payload for an ad-slot rental on a building (the job's linked_id).  The
+ * poster (advertiser) escrows the rent; the designated worker is the
+ * building's owner, whose accept is the content approval.  The rent pays out
+ * at the deadline (success-on-expiry); the entity hook refunds it if the
+ * building dies first.
+ */
+message AdPayload
+{
+
+  /** The advertising slot on the building this rents.  */
+  optional uint32 slot = 1;
+
+  /**
+   * Commitment hash of the ad content (hex).  Clients render only content
+   * matching this hash, which closes both the owner-censors-paid-content and
+   * the advertiser-swaps-approved-content rugs.
+   */
+  optional string content_hash = 2;
+
+}
+
+/**
+ * Payload for a safe-passage toll: the poster (traveller) escrows the toll
+ * for the designated gatekeeper.  The gatekeeper is paid only if the
+ * traveller's character (the job's linked_id) survives the window
+ * (success-on-expiry); the entity hook refunds the traveller if it dies.
+ */
+message TollPayload
+{
 }
 
 /**
@@ -45,9 +236,9 @@ message TransportPayload
  * and database/jobs.hpp); only what follows lives in this blob.
  *
  * Consensus hygiene: the state hash covers the raw serialised bytes and
- * protobuf map ordering is not guaranteed, so this proto uses scalars and
- * sorted repeated fields only -- never a proto `map` that a consensus decision
- * iterates.
+ * protobuf map ordering is not guaranteed, so consensus decisions never
+ * iterate a proto map directly -- manifests are snapshotted into sorted
+ * std::maps first (the same discipline as the game's other Inventory uses).
  */
 message JobData
 {
@@ -56,7 +247,9 @@ message JobData
    * The designated worker (see the assign op).  Set by the poster; for the
    * approval-required types nobody may accept until the accepting worker
    * matches this, and for other exclusive types it is optional (unset means
-   * anyone of the audience faction may accept).
+   * anyone of the audience faction may accept).  The payee types (rental,
+   * ad-slot, toll) fix it at post time to the lessor / building owner /
+   * gatekeeper.
    */
   optional string designated_worker = 1;
 
@@ -67,6 +260,16 @@ message JobData
   oneof kind
   {
     TransportPayload transport = 101;
+    HaulPayload haul = 102;
+    WantedPayload wanted = 103;
+    ProtectPayload protect = 104;
+    DestroyPayload destroy = 105;
+    EscortPayload escort = 106;
+    BodyguardPayload bodyguard = 107;
+    PatrolPayload patrol = 108;
+    RentalPayload rental = 109;
+    AdPayload ad = 110;
+    TollPayload toll = 111;
   }
 
 }
