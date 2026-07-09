@@ -196,13 +196,13 @@ protected:
     tracker.UpdateForKill (target);
   }
 
-  /** Returns (completed, failed, value) for an account.  */
-  std::tuple<unsigned, unsigned, Amount>
+  /** Returns (completed, failed, failed-as-poster, value) for an account.  */
+  std::tuple<unsigned, unsigned, unsigned, Amount>
   JobStats (const std::string& name)
   {
     const auto& pb = accounts.GetByName (name)->GetProto ();
     return {pb.jobs_completed (), pb.jobs_failed (),
-            pb.jobs_value_completed ()};
+            pb.jobs_failed_as_poster (), pb.jobs_value_completed ()};
   }
 
   /** Returns whether the JSON string parses to a well-formed operation.  */
@@ -629,8 +629,10 @@ TEST_F (JobsTests, ExpireAcceptedForfeitsToPoster)
   /* Reward refunds AND the worker's collateral forfeits, both to the poster.  */
   EXPECT_EQ (Balance ("poster"), 1000000 - 20 + 8000);
   EXPECT_EQ (Balance ("courier"), 1000000 - 8000);
-  /* The failure is recorded on the worker.  */
-  EXPECT_EQ (JobStats ("courier"), std::make_tuple (0u, 1u, 0));
+  /* The failure is recorded on the worker, and the forfeit-as-poster mark
+     on the poster who pocketed the bond.  */
+  EXPECT_EQ (JobStats ("courier"), std::make_tuple (0u, 1u, 0u, 0));
+  EXPECT_EQ (JobStats ("poster"), std::make_tuple (0u, 0u, 1u, 0));
 }
 
 TEST_F (JobsTests, ExpireIdleBlockTouchesNothing)
@@ -640,6 +642,54 @@ TEST_F (JobsTests, ExpireIdleBlockTouchesNothing)
   ExpireJobs (db, ctx);
   EXPECT_TRUE (JobExists (id));
   EXPECT_EQ (Balance ("poster"), 1000000 - 2000 - 20);
+}
+
+/* ************************************************************************** */
+/* Settled-jobs history.                                                      */
+
+TEST_F (JobsTests, HistoryRecordsOutcomes)
+{
+  /* One job through each generic terminal path; each must leave exactly one
+     history row with the true outcome (the chain deletes the live rows).  */
+
+  const auto idDone = PostAndAccept ();
+  StageGoods (1, "courier", {{"foo", 5}});
+  ASSERT_TRUE (Process ("courier",
+                        R"({"f":)" + std::to_string (idDone) + "}"));
+
+  const auto idCancel = Post ();
+  ASSERT_TRUE (Process ("poster",
+                        R"({"c":)" + std::to_string (idCancel) + "}"));
+
+  /* The Post helper requires a lone live job, so run the two expiry cases
+     sequentially (deadlines are relative to the moving timestamp).  */
+  const auto idVoid = Post ();
+  ctx.SetTimestamp (BASE_TS + DAY + 1);
+  ExpireJobs (db, ctx);
+
+  const auto idFail = PostAndAccept ();
+  ctx.SetTimestamp (BASE_TS + 2 * DAY + 2);
+  ExpireJobs (db, ctx);
+
+  JobsTable jobs(db);
+  std::map<Database::IdT, JobOutcome> outcomes;
+  std::map<Database::IdT, int64_t> times;
+  auto res = jobs.QueryHistory (0);
+  while (res.Step ())
+    {
+      auto e = jobs.GetFromResult (res);
+      ASSERT_EQ (outcomes.count (e->GetId ()), 0)
+          << "duplicate history row for job " << e->GetId ();
+      outcomes[e->GetId ()] = e->GetOutcome ();
+      times[e->GetId ()] = e->GetSettledTime ();
+    }
+
+  ASSERT_EQ (outcomes.size (), 4);
+  EXPECT_EQ (outcomes.at (idDone), JobOutcome::COMPLETED);
+  EXPECT_EQ (outcomes.at (idCancel), JobOutcome::CANCELLED);
+  EXPECT_EQ (outcomes.at (idVoid), JobOutcome::VOID);
+  EXPECT_EQ (outcomes.at (idFail), JobOutcome::FAILED);
+  EXPECT_EQ (times.at (idFail), BASE_TS + 2 * DAY + 2);
 }
 
 /* ************************************************************************** */
@@ -685,7 +735,7 @@ TEST_F (JobsTests, CoinConservationAcrossLifecycle)
      two accounts.  */
   EXPECT_EQ (Balance ("poster") + Balance ("courier"), before - 20);
   /* The completion is recorded on the worker.  */
-  EXPECT_EQ (JobStats ("courier"), std::make_tuple (1u, 0u, 2000));
+  EXPECT_EQ (JobStats ("courier"), std::make_tuple (1u, 0u, 0u, 2000));
 }
 
 TEST_F (JobsTests, SameBlockKillBeatsExpiry)
@@ -915,7 +965,7 @@ TEST_F (WantedTests, KillPaysOneTranche)
   EXPECT_EQ (j->GetProto ().wanted ().remaining (), 2);
   EXPECT_EQ (j->GetReward (), 6000);
   EXPECT_EQ (Balance ("courier"), 1000000 + 3000);
-  EXPECT_EQ (JobStats ("courier"), std::make_tuple (1u, 0u, 3000));
+  EXPECT_EQ (JobStats ("courier"), std::make_tuple (1u, 0u, 0u, 3000));
 }
 
 TEST_F (WantedTests, KillSplitsAcrossDistinctOwners)
@@ -1112,7 +1162,7 @@ TEST_F (EntityFateTests, ProtectSuccessOnExpiry)
   ExpireJobs (db, ctx);
   /* The building survived to the deadline: the worker collects.  */
   EXPECT_EQ (Balance ("courier"), 1000000 + 1000);
-  EXPECT_EQ (JobStats ("courier"), std::make_tuple (1u, 0u, 1000));
+  EXPECT_EQ (JobStats ("courier"), std::make_tuple (1u, 0u, 0u, 1000));
 }
 
 TEST_F (EntityFateTests, ProtectFailureOnDestruction)
@@ -1121,10 +1171,13 @@ TEST_F (EntityFateTests, ProtectFailureOnDestruction)
   OnJobEntityDestroyed (db, ctx, 1);
   EXPECT_FALSE (JobExists (id));
   /* The protected building died: reward refunds AND the bond forfeits, both
-     to the poster; the failure is on the worker's record.  */
+     to the poster; the failure is on the worker's record.  The poster could
+     have destroyed their own building to harvest that bond, so the forfeit
+     also marks THEIR record (the scam-vetting signal).  */
   EXPECT_EQ (Balance ("poster"), 1000000 - 10 + 500);
   EXPECT_EQ (Balance ("courier"), 1000000 - 500);
-  EXPECT_EQ (JobStats ("courier"), std::make_tuple (0u, 1u, 0));
+  EXPECT_EQ (JobStats ("courier"), std::make_tuple (0u, 1u, 0u, 0));
+  EXPECT_EQ (JobStats ("poster"), std::make_tuple (0u, 0u, 1u, 0));
 }
 
 TEST_F (EntityFateTests, ProtectOpenUnwindsVoid)
@@ -1151,7 +1204,7 @@ TEST_F (EntityFateTests, DestroyIsOpenAudienceAndSucceedsOnDeath)
   EXPECT_FALSE (JobExists (id));
   /* The target died (by anyone's hand): the accepted worker collects.  */
   EXPECT_EQ (Balance ("green"), 1000000 + 1000);
-  EXPECT_EQ (JobStats ("green"), std::make_tuple (1u, 0u, 1000));
+  EXPECT_EQ (JobStats ("green"), std::make_tuple (1u, 0u, 0u, 1000));
 }
 
 TEST_F (EntityFateTests, DestroyFailsOnExpiry)
@@ -1280,7 +1333,7 @@ TEST_F (EscortTests, FulfilOnlyWhenProtecteeDockedAtDestination)
   EXPECT_TRUE (Process ("courier", f));
   EXPECT_FALSE (JobExists (id));
   EXPECT_EQ (Balance ("courier"), 1000000 + 1000);
-  EXPECT_EQ (JobStats ("courier"), std::make_tuple (1u, 0u, 1000));
+  EXPECT_EQ (JobStats ("courier"), std::make_tuple (1u, 0u, 0u, 1000));
 }
 
 TEST_F (EscortTests, DeadProtecteeMakesItExpireAsFailure)
@@ -1437,8 +1490,8 @@ TEST_F (RentalTests, LifecycleCleanReturn)
   EXPECT_EQ (Balance ("courier"), 1000000 + 300);
   /* Both sides record the completion, but only the lessor EARNED the rent;
      the renter's value counter must not inflate with coins they paid.  */
-  EXPECT_EQ (JobStats ("poster"), std::make_tuple (1u, 0u, 0));
-  EXPECT_EQ (JobStats ("courier"), std::make_tuple (1u, 0u, 300));
+  EXPECT_EQ (JobStats ("poster"), std::make_tuple (1u, 0u, 0u, 0));
+  EXPECT_EQ (JobStats ("courier"), std::make_tuple (1u, 0u, 0u, 300));
 }
 
 TEST_F (RentalTests, PostRejects)
@@ -1488,7 +1541,10 @@ TEST_F (RentalTests, NonReturnDefaultsDeposit)
   EXPECT_FALSE (JobExists (id));
   EXPECT_EQ (Balance ("courier"), 1000000 + 1000);
   EXPECT_EQ (Balance ("poster"), 1000000 - 10 - 1000);
-  EXPECT_EQ (JobStats ("poster"), std::make_tuple (0u, 1u, 0));
+  /* The renter (= poster) is the party at fault, so this is a plain failure
+     on their record — NOT a forfeit-as-poster mark (the lessor got paid,
+     nobody forfeited a bond under this post).  */
+  EXPECT_EQ (JobStats ("poster"), std::make_tuple (0u, 1u, 0u, 0));
 }
 
 TEST_F (RentalTests, ExpiryWithGoodsBackSettlesCleanly)

@@ -329,6 +329,7 @@ template <>
       Json::Value jobstats(Json::objectValue);
       jobstats["completed"] = IntToJson (pb.jobs_completed ());
       jobstats["failed"] = IntToJson (pb.jobs_failed ());
+      jobstats["posterfailed"] = IntToJson (pb.jobs_failed_as_poster ());
       jobstats["value"] = IntToJson (pb.jobs_value_completed ());
       res["jobstats"] = jobstats;
     }

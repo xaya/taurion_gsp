@@ -58,4 +58,13 @@ message Account
   optional uint32 jobs_failed = 6;
   optional uint64 jobs_value_completed = 7;
 
+  /**
+   * Jobs that ended in a worker forfeit under this account's posts.  A
+   * poster can force those forfeits at will (e.g. by suiciding their own
+   * protected asset to harvest the collateral), so this is the scam-vetting
+   * signal: a clean worker record plus a high forfeit-as-poster count marks
+   * an account workers should not post bonds with.
+   */
+  optional uint32 jobs_failed_as_poster = 8;
+
 }

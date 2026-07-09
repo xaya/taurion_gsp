@@ -103,6 +103,10 @@ class JobsProtectionTest (PXTest):
     self.assertEqual (self.available ("guard"), guardBefore)
     stats = self.getAccounts ()["guard"].data["jobstats"]
     self.assertEqual (stats["failed"], 1)
+    # The forfeit also marks the poster's record (the scam-vetting signal:
+    # posters can force forfeits by killing their own protectee).
+    self.assertEqual (
+        self.getAccounts ()["poster"].data["jobstats"]["posterfailed"], 1)
 
   def testEscort (self):
     self.mainLogger.info ("Escorting the poster's char to a building...")

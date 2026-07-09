@@ -141,7 +141,10 @@ SettleSuccessAtHook (const JobContext& jc, const Job& job)
  * Hook-path settlement: the accepted worker failed (expiry or linked-entity
  * failure).  The reward refunds and the collateral forfeits, both to the
  * poster (the uniform forfeit-to-poster rule), and the worker's failed
- * counter bumps.  Must not be called while any account handle is live.
+ * counter bumps.  The poster's forfeit-as-poster counter bumps too: they
+ * can force this outcome at will (e.g. by suiciding their own protected
+ * asset), so the mark lets workers vet collateral-harvesting posters.
+ * Must not be called while any account handle is live.
  */
 void
 SettleFailureAtHook (const JobContext& jc, const Job& job)
@@ -149,6 +152,8 @@ SettleFailureAtHook (const JobContext& jc, const Job& job)
   {
     auto poster = GetAccountChecked (jc, job.GetPoster ());
     ReleaseJobCoins (*poster, job.GetReward () + job.GetCollateral ());
+    auto& pb = poster->MutableProto ();
+    pb.set_jobs_failed_as_poster (pb.jobs_failed_as_poster () + 1);
   }
   auto worker = GetAccountChecked (jc, job.GetWorker ());
   BumpJobStats (*worker, false, 0);
