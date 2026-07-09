@@ -70,6 +70,14 @@ private:
   template <typename T, typename R>
     Json::Value ResultsAsArray (T& tbl, Database::Result<R> res) const;
 
+  /**
+   * The job fields shared between a live board row (Job) and a settled
+   * history row (JobHistoryEntry) -- everything except the live status /
+   * the settlement metadata, which the two Convert specialisations add.
+   */
+  template <typename J>
+    Json::Value JobCommonJson (const J& j) const;
+
 public:
 
   explicit GameStateJson (Database& d, const Context& c)
@@ -108,6 +116,13 @@ public:
    * Returns the JSON data representing all jobs on the jobs board.
    */
   Json::Value Jobs ();
+
+  /**
+   * Returns the JSON data for the settled-jobs history (the job_history
+   * table), from the given settlement timestamp onwards (0 = the whole
+   * retention window).
+   */
+  Json::Value JobsHistory (int64_t fromTime);
 
   /**
    * Returns the JSON data representing all characters in the game state.

@@ -653,6 +653,14 @@ message Params
   /** Maximum kill quota (pool tranches) for a single wanted-bounty.  */
   optional uint32 max_bounty_quota = 30;
 
+  /**
+   * How long (in seconds) a settled job stays in the job_history table
+   * before the deterministic per-block prune removes it.  The chain deletes
+   * settled rows from the live board, so this window is the only consensus
+   * record of what settled and why (the getjobshistory RPC).
+   */
+  optional int64 jobs_history_retention = 31;
+
 }
 
 /* ************************************************************************** */

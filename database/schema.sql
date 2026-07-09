@@ -607,4 +607,52 @@ CREATE INDEX IF NOT EXISTS `jobs_by_poster` ON `jobs` (`poster`);
 -- "My accepted jobs" + reserved-collateral sum for an account.
 CREATE INDEX IF NOT EXISTS `jobs_by_worker` ON `jobs` (`worker`);
 
+-- Settled-jobs history: one row per terminal transition (fulfil / cancel /
+-- expiry / linked-entity death / pool drain), written by the same block
+-- processing that DELETEs the live `jobs` row.  Consensus state like the
+-- board itself: rebuilt identically by any resync, unwound cleanly on
+-- reorgs, and pruned deterministically once a row is older than
+-- params.jobs_history_retention (so the table stays bounded).  Serves the
+-- getjobshistory RPC -- the chain deletes settled jobs from `jobs`, so this
+-- is the only consensus record of WHAT settled and WHY.
+CREATE TABLE IF NOT EXISTS `job_history` (
+
+  -- The settled job's ID (job IDs are never reused).
+  `id` INTEGER PRIMARY KEY,
+
+  -- The job kind (Job::Type enum), mirroring `jobs`.
+  `type` INTEGER NOT NULL,
+
+  -- Why the job left the board (the JobOutcome enum in database/jobs.hpp):
+  -- completed / failed / cancelled / void / drained.
+  `outcome` INTEGER NOT NULL,
+
+  -- Block height and consensus timestamp of the settling block.  The time
+  -- drives both the retention prune and incremental getjobshistory reads.
+  `settled_height` INTEGER NOT NULL,
+  `settled_time` INTEGER NOT NULL,
+
+  -- The remaining columns snapshot the live row at settlement, with the
+  -- same semantics (and NULLability) as the `jobs` table above.
+  `faction` INTEGER NULL,
+  `poster` TEXT NOT NULL,
+  `worker` TEXT NULL,
+  `reward` INTEGER NOT NULL,
+  `collateral` INTEGER NOT NULL,
+  `deadline` INTEGER NULL,
+  `linked_id` INTEGER NULL,
+  `linked_name` TEXT NULL,
+  `proto` BLOB NOT NULL
+
+);
+
+-- Retention prune ("older than the cutoff") + incremental reads
+-- (getjobshistory fromtime).
+CREATE INDEX IF NOT EXISTS `job_history_by_time`
+  ON `job_history` (`settled_time`);
+
+-- "My settled posts" / "my settled work" account scans.
+CREATE INDEX IF NOT EXISTS `job_history_by_poster` ON `job_history` (`poster`);
+CREATE INDEX IF NOT EXISTS `job_history_by_worker` ON `job_history` (`worker`);
+
 -- =============================================================================

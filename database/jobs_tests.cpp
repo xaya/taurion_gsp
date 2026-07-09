@@ -217,5 +217,103 @@ TEST_F (JobsTableTests, ReservedCoins)
                ElementsAre (Pair ("poster", 2500), Pair ("worker", 8000)));
 }
 
+/* ************************************************************************** */
+
+using JobHistoryTests = JobsTableTests;
+
+TEST_F (JobHistoryTests, RoundTrip)
+{
+  {
+    auto j = CreateTransport (Faction::RED, "poster", 2000, 500, 1234, 42);
+    j->SetWorker ("worker");
+    j->SetStatus (Job::Status::ACCEPTED);
+    j->MutableProto ().mutable_transport ();
+    tbl.WriteHistory (*j, JobOutcome::COMPLETED, 100, 5000);
+  }
+
+  auto res = tbl.QueryHistory (0);
+  ASSERT_TRUE (res.Step ());
+  auto e = tbl.GetFromResult (res);
+  EXPECT_FALSE (res.Step ());
+
+  EXPECT_EQ (e->GetType (), Job::Type::TRANSPORT);
+  EXPECT_EQ (e->GetOutcome (), JobOutcome::COMPLETED);
+  EXPECT_EQ (e->GetSettledHeight (), 100);
+  EXPECT_EQ (e->GetSettledTime (), 5000);
+  EXPECT_EQ (e->GetFaction (), Faction::RED);
+  EXPECT_EQ (e->GetPoster (), "poster");
+  EXPECT_EQ (e->GetWorker (), "worker");
+  EXPECT_EQ (e->GetReward (), 2000);
+  EXPECT_EQ (e->GetCollateral (), 500);
+  ASSERT_TRUE (e->HasDeadline ());
+  EXPECT_EQ (e->GetDeadline (), 1234);
+  EXPECT_EQ (e->GetLinkedId (), 42);
+  EXPECT_TRUE (e->GetProto ().has_transport ());
+}
+
+TEST_F (JobHistoryTests, NullableColumns)
+{
+  {
+    auto j = tbl.CreateNew (Job::Type::WANTED, Faction::INVALID, "poster",
+                            0, 0);
+    j->SetLinkedName ("target");
+    tbl.WriteHistory (*j, JobOutcome::DRAINED, 7, 900);
+  }
+
+  auto res = tbl.QueryHistory (0);
+  ASSERT_TRUE (res.Step ());
+  auto e = tbl.GetFromResult (res);
+
+  EXPECT_EQ (e->GetOutcome (), JobOutcome::DRAINED);
+  EXPECT_EQ (e->GetFaction (), Faction::INVALID);
+  EXPECT_EQ (e->GetWorker (), "");
+  EXPECT_FALSE (e->HasDeadline ());
+  EXPECT_EQ (e->GetLinkedId (), Database::EMPTY_ID);
+  EXPECT_EQ (e->GetLinkedName (), "target");
+}
+
+TEST_F (JobHistoryTests, QueryFromTimeAndOrder)
+{
+  {
+    auto j = CreateTransport (Faction::RED, "poster", 1, 0, 10, 1);
+    tbl.WriteHistory (*j, JobOutcome::CANCELLED, 1, 300);
+  }
+  {
+    auto j = CreateTransport (Faction::RED, "poster", 2, 0, 10, 1);
+    tbl.WriteHistory (*j, JobOutcome::VOID, 2, 100);
+  }
+  {
+    auto j = CreateTransport (Faction::RED, "poster", 3, 0, 10, 1);
+    tbl.WriteHistory (*j, JobOutcome::FAILED, 3, 200);
+  }
+
+  /* Ordered by settled_time; fromtime is inclusive.  */
+  std::vector<Amount> rewards;
+  auto res = tbl.QueryHistory (200);
+  while (res.Step ())
+    rewards.push_back (tbl.GetFromResult (res)->GetReward ());
+  EXPECT_THAT (rewards, ElementsAre (3, 1));
+}
+
+TEST_F (JobHistoryTests, Prune)
+{
+  {
+    auto j = CreateTransport (Faction::RED, "poster", 1, 0, 10, 1);
+    tbl.WriteHistory (*j, JobOutcome::COMPLETED, 1, 100);
+  }
+  {
+    auto j = CreateTransport (Faction::RED, "poster", 2, 0, 10, 1);
+    tbl.WriteHistory (*j, JobOutcome::COMPLETED, 2, 200);
+  }
+
+  /* Strictly-before cutoff: the row AT the cutoff stays.  */
+  tbl.PruneHistory (200);
+
+  auto res = tbl.QueryHistory (0);
+  ASSERT_TRUE (res.Step ());
+  EXPECT_EQ (tbl.GetFromResult (res)->GetReward (), 2);
+  EXPECT_FALSE (res.Step ());
+}
+
 } // anonymous namespace
 } // namespace pxd

@@ -202,6 +202,7 @@ public:
   Json::Value getaccounts () override;
   Json::Value getbuildings () override;
   Json::Value getjobs () override;
+  Json::Value getjobshistory (int fromTime) override;
   Json::Value getcharacters () override;
   Json::Value getgroundloot () override;
   Json::Value getongoings () override;

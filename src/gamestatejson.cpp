@@ -635,9 +635,9 @@ template <>
   return res;
 }
 
-template <>
+template <typename J>
   Json::Value
-  GameStateJson::Convert<Job> (const Job& j) const
+  GameStateJson::JobCommonJson (const J& j) const
 {
   Json::Value res(Json::objectValue);
 
@@ -652,19 +652,6 @@ template <>
      registry, so they can never drift from the game logic.  */
   const char* typeName = JobTypeName (j.GetType ());
   res["type"] = typeName != nullptr ? typeName : "unknown";
-
-  switch (j.GetStatus ())
-    {
-    case Job::Status::OPEN:
-      res["state"] = "open";
-      break;
-    case Job::Status::ACCEPTED:
-      res["state"] = "accepted";
-      break;
-    default:
-      res["state"] = "unknown";
-      break;
-    }
 
   res["reward"] = IntToJson (j.GetReward ());
   res["collateral"] = IntToJson (j.GetCollateral ());
@@ -755,6 +742,42 @@ template <>
          the linked entity already rendered above.  */
       break;
     }
+
+  return res;
+}
+
+template <>
+  Json::Value
+  GameStateJson::Convert<Job> (const Job& j) const
+{
+  Json::Value res = JobCommonJson (j);
+
+  switch (j.GetStatus ())
+    {
+    case Job::Status::OPEN:
+      res["state"] = "open";
+      break;
+    case Job::Status::ACCEPTED:
+      res["state"] = "accepted";
+      break;
+    default:
+      res["state"] = "unknown";
+      break;
+    }
+
+  return res;
+}
+
+template <>
+  Json::Value
+  GameStateJson::Convert<JobHistoryEntry> (const JobHistoryEntry& j) const
+{
+  Json::Value res = JobCommonJson (j);
+
+  const char* outcomeName = JobOutcomeName (j.GetOutcome ());
+  res["outcome"] = outcomeName != nullptr ? outcomeName : "unknown";
+  res["settledheight"] = IntToJson (j.GetSettledHeight ());
+  res["settledtime"] = IntToJson (j.GetSettledTime ());
 
   return res;
 }
@@ -893,6 +916,13 @@ GameStateJson::Jobs ()
 {
   JobsTable tbl(db);
   return ResultsAsArray (tbl, tbl.QueryAll ());
+}
+
+Json::Value
+GameStateJson::JobsHistory (const int64_t fromTime)
+{
+  JobsTable tbl(db);
+  return ResultsAsArray (tbl, tbl.QueryHistory (fromTime));
 }
 
 Json::Value

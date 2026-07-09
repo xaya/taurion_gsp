@@ -162,6 +162,13 @@ class JobsTransportTest (PXTest):
     # Reward + collateral back.
     self.assertEqual (self.available ("courier"), before + 1500 + 4000)
 
+  def historyOutcome (self, jobId):
+    """Returns the outcome recorded in the settled-jobs history (or None)."""
+    for e in self.getRpc ("getjobshistory", fromtime=0):
+      if e["id"] == jobId:
+        return e["outcome"]
+    return None
+
   def testDeliver (self):
     self.mainLogger.info ("Posting a transport job...")
     self.sendMove ("poster", {"j": [{
@@ -204,6 +211,8 @@ class JobsTransportTest (PXTest):
     self.assertEqual (self.available ("courier"),
                       1000000 - 8000 + 2000 + 8000)
     self.assertEqual (self.reserved ("courier"), 0)
+    # The chain deleted the live row; the history holds the true outcome.
+    self.assertEqual (self.historyOutcome (jobId), "completed")
 
   def testCancel (self):
     self.mainLogger.info ("Testing cancel and accept-then-cancel-rejected...")
@@ -223,6 +232,7 @@ class JobsTransportTest (PXTest):
     self.assertEqual (self.getRpc ("getjobs"), [])
     self.assertEqual (self.available ("poster"), before + 1000)
     self.assertEqual (self.reserved ("poster"), 0)
+    self.assertEqual (self.historyOutcome (jobId), "cancelled")
 
     # Repost, have the courier accept, then the poster's cancel is rejected.
     self.sendMove ("poster", post)

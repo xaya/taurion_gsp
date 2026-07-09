@@ -272,6 +272,131 @@ JobsTable::DeleteById (const Database::IdT id)
   stmt.Execute ();
 }
 
+JobHistoryEntry::JobHistoryEntry (const Database::Result<JobHistoryResult>& res)
+{
+  id = res.Get<JobHistoryResult::id> ();
+  type = static_cast<Job::Type> (res.Get<JobHistoryResult::type> ());
+  outcome = static_cast<JobOutcome> (res.Get<JobHistoryResult::outcome> ());
+  settledHeight = res.Get<JobHistoryResult::settled_height> ();
+  settledTime = res.Get<JobHistoryResult::settled_time> ();
+  faction = GetNullableFactionFromColumn (res);
+  poster = res.Get<JobHistoryResult::poster> ();
+
+  if (res.IsNull<JobHistoryResult::worker> ())
+    worker = "";
+  else
+    worker = res.Get<JobHistoryResult::worker> ();
+
+  reward = res.Get<JobHistoryResult::reward> ();
+  collateral = res.Get<JobHistoryResult::collateral> ();
+
+  if (res.IsNull<JobHistoryResult::deadline> ())
+    {
+      hasDeadline = false;
+      deadline = 0;
+    }
+  else
+    {
+      hasDeadline = true;
+      deadline = res.Get<JobHistoryResult::deadline> ();
+    }
+
+  if (res.IsNull<JobHistoryResult::linked_id> ())
+    linkedId = Database::EMPTY_ID;
+  else
+    linkedId = res.Get<JobHistoryResult::linked_id> ();
+
+  if (res.IsNull<JobHistoryResult::linked_name> ())
+    linkedName = "";
+  else
+    linkedName = res.Get<JobHistoryResult::linked_name> ();
+
+  data = res.GetProto<JobHistoryResult::proto> ();
+}
+
+void
+JobsTable::WriteHistory (const Job& job, const JobOutcome outcome,
+                         const unsigned settledHeight,
+                         const int64_t settledTime)
+{
+  CHECK (outcome != JobOutcome::INVALID)
+      << "Job " << job.GetId () << " settling without an outcome";
+
+  auto stmt = db.Prepare (R"(
+    INSERT INTO `job_history`
+      (`id`, `type`, `outcome`, `settled_height`, `settled_time`,
+       `faction`, `poster`, `worker`, `reward`, `collateral`,
+       `deadline`, `linked_id`, `linked_name`, `proto`)
+      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)
+  )");
+
+  stmt.Bind (1, job.GetId ());
+  stmt.Bind (2, static_cast<int> (job.GetType ()));
+  stmt.Bind (3, static_cast<int> (outcome));
+  stmt.Bind (4, static_cast<int64_t> (settledHeight));
+  stmt.Bind (5, settledTime);
+  BindFactionParameter (stmt, 6, job.GetFaction ());
+  stmt.Bind (7, job.GetPoster ());
+
+  if (job.GetWorker ().empty ())
+    stmt.BindNull (8);
+  else
+    stmt.Bind (8, job.GetWorker ());
+
+  stmt.Bind (9, job.GetReward ());
+  stmt.Bind (10, job.GetCollateral ());
+
+  if (job.HasDeadline ())
+    stmt.Bind (11, job.GetDeadline ());
+  else
+    stmt.BindNull (11);
+
+  if (job.GetLinkedId () == Database::EMPTY_ID)
+    stmt.BindNull (12);
+  else
+    stmt.Bind (12, job.GetLinkedId ());
+
+  if (job.GetLinkedName ().empty ())
+    stmt.BindNull (13);
+  else
+    stmt.Bind (13, job.GetLinkedName ());
+
+  /* Friend access: BindProto works on the LazyProto member itself.  */
+  stmt.BindProto (14, job.data);
+
+  stmt.Execute ();
+}
+
+std::unique_ptr<JobHistoryEntry>
+JobsTable::GetFromResult (const Database::Result<JobHistoryResult>& res)
+{
+  return std::unique_ptr<JobHistoryEntry> (new JobHistoryEntry (res));
+}
+
+Database::Result<JobHistoryResult>
+JobsTable::QueryHistory (const int64_t fromTime)
+{
+  auto stmt = db.Prepare (R"(
+    SELECT *
+      FROM `job_history`
+      WHERE `settled_time` >= ?1
+      ORDER BY `settled_time`, `id`
+  )");
+  stmt.Bind (1, fromTime);
+  return stmt.Query<JobHistoryResult> ();
+}
+
+void
+JobsTable::PruneHistory (const int64_t cutoff)
+{
+  auto stmt = db.Prepare (R"(
+    DELETE FROM `job_history`
+      WHERE `settled_time` < ?1
+  )");
+  stmt.Bind (1, cutoff);
+  stmt.Execute ();
+}
+
 namespace
 {
 

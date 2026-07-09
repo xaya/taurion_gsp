@@ -30,6 +30,7 @@ params:
     max_manifest_entries: 20
     bounty_cancel_notice: 604800  # 7 days' notice to close a wanted board
     max_bounty_quota: 25
+    jobs_history_retention: 15552000  # settled jobs stay queryable for 180 days
 
     min_region_ore: 2000000
     max_region_ore: 100000000

@@ -266,7 +266,7 @@ public:
                   const Json::Value& args) const override;
   FulfilResult DoFulfil (const JobContext& jc, Job& job, Account& executor,
                          const Json::Value& args) const override;
-  void OnExpire (const JobContext& jc, Job& job) const override;
+  JobOutcome OnExpire (const JobContext& jc, Job& job) const override;
 
 };
 
@@ -453,7 +453,7 @@ DeliveryPredicate::DoFulfil (const JobContext& jc, Job& job, Account& executor,
   return FulfilResult::COMPLETE;
 }
 
-void
+JobOutcome
 DeliveryPredicate::OnExpire (const JobContext& jc, Job& job) const
 {
   if (job.GetStatus () == Job::Status::ACCEPTED)
@@ -467,14 +467,14 @@ DeliveryPredicate::OnExpire (const JobContext& jc, Job& job) const
           << job.GetReward () << " + forfeited " << job.GetCollateral ()
           << " to poster " << job.GetPoster ();
       SettleFailureAtHook (jc, job);
+      return JobOutcome::FAILED;
     }
-  else
-    {
-      LOG (INFO)
-          << "Open delivery job " << job.GetId () << " expired; refunding "
-          << job.GetReward () << " to poster " << job.GetPoster ();
-      VoidJobAtHook (jc, job);
-    }
+
+  LOG (INFO)
+      << "Open delivery job " << job.GetId () << " expired; refunding "
+      << job.GetReward () << " to poster " << job.GetPoster ();
+  VoidJobAtHook (jc, job);
+  return JobOutcome::VOID;
 }
 
 /* ************************************************************************** */
@@ -512,7 +512,7 @@ public:
                      const Json::Value& terms) const override;
   void ApplyPost (const JobContext& jc, Account& poster,
                   const Json::Value& terms, Job& job) const override;
-  void OnLinkedEntityDestroyed (const JobContext& jc, Job& job) const override;
+  JobOutcome OnLinkedEntityDestroyed (const JobContext& jc, Job& job) const override;
 
 };
 
@@ -567,7 +567,7 @@ TransportPredicate::ApplyPost (const JobContext& jc, Account& poster,
     fungible[entry.first] = entry.second;
 }
 
-void
+JobOutcome
 TransportPredicate::OnLinkedEntityDestroyed (const JobContext& jc,
                                              Job& job) const
 {
@@ -577,6 +577,7 @@ TransportPredicate::OnLinkedEntityDestroyed (const JobContext& jc,
       << "Voided transport job " << job.GetId ()
       << ": destination building " << job.GetLinkedId () << " destroyed";
   VoidJobAtHook (jc, job);
+  return JobOutcome::VOID;
 }
 
 /* ************************************************************************** */
@@ -650,8 +651,8 @@ public:
   void OnAccept (const JobContext& jc, Job& job,
                  Account& worker) const override;
   void OnCancel (const JobContext& jc, Job& job) const override;
-  void OnExpire (const JobContext& jc, Job& job) const override;
-  void OnLinkedEntityDestroyed (const JobContext& jc, Job& job) const override;
+  JobOutcome OnExpire (const JobContext& jc, Job& job) const override;
+  JobOutcome OnLinkedEntityDestroyed (const JobContext& jc, Job& job) const override;
 
 };
 
@@ -761,7 +762,7 @@ HaulPredicate::OnCancel (const JobContext& jc, Job& job) const
   ReturnGoodsToPoster (jc, job);
 }
 
-void
+JobOutcome
 HaulPredicate::OnExpire (const JobContext& jc, Job& job) const
 {
   /* An OPEN haul still holds the poster's reserved goods -- return them
@@ -769,10 +770,10 @@ HaulPredicate::OnExpire (const JobContext& jc, Job& job) const
      one (the worker has the goods; the collateral compensates).  */
   if (job.GetStatus () == Job::Status::OPEN)
     ReturnGoodsToPoster (jc, job);
-  DeliveryPredicate::OnExpire (jc, job);
+  return DeliveryPredicate::OnExpire (jc, job);
 }
 
-void
+JobOutcome
 HaulPredicate::OnLinkedEntityDestroyed (const JobContext& jc, Job& job) const
 {
   if (job.GetStatus () == Job::Status::OPEN)
@@ -791,7 +792,7 @@ HaulPredicate::OnLinkedEntityDestroyed (const JobContext& jc, Job& job) const
           << "Voided open haul job " << job.GetId () << ": source building "
           << hp.source_building () << " destroyed, goods dropped as loot";
       VoidJobAtHook (jc, job);
-      return;
+      return JobOutcome::VOID;
     }
 
   /* ACCEPTED: the destination died mid-haul -- not the worker's fault.  */
@@ -799,6 +800,7 @@ HaulPredicate::OnLinkedEntityDestroyed (const JobContext& jc, Job& job) const
       << "Voided haul job " << job.GetId () << ": destination building "
       << job.GetLinkedId () << " destroyed";
   VoidJobAtHook (jc, job);
+  return JobOutcome::VOID;
 }
 
 /* ************************************************************************** */
@@ -850,7 +852,7 @@ public:
     return false;
   }
 
-  void
+  JobOutcome
   OnExpire (const JobContext& jc, Job& job) const override
   {
     /* Only reachable when a notice-cancel converted the standing pool into
@@ -860,6 +862,7 @@ public:
         << "Wanted board " << job.GetId () << " closed; refunding unearned "
         << job.GetReward () << " to " << job.GetPoster ();
     VoidJobAtHook (jc, job);
+    return JobOutcome::VOID;
   }
 
   bool OnTargetKill (const JobContext& jc, Job& job,
@@ -994,13 +997,13 @@ private:
    * success case.  Kills run before the expiry sweep, so "alive at expiry"
    * is well-defined.
    */
-  void
+  JobOutcome
   Settle (const JobContext& jc, Job& job, const bool destroyed) const
   {
     if (job.GetStatus () != Job::Status::ACCEPTED)
       {
         VoidJobAtHook (jc, job);
-        return;
+        return JobOutcome::VOID;
       }
 
     const bool success = (destroyed == DestructionIsSuccess ());
@@ -1010,9 +1013,12 @@ private:
         << ", worker " << job.GetWorker ()
         << (success ? " succeeded" : " failed");
     if (success)
-      SettleSuccessAtHook (jc, job);
-    else
-      SettleFailureAtHook (jc, job);
+      {
+        SettleSuccessAtHook (jc, job);
+        return JobOutcome::COMPLETED;
+      }
+    SettleFailureAtHook (jc, job);
+    return JobOutcome::FAILED;
   }
 
 public:
@@ -1023,16 +1029,16 @@ public:
     return true;
   }
 
-  void
+  JobOutcome
   OnExpire (const JobContext& jc, Job& job) const override
   {
-    Settle (jc, job, false);
+    return Settle (jc, job, false);
   }
 
-  void
+  JobOutcome
   OnLinkedEntityDestroyed (const JobContext& jc, Job& job) const override
   {
-    Settle (jc, job, true);
+    return Settle (jc, job, true);
   }
 
 };
@@ -1269,7 +1275,7 @@ public:
     return FulfilResult::COMPLETE;
   }
 
-  void
+  JobOutcome
   OnExpire (const JobContext& jc, Job& job) const override
   {
     if (job.GetStatus () == Job::Status::ACCEPTED)
@@ -1277,9 +1283,10 @@ public:
         LOG (INFO)
             << "Escort job " << job.GetId () << " expired unfulfilled";
         SettleFailureAtHook (jc, job);
+        return JobOutcome::FAILED;
       }
-    else
-      VoidJobAtHook (jc, job);
+    VoidJobAtHook (jc, job);
+    return JobOutcome::VOID;
   }
 
 };
@@ -1415,7 +1422,7 @@ public:
     return FulfilResult::COMPLETE;
   }
 
-  void
+  JobOutcome
   OnExpire (const JobContext& jc, Job& job) const override
   {
     if (job.GetStatus () == Job::Status::ACCEPTED)
@@ -1425,9 +1432,10 @@ public:
             << "Patrol job " << job.GetId () << " expired after "
             << job.GetProto ().patrol ().checkins_done () << " check-ins";
         SettleFailureAtHook (jc, job);
+        return JobOutcome::FAILED;
       }
-    else
-      VoidJobAtHook (jc, job);
+    VoidJobAtHook (jc, job);
+    return JobOutcome::VOID;
   }
 
 };
@@ -1644,13 +1652,13 @@ public:
     return FulfilResult::COMPLETE;
   }
 
-  void
+  JobOutcome
   OnExpire (const JobContext& jc, Job& job) const override
   {
     if (job.GetStatus () != Job::Status::ACCEPTED)
       {
         VoidJobAtHook (jc, job);
-        return;
+        return JobOutcome::VOID;
       }
 
     if (GoodsReturned (jc, job))
@@ -1663,7 +1671,7 @@ public:
         MoveGoods (jc, job, job.GetPoster (), job.GetWorker ());
         auto renter = GetAccountChecked (jc, job.GetPoster ());
         SettleCleanReturn (jc, job, *renter);
-        return;
+        return JobOutcome::COMPLETED;
       }
 
     /* Non-return: rent + deposit both default to the lessor.  */
@@ -1676,6 +1684,7 @@ public:
     }
     auto renter = GetAccountChecked (jc, job.GetPoster ());
     BumpJobStats (*renter, false, 0);
+    return JobOutcome::FAILED;
   }
 
 };
@@ -1783,7 +1792,7 @@ public:
     return true;
   }
 
-  void
+  JobOutcome
   OnExpire (const JobContext& jc, Job& job) const override
   {
     if (job.GetStatus () == Job::Status::ACCEPTED)
@@ -1793,12 +1802,13 @@ public:
             << "Ad job " << job.GetId () << " completed its period; paying "
             << job.GetReward () << " to " << job.GetWorker ();
         SettleSuccessAtHook (jc, job);
+        return JobOutcome::COMPLETED;
       }
-    else
-      VoidJobAtHook (jc, job);
+    VoidJobAtHook (jc, job);
+    return JobOutcome::VOID;
   }
 
-  void
+  JobOutcome
   OnLinkedEntityDestroyed (const JobContext& jc, Job& job) const override
   {
     /* The building died mid-period: the advertiser gets the rent back.  */
@@ -1806,6 +1816,7 @@ public:
         << "Voided ad job " << job.GetId () << ": building "
         << job.GetLinkedId () << " destroyed";
     VoidJobAtHook (jc, job);
+    return JobOutcome::VOID;
   }
 
 };
@@ -1880,7 +1891,7 @@ public:
     job.MutableProto ().set_designated_worker (terms["w"].asString ());
   }
 
-  void
+  JobOutcome
   OnExpire (const JobContext& jc, Job& job) const override
   {
     if (job.GetStatus () == Job::Status::ACCEPTED)
@@ -1891,12 +1902,13 @@ public:
             << "Toll job " << job.GetId () << " window elapsed; paying "
             << job.GetReward () << " to " << job.GetWorker ();
         SettleSuccessAtHook (jc, job);
+        return JobOutcome::COMPLETED;
       }
-    else
-      VoidJobAtHook (jc, job);
+    VoidJobAtHook (jc, job);
+    return JobOutcome::VOID;
   }
 
-  void
+  JobOutcome
   OnLinkedEntityDestroyed (const JobContext& jc, Job& job) const override
   {
     /* The traveller died inside the window: the toll refunds -- the
@@ -1905,6 +1917,7 @@ public:
         << "Voided toll job " << job.GetId () << ": traveller "
         << job.GetLinkedId () << " died";
     VoidJobAtHook (jc, job);
+    return JobOutcome::VOID;
   }
 
 };
@@ -1978,6 +1991,26 @@ JobTypeName (const Job::Type type)
     if (type == entry.type)
       return entry.name;
   return nullptr;
+}
+
+const char*
+JobOutcomeName (const JobOutcome outcome)
+{
+  switch (outcome)
+    {
+    case JobOutcome::COMPLETED:
+      return "completed";
+    case JobOutcome::FAILED:
+      return "failed";
+    case JobOutcome::CANCELLED:
+      return "cancelled";
+    case JobOutcome::VOID:
+      return "void";
+    case JobOutcome::DRAINED:
+      return "drained";
+    default:
+      return nullptr;
+    }
 }
 
 /* ************************************************************************** */
@@ -2432,6 +2465,8 @@ CancelOperation::Execute ()
 
   pred->OnCancel (jc, *job);
 
+  jc.jobs.WriteHistory (*job, JobOutcome::CANCELLED,
+                        jc.ctx.Height (), jc.ctx.Timestamp ());
   job.reset ();
   ReleaseJobCoins (account, reward);
   jc.jobs.DeleteById (jobId);
@@ -2513,6 +2548,8 @@ FulfilOperation::Execute ()
 
   if (result == FulfilResult::COMPLETE)
     {
+      jc.jobs.WriteHistory (*job, JobOutcome::COMPLETED,
+                            jc.ctx.Height (), jc.ctx.Timestamp ());
       job.reset ();
       jc.jobs.DeleteById (jobId);
     }
@@ -2657,6 +2694,15 @@ ExpireJobs (Database& db, const Context& ctx)
 {
   JobsTable jobs(db);
 
+  /* The deterministic retention prune for the settled-jobs history: on most
+     blocks an indexed no-op, and a negative cutoff early in a chain's life
+     simply matches nothing.  An unset retention (0) means keep forever
+     rather than keep nothing.  */
+  const int64_t retention
+      = ctx.RoConfig ()->params ().jobs_history_retention ();
+  if (retention > 0)
+    jobs.PruneHistory (ctx.Timestamp () - retention);
+
   /* Snapshot the due jobs (fully consuming the query) before mutating any
      balances or deleting rows.  On idle blocks this is an indexed no-op.  */
   std::vector<Database::IdT> due;
@@ -2683,7 +2729,8 @@ ExpireJobs (Database& db, const Context& ctx)
       CHECK (j != nullptr);
       const auto* pred = PredicateForType (j->GetType ());
       CHECK (pred != nullptr);
-      pred->OnExpire (jc, *j);
+      const JobOutcome outcome = pred->OnExpire (jc, *j);
+      tables.jobs.WriteHistory (*j, outcome, ctx.Height (), ctx.Timestamp ());
       j.reset ();
       tables.jobs.DeleteById (id);
     }
@@ -2718,7 +2765,8 @@ OnJobEntityDestroyed (Database& db, const Context& ctx,
       CHECK (j != nullptr);
       const auto* pred = PredicateForType (j->GetType ());
       CHECK (pred != nullptr);
-      pred->OnLinkedEntityDestroyed (jc, *j);
+      const JobOutcome outcome = pred->OnLinkedEntityDestroyed (jc, *j);
+      tables.jobs.WriteHistory (*j, outcome, ctx.Height (), ctx.Timestamp ());
       j.reset ();
       tables.jobs.DeleteById (id);
     }
@@ -2797,6 +2845,9 @@ JobsBountyTracker::UpdateForKill (const proto::TargetId& target)
       if (!pred->SettlesOnTargetKill ())
         continue;
       const bool drained = pred->OnTargetKill (jc, *j, owners);
+      if (drained)
+        tables.jobs.WriteHistory (*j, JobOutcome::DRAINED,
+                                  ctx.Height (), ctx.Timestamp ());
       j.reset ();
       if (drained)
         tables.jobs.DeleteById (id);

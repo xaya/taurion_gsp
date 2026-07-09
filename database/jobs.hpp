@@ -56,6 +56,46 @@ struct JobResult : public ResultWithFaction
 };
 
 /**
+ * Why a job left the board -- the `outcome` column of the job_history table.
+ * The numeric values are consensus-relevant (never renumber).
+ */
+enum class JobOutcome
+{
+  INVALID = -1,
+  /** The worker delivered / held the term: reward paid, counters bumped.  */
+  COMPLETED = 0,
+  /** The accepted worker missed or lost it: collateral forfeited.  */
+  FAILED = 1,
+  /** The poster pulled an open post: escrow refunded.  */
+  CANCELLED = 2,
+  /** Expired or voided through neither party's fault: refunds all round.  */
+  VOID = 3,
+  /** A standing pool fully consumed by qualifying kills.  */
+  DRAINED = 4,
+};
+
+/**
+ * Database result type for rows from the job_history table.  Same faction
+ * handling as JobResult.
+ */
+struct JobHistoryResult : public ResultWithFaction
+{
+  RESULT_COLUMN (int64_t, id, 1);
+  RESULT_COLUMN (int64_t, type, 2);
+  RESULT_COLUMN (int64_t, outcome, 3);
+  RESULT_COLUMN (int64_t, settled_height, 4);
+  RESULT_COLUMN (int64_t, settled_time, 5);
+  RESULT_COLUMN (std::string, poster, 6);
+  RESULT_COLUMN (std::string, worker, 7);
+  RESULT_COLUMN (int64_t, reward, 8);
+  RESULT_COLUMN (int64_t, collateral, 9);
+  RESULT_COLUMN (int64_t, deadline, 10);
+  RESULT_COLUMN (int64_t, linked_id, 11);
+  RESULT_COLUMN (std::string, linked_name, 12);
+  RESULT_COLUMN (pxd::proto::JobData, proto, 13);
+};
+
+/**
  * Wrapper class around a job on the jobs board in the database.  Instances
  * should be obtained through JobsTable.  The scalar column fields can be
  * modified (status on accept, worker on accept, deadline on notice-cancel,
@@ -314,6 +354,67 @@ public:
 };
 
 /**
+ * Read-only view of one settled job from the job_history table.  Exposes the
+ * same getter surface as Job for the fields both share (so the JSON
+ * conversion is one shared template), plus the settlement metadata.
+ */
+class JobHistoryEntry
+{
+
+private:
+
+  Database::IdT id;
+  Job::Type type;
+  JobOutcome outcome;
+  unsigned settledHeight;
+  int64_t settledTime;
+  Faction faction;
+  std::string poster;
+  std::string worker;
+  Amount reward;
+  Amount collateral;
+  bool hasDeadline;
+  int64_t deadline;
+  Database::IdT linkedId;
+  std::string linkedName;
+  LazyProto<proto::JobData> data;
+
+  explicit JobHistoryEntry (const Database::Result<JobHistoryResult>& res);
+
+  friend class JobsTable;
+
+public:
+
+  JobHistoryEntry () = delete;
+  JobHistoryEntry (const JobHistoryEntry&) = delete;
+  void operator= (const JobHistoryEntry&) = delete;
+
+  Database::IdT GetId () const { return id; }
+  Job::Type GetType () const { return type; }
+  JobOutcome GetOutcome () const { return outcome; }
+  unsigned GetSettledHeight () const { return settledHeight; }
+  int64_t GetSettledTime () const { return settledTime; }
+  Faction GetFaction () const { return faction; }
+  const std::string& GetPoster () const { return poster; }
+  const std::string& GetWorker () const { return worker; }
+  Amount GetReward () const { return reward; }
+  Amount GetCollateral () const { return collateral; }
+  bool HasDeadline () const { return hasDeadline; }
+
+  int64_t
+  GetDeadline () const
+  {
+    CHECK (hasDeadline) << "History row " << id << " has no deadline";
+    return deadline;
+  }
+
+  Database::IdT GetLinkedId () const { return linkedId; }
+  const std::string& GetLinkedName () const { return linkedName; }
+  const proto::JobData& GetProto () const { return data.Get (); }
+
+};
+
+/**
  * Utility class that handles querying the jobs table in the database and
  * should be used to obtain Job instances.
  */
@@ -396,6 +497,35 @@ public:
    * (fulfil / cancel / expire / void) to keep the table bounded.
    */
   void DeleteById (Database::IdT id);
+
+  /**
+   * Writes the settled-jobs history row for a job that is about to be
+   * deleted by a terminal transition, snapshotting its final state together
+   * with the outcome and the settling block's height / consensus timestamp.
+   * Every DeleteById on a settlement path must be preceded by this.
+   */
+  void WriteHistory (const Job& job, JobOutcome outcome,
+                     unsigned settledHeight, int64_t settledTime);
+
+  /**
+   * Returns an entry for the given history result row.
+   */
+  std::unique_ptr<JobHistoryEntry>
+      GetFromResult (const Database::Result<JobHistoryResult>& res);
+
+  /**
+   * Queries the settled-jobs history, ordered by settlement time then ID,
+   * starting at the given settled_time (inclusive; 0 = everything within
+   * retention).  Serves the getjobshistory RPC's incremental reads.
+   */
+  Database::Result<JobHistoryResult> QueryHistory (int64_t fromTime);
+
+  /**
+   * Deletes history rows settled strictly before the cutoff timestamp: the
+   * deterministic retention prune, run by the per-block expiry sweep with
+   * cutoff = now - params.jobs_history_retention.
+   */
+  void PruneHistory (int64_t cutoff);
 
   /**
    * Returns the total vCHI reserved by each account on the jobs board: the

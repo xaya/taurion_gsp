@@ -534,6 +534,17 @@ PXRpcServer::getjobs ()
 }
 
 Json::Value
+PXRpcServer::getjobshistory (const int fromTime)
+{
+  LOG (INFO) << "RPC method called: getjobshistory " << fromTime;
+  return logic.GetCustomStateData (game,
+    [fromTime] (GameStateJson& gsj)
+      {
+        return gsj.JobsHistory (fromTime);
+      });
+}
+
+Json::Value
 PXRpcServer::getcharacters ()
 {
   LOG (INFO) << "RPC method called: getcharacters";

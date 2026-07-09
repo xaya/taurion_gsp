@@ -45,6 +45,13 @@
     "returns": {}
   },
   {
+    "name": "getjobshistory",
+    "params": {
+      "fromtime": 42
+    },
+    "returns": {}
+  },
+  {
     "name": "getcharacters",
     "params": {},
     "returns": {}

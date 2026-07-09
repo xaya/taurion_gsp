@@ -306,17 +306,19 @@ public:
    * case (type-specific: the delivery family fails and forfeits collateral to
    * the poster; the success-on-expiry types -- protect, bodyguard, ad-slot,
    * toll -- pay the worker).  Kills are processed before the expiry sweep
-   * within a block, so "alive at expiry" is well-defined.  The caller deletes
-   * the row afterwards.
+   * within a block, so "alive at expiry" is well-defined.  Returns the
+   * outcome the caller records in the job_history table before deleting
+   * the row.
    */
-  virtual void OnExpire (const JobContext& jc, Job& job) const = 0;
+  virtual JobOutcome OnExpire (const JobContext& jc, Job& job) const = 0;
 
   /**
    * Settles a job whose linked entity (building or character) was destroyed
-   * (confirmed block only).  The caller deletes the row afterwards.  Types
-   * that never set linked_id keep this default, which must never be reached.
+   * (confirmed block only).  Returns the outcome the caller records in the
+   * job_history table before deleting the row.  Types that never set
+   * linked_id keep this default, which must never be reached.
    */
-  virtual void
+  virtual JobOutcome
   OnLinkedEntityDestroyed (const JobContext& jc, Job& job) const
   {
     LOG (FATAL) << "Job " << job.GetId () << " has no linked entity";
@@ -349,6 +351,9 @@ Job::Type JobTypeFromString (const std::string& name);
 
 /** Returns the move/JSON name for a job type, or nullptr if unknown.  */
 const char* JobTypeName (Job::Type type);
+
+/** Returns the JSON name for a history outcome, or nullptr if unknown.  */
+const char* JobOutcomeName (JobOutcome outcome);
 
 /* ************************************************************************** */
 /* The generic move-op lifecycle.                                             */
