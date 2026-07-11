@@ -1052,6 +1052,8 @@ class KillProcessor
 
 private:
 
+  Database& db;
+
   xaya::Random& rnd;
   const Context& ctx;
 
@@ -1086,7 +1088,7 @@ public:
   explicit KillProcessor (Database& db, DynObstacles& dyno,
                           DamageLists& dl, GroundLootTable& l,
                           xaya::Random& r, const Context& c)
-    : rnd(r), ctx(c), dyn(dyno), damageLists(dl), loot(l),
+    : db(db), rnd(r), ctx(c), dyn(dyno), damageLists(dl), loot(l),
       accounts(db), buildings(db), inventories(db), characters(db),
       orders(db), ongoings(db), regions(db, ctx.BlockHeight ())
   {}
@@ -1184,10 +1186,29 @@ KillProcessor::ProcessBuilding (const Database::IdT id)
   }
 
   {
-    auto res = characters.QueryForBuilding (id);
-    while (res.Step ())
+    /* Snapshot the docked characters up front.  Settling each one's
+       character-linked jobs (bodyguard, toll) opens its own job and account
+       table handles, so we must not do it while a characters query is live;
+       and because these characters are destroyed as a side effect of the
+       building (they never enter the combat "dead" set), they would otherwise
+       skip the per-character jobs hook that ProcessKills runs for a directly
+       killed character.  */
+    std::vector<Database::IdT> dockedChars;
+    {
+      auto res = characters.QueryForBuilding (id);
+      while (res.Step ())
+        dockedChars.push_back (characters.GetFromResult (res)->GetId ());
+    }
+
+    for (const auto charId : dockedChars)
       {
-        auto c = characters.GetFromResult (res);
+        /* Settle the character's jobs while its row still exists, exactly as
+           the normal-death path does -- a linked bodyguard/toll must read the
+           death as a death, not as survival at the deadline.  */
+        OnJobEntityDestroyed (db, ctx, charId);
+
+        auto c = characters.GetById (charId);
+        CHECK (c != nullptr);
         totalInv += c->GetInventory ();
         const auto& pb = c->GetProto ();
         /* Normally the character always has a vehicle, but in some tests

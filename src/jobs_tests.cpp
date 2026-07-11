@@ -18,6 +18,7 @@
 
 #include "jobs.hpp"
 
+#include "combat.hpp"
 #include "jsonutils.hpp"
 #include "testutils.hpp"
 
@@ -196,6 +197,25 @@ protected:
     tracker.UpdateForKill (target);
   }
 
+  /**
+   * Destroys the building through the real combat kill path (ProcessKills ->
+   * ProcessBuilding), so that settlement of jobs linked to characters docked
+   * inside it is exercised end to end -- not by calling OnJobEntityDestroyed
+   * directly.
+   */
+  void
+  DestroyBuildingViaCombat (const Database::IdT id)
+  {
+    proto::TargetId target;
+    target.set_type (proto::TargetId::TYPE_BUILDING);
+    target.set_id (id);
+
+    DynObstacles dyn(db, ctx);
+    DamageLists dmg(db, ctx.Height ());
+    TestRandom rnd;
+    ProcessKills (db, dyn, dmg, groundLoot, {target}, rnd, ctx);
+  }
+
   /** Returns (completed, failed, failed-as-poster, value) for an account.  */
   std::tuple<unsigned, unsigned, unsigned, Amount>
   JobStats (const std::string& name)
@@ -240,6 +260,22 @@ protected:
     return id;
   }
 
+  /** Returns the highest job ID in the table (i.e. the one just posted).  */
+  Database::IdT
+  LatestJobId ()
+  {
+    Database::IdT best = 0;
+    auto res = jobs.QueryAll ();
+    while (res.Step ())
+      {
+        const auto id = jobs.GetFromResult (res)->GetId ();
+        if (id > best)
+          best = id;
+      }
+    CHECK_GT (best, 0);
+    return best;
+  }
+
   bool
   JobExists (const Database::IdT id)
   {
@@ -273,7 +309,7 @@ protected:
   PostAssignAccept (const std::string& post, const std::string& worker)
   {
     CHECK (Process ("poster", post));
-    const auto id = OnlyJobId ();
+    const auto id = LatestJobId ();
     CHECK (Process ("poster",
         R"({"s":)" + std::to_string (id) + R"(,"w":")" + worker + R"("})"));
     CHECK (Process (worker, R"({"a":)" + std::to_string (id) + "}"));
@@ -1279,6 +1315,51 @@ TEST_F (EntityFateTests, BodyguardSuccessOnExpiry)
   EXPECT_EQ (Balance ("courier"), 1000000 + 1000);
 }
 
+TEST_F (EntityFateTests, BodyguardProtecteeDockedInDestroyedBuildingFails)
+{
+  /* The protectee is docked inside a building that is then destroyed in
+     combat.  The destruction deletes the character, which must still settle
+     the bodyguard as a failure (forfeit to the poster) -- not leave a job
+     dangling on a deleted character, and not pay the worker as if the
+     protectee had survived to the deadline.  */
+  const auto protectee = MakeCharacter ("poster", 1, {});
+  const auto id = PostAssignAccept (
+      R"({"t":"bodyguard","d":86400,"r":1000,"co":500,"ch":)"
+      + std::to_string (protectee) + "}", "courier");
+
+  DestroyBuildingViaCombat (1);
+
+  EXPECT_FALSE (JobExists (id));
+  EXPECT_EQ (Balance ("poster"), 1000000 - 10 + 500);
+  EXPECT_EQ (Balance ("courier"), 1000000 - 500);
+  EXPECT_EQ (JobStats ("courier"), std::make_tuple (0u, 1u, 0u, 0));
+  EXPECT_EQ (JobStats ("poster"), std::make_tuple (0u, 0u, 1u, 0));
+}
+
+TEST_F (EntityFateTests, MultipleDockedProtecteesAllSettleOnDestruction)
+{
+  /* Several characters with independent bodyguard jobs are docked in one
+     building: destroying it must settle every one of them, not just the
+     first.  */
+  const auto p1 = MakeCharacter ("poster", 1, {});
+  const auto p2 = MakeCharacter ("poster", 1, {});
+  const auto id1 = PostAssignAccept (
+      R"({"t":"bodyguard","d":86400,"r":1000,"co":500,"ch":)"
+      + std::to_string (p1) + "}", "courier");
+  const auto id2 = PostAssignAccept (
+      R"({"t":"bodyguard","d":86400,"r":1000,"co":500,"ch":)"
+      + std::to_string (p2) + "}", "courier2");
+
+  DestroyBuildingViaCombat (1);
+
+  EXPECT_FALSE (JobExists (id1));
+  EXPECT_FALSE (JobExists (id2));
+  /* Both forfeited to the poster: 2 x collateral gained, 2 x fee burned.  */
+  EXPECT_EQ (Balance ("poster"), 1000000 - 20 + 1000);
+  EXPECT_EQ (Balance ("courier"), 1000000 - 500);
+  EXPECT_EQ (Balance ("courier2"), 1000000 - 500);
+}
+
 /* ************************************************************************** */
 /* Escort.                                                                    */
 
@@ -1680,6 +1761,26 @@ TEST_F (TollTests, TravellerDiesRefundsToll)
   OnJobEntityDestroyed (db, ctx, traveller);
   EXPECT_FALSE (JobExists (id));
   /* Kill the payer and the toll refunds: the gatekeeper gets nothing.  */
+  EXPECT_EQ (Balance ("poster"), 1000000 - 5);
+  EXPECT_EQ (Balance ("green"), 1000000);
+}
+
+TEST_F (TollTests, TravellerDockedInDestroyedBuildingRefunds)
+{
+  /* The traveller is docked inside a building that is then destroyed in
+     combat: the toll must void and refund, exactly as an open-field death
+     does -- the destruction must not read as the traveller surviving the
+     window and pay the gatekeeper.  */
+  const auto docked = MakeCharacter ("poster", 1, {});
+  CHECK (Process ("poster",
+      R"({"t":"toll","d":86400,"r":500,"co":0,"ch":)"
+      + std::to_string (docked) + R"(,"w":"green"})"));
+  const auto id = OnlyJobId ();
+  ASSERT_TRUE (Process ("green", R"({"a":)" + std::to_string (id) + "}"));
+
+  DestroyBuildingViaCombat (1);
+
+  EXPECT_FALSE (JobExists (id));
   EXPECT_EQ (Balance ("poster"), 1000000 - 5);
   EXPECT_EQ (Balance ("green"), 1000000);
 }
