@@ -542,6 +542,28 @@ TEST_F (JobsTests, FulfilFromOwnInventoryMultiTrip)
   EXPECT_EQ (ItemBalance (1, "courier", "foo"), 0);
 }
 
+TEST_F (JobsTests, FulfilRejectedAtOrAfterDeadline)
+{
+  const auto id = PostAndAccept ();       // deadline = BASE_TS + DAY
+  StageGoods (1, "courier", {{"foo", 5}}); // goods ready: only the deadline can reject
+
+  /* At the deadline the job is already due for the expiry sweep, so it may no
+     longer be fulfilled.  */
+  ctx.SetTimestamp (BASE_TS + DAY);
+  EXPECT_FALSE (Process ("courier", R"({"f":)" + std::to_string (id) + "}"));
+  EXPECT_TRUE (JobExists (id));
+
+  /* Past the deadline: still rejected.  */
+  ctx.SetTimestamp (BASE_TS + DAY + 100);
+  EXPECT_FALSE (Process ("courier", R"({"f":)" + std::to_string (id) + "}"));
+  EXPECT_TRUE (JobExists (id));
+
+  /* One second before the deadline: the fulfil goes through.  */
+  ctx.SetTimestamp (BASE_TS + DAY - 1);
+  EXPECT_TRUE (Process ("courier", R"({"f":)" + std::to_string (id) + "}"));
+  EXPECT_FALSE (JobExists (id));
+}
+
 TEST_F (JobsTests, FulfilPartialDumpsRecordProgress)
 {
   /* Andy's bit-by-bit: each cargo dump delivers what the character carries

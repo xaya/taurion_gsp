@@ -2529,6 +2529,18 @@ FulfilOperation::IsValid () const
       return false;
     }
 
+  /* A job at or past its deadline is already due for this block's expiry
+     sweep (a due job is deadline <= now), and moves run before ExpireJobs.
+     The deadline is exclusive, so allowing a fulfil in the deadline block
+     would turn an expiry FAILED into a COMPLETED.  Standing jobs (no
+     deadline) are exempt.  */
+  if (job->HasDeadline () && job->GetDeadline () <= jc.ctx.Timestamp ())
+    {
+      LOG (WARNING)
+          << "Job " << jobId << " is at or past its deadline; cannot fulfil";
+      return false;
+    }
+
   return pred->CanFulfil (jc, *job, account, args);
 }
 
