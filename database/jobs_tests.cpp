@@ -315,5 +315,55 @@ TEST_F (JobHistoryTests, Prune)
   EXPECT_FALSE (res.Step ());
 }
 
+TEST_F (JobHistoryTests, CursorPaginationCoversEveryRowOnce)
+{
+  /* Six settlements, including rows that share a settled_time, to exercise
+     the (settled_time, id) tie-break in the cursor.  */
+  const int64_t times[] = {100, 100, 200, 200, 200, 300};
+  for (int i = 0; i < 6; ++i)
+    {
+      auto j = CreateTransport (Faction::RED, "poster", i + 1, 0, 10, 1);
+      tbl.WriteHistory (*j, JobOutcome::COMPLETED, i + 1, times[i]);
+    }
+
+  /* Page one row at a time via the (settled_time, id) cursor; every row must
+     appear exactly once, in (settled_time, id) order.  */
+  std::vector<Amount> paged;
+  int64_t afterT = 0, afterId = 0;
+  for (;;)
+    {
+      auto res = tbl.QueryHistory (0, afterT, afterId, 1);
+      if (!res.Step ())
+        break;
+      auto e = tbl.GetFromResult (res);
+      paged.push_back (e->GetReward ());
+      afterT = e->GetSettledTime ();
+      afterId = e->GetId ();
+      EXPECT_FALSE (res.Step ());   // the page limit of one is honoured
+    }
+  /* Rewards were assigned in id order and ids ascend with settled_time here,
+     so the (settled_time, id) order is rewards 1..6.  */
+  EXPECT_THAT (paged, ElementsAre (1, 2, 3, 4, 5, 6));
+}
+
+TEST_F (JobHistoryTests, LimitClampsToTheHardCap)
+{
+  for (int i = 0; i < 3; ++i)
+    {
+      auto j = CreateTransport (Faction::RED, "poster", i + 1, 0, 10, 1);
+      tbl.WriteHistory (*j, JobOutcome::COMPLETED, i + 1, 100 + i);
+    }
+  /* limit <= 0 and an over-cap limit both fall back to the cap (>= 3 here),
+     so every row comes back.  */
+  for (const int lim : {0, -1, JobsTable::MAX_HISTORY_PAGE + 1})
+    {
+      int n = 0;
+      auto res = tbl.QueryHistory (0, 0, 0, lim);
+      while (res.Step ())
+        ++n;
+      EXPECT_EQ (n, 3);
+    }
+}
+
 } // anonymous namespace
 } // namespace pxd

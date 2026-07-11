@@ -122,7 +122,8 @@ public:
    * table), from the given settlement timestamp onwards (0 = the whole
    * retention window).
    */
-  Json::Value JobsHistory (int64_t fromTime);
+  Json::Value JobsHistory (int64_t fromTime, int64_t afterTime,
+                           int64_t afterId, int limit);
 
   /**
    * Returns the JSON data representing all characters in the game state.

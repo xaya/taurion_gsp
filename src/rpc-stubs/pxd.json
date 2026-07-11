@@ -47,7 +47,10 @@
   {
     "name": "getjobshistory",
     "params": {
-      "fromtime": 42
+      "fromtime": 42,
+      "aftertime": 42,
+      "afterid": 42,
+      "limit": 42
     },
     "returns": {}
   },

@@ -374,15 +374,23 @@ JobsTable::GetFromResult (const Database::Result<JobHistoryResult>& res)
 }
 
 Database::Result<JobHistoryResult>
-JobsTable::QueryHistory (const int64_t fromTime)
+JobsTable::QueryHistory (const int64_t fromTime, const int64_t afterTime,
+                         const int64_t afterId, const int limit)
 {
+  const int page = (limit <= 0 || limit > MAX_HISTORY_PAGE)
+      ? MAX_HISTORY_PAGE : limit;
   auto stmt = db.Prepare (R"(
     SELECT *
       FROM `job_history`
       WHERE `settled_time` >= ?1
+        AND (`settled_time` > ?2 OR (`settled_time` = ?2 AND `id` > ?3))
       ORDER BY `settled_time`, `id`
+      LIMIT ?4
   )");
   stmt.Bind (1, fromTime);
+  stmt.Bind (2, afterTime);
+  stmt.Bind (3, afterId);
+  stmt.Bind (4, page);
   return stmt.Query<JobHistoryResult> ();
 }
 

@@ -513,12 +513,24 @@ public:
   std::unique_ptr<JobHistoryEntry>
       GetFromResult (const Database::Result<JobHistoryResult>& res);
 
+  /** Hard cap on rows returned by a single QueryHistory / getjobshistory
+      call, so no single response is unbounded; callers page past it with the
+      (settled_time, id) cursor.  */
+  static constexpr int MAX_HISTORY_PAGE = 2000;
+
   /**
-   * Queries the settled-jobs history, ordered by settlement time then ID,
-   * starting at the given settled_time (inclusive; 0 = everything within
-   * retention).  Serves the getjobshistory RPC's incremental reads.
+   * Queries the settled-jobs history, ordered by settlement time then ID.
+   * `fromTime` is an inclusive lower bound on settled_time (0 = everything
+   * within retention).  `(afterTime, afterId)` is an exclusive continuation
+   * cursor over the (settled_time, id) tuple (0,0 = from the start).  At most
+   * `limit` rows are returned, itself clamped to MAX_HISTORY_PAGE (limit <= 0
+   * uses the cap).  Callers page by passing the last returned row's
+   * (settled_time, id) as the next cursor.
    */
-  Database::Result<JobHistoryResult> QueryHistory (int64_t fromTime);
+  Database::Result<JobHistoryResult> QueryHistory (int64_t fromTime,
+                                                   int64_t afterTime = 0,
+                                                   int64_t afterId = 0,
+                                                   int limit = 0);
 
   /**
    * Deletes history rows settled strictly before the cutoff timestamp: the

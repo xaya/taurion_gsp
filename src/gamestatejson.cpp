@@ -920,10 +920,12 @@ GameStateJson::Jobs ()
 }
 
 Json::Value
-GameStateJson::JobsHistory (const int64_t fromTime)
+GameStateJson::JobsHistory (const int64_t fromTime, const int64_t afterTime,
+                           const int64_t afterId, const int limit)
 {
   JobsTable tbl(db);
-  return ResultsAsArray (tbl, tbl.QueryHistory (fromTime));
+  return ResultsAsArray (tbl,
+                         tbl.QueryHistory (fromTime, afterTime, afterId, limit));
 }
 
 Json::Value

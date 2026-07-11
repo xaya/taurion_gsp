@@ -164,7 +164,8 @@ class JobsTransportTest (PXTest):
 
   def historyOutcome (self, jobId):
     """Returns the outcome recorded in the settled-jobs history (or None)."""
-    for e in self.getRpc ("getjobshistory", fromtime=0):
+    for e in self.getRpc ("getjobshistory", fromtime=0, aftertime=0, afterid=0,
+                          limit=0):
       if e["id"] == jobId:
         return e["outcome"]
     return None

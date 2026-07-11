@@ -534,13 +534,14 @@ PXRpcServer::getjobs ()
 }
 
 Json::Value
-PXRpcServer::getjobshistory (const int fromTime)
+PXRpcServer::getjobshistory (const int fromTime, const int afterTime,
+                            const int afterId, const int limit)
 {
   LOG (INFO) << "RPC method called: getjobshistory " << fromTime;
   return logic.GetCustomStateData (game,
-    [fromTime] (GameStateJson& gsj)
+    [fromTime, afterTime, afterId, limit] (GameStateJson& gsj)
       {
-        return gsj.JobsHistory (fromTime);
+        return gsj.JobsHistory (fromTime, afterTime, afterId, limit);
       });
 }
 
