@@ -1026,6 +1026,34 @@ TEST_F (WantedTests, KillPaysOneTranche)
   EXPECT_EQ (JobStats ("courier"), std::make_tuple (1u, 0u, 0u, 3000));
 }
 
+TEST_F (WantedTests, ZeroShareBurnsTrancheWithoutReputation)
+{
+  /* Reward 3 over quota 3 => tranche 1.  Two distinct killers cannot split
+     one coin, so nobody is paid; the tranche is burned and -- unlike before
+     the fix -- NO completion reputation is credited.  */
+  CHECK (Process ("poster",
+      R"({"t":"wanted","r":3,"co":0,"name":"green","n":3})"));
+  const auto id = OnlyJobId ();
+  const auto reward0 = jobs.GetById (id)->GetReward ();
+
+  const auto victim = MakeCharacterAt ("green", HexCoord (5, 5));
+  const auto h1 = MakeCharacterAt ("courier", HexCoord (6, 5));
+  const auto h2 = MakeCharacterAt ("courier2", HexCoord (7, 5));
+
+  KillWithAttackers (victim, {h1, h2});
+
+  auto j = jobs.GetById (id);
+  ASSERT_NE (j, nullptr);
+  /* The tranche is consumed: remaining decremented, reward reduced by one.  */
+  EXPECT_EQ (j->GetProto ().wanted ().remaining (), 2);
+  EXPECT_EQ (j->GetReward (), reward0 - 1);
+  /* Nobody paid, nobody's completion counter bumped.  */
+  EXPECT_EQ (Balance ("courier"), 1000000);
+  EXPECT_EQ (Balance ("courier2"), 1000000);
+  EXPECT_EQ (JobStats ("courier"), std::make_tuple (0u, 0u, 0u, 0));
+  EXPECT_EQ (JobStats ("courier2"), std::make_tuple (0u, 0u, 0u, 0));
+}
+
 TEST_F (WantedTests, KillSplitsAcrossDistinctOwners)
 {
   PostBounty ();

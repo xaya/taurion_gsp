@@ -951,12 +951,17 @@ WantedPredicate::OnTargetKill (const JobContext& jc, Job& job,
   /* One tranche leaves the escrow: split equally across the distinct killer
      accounts, with any division remainder burned (never redistributed).  */
   const Amount share = tranche / killOwners.size ();
-  for (const auto& owner : killOwners)
-    {
-      auto a = GetAccountChecked (jc, owner);
-      ReleaseJobCoins (*a, share);
-      BumpJobStats (*a, true, share);
-    }
+  /* When the tranche cannot give every distinct killer at least one coin,
+     nobody is paid -- crediting a zero-value completion would inflate the
+     reputation counters for free.  The tranche is still consumed (burned as
+     the remainder, which is never redistributed).  */
+  if (share > 0)
+    for (const auto& owner : killOwners)
+      {
+        auto a = GetAccountChecked (jc, owner);
+        ReleaseJobCoins (*a, share);
+        BumpJobStats (*a, true, share);
+      }
 
   job.SetReward (job.GetReward () - tranche);
   wp->set_remaining (wp->remaining () - 1);
