@@ -43,6 +43,15 @@ class JobsBountyTest (PXTest):
     """
     Teleports the hunters onto the victim, drops the victim to 1 HP and lets
     combat kill it.
+
+    All hunters MUST be the same faction (so they are allies of each other)
+    and enemies of the victim.  Target selection picks uniformly at random
+    among equidistant enemies (combat.cpp SelectTarget), so if the hunters
+    were hostile to each other a hunter stacked on the victim's tile could
+    roll the other hunter as its target instead of the victim -- the victim
+    would then not die, or only one hunter would be credited for the kill.
+    Keeping the hunters allied leaves the victim as their only in-range enemy,
+    which makes the kill (and its damage-list attribution) deterministic.
     """
     targets = {victimChar: {"x": 0, "y": 0}}
     for h in hunterChars:
@@ -56,8 +65,12 @@ class JobsBountyTest (PXTest):
     self.mainLogger.info ("Setting up accounts...")
     self.initAccount ("poster", "r")
     self.initAccount ("victim", "b")
+    # Both hunters share a faction: they are distinct accounts (so the tranche
+    # still splits two ways) but allies in combat, so neither targets the other
+    # when stacked on the victim -- see stageKill.  Two same-faction hunters
+    # also prove the split dedups by ACCOUNT, not by faction.
     self.initAccount ("hunter", "g")
-    self.initAccount ("hunter2", "r")
+    self.initAccount ("hunter2", "g")
     self.generate (1)
     self.giftCoins ({"poster": 1000000})
 
