@@ -3550,6 +3550,72 @@ TEST_F (BuildingUpdateTests, TransferVoidsAdJobs)
   EXPECT_EQ (accounts.GetByName ("adv")->GetBalance (), 500);
 }
 
+TEST_F (BuildingUpdateTests, TransferVoidsAdJobsToAdvertiserBuyer)
+{
+  /* The building is sold TO the ad's own advertiser: the refund is credited
+     to the very account whose handle the transfer validation holds.  This
+     must not trip the unique-handles tracker (a player-reachable move).  */
+  ctx.SetTimestamp (1000);
+
+  JobsTable jobs(db);
+  Database::IdT jobId;
+  {
+    auto j = jobs.CreateNew (Job::Type::AD, Faction::INVALID, "domob", 500, 0);
+    jobId = j->GetId ();
+    j->SetLinkedId (ANDY_OWNED);
+    j->SetStatus (Job::Status::ACCEPTED);
+    j->SetWorker ("andy");
+    j->SetDeadline (1000000);
+    auto* ap = j->MutableProto ().mutable_ad ();
+    ap->set_slot (1);
+    ap->set_content_hash ("abc");
+  }
+
+  Process (R"([
+    {
+      "name": "andy",
+      "move": {"b": {"id": 101, "send": "domob"}}
+    }
+  ])");
+
+  EXPECT_EQ (buildings.GetById (ANDY_OWNED)->GetOwner (), "domob");
+  EXPECT_EQ (jobs.GetById (jobId), nullptr);
+  EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 500);
+}
+
+TEST_F (BuildingUpdateTests, SelfSendIsANoOpForAdJobs)
+{
+  /* Sending a building to its current owner is a no-op: it must not run the
+     ad-void hook (which would collide the owner's own worker handle and drop
+     the ad the owner approved).  */
+  ctx.SetTimestamp (1000);
+  accounts.CreateNew ("adv")->SetFaction (Faction::RED);
+
+  JobsTable jobs(db);
+  Database::IdT jobId;
+  {
+    auto j = jobs.CreateNew (Job::Type::AD, Faction::INVALID, "adv", 500, 0);
+    jobId = j->GetId ();
+    j->SetLinkedId (ANDY_OWNED);
+    j->SetStatus (Job::Status::ACCEPTED);
+    j->SetWorker ("andy");
+    j->SetDeadline (1000000);
+    auto* ap = j->MutableProto ().mutable_ad ();
+    ap->set_slot (1);
+    ap->set_content_hash ("abc");
+  }
+
+  Process (R"([
+    {
+      "name": "andy",
+      "move": {"b": {"id": 101, "send": "andy"}}
+    }
+  ])");
+
+  EXPECT_EQ (buildings.GetById (ANDY_OWNED)->GetOwner (), "andy");
+  EXPECT_NE (jobs.GetById (jobId), nullptr);
+}
+
 /* ************************************************************************** */
 
 class ServicesMoveTests : public MoveProcessorTests

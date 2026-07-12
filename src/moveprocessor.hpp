@@ -345,7 +345,7 @@ protected:
    * transfer of a building to a new owner.
    */
   virtual void
-  PerformBuildingTransfer (Building& b, const Account& newOwner)
+  PerformBuildingTransfer (Building& b, const std::string& newOwner)
   {}
 
   /**
@@ -499,7 +499,7 @@ protected:
 
   void PerformBuildingConfigUpdate (
       Building& b, const proto::Building::Config& newConfig) override;
-  void PerformBuildingTransfer (Building& b, const Account& newOwner) override;
+  void PerformBuildingTransfer (Building& b, const std::string& newOwner) override;
 
   void PerformServiceOperation (ServiceOperation& op) override;
   void PerformDexOperation (DexOperation& op) override;

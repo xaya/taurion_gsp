@@ -552,9 +552,9 @@ PendingStateUpdater::PerformBuildingConfigUpdate (
 
 void
 PendingStateUpdater::PerformBuildingTransfer (Building& b,
-                                              const Account& newOwner)
+                                              const std::string& newOwner)
 {
-  state.AddBuildingTransfer (b, newOwner.GetName ());
+  state.AddBuildingTransfer (b, newOwner);
 }
 
 void

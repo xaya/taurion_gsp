@@ -297,23 +297,35 @@ BaseMoveProcessor::MaybeTransferBuilding (Building& b, const Json::Value& upd)
     return;
   const std::string sendTo = sendToVal.asString ();
 
-  const auto a = accounts.GetByName (sendTo);
-  if (a == nullptr || !a->IsInitialised ())
-    {
-      LOG (WARNING)
-          << "Can't send building " << b.GetId ()
-          << " to uninitialised account " << sendTo;
-      return;
-    }
-  if (a->GetFaction () != b.GetFaction ())
-    {
-      LOG (WARNING)
-          << "Can't send building " << b.GetId ()
-          << " to account " << sendTo << " of different faction";
-      return;
-    }
+  /* A self-send is a no-op: skip it entirely, so in particular the transfer
+     hook does not needlessly void the owner's own ad slots.  */
+  if (sendTo == b.GetOwner ())
+    return;
 
-  PerformBuildingTransfer (b, *a);
+  /* Validate the recipient in a scope that RELEASES the account handle before
+     PerformBuildingTransfer runs.  The transfer settles the building's ad
+     jobs, which re-opens the advertiser's account handle; were the building
+     sold to its own advertiser, a still-live recipient handle would collide
+     with it on the unique-handle tracker and halt the chain.  */
+  {
+    const auto a = accounts.GetByName (sendTo);
+    if (a == nullptr || !a->IsInitialised ())
+      {
+        LOG (WARNING)
+            << "Can't send building " << b.GetId ()
+            << " to uninitialised account " << sendTo;
+        return;
+      }
+    if (a->GetFaction () != b.GetFaction ())
+      {
+        LOG (WARNING)
+            << "Can't send building " << b.GetId ()
+            << " to account " << sendTo << " of different faction";
+        return;
+      }
+  }
+
+  PerformBuildingTransfer (b, sendTo);
 }
 
 void
@@ -1921,15 +1933,18 @@ MoveProcessor::PerformBuildingConfigUpdate (
 }
 
 void
-MoveProcessor::PerformBuildingTransfer (Building& b, const Account& newOwner)
+MoveProcessor::PerformBuildingTransfer (Building& b, const std::string& newOwner)
 {
   VLOG (1)
       << "Sending building " << b.GetId ()
-      << " from " << b.GetOwner () << " to " << newOwner.GetName ();
-  b.SetOwner (newOwner.GetName ());
+      << " from " << b.GetOwner () << " to " << newOwner;
+  b.SetOwner (newOwner);
 
   /* The sale settles jobs tied to the old ownership (ad-slot rentals void
-     and refund the advertiser -- the new owner never approved the content).  */
+     and refund the advertiser -- the new owner never approved the content).
+     This runs after MaybeTransferBuilding has released the recipient's account
+     handle, so voiding an ad whose advertiser is the new owner does not
+     collide on the unique-handle tracker.  */
   OnJobBuildingTransferred (db, ctx, b.GetId ());
 }
 
