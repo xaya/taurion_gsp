@@ -534,14 +534,25 @@ PXRpcServer::getjobs ()
 }
 
 Json::Value
-PXRpcServer::getjobshistory (const int fromTime, const int afterTime,
-                            const int afterId, const int limit)
+PXRpcServer::getjobshistory (const std::string& afterId,
+                            const std::string& afterTime,
+                            const std::string& fromTime, const int limit)
 {
   LOG (INFO) << "RPC method called: getjobshistory " << fromTime;
+  /* Parse the int64 cursor values leniently: a malformed string from a client
+     just reads as 0 rather than erroring the (read-only) call.  */
+  const auto parse = [] (const std::string& s) -> int64_t
+    {
+      try { return s.empty () ? 0 : std::stoll (s); }
+      catch (...) { return 0; }
+    };
+  const int64_t ft = parse (fromTime);
+  const int64_t at = parse (afterTime);
+  const int64_t ai = parse (afterId);
   return logic.GetCustomStateData (game,
-    [fromTime, afterTime, afterId, limit] (GameStateJson& gsj)
+    [ft, at, ai, limit] (GameStateJson& gsj)
       {
-        return gsj.JobsHistory (fromTime, afterTime, afterId, limit);
+        return gsj.JobsHistory (ft, at, ai, limit);
       });
 }
 

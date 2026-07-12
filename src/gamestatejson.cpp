@@ -923,7 +923,7 @@ GameStateJson::Jobs ()
 
 Json::Value
 GameStateJson::JobsHistory (const int64_t fromTime, const int64_t afterTime,
-                           const int64_t afterId, const int limit)
+                            const int64_t afterId, const int limit)
 {
   JobsTable tbl(db);
   return ResultsAsArray (tbl,

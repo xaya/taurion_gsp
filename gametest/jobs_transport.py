@@ -67,6 +67,7 @@ class JobsTransportTest (PXTest):
     self.testCancel ()
     self.testProgressDump ()
     self.testHaul ()
+    self.checkHistoryFromTime ()
 
     self.mainLogger.info ("Jobs transport integration test succeeded.")
 
@@ -162,13 +163,45 @@ class JobsTransportTest (PXTest):
     # Reward + collateral back.
     self.assertEqual (self.available ("courier"), before + 1500 + 4000)
 
+  def historyRows (self):
+    """All settled-jobs history rows, paging through the server-side cap.
+
+    The cursor values are passed as strings (the RPC widened them to int64);
+    paging keeps this correct even past MAX_HISTORY_PAGE rows.
+    """
+    rows = []
+    aftertime, afterid = 0, 0
+    while True:
+      page = self.getRpc ("getjobshistory", fromtime="0",
+                          aftertime=str (aftertime), afterid=str (afterid),
+                          limit=1000)
+      if not page:
+        break
+      rows.extend (page)
+      if len (page) < 1000:
+        break
+      aftertime, afterid = page[-1]["settledtime"], page[-1]["id"]
+    return rows
+
   def historyOutcome (self, jobId):
     """Returns the outcome recorded in the settled-jobs history (or None)."""
-    for e in self.getRpc ("getjobshistory", fromtime=0, aftertime=0, afterid=0,
-                          limit=0):
+    for e in self.historyRows ():
       if e["id"] == jobId:
         return e["outcome"]
     return None
+
+  def checkHistoryFromTime (self):
+    """Guards the getjobshistory param wiring: a fromtime above every
+    settlement returns nothing.  A fromtime/afterid transposition (the
+    alphabetical stub binding) would instead treat it as an id cursor and
+    return the whole history, so this deterministically catches the swap."""
+    rows = self.historyRows ()
+    assert rows, "expected some settled jobs by now"
+    maxT = max (e["settledtime"] for e in rows)
+    self.assertEqual (
+        self.getRpc ("getjobshistory", fromtime=str (maxT + 1),
+                     aftertime="0", afterid="0", limit=1000),
+        [])
 
   def testDeliver (self):
     self.mainLogger.info ("Posting a transport job...")
