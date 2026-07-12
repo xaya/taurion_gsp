@@ -1927,6 +1927,10 @@ MoveProcessor::PerformBuildingTransfer (Building& b, const Account& newOwner)
       << "Sending building " << b.GetId ()
       << " from " << b.GetOwner () << " to " << newOwner.GetName ();
   b.SetOwner (newOwner.GetName ());
+
+  /* The sale settles jobs tied to the old ownership (ad-slot rentals void
+     and refund the advertiser -- the new owner never approved the content).  */
+  OnJobBuildingTransferred (db, ctx, b.GetId ());
 }
 
 void

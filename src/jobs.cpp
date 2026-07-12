@@ -1748,6 +1748,28 @@ public:
     if (hash.empty () || hash.size () > MAX_AD_HASH_LENGTH)
       return false;
 
+    /* Optional scheduling: the window opens `start` seconds after post
+       (0 / absent = immediately) and closes at the deadline.  The rented
+       window itself must satisfy the duration floor, which also forces it
+       to be non-empty; the deadline cap already bounds how far ahead a slot
+       can be booked.  */
+    int64_t startSecs = 0;
+    if (!terms["start"].isNull ())
+      {
+        if (!terms["start"].isInt64 ())
+          return false;
+        startSecs = terms["start"].asInt64 ();
+        if (startSecs < 0)
+          return false;
+      }
+    if (!terms["d"].isInt64 ()
+          || terms["d"].asInt64 () - startSecs
+              < jc.ctx.RoConfig ()->params ().min_job_duration ())
+      {
+        LOG (WARNING) << "Ad window is too short for start " << startSecs;
+        return false;
+      }
+
     Database::IdT bId;
     if (!IdFromJson (terms["b"], bId))
       return false;
@@ -1778,6 +1800,8 @@ public:
     auto* ap = job.MutableProto ().mutable_ad ();
     ap->set_slot (terms["slot"].asUInt ());
     ap->set_content_hash (terms["hash"].asString ());
+    if (terms["start"].isInt64 () && terms["start"].asInt64 () > 0)
+      ap->set_start (jc.ctx.Timestamp () + terms["start"].asInt64 ());
 
     /* The payee is the building's owner at post time; their accept is the
        approval.  ValidateAccept re-verifies ownership at accept time in case
@@ -1799,6 +1823,47 @@ public:
             << "job " << job.GetId ();
         return false;
       }
+
+    /* Slot exclusivity: the accept is the booking, so it is rejected while
+       another ACCEPTED ad on the same (building, slot) overlaps this ad's
+       window.  Windows are half-open [start, deadline): back-to-back
+       bookings may share an endpoint.  The candidate's window is clamped to
+       now (an ad accepted after its start renders from the accept), which
+       also skips competitors already due for this block's expiry sweep.
+       An unset start means the window opened at post.  OPEN ads never block
+       each other -- the owner's accept picks the winner.  */
+    const auto& ap = job.GetProto ().ad ();
+    const int64_t now = jc.ctx.Timestamp ();
+    const int64_t candLo = std::max<int64_t> (ap.start (), now);
+    const int64_t candHi = job.GetDeadline ();
+    /* The rows are read straight off the result (never through GetFromResult):
+       the caller already holds the handle of the job being accepted, which
+       this query returns as well.  */
+    auto res = jc.jobs.QueryForLinkedId (job.GetLinkedId ());
+    while (res.Step ())
+      {
+        const auto otherId
+            = static_cast<Database::IdT> (res.Get<JobResult::id> ());
+        if (otherId == job.GetId ()
+              || static_cast<Job::Type> (res.Get<JobResult::type> ())
+                  != Job::Type::AD
+              || static_cast<Job::Status> (res.Get<JobResult::status> ())
+                  != Job::Status::ACCEPTED)
+          continue;
+        const auto otherData = res.GetProto<JobResult::proto> ();
+        const auto& op = otherData.Get ().ad ();
+        if (op.slot () != ap.slot ())
+          continue;
+        if (candLo < res.Get<JobResult::deadline> () && op.start () < candHi)
+          {
+            LOG (WARNING)
+                << "Ad job " << job.GetId () << " overlaps accepted ad "
+                << otherId << " on building "
+                << job.GetLinkedId () << " slot " << ap.slot ();
+            return false;
+          }
+      }
+
     return true;
   }
 
@@ -1827,6 +1892,21 @@ public:
         << job.GetLinkedId () << " destroyed";
     VoidJobAtHook (jc, job);
     return JobOutcome::VOID;
+  }
+
+  bool
+  OnLinkedBuildingTransferred (const JobContext& jc, Job& job) const override
+  {
+    /* A sale is the destruction case for an ad: the new owner never approved
+       the content and the old owner is no longer the payee, so the advertiser
+       gets the rent back.  This voids OPEN ads too -- their designated worker
+       is the old owner, who could never pass the accept-time ownership
+       re-check anyway.  */
+    LOG (INFO)
+        << "Voided ad job " << job.GetId () << ": building "
+        << job.GetLinkedId () << " sold";
+    VoidJobAtHook (jc, job);
+    return true;
   }
 
 };
@@ -2789,6 +2869,44 @@ OnJobEntityDestroyed (Database& db, const Context& ctx,
       CHECK (pred != nullptr);
       const JobOutcome outcome = pred->OnLinkedEntityDestroyed (jc, *j);
       tables.jobs.WriteHistory (*j, outcome, ctx.Height (), ctx.Timestamp ());
+      j.reset ();
+      tables.jobs.DeleteById (id);
+    }
+}
+
+void
+OnJobBuildingTransferred (Database& db, const Context& ctx,
+                          const Database::IdT buildingId)
+{
+  JobsTable jobs(db);
+
+  /* Snapshot the affected jobs (fully consuming the query) before mutating
+     any rows or balances.  */
+  std::vector<Database::IdT> affected;
+  {
+    auto res = jobs.QueryForLinkedId (buildingId);
+    while (res.Step ())
+      {
+        auto j = jobs.GetFromResult (res);
+        affected.push_back (j->GetId ());
+      }
+  }
+
+  if (affected.empty ())
+    return;
+
+  BlockHookTables tables(db);
+  const JobContext jc = tables.MakeContext (ctx);
+  for (const auto id : affected)
+    {
+      auto j = tables.jobs.GetById (id);
+      CHECK (j != nullptr);
+      const auto* pred = PredicateForType (j->GetType ());
+      CHECK (pred != nullptr);
+      if (!pred->OnLinkedBuildingTransferred (jc, *j))
+        continue;
+      tables.jobs.WriteHistory (*j, JobOutcome::VOID,
+                                ctx.Height (), ctx.Timestamp ());
       j.reset ();
       tables.jobs.DeleteById (id);
     }

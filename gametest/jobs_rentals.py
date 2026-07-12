@@ -20,7 +20,8 @@
 Integration test for the payer/payee-swapped rental family on the real chain
 path: a rental's handover-on-accept and renter-fulfilled return with the
 rent/deposit split, an ad-slot rented cross-faction with the owner's accept
-as approval, and a toll refunded when the traveller dies in real combat.
+as approval (plus slot exclusivity, booking a future window ahead and the
+sale-void), and a toll refunded when the traveller dies in real combat.
 """
 
 from pxtest import PXTest
@@ -112,10 +113,44 @@ class JobsRentalsTest (PXTest):
 
     # The owner's accept is the content approval; the rent stays escrowed
     # until the period ends.
-    self.sendMove ("owner", {"j": [{"a": job["id"]}]})
+    adId = job["id"]
+    self.sendMove ("owner", {"j": [{"a": adId}]})
     self.generate (1)
     self.assertEqual (self.newestJob ()["state"], "accepted")
     self.assertEqual (self.reserved ("advertiser"), 500)
+
+    self.mainLogger.info ("The slot cannot be double-booked...")
+    self.sendMove ("advertiser", {"j": [{
+      "t": "ad", "d": 86400, "r": 300, "co": 0,
+      "b": self.buildingId, "slot": 1, "hash": "beef",
+    }]})
+    self.generate (1)
+    clashId = self.newestJob ()["id"]
+    self.sendMove ("owner", {"j": [{"a": clashId}]})
+    self.generate (1)
+    clash = [j for j in self.getRpc ("getjobs") if j["id"] == clashId][0]
+    self.assertEqual (clash["state"], "open")
+
+    self.mainLogger.info ("...but a non-overlapping future window can be...")
+    self.sendMove ("advertiser", {"j": [{
+      "t": "ad", "d": 259200, "r": 300, "co": 0,
+      "b": self.buildingId, "slot": 1, "hash": "f00d", "start": 172800,
+    }]})
+    self.generate (1)
+    future = self.newestJob ()
+    futureId = future["id"]
+    assert "start" in future
+    self.sendMove ("owner", {"j": [{"a": futureId}]})
+    self.generate (1)
+    self.assertEqual (self.newestJob ()["state"], "accepted")
+
+    self.mainLogger.info ("Selling the building voids all its ads...")
+    self.sendMove ("owner", {"b": {"id": self.buildingId, "send": "renter"}})
+    self.generate (1)
+    assert self.jobGone (adId)
+    assert self.jobGone (clashId)
+    assert self.jobGone (futureId)
+    self.assertEqual (self.reserved ("advertiser"), 0)
 
   def testToll (self):
     self.mainLogger.info ("Paying a toll, then the traveller dies...")

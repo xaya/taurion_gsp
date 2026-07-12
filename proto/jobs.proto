@@ -217,6 +217,15 @@ message AdPayload
    */
   optional string content_hash = 2;
 
+  /**
+   * Absolute block-consensus timestamp (seconds) at which the rented window
+   * opens; the window closes at the job's deadline column.  Unset means the
+   * window opened at post time (an immediate ad).  Accepting an ad whose
+   * window overlaps an already-accepted ad on the same (building, slot) is
+   * rejected, so future windows can be booked ahead without double-letting.
+   */
+  optional int64 start = 3;
+
 }
 
 /**

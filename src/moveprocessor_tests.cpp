@@ -3516,6 +3516,40 @@ TEST_F (BuildingUpdateTests, Transfer)
   ASSERT_FALSE (res.Step ());
 }
 
+TEST_F (BuildingUpdateTests, TransferVoidsAdJobs)
+{
+  /* Settling a job writes its history row at the block timestamp.  */
+  ctx.SetTimestamp (1000);
+  accounts.CreateNew ("adv")->SetFaction (Faction::RED);
+
+  /* An accepted ad-slot rental on the building being sold: the transfer
+     voids it and the escrowed rent refunds to the advertiser.  */
+  JobsTable jobs(db);
+  Database::IdT jobId;
+  {
+    auto j = jobs.CreateNew (Job::Type::AD, Faction::INVALID, "adv", 500, 0);
+    jobId = j->GetId ();
+    j->SetLinkedId (ANDY_OWNED);
+    j->SetStatus (Job::Status::ACCEPTED);
+    j->SetWorker ("andy");
+    j->SetDeadline (1000000);
+    auto* ap = j->MutableProto ().mutable_ad ();
+    ap->set_slot (1);
+    ap->set_content_hash ("abc");
+  }
+
+  Process (R"([
+    {
+      "name": "andy",
+      "move": {"b": {"id": 101, "send": "domob"}}
+    }
+  ])");
+
+  EXPECT_EQ (buildings.GetById (ANDY_OWNED)->GetOwner (), "domob");
+  EXPECT_EQ (jobs.GetById (jobId), nullptr);
+  EXPECT_EQ (accounts.GetByName ("adv")->GetBalance (), 500);
+}
+
 /* ************************************************************************** */
 
 class ServicesMoveTests : public MoveProcessorTests

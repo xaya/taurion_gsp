@@ -736,6 +736,8 @@ template <typename J>
     case proto::JobData::kAd:
       res["slot"] = IntToJson (pb.ad ().slot ());
       res["hash"] = pb.ad ().content_hash ();
+      if (pb.ad ().has_start ())
+        res["start"] = IntToJson (pb.ad ().start ());
       break;
 
     default:

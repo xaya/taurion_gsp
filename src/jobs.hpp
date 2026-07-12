@@ -325,6 +325,22 @@ public:
   }
 
   /**
+   * Settles a job whose linked building changed owner by a sale (b.send).
+   * Returns true when the job is settled (the caller records VOID in the
+   * job_history table and deletes the row) and false when the job is
+   * unaffected by the transfer (the default: transport/haul deliver to the
+   * building regardless of owner, protect/destroy wager on its survival).
+   * Only the ad-slot type reacts, voiding + refunding the advertiser -- the
+   * new owner never approved the content and the old owner is no longer the
+   * payee.
+   */
+  virtual bool
+  OnLinkedBuildingTransferred (const JobContext& jc, Job& job) const
+  {
+    return false;
+  }
+
+  /**
    * Pays out for one qualifying kill on a linked_name job (the wanted-bounty
    * pool): one tranche split across the distinct killer accounts.  Returns
    * true when the pool is drained and the caller should delete the row.
@@ -433,6 +449,16 @@ void ExpireJobs (Database& db, const Context& ctx);
  */
 void OnJobEntityDestroyed (Database& db, const Context& ctx,
                            Database::IdT entityId);
+
+/**
+ * Handles all jobs linked to a building whose ownership was transferred by
+ * a move (b.send), running each type's OnLinkedBuildingTransferred hook and
+ * recording + deleting the rows it settles.  Must be called from the move
+ * processor right after the owner change.  Indexed no-op when no job is
+ * linked to the building.
+ */
+void OnJobBuildingTransferred (Database& db, const Context& ctx,
+                               Database::IdT buildingId);
 
 /**
  * Per-block resolver for the wanted board: pays bounty tranches for

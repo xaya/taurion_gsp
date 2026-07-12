@@ -1763,6 +1763,130 @@ TEST_F (AdTests, BuildingDestroyedRefundsAdvertiser)
   EXPECT_EQ (Balance ("poster"), 1000000);
 }
 
+TEST_F (AdTests, ScheduledLifecycle)
+{
+  /* The slot is rented for the second day of a two-day term; the accept
+     happens before the window opens, the payout at the deadline as usual.  */
+  CHECK (Process ("courier",
+      R"({"t":"ad","d":172800,"r":500,"co":0,"b":1,"slot":2,)"
+      R"("hash":"abc123","start":86400})"));
+  const auto id = OnlyJobId ();
+  EXPECT_EQ (jobs.GetById (id)->GetProto ().ad ().start (), BASE_TS + DAY);
+  ASSERT_TRUE (Process ("poster", R"({"a":)" + std::to_string (id) + "}"));
+
+  ctx.SetTimestamp (BASE_TS + 2 * DAY + 1);
+  ExpireJobs (db, ctx);
+  EXPECT_FALSE (JobExists (id));
+  EXPECT_EQ (Balance ("courier"), 1000000 - 500 - 5);
+  EXPECT_EQ (Balance ("poster"), 1000000 + 500);
+}
+
+TEST_F (AdTests, PostRejectsBadSchedule)
+{
+  /* Negative / non-integer start; a rented window shorter than the duration
+     floor (a window exactly at the floor is fine).  */
+  EXPECT_FALSE (Process ("courier",
+      R"({"t":"ad","d":86400,"r":500,"co":0,"b":1,"slot":2,)"
+      R"("hash":"abc","start":-1})"));
+  EXPECT_FALSE (Process ("courier",
+      R"({"t":"ad","d":86400,"r":500,"co":0,"b":1,"slot":2,)"
+      R"("hash":"abc","start":"soon"})"));
+  EXPECT_FALSE (Process ("courier",
+      R"({"t":"ad","d":86400,"r":500,"co":0,"b":1,"slot":2,)"
+      R"("hash":"abc","start":83000})"));
+  EXPECT_TRUE (Process ("courier",
+      R"({"t":"ad","d":86400,"r":500,"co":0,"b":1,"slot":2,)"
+      R"("hash":"abc","start":82800})"));
+}
+
+TEST_F (AdTests, OverlappingAcceptRejected)
+{
+  const auto first = PostAd ();
+  ASSERT_TRUE (Process ("poster", R"({"a":)" + std::to_string (first) + "}"));
+
+  /* Same slot, overlapping window: the accept is the booking, so the second
+     one is rejected -- both a full overlap and a partially overlapping
+     scheduled window.  */
+  CHECK (Process ("courier2",
+      R"({"t":"ad","d":86400,"r":300,"co":0,"b":1,"slot":2,"hash":"def"})"));
+  const auto full = LatestJobId ();
+  EXPECT_FALSE (Process ("poster", R"({"a":)" + std::to_string (full) + "}"));
+
+  CHECK (Process ("courier2",
+      R"({"t":"ad","d":172800,"r":300,"co":0,"b":1,"slot":2,)"
+      R"("hash":"def","start":43200})"));
+  const auto partial = LatestJobId ();
+  EXPECT_FALSE (Process ("poster",
+      R"({"a":)" + std::to_string (partial) + "}"));
+
+  /* A different slot on the same building is free to let.  */
+  CHECK (Process ("courier2",
+      R"({"t":"ad","d":86400,"r":300,"co":0,"b":1,"slot":3,"hash":"def"})"));
+  EXPECT_TRUE (Process ("poster",
+      R"({"a":)" + std::to_string (LatestJobId ()) + "}"));
+}
+
+TEST_F (AdTests, BackToBackWindowsShareTheSlot)
+{
+  const auto first = PostAd ();
+  ASSERT_TRUE (Process ("poster", R"({"a":)" + std::to_string (first) + "}"));
+
+  /* The next window starts exactly at the first one's deadline: the deadline
+     is exclusive, so this is a legal back-to-back booking.  */
+  CHECK (Process ("courier2",
+      R"({"t":"ad","d":172800,"r":300,"co":0,"b":1,"slot":2,)"
+      R"("hash":"def","start":86400})"));
+  EXPECT_TRUE (Process ("poster",
+      R"({"a":)" + std::to_string (LatestJobId ()) + "}"));
+}
+
+TEST_F (AdTests, DueCompetitorDoesNotBlockAccept)
+{
+  /* The first ad's window has fully elapsed but this block's expiry sweep
+     has not run yet: it no longer blocks the slot (moves run before
+     ExpireJobs, mirroring the due-job fulfil rule).  */
+  CHECK (Process ("courier",
+      R"({"t":"ad","d":7200,"r":500,"co":0,"b":1,"slot":2,"hash":"abc"})"));
+  const auto first = OnlyJobId ();
+  ASSERT_TRUE (Process ("poster", R"({"a":)" + std::to_string (first) + "}"));
+
+  CHECK (Process ("courier2",
+      R"({"t":"ad","d":86400,"r":300,"co":0,"b":1,"slot":2,"hash":"def"})"));
+  const auto second = LatestJobId ();
+
+  ctx.SetTimestamp (BASE_TS + 7200);
+  EXPECT_TRUE (Process ("poster", R"({"a":)" + std::to_string (second) + "}"));
+}
+
+TEST_F (AdTests, BuildingSoldVoidsAdsOnly)
+{
+  /* An accepted and an open ad both void with a full refund when the
+     building is sold; a transport job to the same building is unaffected.  */
+  const auto accepted = PostAd ();
+  ASSERT_TRUE (Process ("poster",
+      R"({"a":)" + std::to_string (accepted) + "}"));
+  CHECK (Process ("courier2",
+      R"({"t":"ad","d":172800,"r":300,"co":0,"b":1,"slot":2,)"
+      R"("hash":"def","start":86400})"));
+  const auto open = LatestJobId ();
+  CHECK (Process ("courier2",
+      R"({"t":"transport","d":86400,"r":2000,"co":8000,"to":1,)"
+      R"("items":{"foo":5}})"));
+  const auto transport = LatestJobId ();
+
+  buildings.GetById (1)->SetOwner ("courier2");
+  OnJobBuildingTransferred (db, ctx, 1);
+
+  EXPECT_FALSE (JobExists (accepted));
+  EXPECT_FALSE (JobExists (open));
+  EXPECT_TRUE (JobExists (transport));
+  /* The advertisers get their rent back (posting fees are burned); the old
+     owner is not paid, and the transport reward stays escrowed.  */
+  EXPECT_EQ (Balance ("courier"), 1000000 - 5);
+  EXPECT_EQ (Balance ("courier2"), 1000000 - 3 - 2000 - 20);
+  EXPECT_EQ (Balance ("poster"), 1000000);
+}
+
 /* ************************************************************************** */
 /* Toll.                                                                      */
 
