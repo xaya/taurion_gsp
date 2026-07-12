@@ -28,6 +28,7 @@
 #include <algorithm>
 #include <limits>
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -1854,6 +1855,10 @@ public:
         const auto& op = otherData.Get ().ad ();
         if (op.slot () != ap.slot ())
           continue;
+        /* Ads are always deadlined, but never read a NULL deadline column as
+           0 (it would silently defeat the overlap test); skip defensively.  */
+        if (res.IsNull<JobResult::deadline> ())
+          continue;
         if (candLo < res.Get<JobResult::deadline> () && op.start () < candHi)
           {
             LOG (WARNING)
@@ -2838,22 +2843,28 @@ ExpireJobs (Database& db, const Context& ctx)
     }
 }
 
-void
-OnJobEntityDestroyed (Database& db, const Context& ctx,
-                      const Database::IdT entityId)
+namespace
+{
+
+/**
+ * Shared skeleton for the linked-entity settlement hooks.  Snapshots the jobs
+ * linked to an entity -- fully draining the query before any row or balance is
+ * touched -- then runs `resolve` for each in turn.  `resolve` returns the
+ * outcome to record (which then writes history and deletes the row), or
+ * std::nullopt to leave the job on the board untouched.
+ */
+template <typename Resolve>
+  void
+  SettleLinkedJobs (Database& db, const Context& ctx,
+                    const Database::IdT entityId, Resolve resolve)
 {
   JobsTable jobs(db);
 
-  /* Snapshot the affected jobs (fully consuming the query) before mutating
-     any rows or balances.  */
   std::vector<Database::IdT> affected;
   {
     auto res = jobs.QueryForLinkedId (entityId);
     while (res.Step ())
-      {
-        auto j = jobs.GetFromResult (res);
-        affected.push_back (j->GetId ());
-      }
+      affected.push_back (jobs.GetFromResult (res)->GetId ());
   }
 
   if (affected.empty ())
@@ -2867,49 +2878,41 @@ OnJobEntityDestroyed (Database& db, const Context& ctx,
       CHECK (j != nullptr);
       const auto* pred = PredicateForType (j->GetType ());
       CHECK (pred != nullptr);
-      const JobOutcome outcome = pred->OnLinkedEntityDestroyed (jc, *j);
-      tables.jobs.WriteHistory (*j, outcome, ctx.Height (), ctx.Timestamp ());
+      const std::optional<JobOutcome> outcome = resolve (jc, *pred, *j);
+      if (!outcome.has_value ())
+        continue;
+      tables.jobs.WriteHistory (*j, *outcome, ctx.Height (), ctx.Timestamp ());
       j.reset ();
       tables.jobs.DeleteById (id);
     }
+}
+
+} // anonymous namespace
+
+void
+OnJobEntityDestroyed (Database& db, const Context& ctx,
+                      const Database::IdT entityId)
+{
+  SettleLinkedJobs (db, ctx, entityId,
+    [] (const JobContext& jc, const JobPredicate& pred, Job& job)
+        -> std::optional<JobOutcome>
+      {
+        return pred.OnLinkedEntityDestroyed (jc, job);
+      });
 }
 
 void
 OnJobBuildingTransferred (Database& db, const Context& ctx,
                           const Database::IdT buildingId)
 {
-  JobsTable jobs(db);
-
-  /* Snapshot the affected jobs (fully consuming the query) before mutating
-     any rows or balances.  */
-  std::vector<Database::IdT> affected;
-  {
-    auto res = jobs.QueryForLinkedId (buildingId);
-    while (res.Step ())
+  SettleLinkedJobs (db, ctx, buildingId,
+    [] (const JobContext& jc, const JobPredicate& pred, Job& job)
+        -> std::optional<JobOutcome>
       {
-        auto j = jobs.GetFromResult (res);
-        affected.push_back (j->GetId ());
-      }
-  }
-
-  if (affected.empty ())
-    return;
-
-  BlockHookTables tables(db);
-  const JobContext jc = tables.MakeContext (ctx);
-  for (const auto id : affected)
-    {
-      auto j = tables.jobs.GetById (id);
-      CHECK (j != nullptr);
-      const auto* pred = PredicateForType (j->GetType ());
-      CHECK (pred != nullptr);
-      if (!pred->OnLinkedBuildingTransferred (jc, *j))
-        continue;
-      tables.jobs.WriteHistory (*j, JobOutcome::VOID,
-                                ctx.Height (), ctx.Timestamp ());
-      j.reset ();
-      tables.jobs.DeleteById (id);
-    }
+        if (!pred.OnLinkedBuildingTransferred (jc, job))
+          return std::nullopt;
+        return JobOutcome::VOID;
+      });
 }
 
 /* ************************************************************************** */

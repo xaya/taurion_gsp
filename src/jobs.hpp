@@ -337,6 +337,11 @@ public:
   virtual bool
   OnLinkedBuildingTransferred (const JobContext& jc, Job& job) const
   {
+    /* The caller (the move processor's building transfer) still holds a live
+       handle to the transferred building, so an override must not open its
+       own handle to that building (it would collide on the unique-handle
+       tracker).  Account handles are fine -- the recipient's is released
+       before this runs.  */
     return false;
   }
 

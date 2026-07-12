@@ -513,9 +513,11 @@ public:
   std::unique_ptr<JobHistoryEntry>
       GetFromResult (const Database::Result<JobHistoryResult>& res);
 
-  /** Hard cap on rows returned by a single QueryHistory / getjobshistory
-      call, so no single response is unbounded; callers page past it with the
-      (settled_time, id) cursor.  */
+  /**
+   * Hard cap on rows returned by a single QueryHistory / getjobshistory call,
+   * so no single response is unbounded; callers page past it with the
+   * (settled_time, id) cursor.
+   */
   static constexpr int MAX_HISTORY_PAGE = 2000;
 
   /**

@@ -1072,6 +1072,13 @@ private:
   /**
    * Deletes a character from the database in all tables.  Takes ownership
    * of and destructs the handle to it.
+   *
+   * A character that ceases to exist must first have its character-linked jobs
+   * (bodyguard, toll) settled via OnJobEntityDestroyed, so a death reads as a
+   * death rather than as survival at the deadline.  Both deletion paths do
+   * this before calling here: ProcessKills for a directly killed character and
+   * ProcessBuilding for one docked in a destroyed building.  Any future
+   * character-removal path must do the same.
    */
   void
   DeleteCharacter (CharacterTable::Handle h)
