@@ -1490,7 +1490,7 @@ TEST_F (EscortTests, DestroyedDestinationVoids)
      worker can no longer deliver there through no fault of their own, so it
      voids -- reward back to the poster, collateral back to the worker, no
      failure mark (contrast a dead protectee, which IS the worker's fault).  */
-  OnJobEntityDestroyed (db, ctx, 1);
+  DestroyBuildingViaCombat (1);
   EXPECT_FALSE (JobExists (id));
   EXPECT_EQ (Balance ("poster"), 1000000 - 10);
   EXPECT_EQ (Balance ("courier"), 1000000);
@@ -1721,16 +1721,12 @@ TEST_F (RentalTests, HandoverBuildingDestroyedLeavesRentalLive)
   /* The renter takes the item away to use it -- the intended rental flow
      (swap the hull, fit the weapon).  The handover building's destruction
      proves nothing about the item's fate, so the rental must NOT settle:
-     it stays live, escrow locked, until return or deadline.  (This mirrors
-     the kill-processor: the linked-jobs sweep, then the building teardown
-     wiping its inventories and row.)  */
+     it stays live, escrow locked, until return or deadline.  */
   {
     auto inv = buildingInv.Get (1, "poster");
     inv->GetInventory ().AddFungibleCount ("foo", -5);
   }
-  OnJobEntityDestroyed (db, ctx, 1);
-  buildingInv.RemoveBuilding (1);
-  buildings.DeleteById (1);
+  DestroyBuildingViaCombat (1);
   ASSERT_TRUE (JobExists (id));
   EXPECT_EQ (Balance ("poster"), 1000000 - 10 - 1000);
   EXPECT_EQ (Balance ("courier"), 1000000);
@@ -1777,9 +1773,7 @@ TEST_F (RentalTests, OpenRentalUnaffectedByBuildingDestruction)
      destruction leaves it on the board.  The lessor can no longer accept
      (the stock check reads an empty inventory -- reject, not crash), and
      the escrow refunds as a normal void at the deadline.  */
-  OnJobEntityDestroyed (db, ctx, 1);
-  buildingInv.RemoveBuilding (1);
-  buildings.DeleteById (1);
+  DestroyBuildingViaCombat (1);
   ASSERT_TRUE (JobExists (id));
   EXPECT_FALSE (Process ("courier", R"({"a":)" + std::to_string (id) + "}"));
 
