@@ -395,9 +395,6 @@ protected:
   /** The account triggering the operation.  */
   Account& account;
 
-  /** The operation's raw move JSON (for logs and error reporting).  */
-  Json::Value rawMove;
-
   JobOperation (Account& a, const JobContext& c)
     : jc(c), account(a)
   {}
@@ -406,17 +403,8 @@ public:
 
   virtual ~JobOperation () = default;
 
-  const Account&
-  GetAccount () const
-  {
-    return account;
-  }
-
   /** Returns true if the operation is valid per game and move rules.  */
   virtual bool IsValid () const = 0;
-
-  /** Returns the pending-JSON representation of this operation.  */
-  virtual Json::Value ToPendingJson () const = 0;
 
   /** Fully executes the update corresponding to this operation.  */
   virtual void Execute () = 0;

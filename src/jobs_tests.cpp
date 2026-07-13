@@ -938,17 +938,21 @@ TEST_F (HaulTests, OpenSourceDestroyedDropsGoodsAsLoot)
                  .GetFungibleCount ("foo"), 5);
 }
 
-TEST_F (HaulTests, AcceptedDestinationDestroyedVoids)
+TEST_F (HaulTests, AcceptedDestinationDestroyedCompensatesPoster)
 {
   const auto id = PostHaul ();
   ASSERT_TRUE (Process ("courier", R"({"a":)" + std::to_string (id) + "}"));
   OnJobEntityDestroyed (db, ctx, 4);
   EXPECT_FALSE (JobExists (id));
-  /* Void: reward to poster, collateral back to worker; the goods stay in
-     the worker's custody.  */
-  EXPECT_EQ (Balance ("poster"), 1000000 - 20);
-  EXPECT_EQ (Balance ("courier"), 1000000);
+  /* The worker keeps the goods it already holds, so the collateral (8000)
+     forfeits to the poster to compensate, alongside the reward refund; the
+     goods stay with the worker and neither side is marked at fault.  */
+  EXPECT_EQ (Balance ("poster"), 1000000 - 20 + 8000);
+  EXPECT_EQ (Balance ("courier"), 1000000 - 8000);
   EXPECT_EQ (ItemBalance (1, "courier", "foo"), 5);
+  EXPECT_EQ (accounts.GetByName ("courier")->GetProto ().jobs_failed (), 0);
+  EXPECT_EQ (accounts.GetByName ("poster")->GetProto ()
+                 .jobs_failed_as_poster (), 0);
 }
 
 /* ************************************************************************** */
@@ -1479,6 +1483,20 @@ TEST_F (EscortTests, DeadProtecteeMakesItExpireAsFailure)
   EXPECT_EQ (Balance ("courier"), 1000000 - 500);
 }
 
+TEST_F (EscortTests, DestroyedDestinationVoids)
+{
+  const auto id = PostAssignAccept (EscortPost (), "courier");
+  /* The linked destination (building 1) is razed by a third party: the
+     worker can no longer deliver there through no fault of their own, so it
+     voids -- reward back to the poster, collateral back to the worker, no
+     failure mark (contrast a dead protectee, which IS the worker's fault).  */
+  OnJobEntityDestroyed (db, ctx, 1);
+  EXPECT_FALSE (JobExists (id));
+  EXPECT_EQ (Balance ("poster"), 1000000 - 10);
+  EXPECT_EQ (Balance ("courier"), 1000000);
+  EXPECT_EQ (accounts.GetByName ("courier")->GetProto ().jobs_failed (), 0);
+}
+
 /* ************************************************************************** */
 /* Patrol.                                                                    */
 
@@ -1692,6 +1710,35 @@ TEST_F (RentalTests, ExpiryWithGoodsBackSettlesCleanly)
   EXPECT_EQ (ItemBalance (1, "courier", "foo"), 5);
   EXPECT_EQ (Balance ("poster"), 1000000 - 10 - 300);
   EXPECT_EQ (Balance ("courier"), 1000000 + 300);
+}
+
+TEST_F (RentalTests, HandoverBuildingDestroyedSplitsEscrow)
+{
+  StageGoods (1, "courier", {{"foo", 5}});
+  const auto id = PostRental ();
+  ASSERT_TRUE (Process ("courier", R"({"a":)" + std::to_string (id) + "}"));
+
+  /* The handover building is razed mid-rental (its inventories drop as loot,
+     so the rented item is lost to the lessor through no fault of the renter):
+     the deposit (700) compensates the lessor, the rent (300) refunds to the
+     renter, and neither side is marked at fault.  */
+  OnJobEntityDestroyed (db, ctx, 1);
+  EXPECT_FALSE (JobExists (id));
+  EXPECT_EQ (Balance ("courier"), 1000000 + 700);
+  EXPECT_EQ (Balance ("poster"), 1000000 - 10 - 700);
+  EXPECT_EQ (accounts.GetByName ("poster")->GetProto ().jobs_failed (), 0);
+}
+
+TEST_F (RentalTests, OpenHandoverBuildingDestroyedRefundsRenter)
+{
+  StageGoods (1, "courier", {{"foo", 5}});
+  const auto id = PostRental ();
+  /* OPEN (never accepted, nothing handed over): the renter's full escrow
+     refunds, exactly as a normal void.  */
+  OnJobEntityDestroyed (db, ctx, 1);
+  EXPECT_FALSE (JobExists (id));
+  EXPECT_EQ (Balance ("poster"), 1000000 - 10);
+  EXPECT_EQ (Balance ("courier"), 1000000);
 }
 
 /* ************************************************************************** */

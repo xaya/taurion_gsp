@@ -126,6 +126,19 @@ ValidateOwnedCharacter (const JobContext& jc, const Json::Value& terms,
 }
 
 /**
+ * Pays a worker for a successful job: their locked collateral plus the reward
+ * (fee-free), and bumps their completion counters.  The account handle is
+ * passed in -- every caller already holds it (the fulfil executor, or the
+ * hook's fetched worker).
+ */
+void
+PayWorkerSuccess (Account& worker, const Job& job)
+{
+  ReleaseJobCoins (worker, job.GetReward () + job.GetCollateral ());
+  BumpJobStats (worker, true, job.GetReward ());
+}
+
+/**
  * Hook-path settlement: the job succeeded (success-on-expiry types).  Pays
  * the worker the reward plus their collateral back and bumps their counters.
  * Must not be called while any account handle is live.
@@ -134,8 +147,7 @@ void
 SettleSuccessAtHook (const JobContext& jc, const Job& job)
 {
   auto worker = GetAccountChecked (jc, job.GetWorker ());
-  ReleaseJobCoins (*worker, job.GetReward () + job.GetCollateral ());
-  BumpJobStats (*worker, true, job.GetReward ());
+  PayWorkerSuccess (*worker, job);
 }
 
 /**
@@ -178,6 +190,23 @@ VoidJobAtHook (const JobContext& jc, const Job& job)
       auto worker = GetAccountChecked (jc, job.GetWorker ());
       ReleaseJobCoins (*worker, job.GetCollateral ());
     }
+}
+
+/**
+ * Records a settled job in the history table, then deletes its live row --
+ * releasing the row handle first so the delete cannot collide with it on the
+ * unique-handle tracker.  Every terminal transition funnels through here, so
+ * "write the history row before deleting the job" is a structural guarantee
+ * rather than a per-site convention.
+ */
+void
+SettleAndDelete (JobsTable& jobs, JobsTable::Handle job,
+                 const JobOutcome outcome, const Context& ctx)
+{
+  const auto id = job->GetId ();
+  jobs.WriteHistory (*job, outcome, ctx.Height (), ctx.Timestamp ());
+  job.reset ();
+  jobs.DeleteById (id);
 }
 
 /**
@@ -454,8 +483,7 @@ DeliveryPredicate::DoFulfil (const JobContext& jc, Job& job, Account& executor,
 
   /* The manifest is delivered in full: pay the worker the reward and return
      their collateral (fee-free), and bump their completion counters.  */
-  ReleaseJobCoins (executor, job.GetReward () + job.GetCollateral ());
-  BumpJobStats (executor, true, job.GetReward ());
+  PayWorkerSuccess (executor, job);
   return FulfilResult::COMPLETE;
 }
 
@@ -801,11 +829,19 @@ HaulPredicate::OnLinkedEntityDestroyed (const JobContext& jc, Job& job) const
       return JobOutcome::VOID;
     }
 
-  /* ACCEPTED: the destination died mid-haul -- not the worker's fault.  */
+  /* ACCEPTED: the destination died mid-haul.  Not the worker's fault, but the
+     worker still holds the poster's goods (handed over at accept, possibly
+     already loaded and in transit, so unrecoverable here).  The collateral is
+     the poster's cover for exactly this loss: forfeit it to the poster to
+     compensate for the goods, alongside the reward refund.  Neither side is
+     marked at fault -- the destruction was a third party's doing.  */
+  {
+    auto poster = GetAccountChecked (jc, job.GetPoster ());
+    ReleaseJobCoins (*poster, job.GetReward () + job.GetCollateral ());
+  }
   LOG (INFO)
       << "Voided haul job " << job.GetId () << ": destination building "
-      << job.GetLinkedId () << " destroyed";
-  VoidJobAtHook (jc, job);
+      << job.GetLinkedId () << " destroyed; collateral compensates the poster";
   return JobOutcome::VOID;
 }
 
@@ -1224,6 +1260,16 @@ public:
     return true;
   }
 
+  /* The destination building is the linked entity: its destruction voids the
+     job (the worker can no longer deliver the protectee there through no
+     fault of their own).  A dead PROTECTEE, by contrast, is the worker's
+     responsibility and stays an expiry failure.  */
+  JobLinkedKind
+  LinkedEntityKind () const override
+  {
+    return JobLinkedKind::BUILDING;
+  }
+
   bool
   ValidatePost (const JobContext& jc, const Account& poster,
                 const Json::Value& terms) const override
@@ -1256,6 +1302,9 @@ public:
     auto* ep = job.MutableProto ().mutable_escort ();
     ep->set_protected_character (chId);
     ep->set_dest_building (destB);
+    /* Link the destination so its destruction reaches OnLinkedEntityDestroyed
+       (the dest_building proto field stays for the fulfil-time dock check).  */
+    job.SetLinkedId (destB);
   }
 
   bool
@@ -1281,8 +1330,7 @@ public:
   {
     LOG (INFO)
         << executor.GetName () << " completed escort job " << job.GetId ();
-    ReleaseJobCoins (executor, job.GetReward () + job.GetCollateral ());
-    BumpJobStats (executor, true, job.GetReward ());
+    PayWorkerSuccess (executor, job);
     return FulfilResult::COMPLETE;
   }
 
@@ -1296,6 +1344,19 @@ public:
         SettleFailureAtHook (jc, job);
         return JobOutcome::FAILED;
       }
+    VoidJobAtHook (jc, job);
+    return JobOutcome::VOID;
+  }
+
+  JobOutcome
+  OnLinkedEntityDestroyed (const JobContext& jc, Job& job) const override
+  {
+    /* The destination died mid-escort: the worker can no longer deliver the
+       protectee there through no fault of their own.  Void -- reward back to
+       the poster, collateral back to the worker.  */
+    LOG (INFO)
+        << "Voided escort job " << job.GetId () << ": destination building "
+        << job.GetLinkedId () << " destroyed";
     VoidJobAtHook (jc, job);
     return JobOutcome::VOID;
   }
@@ -1428,8 +1489,7 @@ public:
     if (pp->checkins_done () < pp->checkins_required ())
       return FulfilResult::PROGRESS;
 
-    ReleaseJobCoins (executor, job.GetReward () + job.GetCollateral ());
-    BumpJobStats (executor, true, job.GetReward ());
+    PayWorkerSuccess (executor, job);
     return FulfilResult::COMPLETE;
   }
 
@@ -1534,6 +1594,15 @@ public:
     return true;
   }
 
+  /* The handover building is the linked entity: its destruction settles the
+     rental (the rented item drops there as ground loot, so it is lost to the
+     lessor through no fault of the renter).  */
+  JobLinkedKind
+  LinkedEntityKind () const override
+  {
+    return JobLinkedKind::BUILDING;
+  }
+
   bool
   ValidatePost (const JobContext& jc, const Account& poster,
                 const Json::Value& terms) const override
@@ -1608,6 +1677,9 @@ public:
     Database::IdT bId;
     CHECK (IdFromJson (terms["b"], bId));
     rp->set_building (bId);
+    /* Link the handover building so its destruction reaches the settlement
+       hook (the building proto field stays for the goods-movement helpers).  */
+    job.SetLinkedId (bId);
 
     /* The lessor is the fixed payee: designate them at post time, so the
        approval gate only ever lets them accept.  */
@@ -1696,6 +1768,37 @@ public:
     auto renter = GetAccountChecked (jc, job.GetPoster ());
     BumpJobStats (*renter, false, 0);
     return JobOutcome::FAILED;
+  }
+
+  JobOutcome
+  OnLinkedEntityDestroyed (const JobContext& jc, Job& job) const override
+  {
+    if (job.GetStatus () != Job::Status::ACCEPTED)
+      {
+        /* OPEN: the goods were never handed over -- the renter's full escrow
+           refunds, exactly as a normal void.  */
+        VoidJobAtHook (jc, job);
+        return JobOutcome::VOID;
+      }
+
+    /* ACCEPTED: the renter's inventory at the building -- including the rented
+       item -- drops as ground loot, so the item is lost to the lessor through
+       no fault of the renter.  Compensate the lessor with the deposit (the
+       renter's bond, sized to cover the item) and refund the rent to the
+       renter; neither side is marked at fault.  */
+    const Amount rent = job.GetProto ().rental ().rent ();
+    {
+      auto lessor = GetAccountChecked (jc, job.GetWorker ());
+      ReleaseJobCoins (*lessor, job.GetReward () - rent);
+    }
+    {
+      auto renter = GetAccountChecked (jc, job.GetPoster ());
+      ReleaseJobCoins (*renter, rent);
+    }
+    LOG (INFO)
+        << "Voided rental job " << job.GetId () << ": handover building "
+        << job.GetLinkedId () << " destroyed; deposit compensates the lessor";
+    return JobOutcome::VOID;
   }
 
 };
@@ -2153,7 +2256,6 @@ public:
   {}
 
   bool IsValid () const override;
-  Json::Value ToPendingJson () const override;
   void Execute () override;
 
 };
@@ -2210,16 +2312,6 @@ PostOperation::IsValid () const
   return true;
 }
 
-Json::Value
-PostOperation::ToPendingJson () const
-{
-  Json::Value res(Json::objectValue);
-  res["op"] = "post";
-  res["reward"] = IntToJson (reward);
-  res["collateral"] = IntToJson (collateral);
-  return res;
-}
-
 void
 PostOperation::Execute ()
 {
@@ -2264,7 +2356,6 @@ public:
   {}
 
   bool IsValid () const override;
-  Json::Value ToPendingJson () const override;
   void Execute () override;
 
 };
@@ -2310,16 +2401,6 @@ AssignOperation::IsValid () const
   return true;
 }
 
-Json::Value
-AssignOperation::ToPendingJson () const
-{
-  Json::Value res(Json::objectValue);
-  res["op"] = "assign";
-  res["id"] = IntToJson (jobId);
-  res["worker"] = designated;
-  return res;
-}
-
 void
 AssignOperation::Execute ()
 {
@@ -2352,7 +2433,6 @@ public:
   {}
 
   bool IsValid () const override;
-  Json::Value ToPendingJson () const override;
   void Execute () override;
 
 };
@@ -2435,15 +2515,6 @@ AcceptOperation::IsValid () const
   return true;
 }
 
-Json::Value
-AcceptOperation::ToPendingJson () const
-{
-  Json::Value res(Json::objectValue);
-  res["op"] = "accept";
-  res["id"] = IntToJson (jobId);
-  return res;
-}
-
 void
 AcceptOperation::Execute ()
 {
@@ -2486,7 +2557,6 @@ public:
   {}
 
   bool IsValid () const override;
-  Json::Value ToPendingJson () const override;
   void Execute () override;
 
 };
@@ -2521,15 +2591,6 @@ CancelOperation::IsValid () const
   return true;
 }
 
-Json::Value
-CancelOperation::ToPendingJson () const
-{
-  Json::Value res(Json::objectValue);
-  res["op"] = "cancel";
-  res["id"] = IntToJson (jobId);
-  return res;
-}
-
 void
 CancelOperation::Execute ()
 {
@@ -2560,11 +2621,8 @@ CancelOperation::Execute ()
 
   pred->OnCancel (jc, *job);
 
-  jc.jobs.WriteHistory (*job, JobOutcome::CANCELLED,
-                        jc.ctx.Height (), jc.ctx.Timestamp ());
-  job.reset ();
   ReleaseJobCoins (account, reward);
-  jc.jobs.DeleteById (jobId);
+  SettleAndDelete (jc.jobs, std::move (job), JobOutcome::CANCELLED, jc.ctx);
 }
 
 /* ************************************************************************** */
@@ -2592,7 +2650,6 @@ public:
   {}
 
   bool IsValid () const override;
-  Json::Value ToPendingJson () const override;
   void Execute () override;
 
 };
@@ -2634,15 +2691,6 @@ FulfilOperation::IsValid () const
   return pred->CanFulfil (jc, *job, account, args);
 }
 
-Json::Value
-FulfilOperation::ToPendingJson () const
-{
-  Json::Value res(Json::objectValue);
-  res["op"] = "fulfil";
-  res["id"] = IntToJson (jobId);
-  return res;
-}
-
 void
 FulfilOperation::Execute ()
 {
@@ -2655,10 +2703,8 @@ FulfilOperation::Execute ()
 
   if (result == FulfilResult::COMPLETE)
     {
-      jc.jobs.WriteHistory (*job, JobOutcome::COMPLETED,
-                            jc.ctx.Height (), jc.ctx.Timestamp ());
-      job.reset ();
-      jc.jobs.DeleteById (jobId);
+      SettleAndDelete (jc.jobs, std::move (job), JobOutcome::COMPLETED,
+                       jc.ctx);
     }
   /* PROGRESS: the mutated proto persists when the handle destructs.  */
 }
@@ -2754,9 +2800,6 @@ JobOperation::Parse (Account& acc, const Json::Value& data,
       op = std::make_unique<FulfilOperation> (acc, jc, id, data);
     }
 
-  if (op != nullptr)
-    op->rawMove = data;
-
   return op;
 }
 
@@ -2837,9 +2880,7 @@ ExpireJobs (Database& db, const Context& ctx)
       const auto* pred = PredicateForType (j->GetType ());
       CHECK (pred != nullptr);
       const JobOutcome outcome = pred->OnExpire (jc, *j);
-      tables.jobs.WriteHistory (*j, outcome, ctx.Height (), ctx.Timestamp ());
-      j.reset ();
-      tables.jobs.DeleteById (id);
+      SettleAndDelete (tables.jobs, std::move (j), outcome, ctx);
     }
 }
 
@@ -2881,9 +2922,7 @@ template <typename Resolve>
       const std::optional<JobOutcome> outcome = resolve (jc, *pred, *j);
       if (!outcome.has_value ())
         continue;
-      tables.jobs.WriteHistory (*j, *outcome, ctx.Height (), ctx.Timestamp ());
-      j.reset ();
-      tables.jobs.DeleteById (id);
+      SettleAndDelete (tables.jobs, std::move (j), *outcome, ctx);
     }
 }
 
@@ -2989,11 +3028,8 @@ JobsBountyTracker::UpdateForKill (const proto::TargetId& target)
         continue;
       const bool drained = pred->OnTargetKill (jc, *j, owners);
       if (drained)
-        tables.jobs.WriteHistory (*j, JobOutcome::DRAINED,
-                                  ctx.Height (), ctx.Timestamp ());
-      j.reset ();
-      if (drained)
-        tables.jobs.DeleteById (id);
+        SettleAndDelete (tables.jobs, std::move (j), JobOutcome::DRAINED, ctx);
+      /* Not drained: the mutated pool flushes when the handle destructs.  */
     }
 }
 
