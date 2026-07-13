@@ -522,13 +522,12 @@ CREATE INDEX IF NOT EXISTS `ongoing_operations_by_building`
 
 -- =============================================================================
 
--- Jobs board: player-posted, coin-escrowed jobs.  For now the only kind is
--- "transport" (a procurement-and-delivery bounty), but this is a generic
--- table: the `type` column discriminates the job kind and the type-specific
--- payload lives in the `proto` blob.  Everything the board, the expiry sweep
--- and the kill-hook must filter, sort or sum on is a real column (mirroring
--- the dex_orders design), so the board query and reserved-balance sums are
--- plain SQL statements and idle jobs never need to be read or rewritten.
+-- Jobs board: player-posted, coin-escrowed jobs.  The `type` column
+-- discriminates the job kind and the type-specific payload lives in the
+-- `proto` blob.  Everything the board, the expiry sweep and the kill-hook
+-- must filter, sort or sum on is a real column (mirroring the dex_orders
+-- design), so the board query and reserved-balance sums are plain SQL
+-- statements and idle jobs never need to be read or rewritten.
 CREATE TABLE IF NOT EXISTS `jobs` (
 
   -- Unique ID of the job (used in assign / accept / cancel / fulfil moves).
@@ -569,9 +568,9 @@ CREATE TABLE IF NOT EXISTS `jobs` (
   -- NULL here must never be read as 0, or every standing job would expire.
   `deadline` INTEGER NULL,
 
-  -- The entity whose destruction the job's fate is tied to (transport: the
-  -- destination building B).  Swept by the kill-hook when that entity dies.
-  -- NULL for types with no linked entity (escort, patrol, rentals).
+  -- The entity whose destruction the job's fate is tied to (for example, a
+  -- transport or escort destination building).  Swept by the kill-hook when
+  -- that entity dies.  NULL for types with no linked entity (patrol, rentals).
   `linked_id` INTEGER NULL,
 
   -- The account name whose characters a job targets (wanted-bounty).  Resolved

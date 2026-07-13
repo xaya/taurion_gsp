@@ -111,9 +111,9 @@ message DestroyPayload
 
 /**
  * Payload for an escort job: the worker must get the poster's character to
- * the destination building alive.  Settlement is a single-moment fulfil op
- * checked against this data; there is no linked entity (a dead protectee
- * simply makes the job unfulfillable, and it expires).
+ * the destination building alive.  The destination building is linked, so
+ * its destruction voids and refunds the job.  A dead protectee instead makes
+ * the job unfulfillable, and it expires as a failure.
  */
 message EscortPayload
 {

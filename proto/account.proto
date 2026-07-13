@@ -51,8 +51,10 @@ message Account
   /**
    * Jobs-board completion counters (the on-chain completion artifact the
    * reputation layer reads).  Bumped by the jobs subsystem at settlement:
-   * completed / value on a successful settle, failed on an expiry forfeit.
-   * O(1) state; the rich per-job history lives off-chain in the indexer.
+   * completed / value on a successful settle, failed when the worker is held
+   * responsible for failure.  This is O(1) reputation state.  Bounded
+   * consensus job history records what settled and why; an indexer may retain
+   * richer or permanent history off-chain.
    */
   optional uint32 jobs_completed = 5;
   optional uint32 jobs_failed = 6;

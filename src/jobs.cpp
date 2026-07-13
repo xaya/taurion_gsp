@@ -1246,8 +1246,9 @@ public:
 
 /**
  * Escort: the worker must get the poster's character to the destination
- * building alive.  A single-moment fulfil op; there is no linked entity (a
- * dead protectee makes the job unfulfillable and it expires as a failure).
+ * building alive.  The destination building is linked, so its destruction
+ * voids and refunds the job.  A dead protectee instead makes the job
+ * unfulfillable, and it expires as a failure.
  */
 class EscortPredicate : public JobPredicate
 {
