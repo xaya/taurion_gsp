@@ -1712,30 +1712,79 @@ TEST_F (RentalTests, ExpiryWithGoodsBackSettlesCleanly)
   EXPECT_EQ (Balance ("courier"), 1000000 + 300);
 }
 
-TEST_F (RentalTests, HandoverBuildingDestroyedSplitsEscrow)
+TEST_F (RentalTests, HandoverBuildingDestroyedLeavesRentalLive)
 {
   StageGoods (1, "courier", {{"foo", 5}});
   const auto id = PostRental ();
   ASSERT_TRUE (Process ("courier", R"({"a":)" + std::to_string (id) + "}"));
 
-  /* The handover building is razed mid-rental (its inventories drop as loot,
-     so the rented item is lost to the lessor through no fault of the renter):
-     the deposit (700) compensates the lessor, the rent (300) refunds to the
-     renter, and neither side is marked at fault.  */
+  /* The renter takes the item away to use it -- the intended rental flow
+     (swap the hull, fit the weapon).  The handover building's destruction
+     proves nothing about the item's fate, so the rental must NOT settle:
+     it stays live, escrow locked, until return or deadline.  (This mirrors
+     the kill-processor: the linked-jobs sweep, then the building teardown
+     wiping its inventories and row.)  */
+  {
+    auto inv = buildingInv.Get (1, "poster");
+    inv->GetInventory ().AddFungibleCount ("foo", -5);
+  }
   OnJobEntityDestroyed (db, ctx, 1);
+  buildingInv.RemoveBuilding (1);
+  buildings.DeleteById (1);
+  ASSERT_TRUE (JobExists (id));
+  EXPECT_EQ (Balance ("poster"), 1000000 - 10 - 1000);
+  EXPECT_EQ (Balance ("courier"), 1000000);
+
+  /* At the deadline the count is not back at B (the empty inventory of a
+     dead building must read as absent, not crash): a plain non-return --
+     rent + deposit default to the lessor, the renter is at fault.  */
+  ctx.SetTimestamp (BASE_TS + DAY + 1);
+  ExpireJobs (db, ctx);
   EXPECT_FALSE (JobExists (id));
-  EXPECT_EQ (Balance ("courier"), 1000000 + 700);
-  EXPECT_EQ (Balance ("poster"), 1000000 - 10 - 700);
-  EXPECT_EQ (accounts.GetByName ("poster")->GetProto ().jobs_failed (), 0);
+  EXPECT_EQ (Balance ("courier"), 1000000 + 1000);
+  EXPECT_EQ (Balance ("poster"), 1000000 - 10 - 1000);
+  EXPECT_EQ (JobStats ("poster"), std::make_tuple (0u, 1u, 0u, 0));
 }
 
-TEST_F (RentalTests, OpenHandoverBuildingDestroyedRefundsRenter)
+TEST_F (RentalTests, ZeroDepositNonReturnPaysLessorEverything)
+{
+  StageGoods (1, "courier", {{"foo", 5}});
+  /* rent == escrow is valid: the deposit is simply zero.  */
+  CHECK (Process ("poster",
+      R"({"t":"rental","d":86400,"r":1000,"co":0,"rent":1000,)"
+      R"("i":"foo","n":5,"b":1,"w":"courier"})"));
+  const auto id = OnlyJobId ();
+  ASSERT_TRUE (Process ("courier", R"({"a":)" + std::to_string (id) + "}"));
+
+  {
+    auto inv = buildingInv.Get (1, "poster");
+    inv->GetInventory ().AddFungibleCount ("foo", -5);
+  }
+  ctx.SetTimestamp (BASE_TS + DAY + 1);
+  ExpireJobs (db, ctx);
+  EXPECT_FALSE (JobExists (id));
+  EXPECT_EQ (Balance ("courier"), 1000000 + 1000);
+  EXPECT_EQ (Balance ("poster"), 1000000 - 10 - 1000);
+  EXPECT_EQ (JobStats ("poster"), std::make_tuple (0u, 1u, 0u, 0));
+}
+
+TEST_F (RentalTests, OpenRentalUnaffectedByBuildingDestruction)
 {
   StageGoods (1, "courier", {{"foo", 5}});
   const auto id = PostRental ();
-  /* OPEN (never accepted, nothing handed over): the renter's full escrow
-     refunds, exactly as a normal void.  */
+
+  /* An OPEN rental is not linked to anything: the handover building's
+     destruction leaves it on the board.  The lessor can no longer accept
+     (the stock check reads an empty inventory -- reject, not crash), and
+     the escrow refunds as a normal void at the deadline.  */
   OnJobEntityDestroyed (db, ctx, 1);
+  buildingInv.RemoveBuilding (1);
+  buildings.DeleteById (1);
+  ASSERT_TRUE (JobExists (id));
+  EXPECT_FALSE (Process ("courier", R"({"a":)" + std::to_string (id) + "}"));
+
+  ctx.SetTimestamp (BASE_TS + DAY + 1);
+  ExpireJobs (db, ctx);
   EXPECT_FALSE (JobExists (id));
   EXPECT_EQ (Balance ("poster"), 1000000 - 10);
   EXPECT_EQ (Balance ("courier"), 1000000);

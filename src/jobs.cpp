@@ -1594,14 +1594,11 @@ public:
     return true;
   }
 
-  /* The handover building is the linked entity: its destruction settles the
-     rental (the rented item drops there as ground loot, so it is lost to the
-     lessor through no fault of the renter).  */
-  JobLinkedKind
-  LinkedEntityKind () const override
-  {
-    return JobLinkedKind::BUILDING;
-  }
+  /* Rentals are deliberately NOT linked to the handover building: the renter
+     is expected to take the item away and use it (swap the hull, fit the
+     weapon), so the building's destruction proves nothing about the item's
+     fate.  Any loss is simply a non-return at the deadline, covered by the
+     deposit -- war risk sits with the renter by design.  */
 
   bool
   ValidatePost (const JobContext& jc, const Account& poster,
@@ -1677,9 +1674,6 @@ public:
     Database::IdT bId;
     CHECK (IdFromJson (terms["b"], bId));
     rp->set_building (bId);
-    /* Link the handover building so its destruction reaches the settlement
-       hook (the building proto field stays for the goods-movement helpers).  */
-    job.SetLinkedId (bId);
 
     /* The lessor is the fixed payee: designate them at post time, so the
        approval gate only ever lets them accept.  */
@@ -1768,37 +1762,6 @@ public:
     auto renter = GetAccountChecked (jc, job.GetPoster ());
     BumpJobStats (*renter, false, 0);
     return JobOutcome::FAILED;
-  }
-
-  JobOutcome
-  OnLinkedEntityDestroyed (const JobContext& jc, Job& job) const override
-  {
-    if (job.GetStatus () != Job::Status::ACCEPTED)
-      {
-        /* OPEN: the goods were never handed over -- the renter's full escrow
-           refunds, exactly as a normal void.  */
-        VoidJobAtHook (jc, job);
-        return JobOutcome::VOID;
-      }
-
-    /* ACCEPTED: the renter's inventory at the building -- including the rented
-       item -- drops as ground loot, so the item is lost to the lessor through
-       no fault of the renter.  Compensate the lessor with the deposit (the
-       renter's bond, sized to cover the item) and refund the rent to the
-       renter; neither side is marked at fault.  */
-    const Amount rent = job.GetProto ().rental ().rent ();
-    {
-      auto lessor = GetAccountChecked (jc, job.GetWorker ());
-      ReleaseJobCoins (*lessor, job.GetReward () - rent);
-    }
-    {
-      auto renter = GetAccountChecked (jc, job.GetPoster ());
-      ReleaseJobCoins (*renter, rent);
-    }
-    LOG (INFO)
-        << "Voided rental job " << job.GetId () << ": handover building "
-        << job.GetLinkedId () << " destroyed; deposit compensates the lessor";
-    return JobOutcome::VOID;
   }
 
 };
