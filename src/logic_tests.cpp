@@ -32,6 +32,7 @@
 #include "database/dex.hpp"
 #include "database/faction.hpp"
 #include "database/inventory.hpp"
+#include "database/jobs.hpp"
 #include "database/ongoing.hpp"
 #include "database/region.hpp"
 #include "hexagonal/coord.hpp"
@@ -168,6 +169,21 @@ protected:
                    sbHeight, ctx.BlockHeight (), ctx.Timestamp ());
     FameUpdater fame(db, newCtx);
     PXLogic::UpdateState (db, fame, rnd, newCtx, true, BuildBlockData (moves));
+  }
+
+  /**
+   * Calls PXLogic::UpdateState with an explicit superBlock flag, so tests
+   * can drive ORDINARY blocks (moves processed, no superblock phases) as
+   * the real per-block dispatch does.
+   */
+  void
+  UpdateStateBlock (const std::string& movesStr, const bool superBlock)
+  {
+    Context newCtx(ctx.Chain (), ctx.Map (),
+                   ctx.Height (), ctx.BlockHeight (), ctx.Timestamp ());
+    FameUpdater fame(db, newCtx);
+    PXLogic::UpdateState (db, fame, rnd, newCtx, superBlock,
+                          BuildBlockData (ParseJson (movesStr)));
   }
 
   /**
@@ -608,6 +624,130 @@ TEST_F (PXLogicTests, PickUpDeadDrop)
   ASSERT_TRUE (c != nullptr);
   EXPECT_EQ (c->GetInventory ().GetFungibleCount ("foo"), 3);
   c.reset ();
+}
+
+/* ************************************************************************** */
+
+TEST_F (PXLogicTests, JobsExpireOnlyOnSuperblocks)
+{
+  /* ExpireJobs is gated inside the superblock branch while moves run on
+     every block:  a deadline passing on an ordinary block must NOT settle
+     the job -- it stays on the board until the next superblock sweep.  */
+  {
+    auto a = accounts.CreateNew ("poster");
+    a->SetFaction (Faction::RED);
+    a->AddBalance (1'000'000);
+  }
+  const auto bId
+      = CreateBuilding ("checkmark", "poster", Faction::RED)->GetId ();
+
+  UpdateStateBlock (R"([
+    {"name": "poster", "move": {"j": [{
+      "t": "transport", "d": 3600, "r": 2000, "co": 0,
+      "to": )" + std::to_string (bId) + R"(, "items": {"foo": 5}
+    }]}}
+  ])", true);
+
+  JobsTable jobs(db);
+  Database::IdT jobId;
+  {
+    auto res = jobs.QueryAll ();
+    ASSERT_TRUE (res.Step ());
+    jobId = jobs.GetFromResult (res)->GetId ();
+    ASSERT_FALSE (res.Step ());
+  }
+  ASSERT_EQ (accounts.GetByName ("poster")->GetBalance (),
+             1'000'000 - 2'000 - 20);
+
+  /* The deadline passes, but the block is ordinary:  the overdue job must
+     survive it untouched.  */
+  ctx.SetTimestamp (ctx.Timestamp () + 3601);
+  UpdateStateBlock ("[]", false);
+  ASSERT_NE (jobs.GetById (jobId), nullptr);
+  EXPECT_EQ (accounts.GetByName ("poster")->GetBalance (),
+             1'000'000 - 2'000 - 20);
+
+  /* The next superblock sweeps it:  the OPEN job voids and refunds.  */
+  UpdateStateBlock ("[]", true);
+  EXPECT_EQ (jobs.GetById (jobId), nullptr);
+  EXPECT_EQ (accounts.GetByName ("poster")->GetBalance (), 1'000'000 - 20);
+}
+
+TEST_F (PXLogicTests, JobsKillsSettleBeforeExpiry)
+{
+  /* The normative phase order inside a superblock:  kill processing runs
+     BEFORE the expiry sweep, so a linked entity dying in the very superblock
+     the deadline passes is a death, not a survival.  A toll job makes the
+     two orders observably different:  kills-first refunds the traveller
+     (VOID), expiry-first would pay the gatekeeper (survival success).  */
+  {
+    auto a = accounts.CreateNew ("poster");
+    a->SetFaction (Faction::RED);
+    a->AddBalance (1'000'000);
+  }
+  {
+    auto a = accounts.CreateNew ("gate");
+    a->SetFaction (Faction::GREEN);
+    a->AddBalance (1'000'000);
+  }
+
+  Database::IdT traveller;
+  {
+    auto c = CreateCharacter ("poster", Faction::RED);
+    traveller = c->GetId ();
+    c->MutableHP ().set_shield (0);
+    c->MutableHP ().set_armour (1);
+    c->MutableProto ().mutable_combat_data ();
+  }
+  Database::IdT gateChar;
+  {
+    /* No attack yet:  it is added only after the accept, so the kill lands
+       exactly in the deadline superblock and not earlier.  */
+    auto c = CreateCharacter ("gate", Faction::GREEN);
+    gateChar = c->GetId ();
+    c->MutableProto ().mutable_combat_data ();
+  }
+
+  UpdateStateBlock (R"([
+    {"name": "poster", "move": {"j": [{
+      "t": "toll", "d": 3600, "r": 500, "co": 0,
+      "ch": )" + std::to_string (traveller) + R"(, "w": "gate"
+    }]}}
+  ])", true);
+
+  JobsTable jobs(db);
+  Database::IdT jobId;
+  {
+    auto res = jobs.QueryAll ();
+    ASSERT_TRUE (res.Step ());
+    jobId = jobs.GetFromResult (res)->GetId ();
+    ASSERT_FALSE (res.Step ());
+  }
+
+  UpdateStateBlock (R"([
+    {"name": "gate", "move": {"j": [{"a": )" + std::to_string (jobId)
+      + R"(}]}}
+  ])", true);
+  ASSERT_EQ (jobs.GetById (jobId)->GetStatus (), Job::Status::ACCEPTED);
+
+  /* Arm the gatekeeper now; the next superblock acquires the target and the
+     one after that deals the killing damage.  */
+  AddUnityAttack (*characters.GetById (gateChar), 1);
+  UpdateStateBlock ("[]", true);
+  ASSERT_NE (characters.GetById (traveller), nullptr);
+
+  /* The deadline passes in exactly the superblock whose combat kills the
+     traveller.  Kills settle first:  the toll voids, the escrow refunds the
+     poster and the gatekeeper earns nothing.  (With the phases swapped, the
+     expiry sweep would see the traveller alive-at-deadline and pay out.)  */
+  ctx.SetTimestamp (ctx.Timestamp () + 3601);
+  UpdateStateBlock ("[]", true);
+
+  EXPECT_EQ (characters.GetById (traveller), nullptr);
+  EXPECT_EQ (jobs.GetById (jobId), nullptr);
+  /* Reward 500 refunded; only the posting fee max(1, 500 * 1%) = 5 burned.  */
+  EXPECT_EQ (accounts.GetByName ("poster")->GetBalance (), 1'000'000 - 5);
+  EXPECT_EQ (accounts.GetByName ("gate")->GetBalance (), 1'000'000);
 }
 
 TEST_F (PXLogicTests, DamageLists)

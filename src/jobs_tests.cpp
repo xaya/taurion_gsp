@@ -391,6 +391,10 @@ TEST_F (JobsTests, PostRejects)
   MakeAccount ("broke", Faction::RED, 100);
   EXPECT_FALSE (Process ("broke",
       R"({"t":"transport","d":86400,"r":2000,"co":0,"to":1,"items":{"foo":5}})"));
+  /* Zero reward: settling it would farm the jobs_completed counter for just
+     the posting fee.  */
+  EXPECT_FALSE (Process ("poster",
+      R"({"t":"transport","d":86400,"r":0,"co":0,"to":1,"items":{"foo":5}})"));
   /* Duration below the minimum and above the maximum.  */
   EXPECT_FALSE (Process ("poster",
       R"({"t":"transport","d":1,"r":10,"co":0,"to":1,"items":{"foo":5}})"));
@@ -488,6 +492,18 @@ TEST_F (JobsTests, AssignAndDesignationGate)
 
   /* Assigning after acceptance is rejected.  */
   EXPECT_FALSE (Process ("poster", s + R"(,"w":"courier2"})"));
+}
+
+TEST_F (JobsTests, AssignRejectsStandingJobs)
+{
+  /* A standing job (wanted board) is never accepted by a single worker, so
+     designating one is meaningless dead data -- rejected.  */
+  ASSERT_TRUE (Process ("poster",
+      R"({"t":"wanted","r":9000,"co":0,"name":"green","n":3})"));
+  const auto id = OnlyJobId ();
+  EXPECT_FALSE (Process ("poster",
+      R"({"s":)" + std::to_string (id) + R"(,"w":"courier"})"));
+  EXPECT_EQ (jobs.GetById (id)->GetProto ().designated_worker (), "");
 }
 
 /* ************************************************************************** */
@@ -748,6 +764,27 @@ TEST_F (JobsTests, HistoryRecordsOutcomes)
   EXPECT_EQ (outcomes.at (idVoid), JobOutcome::VOID);
   EXPECT_EQ (outcomes.at (idFail), JobOutcome::FAILED);
   EXPECT_EQ (times.at (idFail), BASE_TS + 2 * DAY + 2);
+}
+
+TEST_F (JobsTests, HistoryRecordsRealBlockHeight)
+{
+  /* Moves settle jobs on EVERY block, but the context's Height() is the
+     superblock counter (pre-incremented on ordinary blocks).  The history
+     row must record the REAL chain block -- like the DEX trade history --
+     not a superblock height that may not have happened yet.  */
+  ctx.SetHeight (500);
+  ctx.SetBlockHeight (1400);
+
+  const auto id = Post ();
+  ASSERT_TRUE (Process ("poster", R"({"c":)" + std::to_string (id) + "}"));
+
+  JobsTable jobs(db);
+  auto res = jobs.QueryHistory (0);
+  ASSERT_TRUE (res.Step ());
+  auto e = jobs.GetFromResult (res);
+  EXPECT_EQ (e->GetId (), id);
+  EXPECT_EQ (e->GetSettledHeight (), 1400);
+  EXPECT_FALSE (res.Step ());
 }
 
 /* ************************************************************************** */

@@ -67,6 +67,7 @@ class JobsTransportTest (PXTest):
     self.testCancel ()
     self.testProgressDump ()
     self.testHaul ()
+    self.testSuperblockGating ()
     self.checkHistoryFromTime ()
 
     self.mainLogger.info ("Jobs transport integration test succeeded.")
@@ -162,6 +163,60 @@ class JobsTransportTest (PXTest):
         {"bar": 7})
     # Reward + collateral back.
     self.assertEqual (self.available ("courier"), before + 1500 + 4000)
+
+  def testSuperblockGating (self):
+    self.mainLogger.info ("Testing a deadline crossing an ORDINARY block...")
+    # Jobs settle by moves on every block, but the expiry sweep only runs on
+    # superblocks.  Thread the deadline into the middle of a superblock
+    # window: the ordinary block past it must leave the overdue job on the
+    # board (and reject a fulfil), and only the next superblock settles it.
+    # (d is 2h, not the 1h minimum: with min_accept_runway == min_job_duration
+    # a minimum-duration job is only acceptable in its very posting block.)
+    self.sendMove ("poster", {"j": [{
+      "t": "transport", "d": 7200, "r": 1000, "co": 500,
+      "to": self.buildingId, "items": {"foo": 1},
+    }]})
+    self.generate (1)
+    job = self.newestJob ()
+    jobId = job["id"]
+    deadline = job["deadline"]
+
+    self.sendMove ("courier", {"j": [{"a": jobId}]})
+    self.generate (1)
+    # Stage the goods so the late fulfil would succeed but for the deadline.
+    self.dropIntoBuilding (self.buildingId, "courier", {"foo": 1})
+
+    # A block is a superblock iff its timestamp is >= superblock_seconds
+    # past the previous superblock's -- setting explicit mock times around
+    # that threshold lets us pick each block's kind exactly.
+    sbSecs = self.roConfig ().params.superblock_seconds
+    assert sbSecs >= 4, "test window needs superblock_seconds >= 4"
+
+    # A superblock just inside the deadline: nothing is due yet.
+    lastSb = deadline - 2
+    self.env.setMockTime (lastSb)
+    self.generate (1, superblocks=False)
+    assert not self.jobGone (jobId)
+
+    # An ORDINARY block past the deadline (gap 3 < superblock_seconds): the
+    # fulfil move runs and is rejected (at/past deadline), no sweep runs --
+    # the overdue job stays on the board.
+    self.sendMove ("courier", {"j": [{"f": jobId}]})
+    self.env.setMockTime (deadline + 1)
+    self.generate (1, superblocks=False)
+    assert not self.jobGone (jobId)
+    self.assertEqual (self.newestJob ()["state"], "accepted")
+
+    # The next superblock sweeps it: expiry FAILED, the worker's collateral
+    # forfeits to the poster and the reward refunds.
+    posterBefore = self.available ("poster")
+    courierBefore = self.available ("courier")
+    self.env.setMockTime (lastSb + sbSecs)
+    self.generate (1, superblocks=False)
+    assert self.jobGone (jobId)
+    self.assertEqual (self.historyOutcome (jobId), "failed")
+    self.assertEqual (self.available ("poster"), posterBefore + 1000 + 500)
+    self.assertEqual (self.available ("courier"), courierBefore)
 
   def historyRows (self):
     """All settled-jobs history rows, paging through the server-side cap.

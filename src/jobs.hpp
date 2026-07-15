@@ -426,10 +426,11 @@ public:
 /**
  * Expires all non-standing jobs whose deadline has been reached at the current
  * block timestamp, running each type's OnExpire settlement and deleting the
- * rows.  Called once per block AFTER kill processing (the normative phase
- * order: an entity dying in the boundary block is a death, not a survival);
- * on the (vast majority of) blocks where nothing is due it is an indexed
- * no-op that touches no rows.
+ * rows.  Called once per SUPERBLOCK (a deadline passing on an ordinary block
+ * settles at the next superblock sweep), AFTER kill processing (the normative
+ * phase order: an entity dying in the boundary superblock is a death, not a
+ * survival); on the (vast majority of) sweeps where nothing is due it is an
+ * indexed no-op that touches no rows.
  */
 void ExpireJobs (Database& db, const Context& ctx);
 

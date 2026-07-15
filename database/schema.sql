@@ -588,11 +588,6 @@ CREATE TABLE IF NOT EXISTS `jobs` (
 -- are naturally excluded by the WHERE deadline IS NOT NULL clause.
 CREATE INDEX IF NOT EXISTS `jobs_by_deadline` ON `jobs` (`deadline`);
 
--- Board scope: a faction's jobs of a given status and kind (then ORDER BY
--- reward for the price-sorted board).
-CREATE INDEX IF NOT EXISTS `jobs_by_faction`
-  ON `jobs` (`faction`, `status`, `type`);
-
 -- Kill-hook sweep when a linked entity (e.g. a transport destination) is
 -- destroyed + "jobs tied to entity X".
 CREATE INDEX IF NOT EXISTS `jobs_by_linked_id` ON `jobs` (`linked_id`);
@@ -646,12 +641,12 @@ CREATE TABLE IF NOT EXISTS `job_history` (
 );
 
 -- Retention prune ("older than the cutoff") + incremental reads
--- (getjobshistory fromtime).
+-- (getjobshistory fromtime).  This is deliberately the ONLY extra index on
+-- the table: no consensus or RPC query filters by poster/worker/faction
+-- here, and every live-row flush rewrites all indexes -- an index exists
+-- only if a query actually reads it (the schema rule for columns, applied
+-- to indexes).
 CREATE INDEX IF NOT EXISTS `job_history_by_time`
   ON `job_history` (`settled_time`);
-
--- "My settled posts" / "my settled work" account scans.
-CREATE INDEX IF NOT EXISTS `job_history_by_poster` ON `job_history` (`poster`);
-CREATE INDEX IF NOT EXISTS `job_history_by_worker` ON `job_history` (`worker`);
 
 -- =============================================================================

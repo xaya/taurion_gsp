@@ -204,7 +204,11 @@ SettleAndDelete (JobsTable& jobs, JobsTable::Handle job,
                  const JobOutcome outcome, const Context& ctx)
 {
   const auto id = job->GetId ();
-  jobs.WriteHistory (*job, outcome, ctx.Height (), ctx.Timestamp ());
+  /* Like the DEX trade history, the record stores the REAL chain block
+     (settlements happen on every block, e.g. through moves), not the
+     superblock counter -- ctx.Height() would stamp a non-superblock
+     settlement with a superblock height that has not happened yet.  */
+  jobs.WriteHistory (*job, outcome, ctx.BlockHeight (), ctx.Timestamp ());
   job.reset ();
   jobs.DeleteById (id);
 }
@@ -2234,7 +2238,12 @@ PostOperation::IsValid () const
       return false;
     }
 
-  if (reward < 0 || collateral < 0)
+  /* The reward must be strictly positive:  a zero-reward job would still
+     bump the worker's jobs_completed counter on settlement, farming the
+     count-based half of the reputation for just the posting fee -- exactly
+     the free credit the wanted payout refuses when a tranche share rounds
+     to zero.  Collateral MAY be zero (many types require that).  */
+  if (reward <= 0 || collateral < 0)
     return false;
 
   const auto* pred = PredicateForType (type);
@@ -2337,6 +2346,15 @@ AssignOperation::IsValid () const
     {
       LOG (WARNING)
           << account.GetName () << " does not own job " << jobId;
+      return false;
+    }
+  /* Assignment is exclusive-only (design 3.4):  a standing job (no deadline,
+     e.g. a wanted board) is never accepted by a single worker, so a
+     designated_worker on it would be dead data polluting the public JSON.  */
+  if (!job->HasDeadline ())
+    {
+      LOG (WARNING)
+          << "Job " << jobId << " is standing; cannot designate a worker";
       return false;
     }
   if (designated == account.GetName ())
@@ -2640,11 +2658,12 @@ FulfilOperation::IsValid () const
       return false;
     }
 
-  /* A job at or past its deadline is already due for this block's expiry
-     sweep (a due job is deadline <= now), and moves run before ExpireJobs.
-     The deadline is exclusive, so allowing a fulfil in the deadline block
-     would turn an expiry FAILED into a COMPLETED.  Standing jobs (no
-     deadline) are exempt.  */
+  /* A job at or past its deadline is due for the expiry sweep (a due job is
+     deadline <= now).  The sweep only runs on superblocks while moves run on
+     every block, so without this guard a fulfil landing after the deadline
+     but before the next superblock would turn an expiry FAILED into a
+     COMPLETED.  The deadline is exclusive; standing jobs (no deadline) are
+     exempt.  */
   if (job->HasDeadline () && job->GetDeadline () <= jc.ctx.Timestamp ())
     {
       LOG (WARNING)
