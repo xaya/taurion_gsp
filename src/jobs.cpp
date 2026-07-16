@@ -2448,6 +2448,14 @@ AssignOperation::IsValid () const
           << "Job " << jobId << " is standing; cannot designate a worker";
       return false;
     }
+  /* An expired listing is the sweep's to void (see JobIsDue); a designation
+     landing in the gap would be dead data on a job that never runs.  */
+  if (JobIsDue (*job, jc))
+    {
+      LOG (WARNING)
+          << "Job " << jobId << " is at or past its deadline; cannot assign";
+      return false;
+    }
   if (designated == account.GetName ())
     {
       LOG (WARNING) << "Cannot designate oneself as worker for job " << jobId;
@@ -2660,6 +2668,17 @@ CancelOperation::IsValid () const
   if (pred->IsStanding () && job->HasDeadline ())
     {
       LOG (WARNING) << "Standing job " << jobId << " is already closing";
+      return false;
+    }
+
+  /* An expired listing is the sweep's to void (see JobIsDue); a cancel in
+     the gap would record CANCELLED history for a job that expired.  The
+     refund is the same either way.  Standing jobs never reach here with a
+     deadline (rejected above), so the notice-cancel path is unaffected.  */
+  if (JobIsDue (*job, jc))
+    {
+      LOG (WARNING)
+          << "Job " << jobId << " is at or past its deadline; cannot cancel";
       return false;
     }
 

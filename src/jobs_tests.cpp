@@ -554,6 +554,27 @@ TEST_F (JobsTests, AssignRejectsStandingJobs)
   EXPECT_EQ (jobs.GetById (id)->GetProto ().designated_worker (), "");
 }
 
+TEST_F (JobsTests, AssignRejectsDueListing)
+{
+  /* A due listing is the sweep's to void (see JobIsDue): a designation
+     landing in the move-before-sweep gap would be dead data on a job that
+     never runs.  The boundary is exclusive, mirroring accept/fulfil.  */
+  const auto id = Post ();
+  const std::string s = R"({"s":)" + std::to_string (id);
+  ctx.SetTimestamp (BASE_TS + DAY - 1);
+  ASSERT_TRUE (Process ("poster", s + R"(,"w":"courier"})"));
+  ctx.SetTimestamp (BASE_TS + DAY);
+  EXPECT_FALSE (Process ("poster", s + R"(,"w":"courier2"})"));
+  ctx.SetTimestamp (BASE_TS + DAY + 50);
+  EXPECT_FALSE (Process ("poster", s + R"(,"w":"courier2"})"));
+  EXPECT_EQ (jobs.GetById (id)->GetProto ().designated_worker (), "courier");
+  EXPECT_EQ (jobs.GetById (id)->GetStatus (), Job::Status::OPEN);
+  /* The sweep then voids it as designed: escrow refunds, fee stays burned.  */
+  ExpireJobs (db, ctx);
+  EXPECT_FALSE (JobExists (id));
+  EXPECT_EQ (Balance ("poster"), 1000000 - 20);
+}
+
 /* ************************************************************************** */
 /* Cancel.                                                                    */
 
@@ -575,6 +596,43 @@ TEST_F (JobsTests, CancelRejects)
   /* An accepted job cannot be cancelled.  */
   ASSERT_TRUE (Process ("courier", R"({"a":)" + std::to_string (id) + "}"));
   EXPECT_FALSE (Process ("poster", R"({"c":)" + std::to_string (id) + "}"));
+}
+
+TEST_F (JobsTests, CancelRejectsDueListing)
+{
+  /* A due listing is the sweep's to void (see JobIsDue): a cancel in the
+     move-before-sweep gap would record CANCELLED history for a job that
+     expired.  The refund is identical either way -- only the history label
+     is at stake.  The boundary is exclusive, mirroring accept/fulfil.  */
+  const auto idCancelled = Post ();
+  ctx.SetTimestamp (BASE_TS + DAY - 1);
+  ASSERT_TRUE (Process ("poster",
+                        R"({"c":)" + std::to_string (idCancelled) + "}"));
+
+  /* The second listing's deadline is relative to the moved timestamp.  */
+  const auto idVoid = Post ();
+  const std::string c = R"({"c":)" + std::to_string (idVoid) + "}";
+  ctx.SetTimestamp (BASE_TS + 2 * DAY - 1);
+  EXPECT_FALSE (Process ("poster", c));
+  ctx.SetTimestamp (BASE_TS + 2 * DAY + 49);
+  EXPECT_FALSE (Process ("poster", c));
+  EXPECT_EQ (jobs.GetById (idVoid)->GetStatus (), Job::Status::OPEN);
+  ExpireJobs (db, ctx);
+  EXPECT_FALSE (JobExists (idVoid));
+  /* Both rewards refunded; the two posting fees stay burned.  */
+  EXPECT_EQ (Balance ("poster"), 1000000 - 2 * 20);
+
+  /* The pre-deadline cancel settles CANCELLED; the due one VOID.  */
+  std::map<Database::IdT, JobOutcome> outcomes;
+  auto res = jobs.QueryHistory (0);
+  while (res.Step ())
+    {
+      auto e = jobs.GetFromResult (res);
+      outcomes[e->GetId ()] = e->GetOutcome ();
+    }
+  ASSERT_EQ (outcomes.size (), 2);
+  EXPECT_EQ (outcomes.at (idCancelled), JobOutcome::CANCELLED);
+  EXPECT_EQ (outcomes.at (idVoid), JobOutcome::VOID);
 }
 
 /* ************************************************************************** */
@@ -793,7 +851,6 @@ TEST_F (JobsTests, HistoryRecordsOutcomes)
   ctx.SetTimestamp (BASE_TS + 2 * DAY + 2);
   ExpireJobs (db, ctx);
 
-  JobsTable jobs(db);
   std::map<Database::IdT, JobOutcome> outcomes;
   std::map<Database::IdT, int64_t> times;
   auto res = jobs.QueryHistory (0);
@@ -826,7 +883,6 @@ TEST_F (JobsTests, HistoryRecordsRealBlockHeight)
   const auto id = Post ();
   ASSERT_TRUE (Process ("poster", R"({"c":)" + std::to_string (id) + "}"));
 
-  JobsTable jobs(db);
   auto res = jobs.QueryHistory (0);
   ASSERT_TRUE (res.Step ());
   auto e = jobs.GetFromResult (res);

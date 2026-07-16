@@ -144,6 +144,22 @@ TEST_F (JobsTableTests, QueryForDeadlineExcludesStanding)
   EXPECT_THAT (got, ElementsAre (101, 102));
 }
 
+TEST_F (JobsTableTests, QueryForDeadlineOrdersByDeadlineThenId)
+{
+  /* The sweep order is consensus: earliest deadline first, id breaking
+     ties (which is also the jobs_by_deadline index order, so no sort).  */
+  db.SetNextId (101);
+  CreateTransport (Faction::RED, "poster", 1, 0, 100, 1).reset ();
+  CreateTransport (Faction::RED, "poster", 1, 0, 50, 1).reset ();
+  CreateTransport (Faction::RED, "poster", 1, 0, 50, 1).reset ();
+
+  std::vector<Database::IdT> got;
+  auto res = tbl.QueryForDeadline (100);
+  while (res.Step ())
+    got.push_back (tbl.GetFromResult (res)->GetId ());
+  EXPECT_THAT (got, ElementsAre (102, 103, 101));
+}
+
 TEST_F (JobsTableTests, QueryForLinkedId)
 {
   db.SetNextId (201);

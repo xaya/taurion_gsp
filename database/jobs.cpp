@@ -196,12 +196,17 @@ JobsTable::QueryForDeadline (const int64_t now)
   /* Standing jobs (NULL deadline) are excluded outright.  We fetch
      less-or-equal (rather than exact) so that any row with a deadline below
      the current timestamp -- which should never happen -- is still picked up
-     and can be asserted on while processing.  */
+     and can be asserted on while processing.
+
+     Ordering by (deadline, id) is deterministic (id breaks ties, and it
+     aliases the rowid the jobs_by_deadline index carries) and lets the
+     query run straight off that index instead of sorting all due rows in a
+     temporary B-tree.  */
   auto stmt = db.Prepare (R"(
     SELECT *
       FROM `jobs`
       WHERE `deadline` IS NOT NULL AND `deadline` <= ?1
-      ORDER BY `id`
+      ORDER BY `deadline`, `id`
   )");
   stmt.Bind (1, now);
   return stmt.Query<JobResult> ();
