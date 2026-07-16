@@ -1748,6 +1748,10 @@ TEST_F (RentalTests, PostRejects)
      unknown item; foundation building.  */
   EXPECT_FALSE (Process ("poster",
       R"({"t":"rental","d":86400,"wd":86400,"r":1000,"co":0,"rent":2000,"i":"foo","n":5,"b":1,"w":"courier"})"));
+  /* Zero rent: a free rental would farm completion counters on both sides
+     for just the posting fee.  */
+  EXPECT_FALSE (Process ("poster",
+      R"({"t":"rental","d":86400,"wd":86400,"r":1000,"co":0,"rent":0,"i":"foo","n":5,"b":1,"w":"courier"})"));
   EXPECT_FALSE (Process ("poster",
       R"({"t":"rental","d":86400,"wd":86400,"r":1000,"co":5,"rent":300,"i":"foo","n":5,"b":1,"w":"courier"})"));
   EXPECT_FALSE (Process ("poster",
@@ -2046,6 +2050,24 @@ TEST_F (AdTests, AcceptKeepsCalendarDeadline)
   ctx.SetTimestamp (BASE_TS + 3600);
   ASSERT_TRUE (Process ("poster", R"({"a":)" + std::to_string (id) + "}"));
   EXPECT_EQ (jobs.GetById (id)->GetDeadline (), BASE_TS + DAY);
+}
+
+TEST_F (AdTests, AcceptRequiresMinimumWindowLeft)
+{
+  /* The payout is always the full rent, so the owner's approval must leave
+     at least min_work_window of displayable time.  Exactly the floor is
+     accepted (inclusive); less is rejected, and the unapproved ad then
+     voids at its deadline with a refund.  */
+  const auto first = PostAd ();
+  ctx.SetTimestamp (BASE_TS + DAY - 1800);
+  EXPECT_FALSE (Process ("poster", R"({"a":)" + std::to_string (first) + "}"));
+
+  ctx.SetTimestamp (BASE_TS);
+  CHECK (Process ("courier2",
+      R"({"t":"ad","d":86400,"r":300,"co":0,"b":1,"slot":3,"hash":"def"})"));
+  const auto second = LatestJobId ();
+  ctx.SetTimestamp (BASE_TS + DAY - 3600);
+  EXPECT_TRUE (Process ("poster", R"({"a":)" + std::to_string (second) + "}"));
 }
 
 TEST_F (AdTests, AcceptRejectsElapsedWindow)

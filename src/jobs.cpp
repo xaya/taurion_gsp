@@ -1646,6 +1646,14 @@ public:
     Amount reward, rent;
     if (!CoinAmountFromJson (terms["rent"], rent))
       return false;
+    if (rent <= 0)
+      {
+        /* A free rental would let two colluding accounts farm the
+           jobs_completed counters on both sides for just the posting fee;
+           charging real rent makes every completion move real value.  */
+        LOG (WARNING) << "A rental must charge positive rent";
+        return false;
+      }
     CHECK (CoinAmountFromJson (terms["r"], reward));
     if (rent > reward)
       {
@@ -1940,6 +1948,21 @@ public:
     const int64_t now = jc.ctx.Timestamp ();
     const int64_t candLo = std::max<int64_t> (ap.start (), now);
     const int64_t candHi = job.GetDeadline ();
+
+    /* The accept is the booking and the payout is always the full rent, so
+       the approval must leave at least the minimum window actually
+       displayable -- otherwise a last-second approval would collect the
+       whole rent for (nearly) no display time.  An unapproved ad simply
+       voids at its deadline and the advertiser's escrow refunds.  Accepting
+       before a scheduled start always passes: post validation floors the
+       booked window itself.  */
+    if (candHi - candLo < jc.ctx.RoConfig ()->params ().min_work_window ())
+      {
+        LOG (WARNING)
+            << "Ad job " << job.GetId ()
+            << " has too little of its window left to accept";
+        return false;
+      }
     /* The rows are read straight off the result (never through GetFromResult):
        the caller already holds the handle of the job being accepted, which
        this query returns as well.  */
