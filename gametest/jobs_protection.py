@@ -62,7 +62,7 @@ class JobsProtectionTest (PXTest):
     protectee = self.getCharacters ()["poster"].getId ()
 
     self.sendMove ("poster", {"j": [{
-      "t": "bodyguard", "d": 86400, "r": 1000, "co": 500, "ch": protectee,
+      "t": "bodyguard", "d": 86400, "wd": 86400, "r": 1000, "co": 500, "ch": protectee,
     }]})
     self.generate (1)
     job = self.newestJob ()
@@ -118,7 +118,7 @@ class JobsProtectionTest (PXTest):
     protectee = self.getCharacters ()["poster"].getId ()
 
     self.sendMove ("poster", {"j": [{
-      "t": "escort", "d": 86400, "r": 1000, "co": 500,
+      "t": "escort", "d": 86400, "wd": 86400, "r": 1000, "co": 500,
       "ch": protectee, "to": destId,
     }]})
     self.generate (1)

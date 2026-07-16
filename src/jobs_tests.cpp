@@ -39,7 +39,7 @@ namespace
 
 /** A comfortable base consensus timestamp for the tests.  */
 constexpr int64_t BASE_TS = 1000000;
-/** A comfortable job duration (within [min,max]_job_duration).  */
+/** A comfortable window length (valid as both a listing and a work window).  */
 constexpr int64_t DAY = 86400;
 /** The configured bounty cancel notice (7 days).  */
 constexpr int64_t NOTICE = 7 * DAY;
@@ -287,7 +287,7 @@ protected:
   Post (const std::string& to = "1")
   {
     CHECK (Process ("poster",
-        R"({"t":"transport","d":86400,"r":2000,"co":8000,"to":)" + to
+        R"({"t":"transport","d":86400,"wd":86400,"r":2000,"co":8000,"to":)" + to
         + R"(,"items":{"foo":5}})"));
     return OnlyJobId ();
   }
@@ -324,7 +324,7 @@ protected:
 TEST_F (JobsTests, ParsingValidShapes)
 {
   EXPECT_TRUE (ParseOk (
-      R"({"t":"transport","d":86400,"r":2000,"co":8000,"to":1,"items":{"foo":5}})"));
+      R"({"t":"transport","d":86400,"wd":86400,"r":2000,"co":8000,"to":1,"items":{"foo":5}})"));
   EXPECT_TRUE (ParseOk (R"({"t":"wanted","r":9000,"co":0,"name":"x","n":3})"));
   EXPECT_TRUE (ParseOk (R"({"s":7,"w":"courier"})"));
   EXPECT_TRUE (ParseOk (R"({"a":7})"));
@@ -351,18 +351,24 @@ TEST_F (JobsTests, ParsingRejects)
   EXPECT_FALSE (ParseOk (R"({"f":7,"bogus":1})"));
   /* Assign without the worker field.  */
   EXPECT_FALSE (ParseOk (R"({"s":7})"));
-  /* Negative deadline.  */
+  /* Negative deadline / negative work window.  */
   EXPECT_FALSE (ParseOk (
       R"({"t":"transport","d":-5,"r":2000,"co":8000,"to":1,"items":{"foo":5}})"));
+  EXPECT_FALSE (ParseOk (
+      R"({"t":"transport","d":86400,"wd":-5,"r":2000,"co":8000,"to":1,"items":{"foo":5}})"));
 }
 
 TEST_F (JobsTests, StandingClassMatchesType)
 {
-  /* Only the standing types may omit the deadline, and they must.  */
+  /* Only the standing types may omit the deadline, and they must; a
+     standing job has no deadline to rewrite, so a work window on one is
+     dead data and rejected too.  */
   EXPECT_FALSE (Process ("poster",
       R"({"t":"transport","r":2000,"co":8000,"to":1,"items":{"foo":5}})"));
   EXPECT_FALSE (Process ("poster",
       R"({"t":"wanted","d":86400,"r":9000,"co":0,"name":"green","n":3})"));
+  EXPECT_FALSE (Process ("poster",
+      R"({"t":"wanted","wd":86400,"r":9000,"co":0,"name":"green","n":3})"));
   EXPECT_TRUE (Process ("poster",
       R"({"t":"wanted","r":9000,"co":0,"name":"green","n":3})"));
 }
@@ -390,33 +396,40 @@ TEST_F (JobsTests, PostRejects)
   /* Cannot afford reward + fee.  */
   MakeAccount ("broke", Faction::RED, 100);
   EXPECT_FALSE (Process ("broke",
-      R"({"t":"transport","d":86400,"r":2000,"co":0,"to":1,"items":{"foo":5}})"));
+      R"({"t":"transport","d":86400,"wd":86400,"r":2000,"co":0,"to":1,"items":{"foo":5}})"));
   /* Zero reward: settling it would farm the jobs_completed counter for just
      the posting fee.  */
   EXPECT_FALSE (Process ("poster",
-      R"({"t":"transport","d":86400,"r":0,"co":0,"to":1,"items":{"foo":5}})"));
-  /* Duration below the minimum and above the maximum.  */
+      R"({"t":"transport","d":86400,"wd":86400,"r":0,"co":0,"to":1,"items":{"foo":5}})"));
+  /* Listing window below the minimum and above the maximum.  */
   EXPECT_FALSE (Process ("poster",
-      R"({"t":"transport","d":1,"r":10,"co":0,"to":1,"items":{"foo":5}})"));
+      R"({"t":"transport","d":1,"wd":86400,"r":10,"co":0,"to":1,"items":{"foo":5}})"));
   EXPECT_FALSE (Process ("poster",
-      R"({"t":"transport","d":999999999,"r":10,"co":0,"to":1,"items":{"foo":5}})"));
+      R"({"t":"transport","d":999999999,"wd":86400,"r":10,"co":0,"to":1,"items":{"foo":5}})"));
+  /* Work window missing, below the minimum and above the maximum.  */
+  EXPECT_FALSE (Process ("poster",
+      R"({"t":"transport","d":86400,"r":10,"co":0,"to":1,"items":{"foo":5}})"));
+  EXPECT_FALSE (Process ("poster",
+      R"({"t":"transport","d":86400,"wd":1,"r":10,"co":0,"to":1,"items":{"foo":5}})"));
+  EXPECT_FALSE (Process ("poster",
+      R"({"t":"transport","d":86400,"wd":999999999,"r":10,"co":0,"to":1,"items":{"foo":5}})"));
   /* Empty manifest / unknown item.  */
   EXPECT_FALSE (Process ("poster",
-      R"({"t":"transport","d":86400,"r":10,"co":0,"to":1,"items":{}})"));
+      R"({"t":"transport","d":86400,"wd":86400,"r":10,"co":0,"to":1,"items":{}})"));
   EXPECT_FALSE (Process ("poster",
-      R"({"t":"transport","d":86400,"r":10,"co":0,"to":1,"items":{"nope":5}})"));
+      R"({"t":"transport","d":86400,"wd":86400,"r":10,"co":0,"to":1,"items":{"nope":5}})"));
   /* Nonexistent and enemy-faction destinations.  */
   EXPECT_FALSE (Process ("poster",
-      R"({"t":"transport","d":86400,"r":10,"co":0,"to":999,"items":{"foo":5}})"));
+      R"({"t":"transport","d":86400,"wd":86400,"r":10,"co":0,"to":999,"items":{"foo":5}})"));
   EXPECT_FALSE (Process ("poster",
-      R"({"t":"transport","d":86400,"r":10,"co":0,"to":3,"items":{"foo":5}})"));
+      R"({"t":"transport","d":86400,"wd":86400,"r":10,"co":0,"to":3,"items":{"foo":5}})"));
   /* An uninitialised account cannot post.  */
   accounts.CreateNew ("nofaction");
   EXPECT_FALSE (Process ("nofaction",
-      R"({"t":"transport","d":86400,"r":10,"co":0,"to":1,"items":{"foo":5}})"));
+      R"({"t":"transport","d":86400,"wd":86400,"r":10,"co":0,"to":1,"items":{"foo":5}})"));
   /* Neutral (ancient) destination is allowed.  */
   EXPECT_TRUE (Process ("poster",
-      R"({"t":"transport","d":86400,"r":10,"co":0,"to":2,"items":{"foo":5}})"));
+      R"({"t":"transport","d":86400,"wd":86400,"r":10,"co":0,"to":2,"items":{"foo":5}})"));
 }
 
 /* ************************************************************************** */
@@ -451,21 +464,25 @@ TEST_F (JobsTests, AcceptRejects)
 TEST_F (JobsTests, AcceptZeroCollateralIsLegal)
 {
   ASSERT_TRUE (Process ("poster",
-      R"({"t":"transport","d":86400,"r":2000,"co":0,"to":1,"items":{"foo":5}})"));
+      R"({"t":"transport","d":86400,"wd":86400,"r":2000,"co":0,"to":1,"items":{"foo":5}})"));
   const auto id = OnlyJobId ();
   EXPECT_TRUE (Process ("courier", R"({"a":)" + std::to_string (id) + "}"));
   EXPECT_EQ (Balance ("courier"), 1000000);
 }
 
-TEST_F (JobsTests, AcceptRunwayGuard)
+TEST_F (JobsTests, AcceptStartsWorkClock)
 {
-  /* Post a minimum-duration job, then advance time so almost no runway is
-     left: accepting must be rejected.  */
+  /* Accepting rewrites the deadline to accept time + the work window: even
+     one second before the listing expires, the worker still gets the full
+     window (which is also why the old runway guard and its
+     accept-at-the-minimum dead end are gone).  */
   ASSERT_TRUE (Process ("poster",
-      R"({"t":"transport","d":3600,"r":10,"co":0,"to":1,"items":{"foo":5}})"));
+      R"({"t":"transport","d":86400,"wd":7200,"r":10,"co":0,"to":1,"items":{"foo":5}})"));
   const auto id = OnlyJobId ();
-  ctx.SetTimestamp (BASE_TS + 3600 - 100);
-  EXPECT_FALSE (Process ("courier", R"({"a":)" + std::to_string (id) + "}"));
+  EXPECT_EQ (jobs.GetById (id)->GetDeadline (), BASE_TS + DAY);
+  ctx.SetTimestamp (BASE_TS + DAY - 1);
+  ASSERT_TRUE (Process ("courier", R"({"a":)" + std::to_string (id) + "}"));
+  EXPECT_EQ (jobs.GetById (id)->GetDeadline (), BASE_TS + DAY - 1 + 7200);
 }
 
 /* ************************************************************************** */
@@ -617,7 +634,7 @@ TEST_F (JobsTests, FoundationSupplyBitByBit)
      in its construction inventory, delivered over multiple trips.  */
   const auto fnd = MakeFoundation ("poster", Faction::RED);
   ASSERT_TRUE (Process ("poster",
-      R"({"t":"transport","d":86400,"r":2000,"co":0,"to":)"
+      R"({"t":"transport","d":86400,"wd":86400,"r":2000,"co":0,"to":)"
       + std::to_string (fnd) + R"(,"items":{"foo":6}})"));
   const auto id = OnlyJobId ();
   ASSERT_TRUE (Process ("courier", R"({"a":)" + std::to_string (id) + "}"));
@@ -871,7 +888,7 @@ protected:
                   ->GetId (), 4);
     StageGoods (1, "poster", {{"foo", 5}});
     CHECK (Process ("poster",
-        R"({"t":"haul","d":86400,"r":2000,"co":8000,"from":1,"to":4,)"
+        R"({"t":"haul","d":86400,"wd":86400,"r":2000,"co":8000,"from":1,"to":4,)"
         R"("items":{"foo":5}})"));
     return OnlyJobId ();
   }
@@ -897,16 +914,16 @@ TEST_F (HaulTests, PostRejects)
                 ->GetId (), 4);
   /* Goods not present at the source.  */
   EXPECT_FALSE (Process ("poster",
-      R"({"t":"haul","d":86400,"r":10,"co":0,"from":1,"to":4,"items":{"foo":5}})"));
+      R"({"t":"haul","d":86400,"wd":86400,"r":10,"co":0,"from":1,"to":4,"items":{"foo":5}})"));
   StageGoods (1, "poster", {{"foo", 5}});
   /* Source == destination; enemy destination; source that is a foundation.  */
   EXPECT_FALSE (Process ("poster",
-      R"({"t":"haul","d":86400,"r":10,"co":0,"from":1,"to":1,"items":{"foo":5}})"));
+      R"({"t":"haul","d":86400,"wd":86400,"r":10,"co":0,"from":1,"to":1,"items":{"foo":5}})"));
   EXPECT_FALSE (Process ("poster",
-      R"({"t":"haul","d":86400,"r":10,"co":0,"from":1,"to":3,"items":{"foo":5}})"));
+      R"({"t":"haul","d":86400,"wd":86400,"r":10,"co":0,"from":1,"to":3,"items":{"foo":5}})"));
   const auto fnd = MakeFoundation ("poster", Faction::RED);
   EXPECT_FALSE (Process ("poster",
-      R"({"t":"haul","d":86400,"r":10,"co":0,"from":)" + std::to_string (fnd)
+      R"({"t":"haul","d":86400,"wd":86400,"r":10,"co":0,"from":)" + std::to_string (fnd)
       + R"(,"to":4,"items":{"foo":5}})"));
 }
 
@@ -1253,11 +1270,11 @@ protected:
 
   /** Post terms for a protect job on building 1 (r=1000, co=500).  */
   const std::string protectPost =
-      R"({"t":"protect","d":86400,"r":1000,"co":500,"b":1})";
+      R"({"t":"protect","d":86400,"wd":86400,"r":1000,"co":500,"b":1})";
 
   /** Post terms for a destroy job on building 3 (r=1000, co=500).  */
   const std::string destroyPost =
-      R"({"t":"destroy","d":86400,"r":1000,"co":500,"b":3})";
+      R"({"t":"destroy","d":86400,"wd":86400,"r":1000,"co":500,"b":3})";
 
 };
 
@@ -1277,9 +1294,9 @@ TEST_F (EntityFateTests, ApprovalRequiredForAccept)
 TEST_F (EntityFateTests, AncientTargetsRejected)
 {
   EXPECT_FALSE (Process ("poster",
-      R"({"t":"protect","d":86400,"r":1000,"co":500,"b":2})"));
+      R"({"t":"protect","d":86400,"wd":86400,"r":1000,"co":500,"b":2})"));
   EXPECT_FALSE (Process ("poster",
-      R"({"t":"destroy","d":86400,"r":1000,"co":500,"b":2})"));
+      R"({"t":"destroy","d":86400,"wd":86400,"r":1000,"co":500,"b":2})"));
 }
 
 TEST_F (EntityFateTests, ProtectSuccessOnExpiry)
@@ -1350,7 +1367,7 @@ TEST_F (EntityFateTests, ProtectAndDestroySameBuildingSiege)
      independently -- a siege market, not an interaction bug.  */
   const auto protectId = PostAssignAccept (protectPost, "courier");
   ASSERT_TRUE (Process ("green",
-      R"({"t":"destroy","d":86400,"r":1000,"co":500,"b":1})"));
+      R"({"t":"destroy","d":86400,"wd":86400,"r":1000,"co":500,"b":1})"));
   {
     /* The destroy row is the newest one in the table.  */
     auto res = jobs.QueryAll ();
@@ -1380,11 +1397,11 @@ TEST_F (EntityFateTests, BodyguardLifecycle)
   /* Cannot bodyguard someone else's character.  */
   const auto other = MakeCharacterAt ("green", HexCoord (9, 9));
   EXPECT_FALSE (Process ("poster",
-      R"({"t":"bodyguard","d":86400,"r":1000,"co":500,"ch":)"
+      R"({"t":"bodyguard","d":86400,"wd":86400,"r":1000,"co":500,"ch":)"
       + std::to_string (other) + "}"));
 
   const auto id = PostAssignAccept (
-      R"({"t":"bodyguard","d":86400,"r":1000,"co":500,"ch":)"
+      R"({"t":"bodyguard","d":86400,"wd":86400,"r":1000,"co":500,"ch":)"
       + std::to_string (protectee) + "}", "courier");
   EXPECT_EQ (jobs.GetById (id)->GetLinkedId (), protectee);
 
@@ -1399,7 +1416,7 @@ TEST_F (EntityFateTests, BodyguardSuccessOnExpiry)
 {
   const auto protectee = MakeCharacterAt ("poster", HexCoord (5, 5));
   PostAssignAccept (
-      R"({"t":"bodyguard","d":86400,"r":1000,"co":500,"ch":)"
+      R"({"t":"bodyguard","d":86400,"wd":86400,"r":1000,"co":500,"ch":)"
       + std::to_string (protectee) + "}", "courier");
   ctx.SetTimestamp (BASE_TS + DAY + 1);
   ExpireJobs (db, ctx);
@@ -1415,7 +1432,7 @@ TEST_F (EntityFateTests, BodyguardProtecteeDockedInDestroyedBuildingFails)
      protectee had survived to the deadline.  */
   const auto protectee = MakeCharacter ("poster", 1, {});
   const auto id = PostAssignAccept (
-      R"({"t":"bodyguard","d":86400,"r":1000,"co":500,"ch":)"
+      R"({"t":"bodyguard","d":86400,"wd":86400,"r":1000,"co":500,"ch":)"
       + std::to_string (protectee) + "}", "courier");
 
   DestroyBuildingViaCombat (1);
@@ -1435,10 +1452,10 @@ TEST_F (EntityFateTests, MultipleDockedProtecteesAllSettleOnDestruction)
   const auto p1 = MakeCharacter ("poster", 1, {});
   const auto p2 = MakeCharacter ("poster", 1, {});
   const auto id1 = PostAssignAccept (
-      R"({"t":"bodyguard","d":86400,"r":1000,"co":500,"ch":)"
+      R"({"t":"bodyguard","d":86400,"wd":86400,"r":1000,"co":500,"ch":)"
       + std::to_string (p1) + "}", "courier");
   const auto id2 = PostAssignAccept (
-      R"({"t":"bodyguard","d":86400,"r":1000,"co":500,"ch":)"
+      R"({"t":"bodyguard","d":86400,"wd":86400,"r":1000,"co":500,"ch":)"
       + std::to_string (p2) + "}", "courier2");
 
   DestroyBuildingViaCombat (1);
@@ -1470,7 +1487,7 @@ protected:
   std::string
   EscortPost () const
   {
-    return R"({"t":"escort","d":86400,"r":1000,"co":500,"ch":)"
+    return R"({"t":"escort","d":86400,"wd":86400,"r":1000,"co":500,"ch":)"
         + std::to_string (protectee) + R"(,"to":1})";
   }
 
@@ -1481,10 +1498,10 @@ TEST_F (EscortTests, PostRejects)
   /* Someone else's character; a bad destination.  */
   const auto other = MakeCharacterAt ("green", HexCoord (9, 9));
   EXPECT_FALSE (Process ("poster",
-      R"({"t":"escort","d":86400,"r":1000,"co":500,"ch":)"
+      R"({"t":"escort","d":86400,"wd":86400,"r":1000,"co":500,"ch":)"
       + std::to_string (other) + R"(,"to":1})"));
   EXPECT_FALSE (Process ("poster",
-      R"({"t":"escort","d":86400,"r":1000,"co":500,"ch":)"
+      R"({"t":"escort","d":86400,"wd":86400,"r":1000,"co":500,"ch":)"
       + std::to_string (protectee) + R"(,"to":3})"));
 }
 
@@ -1544,7 +1561,7 @@ protected:
 
   /** Patrol around (0,0) radius 10, 3 check-ins, 600s spacing.  */
   const std::string patrolPost =
-      R"({"t":"patrol","d":86400,"r":1000,"co":500,)"
+      R"({"t":"patrol","d":86400,"wd":86400,"r":1000,"co":500,)"
       R"("x":0,"y":0,"rad":10,"k":3,"sp":600})";
 
 };
@@ -1553,15 +1570,20 @@ TEST_F (PatrolTests, PostRejects)
 {
   /* Zero radius / zero check-ins / an unschedulable plan ((k-1)*sp >= d).  */
   EXPECT_FALSE (Process ("poster",
-      R"({"t":"patrol","d":86400,"r":10,"co":0,"x":0,"y":0,"rad":0,"k":3,"sp":600})"));
+      R"({"t":"patrol","d":86400,"wd":86400,"r":10,"co":0,"x":0,"y":0,"rad":0,"k":3,"sp":600})"));
   EXPECT_FALSE (Process ("poster",
-      R"({"t":"patrol","d":86400,"r":10,"co":0,"x":0,"y":0,"rad":10,"k":0,"sp":600})"));
+      R"({"t":"patrol","d":86400,"wd":86400,"r":10,"co":0,"x":0,"y":0,"rad":10,"k":0,"sp":600})"));
   EXPECT_FALSE (Process ("poster",
-      R"({"t":"patrol","d":3600,"r":10,"co":0,"x":0,"y":0,"rad":10,"k":10,"sp":600})"));
+      R"({"t":"patrol","d":86400,"wd":3600,"r":10,"co":0,"x":0,"y":0,"rad":10,"k":10,"sp":600})"));
+  /* ...and it is the WORK window the schedule must fit (it runs from
+     accept), not the listing window: the same schedule passes with a
+     larger wd.  */
+  EXPECT_TRUE (Process ("poster",
+      R"({"t":"patrol","d":86400,"wd":7200,"r":10,"co":0,"x":0,"y":0,"rad":10,"k":10,"sp":600})"));
   /* A centre outside HexCoord's int16 range would be silently narrowed at
      check-in time -- it must be rejected at post.  */
   EXPECT_FALSE (Process ("poster",
-      R"({"t":"patrol","d":86400,"r":10,"co":0,"x":100000,"y":0,"rad":10,"k":3,"sp":600})"));
+      R"({"t":"patrol","d":86400,"wd":86400,"r":10,"co":0,"x":100000,"y":0,"rad":10,"k":3,"sp":600})"));
 }
 
 TEST_F (PatrolTests, CheckInsProgressAndComplete)
@@ -1647,7 +1669,7 @@ protected:
   PostRental ()
   {
     CHECK (Process ("poster",
-        R"({"t":"rental","d":86400,"r":1000,"co":0,"rent":300,)"
+        R"({"t":"rental","d":86400,"wd":86400,"r":1000,"co":0,"rent":300,)"
         R"("i":"foo","n":5,"b":1,"w":"courier"})"));
     return OnlyJobId ();
   }
@@ -1686,18 +1708,18 @@ TEST_F (RentalTests, PostRejects)
   /* rent > escrow; nonzero collateral; self-lessor; wrong-faction lessor;
      unknown item; foundation building.  */
   EXPECT_FALSE (Process ("poster",
-      R"({"t":"rental","d":86400,"r":1000,"co":0,"rent":2000,"i":"foo","n":5,"b":1,"w":"courier"})"));
+      R"({"t":"rental","d":86400,"wd":86400,"r":1000,"co":0,"rent":2000,"i":"foo","n":5,"b":1,"w":"courier"})"));
   EXPECT_FALSE (Process ("poster",
-      R"({"t":"rental","d":86400,"r":1000,"co":5,"rent":300,"i":"foo","n":5,"b":1,"w":"courier"})"));
+      R"({"t":"rental","d":86400,"wd":86400,"r":1000,"co":5,"rent":300,"i":"foo","n":5,"b":1,"w":"courier"})"));
   EXPECT_FALSE (Process ("poster",
-      R"({"t":"rental","d":86400,"r":1000,"co":0,"rent":300,"i":"foo","n":5,"b":1,"w":"poster"})"));
+      R"({"t":"rental","d":86400,"wd":86400,"r":1000,"co":0,"rent":300,"i":"foo","n":5,"b":1,"w":"poster"})"));
   EXPECT_FALSE (Process ("poster",
-      R"({"t":"rental","d":86400,"r":1000,"co":0,"rent":300,"i":"foo","n":5,"b":1,"w":"green"})"));
+      R"({"t":"rental","d":86400,"wd":86400,"r":1000,"co":0,"rent":300,"i":"foo","n":5,"b":1,"w":"green"})"));
   EXPECT_FALSE (Process ("poster",
-      R"({"t":"rental","d":86400,"r":1000,"co":0,"rent":300,"i":"nope","n":5,"b":1,"w":"courier"})"));
+      R"({"t":"rental","d":86400,"wd":86400,"r":1000,"co":0,"rent":300,"i":"nope","n":5,"b":1,"w":"courier"})"));
   const auto fnd = MakeFoundation ("poster", Faction::RED);
   EXPECT_FALSE (Process ("poster",
-      R"({"t":"rental","d":86400,"r":1000,"co":0,"rent":300,"i":"foo","n":5,"b":)"
+      R"({"t":"rental","d":86400,"wd":86400,"r":1000,"co":0,"rent":300,"i":"foo","n":5,"b":)"
       + std::to_string (fnd) + R"(,"w":"courier"})"));
 }
 
@@ -1784,7 +1806,7 @@ TEST_F (RentalTests, ZeroDepositNonReturnPaysLessorEverything)
   StageGoods (1, "courier", {{"foo", 5}});
   /* rent == escrow is valid: the deposit is simply zero.  */
   CHECK (Process ("poster",
-      R"({"t":"rental","d":86400,"r":1000,"co":0,"rent":1000,)"
+      R"({"t":"rental","d":86400,"wd":86400,"r":1000,"co":0,"rent":1000,)"
       R"("i":"foo","n":5,"b":1,"w":"courier"})"));
   const auto id = OnlyJobId ();
   ASSERT_TRUE (Process ("courier", R"({"a":)" + std::to_string (id) + "}"));
@@ -1860,6 +1882,9 @@ TEST_F (AdTests, LifecycleSuccess)
 
 TEST_F (AdTests, PostRejects)
 {
+  /* An ad rents a calendar window and takes no work window.  */
+  EXPECT_FALSE (Process ("courier",
+      R"({"t":"ad","d":86400,"wd":86400,"r":500,"co":0,"b":1,"slot":2,"hash":"abc"})"));
   /* Own building; ancient building; empty hash; nonzero collateral.  */
   EXPECT_FALSE (Process ("poster",
       R"({"t":"ad","d":86400,"r":500,"co":0,"b":1,"slot":2,"hash":"abc"})"));
@@ -1967,6 +1992,16 @@ TEST_F (AdTests, BackToBackWindowsShareTheSlot)
       R"({"a":)" + std::to_string (LatestJobId ()) + "}"));
 }
 
+TEST_F (AdTests, AcceptKeepsCalendarDeadline)
+{
+  /* An ad rents a calendar window: a late accept (approval) must NOT move
+     the deadline, unlike the work-window types.  */
+  const auto id = PostAd ();
+  ctx.SetTimestamp (BASE_TS + 3600);
+  ASSERT_TRUE (Process ("poster", R"({"a":)" + std::to_string (id) + "}"));
+  EXPECT_EQ (jobs.GetById (id)->GetDeadline (), BASE_TS + DAY);
+}
+
 TEST_F (AdTests, DueCompetitorDoesNotBlockAccept)
 {
   /* The first ad's window has fully elapsed but this block's expiry sweep
@@ -1997,7 +2032,7 @@ TEST_F (AdTests, BuildingSoldVoidsAdsOnly)
       R"("hash":"def","start":86400})"));
   const auto open = LatestJobId ();
   CHECK (Process ("courier2",
-      R"({"t":"transport","d":86400,"r":2000,"co":8000,"to":1,)"
+      R"({"t":"transport","d":86400,"wd":86400,"r":2000,"co":8000,"to":1,)"
       R"("items":{"foo":5}})"));
   const auto transport = LatestJobId ();
 
@@ -2034,7 +2069,7 @@ protected:
   PostToll ()
   {
     CHECK (Process ("poster",
-        R"({"t":"toll","d":86400,"r":500,"co":0,"ch":)"
+        R"({"t":"toll","d":86400,"wd":86400,"r":500,"co":0,"ch":)"
         + std::to_string (traveller) + R"(,"w":"green"})"));
     return OnlyJobId ();
   }
@@ -2074,7 +2109,7 @@ TEST_F (TollTests, TravellerDockedInDestroyedBuildingRefunds)
      window and pay the gatekeeper.  */
   const auto docked = MakeCharacter ("poster", 1, {});
   CHECK (Process ("poster",
-      R"({"t":"toll","d":86400,"r":500,"co":0,"ch":)"
+      R"({"t":"toll","d":86400,"wd":86400,"r":500,"co":0,"ch":)"
       + std::to_string (docked) + R"(,"w":"green"})"));
   const auto id = OnlyJobId ();
   ASSERT_TRUE (Process ("green", R"({"a":)" + std::to_string (id) + "}"));
@@ -2091,13 +2126,13 @@ TEST_F (TollTests, PostRejects)
   /* Someone else's character; self-gatekeeper; nonzero collateral.  */
   const auto other = MakeCharacterAt ("green", HexCoord (9, 9));
   EXPECT_FALSE (Process ("poster",
-      R"({"t":"toll","d":86400,"r":500,"co":0,"ch":)"
+      R"({"t":"toll","d":86400,"wd":86400,"r":500,"co":0,"ch":)"
       + std::to_string (other) + R"(,"w":"green"})"));
   EXPECT_FALSE (Process ("poster",
-      R"({"t":"toll","d":86400,"r":500,"co":0,"ch":)"
+      R"({"t":"toll","d":86400,"wd":86400,"r":500,"co":0,"ch":)"
       + std::to_string (traveller) + R"(,"w":"poster"})"));
   EXPECT_FALSE (Process ("poster",
-      R"({"t":"toll","d":86400,"r":500,"co":5,"ch":)"
+      R"({"t":"toll","d":86400,"wd":86400,"r":500,"co":5,"ch":)"
       + std::to_string (traveller) + R"(,"w":"green"})"));
 }
 

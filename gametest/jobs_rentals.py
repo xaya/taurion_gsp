@@ -67,7 +67,7 @@ class JobsRentalsTest (PXTest):
     self.dropIntoBuilding (self.buildingId, "owner", {"foo": 5})
 
     self.sendMove ("renter", {"j": [{
-      "t": "rental", "d": 86400, "r": 1000, "co": 0, "rent": 300,
+      "t": "rental", "d": 86400, "wd": 86400, "r": 1000, "co": 0, "rent": 300,
       "i": "foo", "n": 5, "b": self.buildingId, "w": "owner",
     }]})
     self.generate (1)
@@ -160,7 +160,7 @@ class JobsRentalsTest (PXTest):
     traveller = self.getCharacters ()["renter"].getId ()
 
     self.sendMove ("renter", {"j": [{
-      "t": "toll", "d": 86400, "r": 400, "co": 0,
+      "t": "toll", "d": 86400, "wd": 86400, "r": 400, "co": 0,
       "ch": traveller, "w": "gatekeeper",
     }]})
     self.generate (1)

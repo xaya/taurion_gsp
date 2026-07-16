@@ -658,6 +658,11 @@ template <typename J>
   res["collateral"] = IntToJson (j.GetCollateral ());
   if (j.HasDeadline ())
     res["deadline"] = IntToJson (j.GetDeadline ());
+  /* The work window is a visible term of the deal: on an OPEN job the board
+     shows "wd to complete once accepted" (the deadline is only the listing
+     expiry until then).  */
+  if (j.GetProto ().has_work_window ())
+    res["wd"] = IntToJson (j.GetProto ().work_window ());
 
   if (j.GetLinkedId () != Database::EMPTY_ID)
     {

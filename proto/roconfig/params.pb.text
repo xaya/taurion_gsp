@@ -24,9 +24,10 @@ params:
     # so they do not depend on the block cadence.
     job_post_fee_min: 1        # 1 vCHI minimum, burned
     job_post_fee_bps: 100      # 1% of the reward
-    min_job_duration: 3600     # 1 hour
-    max_job_duration: 2592000  # 30 days
-    min_accept_runway: 3600    # must have >= 1 hour left to accept
+    min_listing_window: 86400   # a listing sits on the board for >= 1 day
+    max_listing_window: 2592000 # 30 days
+    min_work_window: 3600       # >= 1 hour of work time once accepted
+    max_work_window: 2592000    # 30 days
     max_manifest_entries: 20
     bounty_cancel_notice: 604800  # 7 days' notice to close a wanted board
     max_bounty_quota: 25

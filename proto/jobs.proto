@@ -263,6 +263,15 @@ message JobData
   optional string designated_worker = 1;
 
   /**
+   * The work window ("wd") in seconds: at ACCEPT the job's deadline column
+   * is rewritten to the accept timestamp plus this, so the worker always
+   * gets the full window from the moment they commit (the deadline as
+   * posted only bounds the listing).  Set for every deadlined type except
+   * ad-slots, which rent a calendar window and keep their posted deadline.
+   */
+  optional int64 work_window = 2;
+
+  /**
    * The type-specific payload.  Exactly one is set, matching the `type`
    * column.  New job types add a new payload message here.
    */

@@ -186,6 +186,20 @@ public:
   }
 
   /**
+   * Whether jobs of this type carry a work window ("wd"): at ACCEPT the
+   * deadline is rewritten to the accept timestamp plus the window, so the
+   * worker always gets the full window from the moment they commit.  True
+   * for every deadlined type except ad-slots, which rent a calendar window
+   * (their posted deadline IS the window end) and override this to false;
+   * the standing class has no deadline to rewrite.
+   */
+  virtual bool
+  UsesWorkWindow () const
+  {
+    return !IsStanding ();
+  }
+
+  /**
    * Whether the FULFIL op is submitted by the poster rather than the worker.
    * True only for rentals, where the poster (renter) returns the goods and
    * the designated worker (lessor) is the payee.

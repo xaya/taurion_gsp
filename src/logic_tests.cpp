@@ -643,7 +643,7 @@ TEST_F (PXLogicTests, JobsExpireOnlyOnSuperblocks)
 
   UpdateStateBlock (R"([
     {"name": "poster", "move": {"j": [{
-      "t": "transport", "d": 3600, "r": 2000, "co": 0,
+      "t": "transport", "d": 86400, "wd": 86400, "r": 2000, "co": 0,
       "to": )" + std::to_string (bId) + R"(, "items": {"foo": 5}
     }]}}
   ])", true);
@@ -661,7 +661,7 @@ TEST_F (PXLogicTests, JobsExpireOnlyOnSuperblocks)
 
   /* The deadline passes, but the block is ordinary:  the overdue job must
      survive it untouched.  */
-  ctx.SetTimestamp (ctx.Timestamp () + 3601);
+  ctx.SetTimestamp (ctx.Timestamp () + 86401);
   UpdateStateBlock ("[]", false);
   ASSERT_NE (jobs.GetById (jobId), nullptr);
   EXPECT_EQ (accounts.GetByName ("poster")->GetBalance (),
@@ -710,7 +710,7 @@ TEST_F (PXLogicTests, JobsKillsSettleBeforeExpiry)
 
   UpdateStateBlock (R"([
     {"name": "poster", "move": {"j": [{
-      "t": "toll", "d": 3600, "r": 500, "co": 0,
+      "t": "toll", "d": 86400, "wd": 86400, "r": 500, "co": 0,
       "ch": )" + std::to_string (traveller) + R"(, "w": "gate"
     }]}}
   ])", true);
@@ -740,7 +740,7 @@ TEST_F (PXLogicTests, JobsKillsSettleBeforeExpiry)
      traveller.  Kills settle first:  the toll voids, the escrow refunds the
      poster and the gatekeeper earns nothing.  (With the phases swapped, the
      expiry sweep would see the traveller alive-at-deadline and pay out.)  */
-  ctx.SetTimestamp (ctx.Timestamp () + 3601);
+  ctx.SetTimestamp (ctx.Timestamp () + 86401);
   UpdateStateBlock ("[]", true);
 
   EXPECT_EQ (characters.GetById (traveller), nullptr);

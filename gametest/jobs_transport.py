@@ -75,7 +75,7 @@ class JobsTransportTest (PXTest):
   def testProgressDump (self):
     self.mainLogger.info ("Delivering bit-by-bit from character cargo...")
     self.sendMove ("poster", {"j": [{
-      "t": "transport", "d": 86400, "r": 2000, "co": 0,
+      "t": "transport", "d": 86400, "wd": 86400, "r": 2000, "co": 0,
       "to": self.buildingId, "items": {"foo": 5},
     }]})
     self.generate (1)
@@ -130,7 +130,7 @@ class JobsTransportTest (PXTest):
 
     self.dropIntoBuilding (srcId, "poster", {"bar": 7})
     self.sendMove ("poster", {"j": [{
-      "t": "haul", "d": 86400, "r": 1500, "co": 4000,
+      "t": "haul", "d": 86400, "wd": 86400, "r": 1500, "co": 4000,
       "from": srcId, "to": destId, "items": {"bar": 7},
     }]})
     self.generate (1)
@@ -170,19 +170,18 @@ class JobsTransportTest (PXTest):
     # superblocks.  Thread the deadline into the middle of a superblock
     # window: the ordinary block past it must leave the overdue job on the
     # board (and reject a fulfil), and only the next superblock settles it.
-    # (d is 2h, not the 1h minimum: with min_accept_runway == min_job_duration
-    # a minimum-duration job is only acceptable in its very posting block.)
     self.sendMove ("poster", {"j": [{
-      "t": "transport", "d": 7200, "r": 1000, "co": 500,
+      "t": "transport", "d": 86400, "wd": 7200, "r": 1000, "co": 500,
       "to": self.buildingId, "items": {"foo": 1},
     }]})
     self.generate (1)
-    job = self.newestJob ()
-    jobId = job["id"]
-    deadline = job["deadline"]
+    jobId = self.newestJob ()["id"]
 
     self.sendMove ("courier", {"j": [{"a": jobId}]})
     self.generate (1)
+    # Accepting starts the work clock: read the (rewritten, accept-relative)
+    # deadline only now.
+    deadline = self.newestJob ()["deadline"]
     # Stage the goods so the late fulfil would succeed but for the deadline.
     self.dropIntoBuilding (self.buildingId, "courier", {"foo": 1})
 
@@ -261,7 +260,7 @@ class JobsTransportTest (PXTest):
   def testDeliver (self):
     self.mainLogger.info ("Posting a transport job...")
     self.sendMove ("poster", {"j": [{
-      "t": "transport", "d": 86400, "r": 2000, "co": 8000,
+      "t": "transport", "d": 86400, "wd": 43200, "r": 2000, "co": 8000,
       "to": self.buildingId, "items": {"foo": 5},
     }]})
     self.generate (1)
@@ -271,6 +270,8 @@ class JobsTransportTest (PXTest):
     self.assertEqual (job["state"], "open")
     self.assertEqual (job["poster"], "poster")
     self.assertEqual (job["reward"], 2000)
+    # The work window is a visible term on the board.
+    self.assertEqual (job["wd"], 43200)
     self.assertEqual (job["building"], self.buildingId)
     self.assertEqual (dict (job["items"]), {"foo": 5})
     # Reward 2000 escrowed + fee max(1, 2000*100/10000 = 20) = 20 burned.
@@ -278,11 +279,15 @@ class JobsTransportTest (PXTest):
     self.assertEqual (self.reserved ("poster"), 2000)
 
     self.mainLogger.info ("Accepting the job...")
+    openDeadline = job["deadline"]
     self.sendMove ("courier", {"j": [{"a": jobId}]})
     self.generate (1)
     job = self.onlyJob ()
     self.assertEqual (job["state"], "accepted")
     self.assertEqual (job["worker"], "courier")
+    # The accept rewrote the deadline to accept time + the work window
+    # (43200 < the 86400 listing window, so it moved strictly closer).
+    assert job["deadline"] < openDeadline
     self.assertEqual (self.available ("courier"), 1000000 - 8000)
     self.assertEqual (self.reserved ("courier"), 8000)
 
@@ -306,7 +311,7 @@ class JobsTransportTest (PXTest):
   def testCancel (self):
     self.mainLogger.info ("Testing cancel and accept-then-cancel-rejected...")
     post = {"j": [{
-      "t": "transport", "d": 86400, "r": 1000, "co": 500,
+      "t": "transport", "d": 86400, "wd": 86400, "r": 1000, "co": 500,
       "to": self.buildingId, "items": {"foo": 1},
     }]}
 

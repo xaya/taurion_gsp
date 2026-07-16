@@ -1411,13 +1411,15 @@ public:
     if (k < 1 || k > MAX_PATROL_CHECKINS || spacing < 1)
       return false;
 
-    /* The required check-ins must be schedulable within the deadline, so an
-       impossible-by-construction patrol cannot be posted.  */
+    /* The required check-ins must be schedulable within the work window
+       (the schedule runs from accept, when the deadline is rewritten), so
+       an impossible-by-construction patrol cannot be posted.  The generic
+       post validation has already bounds-checked "wd".  */
     const int64_t needed = static_cast<int64_t> (k - 1) * spacing;
-    if (!terms["d"].isInt64 () || needed >= terms["d"].asInt64 ())
+    if (!terms["wd"].isInt64 () || needed >= terms["wd"].asInt64 ())
       {
         LOG (WARNING)
-            << "Patrol schedule does not fit its deadline: " << needed;
+            << "Patrol schedule does not fit its work window: " << needed;
         return false;
       }
 
@@ -1793,6 +1795,15 @@ public:
     return true;
   }
 
+  /* An ad rents a CALENDAR window ([post+start, post+d]), not an amount of
+     work: accepting must not move the window, so ads take no "wd" and keep
+     their posted deadline.  */
+  bool
+  UsesWorkWindow () const override
+  {
+    return false;
+  }
+
   JobLinkedKind
   LinkedEntityKind () const override
   {
@@ -1822,9 +1833,10 @@ public:
 
     /* Optional scheduling: the window opens `start` seconds after post
        (0 / absent = immediately) and closes at the deadline.  The rented
-       window itself must satisfy the duration floor, which also forces it
-       to be non-empty; the deadline cap already bounds how far ahead a slot
-       can be booked.  */
+       window itself must satisfy the work-window floor, which also forces
+       it to be non-empty and subsumes the listing floor ads are exempt
+       from; the deadline cap already bounds how far ahead a slot can be
+       booked.  */
     int64_t startSecs = 0;
     if (!terms["start"].isNull ())
       {
@@ -1836,7 +1848,7 @@ public:
       }
     if (!terms["d"].isInt64 ()
           || terms["d"].asInt64 () - startSecs
-              < jc.ctx.RoConfig ()->params ().min_job_duration ())
+              < jc.ctx.RoConfig ()->params ().min_work_window ())
       {
         LOG (WARNING) << "Ad window is too short for start " << startSecs;
         return false;
@@ -2199,6 +2211,9 @@ private:
   /** The relative deadline in seconds; -1 = standing (no deadline).  */
   const int64_t deadlineSecs;
 
+  /** The work window in seconds; -1 = not given.  */
+  const int64_t workWindowSecs;
+
   const Amount reward;
   const Amount collateral;
 
@@ -2217,10 +2232,10 @@ private:
 public:
 
   PostOperation (Account& a, const JobContext& c, const Job::Type t,
-                 const int64_t d, const Amount rew, const Amount col,
-                 const Json::Value& tm)
-    : JobOperation(a, c), type(t), deadlineSecs(d), reward(rew),
-      collateral(col), terms(tm)
+                 const int64_t d, const int64_t wd, const Amount rew,
+                 const Amount col, const Json::Value& tm)
+    : JobOperation(a, c), type(t), deadlineSecs(d), workWindowSecs(wd),
+      reward(rew), collateral(col), terms(tm)
   {}
 
   bool IsValid () const override;
@@ -2259,15 +2274,42 @@ PostOperation::IsValid () const
           << (standing ? "missing" : "given") << " deadline";
       return false;
     }
+  const auto& p = jc.ctx.RoConfig ()->params ();
   if (!standing)
     {
-      const auto& p = jc.ctx.RoConfig ()->params ();
-      if (deadlineSecs < p.min_job_duration ()
-            || deadlineSecs > p.max_job_duration ())
+      /* Ads are exempt from the listing floor: their deadline is the end of
+         the rented calendar window, bounded below by the predicate's
+         window-length check instead.  The cap applies to everyone (for ads
+         it is the booking horizon).  */
+      if (pred->UsesWorkWindow () && deadlineSecs < p.min_listing_window ())
         {
-          LOG (WARNING) << "Job duration out of range: " << deadlineSecs;
+          LOG (WARNING) << "Job listing window too short: " << deadlineSecs;
           return false;
         }
+      if (deadlineSecs > p.max_listing_window ())
+        {
+          LOG (WARNING) << "Job listing window too long: " << deadlineSecs;
+          return false;
+        }
+    }
+
+  /* The work window is required exactly where it is used (every deadlined
+     type except ads); a missing one (-1) fails the floor.  Elsewhere it
+     would be dead data on the job, so it is rejected.  */
+  if (pred->UsesWorkWindow ())
+    {
+      if (workWindowSecs < p.min_work_window ()
+            || workWindowSecs > p.max_work_window ())
+        {
+          LOG (WARNING)
+              << "Job work window missing or out of range: " << workWindowSecs;
+          return false;
+        }
+    }
+  else if (workWindowSecs >= 0)
+    {
+      LOG (WARNING) << "Job type does not take a work window";
+      return false;
     }
 
   if (!pred->ValidatePost (jc, account, terms))
@@ -2304,6 +2346,8 @@ PostOperation::Execute ()
                                 account.GetName (), reward, collateral);
   if (deadlineSecs >= 0)
     job->SetDeadline (jc.ctx.Timestamp () + deadlineSecs);
+  if (workWindowSecs >= 0)
+    job->MutableProto ().set_work_window (workWindowSecs);
   pred->ApplyPost (jc, account, terms, *job);
 }
 
@@ -2445,20 +2489,6 @@ AcceptOperation::IsValid () const
       return false;
     }
 
-  /* Accept-runway guard: reject accepting a deadlined job with too little
-     time left to plausibly deliver (kills the accept-at-the-deadline trap).  */
-  if (job->HasDeadline ())
-    {
-      const int64_t runway = job->GetDeadline () - jc.ctx.Timestamp ();
-      if (runway < jc.ctx.RoConfig ()->params ().min_accept_runway ())
-        {
-          LOG (WARNING)
-              << "Job " << jobId << " has only " << runway
-              << "s of runway left; too little to accept";
-          return false;
-        }
-    }
-
   /* Designated-worker / approval gate.  */
   const auto* pred = PredicateForType (job->GetType ());
   CHECK (pred != nullptr);
@@ -2510,6 +2540,14 @@ AcceptOperation::Execute ()
   LockJobCoins (account, job->GetCollateral ());
   job->SetWorker (account.GetName ());
   job->SetStatus (Job::Status::ACCEPTED);
+
+  /* The work clock starts now: the deadline (so far the listing expiry) is
+     rewritten so the worker gets the full work window from the moment they
+     commit, no matter how late in the listing they accept.  Ads have no
+     work window and keep their posted calendar deadline.  */
+  const auto& pb = job->GetProto ();
+  if (pb.has_work_window ())
+    job->SetDeadline (jc.ctx.Timestamp () + pb.work_window ());
 
   const auto* pred = PredicateForType (job->GetType ());
   CHECK (pred != nullptr);
@@ -2716,29 +2754,38 @@ JobOperation::Parse (Account& acc, const Json::Value& data,
 
   if (hasT)
     {
-      /* POST: {"t":<type>,"d":<secs>,"r":<reward>,"co":<collateral>,...}.
-         The deadline is required except for the standing types (wanted),
-         which must omit it -- checked against the type in IsValid.  */
+      /* POST: {"t":<type>,"d":<secs>,"wd":<secs>,"r":<reward>,
+         "co":<collateral>,...}.  The listing deadline "d" is required
+         except for the standing types (wanted), which must omit it; the
+         work window "wd" is required exactly for the types that use it
+         (every deadlined one except ads) -- both checked against the type
+         in IsValid.  */
       if (!data["t"].isString ())
         return nullptr;
       const Job::Type type = JobTypeFromString (data["t"].asString ());
       if (type == Job::Type::INVALID || PredicateForType (type) == nullptr)
         return nullptr;
-      int64_t deadlineSecs = -1;
-      if (data.isMember ("d"))
+      const auto relativeSecs = [&data] (const char* key, int64_t& out)
         {
-          if (!data["d"].isInt64 ())
-            return nullptr;
-          deadlineSecs = data["d"].asInt64 ();
-          if (deadlineSecs < 0)
-            return nullptr;
-        }
+          out = -1;
+          if (!data.isMember (key))
+            return true;
+          if (!data[key].isInt64 ())
+            return false;
+          out = data[key].asInt64 ();
+          return out >= 0;
+        };
+      int64_t deadlineSecs, workWindowSecs;
+      if (!relativeSecs ("d", deadlineSecs)
+            || !relativeSecs ("wd", workWindowSecs))
+        return nullptr;
       Amount reward, collateral;
       if (!CoinAmountFromJson (data["r"], reward)
             || !CoinAmountFromJson (data["co"], collateral))
         return nullptr;
       op = std::make_unique<PostOperation> (acc, jc, type, deadlineSecs,
-                                            reward, collateral, data);
+                                            workWindowSecs, reward,
+                                            collateral, data);
     }
   else if (hasS)
     {
