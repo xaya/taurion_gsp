@@ -445,6 +445,17 @@ public:
  * phase order: an entity dying in the boundary superblock is a death, not a
  * survival); on the (vast majority of) sweeps where nothing is due it is an
  * indexed no-op that touches no rows.
+ *
+ * The sweep is deliberately uncapped (no continuation across blocks):  every
+ * due row was paid for (posting fee burned, escrow locked), settlement is a
+ * constant amount of work per job walked straight off the (deadline, id)
+ * index with no sort, and forked-chain stress runs settle 100
+ * deadline-aligned jobs inside one ordinary sweep block with negligible cost
+ * -- orders of magnitude below the dense-combat processing ceiling measured
+ * for the same block budget.  A deterministic cap would defer settlement of
+ * already-due jobs to later blocks, re-opening the very window (mutable
+ * inputs after the deadline) that JobIsDue exists to close; it stays absent
+ * unless a measured bound some day demands it.
  */
 void ExpireJobs (Database& db, const Context& ctx);
 
