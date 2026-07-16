@@ -202,6 +202,7 @@ public:
   Json::Value getaccounts () override;
   Json::Value getbuildings () override;
   Json::Value getjobs () override;
+  Json::Value getjobspage (const std::string& afterId, int limit) override;
   /* Params are declared in the order jsonrpcstub binds them (alphabetical by
      name: afterid, aftertime, fromtime), NOT the semantic order -- the cursor
      values are int64 (settled_time and the global-sequence job id), passed as

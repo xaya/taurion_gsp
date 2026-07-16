@@ -459,9 +459,20 @@ public:
   Handle GetById (Database::IdT id);
 
   /**
-   * Queries the database for all jobs in the entire game world, ordered by ID.
+   * Queries the database for all jobs in the entire game world, ordered by
+   * ID.  This is the trusted whole-board path (fanout mirror, debug, full
+   * game-state export); untrusted RPC callers get the capped QueryPage.
    */
   Database::Result<JobResult> QueryAll ();
+
+  /**
+   * Queries a hard-capped page of the live jobs board, ordered by ID.
+   * `afterId` is an exclusive continuation cursor (0 = from the start); at
+   * most `limit` rows are returned, itself clamped to MAX_PAGE (limit <= 0
+   * uses the cap).  Callers page by passing the last returned row's ID.
+   */
+  Database::Result<JobResult> QueryPage (Database::IdT afterId = 0,
+                                         int limit = 0);
 
   /**
    * Queries for all non-standing jobs whose deadline is at or before the given
@@ -514,18 +525,18 @@ public:
       GetFromResult (const Database::Result<JobHistoryResult>& res);
 
   /**
-   * Hard cap on rows returned by a single QueryHistory / getjobshistory call,
-   * so no single response is unbounded; callers page past it with the
-   * (settled_time, id) cursor.
+   * Hard cap on rows returned by a single paged query (QueryPage /
+   * QueryHistory and their RPCs), so no single response is unbounded;
+   * callers page past it with the respective cursor.
    */
-  static constexpr int MAX_HISTORY_PAGE = 2000;
+  static constexpr int MAX_PAGE = 2000;
 
   /**
    * Queries the settled-jobs history, ordered by settlement time then ID.
    * `fromTime` is an inclusive lower bound on settled_time (0 = everything
    * within retention).  `(afterTime, afterId)` is an exclusive continuation
    * cursor over the (settled_time, id) tuple (0,0 = from the start).  At most
-   * `limit` rows are returned, itself clamped to MAX_HISTORY_PAGE (limit <= 0
+   * `limit` rows are returned, itself clamped to MAX_PAGE (limit <= 0
    * uses the cap).  Callers page by passing the last returned row's
    * (settled_time, id) as the next cursor.
    */

@@ -362,6 +362,41 @@ TEST_F (JobHistoryTests, CursorPaginationCoversEveryRowOnce)
   EXPECT_THAT (paged, ElementsAre (1, 2, 3, 4, 5, 6));
 }
 
+TEST_F (JobsTableTests, QueryPagePagesById)
+{
+  db.SetNextId (101);
+  for (int i = 0; i < 5; ++i)
+    CreateTransport (Faction::RED, "poster", 1, 0, 50, 1).reset ();
+
+  /* First page of three, then the cursor continues from the last ID and
+     the final short page ends the walk.  */
+  std::vector<Database::IdT> got;
+  {
+    auto res = tbl.QueryPage (0, 3);
+    while (res.Step ())
+      got.push_back (tbl.GetFromResult (res)->GetId ());
+  }
+  EXPECT_THAT (got, ElementsAre (101, 102, 103));
+  got.clear ();
+  {
+    auto res = tbl.QueryPage (103, 3);
+    while (res.Step ())
+      got.push_back (tbl.GetFromResult (res)->GetId ());
+  }
+  EXPECT_THAT (got, ElementsAre (104, 105));
+
+  /* limit <= 0 and an over-cap limit both fall back to the cap (>= 5 here),
+     so every row comes back.  */
+  for (const int lim : {0, -1, JobsTable::MAX_PAGE + 1})
+    {
+      int n = 0;
+      auto res = tbl.QueryPage (0, lim);
+      while (res.Step ())
+        ++n;
+      EXPECT_EQ (n, 5);
+    }
+}
+
 TEST_F (JobHistoryTests, LimitClampsToTheHardCap)
 {
   for (int i = 0; i < 3; ++i)
@@ -371,7 +406,7 @@ TEST_F (JobHistoryTests, LimitClampsToTheHardCap)
     }
   /* limit <= 0 and an over-cap limit both fall back to the cap (>= 3 here),
      so every row comes back.  */
-  for (const int lim : {0, -1, JobsTable::MAX_HISTORY_PAGE + 1})
+  for (const int lim : {0, -1, JobsTable::MAX_PAGE + 1})
     {
       int n = 0;
       auto res = tbl.QueryHistory (0, 0, 0, lim);

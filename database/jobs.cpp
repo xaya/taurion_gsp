@@ -179,6 +179,23 @@ JobsTable::GetById (const Database::IdT id)
   return j;
 }
 
+namespace
+{
+
+/**
+ * Clamps a caller-supplied page limit to the shared hard cap (non-positive
+ * means "the cap").
+ */
+int
+ClampPage (const int limit)
+{
+  if (limit <= 0 || limit > JobsTable::MAX_PAGE)
+    return JobsTable::MAX_PAGE;
+  return limit;
+}
+
+} // anonymous namespace
+
 Database::Result<JobResult>
 JobsTable::QueryAll ()
 {
@@ -191,12 +208,29 @@ JobsTable::QueryAll ()
 }
 
 Database::Result<JobResult>
+JobsTable::QueryPage (const Database::IdT afterId, const int limit)
+{
+  auto stmt = db.Prepare (R"(
+    SELECT *
+      FROM `jobs`
+      WHERE `id` > ?1
+      ORDER BY `id`
+      LIMIT ?2
+  )");
+  stmt.Bind (1, afterId);
+  stmt.Bind (2, ClampPage (limit));
+  return stmt.Query<JobResult> ();
+}
+
+Database::Result<JobResult>
 JobsTable::QueryForDeadline (const int64_t now)
 {
-  /* Standing jobs (NULL deadline) are excluded outright.  We fetch
-     less-or-equal (rather than exact) so that any row with a deadline below
-     the current timestamp -- which should never happen -- is still picked up
-     and can be asserted on while processing.
+  /* Standing jobs (NULL deadline) are excluded outright.  Overdue rows
+     (deadline strictly below now) are routine, not an anomaly: deadlines
+     fall between superblocks and the sweep only runs on superblocks, so
+     less-or-equal picks up everything that became due since the previous
+     sweep (the processing loop still asserts nothing from the future got
+     in).
 
      Ordering by (deadline, id) is deterministic (id breaks ties, and it
      aliases the rowid the jobs_by_deadline index carries) and lets the
@@ -382,8 +416,6 @@ Database::Result<JobHistoryResult>
 JobsTable::QueryHistory (const int64_t fromTime, const int64_t afterTime,
                          const int64_t afterId, const int limit)
 {
-  const int page = (limit <= 0 || limit > MAX_HISTORY_PAGE)
-      ? MAX_HISTORY_PAGE : limit;
   auto stmt = db.Prepare (R"(
     SELECT *
       FROM `job_history`
@@ -395,7 +427,7 @@ JobsTable::QueryHistory (const int64_t fromTime, const int64_t afterTime,
   stmt.Bind (1, fromTime);
   stmt.Bind (2, afterTime);
   stmt.Bind (3, afterId);
-  stmt.Bind (4, page);
+  stmt.Bind (4, ClampPage (limit));
   return stmt.Query<JobHistoryResult> ();
 }
 

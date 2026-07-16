@@ -927,6 +927,13 @@ GameStateJson::Jobs ()
 }
 
 Json::Value
+GameStateJson::JobsPage (const Database::IdT afterId, const int limit)
+{
+  JobsTable tbl(db);
+  return ResultsAsArray (tbl, tbl.QueryPage (afterId, limit));
+}
+
+Json::Value
 GameStateJson::JobsHistory (const int64_t fromTime, const int64_t afterTime,
                             const int64_t afterId, const int limit)
 {

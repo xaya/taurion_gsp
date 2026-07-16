@@ -677,6 +677,25 @@ TEST_F (PXLogicTests, JobsExpireOnlyOnSuperblocks)
   EXPECT_EQ (accounts.GetByName ("poster")->GetBalance (),
              1'000'000 - 2'000 - 20);
 
+  /* Likewise the poster's own assign and cancel in the same gap:  a due
+     job is the sweep's alone -- a gap-assign would write dead designation
+     data, and a gap-cancel would record CANCELLED history for a job that
+     expired.  */
+  UpdateStateBlock (R"([
+    {"name": "poster", "move": {"j": [
+      {"s": )" + std::to_string (jobId) + R"(, "w": "courier"},
+      {"c": )" + std::to_string (jobId) + R"(}
+    ]}}
+  ])", false);
+  {
+    auto j = jobs.GetById (jobId);
+    ASSERT_NE (j, nullptr);
+    EXPECT_EQ (j->GetStatus (), Job::Status::OPEN);
+    EXPECT_EQ (j->GetProto ().designated_worker (), "");
+  }
+  EXPECT_EQ (accounts.GetByName ("poster")->GetBalance (),
+             1'000'000 - 2'000 - 20);
+
   /* The next superblock sweeps it:  the OPEN job voids and refunds.  */
   UpdateStateBlock ("[]", true);
   EXPECT_EQ (jobs.GetById (jobId), nullptr);

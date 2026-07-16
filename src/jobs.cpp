@@ -73,6 +73,15 @@ GetAccountChecked (const JobContext& jc, const std::string& name)
 /**
  * Bumps the per-account completion counters (the on-chain completion
  * artifact, read by the reputation layer and the approval flow).
+ *
+ * The increments are deliberately unchecked: every one requires a settled
+ * job that burned a posting fee, so reaching the int64 boundary
+ * (~9.2e18 settlements) is economically unreachable, and even a wrap would
+ * be deterministic across nodes (no split risk).  Raw counts are a
+ * display-only signal that colluding pairs can inflate for the fee price;
+ * the value-weighted counter is the honest one, and any future consumer of
+ * these stats must weigh by value (or add thresholds) rather than trust
+ * counts.
  */
 void
 BumpJobStats (Account& a, const bool completed, const Amount value)
@@ -1624,8 +1633,16 @@ public:
   /* Rentals are deliberately NOT linked to the handover building: the renter
      is expected to take the item away and use it (swap the hull, fit the
      weapon), so the building's destruction proves nothing about the item's
-     fate.  Any loss is simply a non-return at the deadline, covered by the
-     deposit -- war risk sits with the renter by design.  */
+     fate.  Any loss is a non-return covered by the deposit -- war risk sits
+     with the renter by design.
+
+     The deadline test for "returned" is the SWEEP'S view of the handover
+     inventory (explicit policy, pinned 2026-07-16): expiry runs on the next
+     superblock after the deadline, and a renter who lands the goods in that
+     gap still settles as a clean return.  The at-most-one-superblock grace
+     is intended forgiveness, not a defect -- an explicit fulfil in the same
+     gap is still rejected (JobIsDue); only the goods actually sitting at
+     the handover building when the sweep looks can cure a default.  */
 
   bool
   ValidatePost (const JobContext& jc, const Account& poster,
@@ -1649,8 +1666,11 @@ public:
     if (rent <= 0)
       {
         /* A free rental would let two colluding accounts farm the
-           jobs_completed counters on both sides for just the posting fee;
-           charging real rent makes every completion move real value.  */
+           jobs_completed counters on both sides for just the posting fee.
+           Rent >= 1 only adds paid friction (between colluders the rent
+           circulates; the burned fee is the real cost) -- which is all it
+           is meant to do, since raw counts are display-only and the
+           value-weighted counter is the honest signal (see BumpJobStats).  */
         LOG (WARNING) << "A rental must charge positive rent";
         return false;
       }
@@ -2032,7 +2052,14 @@ public:
        the content and the old owner is no longer the payee, so the advertiser
        gets the rent back.  This voids OPEN ads too -- their designated worker
        is the old owner, who could never pass the accept-time ownership
-       re-check anyway.  */
+       re-check anyway.
+
+       Pinned simple rule: this also voids an ACCEPTED ad already past its
+       deadline but not yet swept, refunding rent the sweep would have paid
+       the (old) owner.  At arm's length only the owner can trigger that and
+       the owner is the losing payee; a colluding advertiser/owner pair
+       extracts nothing (their rent circulates inside the pair either way).
+       A status/due special case here would buy nothing but complexity.  */
     LOG (INFO)
         << "Voided ad job " << job.GetId () << ": building "
         << job.GetLinkedId () << " sold";

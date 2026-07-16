@@ -113,9 +113,17 @@ public:
   Json::Value Buildings ();
 
   /**
-   * Returns the JSON data representing all jobs on the jobs board.
+   * Returns the JSON data representing all jobs on the jobs board.  This is
+   * the trusted whole-board path (fanout, full game-state export); the
+   * public RPC serves the hard-capped JobsPage instead.
    */
   Json::Value Jobs ();
+
+  /**
+   * Returns one hard-capped page of the jobs board, ordered by ID.
+   * `afterId` is an exclusive continuation cursor (0 = from the start).
+   */
+  Json::Value JobsPage (Database::IdT afterId, int limit);
 
   /**
    * Returns the JSON data for the settled-jobs history (the job_history
