@@ -356,6 +356,12 @@ TEST_F (JobsTests, ParsingRejects)
       R"({"t":"transport","d":-5,"r":2000,"co":8000,"to":1,"items":{"foo":5}})"));
   EXPECT_FALSE (ParseOk (
       R"({"t":"transport","d":86400,"wd":-5,"r":2000,"co":8000,"to":1,"items":{"foo":5}})"));
+  /* Integral JSON reals are not integers (the strict-integer convention
+     shared with CoinAmountFromJson).  */
+  EXPECT_FALSE (ParseOk (
+      R"({"t":"transport","d":86400.0,"wd":86400,"r":2000,"co":8000,"to":1,"items":{"foo":5}})"));
+  EXPECT_FALSE (ParseOk (
+      R"({"t":"transport","d":86400,"wd":8.64e4,"r":2000,"co":8000,"to":1,"items":{"foo":5}})"));
 }
 
 TEST_F (JobsTests, StandingClassMatchesType)
@@ -470,6 +476,25 @@ TEST_F (JobsTests, AcceptZeroCollateralIsLegal)
   EXPECT_EQ (Balance ("courier"), 1000000);
 }
 
+TEST_F (JobsTests, AcceptRejectsDueListing)
+{
+  /* A listing at or past its deadline belongs to the expiry sweep: accepting
+     it would resurrect it (the work-window rewrite pushes the deadline past
+     the sweep).  The boundary is exclusive, mirroring fulfil.  */
+  const auto id = Post ();
+  const std::string a = R"({"a":)" + std::to_string (id) + "}";
+  ctx.SetTimestamp (BASE_TS + DAY);
+  EXPECT_FALSE (Process ("courier", a));
+  ctx.SetTimestamp (BASE_TS + DAY + 50);
+  EXPECT_FALSE (Process ("courier", a));
+  EXPECT_EQ (jobs.GetById (id)->GetStatus (), Job::Status::OPEN);
+  /* The sweep then voids it as designed: escrow refunds, fee stays burned.  */
+  ExpireJobs (db, ctx);
+  EXPECT_FALSE (JobExists (id));
+  EXPECT_EQ (Balance ("poster"), 1000000 - 20);
+  EXPECT_EQ (Balance ("courier"), 1000000);
+}
+
 TEST_F (JobsTests, AcceptStartsWorkClock)
 {
   /* Accepting rewrites the deadline to accept time + the work window: even
@@ -514,12 +539,18 @@ TEST_F (JobsTests, AssignAndDesignationGate)
 TEST_F (JobsTests, AssignRejectsStandingJobs)
 {
   /* A standing job (wanted board) is never accepted by a single worker, so
-     designating one is meaningless dead data -- rejected.  */
+     designating one is meaningless dead data -- rejected.  A notice-cancel
+     gives the board a deadline, but it remains a standing job and the
+     assignment stays rejected.  */
   ASSERT_TRUE (Process ("poster",
       R"({"t":"wanted","r":9000,"co":0,"name":"green","n":3})"));
   const auto id = OnlyJobId ();
-  EXPECT_FALSE (Process ("poster",
-      R"({"s":)" + std::to_string (id) + R"(,"w":"courier"})"));
+  const std::string s
+      = R"({"s":)" + std::to_string (id) + R"(,"w":"courier"})";
+  EXPECT_FALSE (Process ("poster", s));
+  ASSERT_TRUE (Process ("poster", R"({"c":)" + std::to_string (id) + "}"));
+  ASSERT_TRUE (jobs.GetById (id)->HasDeadline ());
+  EXPECT_FALSE (Process ("poster", s));
   EXPECT_EQ (jobs.GetById (id)->GetProto ().designated_worker (), "");
 }
 
@@ -1059,6 +1090,9 @@ TEST_F (WantedTests, PostRejects)
       R"({"t":"wanted","r":9000,"co":5,"name":"green","n":3})"));
   EXPECT_FALSE (Process ("poster",
       R"({"t":"wanted","r":2,"co":0,"name":"green","n":3})"));
+  /* Integral-real quota (strict-integer convention).  */
+  EXPECT_FALSE (Process ("poster",
+      R"({"t":"wanted","r":9000,"co":0,"name":"green","n":3.0})"));
 }
 
 TEST_F (WantedTests, NoAcceptNoFulfil)
@@ -1584,6 +1618,11 @@ TEST_F (PatrolTests, PostRejects)
      check-in time -- it must be rejected at post.  */
   EXPECT_FALSE (Process ("poster",
       R"({"t":"patrol","d":86400,"wd":86400,"r":10,"co":0,"x":100000,"y":0,"rad":10,"k":3,"sp":600})"));
+  /* Integral-real centre / spacing (strict-integer convention).  */
+  EXPECT_FALSE (Process ("poster",
+      R"({"t":"patrol","d":86400,"wd":86400,"r":10,"co":0,"x":5.0,"y":0,"rad":10,"k":3,"sp":600})"));
+  EXPECT_FALSE (Process ("poster",
+      R"({"t":"patrol","d":86400,"wd":86400,"r":10,"co":0,"x":0,"y":0,"rad":10,"k":3,"sp":600.0})"));
 }
 
 TEST_F (PatrolTests, CheckInsProgressAndComplete)
@@ -1946,6 +1985,13 @@ TEST_F (AdTests, PostRejectsBadSchedule)
   EXPECT_FALSE (Process ("courier",
       R"({"t":"ad","d":86400,"r":500,"co":0,"b":1,"slot":2,)"
       R"("hash":"abc","start":83000})"));
+  /* Integral-real start / slot (strict-integer convention).  */
+  EXPECT_FALSE (Process ("courier",
+      R"({"t":"ad","d":86400,"r":500,"co":0,"b":1,"slot":2,)"
+      R"("hash":"abc","start":3600.0})"));
+  EXPECT_FALSE (Process ("courier",
+      R"({"t":"ad","d":86400,"r":500,"co":0,"b":1,"slot":2.0,)"
+      R"("hash":"abc"})"));
   EXPECT_TRUE (Process ("courier",
       R"({"t":"ad","d":86400,"r":500,"co":0,"b":1,"slot":2,)"
       R"("hash":"abc","start":82800})"));
@@ -2000,6 +2046,23 @@ TEST_F (AdTests, AcceptKeepsCalendarDeadline)
   ctx.SetTimestamp (BASE_TS + 3600);
   ASSERT_TRUE (Process ("poster", R"({"a":)" + std::to_string (id) + "}"));
   EXPECT_EQ (jobs.GetById (id)->GetDeadline (), BASE_TS + DAY);
+}
+
+TEST_F (AdTests, AcceptRejectsElapsedWindow)
+{
+  /* An ACCEPTED ad pays its full rent at the sweep: accepting one whose
+     calendar window already elapsed would hand the owner the rent for zero
+     display time, so a due ad is the sweep's to void (exclusive boundary,
+     like every accept).  */
+  const auto id = PostAd ();
+  ctx.SetTimestamp (BASE_TS + DAY);
+  EXPECT_FALSE (Process ("poster", R"({"a":)" + std::to_string (id) + "}"));
+  ctx.SetTimestamp (BASE_TS + DAY + 50);
+  EXPECT_FALSE (Process ("poster", R"({"a":)" + std::to_string (id) + "}"));
+  ExpireJobs (db, ctx);
+  EXPECT_FALSE (JobExists (id));
+  EXPECT_EQ (Balance ("courier"), 1000000 - 5);
+  EXPECT_EQ (Balance ("poster"), 1000000);
 }
 
 TEST_F (AdTests, DueCompetitorDoesNotBlockAccept)

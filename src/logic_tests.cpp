@@ -633,11 +633,12 @@ TEST_F (PXLogicTests, JobsExpireOnlyOnSuperblocks)
   /* ExpireJobs is gated inside the superblock branch while moves run on
      every block:  a deadline passing on an ordinary block must NOT settle
      the job -- it stays on the board until the next superblock sweep.  */
-  {
-    auto a = accounts.CreateNew ("poster");
-    a->SetFaction (Faction::RED);
-    a->AddBalance (1'000'000);
-  }
+  for (const auto* name : {"poster", "courier"})
+    {
+      auto a = accounts.CreateNew (name);
+      a->SetFaction (Faction::RED);
+      a->AddBalance (1'000'000);
+    }
   const auto bId
       = CreateBuilding ("checkmark", "poster", Faction::RED)->GetId ();
 
@@ -660,10 +661,19 @@ TEST_F (PXLogicTests, JobsExpireOnlyOnSuperblocks)
              1'000'000 - 2'000 - 20);
 
   /* The deadline passes, but the block is ordinary:  the overdue job must
-     survive it untouched.  */
+     survive it untouched -- and an accept landing in this move-before-sweep
+     window (otherwise perfectly valid) must not resurrect it, or the
+     work-window rewrite would push the listing past the sweep.  */
   ctx.SetTimestamp (ctx.Timestamp () + 86401);
-  UpdateStateBlock ("[]", false);
-  ASSERT_NE (jobs.GetById (jobId), nullptr);
+  UpdateStateBlock (R"([
+    {"name": "courier", "move": {"j": [{"a": )"
+      + std::to_string (jobId) + R"(}]}}
+  ])", false);
+  {
+    auto j = jobs.GetById (jobId);
+    ASSERT_NE (j, nullptr);
+    EXPECT_EQ (j->GetStatus (), Job::Status::OPEN);
+  }
   EXPECT_EQ (accounts.GetByName ("poster")->GetBalance (),
              1'000'000 - 2'000 - 20);
 

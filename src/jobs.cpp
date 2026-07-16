@@ -23,6 +23,8 @@
 
 #include "hexagonal/coord.hpp"
 
+#include <xayautil/jsonutils.hpp>
+
 #include <glog/logging.h>
 
 #include <algorithm>
@@ -83,6 +85,23 @@ BumpJobStats (Account& a, const bool completed, const Amount value)
     }
   else
     pb.set_jobs_failed (pb.jobs_failed () + 1);
+}
+
+/**
+ * Whether a deadlined job is at or past its deadline (deadline <= now, the
+ * exclusive boundary): such a job belongs to the expiry sweep, and the
+ * lifecycle operations must not touch it.  The sweep only runs on superblocks
+ * while moves run on every block, so without this guard an operation landing
+ * between the deadline and the next superblock could change the settlement:
+ * a fulfil would turn an expiry FAILED into COMPLETED, and an accept would
+ * resurrect a listing that should void (the work-window rewrite pushes the
+ * deadline forward; an elapsed ad would pay its full rent for zero display
+ * time).  Standing jobs (no deadline) are never due.
+ */
+bool
+JobIsDue (const Job& job, const JobContext& jc)
+{
+  return job.HasDeadline () && job.GetDeadline () <= jc.ctx.Timestamp ();
 }
 
 /**
@@ -937,7 +956,7 @@ WantedPredicate::ValidatePost (const JobContext& jc, const Account& poster,
       }
   }
 
-  if (!terms["n"].isUInt ())
+  if (!terms["n"].isUInt () || !xaya::IsIntegerValue (terms["n"]))
     return false;
   const unsigned quota = terms["n"].asUInt ();
   const unsigned maxQuota = jc.ctx.RoConfig ()->params ().max_bounty_quota ();
@@ -1390,7 +1409,7 @@ public:
     using CoordLimits = std::numeric_limits<HexCoord::IntT>;
     for (const auto* axis : {"x", "y"})
       {
-        if (!terms[axis].isInt ())
+        if (!terms[axis].isInt () || !xaya::IsIntegerValue (terms[axis]))
           return false;
         const auto val = terms[axis].asInt ();
         if (val < CoordLimits::min () || val > CoordLimits::max ())
@@ -1400,8 +1419,9 @@ public:
           }
       }
 
-    if (!terms["rad"].isUInt () || !terms["k"].isUInt ()
-          || !terms["sp"].isUInt ())
+    if (!terms["rad"].isUInt () || !xaya::IsIntegerValue (terms["rad"])
+          || !terms["k"].isUInt () || !xaya::IsIntegerValue (terms["k"])
+          || !terms["sp"].isUInt () || !xaya::IsIntegerValue (terms["sp"]))
       return false;
     const unsigned radius = terms["rad"].asUInt ();
     const unsigned k = terms["k"].asUInt ();
@@ -1823,7 +1843,7 @@ public:
     if (!RequireZeroCollateral (terms, "An ad-slot rental"))
       return false;
 
-    if (!terms["slot"].isUInt ())
+    if (!terms["slot"].isUInt () || !xaya::IsIntegerValue (terms["slot"]))
       return false;
     if (!terms["hash"].isString ())
       return false;
@@ -1840,7 +1860,7 @@ public:
     int64_t startSecs = 0;
     if (!terms["start"].isNull ())
       {
-        if (!terms["start"].isInt64 ())
+        if (!terms["start"].isInt64 () || !xaya::IsIntegerValue (terms["start"]))
           return false;
         startSecs = terms["start"].asInt64 ();
         if (startSecs < 0)
@@ -2392,10 +2412,14 @@ AssignOperation::IsValid () const
           << account.GetName () << " does not own job " << jobId;
       return false;
     }
-  /* Assignment is exclusive-only (design 3.4):  a standing job (no deadline,
-     e.g. a wanted board) is never accepted by a single worker, so a
-     designated_worker on it would be dead data polluting the public JSON.  */
-  if (!job->HasDeadline ())
+  /* Assignment is exclusive-only (design 3.4):  a standing job (e.g. a
+     wanted board) is never accepted by a single worker, so a
+     designated_worker on it would be dead data polluting the public JSON.
+     The type decides, not the deadline column -- a notice-cancelled standing
+     job carries a deadline but is still standing.  */
+  const auto* pred = PredicateForType (job->GetType ());
+  CHECK (pred != nullptr);
+  if (pred->IsStanding ())
     {
       LOG (WARNING)
           << "Job " << jobId << " is standing; cannot designate a worker";
@@ -2470,6 +2494,14 @@ AcceptOperation::IsValid () const
   if (job == nullptr || job->GetStatus () != Job::Status::OPEN)
     {
       LOG (WARNING) << "Job " << jobId << " not open to accept";
+      return false;
+    }
+
+  /* An expired listing is the sweep's to void (see JobIsDue).  */
+  if (JobIsDue (*job, jc))
+    {
+      LOG (WARNING)
+          << "Job " << jobId << " is at or past its deadline; cannot accept";
       return false;
     }
 
@@ -2696,13 +2728,8 @@ FulfilOperation::IsValid () const
       return false;
     }
 
-  /* A job at or past its deadline is due for the expiry sweep (a due job is
-     deadline <= now).  The sweep only runs on superblocks while moves run on
-     every block, so without this guard a fulfil landing after the deadline
-     but before the next superblock would turn an expiry FAILED into a
-     COMPLETED.  The deadline is exclusive; standing jobs (no deadline) are
-     exempt.  */
-  if (job->HasDeadline () && job->GetDeadline () <= jc.ctx.Timestamp ())
+  /* An expired job is the sweep's to settle as FAILED (see JobIsDue).  */
+  if (JobIsDue (*job, jc))
     {
       LOG (WARNING)
           << "Job " << jobId << " is at or past its deadline; cannot fulfil";
@@ -2770,7 +2797,7 @@ JobOperation::Parse (Account& acc, const Json::Value& data,
           out = -1;
           if (!data.isMember (key))
             return true;
-          if (!data[key].isInt64 ())
+          if (!data[key].isInt64 () || !xaya::IsIntegerValue (data[key]))
             return false;
           out = data[key].asInt64 ();
           return out >= 0;
