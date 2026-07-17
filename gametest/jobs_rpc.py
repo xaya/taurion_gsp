@@ -72,6 +72,9 @@ class JobsRpcTest (PXTest):
     # instead of truncating it or looping onto an empty page.
     for pageSize in [10**6, 0, -5]:
       self.assertEqual (self.getJobs (pageSize=pageSize), allJobs)
+    # A sub-cap pageSize forces a genuine multi-page walk (two full pages
+    # plus the short final one) in every default CI run.
+    self.assertEqual (self.getJobs (pageSize=3), allJobs)
 
     self.mainLogger.info ("Malformed cursors error, not restart from 0...")
     for bad in ["junk", "12x", " 1", "-1", "+1", "0x10",

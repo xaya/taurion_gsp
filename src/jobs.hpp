@@ -24,7 +24,7 @@
     escrowed reward + a completion predicate + a deadline, optionally exclusive
     to one worker who locks a collateral bond.  This module holds the whole
     subsystem: the coin escrow, the per-type predicate interface, the generic
-    move-op lifecycle (t/s/a/c/f), and the per-block expiry + kill hooks.  The
+    move-op lifecycle (t/s/a/c/f), and the superblock expiry + kill hooks.  The
     only per-type code is a JobPredicate object; the rest is type-independent.
 
     The catalogue carried on this one core: transport / haul /
@@ -435,7 +435,7 @@ public:
 };
 
 /* ************************************************************************** */
-/* Per-block hooks (confirmed processing only).                               */
+/* Superblock hooks (confirmed processing only).                              */
 
 /**
  * Expires all non-standing jobs whose deadline has been reached at the current
@@ -453,10 +453,10 @@ public:
  * gametest/jobs_stress.py, which runs all four unbounded-cohort paths at
  * material size in single blocks -- aligned expiry, a standing bounty
  * stack plus a linked bodyguard stack settled by one kill, and a full
- * retention prune -- with the settling block itself inside a bounded,
- * GSP-synced timing, replays the aligned sweep and the prune across a
- * reorg, and records runs at 1x / 5x / 11x cohort scale in its module
- * docstring.  (External to this repo, forked-chain e2e runs of the same
+ * retention prune -- with each settling block mined + GSP-synced under a
+ * real wall-clock deadline of one superblock interval, replays the
+ * aligned sweep, the kill and the prune across a reorg, and records runs
+ * at 1x / 5x / 11x cohort scale in its module docstring.  (External to this repo, forked-chain e2e runs of the same
  * shapes settled far below the dense-combat processing ceiling measured
  * for the same block budget.)  A deterministic cap would
  * defer settlement of already-due jobs to later blocks, re-opening the very
@@ -486,8 +486,8 @@ void OnJobBuildingTransferred (Database& db, const Context& ctx,
                                Database::IdT buildingId);
 
 /**
- * Per-block resolver for the wanted board: pays bounty tranches for
- * qualifying character kills.  Constructed once per block alongside the
+ * Kill-time resolver for the wanted board: pays bounty tranches for
+ * qualifying character kills.  Constructed once per superblock alongside the
  * FameUpdater and fed every kill from the same pre-removal pass (damage lists
  * and victim rows still live), sharing fame's distinct-owner derivation
  * semantics.  The constructor loads the (small, bounded) set of names under

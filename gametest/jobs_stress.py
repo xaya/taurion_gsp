@@ -21,13 +21,18 @@ Consensus fan-out stress recipe for the jobs board: the in-repo,
 reproducible evidence behind the deliberately uncapped settlement sweeps
 (see the ExpireJobs notes in src/jobs.hpp).  All four unbounded-cohort
 paths run at material size through the REAL chain path, and each settling
-block is mined INSIDE a bounded, GSP-synced timing:
+block is mined + GSP-synced under a REAL wall-clock deadline of one
+superblock interval (a daemon-thread join: it fires even if the GSP sync
+hangs in its polling loop, and a self-check at the start of the run proves
+both a slow and a never-returning callable fail AT the bound):
 
   1. aligned expiry: N transports sharing one deadline settle in ONE sweep,
      then the whole sweep is replayed across a reorg (undo + re-settle);
   2. standing bounty stack: M wanted pools on one name all pay on ONE kill;
   3. linked-entity stack: M accepted bodyguards on one character all settle
-     on that same kill (both hooks fire in the same timed block);
+     on that same kill (both hooks fire in the same deadline-bounded block,
+     and the kill block -- the broadest state mix -- is replayed across a
+     reorg as well);
   4. retention prune: the whole settled-history cohort deletes in ONE block
      once the retention window passes (the standing pools survive it),
      also replayed across a reorg.
@@ -36,25 +41,30 @@ Every cohort row is paid (escrowed reward + burned posting fee), which is
 the economic bound on an attacker lining these up.  Cohort sizes scale
 with the JOBS_STRESS_N environment variable (the default keeps CI fast);
 every bulk phase -- posts, assignments and acceptances -- rides in
-sub-ceiling move chunks, so scaled runs construct the same shapes.
+sub-ceiling move chunks, so scaled runs construct the same shapes.  The
+scaled shape is the release gate: run the default suite plus
+`JOBS_STRESS_N=2200 make check TESTS=jobs_stress.py` on the exact release
+SHA and keep the log.
 
 Recorded runs (make check TESTS=jobs_stress.py, regtest superblock_seconds
-5, AMD Threadripper 7970X, 2026-07-17; timings include the mine + GSP sync
-round-trip, which dominates -- per-row settlement cost is far below it):
+5, AMD Threadripper 7970X, 2026-07-17).  Single samples, quantised by the
+0.1s GSP sync poll -- a coarse upper bound per settling block, not a
+per-row cost measurement:
 
-  JOBS_STRESS_N=200 (default):  sweep 200 in 0.102s; one kill settling
-    25 pools + 25 bodyguards in 0.103s; prune 225 rows in 0.103s.
-  JOBS_STRESS_N=1000 (5x):      sweep 1000 in 0.103s; kill 125+125 in
-    0.204s; prune 1125 rows in 0.102s.
-  JOBS_STRESS_N=2200 (11x):     sweep 2200 in 0.102s; kill 275+275 in
-    0.103s; prune 2475 rows in 0.103s.  The 2200-row live board also
+  JOBS_STRESS_N=200 (default):  sweep 200 in 0.104s; one kill settling
+    25 pools + 25 bodyguards in 0.104s; prune 225 rows in 0.103s.
+  JOBS_STRESS_N=1000 (5x):      sweep 1000 in 0.104s; kill 125+125 in
+    0.105s; prune 1125 rows in 0.113s.
+  JOBS_STRESS_N=2200 (11x):     sweep 2200 in 0.103s; kill 275+275 in
+    0.105s; prune 2475 rows in 0.104s.  The 2200-row live board also
     walks the paged reader past its 2000-row page cap.
 
-All three PASS with flat wall times: the block budget is bounded by the
-RPC round-trip, not the cohort size, at every measured scale.
+Every measured cohort completed within one or two poll intervals on this
+machine -- comfortably inside the superblock budget the deadline enforces.
 """
 
 import os
+import threading
 import time
 
 from pxtest import PXTest
@@ -75,16 +85,46 @@ class JobsStressTest (PXTest):
   def available (self, name):
     return self.getAccounts ()[name].getBalance ("available")
 
-  def timed (self, label, fn, bound=60):
-    """Runs fn, logs its wall time and asserts a deliberately generous
-    upper bound: expected times are milliseconds, so the bound only trips
-    on a complexity-class regression, not on machine noise."""
+  def timed (self, label, fn, bound=None):
+    """Runs fn under a REAL wall-clock deadline: the callable runs on a
+    daemon worker thread and the join times out, so the assertion fires AT
+    the deadline even if fn never returns (a hung GSP sync polls forever
+    inside getCustomState).  The default bound is one superblock interval
+    -- the operational budget: a settling superblock that cannot process
+    within the cadence step means the GSP falls behind indefinitely.
+    Recorded runs are ~0.1-0.2s, leaving ~25-50x margin over CI noise."""
+    if bound is None:
+      bound = self.roConfig ().params.superblock_seconds
+    outcome = {}
+    def work ():
+      try:
+        fn ()
+      except Exception as e:
+        outcome["error"] = e
+    worker = threading.Thread (target=work, daemon=True)
     start = time.time ()
-    fn ()
+    worker.start ()
+    worker.join (bound)
     duration = time.time () - start
+    assert not worker.is_alive (), \
+        "%s still running at the %ss deadline" % (label, bound)
+    if "error" in outcome:
+      raise outcome["error"]
     self.mainLogger.info ("%s took %.3fs" % (label, duration))
-    assert duration < bound, \
-        "%s took %.3fs, over the %ds bound" % (label, duration, bound)
+
+  def checkTimedDeadline (self):
+    """Proves the timed() deadline is a real wall-clock bound: a slow and
+    a never-returning callable both fail AT the deadline, not after the
+    callable eventually returns."""
+    for label, fn in [("slow", lambda: time.sleep (5)),
+                      ("hung", lambda: threading.Event ().wait ())]:
+      start = time.time ()
+      try:
+        self.timed ("deadline self-check (%s)" % label, fn, bound=1)
+      except AssertionError:
+        assert time.time () - start < 2, "deadline fired late for " + label
+        continue
+      raise RuntimeError ("deadline did not fire for " + label)
 
   def mineAndSync (self, superblocks=True):
     """Mines one block and waits for the GSP to process it: the sync
@@ -112,7 +152,50 @@ class JobsStressTest (PXTest):
       self.generate (1, superblocks=False)
     self.syncGame ()
 
+  def checkKillSettled (self, before):
+    """Asserts the full kill fan-out: every pool paid one tranche to the
+    sole killer (none drained), every bodyguard forfeited to the poster,
+    and one counter bump per settled row."""
+    assert "victim" not in self.getCharacters ()
+    self.assertEqual (self.available ("hunter"),
+                      before["hunter"] + 50 * M_STACK)
+    pools = [j for j in self.getJobs () if j["type"] == "wanted"]
+    self.assertEqual (len (pools), M_STACK)
+    self.assertEqual (set (p["remaining"] for p in pools), {1})
+    self.assertEqual (self.available ("victim"),
+                      before["victim"] + (100 + 500) * M_STACK)
+    self.assertEqual (self.available ("guard"), before["guard"])
+    self.assertEqual ([j for j in self.getJobs ()
+                       if j["type"] == "bodyguard"], [])
+    self.assertEqual (self.getAccounts ()["hunter"].data["jobstats"],
+                      {"completed": M_STACK, "failed": 0,
+                       "posterfailed": 0, "value": 50 * M_STACK})
+    self.assertEqual (
+        self.getAccounts ()["guard"].data["jobstats"]["failed"], M_STACK)
+    self.assertEqual (
+        self.getAccounts ()["victim"].data["jobstats"]["posterfailed"],
+        M_STACK)
+
+  def checkKillUndone (self, before):
+    """Asserts the kill block fully undid: victim alive, pools at full
+    quota, bodyguards accepted again, balances and counters restored."""
+    assert "victim" in self.getCharacters ()
+    pools = [j for j in self.getJobs () if j["type"] == "wanted"]
+    self.assertEqual (len (pools), M_STACK)
+    self.assertEqual (set (p["remaining"] for p in pools), {2})
+    self.assertEqual (len ([j for j in self.getJobs ()
+                            if j["type"] == "bodyguard"
+                            and j["state"] == "accepted"]), M_STACK)
+    for nm in before:
+      self.assertEqual (self.available (nm), before[nm])
+    self.assertEqual (
+        self.getAccounts ()["hunter"].data["jobstats"]["completed"], 0)
+
   def run (self):
+    self.mainLogger.info ("Deadline self-check: slow and hung callables "
+                          "must fail AT the bound...")
+    self.checkTimedDeadline ()
+
     self.mainLogger.info ("Setting up accounts...")
     self.initAccount ("poster", "r")
     self.initAccount ("hunter", "r")
@@ -190,48 +273,39 @@ class JobsStressTest (PXTest):
 
     self.mainLogger.info ("One kill settles every pool and bodyguard...")
     self.changeCharacterVehicle ("hunter", "light attacker")
-    hunterBefore = self.available ("hunter")
-    victimBefore = self.available ("victim")
-    guardBefore = self.available ("guard")
+    before = {nm: self.available (nm)
+              for nm in ("hunter", "victim", "guard")}
     self.moveCharactersTo ({
       "victim": {"x": 60, "y": 0},
       "hunter": {"x": 60, "y": 0},
     })
     # The hunter acquired its target when the teleport block above was
     # processed (targets are selected at the END of a superblock, damage is
-    # dealt at the START of the next).  Submit the god HP drop WITHOUT
+    # dealt at the START of the next).  Snapshot here so the whole kill
+    # block can be reorg-replayed, then submit the god HP drop WITHOUT
     # mining, so the kill and its whole settlement fan-out happen inside
-    # the ONE timed block below: alive before, dead after.
-    assert "victim" in self.getCharacters ()
-    self.adminCommand ({"god": {"sethp": {"c": [
+    # the ONE deadline-bounded block: alive before, dead after.
+    preKillTime = self.w3.eth.get_block ("latest")["timestamp"]
+    snap = self.env.snapshot ()
+    dropHP = lambda: self.adminCommand ({"god": {"sethp": {"c": [
       {"id": victimChar, "a": 1, "s": 0},
     ]}}})
+    assert "victim" in self.getCharacters ()
+    dropHP ()
     self.timed ("one kill settling %d pools + %d bodyguards"
                   % (M_STACK, M_STACK),
                 lambda: self.mineAndSync ())
-    assert "victim" not in self.getCharacters ()
+    self.checkKillSettled (before)
 
-    # Every pool paid its tranche to the sole killer; none drained.
-    self.assertEqual (self.available ("hunter"),
-                      hunterBefore + 50 * M_STACK)
-    pools = [j for j in self.getJobs () if j["type"] == "wanted"]
-    self.assertEqual (len (pools), M_STACK)
-    self.assertEqual (set (p["remaining"] for p in pools), {1})
-    # Every bodyguard forfeited: reward refund + bond, both to the poster.
-    self.assertEqual (self.available ("victim"),
-                      victimBefore + (100 + 500) * M_STACK)
-    self.assertEqual (self.available ("guard"), guardBefore)
-    self.assertEqual ([j for j in self.getJobs ()
-                       if j["type"] == "bodyguard"], [])
-    # The counter fan-out matches: one bump per settled row.
-    self.assertEqual (self.getAccounts ()["hunter"].data["jobstats"],
-                      {"completed": M_STACK, "failed": 0,
-                       "posterfailed": 0, "value": 50 * M_STACK})
-    self.assertEqual (
-        self.getAccounts ()["guard"].data["jobstats"]["failed"], M_STACK)
-    self.assertEqual (
-        self.getAccounts ()["victim"].data["jobstats"]["posterfailed"],
-        M_STACK)
+    # The kill block mutates the broadest state mix (death, damage lists,
+    # tranches, forfeits, history, three accounts' counters): replay it
+    # across a reorg too.
+    self.mainLogger.info ("Reorg across the kill: undo and re-kill...")
+    self.undoTo (snap, preKillTime)
+    self.checkKillUndone (before)
+    dropHP ()
+    self.mineAndSync ()
+    self.checkKillSettled (before)
 
     self.mainLogger.info ("Cohort 4: pruning the settled history cohort...")
     rows = self.historyRows ()
