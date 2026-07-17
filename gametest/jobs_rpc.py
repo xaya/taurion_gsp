@@ -67,6 +67,12 @@ class JobsRpcTest (PXTest):
     self.assertEqual (
         len (self.getRpc ("getjobspage", afterid="0", limit=1)), 1)
 
+    # The shared paged reader clamps its pageSize like the server clamps
+    # the RPC limit, so out-of-range requests still walk the whole board
+    # instead of truncating it or looping onto an empty page.
+    for pageSize in [10**6, 0, -5]:
+      self.assertEqual (self.getJobs (pageSize=pageSize), allJobs)
+
     self.mainLogger.info ("Malformed cursors error, not restart from 0...")
     for bad in ["junk", "12x", " 1", "-1", "+1", "0x10",
                 "99999999999999999999999999"]:

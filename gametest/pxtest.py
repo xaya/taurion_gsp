@@ -367,13 +367,24 @@ class PXTest (XayaXGameTest):
 
     return self.getCustomState ("data", method, *args, **kwargs)
 
+  # Hard cap on rows in a single jobs page or history response, mirroring
+  # JobsTable::MAX_PAGE (database/jobs.hpp).  The paged readers below must
+  # terminate against the server's EFFECTIVE limit, not the caller's raw
+  # request, or an over-cap pageSize would silently truncate a large board.
+  JOBS_MAX_PAGE = 2000
+
   def getJobs (self, pageSize=1000):
     """
     Returns the full live jobs board, walking the hard-capped getjobspage
     RPC with its exclusive (id) keyset cursor.  There is deliberately no
     whole-board jobs RPC, so this is THE way to read the board.
+
+    pageSize is clamped exactly like the server clamps the RPC limit, so
+    the walk terminates against the EFFECTIVE page size.
     """
 
+    if pageSize <= 0 or pageSize > self.JOBS_MAX_PAGE:
+      pageSize = self.JOBS_MAX_PAGE
     res = []
     after = "0"
     while True:

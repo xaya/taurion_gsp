@@ -497,9 +497,10 @@ public:
 
   /**
    * Returns the set of account names under an active bounty (the distinct
-   * non-NULL linked_name values).  The per-block kill attribution loads this
-   * once and only issues per-death SQL for names in it, keeping the common
-   * death path to a hash lookup (the mega-battle perf guard).
+   * non-NULL linked_name values).  The kill attribution (run in the
+   * superblock damage phase) loads this once and only issues per-death SQL
+   * for names in it, keeping the common death path to a hash lookup (the
+   * mega-battle perf guard).
    */
   std::set<std::string> GetActiveBountyNames () const;
 
@@ -547,8 +548,8 @@ public:
 
   /**
    * Deletes history rows settled strictly before the cutoff timestamp: the
-   * deterministic retention prune, run by the per-block expiry sweep with
-   * cutoff = now - params.jobs_history_retention.
+   * deterministic retention prune, run by the (superblock-only) expiry sweep
+   * with cutoff = now - params.jobs_history_retention.
    */
   void PruneHistory (int64_t cutoff);
 

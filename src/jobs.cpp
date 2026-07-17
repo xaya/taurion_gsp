@@ -84,7 +84,10 @@ GetAccountChecked (const JobContext& jc, const std::string& name)
  * across nodes (no split risk).  Saturation is deliberately NOT used: it
  * would add consensus-visible code for an unreachable boundary.  Raw
  * counts are a display-only signal that colluding pairs can inflate for
- * the fee price; the value-weighted counter is the honest one, and any
+ * the fee price; the value-weighted counter is the stronger, fee-backed
+ * face-value signal -- a colluding pair can still buy credit on it, but
+ * only at the posting-fee burn (~1% of the face value credited), so it
+ * anchors to burned cost rather than proving arm's-length work.  Any
  * future consumer of these stats must weigh by value (or add thresholds)
  * rather than trust counts.
  */
@@ -1093,7 +1096,7 @@ private:
     const bool success = (destroyed == DestructionIsSuccess ());
     LOG (INFO)
         << "Job " << job.GetId () << ": entity " << job.GetLinkedId ()
-        << (destroyed ? " destroyed" : " alive at the deadline")
+        << (destroyed ? " destroyed" : " alive at settlement")
         << ", worker " << job.GetWorker ()
         << (success ? " succeeded" : " failed");
     if (success)
@@ -1677,7 +1680,8 @@ public:
            Rent >= 1 only adds paid friction (between colluders the rent
            circulates; the burned fee is the real cost) -- which is all it
            is meant to do, since raw counts are display-only and the
-           value-weighted counter is the honest signal (see BumpJobStats).  */
+           value-weighted counter is fee-backed rather than collusion-proof
+           (see BumpJobStats).  */
         LOG (WARNING) << "A rental must charge positive rent";
         return false;
       }
@@ -1835,9 +1839,11 @@ public:
  * Ad-slot rental: the poster (advertiser) escrows the rent on a building's
  * ad slot; the designated worker is the building's owner, whose accept IS
  * the content approval (committed by hash).  The rent pays out at the
- * deadline; the entity hook refunds it if the building dies first.  After
- * accept, rendering is unconditional -- the owner has no take-down lever for
- * the paid period, and clients render only hash-matching content.
+ * first expiry sweep after the deadline (success-on-expiry); the entity hook
+ * refunds it if the building dies first, and a sale of the building any time
+ * before that sweep voids and refunds it too.  After accept, rendering is
+ * unconditional -- the owner has no take-down lever for the paid period, and
+ * clients render only hash-matching content.
  */
 class AdPredicate : public HookSettledPredicate
 {

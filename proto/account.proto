@@ -54,9 +54,12 @@ message Account
    * worker is held responsible), but consumed by NO consensus rule: they
    * are vetting signals surfaced to clients.  Raw counts are fee-priced
    * and inflatable by colluding pairs; the value-weighted counter is the
-   * honest signal, and wraps at the field widths are deterministic and
-   * explicitly accepted (see BumpJobStats).  This is O(1) reputation
-   * state; bounded consensus job history records what settled and why, and
+   * fee-backed face-value signal (inflating it burns the ~1% posting fee
+   * on the credited value, so it anchors to burned cost rather than
+   * proving arm's-length work), and wraps at the field widths are
+   * deterministic and explicitly accepted (see BumpJobStats).  This is
+   * O(1) reputation state; bounded consensus job history records what
+   * settled and why, and
    * an indexer may retain richer or permanent history off-chain.
    */
   optional uint32 jobs_completed = 5;

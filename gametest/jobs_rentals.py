@@ -21,7 +21,9 @@ Integration test for the payer/payee-swapped rental family on the real chain
 path: a rental's handover-on-accept and renter-fulfilled return with the
 rent/deposit split, an ad-slot rented cross-faction with the owner's accept
 as approval (plus slot exclusivity, booking a future window ahead and the
-sale-void), and a toll refunded when the traveller dies in real combat.
+sale-void), a toll refunded when the traveller dies in real combat, and the
+rental grace gap: a legal player transfer landing between the deadline
+passing (on an ordinary block) and the expiry sweep observing it.
 """
 
 from pxtest import PXTest
@@ -51,6 +53,7 @@ class JobsRentalsTest (PXTest):
     self.testRental ()
     self.testAdSlot ()
     self.testToll ()
+    self.testRentalGraceGap ()
 
     self.mainLogger.info ("Jobs rentals integration test succeeded.")
 
@@ -181,6 +184,71 @@ class JobsRentalsTest (PXTest):
     assert self.jobGone (jobId)
     self.assertEqual (self.available ("renter"), renterBefore + 400)
     self.assertEqual (self.available ("gatekeeper"), keeperBefore)
+
+  def testRentalGraceGap (self):
+    self.mainLogger.info ("Rental grace: a real redeposit lands in the "
+                          "overdue gap before the sweep...")
+    b = self.getBuildings ()[self.buildingId]
+    # The lessor still holds the goods returned by the first rental.
+    self.assertEqual (b.getFungibleInventory ("owner"), {"foo": 5})
+
+    self.sendMove ("renter", {"j": [{
+      "t": "rental", "d": 86400, "wd": 86400, "r": 1000, "co": 0, "rent": 300,
+      "i": "foo", "n": 5, "b": self.buildingId, "w": "owner",
+    }]})
+    self.generate (1)
+    jobId = self.newestJob ()["id"]
+    self.sendMove ("owner", {"j": [{"a": jobId}]})
+    self.generate (1)
+    # Accepting starts the work clock: read the (rewritten, accept-relative)
+    # deadline only now.
+    deadline = self.newestJob ()["deadline"]
+
+    self.mainLogger.info ("The renter parks the goods with a third party...")
+    self.sendMove ("renter", {"x": [{
+      "b": self.buildingId, "i": "foo", "n": 5, "t": "advertiser",
+    }]})
+    self.generate (1)
+    b = self.getBuildings ()[self.buildingId]
+    self.assertEqual (b.getFungibleInventory ("renter"), {})
+
+    # Thread the deadline into a superblock window exactly like the
+    # transport gating test: a superblock just inside it, then an ordinary
+    # block carrying the overdue gap.
+    sbSecs = self.roConfig ().params.superblock_seconds
+    assert sbSecs >= 4, "test window needs superblock_seconds >= 4"
+    lastSb = deadline - 2
+    self.env.setMockTime (lastSb)
+    self.generate (1, superblocks=False)
+    assert not self.jobGone (jobId)
+
+    # One ORDINARY block past the deadline (gap 3 < superblock_seconds)
+    # carries both gap moves: a legal player transfer returns the goods,
+    # and the renter's explicit fulfil is rejected (terms frozen once due).
+    ownerBefore = self.available ("owner")
+    renterBefore = self.available ("renter")
+    self.sendMove ("advertiser", {"x": [{
+      "b": self.buildingId, "i": "foo", "n": 5, "t": "renter",
+    }]})
+    self.sendMove ("renter", {"j": [{"f": jobId}]})
+    self.env.setMockTime (deadline + 1)
+    self.generate (1, superblocks=False)
+    b = self.getBuildings ()[self.buildingId]
+    self.assertEqual (b.getFungibleInventory ("renter"), {"foo": 5})
+    assert not self.jobGone (jobId)
+    self.assertEqual (self.reserved ("renter"), 1000)
+
+    # The next superblock's sweep observes the redeposited goods and
+    # settles as a clean return: rent to the lessor, deposit refunded.
+    self.env.setMockTime (lastSb + sbSecs)
+    self.generate (1, superblocks=False)
+    assert self.jobGone (jobId)
+    self.assertEqual (self.historyOutcome (jobId), "completed")
+    b = self.getBuildings ()[self.buildingId]
+    self.assertEqual (b.getFungibleInventory ("owner"), {"foo": 5})
+    self.assertEqual (b.getFungibleInventory ("renter"), {})
+    self.assertEqual (self.available ("owner"), ownerBefore + 300)
+    self.assertEqual (self.available ("renter"), renterBefore + 700)
 
 
 if __name__ == "__main__":

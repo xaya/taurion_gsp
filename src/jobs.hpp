@@ -453,9 +453,12 @@ public:
  * gametest/jobs_stress.py, which runs all four unbounded-cohort paths at
  * material size in single blocks -- aligned expiry, a standing bounty
  * stack plus a linked bodyguard stack settled by one kill, and a full
- * retention prune -- and logs the wall time; forked-chain runs of the same
- * shapes at larger sizes settle far below the dense-combat processing
- * ceiling measured for the same block budget.  A deterministic cap would
+ * retention prune -- with the settling block itself inside a bounded,
+ * GSP-synced timing, replays the aligned sweep and the prune across a
+ * reorg, and records runs at 1x / 5x / 11x cohort scale in its module
+ * docstring.  (External to this repo, forked-chain e2e runs of the same
+ * shapes settled far below the dense-combat processing ceiling measured
+ * for the same block budget.)  A deterministic cap would
  * defer settlement of already-due jobs to later blocks, re-opening the very
  * window (mutable inputs after the deadline) that JobIsDue exists to close;
  * it stays absent unless a measured bound some day demands it.
