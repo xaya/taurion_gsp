@@ -925,6 +925,11 @@ GameStateJson::Buildings ()
 Json::Value
 GameStateJson::Jobs ()
 {
+  /* Deliberately unpaged: this feeds only the FullState export
+     (getcurrentstate), which is a trusted bootstrap/debug interface that
+     already dumps every other table whole.  Untrusted doors go through the
+     hard-capped getjobspage / getjobshistory instead (the production proxy
+     allowlists those and does not expose getcurrentstate).  */
   JobsTable tbl(db);
   return ResultsAsArray (tbl, tbl.QueryAll ());
 }

@@ -582,6 +582,12 @@ public:
     return JobLinkedKind::BUILDING;
   }
 
+  std::vector<std::string>
+  PostTermKeys () const override
+  {
+    return {"items", "to"};
+  }
+
   bool ValidatePost (const JobContext& jc, const Account& poster,
                      const Json::Value& terms) const override;
   void ApplyPost (const JobContext& jc, Account& poster,
@@ -716,6 +722,12 @@ public:
         return false;
       }
     return true;
+  }
+
+  std::vector<std::string>
+  PostTermKeys () const override
+  {
+    return {"items", "from", "to"};
   }
 
   bool ValidatePost (const JobContext& jc, const Account& poster,
@@ -919,6 +931,12 @@ public:
     /* Visible to everyone; mechanically only the target's enemies can land
        qualifying damage anyway (no friendly fire).  */
     return Faction::INVALID;
+  }
+
+  std::vector<std::string>
+  PostTermKeys () const override
+  {
+    return {"name", "n"};
   }
 
   bool ValidatePost (const JobContext& jc, const Account& poster,
@@ -1170,6 +1188,12 @@ public:
     return JobLinkedKind::BUILDING;
   }
 
+  std::vector<std::string>
+  PostTermKeys () const override
+  {
+    return {"b"};
+  }
+
   bool
   ValidatePost (const JobContext& jc, const Account& poster,
                 const Json::Value& terms) const override
@@ -1217,6 +1241,12 @@ public:
     return Faction::INVALID;
   }
 
+  std::vector<std::string>
+  PostTermKeys () const override
+  {
+    return {"b"};
+  }
+
   bool
   ValidatePost (const JobContext& jc, const Account& poster,
                 const Json::Value& terms) const override
@@ -1258,6 +1288,12 @@ public:
   LinkedEntityKind () const override
   {
     return JobLinkedKind::CHARACTER;
+  }
+
+  std::vector<std::string>
+  PostTermKeys () const override
+  {
+    return {"ch"};
   }
 
   bool
@@ -1309,6 +1345,12 @@ public:
   LinkedEntityKind () const override
   {
     return JobLinkedKind::BUILDING;
+  }
+
+  std::vector<std::string>
+  PostTermKeys () const override
+  {
+    return {"ch", "to"};
   }
 
   bool
@@ -1416,6 +1458,12 @@ class PatrolPredicate : public JobPredicate
 {
 
 public:
+
+  std::vector<std::string>
+  PostTermKeys () const override
+  {
+    return {"x", "y", "rad", "k", "sp"};
+  }
 
   bool
   ValidatePost (const JobContext& jc, const Account& poster,
@@ -1599,7 +1647,10 @@ private:
     const auto& rp = job.GetProto ().rental ();
     {
       auto inv = jc.buildingInv.Get (rp.building (), from);
-      inv->GetInventory ().AddFungibleCount (rp.item (), -rp.count ());
+      /* The explicit cast negates in the signed domain (the proto count is
+         unsigned, and count validation keeps it in Quantity range).  */
+      inv->GetInventory ().AddFungibleCount (
+          rp.item (), -static_cast<Quantity> (rp.count ()));
     }
     auto inv = jc.buildingInv.Get (rp.building (), to);
     inv->GetInventory ().AddFungibleCount (rp.item (), rp.count ());
@@ -1653,6 +1704,12 @@ public:
      is intended forgiveness, not a defect -- an explicit fulfil in the same
      gap is still rejected (JobIsDue); only the goods actually sitting at
      the handover building when the sweep looks can cure a default.  */
+
+  std::vector<std::string>
+  PostTermKeys () const override
+  {
+    return {"b", "i", "n", "rent", "w"};
+  }
 
   bool
   ValidatePost (const JobContext& jc, const Account& poster,
@@ -1875,6 +1932,12 @@ public:
   AudienceFaction (const Account& poster) const override
   {
     return Faction::INVALID;
+  }
+
+  std::vector<std::string>
+  PostTermKeys () const override
+  {
+    return {"b", "slot", "hash", "start"};
   }
 
   bool
@@ -2112,6 +2175,12 @@ public:
   AudienceFaction (const Account& poster) const override
   {
     return Faction::INVALID;
+  }
+
+  std::vector<std::string>
+  PostTermKeys () const override
+  {
+    return {"ch", "w"};
   }
 
   bool
@@ -2872,8 +2941,26 @@ JobOperation::Parse (Account& acc, const Json::Value& data,
       if (!data["t"].isString ())
         return nullptr;
       const Job::Type type = JobTypeFromString (data["t"].asString ());
-      if (type == Job::Type::INVALID || PredicateForType (type) == nullptr)
+      const auto* pred = PredicateForType (type);
+      if (type == Job::Type::INVALID || pred == nullptr)
         return nullptr;
+
+      /* The POST grammar is exactly as strict as the lifecycle ops' below:
+         beyond the generic keys, only the type's own term keys are allowed,
+         so a typo'd or unknown member rejects the move instead of being
+         silently ignored.  */
+      static const std::set<std::string> generic = {"t", "d", "wd", "r", "co"};
+      const auto typeKeys = pred->PostTermKeys ();
+      for (const auto& member : data.getMemberNames ())
+        if (generic.count (member) == 0
+              && std::find (typeKeys.begin (), typeKeys.end (), member)
+                   == typeKeys.end ())
+          {
+            LOG (WARNING)
+                << "Unknown key \"" << member << "\" in job post:\n" << data;
+            return nullptr;
+          }
+
       const auto relativeSecs = [&data] (const char* key, int64_t& out)
         {
           out = -1;
@@ -3099,7 +3186,7 @@ JobsBountyTracker::JobsBountyTracker (Database& d, const Context& c,
                                       const DamageLists& l)
   : db(d), ctx(c), dl(l), characters(d)
 {
-  bountyNames = JobsTable (db).GetActiveBountyNames ();
+  anyBounties = JobsTable (db).HasActiveBountyNames ();
 }
 
 void
@@ -3107,19 +3194,39 @@ JobsBountyTracker::UpdateForKill (const proto::TargetId& target)
 {
   if (target.type () != proto::TargetId::TYPE_CHARACTER)
     return;
-  if (bountyNames.empty ())
+  if (!anyBounties)
     return;
 
   /* The pre-removal pass: the victim's row (and the damage lists) are still
-     live here.  The common path is one hash lookup.  */
+     live here.  */
   std::string victimOwner;
   {
     const auto victim = characters.GetById (target.id ());
     CHECK (victim != nullptr);
     victimOwner = victim->GetOwner ();
   }
-  if (bountyNames.count (victimOwner) == 0)
+  if (noBounty.count (victimOwner) > 0)
     return;
+
+  /* The indexed linked-name probe IS the membership check: pools on this
+     name come back directly, so a death costs one equality-indexed query at
+     most (and repeat deaths of a bounty-free owner none at all).  An empty
+     result -- never under bounty, or an earlier kill in this very block
+     drained and deleted the last pool -- just memoises the owner and moves
+     on (this must NOT be a CHECK, or a target losing more characters than
+     the pool has tranches in one block would halt every node).  */
+  std::vector<Database::IdT> pools;
+  {
+    JobsTable jobs(db);
+    auto res = jobs.QueryForLinkedName (victimOwner);
+    while (res.Step ())
+      pools.push_back (jobs.GetFromResult (res)->GetId ());
+  }
+  if (pools.empty ())
+    {
+      noBounty.insert (victimOwner);
+      return;
+    }
 
   /* Derive the distinct killer accounts, exactly like fame does.  Kills with
      an empty owner set (e.g. turret-only damage, which is not damage-listed)
@@ -3134,25 +3241,7 @@ JobsBountyTracker::UpdateForKill (const proto::TargetId& target)
   if (owners.empty ())
     return;
 
-  /* Pay one tranche per pool on this name (stacked bounties all pay).  The
-     name set is a block-start snapshot, so it can be stale within the block:
-     if an earlier kill in this very block drained and deleted the last pool
-     on the name, the query comes back empty -- drop the name and move on
-     (this must NOT be a CHECK, or a target losing more characters than the
-     pool has tranches in one block would halt every node).  */
-  std::vector<Database::IdT> pools;
-  {
-    JobsTable jobs(db);
-    auto res = jobs.QueryForLinkedName (victimOwner);
-    while (res.Step ())
-      pools.push_back (jobs.GetFromResult (res)->GetId ());
-  }
-  if (pools.empty ())
-    {
-      bountyNames.erase (victimOwner);
-      return;
-    }
-
+  /* Pay one tranche per pool on this name (stacked bounties all pay).  */
   BlockHookTables tables(db);
   const JobContext jc = tables.MakeContext (ctx);
   for (const auto id : pools)

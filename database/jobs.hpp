@@ -28,7 +28,6 @@
 
 #include <map>
 #include <memory>
-#include <set>
 #include <string>
 
 namespace pxd
@@ -496,13 +495,14 @@ public:
   Database::Result<JobResult> QueryForLinkedName (const std::string& name);
 
   /**
-   * Returns the set of account names under an active bounty (the distinct
-   * non-NULL linked_name values).  The kill attribution (run in the
-   * superblock damage phase) loads this once and only issues per-death SQL
-   * for names in it, keeping the common death path to a hash lookup (the
-   * mega-battle perf guard).
+   * Returns whether ANY account is under an active bounty (a non-NULL
+   * linked_name exists): one O(1) probe of the covering linked-name index.
+   * The kill attribution (run in the superblock damage phase) checks this
+   * once and, only if true, issues an indexed per-dead-owner probe -- so the
+   * per-superblock cost scales with the deaths, never with the number of
+   * dormant bounty targets on the board.
    */
-  std::set<std::string> GetActiveBountyNames () const;
+  bool HasActiveBountyNames () const;
 
   /**
    * Deletes the job with the given ID.  Used on every terminal transition

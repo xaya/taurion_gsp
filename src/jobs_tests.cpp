@@ -323,9 +323,29 @@ protected:
 
 TEST_F (JobsTests, ParsingValidShapes)
 {
+  /* One full-key shape per type, so the strict POST key filter provably
+     admits every legal term key (values are IsValid's business).  */
   EXPECT_TRUE (ParseOk (
       R"({"t":"transport","d":86400,"wd":86400,"r":2000,"co":8000,"to":1,"items":{"foo":5}})"));
+  EXPECT_TRUE (ParseOk (
+      R"({"t":"haul","d":86400,"wd":86400,"r":2000,"co":8000,"from":1,"to":2,"items":{"foo":5}})"));
   EXPECT_TRUE (ParseOk (R"({"t":"wanted","r":9000,"co":0,"name":"x","n":3})"));
+  EXPECT_TRUE (ParseOk (
+      R"({"t":"protect","d":86400,"wd":86400,"r":2000,"co":8000,"b":1})"));
+  EXPECT_TRUE (ParseOk (
+      R"({"t":"destroy","d":86400,"wd":86400,"r":2000,"co":8000,"b":1})"));
+  EXPECT_TRUE (ParseOk (
+      R"({"t":"escort","d":86400,"wd":86400,"r":2000,"co":8000,"ch":42,"to":1})"));
+  EXPECT_TRUE (ParseOk (
+      R"({"t":"bodyguard","d":86400,"wd":86400,"r":2000,"co":8000,"ch":42})"));
+  EXPECT_TRUE (ParseOk (
+      R"({"t":"patrol","d":86400,"wd":86400,"r":2000,"co":8000,"x":0,"y":0,"rad":5,"k":3,"sp":600})"));
+  EXPECT_TRUE (ParseOk (
+      R"({"t":"rental","d":86400,"wd":86400,"r":2000,"co":0,"b":1,"i":"foo","n":5,"rent":100,"w":"courier"})"));
+  EXPECT_TRUE (ParseOk (
+      R"({"t":"ad","d":86400,"r":2000,"co":0,"b":1,"slot":0,"hash":"abc","start":3600})"));
+  EXPECT_TRUE (ParseOk (
+      R"({"t":"toll","d":86400,"wd":86400,"r":2000,"co":0,"ch":42,"w":"courier"})"));
   EXPECT_TRUE (ParseOk (R"({"s":7,"w":"courier"})"));
   EXPECT_TRUE (ParseOk (R"({"a":7})"));
   EXPECT_TRUE (ParseOk (R"({"c":7})"));
@@ -349,6 +369,31 @@ TEST_F (JobsTests, ParsingRejects)
   /* Extra members on fixed-shape ops.  */
   EXPECT_FALSE (ParseOk (R"({"a":7,"extra":1})"));
   EXPECT_FALSE (ParseOk (R"({"f":7,"bogus":1})"));
+  /* POST is exactly as strict: an unknown key rejects for every predicate
+     family, including another type's legal key and a typo'd one.  */
+  EXPECT_FALSE (ParseOk (
+      R"({"t":"transport","d":86400,"wd":86400,"r":2000,"co":8000,"to":1,"items":{"foo":5},"extra":1})"));
+  EXPECT_FALSE (ParseOk (
+      R"({"t":"transport","d":86400,"wd":86400,"r":2000,"co":8000,"to":1,"items":{"foo":5},"from":1})"));
+  EXPECT_FALSE (ParseOk (
+      R"({"t":"haul","d":86400,"wd":86400,"r":2000,"co":8000,"from":1,"to":2,"items":{"foo":5},"item":{}})"));
+  EXPECT_FALSE (ParseOk (R"({"t":"wanted","r":9000,"co":0,"name":"x","n":3,"nn":3})"));
+  EXPECT_FALSE (ParseOk (
+      R"({"t":"protect","d":86400,"wd":86400,"r":2000,"co":8000,"b":1,"ch":42})"));
+  EXPECT_FALSE (ParseOk (
+      R"({"t":"destroy","d":86400,"wd":86400,"r":2000,"co":8000,"b":1,"bb":1})"));
+  EXPECT_FALSE (ParseOk (
+      R"({"t":"escort","d":86400,"wd":86400,"r":2000,"co":8000,"ch":42,"to":1,"b":1})"));
+  EXPECT_FALSE (ParseOk (
+      R"({"t":"bodyguard","d":86400,"wd":86400,"r":2000,"co":8000,"ch":42,"cch":42})"));
+  EXPECT_FALSE (ParseOk (
+      R"({"t":"patrol","d":86400,"wd":86400,"r":2000,"co":8000,"x":0,"y":0,"rad":5,"k":3,"sp":600,"z":0})"));
+  EXPECT_FALSE (ParseOk (
+      R"({"t":"rental","d":86400,"wd":86400,"r":2000,"co":0,"b":1,"i":"foo","n":5,"rent":100,"w":"courier","deposit":1})"));
+  EXPECT_FALSE (ParseOk (
+      R"({"t":"ad","d":86400,"r":2000,"co":0,"b":1,"slot":0,"hash":"abc","start":3600,"end":7200})"));
+  EXPECT_FALSE (ParseOk (
+      R"({"t":"toll","d":86400,"wd":86400,"r":2000,"co":0,"ch":42,"w":"courier","fee":1})"));
   /* Assign without the worker field.  */
   EXPECT_FALSE (ParseOk (R"({"s":7})"));
   /* Negative deadline / negative work window.  */

@@ -19,7 +19,7 @@
 """
 Consensus fan-out stress recipe for the jobs board: the in-repo,
 reproducible evidence behind the deliberately uncapped settlement sweeps
-(see the ExpireJobs notes in src/jobs.hpp).  All four unbounded-cohort
+(see the ExpireJobs notes in src/jobs.hpp).  All six unbounded-cohort
 paths run at material size through the REAL chain path, and each settling
 block is mined + GSP-synced under a REAL wall-clock deadline of one
 superblock interval (a daemon-thread join: it fires even if the GSP sync
@@ -35,7 +35,14 @@ both a slow and a never-returning callable fail AT the bound):
      reorg as well);
   4. retention prune: the whole settled-history cohort deletes in ONE block
      once the retention window passes (the standing pools survive it),
-     also replayed across a reorg.
+     also replayed across a reorg;
+  5. dormant distinct-target board: M more pools on M DISTINCT initialised
+     target names, then an UNRELATED kill -- the bounty attribution probes
+     only the dead owner (one indexed query, negatives memoised), so the
+     dormant board must add nothing to an unrelated death;
+  6. pools x killers: K distinct same-faction hunter accounts all on the
+     victim's damage list for ONE kill that pays and drains every stacked
+     pool, the multiplicative payout shape (M pools x K owners).
 
 Every cohort row is paid (escrowed reward + burned posting fee), which is
 the economic bound on an attacker lining these up.  Cohort sizes scale
@@ -50,20 +57,25 @@ the bound, but Python cannot cancel the still-running daemon worker, so
 only a hard process bound cleans up a wedged run.)
 
 Recorded runs (make check TESTS=jobs_stress.py, regtest superblock_seconds
-5, AMD Threadripper 7970X, 2026-07-17).  Single samples, quantised by the
-0.1s GSP sync poll -- a coarse upper bound per settling block, not a
-per-row cost measurement:
+5, AMD Threadripper 7970X, 2026-07-17, on the per-dead-owner-probe
+build).  Single samples, quantised by the 0.1s GSP sync poll -- a coarse
+upper bound per settling block, not a per-row cost measurement:
 
-  JOBS_STRESS_N=200 (default):  sweep 200 in 0.104s; one kill settling
-    25 pools + 25 bodyguards in 0.104s; prune 225 rows in 0.103s.
-  JOBS_STRESS_N=1000 (5x):      sweep 1000 in 0.104s; kill 125+125 in
-    0.105s; prune 1125 rows in 0.113s.
+  JOBS_STRESS_N=200 (default):  sweep 200 in 0.103s; one kill settling
+    25 pools + 25 bodyguards in 0.104s; prune 225 rows in 0.103s;
+    unrelated kill against 50 dormant pools in 0.108s; one kill paying
+    25 pools x 4 killers in 0.111s.
   JOBS_STRESS_N=2200 (11x):     sweep 2200 in 0.103s; kill 275+275 in
-    0.105s; prune 2475 rows in 0.104s.  The 2200-row live board also
-    walks the paged reader past its 2000-row page cap.
+    0.104s; prune 2475 rows in 0.103s; unrelated kill against 550
+    dormant pools across 276 distinct names in 0.109s; one kill paying
+    275 pools x 34 distinct killers in 0.144s.  The 2200-row live board
+    also walks the paged reader past its 2000-row page cap.
 
 Every measured cohort completed within one or two poll intervals on this
 machine -- comfortably inside the superblock budget the deadline enforces.
+The dormant-board sample is the regression evidence for the bounty
+attribution rework: hundreds of dormant pools cost an unrelated death no
+more than an empty board (one indexed probe for the one dead owner).
 """
 
 import os
@@ -332,6 +344,85 @@ class JobsStressTest (PXTest):
     self.mineAndSync (superblocks=False)
     self.assertEqual (self.historyRows (), [])
     self.assertEqual (len (self.getJobs ()), M_STACK)
+
+    self.mainLogger.info ("Cohort 5: %d dormant distinct bounty targets, "
+                          "then an unrelated kill..." % M_STACK)
+    # Bounty targets must be existing initialised accounts, so a dormant
+    # board costs its builder one name registration per DISTINCT target on
+    # top of every pool's fee + escrow.
+    targetNames = ["tgt%d" % i for i in range (M_STACK)]
+    for i, nm in enumerate (targetNames):
+      self.initAccount (nm, "b")
+      if (i + 1) % OPS_CHUNK == 0:
+        self.generate (1)
+    self.generate (1)
+    self.sendJobOps ("poster", [
+      {"t": "wanted", "r": 100, "co": 0, "name": nm, "n": 2}
+      for nm in targetNames])
+    boardBefore = sorted (self.getJobs (), key=lambda j: j["id"])
+    self.assertEqual (len (boardBefore), 2 * M_STACK)
+
+    self.initAccount ("bystander", "b")
+    self.generate (1)
+    self.createCharacters ("bystander")
+    self.generate (1)
+    hunterBefore = self.available ("hunter")
+    self.moveCharactersTo ({
+      "bystander": {"x": 60, "y": 0},
+      "hunter": {"x": 60, "y": 0},
+    })
+    self.setCharactersHP ({"bystander": {"a": 1, "s": 0}})
+    self.timed ("unrelated kill against %d dormant pools" % (2 * M_STACK),
+                lambda: self.mineAndSync ())
+    assert "bystander" not in self.getCharacters ()
+    # No pool paid, none drained: the dormant board adds nothing.
+    self.assertEqual (self.available ("hunter"), hunterBefore)
+    self.assertEqual (sorted (self.getJobs (), key=lambda j: j["id"]),
+                      boardBefore)
+
+    K_KILLERS = max (4, M_STACK // 8)
+    self.mainLogger.info ("Cohort 6: one kill paying %d pools x %d distinct "
+                          "killers..." % (M_STACK, K_KILLERS))
+    # All hunters share a faction, so they are allies of each other and the
+    # respawned victim is their only in-range enemy -- which makes the kill
+    # and its damage-list attribution deterministic (see jobs_bounty.py).
+    pack = ["hunter"] + ["pack%d" % i for i in range (K_KILLERS - 1)]
+    for i, nm in enumerate (pack[1:]):
+      self.initAccount (nm, "r")
+      if (i + 1) % OPS_CHUNK == 0:
+        self.generate (1)
+    self.generate (1)
+    for nm in pack[1:]:
+      self.createCharacters (nm)
+    self.generate (1)
+    for nm in pack[1:]:
+      self.changeCharacterVehicle (nm, "light attacker")
+    self.createCharacters ("victim")
+    self.generate (1)
+
+    # Each pool still holds its LAST tranche of 50: this kill pays and
+    # drains every one of them, split across the distinct killer owners
+    # (the division remainder burns).
+    share = 50 // K_KILLERS
+    before = {nm: self.available (nm) for nm in pack}
+    spots = {"victim": {"x": 0, "y": 0}}
+    for nm in pack:
+      spots[nm] = {"x": 0, "y": 0}
+    self.moveCharactersTo (spots)
+    self.setCharactersHP ({"victim": {"a": 1, "s": 0}})
+    self.timed ("one kill paying %d pools x %d killers"
+                  % (M_STACK, K_KILLERS),
+                lambda: self.mineAndSync ())
+    assert "victim" not in self.getCharacters ()
+    for nm in pack:
+      self.assertEqual (self.available (nm), before[nm] + share * M_STACK)
+    # The victim's pools all drained and deleted; the dormant board stays.
+    remaining = [j for j in self.getJobs () if j["type"] == "wanted"]
+    self.assertEqual (len (remaining), M_STACK)
+    assert all (j["target"] != "victim" for j in remaining)
+    rows = self.historyRows ()
+    self.assertEqual (len (rows), M_STACK)
+    self.assertEqual (set (e["outcome"] for e in rows), {"drained"})
 
     self.mainLogger.info ("Jobs stress test succeeded.")
 

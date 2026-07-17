@@ -57,6 +57,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <vector>
 
 namespace pxd
 {
@@ -242,6 +243,16 @@ public:
   {
     return false;
   }
+
+  /**
+   * The type-specific POST term keys this predicate reads, beyond the
+   * generic t / d / wd / r / co handled by the caller.  POST parsing rejects
+   * a move containing any other member, so the POST grammar is exactly as
+   * strict as the lifecycle ops' (typos surface as rejections instead of
+   * being silently ignored).  Presence/value rules (e.g. standing types
+   * must omit "d") remain in the generic and per-type validation.
+   */
+  virtual std::vector<std::string> PostTermKeys () const = 0;
 
   /**
    * Validates the type-specific terms of a POST move (no state change).  The
@@ -450,10 +461,12 @@ public:
  * due row was paid for (posting fee burned, escrow locked), settlement is a
  * constant amount of work per job walked straight off the (deadline, id)
  * index with no sort.  The reproducible in-repo evidence is
- * gametest/jobs_stress.py, which runs all four unbounded-cohort paths at
+ * gametest/jobs_stress.py, which runs all six unbounded-cohort paths at
  * material size in single blocks -- aligned expiry, a standing bounty
- * stack plus a linked bodyguard stack settled by one kill, and a full
- * retention prune -- with each settling block mined + GSP-synced under a
+ * stack plus a linked bodyguard stack settled by one kill, a full
+ * retention prune, a dormant distinct-target board against an unrelated
+ * kill, and a pools-x-distinct-killers drain -- with each settling block
+ * mined + GSP-synced under a
  * real wall-clock deadline of one superblock interval, replays the
  * aligned sweep, the kill and the prune across a reorg, and records runs
  * at 1x / 5x / 11x cohort scale in its module docstring.  (External to this repo, forked-chain e2e runs of the same
@@ -461,7 +474,11 @@ public:
  * for the same block budget.)  A deterministic cap would
  * defer settlement of already-due jobs to later blocks, re-opening the very
  * window (mutable inputs after the deadline) that JobIsDue exists to close;
- * it stays absent unless a measured bound some day demands it.
+ * it stays absent unless a measured bound some day demands it.  Should one
+ * ever be demanded, the designated mechanism is ADMISSION control (caps on
+ * live jobs in total / per poster / per linked entity / per bounty target),
+ * which bounds every future cohort at posting time without touching the
+ * settlement semantics of rows already on the board -- not a sweep cap.
  */
 void ExpireJobs (Database& db, const Context& ctx);
 
@@ -490,9 +507,11 @@ void OnJobBuildingTransferred (Database& db, const Context& ctx,
  * qualifying character kills.  Constructed once per superblock alongside the
  * FameUpdater and fed every kill from the same pre-removal pass (damage lists
  * and victim rows still live), sharing fame's distinct-owner derivation
- * semantics.  The constructor loads the (small, bounded) set of names under
- * an active bounty, so the common per-death path is one hash lookup and SQL
- * is only issued for actual bounty events -- the mega-battle perf guard.
+ * semantics.  The work is proportional to the DEATHS, never to the dormant
+ * board: the constructor makes one O(1) any-bounty-at-all probe, and each
+ * dead owner costs at most one indexed linked-name probe (negative results
+ * are memoised), so arbitrarily many dormant bounty targets add nothing to
+ * an unrelated death -- the mega-battle perf guard.
  */
 class JobsBountyTracker
 {
@@ -508,8 +527,15 @@ private:
   /** Character table for owner lookups on still-live rows.  */
   CharacterTable characters;
 
-  /** Names under an active bounty, loaded once per superblock.  */
-  std::set<std::string> bountyNames;
+  /** Whether any bounty exists at all (one O(1) indexed probe).  */
+  bool anyBounties;
+
+  /**
+   * Owners already probed and found bounty-free.  Safe to memoise within the
+   * superblock: moves precede hooks, so pools can only shrink (drain) during
+   * the kill pass, never appear.
+   */
+  std::set<std::string> noBounty;
 
 public:
 

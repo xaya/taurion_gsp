@@ -275,7 +275,7 @@ JobsTable::QueryForLinkedName (const std::string& name)
 namespace
 {
 
-/** Result type for the distinct bounty-name query.  */
+/** Result type for the any-bounty existence probe.  */
 struct LinkedNameResult : public Database::ResultType
 {
   RESULT_COLUMN (std::string, name, 1);
@@ -283,21 +283,18 @@ struct LinkedNameResult : public Database::ResultType
 
 } // anonymous namespace
 
-std::set<std::string>
-JobsTable::GetActiveBountyNames () const
+bool
+JobsTable::HasActiveBountyNames () const
 {
   auto stmt = db.Prepare (R"(
-    SELECT DISTINCT `linked_name` AS `name`
+    SELECT `linked_name` AS `name`
       FROM `jobs`
       WHERE `linked_name` IS NOT NULL
+      LIMIT 1
   )");
 
-  std::set<std::string> names;
   auto res = stmt.Query<LinkedNameResult> ();
-  while (res.Step ())
-    names.insert (res.Get<LinkedNameResult::name> ());
-
-  return names;
+  return res.Step ();
 }
 
 void

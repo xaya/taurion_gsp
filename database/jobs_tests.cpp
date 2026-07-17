@@ -193,8 +193,27 @@ TEST_F (JobsTableTests, QueryForLinkedName)
     got.push_back (tbl.GetFromResult (res)->GetId ());
   EXPECT_THAT (got, ElementsAre (301, 303));
 
-  EXPECT_THAT (tbl.GetActiveBountyNames (),
-               ElementsAre ("badguy", "other"));
+  EXPECT_TRUE (tbl.HasActiveBountyNames ());
+}
+
+TEST_F (JobsTableTests, HasActiveBountyNames)
+{
+  /* A NULL linked_name (transport) must not count as an active bounty.  */
+  EXPECT_FALSE (tbl.HasActiveBountyNames ());
+  CreateTransport (Faction::RED, "poster", 1, 0, 10, 1).reset ();
+  EXPECT_FALSE (tbl.HasActiveBountyNames ());
+
+  Database::IdT id;
+  {
+    auto j = tbl.CreateNew (Job::Type::WANTED, Faction::INVALID, "poster",
+                            100, 0);
+    j->SetLinkedName ("badguy");
+    id = j->GetId ();
+  }
+  EXPECT_TRUE (tbl.HasActiveBountyNames ());
+
+  tbl.DeleteById (id);
+  EXPECT_FALSE (tbl.HasActiveBountyNames ());
 }
 
 TEST_F (JobsTableTests, SetRewardDrainsPool)
