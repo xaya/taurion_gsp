@@ -42,7 +42,16 @@ both a slow and a never-returning callable fail AT the bound):
      dormant board must add nothing to an unrelated death;
   6. pools x killers: K distinct same-faction hunter accounts all on the
      victim's damage list for ONE kill that pays and drains every stacked
-     pool, the multiplicative payout shape (M pools x K owners).
+     pool, the multiplicative payout shape (M pools x K owners);
+  7. mega-battle deaths: P distinct owners (bountied and bounty-free mixed)
+     all die in ONE superblock against the dormant board, then the whole
+     death block is replayed across a reorg.  (Repeated same-owner deaths
+     in one block are unit-covered by SameBlockKillsBeyondPoolDoNotCrash.)
+
+The run first RAISES the admission caps through the real "param" admin
+command (the cohorts deliberately exceed the production defaults), so the
+runtime-tunable cap path is itself part of the tested surface; the caps'
+enforcement lives in jobs_caps.py.
 
 Every cohort row is paid (escrowed reward + burned posting fee), which is
 the economic bound on an attacker lining these up.  Cohort sizes scale
@@ -57,25 +66,33 @@ the bound, but Python cannot cancel the still-running daemon worker, so
 only a hard process bound cleans up a wedged run.)
 
 Recorded runs (make check TESTS=jobs_stress.py, regtest superblock_seconds
-5, AMD Threadripper 7970X, 2026-07-17, on the per-dead-owner-probe
-build).  Single samples, quantised by the 0.1s GSP sync poll -- a coarse
-upper bound per settling block, not a per-row cost measurement:
+5, AMD Threadripper 7970X, 2026-07-17, admission-caps build).  Single
+samples, quantised by the 0.1s GSP sync poll -- a coarse upper bound per
+settling block, not a per-row cost measurement.  Every kill cohort mines
+its killing block INSIDE the timed call (the god HP drop is submitted
+unmined), so each figure measures the actual kill-and-settle block:
 
-  JOBS_STRESS_N=200 (default):  sweep 200 in 0.103s; one kill settling
-    25 pools + 25 bodyguards in 0.104s; prune 225 rows in 0.103s;
-    unrelated kill against 50 dormant pools in 0.108s; one kill paying
-    25 pools x 4 killers in 0.111s.
-  JOBS_STRESS_N=2200 (11x):     sweep 2200 in 0.103s; kill 275+275 in
-    0.104s; prune 2475 rows in 0.103s; unrelated kill against 550
-    dormant pools across 276 distinct names in 0.109s; one kill paying
-    275 pools x 34 distinct killers in 0.144s.  The 2200-row live board
-    also walks the paged reader past its 2000-row page cap.
+  JOBS_STRESS_N=200 (default):  sweep 200 in 0.139s; one kill settling
+    25 pools + 25 bodyguards in 0.255s; prune 225 rows in 0.214s;
+    unrelated kill against 50 dormant pools in 0.105s; 25 pools x 4
+    killers in 0.105s; 6 deaths against 25 dormant pools in 0.105s.
+  JOBS_STRESS_N=1000 (5x):      sweep 1000 in 0.105s; kill 125+125 in
+    0.105s; prune 1125 rows in 0.104s; unrelated kill against 250
+    dormant pools in 0.105s; 125 pools x 15 killers in 0.106s; 6 deaths
+    against 125 dormant pools in 0.105s.
+  JOBS_STRESS_N=2200 (11x):     sweep 2200 in 0.104s; kill 275+275 in
+    0.105s; prune 2475 rows in 0.104s; unrelated kill against 550
+    dormant pools across 276 distinct names in 0.106s; 275 pools x 34
+    distinct killers in 0.107s; 8 deaths against 275 dormant pools in
+    0.106s.  The 2200-row live board also walks the paged reader past
+    its 2000-row page cap.
 
 Every measured cohort completed within one or two poll intervals on this
-machine -- comfortably inside the superblock budget the deadline enforces.
-The dormant-board sample is the regression evidence for the bounty
-attribution rework: hundreds of dormant pools cost an unrelated death no
-more than an empty board (one indexed probe for the one dead owner).
+machine -- comfortably inside the superblock budget the deadline enforces,
+and flat across the scales.  The dormant-board and mega-battle samples are
+the regression evidence for the bounty attribution rework: hundreds of
+dormant pools cost a death block no more than an empty board (one indexed
+probe per distinct dead owner).
 """
 
 import os
@@ -210,6 +227,16 @@ class JobsStressTest (PXTest):
     self.mainLogger.info ("Deadline self-check: slow and hung callables "
                           "must fail AT the bound...")
     self.checkTimedDeadline ()
+
+    self.mainLogger.info ("Raising the admission caps for the cohorts...")
+    # The stress shapes deliberately exceed the production defaults; the
+    # raise itself exercises the runtime-tunable parameter path.
+    self.adminCommand ({"param": [
+      {"n": n, "v": 10**6}
+      for n in ("max-live-jobs", "max-jobs-per-poster",
+                "max-jobs-per-linked-entity", "max-bounty-pools-per-target")
+    ]})
+    self.generate (1)
 
     self.mainLogger.info ("Setting up accounts...")
     self.initAccount ("poster", "r")
@@ -371,7 +398,11 @@ class JobsStressTest (PXTest):
       "bystander": {"x": 60, "y": 0},
       "hunter": {"x": 60, "y": 0},
     })
-    self.setCharactersHP ({"bystander": {"a": 1, "s": 0}})
+    # The god HP drop is NOT mined here: the timed mineAndSync below mines
+    # the killing block itself, so the kill AND its whole bounty-attribution
+    # pass run inside the deadline-bounded block (alive before, dead after).
+    assert "bystander" in self.getCharacters ()
+    self.setCharactersHP ({"bystander": {"a": 1, "s": 0}}, mine=False)
     self.timed ("unrelated kill against %d dormant pools" % (2 * M_STACK),
                 lambda: self.mineAndSync ())
     assert "bystander" not in self.getCharacters ()
@@ -409,7 +440,10 @@ class JobsStressTest (PXTest):
     for nm in pack:
       spots[nm] = {"x": 0, "y": 0}
     self.moveCharactersTo (spots)
-    self.setCharactersHP ({"victim": {"a": 1, "s": 0}})
+    # As in cohort 5: submit the drop unmined so the timed block below is
+    # the killing/settling block itself.
+    assert "victim" in self.getCharacters ()
+    self.setCharactersHP ({"victim": {"a": 1, "s": 0}}, mine=False)
     self.timed ("one kill paying %d pools x %d killers"
                   % (M_STACK, K_KILLERS),
                 lambda: self.mineAndSync ())
@@ -423,6 +457,78 @@ class JobsStressTest (PXTest):
     rows = self.historyRows ()
     self.assertEqual (len (rows), M_STACK)
     self.assertEqual (set (e["outcome"] for e in rows), {"drained"})
+
+    P_PAIRS = max (6, M_STACK // 32)
+    self.mainLogger.info ("Cohort 7: %d distinct owners die in ONE "
+                          "superblock..." % P_PAIRS)
+    # Two victims are under a live pool from the dormant board (tgt0/tgt1);
+    # the rest are bounty-free.  Each victim gets its own same-tile hunter
+    # at a spot far from all the others, so target selection is
+    # deterministic pair-wise and every death lands in the same block.
+    vOwners = ["tgt0", "tgt1", "bystander"] \
+        + ["extra%d" % i for i in range (P_PAIRS - 3)]
+    hOwners = ["ph%d" % i for i in range (P_PAIRS)]
+    for i, nm in enumerate (vOwners[3:] + hOwners):
+      self.initAccount (nm, "b" if nm.startswith ("extra") else "r")
+      if (i + 1) % OPS_CHUNK == 0:
+        self.generate (1)
+    self.generate (1)
+    for nm in vOwners + hOwners:
+      self.createCharacters (nm)
+    self.generate (1)
+    for nm in hOwners:
+      self.changeCharacterVehicle (nm, "light attacker")
+
+    spots = {}
+    for i, (v, h) in enumerate (zip (vOwners, hOwners)):
+      pos = {"x": 300 * (i + 1), "y": 0}
+      spots[v] = dict (pos)
+      spots[h] = dict (pos)
+    self.moveCharactersTo (spots)
+
+    hBefore = {nm: self.available (nm) for nm in hOwners}
+    boardBefore = sorted (self.getJobs (), key=lambda j: j["id"])
+    preMegaTime = self.w3.eth.get_block ("latest")["timestamp"]
+    snap = self.env.snapshot ()
+
+    def dropAllVictims ():
+      for nm in vOwners:
+        assert nm in self.getCharacters ()
+      self.setCharactersHP (
+          {nm: {"a": 1, "s": 0} for nm in vOwners}, mine=False)
+
+    def checkMegaBattle ():
+      for nm in vOwners:
+        assert nm not in self.getCharacters ()
+      # The two bountied victims paid one tranche of 50 to their pair
+      # hunter; every other hunter got nothing.
+      for i, nm in enumerate (hOwners):
+        self.assertEqual (self.available (nm),
+                          hBefore[nm] + (50 if i < 2 else 0))
+      # The two touched pools lost one tranche (remaining 2 -> 1) but stay
+      # on the board; the dormant remainder is untouched.
+      pools = [j for j in self.getJobs () if j["type"] == "wanted"]
+      self.assertEqual (len (pools), M_STACK)
+      self.assertEqual (sorted (p["remaining"] for p in pools),
+                        [1, 1] + [2] * (M_STACK - 2))
+
+    dropAllVictims ()
+    self.timed ("one superblock settling %d deaths against %d dormant pools"
+                  % (P_PAIRS, M_STACK),
+                lambda: self.mineAndSync ())
+    checkMegaBattle ()
+
+    self.mainLogger.info ("Reorg across the mega-battle: undo and re-kill...")
+    self.undoTo (snap, preMegaTime)
+    for nm in vOwners:
+      assert nm in self.getCharacters ()
+    self.assertEqual (sorted (self.getJobs (), key=lambda j: j["id"]),
+                      boardBefore)
+    for nm in hOwners:
+      self.assertEqual (self.available (nm), hBefore[nm])
+    dropAllVictims ()
+    self.mineAndSync ()
+    checkMegaBattle ()
 
     self.mainLogger.info ("Jobs stress test succeeded.")
 

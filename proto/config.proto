@@ -678,6 +678,33 @@ message Params
   /** Maximum work window, in seconds.  */
   optional int64 max_work_window = 33;
 
+  /**
+   * DEFAULT admission caps for the jobs board: the maximum number of live
+   * jobs in total, per poster, linked to one entity, and of wanted pools
+   * stacked on one target name.  A POST past a cap is rejected, which gives
+   * every atomic settlement sweep (expiry, linked-entity destruction,
+   * bounty payout) a hard deterministic ceiling without touching the
+   * settlement semantics of rows already admitted.  These are the roconfig
+   * DEFAULTS: the effective values are runtime-tunable through the
+   * "jobscfg" admin command (consensus state in the jobs_config table), so
+   * the limits can be adjusted -- or posting frozen entirely with 0 --
+   * without a redeploy while the economy stabilises.
+   */
+  optional int64 max_live_jobs = 34;
+  optional int64 max_jobs_per_poster = 35;
+  optional int64 max_jobs_per_linked_entity = 36;
+  optional int64 max_bounty_pools_per_target = 37;
+
+  /**
+   * Batch size for the deterministic history-retention prune: at most this
+   * many expired job_history rows (ordered by settled_time then id) are
+   * deleted per superblock sweep, so one huge cohort ageing out cannot
+   * force an unbounded single-statement delete -- the remainder drains on
+   * subsequent sweeps.  History is display-only, so the delayed deletion
+   * reopens no gameplay inputs.
+   */
+  optional int64 jobs_history_prune_batch = 38;
+
 }
 
 /* ************************************************************************** */

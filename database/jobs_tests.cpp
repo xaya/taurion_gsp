@@ -216,6 +216,26 @@ TEST_F (JobsTableTests, HasActiveBountyNames)
   EXPECT_FALSE (tbl.HasActiveBountyNames ());
 }
 
+TEST_F (JobsTableTests, AdmissionCapCounts)
+{
+  EXPECT_EQ (tbl.CountAll (), 0);
+
+  CreateTransport (Faction::RED, "alice", 1, 0, 10, 42).reset ();
+  CreateTransport (Faction::RED, "alice", 1, 0, 10, 42).reset ();
+  CreateTransport (Faction::RED, "bob", 1, 0, 10, 7).reset ();
+  tbl.CreateNew (Job::Type::WANTED, Faction::INVALID, "alice", 100, 0)
+      ->SetLinkedName ("badguy");
+
+  EXPECT_EQ (tbl.CountAll (), 4);
+  EXPECT_EQ (tbl.CountForPoster ("alice"), 3);
+  EXPECT_EQ (tbl.CountForPoster ("bob"), 1);
+  EXPECT_EQ (tbl.CountForPoster ("nobody"), 0);
+  EXPECT_EQ (tbl.CountForLinkedId (42), 2);
+  EXPECT_EQ (tbl.CountForLinkedId (7), 1);
+  EXPECT_EQ (tbl.CountForLinkedName ("badguy"), 1);
+  EXPECT_EQ (tbl.CountForLinkedName ("other"), 0);
+}
+
 TEST_F (JobsTableTests, SetRewardDrainsPool)
 {
   /* The wanted pool decrements the reward column as tranches pay out; the
@@ -348,6 +368,37 @@ TEST_F (JobHistoryTests, Prune)
   ASSERT_TRUE (res.Step ());
   EXPECT_EQ (tbl.GetFromResult (res)->GetReward (), 2);
   EXPECT_FALSE (res.Step ());
+}
+
+TEST_F (JobHistoryTests, PruneBatched)
+{
+  /* Expired rows delete oldest-first in (settled_time, id) order, at most
+     `batch` per call; ties on settled_time break by id.  */
+  const int64_t times[] = {100, 100, 150, 180, 500};
+  for (int i = 0; i < 5; ++i)
+    {
+      auto j = CreateTransport (Faction::RED, "poster", i + 1, 0, 10, 1);
+      tbl.WriteHistory (*j, JobOutcome::COMPLETED, i + 1, times[i]);
+    }
+
+  const auto remaining = [this] ()
+    {
+      std::vector<Amount> res;
+      auto r = tbl.QueryHistory (0);
+      while (r.Step ())
+        res.push_back (tbl.GetFromResult (r)->GetReward ());
+      return res;
+    };
+
+  tbl.PruneHistory (200, 2);
+  EXPECT_THAT (remaining (), ElementsAre (3, 4, 5));
+
+  tbl.PruneHistory (200, 2);
+  EXPECT_THAT (remaining (), ElementsAre (5));
+
+  /* The remainder is not yet expired: further batches are no-ops.  */
+  tbl.PruneHistory (200, 2);
+  EXPECT_THAT (remaining (), ElementsAre (5));
 }
 
 TEST_F (JobHistoryTests, CursorPaginationCoversEveryRowOnce)

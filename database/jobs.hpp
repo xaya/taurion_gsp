@@ -496,13 +496,23 @@ public:
 
   /**
    * Returns whether ANY account is under an active bounty (a non-NULL
-   * linked_name exists): one O(1) probe of the covering linked-name index.
-   * The kill attribution (run in the superblock damage phase) checks this
-   * once and, only if true, issues an indexed per-dead-owner probe -- so the
-   * per-superblock cost scales with the deaths, never with the number of
-   * dormant bounty targets on the board.
+   * linked_name exists): a single covering-index existence probe, no row
+   * enumeration.  The kill attribution (run in the superblock damage phase)
+   * checks this once and, only if true, issues an indexed per-dead-owner
+   * probe -- so the per-superblock cost scales with the deaths, never with
+   * the number of dormant bounty targets on the board.
    */
   bool HasActiveBountyNames () const;
+
+  /**
+   * Row counts for the admission caps, each an indexed (or cap-bounded)
+   * COUNT over live rows: the whole board, one poster's jobs, the jobs
+   * linked to one entity, and the wanted pools on one target name.
+   */
+  int64_t CountAll () const;
+  int64_t CountForPoster (const std::string& poster) const;
+  int64_t CountForLinkedId (Database::IdT entity) const;
+  int64_t CountForLinkedName (const std::string& name) const;
 
   /**
    * Deletes the job with the given ID.  Used on every terminal transition
@@ -547,11 +557,16 @@ public:
                                                    int limit = 0);
 
   /**
-   * Deletes history rows settled strictly before the cutoff timestamp: the
-   * deterministic retention prune, run by the (superblock-only) expiry sweep
-   * with cutoff = now - params.jobs_history_retention.
+   * Deletes at most `batch` history rows settled strictly before the cutoff
+   * timestamp, oldest first (ordered by settled_time then id, so every node
+   * deletes the same rows): the deterministic retention prune, run by the
+   * (superblock-only) expiry sweep with cutoff = now -
+   * params.jobs_history_retention.  The batch bound keeps one huge cohort
+   * ageing out from forcing an unbounded single-statement delete; the
+   * remainder drains on subsequent sweeps (history is display-only, so the
+   * delay reopens no gameplay inputs).  batch <= 0 means unbounded (tests).
    */
-  void PruneHistory (int64_t cutoff);
+  void PruneHistory (int64_t cutoff, int64_t batch = 0);
 
   /**
    * Returns the total vCHI reserved by each account on the jobs board: the

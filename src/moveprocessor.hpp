@@ -410,6 +410,16 @@ private:
   void HandleGodMode (const Json::Value& cmd);
 
   /**
+   * Handles a "param" admin command, if any: runtime tuning of named
+   * parameters (currently the jobs-board admission caps), in the exact
+   * admin shape of the soccerverse GSP.  Unlike god mode this is a
+   * legitimate mainnet operation -- admin commands only ever come from the
+   * game account's owner -- so the caps can be adjusted, or posting frozen
+   * with 0, without a redeploy.
+   */
+  void HandleParams (const Json::Value& cmd);
+
+  /**
    * Transfers the given character if the update JSON contains a request
    * to do so.
    */

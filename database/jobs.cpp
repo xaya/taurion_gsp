@@ -281,6 +281,23 @@ struct LinkedNameResult : public Database::ResultType
   RESULT_COLUMN (std::string, name, 1);
 };
 
+/** Result type for the admission-cap COUNT queries.  */
+struct CountResult : public Database::ResultType
+{
+  RESULT_COLUMN (int64_t, cnt, 1);
+};
+
+/** Runs a prepared COUNT query and returns its single value.  */
+int64_t
+StepCount (Database::Statement&& stmt)
+{
+  auto res = stmt.Query<CountResult> ();
+  CHECK (res.Step ());
+  const int64_t cnt = res.Get<CountResult::cnt> ();
+  CHECK (!res.Step ());
+  return cnt;
+}
+
 } // anonymous namespace
 
 bool
@@ -295,6 +312,53 @@ JobsTable::HasActiveBountyNames () const
 
   auto res = stmt.Query<LinkedNameResult> ();
   return res.Step ();
+}
+
+int64_t
+JobsTable::CountAll () const
+{
+  /* The one unindexed count: a scan of the primary key, itself bounded by
+     the very cap it enforces (the board can never exceed the global cap
+     plus the in-flight block's own admissions).  */
+  return StepCount (db.Prepare (R"(
+    SELECT COUNT(*) AS `cnt` FROM `jobs`
+  )"));
+}
+
+int64_t
+JobsTable::CountForPoster (const std::string& poster) const
+{
+  auto stmt = db.Prepare (R"(
+    SELECT COUNT(*) AS `cnt`
+      FROM `jobs`
+      WHERE `poster` = ?1
+  )");
+  stmt.Bind (1, poster);
+  return StepCount (std::move (stmt));
+}
+
+int64_t
+JobsTable::CountForLinkedId (const Database::IdT entity) const
+{
+  auto stmt = db.Prepare (R"(
+    SELECT COUNT(*) AS `cnt`
+      FROM `jobs`
+      WHERE `linked_id` = ?1
+  )");
+  stmt.Bind (1, entity);
+  return StepCount (std::move (stmt));
+}
+
+int64_t
+JobsTable::CountForLinkedName (const std::string& name) const
+{
+  auto stmt = db.Prepare (R"(
+    SELECT COUNT(*) AS `cnt`
+      FROM `jobs`
+      WHERE `linked_name` = ?1
+  )");
+  stmt.Bind (1, name);
+  return StepCount (std::move (stmt));
 }
 
 void
@@ -429,13 +493,33 @@ JobsTable::QueryHistory (const int64_t fromTime, const int64_t afterTime,
 }
 
 void
-JobsTable::PruneHistory (const int64_t cutoff)
+JobsTable::PruneHistory (const int64_t cutoff, const int64_t batch)
 {
+  if (batch <= 0)
+    {
+      auto stmt = db.Prepare (R"(
+        DELETE FROM `job_history`
+          WHERE `settled_time` < ?1
+      )");
+      stmt.Bind (1, cutoff);
+      stmt.Execute ();
+      return;
+    }
+
+  /* Oldest first with a full (settled_time, id) order, so every node
+     deletes exactly the same rows when the batch bound bites.  */
   auto stmt = db.Prepare (R"(
     DELETE FROM `job_history`
-      WHERE `settled_time` < ?1
+      WHERE `id` IN (
+        SELECT `id`
+          FROM `job_history`
+          WHERE `settled_time` < ?1
+          ORDER BY `settled_time`, `id`
+          LIMIT ?2
+      )
   )");
   stmt.Bind (1, cutoff);
+  stmt.Bind (2, batch);
   stmt.Execute ();
 }
 

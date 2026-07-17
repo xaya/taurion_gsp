@@ -33,6 +33,7 @@ REGTESTS = \
   getserviceinfo.py \
   getversion.py \
   jobs_bounty.py \
+  jobs_caps.py \
   jobs_protection.py \
   jobs_rentals.py \
   jobs_rpc.py \

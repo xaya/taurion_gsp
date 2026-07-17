@@ -21,6 +21,7 @@
 #include "buildings.hpp"
 #include "jsonutils.hpp"
 
+#include "database/params.hpp"
 #include "hexagonal/coord.hpp"
 
 #include <xayautil/jsonutils.hpp>
@@ -582,10 +583,17 @@ public:
     return JobLinkedKind::BUILDING;
   }
 
-  std::vector<std::string>
+  const std::vector<std::string>&
   PostTermKeys () const override
   {
-    return {"items", "to"};
+    static const std::vector<std::string> keys = {"items", "to"};
+    return keys;
+  }
+
+  std::vector<const char*>
+  PostLinkedIdKeys () const override
+  {
+    return {"to"};
   }
 
   bool ValidatePost (const JobContext& jc, const Account& poster,
@@ -724,10 +732,19 @@ public:
     return true;
   }
 
-  std::vector<std::string>
+  const std::vector<std::string>&
   PostTermKeys () const override
   {
-    return {"items", "from", "to"};
+    static const std::vector<std::string> keys = {"items", "from", "to"};
+    return keys;
+  }
+
+  std::vector<const char*>
+  PostLinkedIdKeys () const override
+  {
+    /* Both ends: linked to the source while OPEN, swapped to the
+       destination at accept.  */
+    return {"from", "to"};
   }
 
   bool ValidatePost (const JobContext& jc, const Account& poster,
@@ -933,10 +950,11 @@ public:
     return Faction::INVALID;
   }
 
-  std::vector<std::string>
+  const std::vector<std::string>&
   PostTermKeys () const override
   {
-    return {"name", "n"};
+    static const std::vector<std::string> keys = {"name", "n"};
+    return keys;
   }
 
   bool ValidatePost (const JobContext& jc, const Account& poster,
@@ -1188,8 +1206,15 @@ public:
     return JobLinkedKind::BUILDING;
   }
 
-  std::vector<std::string>
+  const std::vector<std::string>&
   PostTermKeys () const override
+  {
+    static const std::vector<std::string> keys = {"b"};
+    return keys;
+  }
+
+  std::vector<const char*>
+  PostLinkedIdKeys () const override
   {
     return {"b"};
   }
@@ -1241,8 +1266,15 @@ public:
     return Faction::INVALID;
   }
 
-  std::vector<std::string>
+  const std::vector<std::string>&
   PostTermKeys () const override
+  {
+    static const std::vector<std::string> keys = {"b"};
+    return keys;
+  }
+
+  std::vector<const char*>
+  PostLinkedIdKeys () const override
   {
     return {"b"};
   }
@@ -1290,8 +1322,15 @@ public:
     return JobLinkedKind::CHARACTER;
   }
 
-  std::vector<std::string>
+  const std::vector<std::string>&
   PostTermKeys () const override
+  {
+    static const std::vector<std::string> keys = {"ch"};
+    return keys;
+  }
+
+  std::vector<const char*>
+  PostLinkedIdKeys () const override
   {
     return {"ch"};
   }
@@ -1347,10 +1386,19 @@ public:
     return JobLinkedKind::BUILDING;
   }
 
-  std::vector<std::string>
+  const std::vector<std::string>&
   PostTermKeys () const override
   {
-    return {"ch", "to"};
+    static const std::vector<std::string> keys = {"ch", "to"};
+    return keys;
+  }
+
+  std::vector<const char*>
+  PostLinkedIdKeys () const override
+  {
+    /* The linked entity is the destination building; the protected
+       character lives in the proto only.  */
+    return {"to"};
   }
 
   bool
@@ -1459,10 +1507,11 @@ class PatrolPredicate : public JobPredicate
 
 public:
 
-  std::vector<std::string>
+  const std::vector<std::string>&
   PostTermKeys () const override
   {
-    return {"x", "y", "rad", "k", "sp"};
+    static const std::vector<std::string> keys = {"x", "y", "rad", "k", "sp"};
+    return keys;
   }
 
   bool
@@ -1705,10 +1754,11 @@ public:
      gap is still rejected (JobIsDue); only the goods actually sitting at
      the handover building when the sweep looks can cure a default.  */
 
-  std::vector<std::string>
+  const std::vector<std::string>&
   PostTermKeys () const override
   {
-    return {"b", "i", "n", "rent", "w"};
+    static const std::vector<std::string> keys = {"b", "i", "n", "rent", "w"};
+    return keys;
   }
 
   bool
@@ -1934,10 +1984,18 @@ public:
     return Faction::INVALID;
   }
 
-  std::vector<std::string>
+  const std::vector<std::string>&
   PostTermKeys () const override
   {
-    return {"b", "slot", "hash", "start"};
+    static const std::vector<std::string> keys
+        = {"b", "slot", "hash", "start"};
+    return keys;
+  }
+
+  std::vector<const char*>
+  PostLinkedIdKeys () const override
+  {
+    return {"b"};
   }
 
   bool
@@ -2177,10 +2235,17 @@ public:
     return Faction::INVALID;
   }
 
-  std::vector<std::string>
+  const std::vector<std::string>&
   PostTermKeys () const override
   {
-    return {"ch", "w"};
+    static const std::vector<std::string> keys = {"ch", "w"};
+    return keys;
+  }
+
+  std::vector<const char*>
+  PostLinkedIdKeys () const override
+  {
+    return {"ch"};
   }
 
   bool
@@ -2312,6 +2377,19 @@ PredicateForType (const Job::Type type)
     if (type == entry.type)
       return entry.predicate;
   return nullptr;
+}
+
+std::vector<Database::IdT>
+JobPredicate::PostLinkedIds (const Json::Value& terms) const
+{
+  std::vector<Database::IdT> ids;
+  for (const auto* key : PostLinkedIdKeys ())
+    {
+      Database::IdT id;
+      CHECK (IdFromJson (terms[key], id));
+      ids.push_back (id);
+    }
+  return ids;
 }
 
 const char*
@@ -2466,6 +2544,52 @@ PostOperation::IsValid () const
 
   if (!pred->ValidatePost (jc, account, terms))
     return false;
+
+  /* Admission caps: the deterministic ceiling on every future atomic
+     sweep, enforced at the door so settlement semantics never change for
+     rows already admitted.  The effective values are the admin-tunable
+     parameter overrides (the "param" command) falling back to the roconfig
+     defaults; 0 -- or any negative value -- freezes the respective
+     admission entirely.  Checked after ValidatePost so the terms (and any
+     linked IDs) are known-valid.  */
+  {
+    const ParamsTable par(jc.db);
+
+    if (jc.jobs.CountAll ()
+          >= par.Get ("max-live-jobs", p.max_live_jobs ()))
+      {
+        LOG (WARNING) << "Jobs board is at the live-jobs cap";
+        return false;
+      }
+
+    if (jc.jobs.CountForPoster (account.GetName ())
+          >= par.Get ("max-jobs-per-poster", p.max_jobs_per_poster ()))
+      {
+        LOG (WARNING)
+            << account.GetName () << " is at their live-jobs cap";
+        return false;
+      }
+
+    for (const auto id : pred->PostLinkedIds (terms))
+      if (jc.jobs.CountForLinkedId (id)
+            >= par.Get ("max-jobs-per-linked-entity",
+                        p.max_jobs_per_linked_entity ()))
+        {
+          LOG (WARNING) << "Entity " << id << " is at its linked-jobs cap";
+          return false;
+        }
+
+    if (type == Job::Type::WANTED
+          && jc.jobs.CountForLinkedName (terms["name"].asString ())
+               >= par.Get ("max-bounty-pools-per-target",
+                           p.max_bounty_pools_per_target ()))
+      {
+        LOG (WARNING)
+            << "Target " << terms["name"].asString ()
+            << " is at the stacked-pools cap";
+        return false;
+      }
+  }
 
   const Amount fee = Fee ();
   if (account.GetBalance () < reward + fee)
@@ -2950,14 +3074,13 @@ JobOperation::Parse (Account& acc, const Json::Value& data,
          so a typo'd or unknown member rejects the move instead of being
          silently ignored.  */
       static const std::set<std::string> generic = {"t", "d", "wd", "r", "co"};
-      const auto typeKeys = pred->PostTermKeys ();
+      const auto& typeKeys = pred->PostTermKeys ();
       for (const auto& member : data.getMemberNames ())
         if (generic.count (member) == 0
               && std::find (typeKeys.begin (), typeKeys.end (), member)
                    == typeKeys.end ())
           {
-            LOG (WARNING)
-                << "Unknown key \"" << member << "\" in job post:\n" << data;
+            LOG (WARNING) << "Unknown key \"" << member << "\" in job post";
             return nullptr;
           }
 
@@ -3042,6 +3165,8 @@ namespace
  */
 struct BlockHookTables
 {
+  Database& db;
+
   AccountsTable accounts;
   BuildingsTable buildings;
   BuildingInventoriesTable buildingInv;
@@ -3050,15 +3175,15 @@ struct BlockHookTables
   GroundLootTable groundLoot;
   JobsTable jobs;
 
-  explicit BlockHookTables (Database& db)
-    : accounts(db), buildings(db), buildingInv(db), characters(db),
-      ongoings(db), groundLoot(db), jobs(db)
+  explicit BlockHookTables (Database& d)
+    : db(d), accounts(d), buildings(d), buildingInv(d), characters(d),
+      ongoings(d), groundLoot(d), jobs(d)
   {}
 
   JobContext
   MakeContext (const pxd::Context& ctx)
   {
-    return {ctx, accounts, buildings, buildingInv, characters, ongoings,
+    return {db, ctx, accounts, buildings, buildingInv, characters, ongoings,
             groundLoot, jobs};
   }
 };
@@ -3209,12 +3334,14 @@ JobsBountyTracker::UpdateForKill (const proto::TargetId& target)
     return;
 
   /* The indexed linked-name probe IS the membership check: pools on this
-     name come back directly, so a death costs one equality-indexed query at
-     most (and repeat deaths of a bounty-free owner none at all).  An empty
-     result -- never under bounty, or an earlier kill in this very block
-     drained and deleted the last pool -- just memoises the owner and moves
-     on (this must NOT be a CHECK, or a target losing more characters than
-     the pool has tranches in one block would halt every node).  */
+     name come back directly, so a death costs one equality-indexed query
+     at most (repeat deaths of a memoised bounty-free owner cost none; an
+     owner with live pools is re-probed per death, since the pools drain as
+     they pay).  An empty result -- never under bounty, or an earlier kill
+     in this very block drained and deleted the last pool -- just memoises
+     the owner and moves on (this must NOT be a CHECK, or a target losing
+     more characters than the pool has tranches in one block would halt
+     every node).  */
   std::vector<Database::IdT> pools;
   {
     JobsTable jobs(db);

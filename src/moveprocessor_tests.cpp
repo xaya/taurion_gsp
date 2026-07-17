@@ -23,6 +23,7 @@
 #include "testutils.hpp"
 
 #include "database/dbtest.hpp"
+#include "database/params.hpp"
 
 #include <xayautil/jsonutils.hpp>
 
@@ -175,6 +176,32 @@ TEST_F (MoveProcessorTests, AllAdminDataAccepted)
 
       ProcessAdmin (fullAdm.str ());
     }
+}
+
+TEST_F (MoveProcessorTests, AdminSetParam)
+{
+  ParamsTable par(db);
+
+  /* Valid sets and a removal (null value resets to the default), plus
+     malformed entries that must be skipped deterministically: wrong shape,
+     non-string name, extra member, non-integer value.  */
+  ProcessAdmin (R"([{"cmd": {"param": [
+    {"n": "max-live-jobs", "v": 5},
+    {"n": "max-jobs-per-poster", "v": 7},
+    {"n": "max-jobs-per-poster", "v": null},
+    42,
+    {"n": 10, "v": 1},
+    {"n": "max-bounty-pools-per-target", "v": 3, "x": 1},
+    {"n": "max-bounty-pools-per-target", "v": 2.5}
+  ]}}])");
+
+  EXPECT_EQ (par.Get ("max-live-jobs", 42), 5);
+  EXPECT_EQ (par.Get ("max-jobs-per-poster", 42), 42);
+  EXPECT_EQ (par.Get ("max-bounty-pools-per-target", 42), 42);
+
+  /* A non-array "param" command is ignored.  */
+  ProcessAdmin (R"([{"cmd": {"param": {"n": "max-live-jobs", "v": 9}}}])");
+  EXPECT_EQ (par.Get ("max-live-jobs", 42), 5);
 }
 
 /* ************************************************************************** */

@@ -30,6 +30,7 @@ libdatabase_la_SOURCES = \
   jobs.cpp \
   moneysupply.cpp \
   ongoing.cpp \
+  params.cpp \
   region.cpp \
   schema.cpp \
   target.cpp \
@@ -51,6 +52,7 @@ noinst_HEADERS = \
   jobs.hpp \
   moneysupply.hpp \
   ongoing.hpp \
+  params.hpp \
   lazyproto.hpp lazyproto.tpp \
   region.hpp \
   schema.hpp \
@@ -104,6 +106,7 @@ tests_SOURCES = \
   lazyproto_tests.cpp \
   moneysupply_tests.cpp \
   ongoing_tests.cpp \
+  params_tests.cpp \
   region_tests.cpp \
   schema_tests.cpp \
   target_tests.cpp \

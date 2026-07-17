@@ -224,10 +224,12 @@ message AdPayload
    * Absolute block-consensus timestamp (seconds) at which the rented window
    * opens; the window closes at the job's deadline column.  Unset means the
    * window opened at post time (an immediate ad).  Windows are half-open
-   * [start, deadline): accepting an ad whose window overlaps an
-   * already-accepted ad on the same (building, slot) is rejected, but
-   * back-to-back bookings may share an endpoint -- so future windows can be
-   * booked ahead without double-letting or dead gaps.
+   * with the acceptance-time clamp [max(start, acceptance_time), deadline):
+   * accepting an ad whose EFFECTIVE window overlaps an already-accepted ad
+   * on the same (building, slot) is rejected, declared overlap that lies
+   * entirely in the past does not (an ad accepted late renders from the
+   * accept), and back-to-back bookings may share an endpoint -- so future
+   * windows can be booked ahead without double-letting or dead gaps.
    */
   optional int64 start = 3;
 

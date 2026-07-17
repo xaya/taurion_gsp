@@ -601,6 +601,18 @@ CREATE INDEX IF NOT EXISTS `jobs_by_poster` ON `jobs` (`poster`);
 -- "My accepted jobs" + reserved-collateral sum for an account.
 CREATE INDEX IF NOT EXISTS `jobs_by_worker` ON `jobs` (`worker`);
 
+-- Runtime-tunable named parameters (the "param" admin command, mirroring
+-- the soccerverse GSP): one row per overridden parameter, an absent name
+-- means the roconfig default applies (removing a row resets to it).
+-- Currently read by the jobs-board admission caps.  Consensus state like
+-- any other table -- it changes only through admin commands carried in
+-- block data, so every node applies the same values at the same height and
+-- reorgs unwind them via the normal changeset machinery.
+CREATE TABLE IF NOT EXISTS `parameters` (
+  `name` TEXT PRIMARY KEY,
+  `value` INTEGER NOT NULL
+);
+
 -- Settled-jobs history: one row per terminal transition (fulfil / cancel /
 -- expiry / linked-entity death / pool drain), written by the same block
 -- processing that DELETEs the live `jobs` row.  Consensus state like the

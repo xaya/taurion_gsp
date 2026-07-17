@@ -538,9 +538,12 @@ class PXTest (XayaXGameTest):
     for nm, c in charTargets.items ():
       self.assertEqual (chars[nm].getPosition (), c)
 
-  def setCharactersHP (self, charHP):
+  def setCharactersHP (self, charHP, mine=True):
     """
-    Sets the HP and max HP of the characters with the given owners.
+    Sets the HP and max HP of the characters with the given owners.  With
+    mine=False the god command is only submitted, NOT mined: for timing a
+    kill-and-settle block, the caller mines (and times) the block itself --
+    mining here would settle the kill before the caller's timer starts.
     """
 
     chars = self.getCharacters ()
@@ -551,7 +554,8 @@ class PXTest (XayaXGameTest):
       sethp.append (val)
 
     self.adminCommand ({"god": {"sethp": {"c": sethp}}})
-    self.generate (1)
+    if mine:
+      self.generate (1)
 
   def changeCharacterVehicle (self, char, vehicleType, fitments=[]):
     """

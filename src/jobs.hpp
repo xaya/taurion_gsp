@@ -107,6 +107,8 @@ ReleaseJobCoins (Account& a, const Amount amount)
  */
 struct JobContext
 {
+  /** Raw database handle (jobs_config reads for the admission caps).  */
+  Database& db;
   const Context& ctx;
   AccountsTable& accounts;
   BuildingsTable& buildings;
@@ -251,8 +253,31 @@ public:
    * strict as the lifecycle ops' (typos surface as rejections instead of
    * being silently ignored).  Presence/value rules (e.g. standing types
    * must omit "d") remain in the generic and per-type validation.
+   * Returned by reference to a static so the hot parse path allocates
+   * nothing.
    */
-  virtual std::vector<std::string> PostTermKeys () const = 0;
+  virtual const std::vector<std::string>& PostTermKeys () const = 0;
+
+  /**
+   * The term keys holding the entity IDs a POST of this type would link
+   * (empty for non-linking types).  Haul names BOTH buildings: the job
+   * links the source while OPEN and swaps to the destination at accept,
+   * and the accept does not re-check -- so an entity's worst case is the
+   * cap plus its in-flight haul accepts, still a deterministic bound.
+   */
+  virtual std::vector<const char*>
+  PostLinkedIdKeys () const
+  {
+    return {};
+  }
+
+  /**
+   * Parses the IDs named by PostLinkedIdKeys out of the terms, for the
+   * per-linked-entity admission cap (checked before any state change;
+   * ApplyPost stores the actual link).  Called only with terms that already
+   * passed ValidatePost, so the IDs are known to parse.
+   */
+  std::vector<Database::IdT> PostLinkedIds (const Json::Value& terms) const;
 
   /**
    * Validates the type-specific terms of a POST move (no state change).  The
@@ -457,11 +482,19 @@ public:
  * survival); on the (vast majority of) sweeps where nothing is due it is an
  * indexed no-op that touches no rows.
  *
- * The sweep is deliberately uncapped (no continuation across blocks):  every
- * due row was paid for (posting fee burned, escrow locked), settlement is a
+ * The sweep itself is deliberately uncapped (no continuation across
+ * blocks): a deterministic sweep cap would defer settlement of already-due
+ * jobs to later blocks, re-opening the very window (mutable inputs after
+ * the deadline) that JobIsDue exists to close.  The hard bound lives at the
+ * DOOR instead: the admission caps in PostOperation::IsValid (max live
+ * jobs in total / per poster / per linked entity / per bounty target,
+ * admin-tunable via the "jobscfg" command) mean no sweep, entity cascade
+ * or payout can ever exceed the capped board -- every due row inside it
+ * was paid for (posting fee burned, escrow locked), and settlement is a
  * constant amount of work per job walked straight off the (deadline, id)
- * index with no sort.  The reproducible in-repo evidence is
- * gametest/jobs_stress.py, which runs all six unbounded-cohort paths at
+ * index with no sort.  The history prune is batched separately
+ * (params.jobs_history_prune_batch).  The reproducible in-repo evidence is
+ * gametest/jobs_stress.py, which runs the unbounded-shape cohorts at
  * material size in single blocks -- aligned expiry, a standing bounty
  * stack plus a linked bodyguard stack settled by one kill, a full
  * retention prune, a dormant distinct-target board against an unrelated
@@ -508,10 +541,12 @@ void OnJobBuildingTransferred (Database& db, const Context& ctx,
  * FameUpdater and fed every kill from the same pre-removal pass (damage lists
  * and victim rows still live), sharing fame's distinct-owner derivation
  * semantics.  The work is proportional to the DEATHS, never to the dormant
- * board: the constructor makes one O(1) any-bounty-at-all probe, and each
- * dead owner costs at most one indexed linked-name probe (negative results
- * are memoised), so arbitrarily many dormant bounty targets add nothing to
- * an unrelated death -- the mega-battle perf guard.
+ * board: the constructor makes a single covering-index any-bounty-at-all
+ * probe, and each death costs at most one indexed linked-name probe --
+ * bounty-free owners are memoised after their first empty probe, while an
+ * owner with live pools is re-probed per death (the pools drain as they
+ * pay).  Arbitrarily many dormant bounty targets thus add nothing to an
+ * unrelated death -- the mega-battle perf guard.
  */
 class JobsBountyTracker
 {
@@ -527,7 +562,7 @@ private:
   /** Character table for owner lookups on still-live rows.  */
   CharacterTable characters;
 
-  /** Whether any bounty exists at all (one O(1) indexed probe).  */
+  /** Whether any bounty exists at all (one covering-index probe).  */
   bool anyBounties;
 
   /**

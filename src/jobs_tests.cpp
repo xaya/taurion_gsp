@@ -23,6 +23,7 @@
 #include "testutils.hpp"
 
 #include "database/dbtest.hpp"
+#include "database/params.hpp"
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
@@ -97,7 +98,7 @@ protected:
   JobContext
   Ctx ()
   {
-    return {ctx, accounts, buildings, buildingInv, characters, ongoings,
+    return {db, ctx, accounts, buildings, buildingInv, characters, ongoings,
             groundLoot, jobs};
   }
 
@@ -440,6 +441,74 @@ TEST_F (JobsTests, PostHappy)
   EXPECT_EQ (j->GetProto ().transport ().manifest ().fungible ().at ("foo"), 5);
   /* reward 2000 locked + fee max(1, 2000*100/10000 = 20) = 20 burned.  */
   EXPECT_EQ (Balance ("poster"), 1000000 - 2000 - 20);
+}
+
+TEST_F (JobsTests, AdmissionCapsGlobalAndFreeze)
+{
+  ParamsTable par(db);
+  const char* POST
+      = R"({"t":"transport","d":86400,"wd":86400,"r":10,"co":0,"to":1,"items":{"foo":5}})";
+
+  par.Set ("max-live-jobs", 2);
+  EXPECT_TRUE (Process ("poster", POST));
+  EXPECT_TRUE (Process ("poster", POST));
+  /* The board is full -- for everyone.  */
+  EXPECT_FALSE (Process ("poster", POST));
+  EXPECT_FALSE (Process ("courier", POST));
+
+  /* 0 freezes posting outright; removing the override resets to the
+     (roomy) roconfig default.  */
+  par.Set ("max-live-jobs", 0);
+  EXPECT_FALSE (Process ("poster", POST));
+  par.Remove ("max-live-jobs");
+  EXPECT_TRUE (Process ("poster", POST));
+}
+
+TEST_F (JobsTests, AdmissionCapPerPoster)
+{
+  ParamsTable par(db);
+  const char* POST
+      = R"({"t":"transport","d":86400,"wd":86400,"r":10,"co":0,"to":1,"items":{"foo":5}})";
+
+  par.Set ("max-jobs-per-poster", 1);
+  EXPECT_TRUE (Process ("poster", POST));
+  EXPECT_FALSE (Process ("poster", POST));
+  /* Another account still has headroom.  */
+  EXPECT_TRUE (Process ("courier", POST));
+}
+
+TEST_F (JobsTests, AdmissionCapPerLinkedEntity)
+{
+  ParamsTable par(db);
+
+  par.Set ("max-jobs-per-linked-entity", 1);
+  EXPECT_TRUE (Process ("poster",
+      R"({"t":"transport","d":86400,"wd":86400,"r":10,"co":0,"to":1,"items":{"foo":5}})"));
+  EXPECT_FALSE (Process ("poster",
+      R"({"t":"transport","d":86400,"wd":86400,"r":10,"co":0,"to":1,"items":{"foo":5}})"));
+  /* A different destination entity is unaffected.  */
+  EXPECT_TRUE (Process ("poster",
+      R"({"t":"transport","d":86400,"wd":86400,"r":10,"co":0,"to":2,"items":{"foo":5}})"));
+  /* Haul counts BOTH its buildings, and building 1 (its source) is at the
+     cap.  The goods are stocked first, so the rejection is the cap and not
+     the inventory check.  */
+  buildingInv.Get (1, "poster")->GetInventory ().AddFungibleCount ("foo", 5);
+  EXPECT_FALSE (Process ("poster",
+      R"({"t":"haul","d":86400,"wd":86400,"r":10,"co":0,"from":1,"to":2,"items":{"foo":5}})"));
+}
+
+TEST_F (JobsTests, AdmissionCapPoolsPerTarget)
+{
+  ParamsTable par(db);
+  par.Set ("max-bounty-pools-per-target", 1);
+
+  EXPECT_TRUE (Process ("poster",
+      R"({"t":"wanted","r":100,"co":0,"name":"green","n":2})"));
+  EXPECT_FALSE (Process ("poster",
+      R"({"t":"wanted","r":100,"co":0,"name":"green","n":2})"));
+  /* A different target still has headroom.  */
+  EXPECT_TRUE (Process ("poster",
+      R"({"t":"wanted","r":100,"co":0,"name":"courier","n":2})"));
 }
 
 TEST_F (JobsTests, PostRejects)
@@ -1289,8 +1358,9 @@ TEST_F (WantedTests, UnrelatedDeathIsNoOp)
 TEST_F (WantedTests, SameBlockKillsBeyondPoolDoNotCrash)
 {
   /* Production constructs ONE tracker per block: if the target loses more
-     characters in a block than the pool has tranches, the later kills hit a
-     stale name-set entry and must be a graceful no-op (this was a
+     characters in a block than the pool has tranches, the later kills find
+     the pool already drained -- the indexed re-probe comes back empty, the
+     owner is memoised, and the kill must be a graceful no-op (this was a
      CHECK-abort -- a chain halt -- before the fix).  */
   ASSERT_TRUE (Process ("poster",
       R"({"t":"wanted","r":3000,"co":0,"name":"green","n":1})"));
