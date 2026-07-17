@@ -44,7 +44,10 @@ every bulk phase -- posts, assignments and acceptances -- rides in
 sub-ceiling move chunks, so scaled runs construct the same shapes.  The
 scaled shape is the release gate: run the default suite plus
 `JOBS_STRESS_N=2200 make check TESTS=jobs_stress.py` on the exact release
-SHA and keep the log.
+SHA, under a process-level timeout(1) wrapper, and keep the log.  (The
+wrapper matters on the FAILURE path: a deadline breach fails the test at
+the bound, but Python cannot cancel the still-running daemon worker, so
+only a hard process bound cleans up a wedged run.)
 
 Recorded runs (make check TESTS=jobs_stress.py, regtest superblock_seconds
 5, AMD Threadripper 7970X, 2026-07-17).  Single samples, quantised by the

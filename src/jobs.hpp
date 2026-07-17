@@ -502,13 +502,13 @@ private:
   Database& db;
   const Context& ctx;
 
-  /** The block's damage lists (owned by the FameUpdater).  */
+  /** The superblock's damage lists (owned by the FameUpdater).  */
   const DamageLists& dl;
 
   /** Character table for owner lookups on still-live rows.  */
   CharacterTable characters;
 
-  /** Names under an active bounty, loaded once per block.  */
+  /** Names under an active bounty, loaded once per superblock.  */
   std::set<std::string> bountyNames;
 
 public:
