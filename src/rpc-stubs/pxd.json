@@ -40,11 +40,6 @@
     "returns": {}
   },
   {
-    "name": "getjobs",
-    "params": {},
-    "returns": {}
-  },
-  {
     "name": "getjobspage",
     "params": {
       "afterid": "0",

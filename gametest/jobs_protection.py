@@ -32,14 +32,6 @@ class JobsProtectionTest (PXTest):
   def available (self, name):
     return self.getAccounts ()[name].getBalance ("available")
 
-  def newestJob (self):
-    jobs = self.getRpc ("getjobs")
-    assert len (jobs) > 0
-    return max (jobs, key=lambda j: j["id"])
-
-  def jobGone (self, jobId):
-    return jobId not in [j["id"] for j in self.getRpc ("getjobs")]
-
   def run (self):
     self.mainLogger.info ("Setting up accounts...")
     self.initAccount ("poster", "r")

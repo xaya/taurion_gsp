@@ -551,17 +551,6 @@ ParseCursor (const std::string& s, const char* what)
 } // anonymous namespace
 
 Json::Value
-PXRpcServer::getjobs ()
-{
-  LOG (INFO) << "RPC method called: getjobs";
-  return logic.GetCustomStateData (game,
-    [] (GameStateJson& gsj)
-      {
-        return gsj.Jobs ();
-      });
-}
-
-Json::Value
 PXRpcServer::getjobspage (const std::string& afterId, const int limit)
 {
   LOG (INFO) << "RPC method called: getjobspage " << afterId;

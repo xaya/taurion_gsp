@@ -201,8 +201,11 @@ message RentalPayload
  * Payload for an ad-slot rental on a building (the job's linked_id).  The
  * poster (advertiser) escrows the rent; the designated worker is the
  * building's owner, whose accept is the content approval.  The rent pays out
- * at the deadline (success-on-expiry); the entity hook refunds it if the
- * building dies first.
+ * at the first expiry sweep after the deadline (success-on-expiry); the
+ * entity hook refunds it if the building dies first, and a sale of the
+ * building any time before that sweep -- even after the deadline has
+ * passed -- voids and refunds it too (only the owner losing the rent can
+ * trigger that; see AdPredicate::OnLinkedBuildingTransferred).
  */
 message AdPayload
 {

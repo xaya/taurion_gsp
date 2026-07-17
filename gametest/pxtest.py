@@ -367,6 +367,65 @@ class PXTest (XayaXGameTest):
 
     return self.getCustomState ("data", method, *args, **kwargs)
 
+  def getJobs (self, pageSize=1000):
+    """
+    Returns the full live jobs board, walking the hard-capped getjobspage
+    RPC with its exclusive (id) keyset cursor.  There is deliberately no
+    whole-board jobs RPC, so this is THE way to read the board.
+    """
+
+    res = []
+    after = "0"
+    while True:
+      page = self.getRpc ("getjobspage", afterid=after, limit=pageSize)
+      res.extend (page)
+      if len (page) < pageSize:
+        return res
+      after = str (page[-1]["id"])
+
+  def onlyJob (self):
+    """Returns the single job on the board (asserting there is exactly one)."""
+    jobs = self.getJobs ()
+    self.assertEqual (len (jobs), 1)
+    return jobs[0]
+
+  def newestJob (self):
+    """Returns the most recently posted job on the board."""
+    jobs = self.getJobs ()
+    assert len (jobs) > 0
+    return max (jobs, key=lambda j: j["id"])
+
+  def jobGone (self, jobId):
+    """Returns whether the given job is no longer on the board."""
+    return jobId not in [j["id"] for j in self.getJobs ()]
+
+  def historyRows (self):
+    """All settled-jobs history rows, paging through the server-side cap.
+
+    The cursor values are passed as strings (the RPC widened them to int64);
+    paging keeps this correct even past MAX_PAGE rows.
+    """
+    rows = []
+    aftertime, afterid = 0, 0
+    while True:
+      page = self.getRpc ("getjobshistory", fromtime="0",
+                          aftertime=str (aftertime), afterid=str (afterid),
+                          limit=1000)
+      if not page:
+        break
+      rows.extend (page)
+      if len (page) < 1000:
+        break
+      aftertime, afterid = page[-1]["settledtime"], page[-1]["id"]
+    return rows
+
+  def historyOutcome (self, jobId):
+    """Returns the outcome recorded in the settled-jobs history (or None)."""
+    for e in self.historyRows ():
+      if e["id"] == jobId:
+        return e["outcome"]
+    return None
+
   def sendMove (self, name, move, send=None, burn=0):
     """
     Sends a move, and optionally includes a coin burn.

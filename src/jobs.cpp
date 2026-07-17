@@ -71,17 +71,22 @@ GetAccountChecked (const JobContext& jc, const std::string& name)
 }
 
 /**
- * Bumps the per-account completion counters (the on-chain completion
- * artifact, read by the reputation layer and the approval flow).
+ * Bumps the per-account completion counters: consensus-stored vetting
+ * signals that no consensus rule ever reads back -- clients surface them
+ * so posters can vet applicants and workers can vet posters.
  *
- * The increments are deliberately unchecked: every one requires a settled
- * job that burned a posting fee, so reaching the int64 boundary
- * (~9.2e18 settlements) is economically unreachable, and even a wrap would
- * be deterministic across nodes (no split risk).  Raw counts are a
- * display-only signal that colluding pairs can inflate for the fee price;
- * the value-weighted counter is the honest one, and any future consumer of
- * these stats must weigh by value (or add thresholds) rather than trust
- * counts.
+ * The increments are deliberately unchecked at the actual field widths.
+ * The counts are uint32, so wrapping one takes 2^32 (~4.3e9) settlements,
+ * each burning a posting fee; the value counter is uint64 and grows by at
+ * most MAX_COIN_AMOUNT (1e11) per settlement, so wrapping it takes ~1.8e8
+ * max-value jobs, each escrowing that value and burning its fee.  Both are
+ * economically unreachable, and a wrap would in any case be deterministic
+ * across nodes (no split risk).  Saturation is deliberately NOT used: it
+ * would add consensus-visible code for an unreachable boundary.  Raw
+ * counts are a display-only signal that colluding pairs can inflate for
+ * the fee price; the value-weighted counter is the honest one, and any
+ * future consumer of these stats must weigh by value (or add thresholds)
+ * rather than trust counts.
  */
 void
 BumpJobStats (Account& a, const bool completed, const Amount value)
@@ -1556,7 +1561,9 @@ public:
  * amount, and the designated worker is the lessor (payee).  Accept moves the
  * items from the lessor to the renter; the renter's fulfil (or the same
  * check at expiry) moves them back and splits the escrow.  A non-return --
- * lost, consumed, destroyed or just late -- defaults the whole escrow to the
+ * the goods lost, consumed, destroyed or simply not at the handover
+ * building when the expiry sweep looks (the sweep is the observation
+ * point; see the policy note below) -- defaults the whole escrow to the
  * lessor, so a deposit sized at replacement value turns any loss into a
  * priced involuntary sale.
  */

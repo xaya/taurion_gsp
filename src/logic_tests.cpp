@@ -43,6 +43,7 @@
 
 #include <json/json.h>
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -700,6 +701,183 @@ TEST_F (PXLogicTests, JobsExpireOnlyOnSuperblocks)
   UpdateStateBlock ("[]", true);
   EXPECT_EQ (jobs.GetById (jobId), nullptr);
   EXPECT_EQ (accounts.GetByName ("poster")->GetBalance (), 1'000'000 - 20);
+}
+
+TEST_F (PXLogicTests, JobsRentalGraceLandsBeforeSweep)
+{
+  /* The rental settlement observation point is the SWEEP's view of the
+     handover inventory (explicit policy, see RentalPredicate):  goods
+     landing after the deadline but before the next superblock still settle
+     as a clean return, while an explicit fulfil in that same gap is
+     rejected (JobIsDue) and goods that never land default the escrow.
+     This is the discriminating move-before-sweep case that separates the
+     grace policy from a merely lazy timely return.  */
+  for (const auto* name : {"renter", "owner"})
+    {
+      auto a = accounts.CreateNew (name);
+      a->SetFaction (Faction::RED);
+      a->AddBalance (1'000'000);
+    }
+  const auto bId
+      = CreateBuilding ("checkmark", "owner", Faction::RED)->GetId ();
+  inv.Get (bId, "owner")->GetInventory ().SetFungibleCount ("foo", 5);
+
+  JobsTable jobs(db);
+  const auto rentOut = [&] () -> Database::IdT
+    {
+      UpdateStateBlock (R"([
+        {"name": "renter", "move": {"j": [{
+          "t": "rental", "d": 86400, "wd": 86400, "r": 1000, "co": 0,
+          "rent": 300, "i": "foo", "n": 5,
+          "b": )" + std::to_string (bId) + R"(, "w": "owner"
+        }]}}
+      ])", true);
+      Database::IdT jobId = Database::EMPTY_ID;
+      {
+        auto res = jobs.QueryAll ();
+        while (res.Step ())
+          jobId = jobs.GetFromResult (res)->GetId ();
+      }
+      UpdateStateBlock (R"([
+        {"name": "owner", "move": {"j": [{"a": )"
+          + std::to_string (jobId) + R"(}]}}
+      ])", false);
+      EXPECT_EQ (jobs.GetById (jobId)->GetStatus (), Job::Status::ACCEPTED);
+      EXPECT_EQ (inv.Get (bId, "renter")
+                    ->GetInventory ().GetFungibleCount ("foo"), 5);
+      /* The renter takes the goods away to use them (generic inventory
+         behaviour, not a jobs move):  the handover building is now empty,
+         so an expiry at this state would default.  */
+      inv.Get (bId, "renter")->GetInventory ().SetFungibleCount ("foo", 0);
+      ctx.SetTimestamp (ctx.Timestamp () + 86401);
+      UpdateStateBlock ("[]", false);
+      EXPECT_EQ (jobs.GetById (jobId)->GetStatus (), Job::Status::ACCEPTED);
+      return jobId;
+    };
+
+  /* First rental:  the goods land back in the move-before-sweep gap.  The
+     deposit itself is not a jobs move (JobIsDue must not block it), but the
+     explicit fulfil in the same gap IS one and stays rejected.  */
+  const auto idGrace = rentOut ();
+  inv.Get (bId, "renter")->GetInventory ().SetFungibleCount ("foo", 5);
+  UpdateStateBlock (R"([
+    {"name": "renter", "move": {"j": [{"f": )"
+      + std::to_string (idGrace) + R"(}]}}
+  ])", false);
+  ASSERT_NE (jobs.GetById (idGrace), nullptr);
+  EXPECT_EQ (jobs.GetById (idGrace)->GetStatus (), Job::Status::ACCEPTED);
+
+  /* The sweep sees the goods at the handover building:  clean return.
+     Rent (300) to the lessor, the deposit (700) back to the renter.  */
+  UpdateStateBlock ("[]", true);
+  EXPECT_EQ (jobs.GetById (idGrace), nullptr);
+  EXPECT_EQ (inv.Get (bId, "owner")
+                ->GetInventory ().GetFungibleCount ("foo"), 5);
+  EXPECT_EQ (inv.Get (bId, "renter")
+                ->GetInventory ().GetFungibleCount ("foo"), 0);
+  EXPECT_EQ (accounts.GetByName ("owner")->GetBalance (), 1'000'000 + 300);
+  EXPECT_EQ (accounts.GetByName ("renter")->GetBalance (),
+             1'000'000 - 10 - 300);
+  EXPECT_EQ (accounts.GetByName ("owner")->GetProto ().jobs_completed (), 1);
+
+  /* Second rental:  the goods never land, so the same sweep view defaults
+     the whole escrow (rent + deposit) to the lessor.  */
+  const auto idDefault = rentOut ();
+  UpdateStateBlock ("[]", true);
+  EXPECT_EQ (jobs.GetById (idDefault), nullptr);
+  EXPECT_EQ (inv.Get (bId, "owner")
+                ->GetInventory ().GetFungibleCount ("foo"), 0);
+  EXPECT_EQ (accounts.GetByName ("owner")->GetBalance (),
+             1'000'000 + 300 + 1'000);
+  EXPECT_EQ (accounts.GetByName ("renter")->GetBalance (),
+             1'000'000 - 10 - 300 - 10 - 1'000);
+
+  std::map<Database::IdT, JobOutcome> outcomes;
+  {
+    auto res = jobs.QueryHistory (0);
+    while (res.Step ())
+      {
+        auto e = jobs.GetFromResult (res);
+        outcomes[e->GetId ()] = e->GetOutcome ();
+      }
+  }
+  ASSERT_EQ (outcomes.size (), 2);
+  EXPECT_EQ (outcomes.at (idGrace), JobOutcome::COMPLETED);
+  EXPECT_EQ (outcomes.at (idDefault), JobOutcome::FAILED);
+}
+
+TEST_F (PXLogicTests, JobsAdSaleVoidsDueAcceptedInGap)
+{
+  /* Selling the linked building voids ALL its ad slots unconditionally --
+     including an ACCEPTED ad already past its deadline but not yet swept
+     (explicit policy, see AdPredicate::OnLinkedBuildingTransferred).  This
+     drives the real b.send move through an ordinary block in exactly that
+     gap and pins the VOID outcome, the refund and the ownership change.  */
+  {
+    auto a = accounts.CreateNew ("advertiser");
+    a->SetFaction (Faction::GREEN);
+    a->AddBalance (1'000'000);
+  }
+  for (const auto* name : {"owner", "buyer"})
+    {
+      auto a = accounts.CreateNew (name);
+      a->SetFaction (Faction::RED);
+      a->AddBalance (1'000'000);
+    }
+  const auto bId
+      = CreateBuilding ("checkmark", "owner", Faction::RED)->GetId ();
+
+  UpdateStateBlock (R"([
+    {"name": "advertiser", "move": {"j": [{
+      "t": "ad", "d": 86400, "r": 500, "co": 0,
+      "b": )" + std::to_string (bId) + R"(, "slot": 1, "hash": "deadbeef"
+    }]}}
+  ])", true);
+
+  JobsTable jobs(db);
+  Database::IdT adId;
+  {
+    auto res = jobs.QueryAll ();
+    ASSERT_TRUE (res.Step ());
+    adId = jobs.GetFromResult (res)->GetId ();
+    ASSERT_FALSE (res.Step ());
+  }
+  ASSERT_EQ (accounts.GetByName ("advertiser")->GetBalance (),
+             1'000'000 - 500 - 5);
+
+  UpdateStateBlock (R"([
+    {"name": "owner", "move": {"j": [{"a": )" + std::to_string (adId)
+      + R"(}]}}
+  ])", false);
+  ASSERT_EQ (jobs.GetById (adId)->GetStatus (), Job::Status::ACCEPTED);
+
+  /* The rental window ends on an ordinary block:  the due ad survives
+     unswept, still holding the rent in escrow.  */
+  ctx.SetTimestamp (ctx.Timestamp () + 86401);
+  UpdateStateBlock ("[]", false);
+  ASSERT_EQ (jobs.GetById (adId)->GetStatus (), Job::Status::ACCEPTED);
+
+  /* The owner sells the building in the gap:  the sale voids the due ad
+     and refunds the advertiser -- the owner walks away from the rent, and
+     the buyer takes the building with clean slots.  */
+  UpdateStateBlock (R"([
+    {"name": "owner", "move": {"b": {"id": )" + std::to_string (bId)
+      + R"(, "send": "buyer"}}}
+  ])", false);
+  EXPECT_EQ (buildings.GetById (bId)->GetOwner (), "buyer");
+  EXPECT_EQ (jobs.GetById (adId), nullptr);
+  EXPECT_EQ (accounts.GetByName ("advertiser")->GetBalance (),
+             1'000'000 - 5);
+  EXPECT_EQ (accounts.GetByName ("owner")->GetBalance (), 1'000'000);
+
+  {
+    auto res = jobs.QueryHistory (0);
+    ASSERT_TRUE (res.Step ());
+    auto e = jobs.GetFromResult (res);
+    EXPECT_EQ (e->GetId (), adId);
+    EXPECT_EQ (e->GetOutcome (), JobOutcome::VOID);
+    ASSERT_FALSE (res.Step ());
+  }
 }
 
 TEST_F (PXLogicTests, JobsKillsSettleBeforeExpiry)

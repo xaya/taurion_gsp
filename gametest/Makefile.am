@@ -35,6 +35,8 @@ REGTESTS = \
   jobs_bounty.py \
   jobs_protection.py \
   jobs_rentals.py \
+  jobs_rpc.py \
+  jobs_stress.py \
   jobs_transport.py \
   godmode.py \
   loot.py \

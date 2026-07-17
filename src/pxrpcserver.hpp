@@ -201,7 +201,10 @@ public:
 
   Json::Value getaccounts () override;
   Json::Value getbuildings () override;
-  Json::Value getjobs () override;
+  /* There is deliberately no whole-board getjobs method: every jobs read on
+     the public connector is hard-capped (getjobspage / getjobshistory), and
+     the full board is only reachable through the whole-state export like any
+     other table.  */
   Json::Value getjobspage (const std::string& afterId, int limit) override;
   /* Params are declared in the order jsonrpcstub binds them (alphabetical by
      name: afterid, aftertime, fromtime), NOT the semantic order -- the cursor

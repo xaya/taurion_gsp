@@ -113,9 +113,10 @@ public:
   Json::Value Buildings ();
 
   /**
-   * Returns the JSON data representing all jobs on the jobs board.  This is
-   * the trusted whole-board path (fanout, full game-state export); the
-   * public RPC serves the hard-capped JobsPage instead.
+   * Returns the JSON data representing all jobs on the jobs board.  Only
+   * reachable through the full game-state export (like every other table);
+   * there is no standalone whole-board RPC -- per-table reads go through
+   * the hard-capped JobsPage.
    */
   Json::Value Jobs ();
 

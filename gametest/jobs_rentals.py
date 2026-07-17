@@ -35,14 +35,6 @@ class JobsRentalsTest (PXTest):
   def reserved (self, name):
     return self.getAccounts ()[name].getBalance ("reserved")
 
-  def newestJob (self):
-    jobs = self.getRpc ("getjobs")
-    assert len (jobs) > 0
-    return max (jobs, key=lambda j: j["id"])
-
-  def jobGone (self, jobId):
-    return jobId not in [j["id"] for j in self.getRpc ("getjobs")]
-
   def run (self):
     self.mainLogger.info ("Setting up accounts and a building...")
     self.initAccount ("owner", "r")
@@ -128,7 +120,7 @@ class JobsRentalsTest (PXTest):
     clashId = self.newestJob ()["id"]
     self.sendMove ("owner", {"j": [{"a": clashId}]})
     self.generate (1)
-    clash = [j for j in self.getRpc ("getjobs") if j["id"] == clashId][0]
+    clash = [j for j in self.getJobs () if j["id"] == clashId][0]
     self.assertEqual (clash["state"], "open")
 
     self.mainLogger.info ("...but a non-overlapping future window can be...")

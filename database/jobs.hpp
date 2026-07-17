@@ -460,8 +460,8 @@ public:
 
   /**
    * Queries the database for all jobs in the entire game world, ordered by
-   * ID.  This is the trusted whole-board path (fanout mirror, debug, full
-   * game-state export); untrusted RPC callers get the capped QueryPage.
+   * ID.  Used only by the full game-state export and internal validation;
+   * every RPC-reachable jobs read pages through the capped QueryPage.
    */
   Database::Result<JobResult> QueryAll ();
 

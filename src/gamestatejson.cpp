@@ -324,8 +324,11 @@ template <>
       res["kills"] = IntToJson (pb.kills ());
       res["fame"] = IntToJson (pb.fame ());
 
-      /* The jobs-board completion counters (the on-chain reputation
-         artifact): what the approval flow reads to vet applicants.  */
+      /* The jobs-board completion counters: consensus-stored vetting
+         signals surfaced here for clients (posters vet applicants, workers
+         vet posters).  No consensus rule consumes them; raw counts are
+         fee-priced and inflatable, the value counter is the honest signal
+         (see BumpJobStats).  */
       Json::Value jobstats(Json::objectValue);
       jobstats["completed"] = IntToJson (pb.jobs_completed ());
       jobstats["failed"] = IntToJson (pb.jobs_failed ());

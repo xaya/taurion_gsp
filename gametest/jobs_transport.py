@@ -18,32 +18,17 @@
 
 """
 Integration test for the on-chain jobs board, transport type.  Exercises the
-full move path (moveprocessor "j" dispatch, block processing, the getjobs read
-RPC and settlement) end-to-end: post -> accept -> deliver, plus cancel and the
-accept-then-cancel-rejected case.  The per-op logic is covered exhaustively by
-the C++ unit tests; this proves the real chain path and coin/inventory effects.
+full move path (moveprocessor "j" dispatch, block processing, the paged
+getjobspage read RPC and settlement) end-to-end: post -> accept -> deliver,
+plus cancel and the accept-then-cancel-rejected case.  The per-op logic is
+covered exhaustively by the C++ unit tests; this proves the real chain path
+and coin/inventory effects.
 """
 
 from pxtest import PXTest
 
 
 class JobsTransportTest (PXTest):
-
-  def onlyJob (self):
-    """Returns the single job on the board (asserting there is exactly one)."""
-    jobs = self.getRpc ("getjobs")
-    self.assertEqual (len (jobs), 1)
-    return jobs[0]
-
-  def newestJob (self):
-    """Returns the most recently posted job on the board."""
-    jobs = self.getRpc ("getjobs")
-    assert len (jobs) > 0
-    return max (jobs, key=lambda j: j["id"])
-
-  def jobGone (self, jobId):
-    """Returns whether the given job is no longer on the board."""
-    return jobId not in [j["id"] for j in self.getRpc ("getjobs")]
 
   def available (self, name):
     return self.getAccounts ()[name].getBalance ("available")
@@ -217,33 +202,6 @@ class JobsTransportTest (PXTest):
     self.assertEqual (self.available ("poster"), posterBefore + 1000 + 500)
     self.assertEqual (self.available ("courier"), courierBefore)
 
-  def historyRows (self):
-    """All settled-jobs history rows, paging through the server-side cap.
-
-    The cursor values are passed as strings (the RPC widened them to int64);
-    paging keeps this correct even past MAX_HISTORY_PAGE rows.
-    """
-    rows = []
-    aftertime, afterid = 0, 0
-    while True:
-      page = self.getRpc ("getjobshistory", fromtime="0",
-                          aftertime=str (aftertime), afterid=str (afterid),
-                          limit=1000)
-      if not page:
-        break
-      rows.extend (page)
-      if len (page) < 1000:
-        break
-      aftertime, afterid = page[-1]["settledtime"], page[-1]["id"]
-    return rows
-
-  def historyOutcome (self, jobId):
-    """Returns the outcome recorded in the settled-jobs history (or None)."""
-    for e in self.historyRows ():
-      if e["id"] == jobId:
-        return e["outcome"]
-    return None
-
   def checkHistoryFromTime (self):
     """Guards the getjobshistory param wiring: a fromtime above every
     settlement returns nothing.  A fromtime/afterid transposition (the
@@ -297,7 +255,7 @@ class JobsTransportTest (PXTest):
     self.sendMove ("courier", {"j": [{"f": jobId}]})
     self.generate (1)
 
-    self.assertEqual (self.getRpc ("getjobs"), [])
+    self.assertEqual (self.getJobs (), [])
     b = self.getBuildings ()[self.buildingId]
     self.assertEqual (b.getFungibleInventory ("poster"), {"foo": 5})
     self.assertEqual (b.getFungibleInventory ("courier"), {})
@@ -323,7 +281,7 @@ class JobsTransportTest (PXTest):
 
     self.sendMove ("poster", {"j": [{"c": jobId}]})
     self.generate (1)
-    self.assertEqual (self.getRpc ("getjobs"), [])
+    self.assertEqual (self.getJobs (), [])
     self.assertEqual (self.available ("poster"), before + 1000)
     self.assertEqual (self.reserved ("poster"), 0)
     self.assertEqual (self.historyOutcome (jobId), "cancelled")

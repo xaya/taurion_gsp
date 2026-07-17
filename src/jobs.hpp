@@ -449,13 +449,16 @@ public:
  * The sweep is deliberately uncapped (no continuation across blocks):  every
  * due row was paid for (posting fee burned, escrow locked), settlement is a
  * constant amount of work per job walked straight off the (deadline, id)
- * index with no sort, and forked-chain stress runs settle 100
- * deadline-aligned jobs inside one ordinary sweep block with negligible cost
- * -- orders of magnitude below the dense-combat processing ceiling measured
- * for the same block budget.  A deterministic cap would defer settlement of
- * already-due jobs to later blocks, re-opening the very window (mutable
- * inputs after the deadline) that JobIsDue exists to close; it stays absent
- * unless a measured bound some day demands it.
+ * index with no sort.  The reproducible in-repo evidence is
+ * gametest/jobs_stress.py, which runs all four unbounded-cohort paths at
+ * material size in single blocks -- aligned expiry, a standing bounty
+ * stack plus a linked bodyguard stack settled by one kill, and a full
+ * retention prune -- and logs the wall time; forked-chain runs of the same
+ * shapes at larger sizes settle far below the dense-combat processing
+ * ceiling measured for the same block budget.  A deterministic cap would
+ * defer settlement of already-due jobs to later blocks, re-opening the very
+ * window (mutable inputs after the deadline) that JobIsDue exists to close;
+ * it stays absent unless a measured bound some day demands it.
  */
 void ExpireJobs (Database& db, const Context& ctx);
 

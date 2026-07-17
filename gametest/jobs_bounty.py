@@ -35,7 +35,7 @@ class JobsBountyTest (PXTest):
     return self.getAccounts ()[name].getBalance ("reserved")
 
   def theBounty (self):
-    jobs = [j for j in self.getRpc ("getjobs") if j["type"] == "wanted"]
+    jobs = [j for j in self.getJobs () if j["type"] == "wanted"]
     self.assertEqual (len (jobs), 1)
     return jobs[0]
 
@@ -131,7 +131,7 @@ class JobsBountyTest (PXTest):
     self.assertEqual (self.available ("hunter"), b1 + 1500)
     self.assertEqual (self.available ("hunter2"), b2 + 1500)
     self.assertEqual (
-        [j for j in self.getRpc ("getjobs") if j["type"] == "wanted"], [])
+        [j for j in self.getJobs () if j["type"] == "wanted"], [])
     self.assertEqual (self.reserved ("poster"), 0)
 
     # The payouts are recorded in the on-chain completion counters.
