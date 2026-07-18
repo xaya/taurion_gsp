@@ -37,6 +37,7 @@ libtaurion_la_SOURCES = \
   forks.cpp \
   gamestatejson.cpp \
   jobs.cpp \
+  jobs_predicates.cpp \
   jsonutils.cpp \
   logic.cpp \
   mining.cpp \
