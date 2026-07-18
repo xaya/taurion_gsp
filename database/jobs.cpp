@@ -496,16 +496,10 @@ JobsTable::QueryHistory (const int64_t fromTime, const int64_t afterTime,
 void
 JobsTable::PruneHistory (const int64_t cutoff, const int64_t batch)
 {
-  if (batch <= 0)
-    {
-      auto stmt = db.Prepare (R"(
-        DELETE FROM `job_history`
-          WHERE `settled_time` < ?1
-      )");
-      stmt.Bind (1, cutoff);
-      stmt.Execute ();
-      return;
-    }
+  /* No unbounded mode: the batch bound is the whole point of this method
+     (one huge ageing cohort must never force an unbounded delete), so a
+     non-positive batch is a caller bug at any call site, not a mode.  */
+  CHECK_GT (batch, 0);
 
   /* Oldest first with a full (settled_time, id) order, so every node
      deletes exactly the same rows when the batch bound bites.  */

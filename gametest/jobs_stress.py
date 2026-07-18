@@ -70,7 +70,8 @@ the bound, but Python cannot cancel the still-running daemon worker, so
 only a hard process bound cleans up a wedged run.)
 
 Recorded runs (make check TESTS=jobs_stress.py, regtest superblock_seconds
-5, AMD Threadripper 7970X, 2026-07-18, v17-round aggregated-payout build).
+5, AMD Threadripper 7970X, 2026-07-18, v18-review polish build; the raw
+logs for THIS SHA are retained in taurionui/docs/release-evidence/).
 Single samples, quantised by the 0.1s GSP sync poll -- a coarse upper
 bound per settling block, not a per-row cost measurement.  Every kill
 cohort mines its killing block INSIDE the timed call (the god HP drop is
@@ -82,26 +83,26 @@ so the per-owner payout pass is genuinely exercised at every scale:
     unrelated kill against 50 dormant pools in 0.105s; 25 pools x 4
     killers in 0.105s; 6 deaths against 25 dormant pools in 0.105s.
   JOBS_STRESS_N=1000 (5x):      sweep 1000 in 0.103s; kill 125+125 in
-    0.205s; prune 1125 of 1125 in 0.304s; unrelated kill against 250
-    dormant pools in 0.205s; 125 pools x 15 killers in 0.105s; 15 deaths
-    against 125 dormant pools in 0.105s.
-  JOBS_STRESS_N=2200 (11x):     sweep 2200 in 0.104s; kill 275+275 in
+    0.124s; prune 1125 of 1125 in 0.204s; unrelated kill against 250
+    dormant pools in 0.106s; 125 pools x 15 killers in 0.105s; 15 deaths
+    against 125 dormant pools in 0.133s.
+  JOBS_STRESS_N=2200 (11x):     sweep 2200 in 0.103s; kill 275+275 in
     0.104s; prune 2475 of 2475 in 0.103s; unrelated kill against 550
-    dormant pools in 0.107s; 275 pools x 34 distinct killers in 0.107s;
+    dormant pools in 0.105s; 275 pools x 34 distinct killers in 0.107s;
     34 deaths against 275 dormant pools in 0.108s.  The 2200-row live
     board also walks the paged reader past its 2000-row page cap.
   JOBS_STRESS_N=10000 (default GLOBAL-cap cardinality, see cohort 1's
-    label):  sweep 10000 in 0.357s; kill 1250+1250 in 0.105s; prune 5000
-    of 11250 in 0.104s (the batched drain -- two further superblocks
+    label):  sweep 10000 in 0.185s; kill 1250+1250 in 0.104s; prune 5000
+    of 11250 in 0.103s (the batched drain -- two further superblocks
     empty the remainder, survivor identity asserted exactly); unrelated
-    kill against 2500 dormant pools in 0.112s; 1250 pools x 156 distinct
-    killers -- tranche 156, share 1, so all 156 owners are genuinely
-    credited through the aggregated single pass -- in 0.115s; 42 deaths
-    (the site-grid cap) against 1250 dormant pools in 0.216s.
+    kill against 2500 dormant pools in 0.213s; 1250 pools x 156 distinct
+    killers -- tranche 156, share 1, all 156 owners genuinely credited
+    through the aggregated single pass -- in 0.114s; 42 deaths (the
+    site-grid cap) against 1250 dormant pools in 0.115s.
 
 Every measured cohort completed well inside the superblock budget the
 deadline enforces, flat across the scales -- the whole global-cap board
-settles in under half a second, and the worst-case payout block (every
+settles in a fifth of a second, and the worst-case payout block (every
 pool paying every killer owner) costs pools + owners account writes, not
 pools x owners.  The dormant-board and mega-battle samples are the
 regression evidence for the bounty attribution rework: thousands of
@@ -503,6 +504,18 @@ class JobsStressTest (PXTest):
     for nm in pack:
       spots[nm] = {"x": 0, "y": 0}
     self.moveCharactersTo (spots)
+    # Damage-list dependency, explicit: the hunters acquire their target
+    # on arrival and FIRE in the next mined block -- the timed kill block
+    # itself -- which is when they enter the victim's damage list.  A
+    # pre-drop cardinality probe is therefore impossible without mining an
+    # extra combat block (which would kill the full-HP victim early at the
+    # larger scales).  The per-owner balance asserts after the kill are
+    # the cardinality proof instead: every one of the K_KILLERS owners
+    # must receive exactly share * M_STACK, so a hunter missing from the
+    # damage list fails the run rather than silently shrinking the
+    # measured owner set.  (Damage entries persist for damage_list_blocks,
+    # so nothing expires mid-choreography.)
+
     # As in cohort 5: submit the drop unmined so the timed block below is
     # the killing/settling block itself.
     assert "victim" in self.getCharacters ()

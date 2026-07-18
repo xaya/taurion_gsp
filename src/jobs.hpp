@@ -539,26 +539,24 @@ public:
  * was paid for (posting fee burned, escrow locked), and settlement is a
  * constant amount of work per job walked straight off the (deadline, id)
  * index with no sort.  The history prune is batched separately
- * (params.jobs_history_prune_batch).  The reproducible in-repo evidence is
- * gametest/jobs_stress.py, which runs the unbounded-shape cohorts at
- * material size in single blocks -- aligned expiry, a standing bounty
- * stack plus a linked bodyguard stack settled by one kill, a full
- * retention prune, a dormant distinct-target board against an unrelated
- * kill, and a pools-x-distinct-killers drain -- with each settling block
- * mined + GSP-synced under a
- * real wall-clock deadline of one superblock interval, replays the
- * aligned sweep, the kill and the prune across a reorg, and records runs
- * at 1x / 5x / 11x / global-cap-10k cohort scale in its module
- * docstring (the 2200 and 10000 runs are both part of the release gate).  (External to this repo, forked-chain e2e runs of the same
- * shapes settled far below the dense-combat processing ceiling measured
- * for the same block budget.)  A deterministic cap would
- * defer settlement of already-due jobs to later blocks, re-opening the very
- * window (mutable inputs after the deadline) that JobIsDue exists to close;
- * it stays absent unless a measured bound some day demands it.  Should one
- * ever be demanded, the designated mechanism is ADMISSION control (caps on
- * live jobs in total / per poster / per linked entity / per bounty target),
- * which bounds every future cohort at posting time without touching the
- * settlement semantics of rows already on the board -- not a sweep cap.
+ * (params.jobs_history_prune_batch).
+ *
+ * The reproducible in-repo evidence is gametest/jobs_stress.py: the
+ * unbounded-shape cohorts at material size in single blocks -- aligned
+ * expiry, a standing bounty stack plus a linked bodyguard stack settled
+ * by one kill, a full retention prune, a dormant distinct-target board
+ * against an unrelated kill, and a pools-x-distinct-killers drain -- each
+ * settling block mined + GSP-synced under a real wall-clock deadline of
+ * one superblock interval, with the sweep, kill and prune replayed across
+ * a reorg, and recorded runs at 1x / 5x / 11x / global-cap-10k cohort
+ * scale in its module docstring (the 2200 and 10000 runs are both part
+ * of the release gate).  Forked-chain e2e runs of the same shapes,
+ * external to this repo, settled far below the dense-combat processing
+ * ceiling measured for the same block budget.  Should a bound ever be
+ * demanded by measurement, the designated mechanism is ADMISSION control
+ * (tightening the caps above), which bounds every future cohort at
+ * posting time without touching the settlement semantics of rows already
+ * on the board -- never a sweep cap.
  */
 void ExpireJobs (Database& db, const Context& ctx);
 
