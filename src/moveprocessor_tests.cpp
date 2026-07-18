@@ -184,7 +184,9 @@ TEST_F (MoveProcessorTests, AdminSetParam)
 
   /* Valid sets and a removal (null value resets to the default), plus
      malformed entries that must be skipped deterministically: wrong shape,
-     non-string name, extra member, non-integer value.  */
+     non-string name, extra member, non-integer value, and -- crucially --
+     a typo'd value key: that must NOT read as a missing-v null and remove
+     the override (the dangerous direction for an emergency freeze).  */
   ProcessAdmin (R"([{"cmd": {"param": [
     {"n": "max-live-jobs", "v": 5},
     {"n": "max-jobs-per-poster", "v": 7},
@@ -192,7 +194,8 @@ TEST_F (MoveProcessorTests, AdminSetParam)
     42,
     {"n": 10, "v": 1},
     {"n": "max-bounty-pools-per-target", "v": 3, "x": 1},
-    {"n": "max-bounty-pools-per-target", "v": 2.5}
+    {"n": "max-bounty-pools-per-target", "v": 2.5},
+    {"n": "max-live-jobs", "value": 0}
   ]}}])");
 
   EXPECT_EQ (par.Get ("max-live-jobs", 42), 5);

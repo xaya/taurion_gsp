@@ -361,8 +361,9 @@ TEST_F (JobHistoryTests, Prune)
     tbl.WriteHistory (*j, JobOutcome::COMPLETED, 2, 200);
   }
 
-  /* Strictly-before cutoff: the row AT the cutoff stays.  */
-  tbl.PruneHistory (200);
+  /* Strictly-before cutoff: the row AT the cutoff stays.  Batch 0 is the
+     tests-only unbounded mode.  */
+  tbl.PruneHistory (200, 0);
 
   auto res = tbl.QueryHistory (0);
   ASSERT_TRUE (res.Step ());

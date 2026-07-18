@@ -19,10 +19,11 @@
 """
 Integration test for the jobs-board admission caps and their runtime tuning
 through the "param" admin command: a cap enforced at its exact boundary, a
-raise taking effect from the next block, the 0-value posting freeze, and a
-null-value removal resetting to the roconfig default.  (The per-dimension
-boundary matrix is unit-tested; this proves the same wiring end-to-end
-through real admin commands and moves.)
+raise taking effect from the next block, the 0-value posting freeze, a
+null-value removal resetting to the roconfig default, and the minimum-reward
+floors at their real defaults.  (The per-dimension boundary matrix is
+unit-tested; this proves the same wiring end-to-end through real admin
+commands and moves.)
 """
 
 from pxtest import PXTest
@@ -34,7 +35,7 @@ class JobsCapsTest (PXTest):
     """Posts one wanted pool on 'target' and asserts the resulting number
     of live pools (the post is silently rejected at the cap)."""
     self.sendMove ("poster", {"j": [{
-      "t": "wanted", "r": 100, "co": 0, "name": "target", "n": 2,
+      "t": "wanted", "r": 1000, "co": 0, "name": "target", "n": 2,
     }]})
     self.generate (1)
     self.assertEqual (len (self.getJobs ()), expectCount)
@@ -76,6 +77,21 @@ class JobsCapsTest (PXTest):
     ]})
     self.generate (1)
     self.postPool (4)
+
+    self.mainLogger.info ("Minimum-reward floors at their defaults...")
+    # No floor overrides exist in this suite: 999 is under the default
+    # bounty floor (1000) and must reject; 1000 admits.
+    self.sendMove ("poster", {"j": [{
+      "t": "wanted", "r": 999, "co": 0, "name": "target", "n": 2,
+    }]})
+    self.generate (1)
+    self.assertEqual (len (self.getJobs ()), 4)
+    self.postPool (5)
+
+    self.mainLogger.info ("Raising the generic floor gates even that...")
+    self.adminCommand ({"param": [{"n": "min-job-reward", "v": 2000}]})
+    self.generate (1)
+    self.postPool (5)
 
     self.mainLogger.info ("Jobs caps test succeeded.")
 

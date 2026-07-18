@@ -19,9 +19,10 @@
 """
 Consensus fan-out stress recipe for the jobs board: the in-repo,
 reproducible evidence behind the deliberately uncapped settlement sweeps
-(see the ExpireJobs notes in src/jobs.hpp).  All six unbounded-cohort
-paths run at material size through the REAL chain path, and each settling
-block is mined + GSP-synced under a REAL wall-clock deadline of one
+(see the ExpireJobs notes in src/jobs.hpp).  All seven unbounded-cohort
+paths run at material size through the REAL chain path, and each primary
+measured block (reorg replays are deliberately not timed) is mined +
+GSP-synced under a REAL wall-clock deadline of one
 superblock interval (a daemon-thread join: it fires even if the GSP sync
 hangs in its polling loop, and a self-check at the start of the run proves
 both a slow and a never-returning callable fail AT the bound):
@@ -33,9 +34,11 @@ both a slow and a never-returning callable fail AT the bound):
      on that same kill (both hooks fire in the same deadline-bounded block,
      and the kill block -- the broadest state mix -- is replayed across a
      reorg as well);
-  4. retention prune: the whole settled-history cohort deletes in ONE block
-     once the retention window passes (the standing pools survive it),
-     also replayed across a reorg;
+  4. retention prune: once the retention window passes, each superblock
+     deletes at most one roconfig batch (5,000) of the settled-history
+     cohort, oldest first -- the 10k scale proves the deterministic drain
+     over three sweeps (the standing pools survive it), also replayed
+     across a reorg;
   5. dormant distinct-target board: M more pools on M DISTINCT initialised
      target names, then an UNRELATED kill -- the bounty attribution probes
      only the dead owner (one indexed query, negatives memoised), so the
@@ -66,33 +69,42 @@ the bound, but Python cannot cancel the still-running daemon worker, so
 only a hard process bound cleans up a wedged run.)
 
 Recorded runs (make check TESTS=jobs_stress.py, regtest superblock_seconds
-5, AMD Threadripper 7970X, 2026-07-17, admission-caps build).  Single
+5, AMD Threadripper 7970X, 2026-07-18, v16 minimum-floors build).  Single
 samples, quantised by the 0.1s GSP sync poll -- a coarse upper bound per
 settling block, not a per-row cost measurement.  Every kill cohort mines
 its killing block INSIDE the timed call (the god HP drop is submitted
 unmined), so each figure measures the actual kill-and-settle block:
 
-  JOBS_STRESS_N=200 (default):  sweep 200 in 0.139s; one kill settling
-    25 pools + 25 bodyguards in 0.255s; prune 225 rows in 0.214s;
-    unrelated kill against 50 dormant pools in 0.105s; 25 pools x 4
+  JOBS_STRESS_N=200 (default):  sweep 200 in 0.103s; one kill settling
+    25 pools + 25 bodyguards in 0.104s; prune 225 of 225 in 0.103s;
+    unrelated kill against 50 dormant pools in 0.106s; 25 pools x 4
     killers in 0.105s; 6 deaths against 25 dormant pools in 0.105s.
-  JOBS_STRESS_N=1000 (5x):      sweep 1000 in 0.105s; kill 125+125 in
-    0.105s; prune 1125 rows in 0.104s; unrelated kill against 250
-    dormant pools in 0.105s; 125 pools x 15 killers in 0.106s; 6 deaths
-    against 125 dormant pools in 0.105s.
+  JOBS_STRESS_N=1000 (5x):      sweep 1000 in 0.104s; kill 125+125 in
+    0.104s; prune 1125 of 1125 in 0.103s; unrelated kill against 250
+    dormant pools in 0.106s; 125 pools x 15 killers in 0.105s; 15 deaths
+    against 125 dormant pools in 1.033s (a coarse-poll outlier under
+    load: the same cohort with MORE deaths measured 0.108s at 11x and
+    0.241s at the 10k scale).
   JOBS_STRESS_N=2200 (11x):     sweep 2200 in 0.104s; kill 275+275 in
-    0.105s; prune 2475 rows in 0.104s; unrelated kill against 550
-    dormant pools across 276 distinct names in 0.106s; 275 pools x 34
-    distinct killers in 0.107s; 8 deaths against 275 dormant pools in
-    0.106s.  The 2200-row live board also walks the paged reader past
+    0.104s; prune 2475 of 2475 in 0.104s; unrelated kill against 550
+    dormant pools across 276 distinct names in 0.107s; 275 pools x 34
+    distinct killers in 0.107s; 34 deaths against 275 dormant pools in
+    0.108s.  The 2200-row live board also walks the paged reader past
     its 2000-row page cap.
+  JOBS_STRESS_N=10000 (the DEFAULT max-legal board: cohort 1 fills the
+    entire 10,000-job global cap):  sweep 10000 in 0.405s; kill 1250+1250
+    in 0.104s; prune 5000 of 11250 in 0.104s (the batched drain -- two
+    further superblocks empty the remainder, asserted exactly); unrelated
+    kill against 2500 dormant pools in 0.112s; 1250 pools x 156 distinct
+    killers in 0.113s; 42 deaths (the site-grid cap) against 1250 dormant
+    pools in 0.241s.
 
-Every measured cohort completed within one or two poll intervals on this
-machine -- comfortably inside the superblock budget the deadline enforces,
-and flat across the scales.  The dormant-board and mega-battle samples are
-the regression evidence for the bounty attribution rework: hundreds of
-dormant pools cost a death block no more than an empty board (one indexed
-probe per distinct dead owner).
+Every measured cohort completed well inside the superblock budget the
+deadline enforces, flat across the scales -- the entire maximum legal
+board settles in under half a second.  The dormant-board and mega-battle
+samples are the regression evidence for the bounty attribution rework:
+thousands of dormant pools cost a death block no more than an empty board
+(one indexed probe per distinct dead owner).
 """
 
 import os
@@ -235,6 +247,9 @@ class JobsStressTest (PXTest):
       {"n": n, "v": 10**6}
       for n in ("max-live-jobs", "max-jobs-per-poster",
                 "max-jobs-per-linked-entity", "max-bounty-pools-per-target")
+    ] + [
+      {"n": n, "v": 1}
+      for n in ("min-job-reward", "min-bounty-reward")
     ]})
     self.generate (1)
 
@@ -244,8 +259,11 @@ class JobsStressTest (PXTest):
     self.initAccount ("victim", "b")
     self.initAccount ("guard", "b")
     self.generate (1)
-    self.giftCoins ({"poster": 1000000, "victim": 1000000,
-                     "guard": 1000000})
+    # Fund linearly with the scale: cohort 1 alone escrows
+    # N_ALIGNED x (reward 100 + fee 1), which outgrows any fixed gift
+    # (the 10k max-legal run needs 1,010,000 for cohort 1 by itself).
+    fund = 101 * N_ALIGNED + 10**6
+    self.giftCoins ({"poster": fund, "victim": fund, "guard": fund})
     self.build ("checkmark", "poster", {"x": 0, "y": 0}, rot=0)
     bId = max (self.getBuildings ().keys ())
 
@@ -354,13 +372,32 @@ class JobsStressTest (PXTest):
     total = N_ALIGNED + M_STACK
     self.assertEqual (len (rows), total)
     retention = self.roConfig ().params.jobs_history_retention
+    batch = self.roConfig ().params.jobs_history_prune_batch
+    sbSecs = self.roConfig ().params.superblock_seconds
     lastSettled = max (e["settledtime"] for e in rows)
     prePruneTime = self.w3.eth.get_block ("latest")["timestamp"]
     snap = self.env.snapshot ()
+
+    def drainPrune (t):
+      """Advances superblocks until the history is empty, asserting each
+      sweep deletes exactly one further batch (the deterministic drain)."""
+      left = len (self.historyRows ())
+      while left > 0:
+        left = max (0, left - batch)
+        t += sbSecs
+        self.env.setMockTime (t)
+        self.mineAndSync (superblocks=False)
+        self.assertEqual (len (self.historyRows ()), left)
+
     self.env.setMockTime (lastSettled + retention + 1)
-    self.timed ("one prune deleting %d history rows" % total,
+    self.timed ("one prune deleting %d of %d history rows"
+                  % (min (batch, total), total),
                 lambda: self.mineAndSync (superblocks=False))
-    self.assertEqual (self.historyRows (), [])
+    # One superblock deletes at most one batch, oldest first; the
+    # remainder drains on the following sweeps (three in all at the 10k
+    # scale, where the cohort outgrows the batch).
+    self.assertEqual (len (self.historyRows ()), max (0, total - batch))
+    drainPrune (lastSettled + retention + 1)
     # The standing pools have no deadline: they survive the 180-day warp.
     self.assertEqual (len (self.getJobs ()), M_STACK)
 
@@ -369,6 +406,8 @@ class JobsStressTest (PXTest):
     self.assertEqual (len (self.historyRows ()), total)
     self.env.setMockTime (lastSettled + retention + 2)
     self.mineAndSync (superblocks=False)
+    self.assertEqual (len (self.historyRows ()), max (0, total - batch))
+    drainPrune (lastSettled + retention + 2)
     self.assertEqual (self.historyRows (), [])
     self.assertEqual (len (self.getJobs ()), M_STACK)
 
@@ -458,7 +497,7 @@ class JobsStressTest (PXTest):
     self.assertEqual (len (rows), M_STACK)
     self.assertEqual (set (e["outcome"] for e in rows), {"drained"})
 
-    P_PAIRS = max (6, M_STACK // 32)
+    P_PAIRS = min (42, max (6, M_STACK // 8))
     self.mainLogger.info ("Cohort 7: %d distinct owners die in ONE "
                           "superblock..." % P_PAIRS)
     # Two victims are under a live pool from the dormant board (tgt0/tgt1);
@@ -481,7 +520,11 @@ class JobsStressTest (PXTest):
 
     spots = {}
     for i, (v, h) in enumerate (zip (vOwners, hOwners)):
-      pos = {"x": 300 * (i + 1), "y": 0}
+      # A grid of pair sites, 300 hexes apart on both axes.  Rows of
+      # seven and the 42-site cap keep every site inside the map's hex
+      # bound (|x + y| stays under ~4,000) while no two pairs come near
+      # auto-engage range of each other.
+      pos = {"x": 300 * (1 + i % 7), "y": 300 * (1 + i // 7)}
       spots[v] = dict (pos)
       spots[h] = dict (pos)
     self.moveCharactersTo (spots)

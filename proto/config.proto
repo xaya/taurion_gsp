@@ -686,7 +686,7 @@ message Params
    * bounty payout) a hard deterministic ceiling without touching the
    * settlement semantics of rows already admitted.  These are the roconfig
    * DEFAULTS: the effective values are runtime-tunable through the
-   * "jobscfg" admin command (consensus state in the jobs_config table), so
+   * "param" admin command (consensus state in the parameters table), so
    * the limits can be adjusted -- or posting frozen entirely with 0 --
    * without a redeploy while the economy stabilises.
    */
@@ -704,6 +704,18 @@ message Params
    * reopens no gameplay inputs.
    */
   optional int64 jobs_history_prune_batch = 38;
+
+  /**
+   * DEFAULT minimum rewards (whole vCHI), runtime-tunable like the caps
+   * ("min-job-reward" / "min-bounty-reward").  Every post must escrow at
+   * least min_job_reward; a wanted pool must escrow at least the (larger)
+   * min_bounty_reward.  Together with the proportional posting fee this
+   * keeps the capped board slots -- especially a target's bounty-pool
+   * slots -- from being monopolised for pocket change: filling them means
+   * locking real value per slot.
+   */
+  optional int64 min_job_reward = 39;
+  optional int64 min_bounty_reward = 40;
 
 }
 

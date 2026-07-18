@@ -107,7 +107,7 @@ ReleaseJobCoins (Account& a, const Amount amount)
  */
 struct JobContext
 {
-  /** Raw database handle (jobs_config reads for the admission caps).  */
+  /** Raw database handle (ParamsTable reads for the admission caps).  */
   Database& db;
   const Context& ctx;
   AccountsTable& accounts;
@@ -260,15 +260,45 @@ public:
 
   /**
    * The term keys holding the entity IDs a POST of this type would link
-   * (empty for non-linking types).  Haul names BOTH buildings: the job
-   * links the source while OPEN and swaps to the destination at accept,
-   * and the accept does not re-check -- so an entity's worst case is the
-   * cap plus its in-flight haul accepts, still a deterministic bound.
+   * (empty for non-linking types).  Haul names BOTH buildings even though
+   * the OPEN row only links the source: the destination is admission-
+   * checked here AND re-checked at accept (AcceptRelinkId), since the
+   * POST-time count sees only rows currently linked.  Returned by
+   * reference to a static, like PostTermKeys.
    */
-  virtual std::vector<const char*>
+  virtual const std::vector<const char*>&
   PostLinkedIdKeys () const
   {
-    return {};
+    static const std::vector<const char*> none;
+    return none;
+  }
+
+  /**
+   * The entity this job RELINKS to when accepted, or Database::EMPTY_ID
+   * when accept keeps the POST-time link (every type but haul, which swaps
+   * its link from the source to the destination).  Accept re-checks the
+   * per-entity admission cap against this entity: without it, a
+   * destination could collect OPEN hauls -- which count against their
+   * sources -- far past its cap and blow through it when they accept.  A
+   * full destination simply keeps the job OPEN (acceptable again once the
+   * entity has room; the poster can also cancel for a full refund).
+   */
+  virtual Database::IdT
+  AcceptRelinkId (const Job& job) const
+  {
+    return Database::EMPTY_ID;
+  }
+
+  /**
+   * The minimum reward a POST of this type must escrow, beyond the global
+   * "min-job-reward" floor (the larger of the two applies).  Wanted pools
+   * demand the higher "min-bounty-reward", so occupying one of a target's
+   * capped pool slots always locks real value.
+   */
+  virtual Amount
+  MinReward (const JobContext& jc) const
+  {
+    return 0;
   }
 
   /**
@@ -488,7 +518,7 @@ public:
  * the deadline) that JobIsDue exists to close.  The hard bound lives at the
  * DOOR instead: the admission caps in PostOperation::IsValid (max live
  * jobs in total / per poster / per linked entity / per bounty target,
- * admin-tunable via the "jobscfg" command) mean no sweep, entity cascade
+ * admin-tunable via the "param" command) mean no sweep, entity cascade
  * or payout can ever exceed the capped board -- every due row inside it
  * was paid for (posting fee burned, escrow locked), and settlement is a
  * constant amount of work per job walked straight off the (deadline, id)

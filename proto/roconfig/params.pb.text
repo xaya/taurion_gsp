@@ -33,7 +33,7 @@ params:
     max_bounty_quota: 25
     jobs_history_retention: 15552000  # settled jobs stay queryable for 180 days
 
-    # Admission caps (defaults; runtime-tunable via the "jobscfg" admin
+    # Admission caps (defaults; runtime-tunable via the "param" admin
     # command).  The global cap is the hard ceiling on any one expiry sweep;
     # the others bound entity-destruction cascades and bounty payouts.
     max_live_jobs: 10000
@@ -41,6 +41,8 @@ params:
     max_jobs_per_linked_entity: 100
     max_bounty_pools_per_target: 25
     jobs_history_prune_batch: 5000
+    min_job_reward: 100         # every job escrows at least 100 vCHI
+    min_bounty_reward: 1000     # a wanted pool escrows at least 1000 vCHI
 
     min_region_ore: 2000000
     max_region_ore: 100000000

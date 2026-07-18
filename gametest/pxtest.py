@@ -531,7 +531,10 @@ class PXTest (XayaXGameTest):
         "pos": c,
       })
 
-    self.adminCommand ({"god": {"teleport": teleport}})
+    # One god command per sub-ceiling chunk: a big cast in a single move
+    # would exceed the move-size limit and be dropped silently.
+    for i in range (0, len (teleport), 15):
+      self.adminCommand ({"god": {"teleport": teleport[i : i + 15]}})
     self.generate (1)
 
     chars = self.getCharacters ()
@@ -553,7 +556,11 @@ class PXTest (XayaXGameTest):
       val["id"] = chars[nm].getId ()
       sethp.append (val)
 
-    self.adminCommand ({"god": {"sethp": {"c": sethp}}})
+    # Chunked like the teleports (an over-ceiling move drops silently);
+    # all chunks apply in the same block, whether mined here or -- with
+    # mine=False -- in the caller's own timed block.
+    for i in range (0, len (sethp), 15):
+      self.adminCommand ({"god": {"sethp": {"c": sethp[i : i + 15]}}})
     if mine:
       self.generate (1)
 

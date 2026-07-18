@@ -1306,8 +1306,11 @@ MoveProcessor::HandleParams (const Json::Value& cmd)
   ParamsTable par(db);
   for (const auto& entry : cmd)
     {
+      /* Exactly the members n and v: a typo'd value key (e.g. "value")
+         must be a skipped malformed entry, NOT a missing-v null that would
+         remove the override -- the dangerous direction for a freeze.  */
       if (!entry.isObject () || entry.size () != 2
-            || !entry["n"].isString ())
+            || !entry.isMember ("v") || !entry["n"].isString ())
         {
           LOG (WARNING) << "Invalid set-param operation: " << entry;
           continue;

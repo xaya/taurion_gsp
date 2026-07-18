@@ -564,9 +564,11 @@ public:
    * params.jobs_history_retention.  The batch bound keeps one huge cohort
    * ageing out from forcing an unbounded single-statement delete; the
    * remainder drains on subsequent sweeps (history is display-only, so the
-   * delay reopens no gameplay inputs).  batch <= 0 means unbounded (tests).
+   * delay reopens no gameplay inputs).  batch <= 0 means unbounded and is
+   * for tests only; the argument is deliberately not defaulted so the
+   * production caller cannot silently omit its roconfig batch.
    */
-  void PruneHistory (int64_t cutoff, int64_t batch = 0);
+  void PruneHistory (int64_t cutoff, int64_t batch);
 
   /**
    * Returns the total vCHI reserved by each account on the jobs board: the

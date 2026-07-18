@@ -317,9 +317,10 @@ JobsTable::HasActiveBountyNames () const
 int64_t
 JobsTable::CountAll () const
 {
-  /* The one unindexed count: a scan of the primary key, itself bounded by
-     the very cap it enforces (the board can never exceed the global cap
-     plus the in-flight block's own admissions).  */
+  /* The one count without a WHERE clause: SQLite serves it with its
+     count optimisation over the smallest index (no per-row scan), and it
+     is in any case bounded by the very cap it enforces (the board can
+     never exceed the global cap plus the in-flight block's admissions).  */
   return StepCount (db.Prepare (R"(
     SELECT COUNT(*) AS `cnt` FROM `jobs`
   )"));

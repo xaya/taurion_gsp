@@ -34,6 +34,14 @@ class JobsRpcTest (PXTest):
     self.mainLogger.info ("Setting up an account and a small board...")
     self.initAccount ("poster", "r")
     self.generate (1)
+    # Lower the minimum-reward floors (roconfig 100/1000) the same way an
+    # admin would: the suite's rewards predate the floors.  The defaults
+    # themselves are exercised in jobs_caps.py.
+    self.adminCommand ({"param": [
+      {"n": "min-job-reward", "v": 1},
+      {"n": "min-bounty-reward", "v": 1},
+    ]})
+    self.generate (1)
     self.giftCoins ({"poster": 1000000})
     self.build ("checkmark", "poster", {"x": 0, "y": 0}, rot=0)
     bId = max (self.getBuildings ().keys ())

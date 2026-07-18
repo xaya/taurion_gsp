@@ -41,6 +41,14 @@ class JobsTransportTest (PXTest):
     self.initAccount ("poster", "r")
     self.initAccount ("courier", "r")
     self.generate (1)
+    # Lower the minimum-reward floors (roconfig 100/1000) the same way an
+    # admin would: the suite's rewards predate the floors.  The defaults
+    # themselves are exercised in jobs_caps.py.
+    self.adminCommand ({"param": [
+      {"n": "min-job-reward", "v": 1},
+      {"n": "min-bounty-reward", "v": 1},
+    ]})
+    self.generate (1)
     self.giftCoins ({"poster": 1000000, "courier": 1000000})
 
     self.build ("checkmark", "poster", {"x": 0, "y": 0}, rot=0)
@@ -52,6 +60,7 @@ class JobsTransportTest (PXTest):
     self.testCancel ()
     self.testProgressDump ()
     self.testHaul ()
+    self.testHaulDestinationCapRecheck ()
     self.testSuperblockGating ()
     self.checkHistoryFromTime ()
 
@@ -148,6 +157,58 @@ class JobsTransportTest (PXTest):
         {"bar": 7})
     # Reward + collateral back.
     self.assertEqual (self.available ("courier"), before + 1500 + 4000)
+
+  def testHaulDestinationCapRecheck (self):
+    self.mainLogger.info ("Haul destination re-checks the entity cap "
+                          "at accept...")
+    # One shared destination and two FRESH sources (buildings from earlier
+    # segments may still carry links).  With the per-entity cap at 1 both
+    # POSTs admit (an OPEN haul counts against its source); the second
+    # ACCEPT is what must reject, keeping that job OPEN until the gate
+    # reopens.
+    self.build ("checkmark", "poster", {"x": 100, "y": 0}, rot=0)
+    dest = max (self.getBuildings ().keys ())
+    self.build ("checkmark", "poster", {"x": 150, "y": 0}, rot=0)
+    src1 = max (self.getBuildings ().keys ())
+    self.build ("checkmark", "poster", {"x": 200, "y": 0}, rot=0)
+    src2 = max (self.getBuildings ().keys ())
+    self.dropIntoBuilding (src1, "poster", {"bar": 1})
+    self.dropIntoBuilding (src2, "poster", {"bar": 1})
+
+    self.adminCommand ({"param": [
+      {"n": "max-jobs-per-linked-entity", "v": 1},
+    ]})
+    self.generate (1)
+
+    ids = []
+    for src in (src1, src2):
+      before = len (self.getJobs ())
+      self.sendMove ("poster", {"j": [{
+        "t": "haul", "d": 86400, "wd": 86400, "r": 1500, "co": 0,
+        "from": src, "to": dest, "items": {"bar": 1},
+      }]})
+      self.generate (1)
+      self.assertEqual (len (self.getJobs ()), before + 1)
+      ids.append (self.newestJob ()["id"])
+
+    def state (jobId):
+      return next (j["state"] for j in self.getJobs () if j["id"] == jobId)
+
+    self.sendMove ("courier", {"j": [{"a": ids[0]}]})
+    self.generate (1)
+    self.assertEqual (state (ids[0]), "accepted")
+    self.sendMove ("courier", {"j": [{"a": ids[1]}]})
+    self.generate (1)
+    self.assertEqual (state (ids[1]), "open")
+
+    self.mainLogger.info ("Removing the override reopens the gate...")
+    self.adminCommand ({"param": [
+      {"n": "max-jobs-per-linked-entity", "v": None},
+    ]})
+    self.generate (1)
+    self.sendMove ("courier", {"j": [{"a": ids[1]}]})
+    self.generate (1)
+    self.assertEqual (state (ids[1]), "accepted")
 
   def testSuperblockGating (self):
     self.mainLogger.info ("Testing a deadline crossing an ORDINARY block...")

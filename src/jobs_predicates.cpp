@@ -21,6 +21,8 @@
 #include "buildings.hpp"
 #include "jsonutils.hpp"
 
+#include "database/params.hpp"
+
 #include "hexagonal/coord.hpp"
 
 #include <xayautil/jsonutils.hpp>
@@ -550,10 +552,11 @@ public:
     return keys;
   }
 
-  std::vector<const char*>
+  const std::vector<const char*>&
   PostLinkedIdKeys () const override
   {
-    return {"to"};
+    static const std::vector<const char*> keys = {"to"};
+    return keys;
   }
 
   bool ValidatePost (const JobContext& jc, const Account& poster,
@@ -699,12 +702,21 @@ public:
     return keys;
   }
 
-  std::vector<const char*>
+  const std::vector<const char*>&
   PostLinkedIdKeys () const override
   {
     /* Both ends: linked to the source while OPEN, swapped to the
        destination at accept.  */
-    return {"from", "to"};
+    static const std::vector<const char*> keys = {"from", "to"};
+    return keys;
+  }
+
+  Database::IdT
+  AcceptRelinkId (const Job& job) const override
+  {
+    /* Accept swaps the link to the destination, so it must pass the
+       per-entity admission gate then (the POST count cannot see it).  */
+    return job.GetProto ().haul ().dest_building ();
   }
 
   bool ValidatePost (const JobContext& jc, const Account& poster,
@@ -915,6 +927,16 @@ public:
   {
     static const std::vector<std::string> keys = {"name", "n"};
     return keys;
+  }
+
+  Amount
+  MinReward (const JobContext& jc) const override
+  {
+    /* A pool occupies one of the target's capped slots, so it must lock
+       real value: the runtime-tunable bounty floor.  */
+    return ParamsTable (jc.db)
+        .Get ("min-bounty-reward",
+              jc.ctx.RoConfig ()->params ().min_bounty_reward ());
   }
 
   bool ValidatePost (const JobContext& jc, const Account& poster,
@@ -1173,10 +1195,11 @@ public:
     return keys;
   }
 
-  std::vector<const char*>
+  const std::vector<const char*>&
   PostLinkedIdKeys () const override
   {
-    return {"b"};
+    static const std::vector<const char*> keys = {"b"};
+    return keys;
   }
 
   bool
@@ -1233,10 +1256,11 @@ public:
     return keys;
   }
 
-  std::vector<const char*>
+  const std::vector<const char*>&
   PostLinkedIdKeys () const override
   {
-    return {"b"};
+    static const std::vector<const char*> keys = {"b"};
+    return keys;
   }
 
   bool
@@ -1289,10 +1313,11 @@ public:
     return keys;
   }
 
-  std::vector<const char*>
+  const std::vector<const char*>&
   PostLinkedIdKeys () const override
   {
-    return {"ch"};
+    static const std::vector<const char*> keys = {"ch"};
+    return keys;
   }
 
   bool
@@ -1353,12 +1378,13 @@ public:
     return keys;
   }
 
-  std::vector<const char*>
+  const std::vector<const char*>&
   PostLinkedIdKeys () const override
   {
     /* The linked entity is the destination building; the protected
        character lives in the proto only.  */
-    return {"to"};
+    static const std::vector<const char*> keys = {"to"};
+    return keys;
   }
 
   bool
@@ -1952,10 +1978,11 @@ public:
     return keys;
   }
 
-  std::vector<const char*>
+  const std::vector<const char*>&
   PostLinkedIdKeys () const override
   {
-    return {"b"};
+    static const std::vector<const char*> keys = {"b"};
+    return keys;
   }
 
   bool
@@ -2202,10 +2229,11 @@ public:
     return keys;
   }
 
-  std::vector<const char*>
+  const std::vector<const char*>&
   PostLinkedIdKeys () const override
   {
-    return {"ch"};
+    static const std::vector<const char*> keys = {"ch"};
+    return keys;
   }
 
   bool

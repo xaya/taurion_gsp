@@ -93,6 +93,14 @@ protected:
                   ->GetId (), 2);
     CHECK_EQ (buildings.CreateNew ("checkmark", "green", Faction::GREEN)
                   ->GetId (), 3);
+
+    /* The minimum-reward floors are runtime parameters (roconfig defaults
+       100 and 1000 vCHI); the tests use small rewards throughout, so lower
+       them exactly as an admin would.  MinimumRewardDefaults removes these
+       overrides to exercise the real defaults.  */
+    ParamsTable par(db);
+    par.Set ("min-job-reward", 1);
+    par.Set ("min-bounty-reward", 1);
   }
 
   JobContext
@@ -509,6 +517,158 @@ TEST_F (JobsTests, AdmissionCapPoolsPerTarget)
   /* A different target still has headroom.  */
   EXPECT_TRUE (Process ("poster",
       R"({"t":"wanted","r":100,"co":0,"name":"courier","n":2})"));
+}
+
+TEST_F (JobsTests, MinimumRewardDefaults)
+{
+  ParamsTable par(db);
+  par.Remove ("min-job-reward");
+  par.Remove ("min-bounty-reward");
+
+  /* The generic floor (roconfig default 100) applies to every type.  */
+  EXPECT_FALSE (Process ("poster",
+      R"({"t":"transport","d":86400,"wd":86400,"r":99,"co":0,"to":1,"items":{"foo":5}})"));
+  EXPECT_TRUE (Process ("poster",
+      R"({"t":"transport","d":86400,"wd":86400,"r":100,"co":0,"to":1,"items":{"foo":5}})"));
+
+  /* Wanted pools take the higher bounty floor (default 1000): occupying
+     one of a target's capped slots must lock real value.  */
+  EXPECT_FALSE (Process ("poster",
+      R"({"t":"wanted","r":999,"co":0,"name":"green","n":2})"));
+  EXPECT_TRUE (Process ("poster",
+      R"({"t":"wanted","r":1000,"co":0,"name":"green","n":2})"));
+
+  /* Both floors are runtime-tunable like the caps.  */
+  par.Set ("min-job-reward", 5000);
+  EXPECT_FALSE (Process ("poster",
+      R"({"t":"transport","d":86400,"wd":86400,"r":100,"co":0,"to":1,"items":{"foo":5}})"));
+}
+
+TEST_F (JobsTests, AcceptRelinkCapForHaulDestinations)
+{
+  ParamsTable par(db);
+  par.Set ("max-jobs-per-linked-entity", 2);
+
+  /* Distinct sources, one shared destination: every POST admits (an OPEN
+     haul counts against its source), so the accept-time re-check is the
+     only gate keeping the destination at its cap.  */
+  CHECK_EQ (buildings.CreateNew ("checkmark", "poster", Faction::RED)
+                ->GetId (), 4);
+  CHECK_EQ (buildings.CreateNew ("checkmark", "poster", Faction::RED)
+                ->GetId (), 5);
+  for (const auto src : {1, 4, 5})
+    StageGoods (src, "poster", {{"foo", 5}});
+
+  std::vector<Database::IdT> ids;
+  for (const auto* src : {"1", "4", "5"})
+    {
+      CHECK (Process ("poster",
+          R"({"t":"haul","d":86400,"wd":86400,"r":10,"co":0,"from":)"
+          + std::string (src) + R"(,"to":2,"items":{"foo":5}})"));
+      ids.push_back (LatestJobId ());
+    }
+
+  EXPECT_TRUE (Process ("courier", R"({"a":)" + std::to_string (ids[0]) + "}"));
+  EXPECT_TRUE (Process ("courier", R"({"a":)" + std::to_string (ids[1]) + "}"));
+  /* The destination is at its cap now: the third haul cannot relink and
+     stays OPEN.  */
+  EXPECT_FALSE (Process ("courier", R"({"a":)" + std::to_string (ids[2]) + "}"));
+  EXPECT_EQ (jobs.GetById (ids[2])->GetStatus (), Job::Status::OPEN);
+
+  /* Settling one of the accepted hauls frees a slot and reopens the gate.  */
+  StageGoods (2, "courier", {{"foo", 5}});
+  EXPECT_TRUE (Process ("courier", R"({"f":)" + std::to_string (ids[0]) + "}"));
+  EXPECT_TRUE (Process ("courier", R"({"a":)" + std::to_string (ids[2]) + "}"));
+}
+
+TEST_F (JobsTests, AdmissionCapDefaultsAreLive)
+{
+  /* No cap overrides anywhere: what rejects the boundary posts here is the
+     roconfig defaults themselves (25 / 100 / 200 / 10000).  The board is
+     stuffed with directly-created rows so that only the boundary posts run
+     the real move path.  */
+  MakeAccount ("capped", Faction::RED, 10000);
+
+  for (unsigned i = 0; i < 25; ++i)
+    jobs.CreateNew (Job::Type::WANTED, Faction::INVALID, "filler", 1, 0)
+        ->SetLinkedName ("green");
+  EXPECT_FALSE (Process ("poster",
+      R"({"t":"wanted","r":100,"co":0,"name":"green","n":2})"));
+  EXPECT_TRUE (Process ("poster",
+      R"({"t":"wanted","r":100,"co":0,"name":"courier","n":2})"));
+
+  for (unsigned i = 0; i < 100; ++i)
+    jobs.CreateNew (Job::Type::TRANSPORT, Faction::RED, "filler", 1, 0)
+        ->SetLinkedId (1);
+  EXPECT_FALSE (Process ("poster",
+      R"({"t":"transport","d":86400,"wd":86400,"r":10,"co":0,"to":1,"items":{"foo":5}})"));
+  EXPECT_TRUE (Process ("poster",
+      R"({"t":"transport","d":86400,"wd":86400,"r":10,"co":0,"to":2,"items":{"foo":5}})"));
+
+  for (unsigned i = 0; i < 200; ++i)
+    jobs.CreateNew (Job::Type::TRANSPORT, Faction::RED, "capped", 1, 0);
+  EXPECT_FALSE (Process ("capped",
+      R"({"t":"transport","d":86400,"wd":86400,"r":10,"co":0,"to":2,"items":{"foo":5}})"));
+  EXPECT_TRUE (Process ("poster",
+      R"({"t":"transport","d":86400,"wd":86400,"r":10,"co":0,"to":2,"items":{"foo":5}})"));
+
+  while (jobs.CountAll () < 10000)
+    jobs.CreateNew (Job::Type::TRANSPORT, Faction::RED, "filler", 1, 0);
+  EXPECT_FALSE (Process ("poster",
+      R"({"t":"transport","d":86400,"wd":86400,"r":10,"co":0,"to":2,"items":{"foo":5}})"));
+}
+
+TEST_F (JobsTests, PruneBatchedThroughExpiry)
+{
+  const auto& params = ctx.RoConfig ()->params ();
+  const int64_t retention = params.jobs_history_retention ();
+  const int64_t batch = params.jobs_history_prune_batch ();
+  ASSERT_GT (retention, 0);
+  ASSERT_GT (batch, 0);
+
+  /* Age batch + 1 settled rows past the retention cutoff (history rows are
+     keyed by job ID, so each needs its own job, settled the same way the
+     production path does it: history write, then row delete).  */
+  for (int64_t i = 0; i <= batch; ++i)
+    {
+      auto j = jobs.CreateNew (Job::Type::TRANSPORT, Faction::RED,
+                               "poster", 1, 0);
+      const auto id = j->GetId ();
+      jobs.WriteHistory (*j, JobOutcome::VOID, 50, BASE_TS + i);
+      j.reset ();
+      jobs.DeleteById (id);
+    }
+
+  /* The history reader is page-capped, so count through the cursor.  */
+  const auto countHistory = [this] ()
+    {
+      int64_t n = 0, lastTime = 0, lastId = 0;
+      while (true)
+        {
+          auto res = jobs.QueryHistory (0, lastTime, lastId);
+          bool any = false;
+          while (res.Step ())
+            {
+              const auto e = jobs.GetFromResult (res);
+              lastTime = e->GetSettledTime ();
+              lastId = e->GetId ();
+              ++n;
+              any = true;
+            }
+          if (!any)
+            return n;
+        }
+    };
+  ASSERT_EQ (countHistory (), batch + 1);
+
+  /* Run the real production sweep with the whole cohort expired: exactly
+     one roconfig batch may disappear per superblock, the remainder drains
+     on the next one.  */
+  ctx.SetTimestamp (BASE_TS + retention + 1000000);
+  ExpireJobs (db, ctx);
+  EXPECT_EQ (countHistory (), 1);
+  ExpireJobs (db, ctx);
+  EXPECT_EQ (countHistory (), 0);
 }
 
 TEST_F (JobsTests, PostRejects)

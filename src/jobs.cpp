@@ -107,6 +107,21 @@ namespace
 {
 
 /**
+ * Whether the given entity is at the per-entity admission cap: the gate a
+ * POST applies to every entity it would link, and an ACCEPT re-applies to
+ * the entity it relinks to (AcceptRelinkId).  One indexed equality count
+ * plus one point parameter read, on move processing only.
+ */
+bool
+EntityAtLinkedCap (const JobContext& jc, const ParamsTable& par,
+                   const Database::IdT id)
+{
+  return jc.jobs.CountForLinkedId (id)
+      >= par.Get ("max-jobs-per-linked-entity",
+                  jc.ctx.RoConfig ()->params ().max_jobs_per_linked_entity ());
+}
+
+/**
  * POST: locks the reward + burns the posting fee and creates an OPEN job with
  * the type-specific payload (via the predicate).  Generic across job types.
  */
@@ -234,6 +249,19 @@ PostOperation::IsValid () const
   {
     const ParamsTable par(jc.db);
 
+    /* Minimum escrowed value: the global floor, raised further by the
+       type (wanted pools), so the capped board -- and especially a
+       target's pool slots -- cannot be occupied for pocket change.  */
+    const Amount minReward
+        = std::max<Amount> (par.Get ("min-job-reward", p.min_job_reward ()),
+                            pred->MinReward (jc));
+    if (reward < minReward)
+      {
+        LOG (WARNING)
+            << "Reward " << reward << " is below the minimum " << minReward;
+        return false;
+      }
+
     if (jc.jobs.CountAll ()
           >= par.Get ("max-live-jobs", p.max_live_jobs ()))
       {
@@ -250,9 +278,7 @@ PostOperation::IsValid () const
       }
 
     for (const auto id : pred->PostLinkedIds (terms))
-      if (jc.jobs.CountForLinkedId (id)
-            >= par.Get ("max-jobs-per-linked-entity",
-                        p.max_jobs_per_linked_entity ()))
+      if (EntityAtLinkedCap (jc, par, id))
         {
           LOG (WARNING) << "Entity " << id << " is at its linked-jobs cap";
           return false;
@@ -490,6 +516,21 @@ AcceptOperation::IsValid () const
      ad-slot ownership).  */
   if (!pred->ValidateAccept (jc, *job, account))
     return false;
+
+  /* A type whose accept RELINKS the row (haul: source -> destination) must
+     pass the per-entity admission gate for the new entity now: the POST
+     check counts only rows currently linked, so OPEN hauls -- which link
+     their sources -- do not show up against the destination until this
+     moment.  A full destination keeps the job OPEN (see AcceptRelinkId).  */
+  const auto relink = pred->AcceptRelinkId (*job);
+  if (relink != Database::EMPTY_ID
+        && EntityAtLinkedCap (jc, ParamsTable (jc.db), relink))
+    {
+      LOG (WARNING)
+          << "Job " << jobId << " cannot relink to entity " << relink
+          << ": it is at its linked-jobs cap";
+      return false;
+    }
 
   if (account.GetBalance () < job->GetCollateral ())
     {
@@ -878,10 +919,17 @@ ExpireJobs (Database& db, const Context& ctx)
      blocks an indexed no-op, and a negative cutoff early in a chain's life
      simply matches nothing.  An unset retention (0) means keep forever
      rather than keep nothing.  */
-  const int64_t retention
-      = ctx.RoConfig ()->params ().jobs_history_retention ();
-  if (retention > 0)
-    jobs.PruneHistory (ctx.Timestamp () - retention);
+  const auto& params = ctx.RoConfig ()->params ();
+  if (params.jobs_history_retention () > 0)
+    {
+      /* The batch bound is what keeps one huge cohort ageing out from
+         forcing an unbounded single-statement delete, so a configuration
+         without it is a bug, not a mode.  */
+      CHECK_GT (params.jobs_history_prune_batch (), 0)
+          << "jobs_history_prune_batch must be positive";
+      jobs.PruneHistory (ctx.Timestamp () - params.jobs_history_retention (),
+                         params.jobs_history_prune_batch ());
+    }
 
   /* Snapshot the due jobs (fully consuming the query) before mutating any
      balances or deleting rows.  On idle blocks this is an indexed no-op.  */
