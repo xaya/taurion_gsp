@@ -210,6 +210,37 @@ class JobsTransportTest (PXTest):
     self.generate (1)
     self.assertEqual (state (ids[1]), "accepted")
 
+    self.mainLogger.info ("Same-BLOCK accept convergence on one "
+                          "destination...")
+    # Two fresh hauls to a fresh destination, both accepted in a SINGLE
+    # move array with the cap back at 1: moves process sequentially inside
+    # the block, so the first relinks and the second must reject there and
+    # then -- not one block later.
+    self.build ("checkmark", "poster", {"x": 250, "y": 0}, rot=0)
+    dest2 = max (self.getBuildings ().keys ())
+    self.dropIntoBuilding (src1, "poster", {"bar": 1})
+    self.dropIntoBuilding (src2, "poster", {"bar": 1})
+    self.adminCommand ({"param": [
+      {"n": "max-jobs-per-linked-entity", "v": 1},
+    ]})
+    self.generate (1)
+    ids2 = []
+    for src in (src1, src2):
+      self.sendMove ("poster", {"j": [{
+        "t": "haul", "d": 86400, "wd": 86400, "r": 1500, "co": 0,
+        "from": src, "to": dest2, "items": {"bar": 1},
+      }]})
+      self.generate (1)
+      ids2.append (self.newestJob ()["id"])
+    self.sendMove ("courier", {"j": [{"a": ids2[0]}, {"a": ids2[1]}]})
+    self.generate (1)
+    self.assertEqual (state (ids2[0]), "accepted")
+    self.assertEqual (state (ids2[1]), "open")
+    self.adminCommand ({"param": [
+      {"n": "max-jobs-per-linked-entity", "v": None},
+    ]})
+    self.generate (1)
+
   def testSuperblockGating (self):
     self.mainLogger.info ("Testing a deadline crossing an ORDINARY block...")
     # Jobs settle by moves on every block, but the expiry sweep only runs on

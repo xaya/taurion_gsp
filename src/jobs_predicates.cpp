@@ -91,18 +91,23 @@ GetAccountChecked (const JobContext& jc, const std::string& name)
  * anchors to burned cost rather than proving arm's-length work.  Any
  * future consumer of these stats must weigh by value (or add thresholds)
  * rather than trust counts.
+ *
+ * `times` folds several settlements into one call (the aggregated
+ * wanted-pool payout, where one kill completes `times` pools at once);
+ * `value` is always the TOTAL across them.
  */
 void
-BumpJobStats (Account& a, const bool completed, const Amount value)
+BumpJobStats (Account& a, const bool completed, const Amount value,
+              const unsigned times = 1)
 {
   auto& pb = a.MutableProto ();
   if (completed)
     {
-      pb.set_jobs_completed (pb.jobs_completed () + 1);
+      pb.set_jobs_completed (pb.jobs_completed () + times);
       pb.set_jobs_value_completed (pb.jobs_value_completed () + value);
     }
   else
-    pb.set_jobs_failed (pb.jobs_failed () + 1);
+    pb.set_jobs_failed (pb.jobs_failed () + times);
 }
 
 /**
@@ -966,7 +971,8 @@ public:
   }
 
   bool OnTargetKill (const JobContext& jc, Job& job,
-                     const std::set<std::string>& killOwners) const override;
+                     const std::set<std::string>& killOwners,
+                     Amount& sharePerOwner) const override;
 
 };
 
@@ -1034,7 +1040,8 @@ WantedPredicate::ApplyPost (const JobContext& jc, Account& poster,
 
 bool
 WantedPredicate::OnTargetKill (const JobContext& jc, Job& job,
-                               const std::set<std::string>& killOwners) const
+                               const std::set<std::string>& killOwners,
+                               Amount& sharePerOwner) const
 {
   CHECK (!killOwners.empty ());
   auto* wp = job.MutableProto ().mutable_wanted ();
@@ -1044,19 +1051,13 @@ WantedPredicate::OnTargetKill (const JobContext& jc, Job& job,
   CHECK_GE (job.GetReward (), tranche);
 
   /* One tranche leaves the escrow: split equally across the distinct killer
-     accounts, with any division remainder burned (never redistributed).  */
-  const Amount share = tranche / killOwners.size ();
-  /* When the tranche cannot give every distinct killer at least one coin,
+     accounts, with any division remainder burned (never redistributed).
+     When the tranche cannot give every distinct killer at least one coin,
      nobody is paid -- crediting a zero-value completion would inflate the
      reputation counters for free.  The tranche is still consumed (burned as
-     the remainder, which is never redistributed).  */
-  if (share > 0)
-    for (const auto& owner : killOwners)
-      {
-        auto a = GetAccountChecked (jc, owner);
-        ReleaseJobCoins (*a, share);
-        BumpJobStats (*a, true, share);
-      }
+     the remainder, which is never redistributed).  The caller accumulates
+     the share across all pools and pays each owner once (PayKillShares).  */
+  sharePerOwner = tranche / killOwners.size ();
 
   job.SetReward (job.GetReward () - tranche);
   wp->set_remaining (wp->remaining () - 1);
@@ -2378,6 +2379,20 @@ JobPredicate::PostLinkedIds (const Json::Value& terms) const
       ids.push_back (id);
     }
   return ids;
+}
+
+void
+PayKillShares (const JobContext& jc, const std::set<std::string>& owners,
+               const unsigned payingPools, const Amount totalShare)
+{
+  CHECK_GT (payingPools, 0);
+  CHECK_GT (totalShare, 0);
+  for (const auto& owner : owners)
+    {
+      auto a = GetAccountChecked (jc, owner);
+      ReleaseJobCoins (*a, totalShare);
+      BumpJobStats (*a, true, totalShare, payingPools);
+    }
 }
 
 const char*

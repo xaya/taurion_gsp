@@ -426,20 +426,36 @@ public:
   }
 
   /**
-   * Pays out for one qualifying kill on a linked_name job (the wanted-bounty
-   * pool): one tranche split across the distinct killer accounts.  Returns
-   * true when the pool is drained and the caller should delete the row.
-   * Only the wanted type implements this.
+   * Consumes one qualifying kill on a linked_name job (the wanted-bounty
+   * pool): one tranche leaves the escrow, split equally across the distinct
+   * killer accounts.  The pool row is mutated here, but NO accounts are
+   * touched: the per-owner share is returned through `sharePerOwner` (0
+   * when the tranche cannot give every killer at least one coin), and the
+   * caller pays each owner ONCE with the total across all pools
+   * (PayKillShares) -- account work per kill is O(pools + owners), never
+   * O(pools x owners).  Returns true when the pool is drained and the
+   * caller should delete the row.  Only the wanted type implements this.
    */
   virtual bool
   OnTargetKill (const JobContext& jc, Job& job,
-                const std::set<std::string>& killOwners) const
+                const std::set<std::string>& killOwners,
+                Amount& sharePerOwner) const
   {
     LOG (FATAL)
         << "Job " << job.GetId () << " has no target-kill settlement";
   }
 
 };
+
+/**
+ * Pays the aggregated wanted-pool kill shares: each distinct killer account
+ * is opened once and credited the total share accumulated across every
+ * paying pool, with its completion counters bumped once per paying pool.
+ * The end state is exactly the per-pool payout's, at O(owners) account
+ * writes.  Must not be called while any account handle is live.
+ */
+void PayKillShares (const JobContext& jc, const std::set<std::string>& owners,
+                    unsigned payingPools, Amount totalShare);
 
 /**
  * Returns the predicate object for a job type, or nullptr for an unknown type.
@@ -532,7 +548,8 @@ public:
  * mined + GSP-synced under a
  * real wall-clock deadline of one superblock interval, replays the
  * aligned sweep, the kill and the prune across a reorg, and records runs
- * at 1x / 5x / 11x cohort scale in its module docstring.  (External to this repo, forked-chain e2e runs of the same
+ * at 1x / 5x / 11x / global-cap-10k cohort scale in its module
+ * docstring (the 2200 and 10000 runs are both part of the release gate).  (External to this repo, forked-chain e2e runs of the same
  * shapes settled far below the dense-combat processing ceiling measured
  * for the same block budget.)  A deterministic cap would
  * defer settlement of already-due jobs to later blocks, re-opening the very

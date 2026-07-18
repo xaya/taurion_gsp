@@ -1095,9 +1095,16 @@ JobsBountyTracker::UpdateForKill (const proto::TargetId& target)
   if (owners.empty ())
     return;
 
-  /* Pay one tranche per pool on this name (stacked bounties all pay).  */
+  /* Consume one tranche per pool on this name (stacked bounties all pay),
+     accumulating the per-owner share as we go: every pool splits across
+     the SAME owner set, so the accounts are then paid ONCE each with the
+     total.  Account work per kill is O(pools + owners) -- the pool cap
+     bounds one factor and the single owner pass the other, so a large
+     distinct-killer mob cannot multiply account writes by the pool count.  */
   BlockHookTables tables(db);
   const JobContext jc = tables.MakeContext (ctx);
+  Amount totalShare = 0;
+  unsigned payingPools = 0;
   for (const auto id : pools)
     {
       auto j = tables.jobs.GetById (id);
@@ -1108,11 +1115,20 @@ JobsBountyTracker::UpdateForKill (const proto::TargetId& target)
          type reusing linked_name for something else is left alone.  */
       if (!pred->SettlesOnTargetKill ())
         continue;
-      const bool drained = pred->OnTargetKill (jc, *j, owners);
+      Amount share = 0;
+      const bool drained = pred->OnTargetKill (jc, *j, owners, share);
+      if (share > 0)
+        {
+          totalShare += share;
+          ++payingPools;
+        }
       if (drained)
         SettleAndDelete (tables.jobs, std::move (j), JobOutcome::DRAINED, ctx);
       /* Not drained: the mutated pool flushes when the handle destructs.  */
     }
+
+  if (payingPools > 0)
+    PayKillShares (jc, owners, payingPools, totalShare);
 }
 
 /* ************************************************************************** */

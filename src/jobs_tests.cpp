@@ -28,6 +28,7 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
+#include <limits>
 #include <map>
 #include <string>
 #include <tuple>
@@ -542,6 +543,16 @@ TEST_F (JobsTests, MinimumRewardDefaults)
   par.Set ("min-job-reward", 5000);
   EXPECT_FALSE (Process ("poster",
       R"({"t":"transport","d":86400,"wd":86400,"r":100,"co":0,"to":1,"items":{"foo":5}})"));
+
+  /* Extremes: an int64-max floor freezes posting outright; a negative
+     floor is simply no floor beyond the generic reward > 0 rule.  */
+  par.Set ("min-job-reward", std::numeric_limits<int64_t>::max ());
+  EXPECT_FALSE (Process ("poster",
+      R"({"t":"transport","d":86400,"wd":86400,"r":100000,"co":0,"to":1,"items":{"foo":5}})"));
+  par.Set ("min-job-reward", -1000);
+  par.Set ("min-bounty-reward", -1000);
+  EXPECT_TRUE (Process ("poster",
+      R"({"t":"wanted","r":1,"co":0,"name":"green","n":1})"));
 }
 
 TEST_F (JobsTests, AcceptRelinkCapForHaulDestinations)
@@ -1490,6 +1501,72 @@ TEST_F (WantedTests, KillSplitsAcrossDistinctOwners)
 
   EXPECT_EQ (Balance ("courier"), 1000000 + 1500);
   EXPECT_EQ (Balance ("courier2"), 1000000 + 1500);
+}
+
+TEST_F (WantedTests, AggregatedPayoutAcrossStackedPools)
+{
+  /* Three pools with DIFFERENT tranches on one target, two distinct killer
+     owners (one of them tagging with two characters): every pool's share
+     accrues, but each account is opened and credited ONCE, with its
+     completion counter bumped once per PAYING pool.  Expected per owner:
+     60/2 quota 2 -> tranche 30 -> 15; 100/1 -> 100 -> 50; 45/5 -> 9 -> 4;
+     total 69 across three paying pools.  */
+  CHECK (Process ("poster",
+      R"({"t":"wanted","r":60,"co":0,"name":"green","n":2})"));
+  CHECK (Process ("poster",
+      R"({"t":"wanted","r":100,"co":0,"name":"green","n":1})"));
+  CHECK (Process ("poster",
+      R"({"t":"wanted","r":45,"co":0,"name":"green","n":5})"));
+
+  const auto victim = MakeCharacterAt ("green", HexCoord (5, 5));
+  const auto h1a = MakeCharacterAt ("courier", HexCoord (6, 5));
+  const auto h1b = MakeCharacterAt ("courier", HexCoord (7, 5));
+  const auto h2 = MakeCharacterAt ("courier2", HexCoord (8, 5));
+
+  KillWithAttackers (victim, {h1a, h1b, h2});
+
+  EXPECT_EQ (Balance ("courier"), 1000000 + 69);
+  EXPECT_EQ (Balance ("courier2"), 1000000 + 69);
+  EXPECT_EQ (JobStats ("courier"), std::make_tuple (3u, 0u, 0u, 69));
+  EXPECT_EQ (JobStats ("courier2"), std::make_tuple (3u, 0u, 0u, 69));
+
+  /* The single-kill pool drained and left the board; the others consumed
+     one tranche each.  */
+  std::map<Amount, unsigned> remaining;
+  auto res = jobs.QueryAll ();
+  while (res.Step ())
+    {
+      auto j = jobs.GetFromResult (res);
+      remaining[j->GetProto ().wanted ().tranche ()]
+          = j->GetProto ().wanted ().remaining ();
+    }
+  EXPECT_EQ (remaining,
+             (std::map<Amount, unsigned> {{30, 1}, {9, 4}}));
+}
+
+TEST_F (WantedTests, AggregatedPayoutSkipsZeroSharePools)
+{
+  /* A zero-share pool mixed with a paying one: the zero-share tranche is
+     burned without credit (the N-1 rule), while the paying pool's share
+     lands -- so the aggregate credit is one completion of 5, not two.  */
+  CHECK (Process ("poster",
+      R"({"t":"wanted","r":1,"co":0,"name":"green","n":1})"));
+  CHECK (Process ("poster",
+      R"({"t":"wanted","r":10,"co":0,"name":"green","n":1})"));
+
+  const auto victim = MakeCharacterAt ("green", HexCoord (5, 5));
+  const auto h1 = MakeCharacterAt ("courier", HexCoord (6, 5));
+  const auto h2 = MakeCharacterAt ("courier2", HexCoord (7, 5));
+
+  KillWithAttackers (victim, {h1, h2});
+
+  EXPECT_EQ (Balance ("courier"), 1000000 + 5);
+  EXPECT_EQ (Balance ("courier2"), 1000000 + 5);
+  EXPECT_EQ (JobStats ("courier"), std::make_tuple (1u, 0u, 0u, 5));
+  EXPECT_EQ (JobStats ("courier2"), std::make_tuple (1u, 0u, 0u, 5));
+  /* Both single-kill pools are consumed off the board either way.  */
+  auto res = jobs.QueryAll ();
+  EXPECT_FALSE (res.Step ());
 }
 
 TEST_F (WantedTests, TurretOnlyKillPaysNothing)

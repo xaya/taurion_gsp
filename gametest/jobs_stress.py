@@ -62,49 +62,51 @@ with the JOBS_STRESS_N environment variable (the default keeps CI fast);
 every bulk phase -- posts, assignments and acceptances -- rides in
 sub-ceiling move chunks, so scaled runs construct the same shapes.  The
 scaled shape is the release gate: run the default suite plus
-`JOBS_STRESS_N=2200 make check TESTS=jobs_stress.py` on the exact release
-SHA, under a process-level timeout(1) wrapper, and keep the log.  (The
+`JOBS_STRESS_N=2200` AND `JOBS_STRESS_N=10000` (the global-cap
+cardinality) `make check TESTS=jobs_stress.py` on the exact release SHA,
+under a process-level timeout(1) wrapper, and keep the logs.  (The
 wrapper matters on the FAILURE path: a deadline breach fails the test at
 the bound, but Python cannot cancel the still-running daemon worker, so
 only a hard process bound cleans up a wedged run.)
 
 Recorded runs (make check TESTS=jobs_stress.py, regtest superblock_seconds
-5, AMD Threadripper 7970X, 2026-07-18, v16 minimum-floors build).  Single
-samples, quantised by the 0.1s GSP sync poll -- a coarse upper bound per
-settling block, not a per-row cost measurement.  Every kill cohort mines
-its killing block INSIDE the timed call (the god HP drop is submitted
-unmined), so each figure measures the actual kill-and-settle block:
+5, AMD Threadripper 7970X, 2026-07-18, v17-round aggregated-payout build).
+Single samples, quantised by the 0.1s GSP sync poll -- a coarse upper
+bound per settling block, not a per-row cost measurement.  Every kill
+cohort mines its killing block INSIDE the timed call (the god HP drop is
+submitted unmined), and cohort 6's tranche scales with its killer count,
+so the per-owner payout pass is genuinely exercised at every scale:
 
   JOBS_STRESS_N=200 (default):  sweep 200 in 0.103s; one kill settling
     25 pools + 25 bodyguards in 0.104s; prune 225 of 225 in 0.103s;
-    unrelated kill against 50 dormant pools in 0.106s; 25 pools x 4
+    unrelated kill against 50 dormant pools in 0.105s; 25 pools x 4
     killers in 0.105s; 6 deaths against 25 dormant pools in 0.105s.
-  JOBS_STRESS_N=1000 (5x):      sweep 1000 in 0.104s; kill 125+125 in
-    0.104s; prune 1125 of 1125 in 0.103s; unrelated kill against 250
-    dormant pools in 0.106s; 125 pools x 15 killers in 0.105s; 15 deaths
-    against 125 dormant pools in 1.033s (a coarse-poll outlier under
-    load: the same cohort with MORE deaths measured 0.108s at 11x and
-    0.241s at the 10k scale).
+  JOBS_STRESS_N=1000 (5x):      sweep 1000 in 0.103s; kill 125+125 in
+    0.205s; prune 1125 of 1125 in 0.304s; unrelated kill against 250
+    dormant pools in 0.205s; 125 pools x 15 killers in 0.105s; 15 deaths
+    against 125 dormant pools in 0.105s.
   JOBS_STRESS_N=2200 (11x):     sweep 2200 in 0.104s; kill 275+275 in
-    0.104s; prune 2475 of 2475 in 0.104s; unrelated kill against 550
-    dormant pools across 276 distinct names in 0.107s; 275 pools x 34
-    distinct killers in 0.107s; 34 deaths against 275 dormant pools in
-    0.108s.  The 2200-row live board also walks the paged reader past
-    its 2000-row page cap.
-  JOBS_STRESS_N=10000 (the DEFAULT max-legal board: cohort 1 fills the
-    entire 10,000-job global cap):  sweep 10000 in 0.405s; kill 1250+1250
-    in 0.104s; prune 5000 of 11250 in 0.104s (the batched drain -- two
-    further superblocks empty the remainder, asserted exactly); unrelated
+    0.104s; prune 2475 of 2475 in 0.103s; unrelated kill against 550
+    dormant pools in 0.107s; 275 pools x 34 distinct killers in 0.107s;
+    34 deaths against 275 dormant pools in 0.108s.  The 2200-row live
+    board also walks the paged reader past its 2000-row page cap.
+  JOBS_STRESS_N=10000 (default GLOBAL-cap cardinality, see cohort 1's
+    label):  sweep 10000 in 0.357s; kill 1250+1250 in 0.105s; prune 5000
+    of 11250 in 0.104s (the batched drain -- two further superblocks
+    empty the remainder, survivor identity asserted exactly); unrelated
     kill against 2500 dormant pools in 0.112s; 1250 pools x 156 distinct
-    killers in 0.113s; 42 deaths (the site-grid cap) against 1250 dormant
-    pools in 0.241s.
+    killers -- tranche 156, share 1, so all 156 owners are genuinely
+    credited through the aggregated single pass -- in 0.115s; 42 deaths
+    (the site-grid cap) against 1250 dormant pools in 0.216s.
 
 Every measured cohort completed well inside the superblock budget the
-deadline enforces, flat across the scales -- the entire maximum legal
-board settles in under half a second.  The dormant-board and mega-battle
-samples are the regression evidence for the bounty attribution rework:
-thousands of dormant pools cost a death block no more than an empty board
-(one indexed probe per distinct dead owner).
+deadline enforces, flat across the scales -- the whole global-cap board
+settles in under half a second, and the worst-case payout block (every
+pool paying every killer owner) costs pools + owners account writes, not
+pools x owners.  The dormant-board and mega-battle samples are the
+regression evidence for the bounty attribution rework: thousands of
+dormant pools cost a death block no more than an empty board (one indexed
+probe per distinct dead owner).
 """
 
 import os
@@ -115,6 +117,13 @@ from pxtest import PXTest
 
 N_ALIGNED = int (os.getenv ("JOBS_STRESS_N", "200"))
 M_STACK = max (10, N_ALIGNED // 8)
+K_KILLERS = max (4, M_STACK // 8)
+# The stacked pools' per-kill tranche: it must hand every one of cohort 6's
+# distinct killers at least one coin at EVERY scale, or the integer split
+# rounds to zero and the whole per-owner payout pass -- the very path under
+# test -- is silently skipped (a share-zero kill burns the tranche without
+# touching any account).
+TRANCHE = max (50, K_KILLERS)
 
 # The test chain's Xaya X layer silently drops move values above ~1670
 # bytes, so every bulk phase rides in sub-ceiling chunks of one move per
@@ -202,7 +211,7 @@ class JobsStressTest (PXTest):
     and one counter bump per settled row."""
     assert "victim" not in self.getCharacters ()
     self.assertEqual (self.available ("hunter"),
-                      before["hunter"] + 50 * M_STACK)
+                      before["hunter"] + TRANCHE * M_STACK)
     pools = [j for j in self.getJobs () if j["type"] == "wanted"]
     self.assertEqual (len (pools), M_STACK)
     self.assertEqual (set (p["remaining"] for p in pools), {1})
@@ -213,7 +222,7 @@ class JobsStressTest (PXTest):
                        if j["type"] == "bodyguard"], [])
     self.assertEqual (self.getAccounts ()["hunter"].data["jobstats"],
                       {"completed": M_STACK, "failed": 0,
-                       "posterfailed": 0, "value": 50 * M_STACK})
+                       "posterfailed": 0, "value": TRANCHE * M_STACK})
     self.assertEqual (
         self.getAccounts ()["guard"].data["jobstats"]["failed"], M_STACK)
     self.assertEqual (
@@ -267,7 +276,9 @@ class JobsStressTest (PXTest):
     self.build ("checkmark", "poster", {"x": 0, "y": 0}, rot=0)
     bId = max (self.getBuildings ().keys ())
 
-    self.mainLogger.info ("Cohort 1: %d aligned transports..." % N_ALIGNED)
+    self.mainLogger.info ("Cohort 1: %d aligned transports (global-cap "
+                          "cardinality; concentration caps raised)..."
+                            % N_ALIGNED)
     self.postMany ("poster", {
       "t": "transport", "d": 86400, "wd": 86400, "r": 100, "co": 0,
       "to": bId, "items": {"foo": 1},
@@ -311,10 +322,10 @@ class JobsStressTest (PXTest):
     self.generate (1)
     victimChar = self.getCharacters ()["victim"].getId ()
 
-    # M standing pools on the victim's name (quota 2, so one kill pays a
-    # tranche of 50 from EVERY pool and none drains)...
+    # M standing pools on the victim's name (quota 2, so one kill pays one
+    # tranche from EVERY pool and none drains)...
     self.postMany ("poster", {
-      "t": "wanted", "r": 100, "co": 0, "name": "victim", "n": 2,
+      "t": "wanted", "r": 2 * TRANCHE, "co": 0, "name": "victim", "n": 2,
     }, M_STACK)
     # ...plus M bodyguard jobs linked to the victim's character.
     self.postMany ("victim", {
@@ -378,16 +389,23 @@ class JobsStressTest (PXTest):
     prePruneTime = self.w3.eth.get_block ("latest")["timestamp"]
     snap = self.env.snapshot ()
 
+    def pruneOrder (rows):
+      """The deterministic deletion order: oldest (settled_time, id) first,
+      so after one batch the survivors are exactly the newest rows."""
+      return sorted (rows, key=lambda e: (e["settledtime"], e["id"]))
+
     def drainPrune (t):
       """Advances superblocks until the history is empty, asserting each
-      sweep deletes exactly one further batch (the deterministic drain)."""
-      left = len (self.historyRows ())
-      while left > 0:
-        left = max (0, left - batch)
+      sweep deletes exactly one further batch of the exact oldest rows
+      (survivor IDENTITY, not just counts)."""
+      left = pruneOrder (self.historyRows ())
+      while left:
+        left = left[batch:]
         t += sbSecs
         self.env.setMockTime (t)
         self.mineAndSync (superblocks=False)
-        self.assertEqual (len (self.historyRows ()), left)
+        self.assertEqual ([e["id"] for e in pruneOrder (self.historyRows ())],
+                          [e["id"] for e in left])
 
     self.env.setMockTime (lastSettled + retention + 1)
     self.timed ("one prune deleting %d of %d history rows"
@@ -395,8 +413,11 @@ class JobsStressTest (PXTest):
                 lambda: self.mineAndSync (superblocks=False))
     # One superblock deletes at most one batch, oldest first; the
     # remainder drains on the following sweeps (three in all at the 10k
-    # scale, where the cohort outgrows the batch).
-    self.assertEqual (len (self.historyRows ()), max (0, total - batch))
+    # scale, where the cohort outgrows the batch).  The survivors are the
+    # exact newest (settled_time, id) rows, not merely the right count.
+    expectSurvivors = [e["id"] for e in pruneOrder (rows)][batch:]
+    self.assertEqual ([e["id"] for e in pruneOrder (self.historyRows ())],
+                      expectSurvivors)
     drainPrune (lastSettled + retention + 1)
     # The standing pools have no deadline: they survive the 180-day warp.
     self.assertEqual (len (self.getJobs ()), M_STACK)
@@ -406,7 +427,8 @@ class JobsStressTest (PXTest):
     self.assertEqual (len (self.historyRows ()), total)
     self.env.setMockTime (lastSettled + retention + 2)
     self.mineAndSync (superblocks=False)
-    self.assertEqual (len (self.historyRows ()), max (0, total - batch))
+    self.assertEqual ([e["id"] for e in pruneOrder (self.historyRows ())],
+                      expectSurvivors)
     drainPrune (lastSettled + retention + 2)
     self.assertEqual (self.historyRows (), [])
     self.assertEqual (len (self.getJobs ()), M_STACK)
@@ -450,7 +472,6 @@ class JobsStressTest (PXTest):
     self.assertEqual (sorted (self.getJobs (), key=lambda j: j["id"]),
                       boardBefore)
 
-    K_KILLERS = max (4, M_STACK // 8)
     self.mainLogger.info ("Cohort 6: one kill paying %d pools x %d distinct "
                           "killers..." % (M_STACK, K_KILLERS))
     # All hunters share a faction, so they are allies of each other and the
@@ -470,10 +491,13 @@ class JobsStressTest (PXTest):
     self.createCharacters ("victim")
     self.generate (1)
 
-    # Each pool still holds its LAST tranche of 50: this kill pays and
-    # drains every one of them, split across the distinct killer owners
-    # (the division remainder burns).
-    share = 50 // K_KILLERS
+    # Each pool still holds its LAST tranche: this kill pays and drains
+    # every one of them, split across the distinct killer owners (the
+    # division remainder burns).  The share must be POSITIVE at this scale,
+    # or the block under time would skip the per-owner payout pass and
+    # measure nothing (the exact defect a zero-share tranche hid before).
+    share = TRANCHE // K_KILLERS
+    assert share > 0, "tranche %d cannot pay %d killers" % (TRANCHE, K_KILLERS)
     before = {nm: self.available (nm) for nm in pack}
     spots = {"victim": {"x": 0, "y": 0}}
     for nm in pack:
@@ -543,7 +567,8 @@ class JobsStressTest (PXTest):
     def checkMegaBattle ():
       for nm in vOwners:
         assert nm not in self.getCharacters ()
-      # The two bountied victims paid one tranche of 50 to their pair
+      # The two bountied victims paid one tranche of 50 (the dormant
+      # board's tranche, untouched by TRANCHE scaling) to their pair
       # hunter; every other hunter got nothing.
       for i, nm in enumerate (hOwners):
         self.assertEqual (self.available (nm),
