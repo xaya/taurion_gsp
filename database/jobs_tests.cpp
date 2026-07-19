@@ -371,6 +371,14 @@ TEST_F (JobHistoryTests, Prune)
   EXPECT_FALSE (res.Step ());
 }
 
+TEST_F (JobHistoryTests, PruneRejectsNonPositiveBatch)
+{
+  /* The table-boundary contract: there is NO unbounded mode.  This pins
+     the CHECK so a refactor cannot quietly reintroduce one.  */
+  EXPECT_DEATH (tbl.PruneHistory (200, 0), "batch");
+  EXPECT_DEATH (tbl.PruneHistory (200, -1), "batch");
+}
+
 TEST_F (JobHistoryTests, PruneBatched)
 {
   /* Expired rows delete oldest-first in (settled_time, id) order, at most
