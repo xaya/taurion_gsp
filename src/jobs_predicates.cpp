@@ -892,26 +892,28 @@ HaulPredicate::OnLinkedEntityDestroyed (const JobContext& jc, Job& job) const
 }
 
 /* ************************************************************************** */
-/* Wanted board.                                                              */
+/* Target-kill family (wanted + assassination).                               */
 
 /**
- * Wanted-bounty: a standing, open-claim pool on an account name (the
- * linked_name).  Each qualifying kill of one of the target's characters pays
- * one tranche, split equally across the distinct accounts on the victim's
- * damage list; the pool completes when drained.  No accept step, no
- * collateral, no fulfil op -- settlement happens entirely at the kill hook,
- * and the only exit is the notice-based cancel.
+ * Shared base for the kill contracts on an account name (the linked_name):
+ * the escrowed reward is a pool of `quota` equal tranches of reward/quota,
+ * consumed one per qualifying kill of the target's characters at the kill
+ * hook.  Both types share the POST grammar ({name, n}), the bounty reward
+ * floor and the per-target stacked-listings cap; they differ in duration
+ * class and in who may collect: the wanted board is standing and open (the
+ * whole damage list splits a tranche), an assassination is deadlined and
+ * pays only its designated assassin.
  */
-class WantedPredicate : public HookSettledPredicate
+class TargetKillPredicate : public HookSettledPredicate
 {
 
-public:
+private:
 
-  bool
-  IsStanding () const override
-  {
-    return true;
-  }
+  /** Initialises the type's payload message with the tranche pool.  */
+  virtual void InitPayload (Job& job, unsigned quota, Amount tranche)
+      const = 0;
+
+public:
 
   bool
   SettlesOnTargetKill () const override
@@ -922,8 +924,9 @@ public:
   Faction
   AudienceFaction (const Account& poster) const override
   {
-    /* Visible to everyone; mechanically only the target's enemies can land
-       qualifying damage anyway (no friendly fire).  */
+    /* Visible to everyone: who can collect is constrained by the TARGET's
+       faction (only its enemies can land damage or be hired), never the
+       poster's.  */
     return Faction::INVALID;
   }
 
@@ -937,8 +940,8 @@ public:
   Amount
   MinReward (const JobContext& jc) const override
   {
-    /* A pool occupies one of the target's capped slots, so it must lock
-       real value: the runtime-tunable bounty floor.  */
+    /* A kill contract occupies one of the target's capped listing slots, so
+       it must lock real value: the runtime-tunable bounty floor.  */
     return ParamsTable (jc.db)
         .Get ("min-bounty-reward",
               jc.ctx.RoConfig ()->params ().min_bounty_reward ());
@@ -948,6 +951,98 @@ public:
                      const Json::Value& terms) const override;
   void ApplyPost (const JobContext& jc, Account& poster,
                   const Json::Value& terms, Job& job) const override;
+
+};
+
+bool
+TargetKillPredicate::ValidatePost (const JobContext& jc,
+                                   const Account& poster,
+                                   const Json::Value& terms) const
+{
+  if (!terms["name"].isString ())
+    return false;
+  const std::string target = terms["name"].asString ();
+  if (target == poster.GetName ())
+    {
+      LOG (WARNING)
+          << poster.GetName () << " cannot post a kill contract on itself";
+      return false;
+    }
+  {
+    const auto t = jc.accounts.GetByName (target);
+    if (t == nullptr || !t->IsInitialised ())
+      {
+        LOG (WARNING) << "Kill-contract target does not exist: " << target;
+        return false;
+      }
+  }
+
+  if (!terms["n"].isUInt () || !xaya::IsIntegerValue (terms["n"]))
+    return false;
+  const unsigned quota = terms["n"].asUInt ();
+  const unsigned maxQuota = jc.ctx.RoConfig ()->params ().max_bounty_quota ();
+  if (quota < 1 || quota > maxQuota)
+    {
+      LOG (WARNING) << "Kill quota out of range: " << quota;
+      return false;
+    }
+
+  if (!RequireZeroCollateral (terms, "A kill contract"))
+    return false;
+
+  Amount reward;
+  CHECK (CoinAmountFromJson (terms["r"], reward));
+  if (reward / quota < 1)
+    {
+      LOG (WARNING)
+          << "Reward " << reward << " is too small for quota " << quota;
+      return false;
+    }
+
+  return true;
+}
+
+void
+TargetKillPredicate::ApplyPost (const JobContext& jc, Account& poster,
+                                const Json::Value& terms, Job& job) const
+{
+  job.SetLinkedName (terms["name"].asString ());
+
+  Amount reward;
+  CHECK (CoinAmountFromJson (terms["r"], reward));
+  const unsigned quota = terms["n"].asUInt ();
+  InitPayload (job, quota, reward / quota);
+}
+
+/**
+ * Wanted-bounty: the standing, open-claim kill contract.  Each qualifying
+ * kill pays one tranche, split equally across the distinct accounts on the
+ * victim's damage list; the pool completes when drained.  No accept step, no
+ * collateral, no fulfil op -- settlement happens entirely at the kill hook,
+ * and the only exit is the notice-based cancel.
+ */
+class WantedPredicate : public TargetKillPredicate
+{
+
+private:
+
+  void
+  InitPayload (Job& job, const unsigned quota, const Amount tranche)
+      const override
+  {
+    auto* wp = job.MutableProto ().mutable_wanted ();
+    wp->set_quota (quota);
+    wp->set_remaining (quota);
+    wp->set_tranche (tranche);
+  }
+
+public:
+
+  bool
+  IsStanding () const override
+  {
+    return true;
+  }
 
   bool
   ValidateAccept (const JobContext& jc, const Job& job,
@@ -970,75 +1065,13 @@ public:
     return JobOutcome::VOID;
   }
 
-  bool OnTargetKill (const JobContext& jc, Job& job,
-                     const std::set<std::string>& killOwners,
-                     Amount& sharePerOwner) const override;
+  JobOutcome OnTargetKill (const JobContext& jc, Job& job,
+                           const std::set<std::string>& killOwners,
+                           Amount& sharePerOwner) const override;
 
 };
 
-bool
-WantedPredicate::ValidatePost (const JobContext& jc, const Account& poster,
-                               const Json::Value& terms) const
-{
-  if (!terms["name"].isString ())
-    return false;
-  const std::string target = terms["name"].asString ();
-  if (target == poster.GetName ())
-    {
-      LOG (WARNING) << poster.GetName () << " cannot post a bounty on itself";
-      return false;
-    }
-  {
-    const auto t = jc.accounts.GetByName (target);
-    if (t == nullptr || !t->IsInitialised ())
-      {
-        LOG (WARNING) << "Bounty target does not exist: " << target;
-        return false;
-      }
-  }
-
-  if (!terms["n"].isUInt () || !xaya::IsIntegerValue (terms["n"]))
-    return false;
-  const unsigned quota = terms["n"].asUInt ();
-  const unsigned maxQuota = jc.ctx.RoConfig ()->params ().max_bounty_quota ();
-  if (quota < 1 || quota > maxQuota)
-    {
-      LOG (WARNING) << "Bounty quota out of range: " << quota;
-      return false;
-    }
-
-  if (!RequireZeroCollateral (terms, "A wanted board"))
-    return false;
-
-  Amount reward;
-  CHECK (CoinAmountFromJson (terms["r"], reward));
-  if (reward / quota < 1)
-    {
-      LOG (WARNING)
-          << "Bounty reward " << reward << " is too small for quota " << quota;
-      return false;
-    }
-
-  return true;
-}
-
-void
-WantedPredicate::ApplyPost (const JobContext& jc, Account& poster,
-                            const Json::Value& terms, Job& job) const
-{
-  job.SetLinkedName (terms["name"].asString ());
-
-  Amount reward;
-  CHECK (CoinAmountFromJson (terms["r"], reward));
-  const unsigned quota = terms["n"].asUInt ();
-
-  auto* wp = job.MutableProto ().mutable_wanted ();
-  wp->set_quota (quota);
-  wp->set_remaining (quota);
-  wp->set_tranche (reward / quota);
-}
-
-bool
+JobOutcome
 WantedPredicate::OnTargetKill (const JobContext& jc, Job& job,
                                const std::set<std::string>& killOwners,
                                Amount& sharePerOwner) const
@@ -1068,7 +1101,7 @@ WantedPredicate::OnTargetKill (const JobContext& jc, Job& job,
       << wp->remaining () << " kill(s) remaining";
 
   if (wp->remaining () > 0)
-    return false;
+    return JobOutcome::INVALID;
 
   /* Pool drained: whatever escrow is left is the division dust, burned by
      never crediting it anywhere.  */
@@ -1076,7 +1109,163 @@ WantedPredicate::OnTargetKill (const JobContext& jc, Job& job,
     LOG (INFO)
         << "Wanted board " << job.GetId () << " complete; burning dust "
         << job.GetReward ();
+  return JobOutcome::DRAINED;
+}
+
+/**
+ * Assassination: the designated hit.  The wanted pool's approval-required
+ * counterpart: the poster names the assassin (assign -> accept), who alone
+ * earns the tranches -- one slice per qualifying kill (the assassin on the
+ * victim's damage list) while ACCEPTED.  The quota'th kill completes the
+ * contract; at the deadline any earned slice makes it a pass (the unearned
+ * remainder refunds the poster) while zero kills is a failure.  No
+ * collateral: the poster risks only the fee, the assassin only reputation.
+ */
+class AssassinationPredicate : public TargetKillPredicate
+{
+
+private:
+
+  void
+  InitPayload (Job& job, const unsigned quota, const Amount tranche)
+      const override
+  {
+    auto* ap = job.MutableProto ().mutable_assassination ();
+    ap->set_quota (quota);
+    ap->set_remaining (quota);
+    ap->set_tranche (tranche);
+  }
+
+public:
+
+  bool
+  RequiresApproval () const override
+  {
+    return true;
+  }
+
+  bool ValidateAccept (const JobContext& jc, const Job& job,
+                       const Account& worker) const override;
+  JobOutcome OnExpire (const JobContext& jc, Job& job) const override;
+  JobOutcome OnTargetKill (const JobContext& jc, Job& job,
+                           const std::set<std::string>& killOwners,
+                           Amount& sharePerOwner) const override;
+
+};
+
+bool
+AssassinationPredicate::ValidateAccept (const JobContext& jc, const Job& job,
+                                        const Account& worker) const
+{
+  /* The assassin must be an enemy of the TARGET: there is no friendly fire,
+     so a same-faction assassin could never land a qualifying kill (and the
+     target itself can never be hired for its own hit).  The name check comes
+     first so the target's handle is never opened while it IS the live worker
+     handle (UniqueHandles).  */
+  const std::string& target = job.GetLinkedName ();
+  if (worker.GetName () == target)
+    {
+      LOG (WARNING) << target << " cannot accept the hit on itself";
+      return false;
+    }
+  const auto t = GetAccountChecked (jc, target);
+  if (t->GetFaction () == worker.GetFaction ())
+    {
+      LOG (WARNING)
+          << worker.GetName () << " is in the target's own faction for job "
+          << job.GetId ();
+      return false;
+    }
   return true;
+}
+
+JobOutcome
+AssassinationPredicate::OnTargetKill (const JobContext& jc, Job& job,
+                                      const std::set<std::string>& killOwners,
+                                      Amount& sharePerOwner) const
+{
+  /* Only the designated assassin's kills count, and only once hired: a
+     listed-but-unaccepted hit pays nobody.  */
+  if (job.GetStatus () != Job::Status::ACCEPTED
+        || killOwners.count (job.GetWorker ()) == 0)
+    return JobOutcome::INVALID;
+
+  auto* ap = job.MutableProto ().mutable_assassination ();
+  CHECK_GT (ap->remaining (), 0);
+  const Amount tranche = ap->tranche ();
+  CHECK_GE (job.GetReward (), tranche);
+
+  job.SetReward (job.GetReward () - tranche);
+  ap->set_remaining (ap->remaining () - 1);
+  const bool complete = (ap->remaining () == 0);
+
+  /* One slice goes to the assassin alone, immediately; `sharePerOwner`
+     stays 0 (this pays a designated worker directly, not the damage list).
+     The reputation credit waits for settlement, where the whole contract
+     counts ONCE -- here on the completing kill, else at the expiry pass.  */
+  {
+    auto worker = GetAccountChecked (jc, job.GetWorker ());
+    ReleaseJobCoins (*worker, tranche);
+    if (complete)
+      BumpJobStats (*worker, true, Amount (ap->quota ()) * tranche);
+  }
+
+  LOG (INFO)
+      << "Assassination " << job.GetId () << " paid a slice of " << tranche
+      << " to " << job.GetWorker () << "; " << ap->remaining ()
+      << " kill(s) remaining";
+
+  if (!complete)
+    return JobOutcome::INVALID;
+
+  /* Contract fulfilled: whatever escrow is left is the division dust,
+     burned by never crediting it anywhere.  */
+  if (job.GetReward () > 0)
+    LOG (INFO)
+        << "Assassination " << job.GetId () << " complete; burning dust "
+        << job.GetReward ();
+  return JobOutcome::COMPLETED;
+}
+
+JobOutcome
+AssassinationPredicate::OnExpire (const JobContext& jc, Job& job) const
+{
+  if (job.GetStatus () != Job::Status::ACCEPTED)
+    {
+      VoidJobAtHook (jc, job);
+      return JobOutcome::VOID;
+    }
+
+  /* Earned slices were already paid at the kills, so the reward column --
+     the unearned remainder plus any division dust -- always refunds.  */
+  {
+    auto poster = GetAccountChecked (jc, job.GetPoster ());
+    ReleaseJobCoins (*poster, job.GetReward ());
+  }
+
+  const auto& ap = job.GetProto ().assassination ();
+  const unsigned done = ap.quota () - ap.remaining ();
+  const Amount tranche = ap.tranche ();
+  auto worker = GetAccountChecked (jc, job.GetWorker ());
+  if (done > 0)
+    {
+      /* Any kill makes the expired contract a pass ("if you get one, it's
+         a pass"), counted at the value actually earned.  */
+      LOG (INFO)
+          << "Assassination " << job.GetId () << " expired after " << done
+          << " kill(s); pass for " << job.GetWorker ();
+      BumpJobStats (*worker, true, Amount (done) * tranche);
+      return JobOutcome::COMPLETED;
+    }
+
+  /* Zero kills: the assassin failed.  There is no collateral to forfeit,
+     and no forfeit-as-poster mark either -- unlike the entity-fate types,
+     the poster cannot force this outcome to harvest anything.  */
+  LOG (INFO)
+      << "Assassination " << job.GetId () << " expired with no kills; "
+      << job.GetWorker () << " failed";
+  BumpJobStats (*worker, false, 0);
+  return JobOutcome::FAILED;
 }
 
 /* ************************************************************************** */
@@ -2320,6 +2509,7 @@ const PatrolPredicate PATROL_PREDICATE;
 const RentalPredicate RENTAL_PREDICATE;
 const AdPredicate AD_PREDICATE;
 const TollPredicate TOLL_PREDICATE;
+const AssassinationPredicate ASSASSINATION_PREDICATE;
 
 /**
  * The one place a job type is registered: enum value, move/JSON name and
@@ -2346,6 +2536,7 @@ const JobTypeEntry JOB_TYPE_REGISTRY[] =
     {Job::Type::RENTAL, "rental", &RENTAL_PREDICATE},
     {Job::Type::AD, "ad", &AD_PREDICATE},
     {Job::Type::TOLL, "toll", &TOLL_PREDICATE},
+    {Job::Type::ASSASSINATION, "assassination", &ASSASSINATION_PREDICATE},
   };
 
 } // anonymous namespace

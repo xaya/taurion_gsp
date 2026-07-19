@@ -123,6 +123,7 @@ public:
     RENTAL = 8,
     AD = 9,
     TOLL = 10,
+    ASSASSINATION = 11,
   };
 
   /**

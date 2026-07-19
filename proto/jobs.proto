@@ -92,6 +92,28 @@ message WantedPayload
 }
 
 /**
+ * Payload for an assassination: a designated hit on an account name (the
+ * job's linked_name column).  The wanted pool's approval-required
+ * counterpart: the same tranche math, but only the one designated assassin
+ * earns slices (per qualifying kill while ACCEPTED), the quota'th kill
+ * completes the contract, and at the deadline any earned slice makes it a
+ * pass while zero kills is a failure.
+ */
+message AssassinationPayload
+{
+
+  /** The total number of kills contracted for (N as posted).  */
+  optional uint32 quota = 1;
+
+  /** How many tranches are still unpaid.  The contract completes at zero.  */
+  optional uint32 remaining = 2;
+
+  /** The fixed per-kill tranche, floor(reward / quota) at post time.  */
+  optional uint64 tranche = 3;
+
+}
+
+/**
  * Payload for a protect-building job: the protected building is the job's
  * linked_id.  Success is survival to the deadline (settles in OnExpire while
  * ACCEPTED); the entity hook fails it if the building dies first.
@@ -295,6 +317,7 @@ message JobData
     RentalPayload rental = 109;
     AdPayload ad = 110;
     TollPayload toll = 111;
+    AssassinationPayload assassination = 112;
   }
 
 }

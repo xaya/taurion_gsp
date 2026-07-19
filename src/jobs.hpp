@@ -426,17 +426,19 @@ public:
   }
 
   /**
-   * Consumes one qualifying kill on a linked_name job (the wanted-bounty
-   * pool): one tranche leaves the escrow, split equally across the distinct
-   * killer accounts.  The pool row is mutated here, but NO accounts are
-   * touched: the per-owner share is returned through `sharePerOwner` (0
-   * when the tranche cannot give every killer at least one coin), and the
-   * caller pays each owner ONCE with the total across all pools
-   * (PayKillShares) -- account work per kill is O(pools + owners), never
-   * O(pools x owners).  Returns true when the pool is drained and the
-   * caller should delete the row.  Only the wanted type implements this.
+   * Consumes one qualifying kill on a linked_name job: one tranche leaves
+   * the escrow.  A wanted pool touches NO accounts here -- the per-owner
+   * equal split is returned through `sharePerOwner` (0 when the tranche
+   * cannot give every killer at least one coin) and the caller pays each
+   * owner ONCE with the total across all pools (PayKillShares), so account
+   * work per kill is O(pools + owners), never O(pools x owners).  An
+   * assassination instead pays its one designated assassin directly (a
+   * single account write) and leaves `sharePerOwner` at 0.  Returns the
+   * settlement outcome once the contract is finished (DRAINED / COMPLETED;
+   * the caller records it and deletes the row), or INVALID while the job
+   * stays on the board.  Only the target-kill family implements this.
    */
-  virtual bool
+  virtual JobOutcome
   OnTargetKill (const JobContext& jc, Job& job,
                 const std::set<std::string>& killOwners,
                 Amount& sharePerOwner) const
@@ -581,8 +583,9 @@ void OnJobBuildingTransferred (Database& db, const Context& ctx,
                                Database::IdT buildingId);
 
 /**
- * Kill-time resolver for the wanted board: pays bounty tranches for
- * qualifying character kills.  Constructed once per superblock alongside the
+ * Kill-time resolver for the target-kill contracts (wanted pools and
+ * assassination hits): pays tranches for qualifying character kills.
+ * Constructed once per superblock alongside the
  * FameUpdater and fed every kill from the same pre-removal pass (damage lists
  * and victim rows still live), sharing fame's distinct-owner derivation
  * semantics.  The work is proportional to the DEATHS, never to the dormant
@@ -628,9 +631,11 @@ public:
 
   /**
    * Processes one killed fighter: if it is a character whose owner is under
-   * bounty, pays one tranche per pool on that name, split across the distinct
-   * accounts on the victim's damage list.  Kills with an empty owner set
-   * (e.g. turret-only damage) pay nothing and consume nothing.
+   * a kill contract, pays one tranche per contract on that name -- a wanted
+   * pool's split across the distinct accounts on the victim's damage list,
+   * an accepted assassination's slice to its designated assassin (when on
+   * that list).  Kills with an empty owner set (e.g. turret-only damage)
+   * pay nothing and consume nothing.
    */
   void UpdateForKill (const proto::TargetId& target);
 

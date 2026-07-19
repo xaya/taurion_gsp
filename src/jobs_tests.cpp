@@ -356,6 +356,8 @@ TEST_F (JobsTests, ParsingValidShapes)
       R"({"t":"ad","d":86400,"r":2000,"co":0,"b":1,"slot":0,"hash":"abc","start":3600})"));
   EXPECT_TRUE (ParseOk (
       R"({"t":"toll","d":86400,"wd":86400,"r":2000,"co":0,"ch":42,"w":"courier"})"));
+  EXPECT_TRUE (ParseOk (
+      R"({"t":"assassination","d":86400,"wd":86400,"r":9000,"co":0,"name":"x","n":3})"));
   EXPECT_TRUE (ParseOk (R"({"s":7,"w":"courier"})"));
   EXPECT_TRUE (ParseOk (R"({"a":7})"));
   EXPECT_TRUE (ParseOk (R"({"c":7})"));
@@ -404,6 +406,8 @@ TEST_F (JobsTests, ParsingRejects)
       R"({"t":"ad","d":86400,"r":2000,"co":0,"b":1,"slot":0,"hash":"abc","start":3600,"end":7200})"));
   EXPECT_FALSE (ParseOk (
       R"({"t":"toll","d":86400,"wd":86400,"r":2000,"co":0,"ch":42,"w":"courier","fee":1})"));
+  EXPECT_FALSE (ParseOk (
+      R"({"t":"assassination","d":86400,"wd":86400,"r":9000,"co":0,"name":"x","n":3,"nn":3})"));
   /* Assign without the worker field.  */
   EXPECT_FALSE (ParseOk (R"({"s":7})"));
   /* Negative deadline / negative work window.  */
@@ -515,9 +519,26 @@ TEST_F (JobsTests, AdmissionCapPoolsPerTarget)
       R"({"t":"wanted","r":100,"co":0,"name":"green","n":2})"));
   EXPECT_FALSE (Process ("poster",
       R"({"t":"wanted","r":100,"co":0,"name":"green","n":2})"));
+  /* The cap is a SHARED kill-listing budget: an assassination on the same
+     target counts against the same slot, so it is rejected too.  */
+  EXPECT_FALSE (Process ("poster",
+      R"({"t":"assassination","d":86400,"wd":86400,"r":100,"co":0,"name":"green","n":2})"));
   /* A different target still has headroom.  */
   EXPECT_TRUE (Process ("poster",
       R"({"t":"wanted","r":100,"co":0,"name":"courier","n":2})"));
+}
+
+TEST_F (JobsTests, AdmissionCapAssassinationCountsAgainstWanted)
+{
+  /* The mirror of the case above: an assassination taken first still leaves
+     no room for a wanted pool on the same target.  */
+  ParamsTable par(db);
+  par.Set ("max-bounty-pools-per-target", 1);
+
+  EXPECT_TRUE (Process ("poster",
+      R"({"t":"assassination","d":86400,"wd":86400,"r":100,"co":0,"name":"green","n":2})"));
+  EXPECT_FALSE (Process ("poster",
+      R"({"t":"wanted","r":100,"co":0,"name":"green","n":2})"));
 }
 
 TEST_F (JobsTests, MinimumRewardDefaults)
@@ -538,6 +559,13 @@ TEST_F (JobsTests, MinimumRewardDefaults)
       R"({"t":"wanted","r":999,"co":0,"name":"green","n":2})"));
   EXPECT_TRUE (Process ("poster",
       R"({"t":"wanted","r":1000,"co":0,"name":"green","n":2})"));
+
+  /* Assassinations occupy the same capped slots, so they take the same
+     bounty floor, not the generic one.  */
+  EXPECT_FALSE (Process ("poster",
+      R"({"t":"assassination","d":86400,"wd":86400,"r":999,"co":0,"name":"courier","n":2})"));
+  EXPECT_TRUE (Process ("poster",
+      R"({"t":"assassination","d":86400,"wd":86400,"r":1000,"co":0,"name":"courier","n":2})"));
 
   /* Both floors are runtime-tunable like the caps.  */
   par.Set ("min-job-reward", 5000);
@@ -1700,6 +1728,315 @@ TEST_F (WantedTests, SameBlockKillBeatsNoticeExpiry)
   EXPECT_FALSE (JobExists (id));
   EXPECT_EQ (Balance ("courier"), 1000000 + 3000);
   EXPECT_EQ (Balance ("poster"), 1000000 - 90 - 3000);
+}
+
+/* ************************************************************************** */
+/* Assassination (the designated kill contract).                              */
+
+class AssassinationTests : public JobsTests
+{
+
+protected:
+
+  AssassinationTests ()
+  {
+    /* A same-faction (GREEN) worker to prove the enemy-only accept rule --
+       green (the target), courier (RED, a valid enemy assassin) and this
+       are the three parties the contract discriminates between.  */
+    MakeAccount ("greenling", Faction::GREEN, 1000000);
+  }
+
+  /**
+   * Posts a hit on green (r=9000, n=3 => tranche 3000, day-long listing +
+   * work window); returns the job ID.
+   */
+  Database::IdT
+  PostHit (const std::string& r = "9000", const std::string& n = "3")
+  {
+    CHECK (Process ("poster",
+        R"({"t":"assassination","d":86400,"wd":86400,"r":)" + r
+        + R"(,"co":0,"name":"green","n":)" + n + "}"));
+    return LatestJobId ();
+  }
+
+  /** Posts the standard hit and hires `worker` (assign + accept).  */
+  Database::IdT
+  PostAndHire (const std::string& worker = "courier",
+               const std::string& r = "9000", const std::string& n = "3")
+  {
+    return PostAssignAccept (
+        R"({"t":"assassination","d":86400,"wd":86400,"r":)" + r
+        + R"(,"co":0,"name":"green","n":)" + n + "}",
+        worker);
+  }
+
+};
+
+TEST_F (AssassinationTests, PostHappy)
+{
+  const auto id = PostHit ();
+  auto j = jobs.GetById (id);
+  ASSERT_NE (j, nullptr);
+  EXPECT_EQ (j->GetStatus (), Job::Status::OPEN);
+  /* Deadlined (not standing) and open to all factions (only the target's
+     enemies can be hired).  */
+  EXPECT_EQ (j->GetFaction (), Faction::INVALID);
+  ASSERT_TRUE (j->HasDeadline ());
+  EXPECT_EQ (j->GetDeadline (), BASE_TS + DAY);
+  EXPECT_EQ (j->GetLinkedName (), "green");
+  EXPECT_EQ (j->GetLinkedId (), Database::EMPTY_ID);
+  EXPECT_EQ (j->GetProto ().assassination ().quota (), 3);
+  EXPECT_EQ (j->GetProto ().assassination ().remaining (), 3);
+  EXPECT_EQ (j->GetProto ().assassination ().tranche (), 3000);
+  /* r 9000 + fee max(1, 9000*1%) = 90.  */
+  EXPECT_EQ (Balance ("poster"), 1000000 - 9000 - 90);
+}
+
+TEST_F (AssassinationTests, PostRejects)
+{
+  /* Unknown target; self-target; bad quota; over-quota; nonzero collateral;
+     a reward too small for the quota (zero tranche); non-integer quota;
+     missing deadline; missing work window.  */
+  EXPECT_FALSE (Process ("poster",
+      R"({"t":"assassination","d":86400,"wd":86400,"r":9000,"co":0,"name":"ghost","n":3})"));
+  EXPECT_FALSE (Process ("poster",
+      R"({"t":"assassination","d":86400,"wd":86400,"r":9000,"co":0,"name":"poster","n":3})"));
+  EXPECT_FALSE (Process ("poster",
+      R"({"t":"assassination","d":86400,"wd":86400,"r":9000,"co":0,"name":"green","n":0})"));
+  EXPECT_FALSE (Process ("poster",
+      R"({"t":"assassination","d":86400,"wd":86400,"r":9000,"co":0,"name":"green","n":31})"));
+  EXPECT_FALSE (Process ("poster",
+      R"({"t":"assassination","d":86400,"wd":86400,"r":9000,"co":5,"name":"green","n":3})"));
+  EXPECT_FALSE (Process ("poster",
+      R"({"t":"assassination","d":86400,"wd":86400,"r":2,"co":0,"name":"green","n":3})"));
+  EXPECT_FALSE (Process ("poster",
+      R"({"t":"assassination","d":86400,"wd":86400,"r":9000,"co":0,"name":"green","n":3.0})"));
+  EXPECT_FALSE (Process ("poster",
+      R"({"t":"assassination","wd":86400,"r":9000,"co":0,"name":"green","n":3})"));
+  EXPECT_FALSE (Process ("poster",
+      R"({"t":"assassination","d":86400,"r":9000,"co":0,"name":"green","n":3})"));
+}
+
+TEST_F (AssassinationTests, HireRequiresEnemyOfTarget)
+{
+  /* Post + assign an enemy (RED) assassin: they can accept.  */
+  const auto id = PostHit ();
+  ASSERT_TRUE (Process ("poster",
+      R"({"s":)" + std::to_string (id) + R"(,"w":"courier"})"));
+  ASSERT_TRUE (Process ("courier", R"({"a":)" + std::to_string (id) + "}"));
+  auto j = jobs.GetById (id);
+  ASSERT_NE (j, nullptr);
+  EXPECT_EQ (j->GetStatus (), Job::Status::ACCEPTED);
+  EXPECT_EQ (j->GetWorker (), "courier");
+}
+
+TEST_F (AssassinationTests, SameFactionWorkerCannotAccept)
+{
+  /* A worker in the target's own faction can be designated (the audience is
+     all factions) but is barred at accept: no friendly fire, so they could
+     never land a qualifying kill.  */
+  const auto id = PostHit ();
+  ASSERT_TRUE (Process ("poster",
+      R"({"s":)" + std::to_string (id) + R"(,"w":"greenling"})"));
+  EXPECT_FALSE (Process ("greenling", R"({"a":)" + std::to_string (id) + "}"));
+  EXPECT_EQ (jobs.GetById (id)->GetStatus (), Job::Status::OPEN);
+}
+
+TEST_F (AssassinationTests, AcceptStartsWorkWindow)
+{
+  /* The work clock starts at accept: a late accept still gets the full
+     window from the moment of commitment.  */
+  const auto id = PostHit ();
+  ASSERT_TRUE (Process ("poster",
+      R"({"s":)" + std::to_string (id) + R"(,"w":"courier"})"));
+  ctx.SetTimestamp (BASE_TS + DAY / 2);
+  ASSERT_TRUE (Process ("courier", R"({"a":)" + std::to_string (id) + "}"));
+  EXPECT_EQ (jobs.GetById (id)->GetDeadline (), BASE_TS + DAY / 2 + DAY);
+}
+
+TEST_F (AssassinationTests, OpenKillPaysNothing)
+{
+  /* A listed-but-unaccepted hit pays nobody, even for a real enemy kill.  */
+  const auto id = PostHit ();
+  const auto victim = MakeCharacterAt ("green", HexCoord (5, 5));
+  const auto hunter = MakeCharacterAt ("courier", HexCoord (6, 5));
+  KillWithAttackers (victim, {hunter});
+
+  EXPECT_EQ (jobs.GetById (id)->GetProto ().assassination ().remaining (), 3);
+  EXPECT_EQ (Balance ("courier"), 1000000);
+  EXPECT_EQ (JobStats ("courier"), std::make_tuple (0u, 0u, 0u, 0));
+}
+
+TEST_F (AssassinationTests, NonWorkerKillPaysNothing)
+{
+  /* Only the designated assassin's kills count: courier2 tags a kill while
+     courier is hired, and nothing is paid or consumed.  */
+  const auto id = PostAndHire ("courier");
+  const auto victim = MakeCharacterAt ("green", HexCoord (5, 5));
+  const auto other = MakeCharacterAt ("courier2", HexCoord (6, 5));
+  KillWithAttackers (victim, {other});
+
+  EXPECT_EQ (jobs.GetById (id)->GetProto ().assassination ().remaining (), 3);
+  EXPECT_EQ (Balance ("courier2"), 1000000);
+  EXPECT_EQ (Balance ("courier"), 1000000);
+}
+
+TEST_F (AssassinationTests, WorkerKillPaysSliceNoStatsYet)
+{
+  const auto id = PostAndHire ("courier");
+  const auto victim = MakeCharacterAt ("green", HexCoord (5, 5));
+  /* The assassin plus a bystander both tag the kill: the whole slice still
+     goes to the assassin alone (no damage-list split like a wanted pool).  */
+  const auto hunter = MakeCharacterAt ("courier", HexCoord (6, 5));
+  const auto tagalong = MakeCharacterAt ("courier2", HexCoord (7, 5));
+  KillWithAttackers (victim, {hunter, tagalong});
+
+  auto j = jobs.GetById (id);
+  ASSERT_NE (j, nullptr);
+  EXPECT_EQ (j->GetProto ().assassination ().remaining (), 2);
+  EXPECT_EQ (j->GetReward (), 6000);
+  /* The assassin has one slice; the tag-along nothing.  Reputation is not
+     credited until the contract settles.  */
+  EXPECT_EQ (Balance ("courier"), 1000000 + 3000);
+  EXPECT_EQ (Balance ("courier2"), 1000000);
+  EXPECT_EQ (JobStats ("courier"), std::make_tuple (0u, 0u, 0u, 0));
+}
+
+TEST_F (AssassinationTests, FinalKillCompletesWithStatsOnce)
+{
+  /* Quota 2 so two kills finish it (r=6000 => tranche 3000).  */
+  const auto id = PostAndHire ("courier", "6000", "2");
+  const auto hunter = MakeCharacterAt ("courier", HexCoord (6, 5));
+
+  KillWithAttackers (MakeCharacterAt ("green", HexCoord (5, 5)), {hunter});
+  EXPECT_TRUE (JobExists (id));
+  KillWithAttackers (MakeCharacterAt ("green", HexCoord (5, 6)), {hunter});
+
+  /* The quota'th kill completes the contract: row gone, both slices paid,
+     the completion counted ONCE at the full earned value (2 * 3000).  */
+  EXPECT_FALSE (JobExists (id));
+  EXPECT_EQ (Balance ("courier"), 1000000 + 6000);
+  EXPECT_EQ (JobStats ("courier"), std::make_tuple (1u, 0u, 0u, 6000));
+
+  auto res = jobs.QueryHistory (0);
+  ASSERT_TRUE (res.Step ());
+  auto e = jobs.GetFromResult (res);
+  EXPECT_EQ (e->GetId (), id);
+  EXPECT_EQ (e->GetOutcome (), JobOutcome::COMPLETED);
+  EXPECT_FALSE (res.Step ());
+}
+
+TEST_F (AssassinationTests, FinalKillBurnsDust)
+{
+  /* r=6001, n=2 => tranche 3000, dust 1 left in escrow at completion.  */
+  const auto id = PostAndHire ("courier", "6001", "2");
+  const auto hunter = MakeCharacterAt ("courier", HexCoord (6, 5));
+  KillWithAttackers (MakeCharacterAt ("green", HexCoord (5, 5)), {hunter});
+  KillWithAttackers (MakeCharacterAt ("green", HexCoord (5, 6)), {hunter});
+
+  EXPECT_FALSE (JobExists (id));
+  /* Two slices of 3000 paid; the 1-coin dust is burned, not refunded.  */
+  EXPECT_EQ (Balance ("courier"), 1000000 + 6000);
+  EXPECT_EQ (Balance ("poster"), 1000000 - 6001 - 60);
+}
+
+TEST_F (AssassinationTests, ExpiryWithKillsIsPass)
+{
+  /* Quota 5, two kills, then the window elapses: any kill makes it a pass
+     ("if you get one, it's a pass").  r=5000 => tranche 1000.  */
+  const auto id = PostAndHire ("courier", "5000", "5");
+  const auto hunter = MakeCharacterAt ("courier", HexCoord (6, 5));
+  KillWithAttackers (MakeCharacterAt ("green", HexCoord (5, 5)), {hunter});
+  KillWithAttackers (MakeCharacterAt ("green", HexCoord (5, 6)), {hunter});
+
+  ctx.SetTimestamp (BASE_TS + DAY + 1);
+  ExpireJobs (db, ctx);
+
+  EXPECT_FALSE (JobExists (id));
+  /* Two earned slices stay with the assassin; the three unearned refund the
+     poster.  The pass is counted once at the value earned (2 * 1000).  */
+  EXPECT_EQ (Balance ("courier"), 1000000 + 2000);
+  EXPECT_EQ (Balance ("poster"), 1000000 - 50 - 2000);
+  EXPECT_EQ (JobStats ("courier"), std::make_tuple (1u, 0u, 0u, 2000));
+  /* No forfeit-as-poster mark: there is no collateral and the poster cannot
+     force the outcome.  */
+  EXPECT_EQ (JobStats ("poster"), std::make_tuple (0u, 0u, 0u, 0));
+
+  auto res = jobs.QueryHistory (0);
+  ASSERT_TRUE (res.Step ());
+  EXPECT_EQ (jobs.GetFromResult (res)->GetOutcome (), JobOutcome::COMPLETED);
+}
+
+TEST_F (AssassinationTests, ExpiryWithNoKillsIsFailure)
+{
+  const auto id = PostAndHire ("courier");
+  ctx.SetTimestamp (BASE_TS + DAY + 1);
+  ExpireJobs (db, ctx);
+
+  EXPECT_FALSE (JobExists (id));
+  /* The whole reward refunds (no slices earned, no collateral to forfeit).
+     The assassin's failure counter bumps; NO forfeit-as-poster mark.  */
+  EXPECT_EQ (Balance ("poster"), 1000000 - 90);
+  EXPECT_EQ (Balance ("courier"), 1000000);
+  EXPECT_EQ (JobStats ("courier"), std::make_tuple (0u, 1u, 0u, 0));
+  EXPECT_EQ (JobStats ("poster"), std::make_tuple (0u, 0u, 0u, 0));
+
+  auto res = jobs.QueryHistory (0);
+  ASSERT_TRUE (res.Step ());
+  EXPECT_EQ (jobs.GetFromResult (res)->GetOutcome (), JobOutcome::FAILED);
+}
+
+TEST_F (AssassinationTests, OpenExpiryVoids)
+{
+  /* Posted and assigned but never accepted: expiry voids and refunds the
+     poster in full, with no reputation touched either way.  */
+  const auto id = PostHit ();
+  ASSERT_TRUE (Process ("poster",
+      R"({"s":)" + std::to_string (id) + R"(,"w":"courier"})"));
+  ctx.SetTimestamp (BASE_TS + DAY + 1);
+  ExpireJobs (db, ctx);
+
+  EXPECT_FALSE (JobExists (id));
+  EXPECT_EQ (Balance ("poster"), 1000000 - 90);
+  EXPECT_EQ (JobStats ("courier"), std::make_tuple (0u, 0u, 0u, 0));
+
+  auto res = jobs.QueryHistory (0);
+  ASSERT_TRUE (res.Step ());
+  EXPECT_EQ (jobs.GetFromResult (res)->GetOutcome (), JobOutcome::VOID);
+}
+
+TEST_F (AssassinationTests, StackedWithWantedOnOneKill)
+{
+  /* A wanted pool AND an assassination both target green, and the assassin
+     is one of the damage-list owners: the single kill pays the wanted share
+     to every distinct owner AND the assassination slice to the assassin --
+     the account-handle interplay of the two settlement paths in one kill.  */
+  CHECK (Process ("poster",
+      R"({"t":"wanted","r":9000,"co":0,"name":"green","n":3})"));   // tranche 3000
+  const auto hitId = PostAndHire ("courier", "6000", "2");          // tranche 3000
+
+  const auto victim = MakeCharacterAt ("green", HexCoord (5, 5));
+  const auto hunter = MakeCharacterAt ("courier", HexCoord (6, 5));
+  const auto other = MakeCharacterAt ("courier2", HexCoord (7, 5));
+  KillWithAttackers (victim, {hunter, other});
+
+  /* courier (the assassin AND a hunter): wanted share 3000/2 = 1500 + the
+     whole assassination slice 3000.  courier2 (hunter only): 1500.  */
+  EXPECT_EQ (Balance ("courier"), 1000000 + 1500 + 3000);
+  EXPECT_EQ (Balance ("courier2"), 1000000 + 1500);
+  /* The assassination is not finished (1 of 2), so no stats yet from it; the
+     wanted pool paid a completion of its share to each hunter.  */
+  EXPECT_EQ (JobStats ("courier"), std::make_tuple (1u, 0u, 0u, 1500));
+  EXPECT_EQ (JobStats ("courier2"), std::make_tuple (1u, 0u, 0u, 1500));
+  auto j = jobs.GetById (hitId);
+  ASSERT_NE (j, nullptr);
+  EXPECT_EQ (j->GetProto ().assassination ().remaining (), 1);
+}
+
+TEST_F (AssassinationTests, ValidateJobsPasses)
+{
+  PostAndHire ("courier");
+  ValidateJobs (db);
 }
 
 /* ************************************************************************** */

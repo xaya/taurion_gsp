@@ -712,6 +712,12 @@ template <typename J>
         res["closing"] = true;
       break;
 
+    case proto::JobData::kAssassination:
+      res["quota"] = IntToJson (pb.assassination ().quota ());
+      res["remaining"] = IntToJson (pb.assassination ().remaining ());
+      res["tranche"] = IntToJson (pb.assassination ().tranche ());
+      break;
+
     case proto::JobData::kEscort:
       res["character"] = IntToJson (pb.escort ().protected_character ());
       res["to"] = IntToJson (pb.escort ().dest_building ());

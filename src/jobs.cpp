@@ -284,14 +284,18 @@ PostOperation::IsValid () const
           return false;
         }
 
-    if (type == Job::Type::WANTED
+    /* The stacked-listings cap covers every kill contract on a name (wanted
+       pools and assassination hits share the one budget), so a target cannot
+       be buried under more listings than the cap allows however the slots
+       are split between the two types.  */
+    if (pred->SettlesOnTargetKill ()
           && jc.jobs.CountForLinkedName (terms["name"].asString ())
                >= par.Get ("max-bounty-pools-per-target",
                            p.max_bounty_pools_per_target ()))
       {
         LOG (WARNING)
             << "Target " << terms["name"].asString ()
-            << " is at the stacked-pools cap";
+            << " is at the stacked-listings cap";
         return false;
       }
   }
@@ -1095,12 +1099,17 @@ JobsBountyTracker::UpdateForKill (const proto::TargetId& target)
   if (owners.empty ())
     return;
 
-  /* Consume one tranche per pool on this name (stacked bounties all pay),
-     accumulating the per-owner share as we go: every pool splits across
-     the SAME owner set, so the accounts are then paid ONCE each with the
-     total.  Account work per kill is O(pools + owners) -- the pool cap
-     bounds one factor and the single owner pass the other, so a large
-     distinct-killer mob cannot multiply account writes by the pool count.  */
+  /* Consume one tranche per contract on this name (stacked listings all
+     pay).  A wanted pool touches no accounts and reports its per-owner share
+     here; those shares accumulate across pools and every distinct killer is
+     paid ONCE at the end (PayKillShares) -- so account work stays
+     O(pools + owners), a large distinct-killer mob never multiplying account
+     writes by the pool count.  An assassination instead pays its one
+     designated assassin inside OnTargetKill (a single account write, handle
+     opened and released there) and leaves the share at 0.  Each contract
+     returns its settlement outcome: INVALID keeps it on the board (a wanted
+     pool with tranches left, an assassination this kill did not qualify
+     for), anything else is recorded and the row deleted.  */
   BlockHookTables tables(db);
   const JobContext jc = tables.MakeContext (ctx);
   Amount totalShare = 0;
@@ -1116,15 +1125,15 @@ JobsBountyTracker::UpdateForKill (const proto::TargetId& target)
       if (!pred->SettlesOnTargetKill ())
         continue;
       Amount share = 0;
-      const bool drained = pred->OnTargetKill (jc, *j, owners, share);
+      const JobOutcome outcome = pred->OnTargetKill (jc, *j, owners, share);
       if (share > 0)
         {
           totalShare += share;
           ++payingPools;
         }
-      if (drained)
-        SettleAndDelete (tables.jobs, std::move (j), JobOutcome::DRAINED, ctx);
-      /* Not drained: the mutated pool flushes when the handle destructs.  */
+      if (outcome != JobOutcome::INVALID)
+        SettleAndDelete (tables.jobs, std::move (j), outcome, ctx);
+      /* Still live: the mutated contract flushes when the handle destructs.  */
     }
 
   if (payingPools > 0)
