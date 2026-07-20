@@ -924,9 +924,12 @@ public:
   Faction
   AudienceFaction (const Account& poster) const override
   {
-    /* Visible to everyone: who can collect is constrained by the TARGET's
-       faction (only its enemies can land damage or be hired), never the
-       poster's.  */
+    /* Visible to everyone (INVALID = no audience gate): a kill contract is not
+       scoped to the poster's faction.  Legitimate collectors are the target's
+       enemies -- a same-faction unit can only land damage via mentecon
+       friendly-fire, and the jobs kill hook filters those owners out of the
+       payout set -- so eligibility is bounded by the TARGET's faction, never
+       the poster's.  */
     return Faction::INVALID;
   }
 
@@ -1157,11 +1160,13 @@ bool
 AssassinationPredicate::ValidateAccept (const JobContext& jc, const Job& job,
                                         const Account& worker) const
 {
-  /* The assassin must be an enemy of the TARGET: there is no friendly fire,
-     so a same-faction assassin could never land a qualifying kill (and the
-     target itself can never be hired for its own hit).  The name check comes
-     first so the target's handle is never opened while it IS the live worker
-     handle (UniqueHandles).  */
+  /* The assassin must be an enemy of the TARGET -- the product rule for a
+     designated hit -- and can never be the target itself.  Rejecting a
+     same-faction worker here is the real guard: a friendly assassin has no
+     honest way to land the kill, and the jobs kill hook filters same-faction
+     (mentecon friendly-fire) owners out of the payout set regardless.  The
+     name check comes first so the target's handle is never opened while it IS
+     the live worker handle (UniqueHandles).  */
   const std::string& target = job.GetLinkedName ();
   if (worker.GetName () == target)
     {

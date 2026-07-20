@@ -1531,6 +1531,50 @@ TEST_F (WantedTests, KillSplitsAcrossDistinctOwners)
   EXPECT_EQ (Balance ("courier2"), 1000000 + 1500);
 }
 
+TEST_F (WantedTests, MenteconSelfTagPaysNothing)
+{
+  /* H1: the target's OWN character lands on the victim's damage list via
+     mentecon friendly-fire.  With no hostile hunter present, the friendly
+     owner is filtered before the divisor, the eligible set is empty, and the
+     kill pays nobody and consumes nothing -- the target cannot claw back the
+     bounty posted against it.  */
+  const auto id = PostBounty ();
+  const auto victim = MakeCharacterAt ("green", HexCoord (5, 5));
+  const auto selfTag = MakeCharacterAt ("green", HexCoord (6, 5));
+
+  KillWithAttackers (victim, {selfTag});
+
+  auto j = jobs.GetById (id);
+  ASSERT_NE (j, nullptr);
+  EXPECT_EQ (j->GetProto ().wanted ().remaining (), 3);
+  EXPECT_EQ (j->GetReward (), 9000);
+  EXPECT_EQ (Balance ("green"), 1000000);
+  EXPECT_EQ (JobStats ("green"), std::make_tuple (0u, 0u, 0u, 0));
+}
+
+TEST_F (WantedTests, MenteconFriendlyTagsDoNotDiluteHunter)
+{
+  /* H1: a hostile hunter kills the victim while the target's own AND an allied
+     (same-faction) character also tag the kill via mentecon.  Both friendly
+     owners are filtered, so the hunter takes the WHOLE tranche -- not a
+     diluted share -- and neither friendly is credited.  */
+  MakeAccount ("greenally", Faction::GREEN, 1000000);
+  const auto id = PostBounty ();
+  const auto victim = MakeCharacterAt ("green", HexCoord (5, 5));
+  const auto hunter = MakeCharacterAt ("courier", HexCoord (6, 5));
+  const auto selfTag = MakeCharacterAt ("green", HexCoord (7, 5));
+  const auto allyTag = MakeCharacterAt ("greenally", HexCoord (8, 5));
+
+  KillWithAttackers (victim, {hunter, selfTag, allyTag});
+
+  EXPECT_EQ (jobs.GetById (id)->GetProto ().wanted ().remaining (), 2);
+  EXPECT_EQ (Balance ("courier"), 1000000 + 3000);
+  EXPECT_EQ (Balance ("green"), 1000000);
+  EXPECT_EQ (Balance ("greenally"), 1000000);
+  EXPECT_EQ (JobStats ("green"), std::make_tuple (0u, 0u, 0u, 0));
+  EXPECT_EQ (JobStats ("greenally"), std::make_tuple (0u, 0u, 0u, 0));
+}
+
 TEST_F (WantedTests, AggregatedPayoutAcrossStackedPools)
 {
   /* Three pools with DIFFERENT tranches on one target, two distinct killer
@@ -1900,6 +1944,25 @@ TEST_F (AssassinationTests, WorkerKillPaysSliceNoStatsYet)
   EXPECT_EQ (Balance ("courier"), 1000000 + 3000);
   EXPECT_EQ (Balance ("courier2"), 1000000);
   EXPECT_EQ (JobStats ("courier"), std::make_tuple (0u, 0u, 0u, 0));
+}
+
+TEST_F (AssassinationTests, FriendlyTagDoesNotBlockEnemyAssassin)
+{
+  /* H1 regression: the target's own (same-faction) character tags the kill
+     alongside the hired enemy assassin.  The friendly owner is filtered from
+     the kill set, but the assassin is an enemy of the target and survives the
+     filter, so the slice is still paid.  */
+  const auto id = PostAndHire ("courier");
+  const auto victim = MakeCharacterAt ("green", HexCoord (5, 5));
+  const auto assassin = MakeCharacterAt ("courier", HexCoord (6, 5));
+  const auto selfTag = MakeCharacterAt ("green", HexCoord (7, 5));
+
+  KillWithAttackers (victim, {assassin, selfTag});
+
+  auto j = jobs.GetById (id);
+  ASSERT_NE (j, nullptr);
+  EXPECT_EQ (j->GetProto ().assassination ().remaining (), 2);
+  EXPECT_EQ (Balance ("courier"), 1000000 + 3000);
 }
 
 TEST_F (AssassinationTests, FinalKillCompletesWithStatsOnce)

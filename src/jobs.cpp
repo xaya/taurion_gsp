@@ -1056,10 +1056,12 @@ JobsBountyTracker::UpdateForKill (const proto::TargetId& target)
   /* The pre-removal pass: the victim's row (and the damage lists) are still
      live here.  */
   std::string victimOwner;
+  Faction victimFaction = Faction::INVALID;
   {
     const auto victim = characters.GetById (target.id ());
     CHECK (victim != nullptr);
     victimOwner = victim->GetOwner ();
+    victimFaction = victim->GetFaction ();
   }
   if (noBounty.count (victimOwner) > 0)
     return;
@@ -1086,14 +1088,24 @@ JobsBountyTracker::UpdateForKill (const proto::TargetId& target)
       return;
     }
 
-  /* Derive the distinct killer accounts, exactly like fame does.  Kills with
-     an empty owner set (e.g. turret-only damage, which is not damage-listed)
-     pay nothing and consume nothing.  */
+  /* Derive the distinct HOSTILE killer accounts.  Fame credits every attacker
+     on the damage list, but a bounty must not: a same-faction attacker can
+     only reach the victim's list via mentecon friendly-fire (the confusion
+     effect that turns a unit on its own side) -- never a legitimate hunter,
+     and never the assassin (whose accept is faction-gated to an enemy of the
+     target).  Dropping same-faction owners BEFORE the divisor and any pool
+     mutation kills the target's self-pay, an ally's share-dilution, and the
+     zero-share pool-destruction all at once; if no hostile owner remains, the
+     empty-set short-circuit below pays nobody and consumes nothing.  Kills
+     with an empty owner set (e.g. turret-only damage, which is not
+     damage-listed) likewise pay and consume nothing.  */
   std::set<std::string> owners;
   for (const auto attackerId : dl.GetAttackers (target.id ()))
     {
       auto c = characters.GetById (attackerId);
       CHECK (c != nullptr);
+      if (c->GetFaction () == victimFaction)
+        continue;
       owners.insert (c->GetOwner ());
     }
   if (owners.empty ())
