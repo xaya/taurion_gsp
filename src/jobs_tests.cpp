@@ -1575,6 +1575,45 @@ TEST_F (WantedTests, MenteconFriendlyTagsDoNotDiluteHunter)
   EXPECT_EQ (JobStats ("greenally"), std::make_tuple (0u, 0u, 0u, 0));
 }
 
+TEST_F (WantedTests, FedCharacterCountsAsTargetKill)
+{
+  /* Pinned product decision (v22 M2): the target is matched by CURRENT owner
+     at death.  A same-faction ally can transfer a throwaway character onto the
+     bounty target; a hostile hunter's kill then counts as the target's death
+     and pays the hunter.  Accepted "current-owner" semantics -- feeding a
+     third-party poster's escrow is the one case worth closing before a real
+     economy (a transfer-into-a-live-target guard), tracked for pre-launch.  */
+  MakeAccount ("greenfeeder", Faction::GREEN, 1000000);
+  const auto id = PostBounty ();
+  const auto fed = MakeCharacterAt ("greenfeeder", HexCoord (5, 5));
+  { auto c = characters.GetById (fed); c->SetOwner ("green"); }
+  const auto hunter = MakeCharacterAt ("courier", HexCoord (6, 5));
+
+  KillWithAttackers (fed, {hunter});
+
+  EXPECT_EQ (jobs.GetById (id)->GetProto ().wanted ().remaining (), 2);
+  EXPECT_EQ (Balance ("courier"), 1000000 + 3000);
+}
+
+TEST_F (WantedTests, EvadedCharacterEscapesTheBounty)
+{
+  /* Pinned product decision (v22 M2, evasion): current-owner matching means
+     the target can hand a doomed character to a same-faction alt before death,
+     and the bounty on the ORIGINAL target does not see the kill.  Accepted
+     low-severity dodge (the poster is refunded any unearned reward on
+     expiry).  */
+  MakeAccount ("greenalt", Faction::GREEN, 1000000);
+  const auto id = PostBounty ();
+  const auto doomed = MakeCharacterAt ("green", HexCoord (5, 5));
+  { auto c = characters.GetById (doomed); c->SetOwner ("greenalt"); }
+  const auto hunter = MakeCharacterAt ("courier", HexCoord (6, 5));
+
+  KillWithAttackers (doomed, {hunter});
+
+  EXPECT_EQ (jobs.GetById (id)->GetProto ().wanted ().remaining (), 3);
+  EXPECT_EQ (Balance ("courier"), 1000000);
+}
+
 TEST_F (WantedTests, AggregatedPayoutAcrossStackedPools)
 {
   /* Three pools with DIFFERENT tranches on one target, two distinct killer
@@ -1877,8 +1916,9 @@ TEST_F (AssassinationTests, HireRequiresEnemyOfTarget)
 TEST_F (AssassinationTests, SameFactionWorkerCannotAccept)
 {
   /* A worker in the target's own faction can be designated (the audience is
-     all factions) but is barred at accept: no friendly fire, so they could
-     never land a qualifying kill.  */
+     all factions) but is barred at accept: the enemy-only rule is the product
+     guard (a friendly assassin has no honest way to land the kill, and the
+     kill hook filters same-faction damage from the payout set regardless).  */
   const auto id = PostHit ();
   ASSERT_TRUE (Process ("poster",
       R"({"s":)" + std::to_string (id) + R"(,"w":"greenling"})"));
@@ -2100,6 +2140,56 @@ TEST_F (AssassinationTests, ValidateJobsPasses)
 {
   PostAndHire ("courier");
   ValidateJobs (db);
+}
+
+TEST_F (AssassinationTests, TransferredAttackerCreditsCurrentOwner)
+{
+  /* Pinned product decision (v22 M1): attribution uses the attacker's CURRENT
+     owner at death, exactly like the game's shared within-window kill credit.
+     So a hostile ally can tag the target and then hand the attacker to the
+     hired assassin, who inherits the slice.  This is accepted "works like the
+     game" behaviour, bounded by the poster's own escrow and chosen worker --
+     not a bypass of the H1 same-faction filter (the attacker stays an enemy
+     of the target throughout).  */
+  const auto id = PostAndHire ("courier");
+  const auto victim = MakeCharacterAt ("green", HexCoord (5, 5));
+  /* courier2 (also RED, a valid enemy of green) owns the attacker and tags. */
+  const auto attacker = MakeCharacterAt ("courier2", HexCoord (6, 5));
+  { auto c = characters.GetById (attacker); c->SetOwner ("courier"); }
+  KillWithAttackers (victim, {attacker});
+
+  auto j = jobs.GetById (id);
+  ASSERT_NE (j, nullptr);
+  EXPECT_EQ (j->GetProto ().assassination ().remaining (), 2);
+  EXPECT_EQ (Balance ("courier"), 1000000 + 3000);
+}
+
+TEST_F (AssassinationTests, SameBlockKillsBeyondQuotaDoNotCrash)
+{
+  /* Quota 1: two of the target's characters die in ONE block to the assassin.
+     The first kill completes + deletes the row; the second re-queries the
+     drained name and must gracefully no-op (mirrors the wanted same-block
+     guard -- a CHECK-abort here would halt every node).  */
+  const auto id = PostAndHire ("courier", "3000", "1");
+  const auto v1 = MakeCharacterAt ("green", HexCoord (5, 5));
+  const auto v2 = MakeCharacterAt ("green", HexCoord (5, 6));
+  const auto assassin = MakeCharacterAt ("courier", HexCoord (6, 5));
+
+  DamageLists dl(db, ctx.Height ());
+  dl.AddEntry (v1, assassin);
+  dl.AddEntry (v2, assassin);
+  JobsBountyTracker tracker(db, ctx, dl);
+  proto::TargetId target;
+  target.set_type (proto::TargetId::TYPE_CHARACTER);
+
+  target.set_id (v1);
+  tracker.UpdateForKill (target);   // completes and deletes the contract
+  EXPECT_FALSE (JobExists (id));
+
+  target.set_id (v2);
+  tracker.UpdateForKill (target);   // stale name: must no-op, not crash
+
+  EXPECT_EQ (Balance ("courier"), 1000000 + 3000);   // the one slice, once
 }
 
 /* ************************************************************************** */

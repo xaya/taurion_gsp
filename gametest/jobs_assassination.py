@@ -45,7 +45,11 @@ class JobsAssassinationTest (PXTest):
     for h in hunterChars:
       targets[h] = {"x": 0, "y": 0}
     self.moveCharactersTo (targets)
-    self.setCharactersHP ({victimChar: {"a": 1, "s": 0}})
+    # Weaken WITHOUT mining so the explicit block below IS the kill/settlement
+    # block (mine=True would settle the kill before this returns, hiding which
+    # block landed it).
+    self.setCharactersHP ({victimChar: {"a": 1, "s": 0}}, mine=False)
+    assert victimChar in self.getCharacters (), "victim died before the kill block"
     self.generate (1)
     assert victimChar not in self.getCharacters ()
 

@@ -489,26 +489,29 @@ public:
   Database::Result<JobResult> QueryForLinkedId (Database::IdT entity);
 
   /**
-   * Queries for all jobs whose linked_name is the given account -- the
-   * wanted-bounties on that name.  Used by the kill attribution when one of
-   * the account's characters dies.
+   * Queries for all jobs whose linked_name is the given account -- the kill
+   * contracts (wanted AND assassination; "bounty" here is the umbrella for
+   * both) on that name.  Used by the kill attribution when one of the
+   * account's characters dies.
    */
   Database::Result<JobResult> QueryForLinkedName (const std::string& name);
 
   /**
-   * Returns whether ANY account is under an active bounty (a non-NULL
-   * linked_name exists): a single covering-index existence probe, no row
-   * enumeration.  The kill attribution (run in the superblock damage phase)
-   * checks this once and, only if true, issues an indexed per-dead-owner
-   * probe -- so the per-superblock cost scales with the deaths, never with
-   * the number of dormant bounty targets on the board.
+   * Returns whether ANY account is the target of an active kill contract (a
+   * non-NULL linked_name exists -- wanted or assassination alike): a single
+   * covering-index existence probe, no row enumeration.  The kill attribution
+   * (run in the superblock damage phase) checks this once and, only if true,
+   * issues an indexed per-dead-owner probe -- so the per-superblock cost
+   * scales with the deaths, never with the number of dormant targets on the
+   * board.
    */
   bool HasActiveBountyNames () const;
 
   /**
    * Row counts for the admission caps, each an indexed (or cap-bounded)
    * COUNT over live rows: the whole board, one poster's jobs, the jobs
-   * linked to one entity, and the wanted pools on one target name.
+   * linked to one entity, and the kill-contract pools (wanted + assassination)
+   * on one target name.
    */
   int64_t CountAll () const;
   int64_t CountForPoster (const std::string& poster) const;
