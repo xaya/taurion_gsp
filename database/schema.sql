@@ -521,3 +521,144 @@ CREATE INDEX IF NOT EXISTS `ongoing_operations_by_building`
   ON `ongoing_operations` (`building`);
 
 -- =============================================================================
+
+-- Jobs board: player-posted, coin-escrowed jobs.  The `type` column
+-- discriminates the job kind and the type-specific payload lives in the
+-- `proto` blob.  Everything the board, the expiry sweep and the kill-hook
+-- must filter, sort or sum on is a real column (mirroring the dex_orders
+-- design), so the board query and reserved-balance sums are plain SQL
+-- statements and idle jobs never need to be read or rewritten.
+CREATE TABLE IF NOT EXISTS `jobs` (
+
+  -- Unique ID of the job (used in assign / accept / cancel moves).
+  `id` INTEGER PRIMARY KEY,
+
+  -- The job kind.  The numeric values match the Job::Type enum in jobs.hpp.
+  `type` INTEGER NOT NULL,
+
+  -- Lifecycle status.  The numeric values match the Job::Status enum in
+  -- jobs.hpp.  Terminal transitions (settlement / cancel / expiry) DELETE
+  -- the row, so the table stays bounded.
+  `status` INTEGER NOT NULL,
+
+  -- The audience faction: who may accept (and, for open-claim types,
+  -- who sees it on their board).  NULL means all factions (the open types
+  -- wanted and ad-slot).
+  `faction` INTEGER NULL,
+
+  -- The account that posted the job (locks the reward on posting).
+  `poster` TEXT NOT NULL,
+
+  -- The account that accepted the job (locks the collateral on accepting).
+  -- NULL while the job is still OPEN.
+  `worker` TEXT NULL,
+
+  -- The reward, in vCHI.  Stored in a column (not the proto) so the board can
+  -- ORDER BY price and reserved rewards can be summed with a single
+  -- statement.  For a part-drained bounty pool this is the *remaining* escrow.
+  `reward` INTEGER NOT NULL,
+
+  -- The collateral the worker locks on accepting, in vCHI.  Stored in a
+  -- column so reserved collateral can likewise be summed for balance display.
+  `collateral` INTEGER NOT NULL,
+
+  -- Absolute block-consensus timestamp (seconds) at which the job expires.
+  -- Seconds (not block height) so deadlines are immune to cadence changes.
+  -- NULL for the *standing* class (wanted-bounty), which is never swept; a
+  -- NULL here must never be read as 0, or every standing job would expire.
+  `deadline` INTEGER NULL,
+
+  -- The entity whose destruction the job's fate is tied to (the ad-slot's
+  -- building).  Swept by the kill-hook when that entity dies.  NULL for types
+  -- with no linked entity (wanted, deal).
+  `linked_id` INTEGER NULL,
+
+  -- The account name whose characters a job targets (wanted-bounty).  Resolved
+  -- by the per-character kill attribution.  NULL for every other type.
+  `linked_name` TEXT NULL,
+
+  -- Type-specific payload (the designated worker, per-type
+  -- running state, ...) as a serialised JobData proto.
+  `proto` BLOB NOT NULL
+
+);
+
+-- Expiry sweep ("non-standing jobs due at or before the current timestamp")
+-- and "expiring soon" ordering for the board.  Standing jobs (NULL deadline)
+-- are naturally excluded by the WHERE deadline IS NOT NULL clause.
+CREATE INDEX IF NOT EXISTS `jobs_by_deadline` ON `jobs` (`deadline`);
+
+-- Kill-hook sweep when a linked entity (an ad-slot building) is
+-- destroyed + "jobs tied to entity X".
+CREATE INDEX IF NOT EXISTS `jobs_by_linked_id` ON `jobs` (`linked_id`);
+
+-- Per-character kill lookup for wanted-bounties ("bounties on this account").
+CREATE INDEX IF NOT EXISTS `jobs_by_linked_name` ON `jobs` (`linked_name`);
+
+-- "My posted jobs" + reserved-reward sum for an account.
+CREATE INDEX IF NOT EXISTS `jobs_by_poster` ON `jobs` (`poster`);
+
+-- "My accepted jobs" + reserved-collateral sum for an account.
+CREATE INDEX IF NOT EXISTS `jobs_by_worker` ON `jobs` (`worker`);
+
+-- Runtime-tunable named parameters (the "param" admin command, mirroring
+-- the soccerverse GSP): one row per overridden parameter, an absent name
+-- means the roconfig default applies (removing a row resets to it).
+-- Currently read by the jobs-board admission caps.  Consensus state like
+-- any other table -- it changes only through admin commands carried in
+-- block data, so every node applies the same values at the same height and
+-- reorgs unwind them via the normal changeset machinery.
+CREATE TABLE IF NOT EXISTS `parameters` (
+  `name` TEXT PRIMARY KEY,
+  `value` INTEGER NOT NULL
+);
+
+-- Settled-jobs history: one row per terminal transition (settlement / cancel /
+-- expiry / linked-entity death / pool drain), written by the same block
+-- processing that DELETEs the live `jobs` row.  Consensus state like the
+-- board itself: rebuilt identically by any resync, unwound cleanly on
+-- reorgs, and pruned deterministically once a row is older than
+-- params.jobs_history_retention (so the table stays bounded).  Serves the
+-- getjobshistory RPC -- the chain deletes settled jobs from `jobs`, so this
+-- is the only consensus record of WHAT settled and WHY.
+CREATE TABLE IF NOT EXISTS `job_history` (
+
+  -- The settled job's ID (job IDs are never reused).
+  `id` INTEGER PRIMARY KEY,
+
+  -- The job kind (Job::Type enum), mirroring `jobs`.
+  `type` INTEGER NOT NULL,
+
+  -- Why the job left the board (the JobOutcome enum in database/jobs.hpp):
+  -- completed / failed / cancelled / void / drained.
+  `outcome` INTEGER NOT NULL,
+
+  -- Block height and consensus timestamp of the settling block.  The time
+  -- drives both the retention prune and incremental getjobshistory reads.
+  `settled_height` INTEGER NOT NULL,
+  `settled_time` INTEGER NOT NULL,
+
+  -- The remaining columns snapshot the live row at settlement, with the
+  -- same semantics (and NULLability) as the `jobs` table above.
+  `faction` INTEGER NULL,
+  `poster` TEXT NOT NULL,
+  `worker` TEXT NULL,
+  `reward` INTEGER NOT NULL,
+  `collateral` INTEGER NOT NULL,
+  `deadline` INTEGER NULL,
+  `linked_id` INTEGER NULL,
+  `linked_name` TEXT NULL,
+  `proto` BLOB NOT NULL
+
+);
+
+-- Retention prune ("older than the cutoff") + incremental reads
+-- (getjobshistory fromtime).  This is deliberately the ONLY extra index on
+-- the table: no consensus or RPC query filters by poster/worker/faction
+-- here, and every live-row flush rewrites all indexes -- an index exists
+-- only if a query actually reads it (the schema rule for columns, applied
+-- to indexes).
+CREATE INDEX IF NOT EXISTS `job_history_by_time`
+  ON `job_history` (`settled_time`);
+
+-- =============================================================================

@@ -367,6 +367,84 @@ class PXTest (XayaXGameTest):
 
     return self.getCustomState ("data", method, *args, **kwargs)
 
+  # Hard cap on rows in a single jobs page or history response, mirroring
+  # JobsTable::MAX_PAGE (database/jobs.hpp).  The paged readers below must
+  # terminate against the server's EFFECTIVE limit, not the caller's raw
+  # request, or an over-cap pageSize would silently truncate a large board.
+  JOBS_MAX_PAGE = 2000
+
+  def getJobs (self, pageSize=1000):
+    """
+    Returns the full live jobs board, walking the hard-capped getjobspage
+    RPC with its exclusive (id) keyset cursor.  There is deliberately no
+    whole-board jobs RPC, so this is THE way to read the board.
+
+    pageSize is clamped exactly like the server clamps the RPC limit, so
+    the walk terminates against the EFFECTIVE page size.
+    """
+
+    if pageSize <= 0 or pageSize > self.JOBS_MAX_PAGE:
+      pageSize = self.JOBS_MAX_PAGE
+    res = []
+    after = "0"
+    while True:
+      page = self.getRpc ("getjobspage", afterid=after, limit=pageSize)
+      res.extend (page)
+      if len (page) < pageSize:
+        return res
+      after = str (page[-1]["id"])
+
+  def onlyJob (self):
+    """Returns the single job on the board (asserting there is exactly one)."""
+    jobs = self.getJobs ()
+    self.assertEqual (len (jobs), 1)
+    return jobs[0]
+
+  def newestJob (self):
+    """Returns the most recently posted job on the board."""
+    jobs = self.getJobs ()
+    assert len (jobs) > 0
+    return max (jobs, key=lambda j: j["id"])
+
+  def jobGone (self, jobId):
+    """Returns whether the given job is no longer on the board."""
+    return jobId not in [j["id"] for j in self.getJobs ()]
+
+  def historyRows (self):
+    """All settled-jobs history rows, paging through the server-side cap.
+
+    The cursor values are passed as strings (the RPC widened them to int64);
+    paging keeps this correct even past MAX_PAGE rows.
+    """
+    rows = []
+    aftertime, afterid = 0, 0
+    while True:
+      page = self.getRpc ("getjobshistory", fromtime="0",
+                          aftertime=str (aftertime), afterid=str (afterid),
+                          limit=1000)
+      if not page:
+        break
+      rows.extend (page)
+      if len (page) < 1000:
+        break
+      aftertime, afterid = page[-1]["settledtime"], page[-1]["id"]
+    return rows
+
+  def historyOutcome (self, jobId):
+    """Returns the outcome recorded in the settled-jobs history (or None)."""
+    for e in self.historyRows ():
+      if e["id"] == jobId:
+        return e["outcome"]
+    return None
+
+  def available (self, name):
+    """Returns an account's available coin balance."""
+    return self.getAccounts ()[name].getBalance ("available")
+
+  def reserved (self, name):
+    """Returns an account's reserved coin balance (escrows, open bids)."""
+    return self.getAccounts ()[name].getBalance ("reserved")
+
   def sendMove (self, name, move, send=None, burn=0):
     """
     Sends a move, and optionally includes a coin burn.
@@ -461,16 +539,22 @@ class PXTest (XayaXGameTest):
         "pos": c,
       })
 
-    self.adminCommand ({"god": {"teleport": teleport}})
+    # One god command per sub-ceiling chunk: a big cast in a single move
+    # would exceed the move-size limit and be dropped silently.
+    for i in range (0, len (teleport), 15):
+      self.adminCommand ({"god": {"teleport": teleport[i : i + 15]}})
     self.generate (1)
 
     chars = self.getCharacters ()
     for nm, c in charTargets.items ():
       self.assertEqual (chars[nm].getPosition (), c)
 
-  def setCharactersHP (self, charHP):
+  def setCharactersHP (self, charHP, mine=True):
     """
-    Sets the HP and max HP of the characters with the given owners.
+    Sets the HP and max HP of the characters with the given owners.  With
+    mine=False the god command is only submitted, NOT mined: for timing a
+    kill-and-settle block, the caller mines (and times) the block itself --
+    mining here would settle the kill before the caller's timer starts.
     """
 
     chars = self.getCharacters ()
@@ -480,8 +564,13 @@ class PXTest (XayaXGameTest):
       val["id"] = chars[nm].getId ()
       sethp.append (val)
 
-    self.adminCommand ({"god": {"sethp": {"c": sethp}}})
-    self.generate (1)
+    # Chunked like the teleports (an over-ceiling move drops silently);
+    # all chunks apply in the same block, whether mined here or -- with
+    # mine=False -- in the caller's own timed block.
+    for i in range (0, len (sethp), 15):
+      self.adminCommand ({"god": {"sethp": {"c": sethp[i : i + 15]}}})
+    if mine:
+      self.generate (1)
 
   def changeCharacterVehicle (self, char, vehicleType, fitments=[]):
     """

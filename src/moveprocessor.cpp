@@ -30,6 +30,7 @@
 #include "spawn.hpp"
 
 #include "database/faction.hpp"
+#include "database/params.hpp"
 #include "proto/character.pb.h"
 #include "proto/roconfig.hpp"
 
@@ -65,7 +66,7 @@ BaseMoveProcessor::BaseMoveProcessor (Database& d, DynObstacles& o,
     groundLoot(db), buildingInv(db),
     orders(db), dexHistory(db),
     itemCounts(db), moneySupply(db),
-    ongoings(db), regions(db, ctx.BlockHeight ())
+    ongoings(db), jobs(db), regions(db, ctx.BlockHeight ())
 {}
 
 bool
@@ -297,23 +298,35 @@ BaseMoveProcessor::MaybeTransferBuilding (Building& b, const Json::Value& upd)
     return;
   const std::string sendTo = sendToVal.asString ();
 
-  const auto a = accounts.GetByName (sendTo);
-  if (a == nullptr || !a->IsInitialised ())
-    {
-      LOG (WARNING)
-          << "Can't send building " << b.GetId ()
-          << " to uninitialised account " << sendTo;
-      return;
-    }
-  if (a->GetFaction () != b.GetFaction ())
-    {
-      LOG (WARNING)
-          << "Can't send building " << b.GetId ()
-          << " to account " << sendTo << " of different faction";
-      return;
-    }
+  /* A self-send is a no-op: skip it entirely, so in particular the transfer
+     hook does not needlessly void the owner's own ad slots.  */
+  if (sendTo == b.GetOwner ())
+    return;
 
-  PerformBuildingTransfer (b, *a);
+  /* Validate the recipient in a scope that RELEASES the account handle before
+     PerformBuildingTransfer runs.  The transfer settles the building's ad
+     jobs, which re-opens the advertiser's account handle; were the building
+     sold to its own advertiser, a still-live recipient handle would collide
+     with it on the unique-handle tracker and halt the chain.  */
+  {
+    const auto a = accounts.GetByName (sendTo);
+    if (a == nullptr || !a->IsInitialised ())
+      {
+        LOG (WARNING)
+            << "Can't send building " << b.GetId ()
+            << " to uninitialised account " << sendTo;
+        return;
+      }
+    if (a->GetFaction () != b.GetFaction ())
+      {
+        LOG (WARNING)
+            << "Can't send building " << b.GetId ()
+            << " to account " << sendTo << " of different faction";
+        return;
+      }
+  }
+
+  PerformBuildingTransfer (b, sendTo);
 }
 
 void
@@ -462,6 +475,32 @@ BaseMoveProcessor::TryDexOperations (const std::string& name,
         }
       if (parsed->IsValid ())
         PerformDexOperation (*parsed);
+    }
+}
+
+void
+BaseMoveProcessor::TryJobOperations (const std::string& name,
+                                     const Json::Value& mv)
+{
+  const auto& cmds = mv["j"];
+  if (!cmds.isArray ())
+    return;
+
+  const auto a = accounts.GetByName (name);
+  CHECK (a != nullptr);
+
+  const ParamsTable params(db);
+  const JobContext jc{ctx, accounts, buildings, jobs, params};
+  for (const auto& op : cmds)
+    {
+      auto parsed = JobOperation::Parse (*a, op, jc);
+      if (parsed == nullptr)
+        {
+          LOG (WARNING) << "Malformed job operation:\n" << op;
+          continue;
+        }
+      if (parsed->IsValid ())
+        PerformJobOperation (*parsed);
     }
 }
 
@@ -1250,6 +1289,48 @@ MoveProcessor::ProcessOneAdmin (const Json::Value& cmd)
     return;
 
   HandleGodMode (cmd["god"]);
+  HandleParams (cmd["param"]);
+}
+
+void
+MoveProcessor::HandleParams (const Json::Value& cmd)
+{
+  if (!cmd.isArray ())
+    return;
+
+  /* The same admin shape as the soccerverse GSP: an array of {"n": name,
+     "v": value} entries, where a null value removes the override (falling
+     back to the roconfig default).  Parameter names are free-form -- reads
+     use known names, so setting an unread one is a harmless no-op.
+     Malformed entries are logged and skipped deterministically.  */
+  ParamsTable par(db);
+  for (const auto& entry : cmd)
+    {
+      /* Exactly the members n and v: a typo'd value key (e.g. "value")
+         must be a skipped malformed entry, NOT a missing-v null that would
+         remove the override -- the dangerous direction for a freeze.  */
+      if (!entry.isObject () || entry.size () != 2
+            || !entry.isMember ("v") || !entry["n"].isString ())
+        {
+          LOG (WARNING) << "Invalid set-param operation: " << entry;
+          continue;
+        }
+      const std::string name = entry["n"].asString ();
+
+      const auto& val = entry["v"];
+      if (val.isNull ())
+        {
+          LOG (INFO) << "Removing parameter: " << name;
+          par.Remove (name);
+        }
+      else if (val.isInt64 () && xaya::IsIntegerValue (val))
+        {
+          LOG (INFO) << "Setting parameter: " << name << " = " << val;
+          par.Set (name, val.asInt64 ());
+        }
+      else
+        LOG (WARNING) << "Invalid set-param operation: " << entry;
+    }
 }
 
 void
@@ -1317,6 +1398,12 @@ MoveProcessor::ProcessOne (const Json::Value& moveObj)
 
   TryBuildingUpdates (name, mv);
   TryServiceOperations (name, mv);
+
+  /* Job-board operations run last so a move can bundle character/building
+     updates (e.g. a hull swap-back or a cargo drop) that must settle before
+     the job op is checked (design section 3.3, normative order).  Like
+     the other post-init operations, they require an initialised account.  */
+  TryJobOperations (name, mv);
 
   /* If any burnt or paid-to-dev coins are left, it means probably something
      has gone wrong and the user overpaid due to a frontend bug.  */
@@ -1889,12 +1976,19 @@ MoveProcessor::PerformBuildingConfigUpdate (
 }
 
 void
-MoveProcessor::PerformBuildingTransfer (Building& b, const Account& newOwner)
+MoveProcessor::PerformBuildingTransfer (Building& b, const std::string& newOwner)
 {
   VLOG (1)
       << "Sending building " << b.GetId ()
-      << " from " << b.GetOwner () << " to " << newOwner.GetName ();
-  b.SetOwner (newOwner.GetName ());
+      << " from " << b.GetOwner () << " to " << newOwner;
+  b.SetOwner (newOwner);
+
+  /* The sale settles jobs tied to the old ownership (ad-slot rentals void
+     and refund the advertiser -- the new owner never approved the content).
+     This runs after MaybeTransferBuilding has released the recipient's account
+     handle, so voiding an ad whose advertiser is the new owner does not
+     collide on the unique-handle tracker.  */
+  OnJobBuildingTransferred (db, ctx, b.GetId ());
 }
 
 void
@@ -1905,6 +1999,12 @@ MoveProcessor::PerformServiceOperation (ServiceOperation& op)
 
 void
 MoveProcessor::PerformDexOperation (DexOperation& op)
+{
+  op.Execute ();
+}
+
+void
+MoveProcessor::PerformJobOperation (JobOperation& op)
 {
   op.Execute ();
 }

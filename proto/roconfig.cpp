@@ -138,6 +138,14 @@ RoConfig::RoConfig (const xaya::Chain chain)
         }
       pb.clear_testnet_merge ();
       pb.clear_regtest_merge ();
+
+      /* Jobs-board configuration sanity: the history-prune batch is what
+         keeps one huge ageing cohort from forcing an unbounded delete, so
+         a build without it must fail HERE at first configuration load --
+         before any game logic runs -- rather than mid-sweep (which
+         re-CHECKs it as defence in depth).  */
+      CHECK_GT (pb.params ().jobs_history_prune_batch (), 0)
+          << "jobs_history_prune_batch must be positive";
     }
 
   data = *instancePtr;

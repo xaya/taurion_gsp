@@ -19,6 +19,7 @@
 #include "gamestatejson.hpp"
 
 #include "buildings.hpp"
+#include "jobs.hpp"
 #include "jsonutils.hpp"
 #include "modifier.hpp"
 #include "protoutils.hpp"
@@ -29,6 +30,7 @@
 #include "database/character.hpp"
 #include "database/faction.hpp"
 #include "database/itemcounts.hpp"
+#include "database/jobs.hpp"
 #include "database/moneysupply.hpp"
 #include "database/ongoing.hpp"
 #include "database/region.hpp"
@@ -321,6 +323,25 @@ template <>
       res["faction"] = FactionToString (a.GetFaction ());
       res["kills"] = IntToJson (pb.kills ());
       res["fame"] = IntToJson (pb.fame ());
+
+      /* The jobs-board completion counters: consensus-stored vetting
+         signals surfaced here for clients (posters vet applicants, workers
+         vet posters).  No consensus rule consumes them; raw counts are
+         fee-priced and inflatable, the value counter is the fee-backed
+         face-value signal (see BumpJobStats).  */
+      Json::Value jobstats(Json::objectValue);
+      jobstats["completed"] = IntToJson (pb.jobs_completed ());
+      jobstats["value"] = IntToJson (pb.jobs_value_completed ());
+      res["jobstats"] = jobstats;
+
+      /* The escrow-deal reputation counters, kept disjoint from the jobs-board
+         counters above (a settled deal is not a settled catalogue job).  Same
+         vetting purpose: a poster reads a worker's deals record, a party reads
+         an arbiter's; no consensus rule consumes them.  See BumpDealStats.  */
+      Json::Value dealstats(Json::objectValue);
+      dealstats["completed"] = IntToJson (pb.deals_completed ());
+      dealstats["value"] = IntToJson (pb.deals_value_completed ());
+      res["dealstats"] = dealstats;
     }
 
   return res;
@@ -625,6 +646,120 @@ template <>
   return res;
 }
 
+template <typename J>
+  Json::Value
+  GameStateJson::JobCommonJson (const J& j) const
+{
+  Json::Value res(Json::objectValue);
+
+  res["id"] = IntToJson (j.GetId ());
+  res["poster"] = j.GetPoster ();
+  if (!j.GetWorker ().empty ())
+    res["worker"] = j.GetWorker ();
+  if (j.GetFaction () != Faction::INVALID)
+    res["faction"] = FactionToString (j.GetFaction ());
+
+  /* Type name and linked-entity kind both derive from the predicate
+     registry, so they can never drift from the game logic.  */
+  const char* typeName = JobTypeName (j.GetType ());
+  res["type"] = typeName != nullptr ? typeName : "unknown";
+
+  res["reward"] = IntToJson (j.GetReward ());
+  res["collateral"] = IntToJson (j.GetCollateral ());
+  if (j.HasDeadline ())
+    res["deadline"] = IntToJson (j.GetDeadline ());
+
+  if (j.GetLinkedId () != Database::EMPTY_ID)
+    res["building"] = IntToJson (j.GetLinkedId ());
+  if (!j.GetLinkedName ().empty ())
+    res["target"] = j.GetLinkedName ();
+
+  const auto& pb = j.GetProto ();
+
+  const auto& designated = pb.designated_worker ();
+  if (!designated.empty ())
+    res["designated"] = designated;
+
+  switch (pb.kind_case ())
+    {
+    case proto::JobData::kWanted:
+      res["quota"] = IntToJson (pb.wanted ().quota ());
+      res["remaining"] = IntToJson (pb.wanted ().remaining ());
+      res["tranche"] = IntToJson (pb.wanted ().tranche ());
+      /* A standing pool with a deadline is one that has been given notice.  */
+      if (j.HasDeadline ())
+        res["closing"] = true;
+      break;
+
+    case proto::JobData::kAd:
+      res["slot"] = IntToJson (pb.ad ().slot ());
+      res["hash"] = pb.ad ().content_hash ();
+      if (pb.ad ().has_start ())
+        res["start"] = IntToJson (pb.ad ().start ());
+      break;
+
+    case proto::JobData::kDeal:
+      {
+        const auto& dp = pb.deal ();
+        if (!dp.arbiter ().empty ())
+          res["arbiter"] = dp.arbiter ();
+        res["fee"] = IntToJson (dp.fee_bps ());
+        res["tax"] = IntToJson (dp.tax_bps ());
+        res["tag"] = IntToJson (dp.type_tag ());
+        if (!dp.terms ().empty ())
+          res["terms"] = dp.terms ();
+        if (dp.destroyed_p () > 0)
+          res["destroyedp"] = IntToJson (dp.destroyed_p ());
+        res["posterConfirmed"] = dp.poster_confirmed ();
+        res["workerConfirmed"] = dp.worker_confirmed ();
+        res["disputed"] = dp.disputed ();
+      }
+      break;
+
+    default:
+      /* A job with no type-specific payload beyond its columns.  */
+      break;
+    }
+
+  return res;
+}
+
+template <>
+  Json::Value
+  GameStateJson::Convert<Job> (const Job& j) const
+{
+  Json::Value res = JobCommonJson (j);
+
+  switch (j.GetStatus ())
+    {
+    case Job::Status::OPEN:
+      res["state"] = "open";
+      break;
+    case Job::Status::ACCEPTED:
+      res["state"] = "accepted";
+      break;
+    default:
+      res["state"] = "unknown";
+      break;
+    }
+
+  return res;
+}
+
+template <>
+  Json::Value
+  GameStateJson::Convert<JobHistoryEntry> (const JobHistoryEntry& j) const
+{
+  Json::Value res = JobCommonJson (j);
+
+  const char* outcomeName = JobOutcomeName (j.GetOutcome ());
+  res["outcome"] = outcomeName != nullptr ? outcomeName : "unknown";
+  res["settledheight"] = IntToJson (j.GetSettledHeight ());
+  res["settledtime"] = IntToJson (j.GetSettledTime ());
+
+  return res;
+}
+
 template <typename T, typename R>
   Json::Value
   GameStateJson::ResultsAsArray (T& tbl, Database::Result<R> res) const
@@ -719,19 +854,24 @@ GameStateJson::Accounts ()
   AccountsTable tbl(db);
   Json::Value res = ResultsAsArray (tbl, tbl.QueryAll ());
 
-  /* Add in also the Cubit balances reserved in open bids.  */
-  const auto reserved = orders.GetReservedCoins ();
+  /* Add in the coins reserved by an account: DEX open bids plus jobs-board
+     escrow (posted rewards + accepted-job collateral).  */
+  const auto dexReserved = orders.GetReservedCoins ();
+  JobsTable jobs(db);
+  const auto jobReserved = jobs.GetReservedCoins ();
   for (auto& entry : res)
     {
       const auto& nmVal = entry["name"];
       CHECK (nmVal.isString ());
-      const auto mit = reserved.find (nmVal.asString ());
+      const std::string nm = nmVal.asString ();
 
-      Amount cur;
-      if (mit == reserved.end ())
-        cur = 0;
-      else
-        cur = mit->second;
+      Amount cur = 0;
+      const auto dit = dexReserved.find (nm);
+      if (dit != dexReserved.end ())
+        cur += dit->second;
+      const auto jit = jobReserved.find (nm);
+      if (jit != jobReserved.end ())
+        cur += jit->second;
 
       auto& bal = entry["balance"];
       CHECK (bal.isObject ());
@@ -747,6 +887,34 @@ GameStateJson::Buildings ()
 {
   BuildingsTable tbl(db);
   return ResultsAsArray (tbl, tbl.QueryAll ());
+}
+
+Json::Value
+GameStateJson::Jobs ()
+{
+  /* Deliberately unpaged: this feeds only the FullState export
+     (getcurrentstate), which is a trusted bootstrap/debug interface that
+     already dumps every other table whole.  Untrusted doors go through the
+     hard-capped getjobspage / getjobshistory instead (the production proxy
+     allowlists those and does not expose getcurrentstate).  */
+  JobsTable tbl(db);
+  return ResultsAsArray (tbl, tbl.QueryAll ());
+}
+
+Json::Value
+GameStateJson::JobsPage (const Database::IdT afterId, const int limit)
+{
+  JobsTable tbl(db);
+  return ResultsAsArray (tbl, tbl.QueryPage (afterId, limit));
+}
+
+Json::Value
+GameStateJson::JobsHistory (const int64_t fromTime, const int64_t afterTime,
+                            const int64_t afterId, const int limit)
+{
+  JobsTable tbl(db);
+  return ResultsAsArray (tbl,
+                         tbl.QueryHistory (fromTime, afterTime, afterId, limit));
 }
 
 Json::Value
@@ -814,6 +982,7 @@ GameStateJson::FullState ()
   res["characters"] = Characters ();
   res["groundloot"] = GroundLoot ();
   res["ongoings"] = OngoingOperations ();
+  res["jobs"] = Jobs ();
   res["moneysupply"] = MoneySupply ();
   res["regions"] = Regions (0);
   res["prizes"] = PrizeStats ();

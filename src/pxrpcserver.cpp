@@ -33,6 +33,7 @@
 
 #include <glog/logging.h>
 
+#include <charconv>
 #include <limits>
 #include <sstream>
 #include <string>
@@ -519,6 +520,61 @@ PXRpcServer::getbuildings ()
     [] (GameStateJson& gsj)
       {
         return gsj.Buildings ();
+      });
+}
+
+namespace
+{
+
+/**
+ * Strictly parses a non-negative int64 paging cursor (passed as a decimal
+ * string so it is not truncated at the JSON-RPC integer width).  The whole
+ * string must be a plain decimal number; anything else (junk, trailing
+ * characters, negatives, overflow) errors the call instead of silently
+ * reading as zero and restarting the walk -- a caller bug should be
+ * visible, not masked.  The empty string reads as 0 (the "from the start"
+ * cursor).
+ */
+int64_t
+ParseCursor (const std::string& s, const char* what)
+{
+  if (s.empty ())
+    return 0;
+  int64_t val = 0;
+  const auto res = std::from_chars (s.data (), s.data () + s.size (), val);
+  if (res.ec != std::errc () || res.ptr != s.data () + s.size () || val < 0)
+    ReturnError (ErrorCode::INVALID_ARGUMENT,
+                 std::string (what) + " is not a non-negative integer");
+  return val;
+}
+
+} // anonymous namespace
+
+Json::Value
+PXRpcServer::getjobspage (const std::string& afterId, const int limit)
+{
+  LOG (INFO) << "RPC method called: getjobspage " << afterId;
+  const int64_t ai = ParseCursor (afterId, "afterid");
+  return logic.GetCustomStateData (game,
+    [ai, limit] (GameStateJson& gsj)
+      {
+        return gsj.JobsPage (ai, limit);
+      });
+}
+
+Json::Value
+PXRpcServer::getjobshistory (const std::string& afterId,
+                            const std::string& afterTime,
+                            const std::string& fromTime, const int limit)
+{
+  LOG (INFO) << "RPC method called: getjobshistory " << fromTime;
+  const int64_t ft = ParseCursor (fromTime, "fromtime");
+  const int64_t at = ParseCursor (afterTime, "aftertime");
+  const int64_t ai = ParseCursor (afterId, "afterid");
+  return logic.GetCustomStateData (game,
+    [ft, at, ai, limit] (GameStateJson& gsj)
+      {
+        return gsj.JobsHistory (ft, at, ai, limit);
       });
 }
 

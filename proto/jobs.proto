@@ -1,0 +1,188 @@
+/*
+    GSP for the Taurion blockchain game
+    Copyright (C) 2020-2021  Autonomous Worlds Ltd
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
+syntax = "proto2";
+option cc_enable_arenas = true;
+
+package pxd.proto;
+
+/**
+ * Payload for a standing wanted-bounty on an account name (the job's
+ * linked_name column).  The reward is a pool of `quota` equal tranches; each
+ * qualifying kill of one of the target's characters pays out one tranche,
+ * split equally across the distinct accounts on the victim's damage list.
+ * The `reward` column always holds the remaining (un-paid) escrow.
+ */
+message WantedPayload
+{
+
+  /** The total number of kills the pool pays for (N as posted).  */
+  optional uint32 quota = 1;
+
+  /** How many tranches are still unpaid.  The pool completes at zero.  */
+  optional uint32 remaining = 2;
+
+  /**
+   * The fixed per-kill tranche, floor(reward / quota) at post time.  Division
+   * dust (both from this and from splitting a tranche across multiple
+   * killers) is burned, never redistributed.
+   */
+  optional uint64 tranche = 3;
+
+}
+
+/**
+ * Payload for an ad-slot rental on a building (the job's linked_id).  The
+ * poster (advertiser) escrows the rent; the designated worker is the
+ * building's owner, whose accept is the content approval.  The rent pays out
+ * at the first expiry sweep after the deadline (success-on-expiry); the
+ * entity hook refunds it if the building dies first, and a sale of the
+ * building any time before that sweep -- even after the deadline has
+ * passed -- voids and refunds it too (only the owner losing the rent can
+ * trigger that; see AdPredicate::OnLinkedBuildingTransferred).
+ */
+message AdPayload
+{
+
+  /** The advertising slot on the building this rents.  */
+  optional uint32 slot = 1;
+
+  /**
+   * Commitment hash of the ad content (hex).  Clients render only content
+   * matching this hash, which closes both the owner-censors-paid-content and
+   * the advertiser-swaps-approved-content rugs.
+   */
+  optional string content_hash = 2;
+
+  /**
+   * Absolute block-consensus timestamp (seconds) at which the rented window
+   * opens; the window closes at the job's deadline column.  Unset means the
+   * window opened at post time (an immediate ad).  Windows are half-open
+   * with the acceptance-time clamp [max(start, acceptance_time), deadline):
+   * accepting an ad whose EFFECTIVE window overlaps an already-accepted ad
+   * on the same (building, slot) is rejected, declared overlap that lies
+   * entirely in the past does not (an ad accepted late renders from the
+   * accept), and back-to-back bookings may share an endpoint -- so future
+   * windows can be booked ahead without double-letting or dead gaps.
+   */
+  optional int64 start = 3;
+
+}
+
+/**
+ * Payload for a generic escrow "deal": the one primitive that replaces the
+ * per-type verification jobs.  The poster escrows the `reward` column and the
+ * accepting worker the `collateral` column (both real columns); when contested,
+ * a bound arbiter rules a single completion percentage that splits both pots
+ * (see ComputeSettlement / SettleDeal).  Everything the settlement math and the
+ * board need that is not a column lives here.  Settlement NEVER branches on
+ * `type_tag` (it is cosmetic UI metadata only).
+ */
+message DealPayload
+{
+
+  /**
+   * The arbiter account named by the poster to rule disputes (empty = a
+   * no-arbiter deal: the timeout resolves confirm-aware with no p-ruling path).
+   * The poster names it at post; the worker consents by accepting a deal that
+   * already shows it -- both-sided consent without a separate handshake.
+   */
+  optional string arbiter = 1;
+
+  /**
+   * The arbiter fee in basis points, snapshot at post (<= deal-max-fee-bps;
+   * a post may only carry a fee together with an arbiter).  The arbiter
+   * FORFEITS the fee if a disputed deal times out without its ruling (each
+   * party keeps its own fee share) -- ruling must never pay worse than
+   * ghosting the dispute.
+   */
+  optional uint32 fee_bps = 2;
+
+  /**
+   * The protocol tax in basis points, snapshot at post so the settlement
+   * is a pure function of the row -- immune to a governance retune between post
+   * and settle (the "min-reward floors reject historical posts on replay" trap).
+   */
+  optional uint32 tax_bps = 3;
+
+  /**
+   * Cosmetic job category (transport/haul/escort/... as an integer tag).  Drives
+   * the client's browsing and per-category reputation only; consensus settlement
+   * NEVER reads it.
+   */
+  optional uint32 type_tag = 4;
+
+  /** Free-text human-readable terms (byte-bounded at post; a charset/NFC
+      chain filter is deferred to Phase 2, so UIs MUST sanitise control and
+      bidi-override characters when rendering -- the arbiter reads this text
+      to rule).  Advisory only; settlement never parses it. */
+  optional string terms = 5;
+
+  /**
+   * Advisory pre-agreed completion % (0..100) the arbiter applies if the
+   * worker's ship is destroyed en route.  Honoured by the arbiter -- no chain
+   * enforcement in v1 (a trustless chain-fire is deferred).
+   */
+  optional uint32 destroyed_p = 6;
+
+  /** Happy-path confirmations; both true settles the deal at p=100. */
+  optional bool poster_confirmed = 7;
+  optional bool worker_confirmed = 8;
+
+  /**
+   * A dispute has been raised; thereafter only the arbiter's ruling settles it,
+   * or the end-date sweep's 50/50 fallback if the arbiter never rules.
+   */
+  optional bool disputed = 9;
+
+}
+
+/**
+ * Type-specific and generic-but-not-column payload for a job on the jobs
+ * board.  Everything the board, the expiry sweep and the kill-hook must
+ * filter, sort or sum on lives in a real table column (see database/schema.sql
+ * and database/jobs.hpp); only what follows lives in this blob.
+ *
+ * Consensus hygiene: the state hash covers the raw serialised bytes and
+ * protobuf map ordering is not guaranteed, so consensus decisions never
+ * iterate a proto map directly.
+ */
+message JobData
+{
+
+  /**
+   * The designated worker (see the assign op).  Set by the poster; the
+   * ad-slot fixes it at post time to the building owner (whose accept is the
+   * content approval).  Unset means anyone of the audience faction may accept.
+   */
+  optional string designated_worker = 1;
+
+  reserved 2;  // was work_window (removed with the delivery types)
+
+  /**
+   * The type-specific payload.  Exactly one is set, matching the `type`
+   * column.  New job types add a new payload message here.
+   */
+  oneof kind
+  {
+    WantedPayload wanted = 103;
+    AdPayload ad = 110;
+    DealPayload deal = 113;
+  }
+
+}

@@ -18,6 +18,7 @@
 
 #include "combat.hpp"
 
+#include "jobs.hpp"
 #include "modifier.hpp"
 
 #include "database/account.hpp"
@@ -1294,6 +1295,11 @@ ProcessKills (Database& db, DynObstacles& dyn,
         break;
 
       case proto::TargetId::TYPE_BUILDING:
+        /* Settle any jobs tied to this building (the ad slots) while the
+           building row still exists and before the kill-processor takes a
+           handle to it.  Buildings are the only entity kind a job links,
+           so character kills need no such hook.  */
+        OnJobEntityDestroyed (db, ctx, id.second);
         proc.ProcessBuilding (id.second);
         break;
 
@@ -1389,8 +1395,19 @@ AllHpUpdates (Database& db, DynObstacles& dyn, FameUpdater& fame,
 {
   const auto dead = DealCombatDamage (db, fame.GetDamageLists (), rnd, ctx);
 
-  for (const auto& id : dead)
-    fame.UpdateForKill (id.ToProto ());
+  /* The pre-removal pass: fame and wanted-bounty attribution both need the
+     damage lists and the victims' still-live rows, before ProcessKills tears
+     them down.  The tracker (and its bounty-name query) is only constructed
+     when something actually died.  */
+  if (!dead.empty ())
+    {
+      JobsBountyTracker bounties(db, ctx, fame.GetDamageLists ());
+      for (const auto& id : dead)
+        {
+          fame.UpdateForKill (id.ToProto ());
+          bounties.UpdateForKill (id.ToProto ());
+        }
+    }
 
   GroundLootTable loot(db);
   ProcessKills (db, dyn, fame.GetDamageLists (), loot, dead, rnd, ctx);

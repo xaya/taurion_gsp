@@ -40,6 +40,24 @@
     "returns": {}
   },
   {
+    "name": "getjobspage",
+    "params": {
+      "afterid": "0",
+      "limit": 42
+    },
+    "returns": {}
+  },
+  {
+    "name": "getjobshistory",
+    "params": {
+      "fromtime": "0",
+      "aftertime": "0",
+      "afterid": "0",
+      "limit": 42
+    },
+    "returns": {}
+  },
+  {
     "name": "getcharacters",
     "params": {},
     "returns": {}

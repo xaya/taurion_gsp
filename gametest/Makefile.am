@@ -32,6 +32,12 @@ REGTESTS = \
   getregionat.py \
   getserviceinfo.py \
   getversion.py \
+  jobs_ad.py \
+  jobs_bounty.py \
+  jobs_caps.py \
+  jobs_deals.py \
+  jobs_reorg.py \
+  jobs_rpc.py \
   godmode.py \
   loot.py \
   mining.py \

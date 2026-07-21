@@ -613,6 +613,113 @@ message Params
    */
   repeated ProspectingPrize prizes = 22;
 
+  /**
+   * Minimum posting fee (in vCHI, burned) for a jobs-board job.  The actual
+   * fee is max(job_post_fee_min, reward * job_post_fee_bps / 10000), so spam
+   * costs real money at any reward size.
+   */
+  optional int64 job_post_fee_min = 23;
+
+  /** Proportional part of the posting fee, in basis points of the reward.  */
+  optional uint32 job_post_fee_bps = 24;
+
+  reserved 25;  // was min_listing_window (no type carries a minimum dwell)
+
+  /**
+   * Maximum listing window, in seconds.  Also caps an ad-slot's calendar
+   * deadline (the booking horizon: how far ahead a slot can be let).
+   */
+  optional int64 max_listing_window = 26;
+
+  reserved 27;  // was min_accept_runway (retired with the work windows)
+  reserved 28;  // was max_manifest_entries (removed with the delivery types)
+
+  /**
+   * Notice period (in seconds) for cancelling a standing wanted-bounty.  A
+   * cancel does not delete the pool; it sets the deadline this far out, kills
+   * during the window still pay, and only the unearned remainder refunds when
+   * the notice expires.  The anti-rug-pull for standing jobs.
+   */
+  optional int64 bounty_cancel_notice = 29;
+
+  /** Maximum kill quota (pool tranches) for a single wanted-bounty.  */
+  optional uint32 max_bounty_quota = 30;
+
+  /**
+   * How long (in seconds) a settled job stays in the job_history table
+   * before the deterministic per-block prune removes it.  The chain deletes
+   * settled rows from the live board, so this window is the only consensus
+   * record of what settled and why (the getjobshistory RPC).
+   */
+  optional int64 jobs_history_retention = 31;
+
+  /**
+   * Minimum length (in seconds) of an ad-slot's rented calendar window: the
+   * floor on an ad's [start, deadline) span, so a slot cannot be let for an
+   * impossibly-short flash.
+   */
+  optional int64 min_ad_window = 32;
+
+  reserved 33;  // was max_work_window (removed with the delivery types)
+
+  /**
+   * DEFAULT admission caps for the jobs board: the maximum number of live
+   * jobs in total, per poster, linked to one entity, and of wanted pools
+   * stacked on one target name.  A POST past a cap is rejected, which gives
+   * every atomic settlement sweep (expiry, linked-entity destruction,
+   * bounty payout) a hard deterministic ceiling without touching the
+   * settlement semantics of rows already admitted.  These are the roconfig
+   * DEFAULTS: the effective values are runtime-tunable through the
+   * "param" admin command (consensus state in the parameters table), so
+   * the limits can be adjusted -- or posting frozen entirely with 0 --
+   * without a redeploy while the economy stabilises.
+   */
+  optional int64 max_live_jobs = 34;
+  optional int64 max_jobs_per_poster = 35;
+  optional int64 max_jobs_per_linked_entity = 36;
+  optional int64 max_bounty_pools_per_target = 37;
+
+  /**
+   * Batch size for the deterministic history-retention prune: at most this
+   * many expired job_history rows (ordered by settled_time then id) are
+   * deleted per superblock sweep, so one huge cohort ageing out cannot
+   * force an unbounded single-statement delete -- the remainder drains on
+   * subsequent sweeps.  History is display-only, so the delayed deletion
+   * reopens no gameplay inputs.
+   */
+  optional int64 jobs_history_prune_batch = 38;
+
+  /**
+   * DEFAULT minimum rewards (whole vCHI), runtime-tunable like the caps
+   * ("min-job-reward" / "min-bounty-reward").  Every post must escrow at
+   * least min_job_reward; a wanted pool must escrow at least the (larger)
+   * min_bounty_reward.  Together with the proportional posting fee this
+   * keeps the capped board slots -- especially a target's bounty-pool
+   * slots -- from being monopolised for pocket change: filling them means
+   * locking real value per slot.
+   */
+  optional int64 min_job_reward = 39;
+  optional int64 min_bounty_reward = 40;
+
+  /**
+   * DEFAULT escrow-deal economics, runtime-tunable like the other jobs
+   * parameters ("min-deal-reward" / "deal-max-collateral-bps" /
+   * "deal-max-collateral" / "deal-max-fee-bps" / "deal-tax-bps").  A deal
+   * escrows at least min_deal_reward; its worker collateral is bounded by
+   * BOTH reward * deal_max_collateral_bps / 10000 and the absolute
+   * deal_max_collateral; the poster's arbiter fee is capped at
+   * deal_max_fee_bps; and deal_tax_bps is the protocol tax snapshot into
+   * each row at post (burned at settlement until a faction treasury
+   * exists).  Post validation enforces tax + fee < 10000 on the snapshot
+   * values, so no admissible row can ever violate the settlement-math
+   * precondition, whatever these are retuned to later.
+   */
+  optional int64 min_deal_reward = 41;
+  optional uint32 deal_max_collateral_bps = 42;
+  optional int64 deal_max_collateral = 43;
+  optional uint32 deal_max_fee_bps = 44;
+  optional uint32 deal_tax_bps = 45;
+
 }
 
 /* ************************************************************************** */

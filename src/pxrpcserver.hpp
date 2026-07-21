@@ -201,6 +201,18 @@ public:
 
   Json::Value getaccounts () override;
   Json::Value getbuildings () override;
+  /* There is deliberately no whole-board getjobs method: every jobs read on
+     the public connector is hard-capped (getjobspage / getjobshistory), and
+     the full board is only reachable through the whole-state export like any
+     other table.  */
+  Json::Value getjobspage (const std::string& afterId, int limit) override;
+  /* Params are declared in the order jsonrpcstub binds them (alphabetical by
+     name: afterid, aftertime, fromtime), NOT the semantic order -- the cursor
+     values are int64 (settled_time and the global-sequence job id), passed as
+     decimal strings so they are not truncated at the JSON-RPC integer width.  */
+  Json::Value getjobshistory (const std::string& afterId,
+                              const std::string& afterTime,
+                              const std::string& fromTime, int limit) override;
   Json::Value getcharacters () override;
   Json::Value getgroundloot () override;
   Json::Value getongoings () override;

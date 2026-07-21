@@ -32,6 +32,7 @@
 #include "database/dex.hpp"
 #include "database/faction.hpp"
 #include "database/inventory.hpp"
+#include "database/jobs.hpp"
 #include "database/ongoing.hpp"
 #include "database/region.hpp"
 #include "hexagonal/coord.hpp"
@@ -42,6 +43,7 @@
 
 #include <json/json.h>
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -168,6 +170,21 @@ protected:
                    sbHeight, ctx.BlockHeight (), ctx.Timestamp ());
     FameUpdater fame(db, newCtx);
     PXLogic::UpdateState (db, fame, rnd, newCtx, true, BuildBlockData (moves));
+  }
+
+  /**
+   * Calls PXLogic::UpdateState with an explicit superBlock flag, so tests
+   * can drive ORDINARY blocks (moves processed, no superblock phases) as
+   * the real per-block dispatch does.
+   */
+  void
+  UpdateStateBlock (const std::string& movesStr, const bool superBlock)
+  {
+    Context newCtx(ctx.Chain (), ctx.Map (),
+                   ctx.Height (), ctx.BlockHeight (), ctx.Timestamp ());
+    FameUpdater fame(db, newCtx);
+    PXLogic::UpdateState (db, fame, rnd, newCtx, superBlock,
+                          BuildBlockData (ParseJson (movesStr)));
   }
 
   /**
@@ -551,6 +568,146 @@ TEST_F (PXLogicTests, MenteconAlteration)
   EXPECT_EQ (characters.GetById (ids[1])->GetHP ().armour (), 79);
 }
 
+TEST_F (PXLogicTests, MenteconFriendlyFireExcludedFromBounty)
+{
+  /* End-to-end regression for the v21 H1 fix (v22 L1): a REAL mentecon
+     friendly-fire kill flows through the combat damage lists into the
+     wanted-bounty kill hook, and the same-faction filter drops the confused
+     ally while the genuine enemy hunter is still paid the whole tranche.
+     Unlike the WantedTests unit cases (which inject DamageLists rows
+     synthetically), this exercises actual target-finding, real dl.AddEntry, a
+     real death, and the automatic bounties.UpdateForKill hook inside
+     UpdateState -- the full production path the review asked to see.  */
+
+  /* The victim: green, no attacks, thin armour, and the bounty target.  */
+  auto v = CreateCharacter ("green", Faction::GREEN);
+  const auto victimId = v->GetId ();
+  v->SetPosition (HexCoord (0, 0));
+  v->MutableHP ().set_shield (0);
+  v->MutableHP ().set_armour (10);
+  v.reset ();
+
+  /* A same-faction ally, mentecon-confused into hitting the victim: its
+     range-1 attack can only reach the victim (its sole in-range target once
+     confused, so target selection is deterministic).  */
+  auto a = CreateCharacter ("greenmate", Faction::GREEN);
+  a->SetPosition (HexCoord (1, 0));
+  AddUnityAttack (*a, 1);
+  a.reset ();
+
+  /* A genuine enemy hunter (range-1) -- the only legitimate claimant.  */
+  auto h = CreateCharacter ("courier", Faction::RED);
+  h->SetPosition (HexCoord (-1, 0));
+  AddUnityAttack (*h, 1);
+  h.reset ();
+
+  /* The trigger: an enemy whose sole attack carries the mentecon effect and
+     deals no damage, so it re-confuses the ally every block yet never lands on
+     any damage list.  Its closest green enemy is the ally.  */
+  auto t = CreateCharacter ("trig", Faction::RED);
+  t->SetPosition (HexCoord (3, 0));
+  auto* trigAttack = t->MutableProto ().mutable_combat_data ()->add_attacks ();
+  trigAttack->set_range (10);
+  trigAttack->mutable_effects ()->set_mentecon (true);
+  t.reset ();
+
+  /* An initialised poster and a wanted pool on the victim's owner, created
+     directly exactly as WantedPredicate::ApplyPost would (reward 9000, quota 3
+     => tranche 3000).  */
+  accounts.CreateNew ("poster")->SetFaction (Faction::RED);
+  Database::IdT jobId;
+  {
+    JobsTable jobsTbl(db);
+    auto j = jobsTbl.CreateNew (Job::Type::WANTED, Faction::INVALID, "poster",
+                                9000, 0);
+    jobId = j->GetId ();
+    j->SetLinkedName ("green");
+    auto* wp = j->MutableProto ().mutable_wanted ();
+    wp->set_quota (3);
+    wp->set_remaining (3);
+    wp->set_tranche (3000);
+  }
+
+  /* Run real combat until the victim dies (stops early on death).  */
+  for (unsigned i = 0; i < 20 && characters.GetById (victimId) != nullptr; ++i)
+    UpdateState ("[]");
+
+  /* It really died in combat, with both the ally and the hunter on its damage
+     list.  */
+  EXPECT_EQ (characters.GetById (victimId), nullptr);
+
+  /* The same-faction ally is filtered out; the enemy hunter takes the WHOLE
+     tranche (not a diluted share), the ally is credited nothing.  */
+  EXPECT_EQ (accounts.GetByName ("courier")->GetBalance (), 3000);
+  EXPECT_EQ (accounts.GetByName ("greenmate")->GetBalance (), 0);
+
+  /* Exactly one tranche was consumed off the pool.  */
+  {
+    JobsTable jobsTbl(db);
+    auto j = jobsTbl.GetById (jobId);
+    ASSERT_NE (j, nullptr);
+    EXPECT_EQ (j->GetProto ().wanted ().remaining (), 2);
+    EXPECT_EQ (j->GetReward (), 6000);
+  }
+
+  ValidateState ();
+}
+
+TEST_F (PXLogicTests, MenteconFriendlyOnlyKillPaysNothing)
+{
+  /* Companion to the above (v22 L1): when the ONLY attacker on the victim's
+     damage list is a mentecon-confused same-faction ally -- no genuine enemy
+     hunter -- the eligible set is empty, so the real death pays nobody and the
+     pool is untouched (the H1 exploit the target hoped for yields it nothing).  */
+  auto v = CreateCharacter ("green", Faction::GREEN);
+  const auto victimId = v->GetId ();
+  v->SetPosition (HexCoord (0, 0));
+  v->MutableHP ().set_shield (0);
+  v->MutableHP ().set_armour (6);
+  v.reset ();
+
+  auto a = CreateCharacter ("greenmate", Faction::GREEN);
+  a->SetPosition (HexCoord (1, 0));
+  AddUnityAttack (*a, 1);
+  a.reset ();
+
+  auto t = CreateCharacter ("trig", Faction::RED);
+  t->SetPosition (HexCoord (3, 0));
+  auto* trigAttack = t->MutableProto ().mutable_combat_data ()->add_attacks ();
+  trigAttack->set_range (10);
+  trigAttack->mutable_effects ()->set_mentecon (true);
+  t.reset ();
+
+  accounts.CreateNew ("poster")->SetFaction (Faction::RED);
+  Database::IdT jobId;
+  {
+    JobsTable jobsTbl(db);
+    auto j = jobsTbl.CreateNew (Job::Type::WANTED, Faction::INVALID, "poster",
+                                9000, 0);
+    jobId = j->GetId ();
+    j->SetLinkedName ("green");
+    auto* wp = j->MutableProto ().mutable_wanted ();
+    wp->set_quota (3);
+    wp->set_remaining (3);
+    wp->set_tranche (3000);
+  }
+
+  for (unsigned i = 0; i < 20 && characters.GetById (victimId) != nullptr; ++i)
+    UpdateState ("[]");
+
+  EXPECT_EQ (characters.GetById (victimId), nullptr);
+  EXPECT_EQ (accounts.GetByName ("greenmate")->GetBalance (), 0);
+  {
+    JobsTable jobsTbl(db);
+    auto j = jobsTbl.GetById (jobId);
+    ASSERT_NE (j, nullptr);
+    EXPECT_EQ (j->GetProto ().wanted ().remaining (), 3);
+    EXPECT_EQ (j->GetReward (), 9000);
+  }
+
+  ValidateState ();
+}
+
 TEST_F (PXLogicTests, PickUpDeadDrop)
 {
   const HexCoord pos(10, 20);
@@ -608,6 +765,153 @@ TEST_F (PXLogicTests, PickUpDeadDrop)
   ASSERT_TRUE (c != nullptr);
   EXPECT_EQ (c->GetInventory ().GetFungibleCount ("foo"), 3);
   c.reset ();
+}
+
+/* ************************************************************************** */
+
+TEST_F (PXLogicTests, JobsExpireOnlyOnSuperblocks)
+{
+  /* ExpireJobs is gated inside the superblock branch while moves run on
+     every block:  a deadline passing on an ordinary block must NOT settle
+     the job -- it stays on the board until the next superblock sweep.  */
+  for (const auto* name : {"poster", "courier"})
+    {
+      auto a = accounts.CreateNew (name);
+      a->SetFaction (Faction::RED);
+      a->AddBalance (1'000'000);
+    }
+
+  UpdateStateBlock (R"([
+    {"name": "poster", "move": {"j": [{
+      "t": "deal", "d": 86400, "r": 2000, "co": 0, "terms": "x"
+    }]}}
+  ])", true);
+
+  JobsTable jobs(db);
+  Database::IdT jobId;
+  {
+    auto res = jobs.QueryAll ();
+    ASSERT_TRUE (res.Step ());
+    jobId = jobs.GetFromResult (res)->GetId ();
+    ASSERT_FALSE (res.Step ());
+  }
+  ASSERT_EQ (accounts.GetByName ("poster")->GetBalance (),
+             1'000'000 - 2'000 - 20);
+
+  /* The deadline passes, but the block is ordinary:  the overdue job must
+     survive it untouched -- and an accept landing in this move-before-sweep
+     window (otherwise perfectly valid) must not resurrect a listing whose
+     void at the sweep is already determined.  */
+  ctx.SetTimestamp (ctx.Timestamp () + 86401);
+  UpdateStateBlock (R"([
+    {"name": "courier", "move": {"j": [{"a": )"
+      + std::to_string (jobId) + R"(}]}}
+  ])", false);
+  {
+    auto j = jobs.GetById (jobId);
+    ASSERT_NE (j, nullptr);
+    EXPECT_EQ (j->GetStatus (), Job::Status::OPEN);
+  }
+  EXPECT_EQ (accounts.GetByName ("poster")->GetBalance (),
+             1'000'000 - 2'000 - 20);
+
+  /* Likewise the poster's own assign and cancel in the same gap:  a due
+     job is the sweep's alone -- a gap-assign would write dead designation
+     data, and a gap-cancel would record CANCELLED history for a job that
+     expired.  */
+  UpdateStateBlock (R"([
+    {"name": "poster", "move": {"j": [
+      {"s": )" + std::to_string (jobId) + R"(, "w": "courier"},
+      {"c": )" + std::to_string (jobId) + R"(}
+    ]}}
+  ])", false);
+  {
+    auto j = jobs.GetById (jobId);
+    ASSERT_NE (j, nullptr);
+    EXPECT_EQ (j->GetStatus (), Job::Status::OPEN);
+    EXPECT_EQ (j->GetProto ().designated_worker (), "");
+  }
+  EXPECT_EQ (accounts.GetByName ("poster")->GetBalance (),
+             1'000'000 - 2'000 - 20);
+
+  /* The next superblock sweeps it:  the OPEN job voids and refunds.  */
+  UpdateStateBlock ("[]", true);
+  EXPECT_EQ (jobs.GetById (jobId), nullptr);
+  EXPECT_EQ (accounts.GetByName ("poster")->GetBalance (), 1'000'000 - 20);
+}
+
+TEST_F (PXLogicTests, JobsAdSaleVoidsDueAcceptedInGap)
+{
+  /* Selling the linked building voids ALL its ad slots unconditionally --
+     including an ACCEPTED ad already past its deadline but not yet swept
+     (explicit policy, see AdPredicate::OnLinkedBuildingTransferred).  This
+     drives the real b.send move through an ordinary block in exactly that
+     gap and pins the VOID outcome, the refund and the ownership change.  */
+  {
+    auto a = accounts.CreateNew ("advertiser");
+    a->SetFaction (Faction::GREEN);
+    a->AddBalance (1'000'000);
+  }
+  for (const auto* name : {"owner", "buyer"})
+    {
+      auto a = accounts.CreateNew (name);
+      a->SetFaction (Faction::RED);
+      a->AddBalance (1'000'000);
+    }
+  const auto bId
+      = CreateBuilding ("checkmark", "owner", Faction::RED)->GetId ();
+
+  UpdateStateBlock (R"([
+    {"name": "advertiser", "move": {"j": [{
+      "t": "ad", "d": 86400, "r": 500, "co": 0,
+      "b": )" + std::to_string (bId) + R"(, "slot": 1, "hash": "deadbeef"
+    }]}}
+  ])", true);
+
+  JobsTable jobs(db);
+  Database::IdT adId;
+  {
+    auto res = jobs.QueryAll ();
+    ASSERT_TRUE (res.Step ());
+    adId = jobs.GetFromResult (res)->GetId ();
+    ASSERT_FALSE (res.Step ());
+  }
+  ASSERT_EQ (accounts.GetByName ("advertiser")->GetBalance (),
+             1'000'000 - 500 - 5);
+
+  UpdateStateBlock (R"([
+    {"name": "owner", "move": {"j": [{"a": )" + std::to_string (adId)
+      + R"(}]}}
+  ])", false);
+  ASSERT_EQ (jobs.GetById (adId)->GetStatus (), Job::Status::ACCEPTED);
+
+  /* The rental window ends on an ordinary block:  the due ad survives
+     unswept, still holding the rent in escrow.  */
+  ctx.SetTimestamp (ctx.Timestamp () + 86401);
+  UpdateStateBlock ("[]", false);
+  ASSERT_EQ (jobs.GetById (adId)->GetStatus (), Job::Status::ACCEPTED);
+
+  /* The owner sells the building in the gap:  the sale voids the due ad
+     and refunds the advertiser -- the owner walks away from the rent, and
+     the buyer takes the building with clean slots.  */
+  UpdateStateBlock (R"([
+    {"name": "owner", "move": {"b": {"id": )" + std::to_string (bId)
+      + R"(, "send": "buyer"}}}
+  ])", false);
+  EXPECT_EQ (buildings.GetById (bId)->GetOwner (), "buyer");
+  EXPECT_EQ (jobs.GetById (adId), nullptr);
+  EXPECT_EQ (accounts.GetByName ("advertiser")->GetBalance (),
+             1'000'000 - 5);
+  EXPECT_EQ (accounts.GetByName ("owner")->GetBalance (), 1'000'000);
+
+  {
+    auto res = jobs.QueryHistory (0);
+    ASSERT_TRUE (res.Step ());
+    auto e = jobs.GetFromResult (res);
+    EXPECT_EQ (e->GetId (), adId);
+    EXPECT_EQ (e->GetOutcome (), JobOutcome::VOID);
+    ASSERT_FALSE (res.Step ());
+  }
 }
 
 TEST_F (PXLogicTests, DamageLists)
