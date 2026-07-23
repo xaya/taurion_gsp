@@ -1638,6 +1638,157 @@ TEST_F (DealTests, ArbiterGhostsAfterCounterpartyDisputeSplits)
   EXPECT_FALSE (h["feepaid"].asBool ());   // arbiter bound but unpaid
 }
 
+/* -- terminal-action race pins (§12 v1 rule) ------------------------------- *
+   No protocol reaction window: a confirm or dispute landing in the final block
+   before the deadline is terminal; the counterparty's (and, for a dispute, the
+   bound arbiter's) answer window is the deal's WHOLE duration, not a post-action
+   grace.  The miss case -- an op arriving AT the deadline (JobIsDue's exclusive
+   boundary) -- is costless.  No other DealTests case exercises this timing edge.
+   ------------------------------------------------------------------------- */
+
+TEST_F (DealTests, LastBlockConfirmSettlesSingleConfirm)
+{
+  /* A confirm landing in the final block before the deadline is terminal: the
+     poster's dispute window was the WHOLE deal duration, not a post-confirm
+     grace (v1 §12 pin -- no reaction window).  One second before the end the
+     worker's confirm still validates, and the sweep settles the resulting
+     single confirm at p=100 toward the worker (5000 - 150 tax - 500 fee + 5000
+     collateral = 9350; arbiter 500; poster 0).  */
+  const auto id = PostAcceptDeal ();
+  const std::string dl = std::to_string (id);
+  ctx.SetTimestamp (BASE_TS + DAY - 1);
+  EXPECT_TRUE (Process ("courier", R"({"dl":)" + dl + R"(,"confirm":true})"));
+  Expire ();
+  EXPECT_FALSE (JobExists (id));
+  EXPECT_EQ (Balance ("courier"), 1000000 - 5000 + 9350);
+  EXPECT_EQ (Balance ("courier2"), 1000000 + 500);
+  EXPECT_EQ (Balance ("poster"), 1000000 - 5000 - 50);
+  const Json::Value h = HistoryJson (id);
+  EXPECT_EQ (h["mode"].asString (), "single-confirm");
+  EXPECT_EQ (h["settledp"].asUInt (), 100u);
+  EXPECT_TRUE (h["feepaid"].asBool ());
+}
+
+TEST_F (DealTests, LastBlockPosterConfirmSettlesSingleConfirm)
+{
+  /* The mirror of the previous pin: the POSTER (not the worker) confirms in the
+     final block.  A single confirm settles p=100 toward the WORKER regardless
+     of which party confirmed -- the confirm only waives the confirmer's OWN
+     dispute right, and the unconfirmed counterparty ran out its whole duration
+     without acting (v1 §12: no post-confirm grace).  Same balances as (1).  */
+  const auto id = PostAcceptDeal ();
+  const std::string dl = std::to_string (id);
+  ctx.SetTimestamp (BASE_TS + DAY - 1);
+  EXPECT_TRUE (Process ("poster", R"({"dl":)" + dl + R"(,"confirm":true})"));
+  Expire ();
+  EXPECT_FALSE (JobExists (id));
+  EXPECT_EQ (Balance ("courier"), 1000000 - 5000 + 9350);
+  EXPECT_EQ (Balance ("courier2"), 1000000 + 500);
+  EXPECT_EQ (Balance ("poster"), 1000000 - 5000 - 50);
+  const Json::Value h = HistoryJson (id);
+  EXPECT_EQ (h["mode"].asString (), "single-confirm");
+  EXPECT_EQ (h["settledp"].asUInt (), 100u);
+  EXPECT_TRUE (h["feepaid"].asBool ());
+}
+
+TEST_F (DealTests, ConfirmAtDeadlineRejectedRefundsBoth)
+{
+  /* The miss case of the last-block gamble is COSTLESS: a confirm arriving AT
+     the deadline (JobIsDue's exclusive boundary, deadline <= now) is rejected,
+     and with neither party having acted the sweep refunds both stakes untaxed.
+     This free-option property is pinned deliberately so that any future change
+     to it shows up in a diff (v1 §12).  */
+  const auto id = PostAcceptDeal ();
+  const std::string dl = std::to_string (id);
+  ctx.SetTimestamp (BASE_TS + DAY);
+  EXPECT_FALSE (Process ("courier", R"({"dl":)" + dl + R"(,"confirm":true})"));
+  Expire ();
+  EXPECT_FALSE (JobExists (id));
+  EXPECT_EQ (Balance ("courier"), 1000000);
+  EXPECT_EQ (Balance ("poster"), 1000000 - 50);
+  EXPECT_EQ (Balance ("courier2"), 1000000);
+  const Json::Value h = HistoryJson (id);
+  EXPECT_EQ (h["outcome"].asString (), "void");
+  EXPECT_EQ (h["mode"].asString (), "refund");
+  EXPECT_FALSE (h.isMember ("settledp"));
+}
+
+TEST_F (DealTests, ZeroCollateralLastBlockConfirmCapturesFullReward)
+{
+  /* Review H1's worst-case shape, magnitude pinned explicitly: a zero-collateral
+     worker confirming in the final block captures the full TAXED reward with
+     ZERO stake at risk.  A single confirm at p=100 with no arbiter pays
+     5000 - 150 tax = 4850 to a worker that never posted collateral; any future
+     change to the single-confirm rule must move this number in a diff.  */
+  CHECK (Process ("poster",
+      R"({"t":"deal","d":86400,"r":5000,"co":0,"tag":1,"terms":"zc"})"));
+  const auto id = LatestJobId ();
+  const std::string dl = std::to_string (id);
+  CHECK (Process ("courier", R"({"a":)" + std::to_string (id) + "}"));
+  ctx.SetTimestamp (BASE_TS + DAY - 1);
+  EXPECT_TRUE (Process ("courier", R"({"dl":)" + dl + R"(,"confirm":true})"));
+  Expire ();
+  EXPECT_FALSE (JobExists (id));
+  EXPECT_EQ (Balance ("courier"), 1000000 + 4850);
+  EXPECT_EQ (Balance ("poster"), 1000000 - 5000 - 50);
+  const Json::Value h = HistoryJson (id);
+  EXPECT_EQ (h["mode"].asString (), "single-confirm");
+  EXPECT_EQ (h["settledp"].asUInt (), 100u);
+  EXPECT_FALSE (h.isMember ("feepaid"));   // no arbiter bound
+}
+
+TEST_F (DealTests, LastBlockDisputeDeniesArbiterRulingGhostSplits)
+{
+  /* A dispute landing in the final block closes the arbiter's ruling window the
+     instant it lands: at the very next block (the deadline) the bound arbiter's
+     rule is DENIED by JobIsDue, and the sweep falls back to the p=50 ghost split
+     with the fee FORFEITED (worker 4925, poster 4850, arbiter untouched,
+     treasury 225 burned).  Be HONEST about the v1 limitation: this arbiter did
+     NOT ghost -- it was denied a ruling window -- but v1 history cannot tell the
+     two apart (there is no dispute_time; a distinguishing tag is a Phase-2
+     candidate, design tag 13).  This is exactly why §12 pins that a v1
+     fee_paid=false is NOT attributable arbiter fault.  */
+  const auto id = PostAcceptDeal ();
+  const std::string dl = std::to_string (id);
+  ctx.SetTimestamp (BASE_TS + DAY - 1);
+  EXPECT_TRUE (Process ("poster", R"({"dl":)" + dl + R"(,"dispute":true})"));
+  ctx.SetTimestamp (BASE_TS + DAY);
+  EXPECT_FALSE (Process ("courier2", R"({"dl":)" + dl + R"(,"rule":50})"));
+  Expire ();
+  EXPECT_FALSE (JobExists (id));
+  EXPECT_EQ (Balance ("courier"), 1000000 - 5000 + 4925);
+  EXPECT_EQ (Balance ("poster"), 1000000 - 5000 - 50 + 4850);
+  EXPECT_EQ (Balance ("courier2"), 1000000);   // fee forfeited
+  const Json::Value h = HistoryJson (id);
+  EXPECT_EQ (h["mode"].asString (), "ghost-split");
+  EXPECT_EQ (h["settledp"].asUInt (), 50u);
+  EXPECT_FALSE (h["feepaid"].asBool ());
+}
+
+TEST_F (DealTests, NoArbiterZeroCollateralDisputeTakesHalf)
+{
+  /* The R != C asymmetry pin: the §6.4 "symmetric" split property holds only at
+     R == C.  At C = 0 a no-arbiter dispute still moves (R/2)(1 - tax) to a
+     zero-stake, zero-work worker -- 2500 - 75 tax = 2425 -- while the poster
+     keeps the mirrored 2425 and 150 is burned to the treasury.  This is
+     poster-chosen exposure the client MUST warn about (§12); the magnitude is
+     pinned so the asymmetry is visible in any future diff.  */
+  CHECK (Process ("poster",
+      R"({"t":"deal","d":86400,"r":5000,"co":0,"tag":1,"terms":"zc"})"));
+  const auto id = LatestJobId ();
+  const std::string dl = std::to_string (id);
+  CHECK (Process ("courier", R"({"a":)" + std::to_string (id) + "}"));
+  EXPECT_TRUE (Process ("courier", R"({"dl":)" + dl + R"(,"dispute":true})"));
+  Expire ();
+  EXPECT_FALSE (JobExists (id));
+  EXPECT_EQ (Balance ("courier"), 1000000 + 2425);
+  EXPECT_EQ (Balance ("poster"), 1000000 - 5000 - 50 + 2425);
+  const Json::Value h = HistoryJson (id);
+  EXPECT_EQ (h["mode"].asString (), "ghost-split");
+  EXPECT_EQ (h["settledp"].asUInt (), 50u);
+  EXPECT_FALSE (h.isMember ("feepaid"));
+}
+
 TEST_F (DealTests, ProBonoArbiterFeePaidHonoursScheduleAtZeroFee)
 {
   /* L4: fee_paid records that the agreed fee SCHEDULE was honoured, not that

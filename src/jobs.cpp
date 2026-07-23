@@ -697,7 +697,13 @@ DealOperation::IsValid () const
   /* An elapsed deal is the sweep's to settle (see JobIsDue), exactly like
      every other lifecycle op: a confirm, dispute or ruling landing between
      the end date and the next superblock would still change the settlement
-     of a deal whose outcome is already fixed by the state at its deadline.  */
+     of a deal whose outcome is already fixed by the state at its deadline.
+     The end date is therefore a HARD terminal: v1 has no post-action grace or
+     reaction window (design §12).  A confirm or dispute landing in the final
+     block before the deadline is terminal for the counterparty -- its whole
+     answer window was the deal's duration, not a post-action grace -- and a
+     final-block dispute is likewise terminal for the arbiter's ruling window,
+     which closes the instant the dispute lands.  */
   if (JobIsDue (*job, jc))
     {
       LOG (WARNING)
