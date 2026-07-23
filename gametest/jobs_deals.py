@@ -38,6 +38,14 @@ class JobsDealsTest (PXTest):
   def dealStats (self, name):
     return self.getAccounts ()[name].data["dealstats"]
 
+  def historyEntry (self, jobId):
+    """Returns the full settled-jobs history row for a job (or None).  The
+    settlement metadata (mode / settledp / feepaid) rides on this snapshot."""
+    for e in self.historyRows ():
+      if e["id"] == jobId:
+        return e
+    return None
+
   def postFee (self, reward):
     """Mirrors PostOperation::Fee (jobs.cpp): the burned posting fee."""
     p = self.roConfig ().params
@@ -75,6 +83,7 @@ class JobsDealsTest (PXTest):
 
     self.testHappyPathBothConfirm ()
     self.testDisputeArbiterRules ()
+    self.testAtomicConfirmDisputeRule ()
     self.testTimeoutGhostSplits ()
     self.testTimeoutSingleConfirm ()
     self.testTimeoutNeitherRefunds ()
@@ -152,6 +161,17 @@ class JobsDealsTest (PXTest):
     self.sendMove ("worker", {"j": [{"a": jobId}]})
     self.generate (1)
 
+    # H1 probe: a confirmation waives only the confirmer's OWN dispute right.
+    # The worker confirms, so its own later dispute is rejected (disputed stays
+    # false), but the counterparty (poster) may still dispute a shoddy job.
+    self.sendMove ("worker", {"j": [{"dl": jobId, "confirm": True}]})
+    self.generate (1)
+    self.sendMove ("worker", {"j": [{"dl": jobId, "dispute": True}]})
+    self.generate (1)
+    job = next (j for j in self.getJobs () if j["id"] == jobId)
+    self.assertEqual (job["workerConfirmed"], True)
+    self.assertEqual (job["disputed"], False)
+
     self.sendMove ("poster", {"j": [{"dl": jobId, "dispute": True}]})
     self.generate (1)
     job = next (j for j in self.getJobs () if j["id"] == jobId)
@@ -165,9 +185,51 @@ class JobsDealsTest (PXTest):
     self.assertEqual (self.available ("worker"), wBefore - 5000 + 2805)
     self.assertEqual (self.available ("arbiter"), aBefore + 850)
     self.assertEqual (self.historyOutcome (jobId), "completed")
+    # The history snapshot records the actual ruling and the paid fee.
+    entry = self.historyEntry (jobId)
+    self.assertEqual (entry["mode"], "ruling")
+    self.assertEqual (entry["settledp"], 30)
+    self.assertEqual (entry["feepaid"], True)
     stat = self.dealStats ("worker")
     self.assertEqual (stat["completed"], statBefore["completed"] + 1)
     self.assertEqual (stat["value"], statBefore["value"] + 1500)
+
+  def testAtomicConfirmDisputeRule (self):
+    self.mainLogger.info ("Atomic [confirm, dispute, rule:0] cannot pass"
+                          " the confirmation...")
+    pBefore = self.available ("poster")
+    wBefore = self.available ("worker")
+
+    # Poster-as-arbiter: the disclosed self-arbiter arrangement.  The H1
+    # merge-blocker was that this account could confirm (the binding
+    # all-clear), then dispute its own confirmed deal and rule p=0 -- all in
+    # ONE j array.  The move processor validates each op against the evolving
+    # state, so the confirm lands, the self-dispute is barred by it and the
+    # rule finds no dispute: the worker's p=100 protection survives the move.
+    jobId = self.postDeal (arbiter="poster")
+    self.sendMove ("worker", {"j": [{"a": jobId}]})
+    self.generate (1)
+    self.sendMove ("poster", {"j": [{"dl": jobId, "confirm": True},
+                                    {"dl": jobId, "dispute": True},
+                                    {"dl": jobId, "rule": 0}]})
+    self.generate (1)
+    job = next (j for j in self.getJobs () if j["id"] == jobId)
+    self.assertEqual (job["state"], "accepted")
+    self.assertEqual (job["posterConfirmed"], True)
+    self.assertEqual (job["disputed"], False)
+
+    # The worker's confirm completes the both-confirm release at p=100; the
+    # poster == arbiter account collects only its 500 fee.
+    self.sendMove ("worker", {"j": [{"dl": jobId, "confirm": True}]})
+    self.generate (1)
+    assert self.jobGone (jobId)
+    fee = self.postFee (5000)
+    self.assertEqual (self.available ("worker"), wBefore - 5000 + 9350)
+    self.assertEqual (self.available ("poster"), pBefore - 5000 - fee + 500)
+    entry = self.historyEntry (jobId)
+    self.assertEqual (entry["mode"], "both-confirm")
+    self.assertEqual (entry["settledp"], 100)
+    self.assertEqual (entry["feepaid"], True)
 
   def testTimeoutGhostSplits (self):
     self.mainLogger.info ("A ghosted arbiter falls back to the 50/50 sweep...")
@@ -231,6 +293,12 @@ class JobsDealsTest (PXTest):
     self.assertEqual (self.reserved ("worker"), 0)
     self.assertEqual (self.available ("arbiter"), aBefore)
     self.assertEqual (self.historyOutcome (jobId), "void")
+    # The refund is stamped on the snapshot: no p transacted, and the bound
+    # arbiter was never paid.
+    entry = self.historyEntry (jobId)
+    self.assertEqual (entry["mode"], "refund")
+    assert "settledp" not in entry
+    self.assertEqual (entry["feepaid"], False)
 
   def testCancelBeforeAccept (self):
     self.mainLogger.info ("An open deal cancels and refunds the reward...")

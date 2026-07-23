@@ -713,6 +713,18 @@ template <typename J>
         res["posterConfirmed"] = dp.poster_confirmed ();
         res["workerConfirmed"] = dp.worker_confirmed ();
         res["disputed"] = dp.disputed ();
+        /* The settlement metadata is stamped only on the history snapshot, so
+           these keys appear on settled rows and never on the live board.  */
+        if (dp.has_settle_mode ())
+          {
+            const char* mode = DealSettleModeName (dp.settle_mode ());
+            if (mode != nullptr)
+              res["mode"] = mode;
+          }
+        if (dp.has_settled_p ())
+          res["settledp"] = IntToJson (dp.settled_p ());
+        if (dp.has_fee_paid ())
+          res["feepaid"] = dp.fee_paid ();
       }
       break;
 

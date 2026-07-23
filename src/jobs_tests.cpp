@@ -18,6 +18,7 @@
 
 #include "jobs.hpp"
 
+#include "gamestatejson.hpp"
 #include "jsonutils.hpp"
 #include "testutils.hpp"
 
@@ -923,6 +924,35 @@ protected:
     ExpireJobs (db, ctx);
   }
 
+  /**
+   * Renders the settled-history JSON row for a job id (a null value if the id
+   * is not in history).  The settlement metadata (mode / settledp / feepaid)
+   * is stamped only here, so it is exercised through the same JSON the clients
+   * read.
+   */
+  Json::Value
+  HistoryJson (const Database::IdT id)
+  {
+    GameStateJson gsj(db, ctx);
+    const Json::Value arr = gsj.JobsHistory (0, 0, 0, 0);
+    for (const auto& e : arr)
+      if (e["id"].asUInt64 () == static_cast<Json::UInt64> (id))
+        return e;
+    return Json::Value ();
+  }
+
+  /** Renders the live board JSON row for a job id (null if it is not live).  */
+  Json::Value
+  LiveJson (const Database::IdT id)
+  {
+    GameStateJson gsj(db, ctx);
+    const Json::Value arr = gsj.JobsPage (0, JobsTable::MAX_PAGE);
+    for (const auto& e : arr)
+      if (e["id"].asUInt64 () == static_cast<Json::UInt64> (id))
+        return e;
+    return Json::Value ();
+  }
+
 };
 
 TEST_F (DealTests, HappyPathBothConfirm)
@@ -938,6 +968,12 @@ TEST_F (DealTests, HappyPathBothConfirm)
   EXPECT_EQ (Balance ("courier"), 1000000 - 5000 + 9350);
   EXPECT_EQ (Balance ("courier2"), 1000000 + 500);
   EXPECT_EQ (DealStats ("courier"), std::make_pair (1u, static_cast<Amount> (5000)));
+  /* The history snapshot records how the deal settled.  */
+  const Json::Value h = HistoryJson (id);
+  EXPECT_EQ (h["outcome"].asString (), "completed");
+  EXPECT_EQ (h["mode"].asString (), "both-confirm");
+  EXPECT_EQ (h["settledp"].asUInt (), 100u);
+  EXPECT_TRUE (h["feepaid"].asBool ());
 }
 
 TEST_F (DealTests, DisputeArbiterRulesPartial)
@@ -950,6 +986,11 @@ TEST_F (DealTests, DisputeArbiterRulesPartial)
   /* p=30: worker 2805, poster 6090, arbiter 850, treasury 255.  */
   EXPECT_EQ (Balance ("courier"), 1000000 - 5000 + 2805);
   EXPECT_EQ (Balance ("courier2"), 1000000 + 850);
+  const Json::Value h = HistoryJson (id);
+  EXPECT_EQ (h["outcome"].asString (), "completed");
+  EXPECT_EQ (h["mode"].asString (), "ruling");
+  EXPECT_EQ (h["settledp"].asUInt (), 30u);
+  EXPECT_TRUE (h["feepaid"].asBool ());
 }
 
 TEST_F (DealTests, TimeoutGhostSplits5050)
@@ -965,6 +1006,10 @@ TEST_F (DealTests, TimeoutGhostSplits5050)
      too.  Ruling must always pay the arbiter better than ghosting.  */
   EXPECT_EQ (Balance ("courier"), 1000000 - 5000 + 4925);
   EXPECT_EQ (Balance ("courier2"), 1000000);
+  const Json::Value h = HistoryJson (id);
+  EXPECT_EQ (h["mode"].asString (), "ghost-split");
+  EXPECT_EQ (h["settledp"].asUInt (), 50u);
+  EXPECT_FALSE (h["feepaid"].asBool ());   // the arbiter forfeited its fee
 }
 
 TEST_F (DealTests, TimeoutSingleConfirmPaysWorker)
@@ -977,6 +1022,10 @@ TEST_F (DealTests, TimeoutSingleConfirmPaysWorker)
   /* one confirm at timeout => p=100.  */
   EXPECT_EQ (Balance ("courier"), 1000000 - 5000 + 9350);
   EXPECT_EQ (Balance ("courier2"), 1000000 + 500);
+  const Json::Value h = HistoryJson (id);
+  EXPECT_EQ (h["mode"].asString (), "single-confirm");
+  EXPECT_EQ (h["settledp"].asUInt (), 100u);
+  EXPECT_TRUE (h["feepaid"].asBool ());
 }
 
 TEST_F (DealTests, TimeoutNeitherConfirmRefundsBoth)
@@ -984,9 +1033,35 @@ TEST_F (DealTests, TimeoutNeitherConfirmRefundsBoth)
   const auto id = PostAcceptDeal ();
   Expire ();
   EXPECT_FALSE (JobExists (id));
-  /* refund both: worker <- collateral, poster <- reward, arbiter untouched.  */
+  /* Refund both, arbiter bound: worker <- full collateral, poster <- full
+     reward (only the posting fee was burned at post), arbiter untouched;
+     nothing is taxed or forfeited at settlement.  M1: the untaxed
+     neither-acted refund is the pinned behaviour.  */
   EXPECT_EQ (Balance ("courier"), 1000000);
+  EXPECT_EQ (Balance ("poster"), 1000000 - 50);
   EXPECT_EQ (Balance ("courier2"), 1000000);
+  const Json::Value h = HistoryJson (id);
+  EXPECT_EQ (h["outcome"].asString (), "void");
+  EXPECT_EQ (h["mode"].asString (), "refund");
+  EXPECT_FALSE (h.isMember ("settledp"));   // nothing transacted
+  EXPECT_FALSE (h["feepaid"].asBool ());    // arbiter bound but unpaid
+}
+
+TEST_F (DealTests, TimeoutNeitherConfirmRefundsBothNoArbiter)
+{
+  /* M1, no-arbiter variant: worker <- full collateral, poster <- full reward,
+     nothing burned at settlement; history mode refund with no feepaid key
+     (no arbiter bound) and no settledp.  */
+  const auto id = PostAcceptDeal ("");
+  Expire ();
+  EXPECT_FALSE (JobExists (id));
+  EXPECT_EQ (Balance ("courier"), 1000000);
+  EXPECT_EQ (Balance ("poster"), 1000000 - 50);
+  const Json::Value h = HistoryJson (id);
+  EXPECT_EQ (h["outcome"].asString (), "void");
+  EXPECT_EQ (h["mode"].asString (), "refund");
+  EXPECT_FALSE (h.isMember ("settledp"));
+  EXPECT_FALSE (h.isMember ("feepaid"));
 }
 
 TEST_F (DealTests, NoArbiterHappyPath)
@@ -1147,8 +1222,11 @@ TEST_F (DealTests, LifecycleOpsRejectedAtDeadline)
   /* Confirm, dispute and rule are the sweep's to reject once the end date
      is reached (JobIsDue), like every other lifecycle op: otherwise a
      confirm in the deadline-to-sweep gap would flip a settlement already
-     fixed by the state at the deadline.  Here neither party acted, so the
-     sweep must refund BOTH stakes despite the late confirm attempt.  */
+     fixed by the state at the deadline.  JobIsDue uses the exclusive boundary
+     (deadline <= now), so the timestamp here is set EXACTLY to the deadline
+     to pin that all three ops are rejected at now == deadline.  Here neither
+     party acted, so the sweep must refund BOTH stakes despite the late
+     confirm attempt.  */
   const auto id = PostAcceptDeal ();
   const std::string dl = std::to_string (id);
   ctx.SetTimestamp (BASE_TS + DAY);
@@ -1220,6 +1298,13 @@ TEST_F (DealTests, RuleZeroFailsWorkerWithoutReputation)
   EXPECT_EQ (Balance ("courier2"), 1000000 + 1000);
   EXPECT_EQ (Balance ("poster"), 1000000 - 5000 - 50 + 8700);
   EXPECT_EQ (DealStats ("courier"), std::make_pair (0u, static_cast<Amount> (0)));
+  /* A p=0 ruling still records the actual ruling (settledp 0) and the paid
+     fee; the outcome stays "failed" (the client renders it neutrally).  */
+  const Json::Value h = HistoryJson (id);
+  EXPECT_EQ (h["outcome"].asString (), "failed");
+  EXPECT_EQ (h["mode"].asString (), "ruling");
+  EXPECT_EQ (h["settledp"].asUInt (), 0u);
+  EXPECT_TRUE (h["feepaid"].asBool ());
 }
 
 TEST_F (DealTests, NonPartiesCannotTouch)
@@ -1310,6 +1395,155 @@ TEST_F (DealTests, SweepSettlesManyDealsAtOnce)
      nothing here (10*300/10000 = 0 per share), the 50/50 ones likewise
      round to zero -- so exactly the fees are gone.  */
   EXPECT_EQ (before - after, static_cast<Amount> (N));
+}
+
+TEST_F (DealTests, ConfirmBarsOwnDisputePoster)
+{
+  /* H1: a confirmation waives only the confirmer's OWN dispute right, so the
+     poster cannot revoke its confirm by disputing afterwards.  */
+  const auto id = PostAcceptDeal ();
+  const std::string dl = std::to_string (id);
+  EXPECT_TRUE (Process ("poster", R"({"dl":)" + dl + R"(,"confirm":true})"));
+  EXPECT_FALSE (Process ("poster", R"({"dl":)" + dl + R"(,"dispute":true})"));
+  EXPECT_TRUE (JobExists (id));
+  EXPECT_FALSE (jobs.GetById (id)->GetProto ().deal ().disputed ());
+}
+
+TEST_F (DealTests, ConfirmBarsOwnDisputeWorker)
+{
+  /* H1, the worker's mirror image of the guard.  */
+  const auto id = PostAcceptDeal ();
+  const std::string dl = std::to_string (id);
+  EXPECT_TRUE (Process ("courier", R"({"dl":)" + dl + R"(,"confirm":true})"));
+  EXPECT_FALSE (Process ("courier", R"({"dl":)" + dl + R"(,"dispute":true})"));
+  EXPECT_TRUE (JobExists (id));
+  EXPECT_FALSE (jobs.GetById (id)->GetProto ().deal ().disputed ());
+}
+
+TEST_F (DealTests, ConfirmerCounterpartyMayStillDispute)
+{
+  /* H1: the poster's confirm does NOT waive the worker's dispute right -- the
+     counterparty may still contest a shoddy job.  */
+  const auto id = PostAcceptDeal ();
+  const std::string dl = std::to_string (id);
+  EXPECT_TRUE (Process ("poster", R"({"dl":)" + dl + R"(,"confirm":true})"));
+  EXPECT_TRUE (Process ("courier", R"({"dl":)" + dl + R"(,"dispute":true})"));
+  EXPECT_TRUE (jobs.GetById (id)->GetProto ().deal ().disputed ());
+}
+
+TEST_F (DealTests, WorkerConfirmPosterMayStillDispute)
+{
+  /* H1: the worker's confirm does NOT waive the poster's dispute right.  */
+  const auto id = PostAcceptDeal ();
+  const std::string dl = std::to_string (id);
+  EXPECT_TRUE (Process ("courier", R"({"dl":)" + dl + R"(,"confirm":true})"));
+  EXPECT_TRUE (Process ("poster", R"({"dl":)" + dl + R"(,"dispute":true})"));
+  EXPECT_TRUE (jobs.GetById (id)->GetProto ().deal ().disputed ());
+}
+
+TEST_F (DealTests, PosterArbiterCannotConfirmThenDisputeRule)
+{
+  /* H1, the merge-blocker scenario: a poster-as-arbiter that confirms cannot
+     then dispute its own confirmed deal and rule p=0 to seize the escrow.
+     The ops run here as consecutive Process calls, which is exactly how a
+     single j array traverses the move processor too (TryJobOperations
+     validates each op against the evolving state right before executing it);
+     the atomic one-move form is pinned end-to-end in jobs_deals.py.  The
+     confirm lands, the self-dispute is barred by the confirm, and the rule
+     has no dispute to act on.  The deal stays ACCEPTED with the worker's
+     full p=100 protection intact.  */
+  const auto id = PostAcceptDeal ("poster");   // poster is the arbiter
+  const std::string dl = std::to_string (id);
+  EXPECT_TRUE (Process ("poster", R"({"dl":)" + dl + R"(,"confirm":true})"));
+  EXPECT_FALSE (Process ("poster", R"({"dl":)" + dl + R"(,"dispute":true})"));
+  EXPECT_FALSE (Process ("poster", R"({"dl":)" + dl + R"(,"rule":0})"));
+  {
+    auto j = jobs.GetById (id);
+    ASSERT_NE (j, nullptr);
+    EXPECT_EQ (j->GetStatus (), Job::Status::ACCEPTED);
+    EXPECT_TRUE (j->GetProto ().deal ().poster_confirmed ());
+    EXPECT_FALSE (j->GetProto ().deal ().disputed ());
+  }
+  /* The worker confirms -> both-confirm settles at p=100 with exact balances;
+     the poster == arbiter account collects only the 500 fee (its poster
+     share is 0).  */
+  EXPECT_TRUE (Process ("courier", R"({"dl":)" + dl + R"(,"confirm":true})"));
+  EXPECT_FALSE (JobExists (id));
+  EXPECT_EQ (Balance ("courier"), 1000000 - 5000 + 9350);
+  EXPECT_EQ (Balance ("poster"), 1000000 - 5000 - 50 + 500);
+}
+
+TEST_F (DealTests, NoArbiterConfirmerCannotForceGhostSplit)
+{
+  /* H1, no-arbiter: a party that confirmed cannot then dispute to drag an
+     honest deal into the 50/50 ghost split; the confirm stands and the sweep
+     settles SINGLE_CONFIRM at p=100 (NOT the 4925 of a 50/50 split).  */
+  const auto id = PostAcceptDeal ("");
+  const std::string dl = std::to_string (id);
+  EXPECT_TRUE (Process ("courier", R"({"dl":)" + dl + R"(,"confirm":true})"));
+  EXPECT_FALSE (Process ("courier", R"({"dl":)" + dl + R"(,"dispute":true})"));
+  Expire ();
+  EXPECT_FALSE (JobExists (id));
+  EXPECT_EQ (Balance ("courier"), 1000000 - 5000 + 9850);
+  const Json::Value h = HistoryJson (id);
+  EXPECT_EQ (h["mode"].asString (), "single-confirm");
+  EXPECT_EQ (h["settledp"].asUInt (), 100u);
+  EXPECT_FALSE (h.isMember ("feepaid"));   // no arbiter bound
+}
+
+TEST_F (DealTests, PostRejectsOverflowTaxFee)
+{
+  /* L1: tax and fee are each bounded in [0, 9999] BEFORE their sum, so a
+     runtime param near 2^62 (whose low 32 bits are non-zero, thus narrowing
+     to a small uint32) cannot overflow the signed sum past the precondition
+     guard and freeze a settlement-halting pair into a row.  No row is
+     created.  2^62 alone would be insufficient (low 32 bits zero).  */
+  constexpr int64_t BIG = (static_cast<int64_t> (1) << 62) + 6000;
+  const std::string big = std::to_string (BIG);
+  params.Set ("deal-tax-bps", BIG);
+  params.Set ("deal-max-fee-bps", BIG);
+  EXPECT_FALSE (Process ("poster",
+      R"({"t":"deal","d":86400,"r":5000,"co":0,)"
+      R"("arbiter":"courier2","fee":)" + big + "}"));
+
+  /* INT64_MAX for both is likewise rejected.  */
+  const int64_t MAX = std::numeric_limits<int64_t>::max ();
+  const std::string maxStr = std::to_string (MAX);
+  params.Set ("deal-tax-bps", MAX);
+  params.Set ("deal-max-fee-bps", MAX);
+  EXPECT_FALSE (Process ("poster",
+      R"({"t":"deal","d":86400,"r":5000,"co":0,)"
+      R"("arbiter":"courier2","fee":)" + maxStr + "}"));
+
+  /* Nothing was admitted to the board.  */
+  auto res = jobs.QueryAll ();
+  EXPECT_FALSE (res.Step ());
+}
+
+TEST_F (DealTests, AssignRestrictsAcceptToDesignatedWorker)
+{
+  /* L3: assignment turns the generic deal into a private / invite-only deal
+     -- the poster designates an exclusive worker and only that worker may
+     accept.  */
+  const auto id = PostDeal ();
+  const std::string sid = std::to_string (id);
+  EXPECT_TRUE (Process ("poster", R"({"s":)" + sid + R"(,"w":"courier"})"));
+  EXPECT_FALSE (Process ("green", R"({"a":)" + sid + "}"));   // not designated
+  EXPECT_TRUE (JobExists (id));
+  EXPECT_TRUE (Process ("courier", R"({"a":)" + sid + "}"));  // the designee
+  EXPECT_EQ (jobs.GetById (id)->GetStatus (), Job::Status::ACCEPTED);
+}
+
+TEST_F (DealTests, LiveBoardRowCarriesNoSettlementMetadata)
+{
+  /* M2: the settle mode / p / fee-paid keys are stamped only on the history
+     snapshot, so a live accepted deal on the board carries none of them.  */
+  const auto id = PostAcceptDeal ();
+  const Json::Value live = LiveJson (id);
+  ASSERT_EQ (live["id"].asUInt64 (), static_cast<Json::UInt64> (id));
+  EXPECT_FALSE (live.isMember ("mode"));
+  EXPECT_FALSE (live.isMember ("settledp"));
+  EXPECT_FALSE (live.isMember ("feepaid"));
 }
 
 TEST_F (AdTests, PostRejectsNullStart)

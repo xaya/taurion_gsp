@@ -755,12 +755,12 @@ public:
     /* The §6.3 settlement precondition (0 <= tax and tax + fee < 10000),
        enforced at the door on the values this row would SNAPSHOT: every
        future settlement of the row must satisfy it whatever the runtime
-       params are later retuned to.  A misconfigured "deal-tax-bps" or
-       "deal-max-fee-bps" thus rejects NEW posts (recoverable by fixing the
-       param) instead of freezing bad bps into rows whose settlement would
-       CHECK-halt every node.  */
+       params are later retuned to.  Each operand is bounded on its own
+       BEFORE the sum -- the runtime params are arbitrary int64s, so an
+       unbounded pair could overflow the signed sum (UB) past this guard and
+       then narrow to small uint32s whose persisted sum halts settlement.  */
     const int64_t tax = DealTaxBps (jc);
-    if (tax < 0 || tax + fee >= 10'000)
+    if (tax < 0 || tax >= 10'000 || fee >= 10'000 || tax + fee >= 10'000)
       {
         LOG (WARNING)
             << "Deal tax " << tax << " + fee " << fee
@@ -851,10 +851,12 @@ public:
          The arbiter FORFEITS its fee here -- it was hired precisely to rule
          this dispute and did not, and paying it anyway would make ghosting
          strictly better than the ruling (which costs a transaction).  */
-      return SettleDeal (jc, job, 50, nullptr, false);
+      return SettleDeal (jc, job, 50, nullptr, false,
+                         proto::DealPayload::GHOST_SPLIT);
     if (d.poster_confirmed () || d.worker_confirmed ())
       /* One side confirmed, the other neither confirmed nor disputed: done.  */
-      return SettleDeal (jc, job, 100, nullptr, true);
+      return SettleDeal (jc, job, 100, nullptr, true,
+                         proto::DealPayload::SINGLE_CONFIRM);
     /* Neither party acted: return both stakes.  */
     return RefundBothDeal (jc, job);
   }
@@ -983,10 +985,20 @@ ComputeDealSettlement (const Amount reward, const Amount collateral,
 }
 
 JobOutcome
-SettleDeal (const JobContext& jc, const Job& job, const int p,
-            Account* const executor, const bool payArbiterFee)
+SettleDeal (const JobContext& jc, Job& job, const int p,
+            Account* const executor, const bool payArbiterFee,
+            const proto::DealPayload::SettleMode mode)
 {
-  const auto& d = job.GetProto ().deal ();
+  /* Stamp the settlement metadata onto the (now dirty) proto BEFORE reading
+     the economics back out of it: WriteHistory serialises this proto into the
+     history snapshot just before the live row is deleted, so the stamps ride
+     onto the history row -- and, since only a settling row is ever stamped,
+     never onto a live one.  */
+  auto& d = *job.MutableProto ().mutable_deal ();
+  d.set_settled_p (p);
+  d.set_settle_mode (mode);
+  if (!d.arbiter ().empty ())
+    d.set_fee_paid (payArbiterFee);
   /* A forfeited fee (the ghosted-dispute timeout) settles as if none had
      been agreed: each party keeps its own fee share.  */
   const int feeBps = payArbiterFee ? d.fee_bps () : 0;
@@ -1033,8 +1045,16 @@ SettleDeal (const JobContext& jc, const Job& job, const int p,
 }
 
 JobOutcome
-RefundBothDeal (const JobContext& jc, const Job& job)
+RefundBothDeal (const JobContext& jc, Job& job)
 {
+  /* Stamp REFUND (no settled_p -- nothing transacted) onto the proto so the
+     history snapshot records how the deal left the board; the stamp rides
+     onto the history row like SettleDeal's (WriteHistory serialises the now
+     dirty proto before deletion).  */
+  auto& d = *job.MutableProto ().mutable_deal ();
+  d.set_settle_mode (proto::DealPayload::REFUND);
+  if (!d.arbiter ().empty ())
+    d.set_fee_paid (false);
   /* Accumulated per name so worker == poster could never double-open a row
      (unreachable today -- accept rejects the poster -- but structural, like
      SettleDeal's credit map).  Hook-path only: no account handle is live.  */

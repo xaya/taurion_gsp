@@ -150,6 +150,38 @@ message DealPayload
    */
   optional bool disputed = 9;
 
+  /**
+   * How a settled deal left the board.  Stamped onto the snapshot written to
+   * the history table just before the live row is deleted; never set on a
+   * live row.
+   */
+  enum SettleMode
+  {
+    BOTH_CONFIRM = 1;    /* both parties confirmed: released at p=100 */
+    RULING = 2;          /* the bound arbiter ruled the recorded p */
+    SINGLE_CONFIRM = 3;  /* end-date sweep, exactly one confirm: p=100 */
+    GHOST_SPLIT = 4;     /* sweep on an unruled dispute: p=50, fee forfeited */
+    REFUND = 5;          /* sweep, neither party acted: both stakes returned */
+  }
+
+  /**
+   * The effective terminal completion percentage the settlement paid out.
+   * Absent on a REFUND (nothing transacted).  Without it, a p=10 and a p=90
+   * ruling would leave identical history rows -- the arbiter-reputation
+   * layer needs the actual ruling.
+   */
+  optional uint32 settled_p = 10;
+
+  /** See SettleMode.  Absent on rows that predate this field.  */
+  optional SettleMode settle_mode = 11;
+
+  /**
+   * Set only when an arbiter is bound: whether the settlement actually paid
+   * the agreed fee (false = forfeited on a ghosted dispute, or never earned
+   * on an untouched refund).
+   */
+  optional bool fee_paid = 12;
+
 }
 
 /**

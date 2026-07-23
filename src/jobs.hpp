@@ -157,17 +157,22 @@ struct JobContext
  * `payArbiterFee` is false only on the ghosted-dispute timeout, where the
  * arbiter FORFEITS its fee (each party keeps its own fee share): paying the
  * full fee for ignoring the one dispute it was hired to rule would make
- * ghosting strictly better than ruling.
+ * ghosting strictly better than ruling.  `mode` records how the deal left the
+ * board: it (with `p` and, for arbiter-bound deals, `payArbiterFee`) is stamped
+ * onto the proto so it rides onto the history snapshot WriteHistory serialises
+ * before the row is deleted -- the live row is never stamped.
  */
-JobOutcome SettleDeal (const JobContext& jc, const Job& job, int p,
-                       Account* executor, bool payArbiterFee);
+JobOutcome SettleDeal (const JobContext& jc, Job& job, int p,
+                       Account* executor, bool payArbiterFee,
+                       proto::DealPayload::SettleMode mode);
 
 /**
  * Refunds both stakes of an ACCEPTED deal (worker <- collateral, poster <-
- * reward): the neither-party-acted timeout.  Returns VOID.  Hook-path only
- * (no live account handles).
+ * reward): the neither-party-acted timeout.  Stamps the REFUND mode onto the
+ * history snapshot (no settled_p: nothing transacted).  Returns VOID.
+ * Hook-path only (no live account handles).
  */
-JobOutcome RefundBothDeal (const JobContext& jc, const Job& job);
+JobOutcome RefundBothDeal (const JobContext& jc, Job& job);
 
 /* ************************************************************************** */
 /* The per-type predicate interface.                                          */
@@ -429,6 +434,9 @@ const char* JobTypeName (Job::Type type);
 
 /** Returns the JSON name for a history outcome, or nullptr if unknown.  */
 const char* JobOutcomeName (JobOutcome outcome);
+
+/** Returns the JSON name for a settled-deal mode, or nullptr if unknown.  */
+const char* DealSettleModeName (proto::DealPayload::SettleMode mode);
 
 /* ************************************************************************** */
 /* The generic move-op lifecycle.                                             */

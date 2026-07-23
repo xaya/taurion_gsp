@@ -99,6 +99,26 @@ JobOutcomeName (const JobOutcome outcome)
     }
 }
 
+const char*
+DealSettleModeName (const proto::DealPayload::SettleMode mode)
+{
+  switch (mode)
+    {
+    case proto::DealPayload::BOTH_CONFIRM:
+      return "both-confirm";
+    case proto::DealPayload::RULING:
+      return "ruling";
+    case proto::DealPayload::SINGLE_CONFIRM:
+      return "single-confirm";
+    case proto::DealPayload::GHOST_SPLIT:
+      return "ghost-split";
+    case proto::DealPayload::REFUND:
+      return "refund";
+    default:
+      return nullptr;
+    }
+}
+
 /* ************************************************************************** */
 /* The generic move-op lifecycle.                                             */
 
@@ -341,11 +361,15 @@ AssignOperation::IsValid () const
           << account.GetName () << " does not own job " << jobId;
       return false;
     }
-  /* Assignment is exclusive-only (design 3.4):  a standing job (e.g. a
-     wanted board) is never accepted by a single worker, so a
-     designated_worker on it would be dead data polluting the public JSON.
-     The type decides, not the deadline column -- a notice-cancelled standing
-     job carries a deadline but is still standing.  */
+  /* Assignment designates an exclusive worker before anyone accepts: on the
+     one assignable type -- the generic deal -- this is the private /
+     invite-only deal, where only the designated worker may accept (the
+     generic accept gate enforces the pin).  A standing job (the wanted board)
+     is never accepted by a single worker, so a designated_worker on it would
+     be dead data polluting the public JSON; the type decides, not the
+     deadline column -- a notice-cancelled standing job carries a deadline but
+     is still standing.  An approval type (the ad slot) manages its own
+     designation and is rejected just below.  */
   const auto* pred = PredicateForType (job->GetType ());
   CHECK (pred != nullptr);
   if (pred->IsStanding ())
@@ -708,6 +732,16 @@ DealOperation::IsValid () const
         return false;
       if (d.disputed ())
         return false;
+      /* A confirmation is irrevocable and waives only the confirmer's OWN
+         dispute right (design §6.2): the counterparty may still dispute a
+         shoddy job.  Without this guard a confirmed all-clear could be
+         revoked -- downgrading the one-confirm p=100 timeout into the
+         disputed 50/50 fallback, or (with a poster-owned arbiter) reopening
+         a ruling path after the worker relied on the confirmation.  */
+      if (me == job->GetPoster () && d.poster_confirmed ())
+        return false;
+      if (me == job->GetWorker () && d.worker_confirmed ())
+        return false;
       return true;
 
     case Kind::RULE:
@@ -739,7 +773,8 @@ DealOperation::Execute ()
       if (d.poster_confirmed () && d.worker_confirmed ())
         {
           /* Both sides agree it is done: release at p=100.  */
-          const JobOutcome oc = SettleDeal (jc, *job, 100, &account, true);
+          const JobOutcome oc = SettleDeal (jc, *job, 100, &account, true,
+                                            proto::DealPayload::BOTH_CONFIRM);
           SettleAndDelete (jc.jobs, std::move (job), oc, jc.ctx);
         }
       /* Otherwise the single confirm persists when the handle destructs.  */
@@ -751,7 +786,8 @@ DealOperation::Execute ()
 
     case Kind::RULE:
       {
-        const JobOutcome oc = SettleDeal (jc, *job, rulP, &account, true);
+        const JobOutcome oc = SettleDeal (jc, *job, rulP, &account, true,
+                                          proto::DealPayload::RULING);
         SettleAndDelete (jc.jobs, std::move (job), oc, jc.ctx);
       }
       return;
