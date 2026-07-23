@@ -87,6 +87,7 @@ class JobsDealsTest (PXTest):
     self.testTimeoutGhostSplits ()
     self.testTimeoutSingleConfirm ()
     self.testTimeoutNeitherRefunds ()
+    self.testNoArbiterDispute ()
     self.testCancelBeforeAccept ()
     self.testRejectsUnknownOp ()
 
@@ -299,6 +300,48 @@ class JobsDealsTest (PXTest):
     self.assertEqual (entry["mode"], "refund")
     assert "settledp" not in entry
     self.assertEqual (entry["feepaid"], False)
+
+  def testNoArbiterDispute (self):
+    self.mainLogger.info ("A no-arbiter dispute forces the free 50/50 sweep...")
+    pBefore = self.available ("poster")
+    wBefore = self.available ("worker")
+    fee = self.postFee (5000)
+
+    # A genuinely no-arbiter deal: the post omits arbiter and fee entirely, so
+    # no ruling can ever settle a dispute here.
+    jobId = self.postDeal (arbiter=None)
+    job = next (j for j in self.getJobs () if j["id"] == jobId)
+    assert "arbiter" not in job
+    self.sendMove ("worker", {"j": [{"a": jobId}]})
+    self.generate (1)
+
+    # The worker confirms; the still-unconfirmed poster keeps its dispute right
+    # (design §6.2) and disputes.  With no arbiter that dispute is unrulable, so
+    # the sweep settles the approved free terminal p=50 ghost split -- NOT the
+    # p=100 single-confirm the worker's confirm alone would have earned.
+    self.sendMove ("worker", {"j": [{"dl": jobId, "confirm": True}]})
+    self.generate (1)
+    self.sendMove ("poster", {"j": [{"dl": jobId, "dispute": True}]})
+    self.generate (1)
+    job = next (j for j in self.getJobs () if j["id"] == jobId)
+    self.assertEqual (job["workerConfirmed"], True)
+    self.assertEqual (job["disputed"], True)
+    deadline = job["deadline"]
+
+    self.expire (deadline)
+    assert self.jobGone (jobId)
+    # p=50, no fee: worker 2500 - 75(tax) + 2500(collateral) = 4925; the poster
+    # reclaims the remaining 4850; treasury 225 burned; no arbiter is paid.
+    self.assertEqual (self.available ("worker"), wBefore - 5000 + 4925)
+    self.assertEqual (self.reserved ("worker"), 0)
+    self.assertEqual (self.available ("poster"), pBefore - 5000 - fee + 4850)
+    self.assertEqual (self.reserved ("poster"), 0)
+    self.assertEqual (self.historyOutcome (jobId), "completed")
+    # The history snapshot records the ghost split with no fee schedule at all.
+    entry = self.historyEntry (jobId)
+    self.assertEqual (entry["mode"], "ghost-split")
+    self.assertEqual (entry["settledp"], 50)
+    assert "feepaid" not in entry
 
   def testCancelBeforeAccept (self):
     self.mainLogger.info ("An open deal cancels and refunds the reward...")

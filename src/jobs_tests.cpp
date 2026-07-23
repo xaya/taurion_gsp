@@ -953,6 +953,27 @@ protected:
     return Json::Value ();
   }
 
+  /**
+   * Asserts the terminal state of a no-arbiter GHOST_SPLIT on the standard
+   * 5000/5000 deal at the default 3% tax.  p=50 pays the worker 4925 (its 2500
+   * reward share minus 75 tax plus its 2500 returned collateral), returns the
+   * poster the remaining 4850 (its 5000 reward and 5000 collateral, less the
+   * worker's 4925 and the 225 burned tax), and burns 225 to the treasury.  The
+   * history records mode ghost-split at settledp 50 with NO feepaid key -- no
+   * arbiter was ever bound, so no fee schedule exists to honour or forfeit.
+   */
+  void
+  ExpectNoArbiterGhostSplit (const Database::IdT id)
+  {
+    EXPECT_FALSE (JobExists (id));
+    EXPECT_EQ (Balance ("courier"), 1000000 - 5000 + 4925);
+    EXPECT_EQ (Balance ("poster"), 1000000 - 5000 - 50 + 4850);
+    const Json::Value h = HistoryJson (id);
+    EXPECT_EQ (h["mode"].asString (), "ghost-split");
+    EXPECT_EQ (h["settledp"].asUInt (), 50u);
+    EXPECT_FALSE (h.isMember ("feepaid"));   // no arbiter bound
+  }
+
 };
 
 TEST_F (DealTests, HappyPathBothConfirm)
@@ -1010,6 +1031,13 @@ TEST_F (DealTests, TimeoutGhostSplits5050)
   EXPECT_EQ (h["mode"].asString (), "ghost-split");
   EXPECT_EQ (h["settledp"].asUInt (), 50u);
   EXPECT_FALSE (h["feepaid"].asBool ());   // the arbiter forfeited its fee
+  /* L3: a ghost split is a tax-bearing settlement with p>0, so it DOES bump
+     the worker's deal record -- deals_completed counts these (not just clean
+     completions), and the value tracks the earned reward share R*50/100 = 2500,
+     not the full 5000 reward.  Phase-2 reputation must read the counter this
+     way.  */
+  EXPECT_EQ (DealStats ("courier"),
+             std::make_pair (1u, static_cast<Amount> (2500)));
 }
 
 TEST_F (DealTests, TimeoutSingleConfirmPaysWorker)
@@ -1544,6 +1572,113 @@ TEST_F (DealTests, LiveBoardRowCarriesNoSettlementMetadata)
   EXPECT_FALSE (live.isMember ("mode"));
   EXPECT_FALSE (live.isMember ("settledp"));
   EXPECT_FALSE (live.isMember ("feepaid"));
+}
+
+TEST_F (DealTests, NoArbiterCounterpartyDisputesAfterWorkerConfirm)
+{
+  /* H1 regression (matrix 1): on a no-arbiter deal a confirmation waives only
+     the confirmer's OWN dispute right, so the still-unconfirmed poster remains
+     free to dispute the worker's confirm.  With no arbiter that dispute can
+     never be ruled, so the sweep settles the blunt 50/50 ghost split -- the
+     approved v1 behaviour (a free terminal p=50 no-arbiter dispute).  */
+  const auto id = PostAcceptDeal ("");
+  const std::string dl = std::to_string (id);
+  EXPECT_TRUE (Process ("courier", R"({"dl":)" + dl + R"(,"confirm":true})"));
+  EXPECT_TRUE (Process ("poster", R"({"dl":)" + dl + R"(,"dispute":true})"));
+  Expire ();
+  ExpectNoArbiterGhostSplit (id);
+}
+
+TEST_F (DealTests, NoArbiterCounterpartyDisputesAfterPosterConfirm)
+{
+  /* H1 regression (matrix 2): the mirror image -- the poster confirms and the
+     still-unconfirmed worker disputes.  Same free no-arbiter p=50 ghost
+     split.  */
+  const auto id = PostAcceptDeal ("");
+  const std::string dl = std::to_string (id);
+  EXPECT_TRUE (Process ("poster", R"({"dl":)" + dl + R"(,"confirm":true})"));
+  EXPECT_TRUE (Process ("courier", R"({"dl":)" + dl + R"(,"dispute":true})"));
+  Expire ();
+  ExpectNoArbiterGhostSplit (id);
+}
+
+TEST_F (DealTests, NoArbiterDisputeWithoutConfirmGhostSplits)
+{
+  /* H1 regression (matrix 3): neither party confirmed, so an unconfirmed party
+     disputes straight from the accepted state.  A dispute -- not the untouched
+     refund -- is what happened, so the sweep settles the p=50 ghost split, NOT
+     the both-stakes refund of the never-touched case.  */
+  const auto id = PostAcceptDeal ("");
+  const std::string dl = std::to_string (id);
+  EXPECT_TRUE (Process ("poster", R"({"dl":)" + dl + R"(,"dispute":true})"));
+  Expire ();
+  ExpectNoArbiterGhostSplit (id);
+}
+
+TEST_F (DealTests, ArbiterGhostsAfterCounterpartyDisputeSplits)
+{
+  /* H1 regression (matrix 5): the arbiter-bound counterparty-dispute shape --
+     the worker confirms, the still-unconfirmed poster disputes, and the bound
+     arbiter never rules.  The sweep falls back to the same p=50 split, and
+     because the arbiter ghosted the one dispute it was hired to rule its fee
+     is FORFEITED: feepaid is stamped false and the arbiter is left untouched
+     (worker 4925, poster 4850, treasury 225 burned).  */
+  const auto id = PostAcceptDeal ();   // courier2 is the arbiter
+  const std::string dl = std::to_string (id);
+  EXPECT_TRUE (Process ("courier", R"({"dl":)" + dl + R"(,"confirm":true})"));
+  EXPECT_TRUE (Process ("poster", R"({"dl":)" + dl + R"(,"dispute":true})"));
+  Expire ();
+  EXPECT_FALSE (JobExists (id));
+  EXPECT_EQ (Balance ("courier"), 1000000 - 5000 + 4925);
+  EXPECT_EQ (Balance ("courier2"), 1000000);   // arbiter forfeited its fee
+  EXPECT_EQ (Balance ("poster"), 1000000 - 5000 - 50 + 4850);
+  const Json::Value h = HistoryJson (id);
+  EXPECT_EQ (h["mode"].asString (), "ghost-split");
+  EXPECT_EQ (h["settledp"].asUInt (), 50u);
+  EXPECT_FALSE (h["feepaid"].asBool ());   // arbiter bound but unpaid
+}
+
+TEST_F (DealTests, ProBonoArbiterFeePaidHonoursScheduleAtZeroFee)
+{
+  /* L4: fee_paid records that the agreed fee SCHEDULE was honoured, not that
+     coins moved.  A pro-bono arbiter (bound, fee_bps 0) that carries the deal
+     to a both-confirm settle honoured its schedule, so history stamps feepaid
+     true even though the arbiter receives nothing -- distinguishing an honest
+     zero-fee settle from a forfeited fee (which stamps false).  */
+  CHECK (Process ("poster",
+      R"({"t":"deal","d":86400,"r":5000,"co":5000,"arbiter":"courier2"})"));
+  const auto id = LatestJobId ();
+  const std::string dl = std::to_string (id);
+  CHECK (Process ("courier", R"({"a":)" + std::to_string (id) + "}"));
+  EXPECT_TRUE (Process ("poster", R"({"dl":)" + dl + R"(,"confirm":true})"));
+  EXPECT_TRUE (Process ("courier", R"({"dl":)" + dl + R"(,"confirm":true})"));
+  EXPECT_FALSE (JobExists (id));
+  /* p=100, fee 0: worker <- 5000 - 150(tax) + 5000(collateral) = 9850; the
+     arbiter is bound but paid nothing.  */
+  EXPECT_EQ (Balance ("courier"), 1000000 - 5000 + 9850);
+  EXPECT_EQ (Balance ("courier2"), 1000000);   // pro-bono: zero coins move
+  const Json::Value h = HistoryJson (id);
+  EXPECT_EQ (h["mode"].asString (), "both-confirm");
+  EXPECT_EQ (h["settledp"].asUInt (), 100u);
+  EXPECT_TRUE (h["feepaid"].asBool ());        // schedule honoured, not forfeited
+}
+
+TEST_F (DealTests, OpenDealExpiresVoidWithoutSettlementKeys)
+{
+  /* L6a: an OPEN deal that is never accepted expires through the void hook,
+     which refunds the poster's reward and touches no deal proto -- the deal
+     settlement path (RefundBothDeal / SettleDeal) never runs.  So the history
+     row records outcome void with NONE of the settlement keys, not even a
+     feepaid, despite an arbiter being named in the posted terms.  */
+  const auto id = PostDeal ();   // arbiter named, but never accepted
+  Expire ();
+  EXPECT_FALSE (JobExists (id));
+  EXPECT_EQ (Balance ("poster"), 1000000 - 50);   // reward refunded, fee burned
+  const Json::Value h = HistoryJson (id);
+  EXPECT_EQ (h["outcome"].asString (), "void");
+  EXPECT_FALSE (h.isMember ("mode"));
+  EXPECT_FALSE (h.isMember ("settledp"));
+  EXPECT_FALSE (h.isMember ("feepaid"));
 }
 
 TEST_F (AdTests, PostRejectsNullStart)

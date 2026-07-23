@@ -31,6 +31,16 @@ from pxtest import PXTest
 
 class JobsReorgTest (PXTest):
 
+  def settleMeta (self, jobId):
+    """The reorg-sensitive settlement metadata a settled deal stamps onto its
+    history snapshot (the new settle_mode / settled_p / fee_paid proto fields).
+    Only the keys actually present are returned, so a refund/void row compares
+    cleanly against a ruling row."""
+    for e in self.historyRows ():
+      if e["id"] == jobId:
+        return {k: e[k] for k in ("mode", "settledp", "feepaid") if k in e}
+    return None
+
   def run (self):
     self.mainLogger.info ("Setting up accounts and an accepted deal...")
     self.initAccount ("poster", "r")
@@ -65,6 +75,13 @@ class JobsReorgTest (PXTest):
     self.generate (1)
     assert self.jobGone (jobId)
     self.assertEqual (self.historyOutcome (jobId), "completed")
+    # The settlement's history metadata (the new settle_mode / settled_p /
+    # fee_paid proto fields) must reorg bit-identically.  Capture it here: the
+    # undo below must drop it with the row, and an identical re-settle must
+    # rebuild exactly these values.
+    detachedMeta = self.settleMeta (jobId)
+    self.assertEqual (detachedMeta,
+                      {"mode": "ruling", "settledp": 30, "feepaid": True})
     # The retuned floor rejects a small deal on this branch.
     self.sendMove ("poster", {"j": [{
       "t": "deal", "d": 86400, "r": 5000, "co": 0, "terms": "small"}]})
@@ -75,7 +92,8 @@ class JobsReorgTest (PXTest):
     snapshot.restore ()
     # The undo restored every jobs surface: the live row is back with its
     # escrows, all balances and dealstats match bit-exactly, and both the
-    # settlement's history row and the parameter override are gone.
+    # settlement's history row -- with its settle_mode / settled_p / fee_paid
+    # metadata -- and the parameter override are gone (survives undo).
     self.expectGameState (preState)
     self.assertEqual (self.historyRows (), preHistory)
 
@@ -87,15 +105,19 @@ class JobsReorgTest (PXTest):
     self.generate (1)
     assert not self.jobGone (self.newestJob ()["id"])
 
-    # And the restored deal is fully live: it settles by mutual confirm now.
+    # And the restored deal is fully live: an IDENTICAL dispute + ruling
+    # re-settles it, and the reorg-rebuilt history metadata is bit-for-bit what
+    # the detached branch stamped -- the new proto fields redo with the row.
     wBefore = self.available ("worker")
-    self.sendMove ("poster", {"j": [{"dl": jobId, "confirm": True}]})
-    self.sendMove ("worker", {"j": [{"dl": jobId, "confirm": True}]})
+    self.sendMove ("poster", {"j": [{"dl": jobId, "dispute": True}]})
+    self.generate (1)
+    self.sendMove ("arbiter", {"j": [{"dl": jobId, "rule": 30}]})
     self.generate (1)
     assert self.jobGone (jobId)
     self.assertEqual (self.historyOutcome (jobId), "completed")
-    # p=100: worker <- 5000 - 150(tax) - 500(fee) + 5000(collateral) = 9350.
-    self.assertEqual (self.available ("worker"), wBefore + 9350)
+    self.assertEqual (self.settleMeta (jobId), detachedMeta)   # survives redo
+    # p=30: worker <- 1500 - 45(tax) - 150(fee) + 1500(collateral) = 2805.
+    self.assertEqual (self.available ("worker"), wBefore + 2805)
 
     self.mainLogger.info ("Jobs reorg test succeeded.")
 

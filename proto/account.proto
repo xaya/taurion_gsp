@@ -69,11 +69,17 @@ message Account
   /**
    * Escrow-DEAL reputation counters, kept DISJOINT from the jobs/wanted
    * counters above: a wanted self-kill drain must never inflate a signal the
-   * escrow directory reads (red-team T7).  Bumped only on a deal settlement
-   * with p>0 and a real tax burned (value-gated, so micro/zero deals grant
-   * nothing); a disputed loser is deliberately NOT marked failed (a contested
-   * arbiter judgement is not chain-verified fault).  Same width/wrap semantics
-   * and display-only status as the jobs counters.
+   * escrow directory reads (red-team T7).  Bumped for the worker on ANY
+   * tax-bearing settlement with p>0 -- which INCLUDES a ghosted 50/50 split
+   * and a partial (low-p) ruling, not only a clean release.  A Phase-2
+   * reputation layer must therefore read "completed" as "settled with the
+   * worker earning something", never as "delivered in full".  The value
+   * counter scales with the earned reward share (reward * p / 100), so a
+   * half-split or a p=10 ruling credits proportionally less than a p=100
+   * release.  Value-gated, so micro/zero deals grant nothing; a disputed
+   * loser is deliberately NOT marked failed (a contested arbiter judgement is
+   * not chain-verified fault).  Same width/wrap semantics and display-only
+   * status as the jobs counters.
    */
   optional uint32 deals_completed = 9;
   optional uint64 deals_value_completed = 10;

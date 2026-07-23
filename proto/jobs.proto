@@ -176,9 +176,12 @@ message DealPayload
   optional SettleMode settle_mode = 11;
 
   /**
-   * Set only when an arbiter is bound: whether the settlement actually paid
-   * the agreed fee (false = forfeited on a ghosted dispute, or never earned
-   * on an untouched refund).
+   * Set only when an arbiter is bound: whether the agreed fee SCHEDULE was
+   * honoured, not whether coins actually moved.  True on a both-confirm or a
+   * ruling -- the arbiter's fee was paid as agreed, INCLUDING a pro-bono
+   * arbiter whose fee_bps is 0, where honouring the schedule moves zero coins.
+   * False only when the fee was forfeited: the 50/50 timeout on a ghosted
+   * dispute, or never earned on an untouched refund.
    */
   optional bool fee_paid = 12;
 

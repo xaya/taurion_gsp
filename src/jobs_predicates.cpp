@@ -91,8 +91,12 @@ BumpJobStats (Account& a, const Amount value, const unsigned times = 1)
 
 /**
  * Bumps the DEAL reputation counters (kept disjoint from the jobs/wanted
- * counters above -- red-team T7).  Called once for the worker on a settled
- * deal with p>0 and a real tax burned; `value` is the worker's earned reward.
+ * counters above -- red-team T7).  Called once for the worker on any
+ * tax-bearing settlement with p>0 -- a both-confirm/single-confirm release, a
+ * ghosted 50/50 split and a partial ruling all qualify, so "completed" counts
+ * the tax-bearing settlements the worker earned on, not full deliveries.
+ * `value` is the worker's earned reward share (reward * p / 100), which scales
+ * the value counter down on a split or a low-p ruling.
  */
 void
 BumpDealStats (Account& a, const Amount value)
