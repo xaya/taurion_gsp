@@ -3256,9 +3256,10 @@ protected:
 
   BuildingsTable buildings;
   OngoingsTable ongoings;
+  JobsTable jobs;
 
   BuildingUpdateTests ()
-    : buildings(db), ongoings(db)
+    : buildings(db), ongoings(db), jobs(db)
   {
     accounts.CreateNew ("domob")->SetFaction (Faction::RED);
     accounts.CreateNew ("andy")->SetFaction (Faction::RED);
@@ -3283,6 +3284,27 @@ protected:
   ExpectNoOngoings ()
   {
     ASSERT_FALSE (ongoings.QueryAll ().Step ());
+  }
+
+  /**
+   * Creates an ACCEPTED ad-slot rental on Andy's building for the given
+   * advertiser (rent 500), returning its id.  The handle is released before
+   * returning, so the row is flushed before any move is processed.
+   */
+  Database::IdT
+  MakeAcceptedAdOnAndysBuilding (const std::string& advertiser)
+  {
+    auto j = jobs.CreateNew (Job::Type::AD, Faction::INVALID, advertiser,
+                             500, 0);
+    const auto id = j->GetId ();
+    j->SetLinkedId (ANDY_OWNED);
+    j->SetStatus (Job::Status::ACCEPTED);
+    j->SetWorker ("andy");
+    j->SetDeadline (1000000);
+    auto* ap = j->MutableProto ().mutable_ad ();
+    ap->set_slot (1);
+    ap->set_content_hash ("abc");
+    return id;
   }
 
 };
@@ -3554,19 +3576,7 @@ TEST_F (BuildingUpdateTests, TransferVoidsAdJobs)
 
   /* An accepted ad-slot rental on the building being sold: the transfer
      voids it and the escrowed rent refunds to the advertiser.  */
-  JobsTable jobs(db);
-  Database::IdT jobId;
-  {
-    auto j = jobs.CreateNew (Job::Type::AD, Faction::INVALID, "adv", 500, 0);
-    jobId = j->GetId ();
-    j->SetLinkedId (ANDY_OWNED);
-    j->SetStatus (Job::Status::ACCEPTED);
-    j->SetWorker ("andy");
-    j->SetDeadline (1000000);
-    auto* ap = j->MutableProto ().mutable_ad ();
-    ap->set_slot (1);
-    ap->set_content_hash ("abc");
-  }
+  const auto jobId = MakeAcceptedAdOnAndysBuilding ("adv");
 
   Process (R"([
     {
@@ -3587,19 +3597,7 @@ TEST_F (BuildingUpdateTests, TransferVoidsAdJobsToAdvertiserBuyer)
      must not trip the unique-handles tracker (a player-reachable move).  */
   ctx.SetTimestamp (1000);
 
-  JobsTable jobs(db);
-  Database::IdT jobId;
-  {
-    auto j = jobs.CreateNew (Job::Type::AD, Faction::INVALID, "domob", 500, 0);
-    jobId = j->GetId ();
-    j->SetLinkedId (ANDY_OWNED);
-    j->SetStatus (Job::Status::ACCEPTED);
-    j->SetWorker ("andy");
-    j->SetDeadline (1000000);
-    auto* ap = j->MutableProto ().mutable_ad ();
-    ap->set_slot (1);
-    ap->set_content_hash ("abc");
-  }
+  const auto jobId = MakeAcceptedAdOnAndysBuilding ("domob");
 
   Process (R"([
     {
@@ -3621,19 +3619,7 @@ TEST_F (BuildingUpdateTests, SelfSendIsANoOpForAdJobs)
   ctx.SetTimestamp (1000);
   accounts.CreateNew ("adv")->SetFaction (Faction::RED);
 
-  JobsTable jobs(db);
-  Database::IdT jobId;
-  {
-    auto j = jobs.CreateNew (Job::Type::AD, Faction::INVALID, "adv", 500, 0);
-    jobId = j->GetId ();
-    j->SetLinkedId (ANDY_OWNED);
-    j->SetStatus (Job::Status::ACCEPTED);
-    j->SetWorker ("andy");
-    j->SetDeadline (1000000);
-    auto* ap = j->MutableProto ().mutable_ad ();
-    ap->set_slot (1);
-    ap->set_content_hash ("abc");
-  }
+  const auto jobId = MakeAcceptedAdOnAndysBuilding ("adv");
 
   Process (R"([
     {

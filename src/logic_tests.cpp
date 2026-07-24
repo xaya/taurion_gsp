@@ -161,29 +161,24 @@ protected:
 
   /**
    * Calls PXLogic::UpdateState with the given moves and superblock height.
+   * superBlock defaults to true; pass it explicitly to drive ORDINARY blocks
+   * (moves processed, no superblock phases) as the real dispatch does.
    */
   void
-  UpdateStateWithHeight (const Json::Value& moves, const unsigned sbHeight)
+  UpdateStateWithHeight (const Json::Value& moves, const unsigned sbHeight,
+                         const bool superBlock = true)
   {
     Context newCtx(ctx.Chain (), ctx.Map (),
                    sbHeight, ctx.BlockHeight (), ctx.Timestamp ());
     FameUpdater fame(db, newCtx);
-    PXLogic::UpdateState (db, fame, rnd, newCtx, true, BuildBlockData (moves));
+    PXLogic::UpdateState (db, fame, rnd, newCtx, superBlock,
+                          BuildBlockData (moves));
   }
 
-  /**
-   * Calls PXLogic::UpdateState with an explicit superBlock flag, so tests
-   * can drive ORDINARY blocks (moves processed, no superblock phases) as
-   * the real per-block dispatch does.
-   */
   void
   UpdateStateBlock (const std::string& movesStr, const bool superBlock)
   {
-    Context newCtx(ctx.Chain (), ctx.Map (),
-                   ctx.Height (), ctx.BlockHeight (), ctx.Timestamp ());
-    FameUpdater fame(db, newCtx);
-    PXLogic::UpdateState (db, fame, rnd, newCtx, superBlock,
-                          BuildBlockData (ParseJson (movesStr)));
+    UpdateStateWithHeight (ParseJson (movesStr), ctx.Height (), superBlock);
   }
 
   /**

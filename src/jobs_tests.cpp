@@ -492,8 +492,7 @@ TEST_F (WantedTests, AggregatedPayoutSkipsZeroSharePools)
   EXPECT_EQ (JobStats ("courier"), std::make_tuple (1u, 5));
   EXPECT_EQ (JobStats ("courier2"), std::make_tuple (1u, 5));
   /* Both single-kill pools are consumed off the board either way.  */
-  auto res = jobs.QueryAll ();
-  EXPECT_FALSE (res.Step ());
+  EXPECT_EQ (jobs.CountAll (), 0);
 }
 
 TEST_F (WantedTests, TurretOnlyKillPaysNothing)
@@ -897,10 +896,11 @@ protected:
   /** Posts a standard deal (reward 5000, collateral 5000, arbiter courier2,
       fee 10%).  Pass arbiter="" for a no-arbiter deal.  Returns its id.  */
   Database::IdT
-  PostDeal (const std::string& arbiter = "courier2")
+  PostDeal (const std::string& arbiter = "courier2", const Amount co = 5000)
   {
     std::string t
-        = R"({"t":"deal","d":86400,"r":5000,"co":5000,"tag":1,"terms":"haul it")";
+        = R"({"t":"deal","d":86400,"r":5000,"co":)" + std::to_string (co)
+          + R"(,"tag":1,"terms":"haul it")";
     if (!arbiter.empty ())
       t += R"(,"arbiter":")" + arbiter + R"(","fee":1000)";
     t += "}";
@@ -910,9 +910,10 @@ protected:
 
   /** Posts + has courier accept.  Returns the deal id.  */
   Database::IdT
-  PostAcceptDeal (const std::string& arbiter = "courier2")
+  PostAcceptDeal (const std::string& arbiter = "courier2",
+                  const Amount co = 5000)
   {
-    const auto id = PostDeal (arbiter);
+    const auto id = PostDeal (arbiter, co);
     CHECK (Process ("courier", R"({"a":)" + std::to_string (id) + "}"));
     return id;
   }
@@ -998,26 +999,14 @@ protected:
   int64_t Rwindow (const Database::IdT id)
   { return jobs.GetById (id)->GetProto ().deal ().reaction_window (); }
 
-  /** Posts + accepts a zero-collateral no-arbiter deal (r=5000, co=0).  */
-  Database::IdT
-  PostAcceptZeroColl ()
-  {
-    CHECK (Process ("poster",
-        R"({"t":"deal","d":86400,"r":5000,"co":0,"tag":1,"terms":"zc"})"));
-    const auto id = LatestJobId ();
-    CHECK (Process ("courier", R"({"a":)" + std::to_string (id) + "}"));
-    return id;
-  }
-
 };
 
 TEST_F (DealTests, HappyPathBothConfirm)
 {
   const auto id = PostAcceptDeal ();
-  const std::string dl = std::to_string (id);
-  EXPECT_TRUE (Process ("poster", R"({"dl":)" + dl + R"(,"confirm":true})"));
+  EXPECT_TRUE (Confirm ("poster", id));
   EXPECT_TRUE (JobExists (id));    // one confirm: still open
-  EXPECT_TRUE (Process ("courier", R"({"dl":)" + dl + R"(,"confirm":true})"));
+  EXPECT_TRUE (Confirm ("courier", id));
   EXPECT_FALSE (JobExists (id));   // both confirmed: settled + deleted
   /* p=100: worker <- 5000 - 150(tax) - 500(fee) + 5000(collateral) = 9350;
      arbiter <- 500; treasury 150 burned; poster <- 0.  */
@@ -1035,9 +1024,8 @@ TEST_F (DealTests, HappyPathBothConfirm)
 TEST_F (DealTests, DisputeArbiterRulesPartial)
 {
   const auto id = PostAcceptDeal ();
-  const std::string dl = std::to_string (id);
-  EXPECT_TRUE (Process ("poster", R"({"dl":)" + dl + R"(,"dispute":true})"));
-  EXPECT_TRUE (Process ("courier2", R"({"dl":)" + dl + R"(,"rule":30})"));
+  EXPECT_TRUE (Dispute ("poster", id));
+  EXPECT_TRUE (Rule ("courier2", id, 30));
   EXPECT_FALSE (JobExists (id));
   /* p=30: worker 2805, poster 6090, arbiter 850, treasury 255.  */
   EXPECT_EQ (Balance ("courier"), 1000000 - 5000 + 2805);
@@ -1052,8 +1040,7 @@ TEST_F (DealTests, DisputeArbiterRulesPartial)
 TEST_F (DealTests, TimeoutGhostSplits5050)
 {
   const auto id = PostAcceptDeal ();
-  const std::string dl = std::to_string (id);
-  EXPECT_TRUE (Process ("courier", R"({"dl":)" + dl + R"(,"dispute":true})"));
+  EXPECT_TRUE (Dispute ("courier", id));
   Expire ();
   EXPECT_FALSE (JobExists (id));
   /* p=50 with the fee FORFEITED (the arbiter ghosted the one dispute it was
@@ -1078,8 +1065,7 @@ TEST_F (DealTests, TimeoutGhostSplits5050)
 TEST_F (DealTests, TimeoutSingleConfirmPaysWorker)
 {
   const auto id = PostAcceptDeal ();
-  const std::string dl = std::to_string (id);
-  EXPECT_TRUE (Process ("courier", R"({"dl":)" + dl + R"(,"confirm":true})"));
+  EXPECT_TRUE (Confirm ("courier", id));
   Expire ();
   EXPECT_FALSE (JobExists (id));
   /* one confirm at timeout => p=100.  */
@@ -1130,9 +1116,8 @@ TEST_F (DealTests, TimeoutNeitherConfirmRefundsBothNoArbiter)
 TEST_F (DealTests, NoArbiterHappyPath)
 {
   const auto id = PostAcceptDeal ("");
-  const std::string dl = std::to_string (id);
-  EXPECT_TRUE (Process ("poster", R"({"dl":)" + dl + R"(,"confirm":true})"));
-  EXPECT_TRUE (Process ("courier", R"({"dl":)" + dl + R"(,"confirm":true})"));
+  EXPECT_TRUE (Confirm ("poster", id));
+  EXPECT_TRUE (Confirm ("courier", id));
   EXPECT_FALSE (JobExists (id));
   /* p=100, no arbiter fee: worker <- 5000 - 150 + 5000 = 9850.  */
   EXPECT_EQ (Balance ("courier"), 1000000 - 5000 + 9850);
@@ -1141,12 +1126,11 @@ TEST_F (DealTests, NoArbiterHappyPath)
 TEST_F (DealTests, RuleOnlyByArbiterAfterDispute)
 {
   const auto id = PostAcceptDeal ();
-  const std::string dl = std::to_string (id);
-  EXPECT_FALSE (Process ("courier2", R"({"dl":)" + dl + R"(,"rule":50})"));  // no dispute yet
-  EXPECT_TRUE (Process ("poster", R"({"dl":)" + dl + R"(,"dispute":true})"));
-  EXPECT_FALSE (Process ("poster", R"({"dl":)" + dl + R"(,"rule":50})"));   // not the arbiter
-  EXPECT_FALSE (Process ("courier", R"({"dl":)" + dl + R"(,"rule":50})"));  // not the arbiter
-  EXPECT_TRUE (Process ("courier2", R"({"dl":)" + dl + R"(,"rule":50})"));  // the bound arbiter
+  EXPECT_FALSE (Rule ("courier2", id, 50));  // no dispute yet
+  EXPECT_TRUE (Dispute ("poster", id));
+  EXPECT_FALSE (Rule ("poster", id, 50));   // not the arbiter
+  EXPECT_FALSE (Rule ("courier", id, 50));  // not the arbiter
+  EXPECT_TRUE (Rule ("courier2", id, 50));  // the bound arbiter
   EXPECT_FALSE (JobExists (id));
 }
 
@@ -1201,28 +1185,22 @@ TEST_F (DealTests, PosterEqualsArbiterPostRejected)
      door.  Nothing is charged or created.  */
   EXPECT_FALSE (Process ("poster",
       R"({"t":"deal","d":86400,"r":5000,"co":5000,"arbiter":"poster","fee":1000})"));
-  auto res = jobs.QueryAll ();
-  EXPECT_FALSE (res.Step ());
+  EXPECT_EQ (jobs.CountAll (), 0);
 }
 
 TEST_F (DealTests, CannotConfirmTwice)
 {
   const auto id = PostAcceptDeal ();
-  const std::string dl = std::to_string (id);
-  EXPECT_TRUE (Process ("poster", R"({"dl":)" + dl + R"(,"confirm":true})"));
-  EXPECT_FALSE (Process ("poster", R"({"dl":)" + dl + R"(,"confirm":true})"));
+  EXPECT_TRUE (Confirm ("poster", id));
+  EXPECT_FALSE (Confirm ("poster", id));
   EXPECT_TRUE (JobExists (id));   // still open on one confirm
 }
 
 TEST_F (DealTests, ZeroCollateralHappyPath)
 {
-  CHECK (Process ("poster",
-      R"({"t":"deal","d":86400,"r":5000,"co":0,"arbiter":"courier2","fee":1000})"));
-  const auto id = LatestJobId ();
-  const std::string dl = std::to_string (id);
-  CHECK (Process ("courier", R"({"a":)" + std::to_string (id) + "}"));
-  EXPECT_TRUE (Process ("poster", R"({"dl":)" + dl + R"(,"confirm":true})"));
-  EXPECT_TRUE (Process ("courier", R"({"dl":)" + dl + R"(,"confirm":true})"));
+  const auto id = PostAcceptDeal ("courier2", 0);
+  EXPECT_TRUE (Confirm ("poster", id));
+  EXPECT_TRUE (Confirm ("courier", id));
   EXPECT_FALSE (JobExists (id));
   /* p=100, C=0: worker <- 5000 - 150 - 500 = 4350; arbiter <- 500.  */
   EXPECT_EQ (Balance ("courier"), 1000000 + 4350);
@@ -1269,10 +1247,9 @@ TEST_F (DealTests, PostRejectsTaxFeeBeyondPrecondition)
       R"({"t":"deal","d":86400,"r":5000,"co":0,)"
       R"("arbiter":"courier2","fee":999})"));
   const auto id = LatestJobId ();
-  const std::string dl = std::to_string (id);
   CHECK (Process ("courier", R"({"a":)" + std::to_string (id) + "}"));
-  EXPECT_TRUE (Process ("poster", R"({"dl":)" + dl + R"(,"confirm":true})"));
-  EXPECT_TRUE (Process ("courier", R"({"dl":)" + dl + R"(,"confirm":true})"));
+  EXPECT_TRUE (Confirm ("poster", id));
+  EXPECT_TRUE (Confirm ("courier", id));
   EXPECT_FALSE (JobExists (id));
   /* p=100: worker <- 5000 - 4500(tax) - 499(fee) = 1; every coin conserved
      by the settlement identity.  */
@@ -1290,11 +1267,10 @@ TEST_F (DealTests, LifecycleOpsRejectedAtDeadline)
      party acted, so the sweep must refund BOTH stakes despite the late
      confirm attempt.  */
   const auto id = PostAcceptDeal ();
-  const std::string dl = std::to_string (id);
   ctx.SetTimestamp (BASE_TS + DAY);
-  EXPECT_FALSE (Process ("courier", R"({"dl":)" + dl + R"(,"confirm":true})"));
-  EXPECT_FALSE (Process ("poster", R"({"dl":)" + dl + R"(,"dispute":true})"));
-  EXPECT_FALSE (Process ("courier2", R"({"dl":)" + dl + R"(,"rule":100})"));
+  EXPECT_FALSE (Confirm ("courier", id));
+  EXPECT_FALSE (Dispute ("poster", id));
+  EXPECT_FALSE (Rule ("courier2", id, 100));
   ExpireJobs (db, ctx);
   EXPECT_FALSE (JobExists (id));
   EXPECT_EQ (Balance ("courier"), 1000000);
@@ -1317,12 +1293,11 @@ TEST_F (DealTests, ConfirmRejectedWhileDisputed)
      the deal -- the documented DealPayload invariant.  A both-confirm racing
      the ruling must not bypass the arbiter.  */
   const auto id = PostAcceptDeal ();
-  const std::string dl = std::to_string (id);
-  EXPECT_TRUE (Process ("poster", R"({"dl":)" + dl + R"(,"confirm":true})"));
-  EXPECT_TRUE (Process ("courier", R"({"dl":)" + dl + R"(,"dispute":true})"));
-  EXPECT_FALSE (Process ("courier", R"({"dl":)" + dl + R"(,"confirm":true})"));
+  EXPECT_TRUE (Confirm ("poster", id));
+  EXPECT_TRUE (Dispute ("courier", id));
+  EXPECT_FALSE (Confirm ("courier", id));
   EXPECT_TRUE (JobExists (id));
-  EXPECT_TRUE (Process ("courier2", R"({"dl":)" + dl + R"(,"rule":50})"));
+  EXPECT_TRUE (Rule ("courier2", id, 50));
   EXPECT_FALSE (JobExists (id));
 }
 
@@ -1352,9 +1327,8 @@ TEST_F (DealTests, RuleZeroFailsWorkerWithoutReputation)
      FAILED and no reputation is credited.  R=5000 C=5000 t=300 f=1000:
      posterTransacted=10000 -> tax 300, fee 1000, poster 8700.  */
   const auto id = PostAcceptDeal ();
-  const std::string dl = std::to_string (id);
-  EXPECT_TRUE (Process ("poster", R"({"dl":)" + dl + R"(,"dispute":true})"));
-  EXPECT_TRUE (Process ("courier2", R"({"dl":)" + dl + R"(,"rule":0})"));
+  EXPECT_TRUE (Dispute ("poster", id));
+  EXPECT_TRUE (Rule ("courier2", id, 0));
   EXPECT_FALSE (JobExists (id));
   EXPECT_EQ (Balance ("courier"), 1000000 - 5000);
   EXPECT_EQ (Balance ("courier2"), 1000000 + 1000);
@@ -1374,11 +1348,10 @@ TEST_F (DealTests, NonPartiesCannotTouch)
   /* Only the two parties may confirm or dispute (and only once); green is
      a complete stranger to this deal.  */
   const auto id = PostAcceptDeal ();
-  const std::string dl = std::to_string (id);
-  EXPECT_FALSE (Process ("green", R"({"dl":)" + dl + R"(,"confirm":true})"));
-  EXPECT_FALSE (Process ("green", R"({"dl":)" + dl + R"(,"dispute":true})"));
-  EXPECT_TRUE (Process ("poster", R"({"dl":)" + dl + R"(,"dispute":true})"));
-  EXPECT_FALSE (Process ("courier", R"({"dl":)" + dl + R"(,"dispute":true})"));
+  EXPECT_FALSE (Confirm ("green", id));
+  EXPECT_FALSE (Dispute ("green", id));
+  EXPECT_TRUE (Dispute ("poster", id));
+  EXPECT_FALSE (Dispute ("courier", id));
   EXPECT_TRUE (JobExists (id));
 }
 
@@ -1413,10 +1386,7 @@ TEST_F (DealTests, SweepSettlesManyDealsAtOnce)
      Balances must conserve exactly across the whole cohort.  */
   constexpr unsigned N = 200;
   Amount before = 0;
-  {
-    auto res = jobs.QueryAll ();
-    CHECK (!res.Step ());
-  }
+    CHECK_EQ (jobs.CountAll (), 0);
   for (const auto* name : {"poster", "courier", "courier2", "green"})
     before += Balance (name);
 
@@ -1430,12 +1400,10 @@ TEST_F (DealTests, SweepSettlesManyDealsAtOnce)
       switch (i % 3)
         {
         case 0:   /* one confirm -> p=100 at the sweep */
-          ASSERT_TRUE (Process ("courier",
-              R"({"dl":)" + dl + R"(,"confirm":true})"));
+          ASSERT_TRUE (Confirm ("courier", id));
           break;
         case 1:   /* disputed, no arbiter -> 50/50 at the sweep */
-          ASSERT_TRUE (Process ("poster",
-              R"({"dl":)" + dl + R"(,"dispute":true})"));
+          ASSERT_TRUE (Dispute ("poster", id));
           break;
         case 2:   /* untouched -> both stakes refund */
           break;
@@ -1445,10 +1413,7 @@ TEST_F (DealTests, SweepSettlesManyDealsAtOnce)
   ctx.SetTimestamp (BASE_TS + DAY + 1);
   ExpireJobs (db, ctx);
 
-  {
-    auto res = jobs.QueryAll ();
-    EXPECT_FALSE (res.Step ());
-  }
+    EXPECT_EQ (jobs.CountAll (), 0);
   Amount after = 0;
   for (const auto* name : {"poster", "courier", "courier2", "green"})
     after += Balance (name);
@@ -1464,9 +1429,8 @@ TEST_F (DealTests, ConfirmBarsOwnDisputePoster)
   /* H1: a confirmation waives only the confirmer's OWN dispute right, so the
      poster cannot revoke its confirm by disputing afterwards.  */
   const auto id = PostAcceptDeal ();
-  const std::string dl = std::to_string (id);
-  EXPECT_TRUE (Process ("poster", R"({"dl":)" + dl + R"(,"confirm":true})"));
-  EXPECT_FALSE (Process ("poster", R"({"dl":)" + dl + R"(,"dispute":true})"));
+  EXPECT_TRUE (Confirm ("poster", id));
+  EXPECT_FALSE (Dispute ("poster", id));
   EXPECT_TRUE (JobExists (id));
   EXPECT_FALSE (jobs.GetById (id)->GetProto ().deal ().disputed ());
 }
@@ -1475,9 +1439,8 @@ TEST_F (DealTests, ConfirmBarsOwnDisputeWorker)
 {
   /* H1, the worker's mirror image of the guard.  */
   const auto id = PostAcceptDeal ();
-  const std::string dl = std::to_string (id);
-  EXPECT_TRUE (Process ("courier", R"({"dl":)" + dl + R"(,"confirm":true})"));
-  EXPECT_FALSE (Process ("courier", R"({"dl":)" + dl + R"(,"dispute":true})"));
+  EXPECT_TRUE (Confirm ("courier", id));
+  EXPECT_FALSE (Dispute ("courier", id));
   EXPECT_TRUE (JobExists (id));
   EXPECT_FALSE (jobs.GetById (id)->GetProto ().deal ().disputed ());
 }
@@ -1487,9 +1450,8 @@ TEST_F (DealTests, ConfirmerCounterpartyMayStillDispute)
   /* H1: the poster's confirm does NOT waive the worker's dispute right -- the
      counterparty may still contest a shoddy job.  */
   const auto id = PostAcceptDeal ();
-  const std::string dl = std::to_string (id);
-  EXPECT_TRUE (Process ("poster", R"({"dl":)" + dl + R"(,"confirm":true})"));
-  EXPECT_TRUE (Process ("courier", R"({"dl":)" + dl + R"(,"dispute":true})"));
+  EXPECT_TRUE (Confirm ("poster", id));
+  EXPECT_TRUE (Dispute ("courier", id));
   EXPECT_TRUE (jobs.GetById (id)->GetProto ().deal ().disputed ());
 }
 
@@ -1497,9 +1459,8 @@ TEST_F (DealTests, WorkerConfirmPosterMayStillDispute)
 {
   /* H1: the worker's confirm does NOT waive the poster's dispute right.  */
   const auto id = PostAcceptDeal ();
-  const std::string dl = std::to_string (id);
-  EXPECT_TRUE (Process ("courier", R"({"dl":)" + dl + R"(,"confirm":true})"));
-  EXPECT_TRUE (Process ("poster", R"({"dl":)" + dl + R"(,"dispute":true})"));
+  EXPECT_TRUE (Confirm ("courier", id));
+  EXPECT_TRUE (Dispute ("poster", id));
   EXPECT_TRUE (jobs.GetById (id)->GetProto ().deal ().disputed ());
 }
 
@@ -1509,9 +1470,8 @@ TEST_F (DealTests, NoArbiterConfirmerCannotForceGhostSplit)
      honest deal into the 50/50 ghost split; the confirm stands and the sweep
      settles SINGLE_CONFIRM at p=100 (NOT the 4925 of a 50/50 split).  */
   const auto id = PostAcceptDeal ("");
-  const std::string dl = std::to_string (id);
-  EXPECT_TRUE (Process ("courier", R"({"dl":)" + dl + R"(,"confirm":true})"));
-  EXPECT_FALSE (Process ("courier", R"({"dl":)" + dl + R"(,"dispute":true})"));
+  EXPECT_TRUE (Confirm ("courier", id));
+  EXPECT_FALSE (Dispute ("courier", id));
   Expire ();
   EXPECT_FALSE (JobExists (id));
   EXPECT_EQ (Balance ("courier"), 1000000 - 5000 + 9850);
@@ -1546,8 +1506,7 @@ TEST_F (DealTests, PostRejectsOverflowTaxFee)
       R"("arbiter":"courier2","fee":)" + maxStr + "}"));
 
   /* Nothing was admitted to the board.  */
-  auto res = jobs.QueryAll ();
-  EXPECT_FALSE (res.Step ());
+  EXPECT_EQ (jobs.CountAll (), 0);
 }
 
 TEST_F (DealTests, AssignRestrictsAcceptToDesignatedWorker)
@@ -1588,9 +1547,8 @@ TEST_F (DealTests, NoArbiterCounterpartyDisputesAfterWorkerConfirm)
      never be ruled, so the sweep settles the blunt 50/50 ghost split -- the
      approved v1 behaviour (a free terminal p=50 no-arbiter dispute).  */
   const auto id = PostAcceptDeal ("");
-  const std::string dl = std::to_string (id);
-  EXPECT_TRUE (Process ("courier", R"({"dl":)" + dl + R"(,"confirm":true})"));
-  EXPECT_TRUE (Process ("poster", R"({"dl":)" + dl + R"(,"dispute":true})"));
+  EXPECT_TRUE (Confirm ("courier", id));
+  EXPECT_TRUE (Dispute ("poster", id));
   Expire ();
   ExpectNoArbiterGhostSplit (id);
 }
@@ -1601,9 +1559,8 @@ TEST_F (DealTests, NoArbiterCounterpartyDisputesAfterPosterConfirm)
      still-unconfirmed worker disputes.  Same free no-arbiter p=50 ghost
      split.  */
   const auto id = PostAcceptDeal ("");
-  const std::string dl = std::to_string (id);
-  EXPECT_TRUE (Process ("poster", R"({"dl":)" + dl + R"(,"confirm":true})"));
-  EXPECT_TRUE (Process ("courier", R"({"dl":)" + dl + R"(,"dispute":true})"));
+  EXPECT_TRUE (Confirm ("poster", id));
+  EXPECT_TRUE (Dispute ("courier", id));
   Expire ();
   ExpectNoArbiterGhostSplit (id);
 }
@@ -1615,8 +1572,7 @@ TEST_F (DealTests, NoArbiterDisputeWithoutConfirmGhostSplits)
      refund -- is what happened, so the sweep settles the p=50 ghost split, NOT
      the both-stakes refund of the never-touched case.  */
   const auto id = PostAcceptDeal ("");
-  const std::string dl = std::to_string (id);
-  EXPECT_TRUE (Process ("poster", R"({"dl":)" + dl + R"(,"dispute":true})"));
+  EXPECT_TRUE (Dispute ("poster", id));
   Expire ();
   ExpectNoArbiterGhostSplit (id);
 }
@@ -1630,9 +1586,8 @@ TEST_F (DealTests, ArbiterGhostsAfterCounterpartyDisputeSplits)
      is FORFEITED: feepaid is stamped false and the arbiter is left untouched
      (worker 4925, poster 4850, treasury 225 burned).  */
   const auto id = PostAcceptDeal ();   // courier2 is the arbiter
-  const std::string dl = std::to_string (id);
-  EXPECT_TRUE (Process ("courier", R"({"dl":)" + dl + R"(,"confirm":true})"));
-  EXPECT_TRUE (Process ("poster", R"({"dl":)" + dl + R"(,"dispute":true})"));
+  EXPECT_TRUE (Confirm ("courier", id));
+  EXPECT_TRUE (Dispute ("poster", id));
   Expire ();
   EXPECT_FALSE (JobExists (id));
   EXPECT_EQ (Balance ("courier"), 1000000 - 5000 + 4925);
@@ -1716,7 +1671,7 @@ TEST_F (DealTests, ZeroCollLateConfirmExtendsThenPosterDisputeGhostSplits)
      poster now has a window to dispute.  A no-arbiter dispute does not extend,
      so the sweep settles the p=50 ghost split (worker 2425 on a zero stake,
      poster the mirrored 2425, 150 burned).  */
-  const auto id = PostAcceptZeroColl ();
+  const auto id = PostAcceptDeal ("", 0);
   ctx.SetTimestamp (BASE_TS + DAY - 1);
   EXPECT_TRUE (Confirm ("courier", id));
   EXPECT_EQ (Deadline (id), BASE_TS + DAY - 1 + 30);
@@ -1737,7 +1692,7 @@ TEST_F (DealTests, ZeroCollLateConfirmExtendsThenSilenceSingleConfirm)
   /* The same zero-collateral late confirm, poster silent through the extension:
      it hardens to the v1 single-confirm p=100 (worker 5000 - 150 tax = 4850,
      no arbiter, no stake at risk).  */
-  const auto id = PostAcceptZeroColl ();
+  const auto id = PostAcceptDeal ("", 0);
   ctx.SetTimestamp (BASE_TS + DAY - 1);
   EXPECT_TRUE (Confirm ("courier", id));
   Expire ();
@@ -1780,7 +1735,7 @@ TEST_F (DealTests, NoArbiterZeroCollateralDisputeTakesHalf)
      sweep's 50/50).  The R != C asymmetry pin -- at C=0 the split still moves
      R/2 * (1 - tax) = 2425 to a zero-stake worker, the mirror to the poster,
      150 burned; poster-chosen exposure the client MUST warn about.  */
-  const auto id = PostAcceptZeroColl ();
+  const auto id = PostAcceptDeal ("", 0);
   EXPECT_TRUE (Dispute ("courier", id));
   Expire ();
   EXPECT_FALSE (JobExists (id));
@@ -1957,8 +1912,7 @@ TEST_F (DealTests, PrivateDealPostRejectsBadWorker)
       R"({"t":"deal","d":86400,"r":5000,"co":0,"w":"ghost"})"));
   EXPECT_FALSE (Process ("poster",
       R"({"t":"deal","d":86400,"r":5000,"co":0,"w":5})"));
-  auto res = jobs.QueryAll ();
-  EXPECT_FALSE (res.Step ());
+  EXPECT_EQ (jobs.CountAll (), 0);
 }
 
 TEST_F (DealTests, PrivateUnassignedInviteOnly)
@@ -2066,10 +2020,9 @@ TEST_F (DealTests, ProBonoArbiterFeePaidHonoursScheduleAtZeroFee)
   CHECK (Process ("poster",
       R"({"t":"deal","d":86400,"r":5000,"co":5000,"arbiter":"courier2"})"));
   const auto id = LatestJobId ();
-  const std::string dl = std::to_string (id);
   CHECK (Process ("courier", R"({"a":)" + std::to_string (id) + "}"));
-  EXPECT_TRUE (Process ("poster", R"({"dl":)" + dl + R"(,"confirm":true})"));
-  EXPECT_TRUE (Process ("courier", R"({"dl":)" + dl + R"(,"confirm":true})"));
+  EXPECT_TRUE (Confirm ("poster", id));
+  EXPECT_TRUE (Confirm ("courier", id));
   EXPECT_FALSE (JobExists (id));
   /* p=100, fee 0: worker <- 5000 - 150(tax) + 5000(collateral) = 9850; the
      arbiter is bound but paid nothing.  */
@@ -2168,8 +2121,7 @@ TEST_F (AdTests, LinkedEntityDestructionCohortBench)
   const double ms = TimedMillis ([this] { OnJobEntityDestroyed (db, ctx, 1); });
   LOG (INFO) << "[bench] destroyed " << N << " linked ad jobs in " << ms << " ms";
 
-  auto res = jobs.QueryAll ();
-  EXPECT_FALSE (res.Step ());                     // all settled off the board
+  EXPECT_EQ (jobs.CountAll (), 0);                     // all settled off the board
   EXPECT_EQ (Balance ("courier"), 1000000 - N);   // only the burned fees gone
 }
 
@@ -2200,8 +2152,7 @@ TEST_F (WantedTests, BountyPoolKillCohortBench)
   LOG (INFO) << "[bench] paid " << N << " bounty pools on one kill in "
              << ms << " ms";
 
-  auto res = jobs.QueryAll ();
-  EXPECT_FALSE (res.Step ());                       // all pools drained
+  EXPECT_EQ (jobs.CountAll (), 0);                       // all pools drained
   EXPECT_EQ (Balance ("courier"), 1000000 + N * 100);
 }
 

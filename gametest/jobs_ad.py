@@ -36,13 +36,7 @@ class JobsAdTest (PXTest):
     self.initAccount ("renter", "r")
     self.initAccount ("advertiser", "g")
     self.generate (1)
-    # Lower the minimum-reward floors (roconfig defaults) the same way an admin
-    # would: the suite's rewards predate the floors, which are exercised in
-    # jobs_caps.py.
-    self.adminCommand ({"param": [
-      {"n": "min-job-reward", "v": 1},
-    ]})
-    self.generate (1)
+    self.lowerRewardFloors ("min-job-reward")
     self.giftCoins ({"owner": 1000000, "advertiser": 1000000})
 
     self.build ("checkmark", "owner", {"x": 0, "y": 0}, rot=0)

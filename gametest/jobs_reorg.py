@@ -36,10 +36,10 @@ class JobsReorgTest (PXTest):
     history snapshot (the new settle_mode / settled_p / fee_paid proto fields).
     Only the keys actually present are returned, so a refund/void row compares
     cleanly against a ruling row."""
-    for e in self.historyRows ():
-      if e["id"] == jobId:
-        return {k: e[k] for k in ("mode", "settledp", "feepaid") if k in e}
-    return None
+    e = self.historyEntry (jobId)
+    if e is None:
+      return None
+    return {k: e[k] for k in ("mode", "settledp", "feepaid") if k in e}
 
   def run (self):
     self.mainLogger.info ("Setting up accounts and an accepted deal...")

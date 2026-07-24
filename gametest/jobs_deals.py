@@ -38,14 +38,6 @@ class JobsDealsTest (PXTest):
   def dealStats (self, name):
     return self.getAccounts ()[name].data["dealstats"]
 
-  def historyEntry (self, jobId):
-    """Returns the full settled-jobs history row for a job (or None).  The
-    settlement metadata (mode / settledp / feepaid) rides on this snapshot."""
-    for e in self.historyRows ():
-      if e["id"] == jobId:
-        return e
-    return None
-
   def postFee (self, reward):
     """Mirrors PostOperation::Fee (jobs.cpp): the burned posting fee."""
     p = self.roConfig ().params

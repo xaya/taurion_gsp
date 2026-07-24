@@ -424,12 +424,25 @@ class PXTest (XayaXGameTest):
       aftertime, afterid = page[-1]["settledtime"], page[-1]["id"]
     return rows
 
-  def historyOutcome (self, jobId):
-    """Returns the outcome recorded in the settled-jobs history (or None)."""
+  def historyEntry (self, jobId):
+    """Returns the full settled-jobs history row for a job (or None).  The
+    settlement metadata (mode / settledp / feepaid) rides on this snapshot."""
     for e in self.historyRows ():
       if e["id"] == jobId:
-        return e["outcome"]
+        return e
     return None
+
+  def historyOutcome (self, jobId):
+    """Returns the outcome recorded in the settled-jobs history (or None)."""
+    e = self.historyEntry (jobId)
+    return e["outcome"] if e is not None else None
+
+  def lowerRewardFloors (self, *names):
+    """Lowers the named minimum-reward floors (roconfig 100/1000) to 1, the
+    same way an admin would: suites whose rewards predate the floors call this.
+    The defaults themselves are exercised in jobs_caps.py."""
+    self.adminCommand ({"param": [{"n": n, "v": 1} for n in names]})
+    self.generate (1)
 
   def available (self, name):
     """Returns an account's available coin balance."""
