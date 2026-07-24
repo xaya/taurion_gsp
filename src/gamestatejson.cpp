@@ -324,20 +324,15 @@ template <>
       res["kills"] = IntToJson (pb.kills ());
       res["fame"] = IntToJson (pb.fame ());
 
-      /* The jobs-board completion counters: consensus-stored vetting
-         signals surfaced here for clients (posters vet applicants, workers
-         vet posters).  No consensus rule consumes them; raw counts are
-         fee-priced and inflatable, the value counter is the fee-backed
-         face-value signal (see BumpJobStats).  */
+      /* Consensus-stored vetting signals surfaced for clients; no consensus
+         rule consumes them (see BumpJobStats).  */
       Json::Value jobstats(Json::objectValue);
       jobstats["completed"] = IntToJson (pb.jobs_completed ());
       jobstats["value"] = IntToJson (pb.jobs_value_completed ());
       res["jobstats"] = jobstats;
 
-      /* The escrow-deal reputation counters, kept disjoint from the jobs-board
-         counters above (a settled deal is not a settled catalogue job).  Same
-         vetting purpose: a poster reads a worker's deals record, a party reads
-         an arbiter's; no consensus rule consumes them.  See BumpDealStats.  */
+      /* Kept disjoint from the jobs-board counters above (a settled deal is
+         not a settled catalogue job).  See BumpDealStats.  */
       Json::Value dealstats(Json::objectValue);
       dealstats["completed"] = IntToJson (pb.deals_completed ());
       dealstats["value"] = IntToJson (pb.deals_value_completed ());
@@ -659,8 +654,7 @@ template <typename J>
   if (j.GetFaction () != Faction::INVALID)
     res["faction"] = FactionToString (j.GetFaction ());
 
-  /* Type name and linked-entity kind both derive from the predicate
-     registry, so they can never drift from the game logic.  */
+  /* The type name comes from the predicate registry, so it cannot drift.  */
   const char* typeName = JobTypeName (j.GetType ());
   res["type"] = typeName != nullptr ? typeName : "unknown";
 

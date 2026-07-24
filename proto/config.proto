@@ -665,14 +665,12 @@ message Params
   /**
    * DEFAULT admission caps for the jobs board: the maximum number of live
    * jobs in total, per poster, linked to one entity, and of wanted pools
-   * stacked on one target name.  A POST past a cap is rejected, which gives
-   * every atomic settlement sweep (expiry, linked-entity destruction,
-   * bounty payout) a hard deterministic ceiling without touching the
-   * settlement semantics of rows already admitted.  These are the roconfig
-   * DEFAULTS: the effective values are runtime-tunable through the
-   * "param" admin command (consensus state in the parameters table), so
+   * stacked on one target name.  A POST past a cap is rejected.  These are
+   * the roconfig DEFAULTS: the effective values are runtime-tunable through
+   * the "param" admin command (consensus state in the parameters table), so
    * the limits can be adjusted -- or posting frozen entirely with 0 --
-   * without a redeploy while the economy stabilises.
+   * without a redeploy.  Why admission control rather than a sweep bound:
+   * see the cap ceilings in src/jobs.hpp.
    */
   optional int64 max_live_jobs = 34;
   optional int64 max_jobs_per_poster = 35;
@@ -682,10 +680,8 @@ message Params
   /**
    * Batch size for the deterministic history-retention prune: at most this
    * many expired job_history rows (ordered by settled_time then id) are
-   * deleted per superblock sweep, so one huge cohort ageing out cannot
-   * force an unbounded single-statement delete -- the remainder drains on
-   * subsequent sweeps.  History is display-only, so the delayed deletion
-   * reopens no gameplay inputs.
+   * deleted per superblock sweep, the remainder draining on later sweeps.
+   * Rationale and the load-bearing floor of 1: see ExpireJobs (src/jobs.cpp).
    */
   optional int64 jobs_history_prune_batch = 38;
 
@@ -723,14 +719,10 @@ message Params
   /**
    * DEFAULT reaction window (in seconds) for escrow deals, runtime-tunable
    * like the other deal params ("deal-reaction-window").  A deal snapshots its
-   * effective window W = min(this clamped value at post, its posted duration d)
-   * into DealPayload.reaction_window at POST (a pure function of the row, so no
-   * later retune can strip an in-flight deal's advertised protection): a
-   * CONFIRM leaving the counterparty a live answer, or an arbiter-bound
-   * DISPUTE, landing strictly within W of the deadline pushes the deadline to
-   * now + W, so the successor move always keeps a full window.  0 disables the
-   * mechanism (exact v1 settlement).  The read at POST is clamped to
-   * [0, 2592000] (30 days) through the admission-cap clamp helper.
+   * effective window into DealPayload.reaction_window at POST, clamped to
+   * [0, 2592000] (30 days).  0 disables the mechanism (exact v1 settlement).
+   * The extension rule and its bounds: see ExtendForReactionWindow
+   * (src/jobs.cpp), the canonical site.
    */
   optional int64 deal_reaction_window = 46;
 

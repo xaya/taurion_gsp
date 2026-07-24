@@ -342,9 +342,7 @@ WantedPredicate::OnTargetKill (const JobContext& jc, Job& job,
      accounts, with any division remainder burned (never redistributed).
      When the tranche cannot give every distinct killer at least one coin,
      nobody is paid -- crediting a zero-value completion would inflate the
-     reputation counters for free.  The tranche is still consumed (burned as
-     the remainder, which is never redistributed).  The caller accumulates
-     the share across all pools and pays each owner once (PayKillShares).  */
+     reputation counters for free -- and the tranche is still consumed.  */
   sharePerOwner = tranche / killOwners.size ();
 
   job.SetReward (job.GetReward () - tranche);

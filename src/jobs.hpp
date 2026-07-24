@@ -222,8 +222,8 @@ JobOutcome RefundBothDeal (const JobContext& jc, Job& job);
 
 /**
  * What kind of entity a job type stores in linked_id.  This is a predicate
- * property so the state validator and the JSON rendering derive it from the
- * one per-type object instead of keeping parallel type switches in sync.
+ * property so the state validator derives it from the one per-type object
+ * instead of keeping parallel type switches in sync.
  */
 enum class JobLinkedKind
 {
@@ -269,8 +269,9 @@ public:
 
   /**
    * The audience faction stored on the job row: who may accept (and whose
-   * board shows it).  Defaults to the poster's faction; the open types
-   * (wanted, ad-slot) override to INVALID = all factions.
+   * board shows it).  This default (the poster's faction) is currently
+   * unreachable -- all three live types override to INVALID = all factions --
+   * and is kept as the contract for a future faction-scoped type.
    */
   virtual Faction
   AudienceFaction (const Account& poster) const
@@ -486,7 +487,8 @@ const char* DealSettleModeName (proto::DealPayload::SettleMode mode);
 
 /**
  * A single jobs-board operation parsed from one element of the "j" array
- * (post / assign / accept / cancel).  Mirrors the DexOperation family:
+ * (post / assign / accept / cancel / deal action).  Mirrors the DexOperation
+ * family:
  * the lifecycle is generic and the type-specific parts delegate to the job's
  * JobPredicate.
  */

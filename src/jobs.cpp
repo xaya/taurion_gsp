@@ -1215,9 +1215,7 @@ JobsBountyTracker::UpdateForKill (const proto::TargetId& target)
 
   /* The indexed linked-name probe IS the membership check: pools on this
      name come back directly, so a death costs one equality-indexed query
-     at most (repeat deaths of a memoised bounty-free owner cost none; an
-     owner with live pools is re-probed per death, since the pools drain as
-     they pay).  An empty result -- never under bounty, or an earlier kill
+     at most.  An empty result -- never under bounty, or an earlier kill
      in this very block drained and deleted the last pool -- just memoises
      the owner and moves on (this must NOT be a CHECK, or a target losing
      more characters than the pool has tranches in one block would halt

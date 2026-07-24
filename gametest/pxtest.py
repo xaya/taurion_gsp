@@ -394,12 +394,6 @@ class PXTest (XayaXGameTest):
         return res
       after = str (page[-1]["id"])
 
-  def onlyJob (self):
-    """Returns the single job on the board (asserting there is exactly one)."""
-    jobs = self.getJobs ()
-    self.assertEqual (len (jobs), 1)
-    return jobs[0]
-
   def newestJob (self):
     """Returns the most recently posted job on the board."""
     jobs = self.getJobs ()
@@ -549,13 +543,8 @@ class PXTest (XayaXGameTest):
     for nm, c in charTargets.items ():
       self.assertEqual (chars[nm].getPosition (), c)
 
-  def setCharactersHP (self, charHP, mine=True):
-    """
-    Sets the HP and max HP of the characters with the given owners.  With
-    mine=False the god command is only submitted, NOT mined: for timing a
-    kill-and-settle block, the caller mines (and times) the block itself --
-    mining here would settle the kill before the caller's timer starts.
-    """
+  def setCharactersHP (self, charHP):
+    """Sets the HP and max HP of the characters with the given owners."""
 
     chars = self.getCharacters ()
     sethp = []
@@ -565,12 +554,10 @@ class PXTest (XayaXGameTest):
       sethp.append (val)
 
     # Chunked like the teleports (an over-ceiling move drops silently);
-    # all chunks apply in the same block, whether mined here or -- with
-    # mine=False -- in the caller's own timed block.
+    # all chunks apply in the same block.
     for i in range (0, len (sethp), 15):
       self.adminCommand ({"god": {"sethp": {"c": sethp[i : i + 15]}}})
-    if mine:
-      self.generate (1)
+    self.generate (1)
 
   def changeCharacterVehicle (self, char, vehicleType, fitments=[]):
     """

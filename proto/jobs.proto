@@ -199,10 +199,9 @@ message DealPayload
    * The deal's effective reaction window in seconds, snapshot ONCE at POST as
    * min(the clamped deal-reaction-window param, the posted duration d) -- a
    * pure function of the row like tax_bps/fee_bps, so no governance retune can
-   * change an in-flight deal's window.  DealOperation::Execute reads THIS, never
-   * the ParamsTable: a CONFIRM (leaving a live counter-move) or an arbiter-bound
-   * DISPUTE landing strictly within reaction_window of the deadline extends it
-   * to now + reaction_window.  0 = the mechanism is off (exact v1 settlement).
+   * change an in-flight deal's window.  DealOperation::Execute reads THIS,
+   * never the ParamsTable.  0 = the mechanism is off (exact v1 settlement).
+   * The extension rule and its bounds: see ExtendForReactionWindow.
    */
   optional int64 reaction_window = 14;
 
