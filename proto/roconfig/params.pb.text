@@ -47,6 +47,7 @@ params:
     deal_max_collateral: 100000000000  # the coin cap: no extra absolute bound
     deal_max_fee_bps: 1000          # arbiter fee <= 10%
     deal_tax_bps: 300               # 3% protocol tax, burned
+    deal_reaction_window: 86400     # 24h window for a late confirm/dispute
 
     min_region_ore: 2000000
     max_region_ore: 100000000

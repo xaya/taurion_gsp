@@ -55,6 +55,9 @@
 
 #include <glog/logging.h>
 
+#include <algorithm>
+#include <cstdint>
+#include <limits>
 #include <memory>
 #include <set>
 #include <string>
@@ -143,6 +146,38 @@ struct JobContext
   /** Runtime-parameter reads (admission caps, floors, deal economics).  */
   const ParamsTable& params;
 };
+
+/* Immutable admission-cap maxima (design escrow-v1.1 §4).  The runtime "param"
+   command stores unbounded int64s, so every consensus read of a
+   liveness-bounding param clamps the ParamsTable overlay to a compile-time
+   ceiling: a fat-fingered or compromised admin key can tighten a cap (or freeze
+   an admission with 0) but never open an unbounded-sweep hole above these
+   bench-anchored values (v15/v16 stress: ~0.105s/settling block at 11x the 10k
+   default).  A negative override clamps to the floor 0 (a freeze), matching the
+   existing 0=freeze semantics.  The getjobsparams RPC reports the SAME clamped
+   value, so the client previews against exactly what consensus uses.  */
+constexpr int64_t CAP_MAX_LIVE_JOBS = 100000;
+constexpr int64_t CAP_MAX_JOBS_PER_POSTER = 2000;
+constexpr int64_t CAP_MAX_JOBS_PER_LINKED_ENTITY = 1000;
+constexpr int64_t CAP_MAX_BOUNTY_POOLS_PER_TARGET = 100;
+/** Ceiling on the snapshotted deal reaction window (30 days).  */
+constexpr int64_t CAP_DEAL_REACTION_WINDOW = 2592000;
+/** Ceiling on the history prune batch; its floor 1 is LOAD-BEARING (see
+    ExpireJobs: a stored 0 would otherwise CHECK-halt the retention prune).  */
+constexpr int64_t CAP_JOBS_HISTORY_PRUNE_BATCH = 100000;
+
+/**
+ * Reads a runtime param (override over its roconfig default) and clamps it to
+ * [floor, ceiling] -- the ONE path every consensus read of a capped param and
+ * the getjobsparams RPC share, so no second unclamped path can ever exist.
+ */
+inline int64_t
+CappedParam (const ParamsTable& params, const std::string& name,
+             const int64_t rocoDefault, const int64_t ceiling,
+             const int64_t floor = 0)
+{
+  return std::clamp<int64_t> (params.Get (name, rocoDefault), floor, ceiling);
+}
 
 /**
  * Settles an ACCEPTED escrow deal at completion percentage p: releases the

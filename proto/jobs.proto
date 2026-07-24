@@ -185,6 +185,27 @@ message DealPayload
    */
   optional bool fee_paid = 12;
 
+  /**
+   * The consensus timestamp (ctx.Timestamp()) at which DISPUTE executed;
+   * stamped once, when the dispute lands.  Exposed on the live and settled
+   * JSON (disputetime).  Because an arbiter-bound dispute inside the reaction
+   * window extends the deadline to leave >= W ruling time, a later ghost-split
+   * (fee_paid=false) is genuinely attributable arbiter fault -- Phase-2
+   * reputation consumes this; no consensus rule reads it back.
+   */
+  optional int64 dispute_time = 13;
+
+  /**
+   * The deal's effective reaction window in seconds, snapshot ONCE at POST as
+   * min(the clamped deal-reaction-window param, the posted duration d) -- a
+   * pure function of the row like tax_bps/fee_bps, so no governance retune can
+   * change an in-flight deal's window.  DealOperation::Execute reads THIS, never
+   * the ParamsTable: a CONFIRM (leaving a live counter-move) or an arbiter-bound
+   * DISPUTE landing strictly within reaction_window of the deadline extends it
+   * to now + reaction_window.  0 = the mechanism is off (exact v1 settlement).
+   */
+  optional int64 reaction_window = 14;
+
 }
 
 /**
@@ -208,6 +229,17 @@ message JobData
   optional string designated_worker = 1;
 
   reserved 2;  // was work_window (removed with the delivery types)
+
+  /**
+   * Whether this job is invite-only: acceptable by NOBODY while
+   * designated_worker is empty (a private-unassigned deal, posted with w:"").
+   * An empty designated_worker is otherwise indistinguishable from "open to
+   * all", so this flag is needed to mark the restricted-but-not-yet-designated
+   * state.  Set true by a deal POST that carries a "w" term (empty or not); a
+   * designated worker is by definition invite-only.  ASSIGN names/renames the
+   * designee without clearing it.
+   */
+  optional bool invite_only = 3;
 
   /**
    * The type-specific payload.  Exactly one is set, matching the `type`

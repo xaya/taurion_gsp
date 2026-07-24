@@ -57,6 +57,29 @@ JobIsDue (const Job& job, const JobContext& jc)
 }
 
 /**
+ * Applies the deal reaction window (design escrow-v1.1 §1): when a deal action
+ * that leaves a live counter-move (a single CONFIRM, or an arbiter-bound
+ * DISPUTE) executes at `now` strictly within the row's snapshotted
+ * reaction_window of the deadline, the deadline is pushed to now + window so
+ * the successor move always keeps a full window to answer.  Properties, all
+ * test-pinned: the trigger is STRICT '<' (at deadline - now == W nothing is
+ * needed, exactly W remains; at == W-1 it fires), so it never shortens
+ * (now + W > deadline iff deadline - now < W) and is one-shot per set-once flag,
+ * bounding total extension at 2W past the original deadline; W=0 is provably
+ * inert (JobIsDue guarantees deadline > now at execution, so
+ * deadline - now >= 1 > 0).  The moved deadline column shifts the
+ * jobs_by_deadline index row exactly like the bounty notice-cancel SetDeadline,
+ * and since now + W > now an extended deal is never swept in its own block.
+ */
+void
+ExtendForReactionWindow (Job& job, const int64_t now)
+{
+  const int64_t w = job.GetProto ().deal ().reaction_window ();
+  if (w > 0 && job.GetDeadline () - now < w)
+    job.SetDeadline (now + w);
+}
+
+/**
  * Records a settled job in the history table, then deletes its live row --
  * releasing the row handle first so the delete cannot collide with it on the
  * unique-handle tracker.  Every terminal transition funnels through here, so
@@ -134,9 +157,9 @@ bool
 EntityAtLinkedCap (const JobContext& jc, const Database::IdT id)
 {
   return jc.jobs.CountForLinkedId (id)
-      >= jc.params.Get (
-            "max-jobs-per-linked-entity",
-            jc.ctx.RoConfig ()->params ().max_jobs_per_linked_entity ());
+      >= CappedParam (jc.params, "max-jobs-per-linked-entity",
+                      jc.ctx.RoConfig ()->params ().max_jobs_per_linked_entity (),
+                      CAP_MAX_JOBS_PER_LINKED_ENTITY);
 }
 
 /**
@@ -249,14 +272,16 @@ PostOperation::IsValid () const
       }
 
     if (jc.jobs.CountAll ()
-          >= jc.params.Get ("max-live-jobs", p.max_live_jobs ()))
+          >= CappedParam (jc.params, "max-live-jobs", p.max_live_jobs (),
+                          CAP_MAX_LIVE_JOBS))
       {
         LOG (WARNING) << "Jobs board is at the live-jobs cap";
         return false;
       }
 
     if (jc.jobs.CountForPoster (account.GetName ())
-          >= jc.params.Get ("max-jobs-per-poster", p.max_jobs_per_poster ()))
+          >= CappedParam (jc.params, "max-jobs-per-poster",
+                          p.max_jobs_per_poster (), CAP_MAX_JOBS_PER_POSTER))
       {
         LOG (WARNING)
             << account.GetName () << " is at their live-jobs cap";
@@ -277,8 +302,9 @@ PostOperation::IsValid () const
     const std::string target = pred->PostLinkedName (terms);
     if (!target.empty ()
           && jc.jobs.CountForLinkedName (target)
-               >= jc.params.Get ("max-bounty-pools-per-target",
-                                 p.max_bounty_pools_per_target ()))
+               >= CappedParam (jc.params, "max-bounty-pools-per-target",
+                               p.max_bounty_pools_per_target (),
+                               CAP_MAX_BOUNTY_POOLS_PER_TARGET))
       {
         LOG (WARNING)
             << "Target " << target << " is at the stacked-listings cap";
@@ -402,6 +428,21 @@ AssignOperation::IsValid () const
       LOG (WARNING) << "Cannot designate oneself as worker for job " << jobId;
       return false;
     }
+  /* On the one assignable type (the deal -- standing and approval types are
+     rejected above), the designee must not be the deal's bound arbiter: an
+     arbiter-worker would judge its own dispute.  The accept gate already bars
+     it, so assigning it could only strand the row until expiry (F7).  */
+  if (job->GetProto ().has_deal ())
+    {
+      const std::string& arbiter = job->GetProto ().deal ().arbiter ();
+      if (!arbiter.empty () && designated == arbiter)
+        {
+          LOG (WARNING)
+              << "Cannot designate the bound arbiter as worker for job "
+              << jobId;
+          return false;
+        }
+    }
 
   const auto w = jc.accounts.GetByName (designated);
   if (w == nullptr || !w->IsInitialised ())
@@ -507,12 +548,25 @@ AcceptOperation::IsValid () const
           return false;
         }
     }
-  else if (!designated.empty () && designated != account.GetName ())
+  else
     {
-      LOG (WARNING)
-          << "Job " << jobId << " is designated to " << designated
-          << ", not " << account.GetName ();
-      return false;
+      /* An invite-only deal with no designee yet (posted with w:"") is
+         acceptable by NOBODY -- the poster invites later via ASSIGN.  Empty
+         designated_worker is otherwise "open to all", so the flag disambiguates
+         the private-unassigned state (design §3).  */
+      if (job->GetProto ().invite_only () && designated.empty ())
+        {
+          LOG (WARNING)
+              << "Job " << jobId << " is invite-only with no designee yet";
+          return false;
+        }
+      if (!designated.empty () && designated != account.GetName ())
+        {
+          LOG (WARNING)
+              << "Job " << jobId << " is designated to " << designated
+              << ", not " << account.GetName ();
+          return false;
+        }
     }
 
   /* Type-specific accept checks (the ad-slot owner-approval / exclusivity).  */
@@ -695,15 +749,17 @@ DealOperation::IsValid () const
     }
 
   /* An elapsed deal is the sweep's to settle (see JobIsDue), exactly like
-     every other lifecycle op: a confirm, dispute or ruling landing between
-     the end date and the next superblock would still change the settlement
-     of a deal whose outcome is already fixed by the state at its deadline.
-     The end date is therefore a HARD terminal: v1 has no post-action grace or
-     reaction window (design §12).  A confirm or dispute landing in the final
-     block before the deadline is terminal for the counterparty -- its whole
-     answer window was the deal's duration, not a post-action grace -- and a
-     final-block dispute is likewise terminal for the arbiter's ruling window,
-     which closes the instant the dispute lands.  */
+     every other lifecycle op: a confirm, dispute or ruling landing at or past
+     the end date would still change the settlement of a deal whose outcome is
+     already fixed by the state at its (possibly extended) deadline.  The end
+     date stays a HARD boundary for ops.  v1.1 semantics (design §1): a confirm
+     (any deal, leaving a live counter-move) or a dispute (arbiter-bound only)
+     landing strictly within the row's reaction_window of the deadline is NOT
+     terminal -- DealOperation::Execute extends the deadline to now+window, so
+     the successor move keeps a full window; the extension is one-shot per
+     set-once flag, never shortens, and totals at most 2W.  A no-arbiter dispute
+     is terminal BY DESIGN (its only successor is the sweep's Option-B 50/50 at
+     the unmoved deadline, so an extension would be pure settlement delay).  */
   if (JobIsDue (*job, jc))
     {
       LOG (WARNING)
@@ -778,16 +834,28 @@ DealOperation::Execute ()
         d.set_worker_confirmed (true);
       if (d.poster_confirmed () && d.worker_confirmed ())
         {
-          /* Both sides agree it is done: release at p=100.  */
+          /* Both sides agree it is done: release at p=100.  Nothing is left to
+             answer, so no reaction-window extension applies.  */
           const JobOutcome oc = SettleDeal (jc, *job, 100, &account, true,
                                             proto::DealPayload::BOTH_CONFIRM);
           SettleAndDelete (jc.jobs, std::move (job), oc, jc.ctx);
+          return;
         }
-      /* Otherwise the single confirm persists when the handle destructs.  */
+      /* A single confirm persists (flushed when the handle destructs); it
+         leaves the counterparty a live confirm-settle or dispute, so a confirm
+         landing in the final window extends the deadline (§1).  */
+      ExtendForReactionWindow (*job, jc.ctx.Timestamp ());
       return;
 
     case Kind::DISPUTE:
       d.set_disputed (true);
+      /* Stamp the dispute time (§2) unconditionally.  An arbiter-bound dispute
+         leaves the arbiter a live ruling move, so a dispute in the final window
+         extends the deadline to guarantee >= W ruling time (§1); a no-arbiter
+         dispute has no successor but the sweep's 50/50, so it never extends. */
+      d.set_dispute_time (jc.ctx.Timestamp ());
+      if (!d.arbiter ().empty ())
+        ExtendForReactionWindow (*job, jc.ctx.Timestamp ());
       return;
 
     case Kind::RULE:
@@ -979,17 +1047,29 @@ ExpireJobs (Database& db, const Context& ctx)
   /* The deterministic retention prune for the settled-jobs history: on most
      blocks an indexed no-op, and a negative cutoff early in a chain's life
      simply matches nothing.  An unset retention (0) means keep forever
-     rather than keep nothing.  */
-  const auto& params = ctx.RoConfig ()->params ();
-  if (params.jobs_history_retention () > 0)
+     rather than keep nothing.  Both knobs read the runtime overlay (the
+     "param" command) over the roconfig default, so a launch-window retention
+     override is honoured here; the clamp floors keep the overlay safe.  */
+  const auto& rocfg = ctx.RoConfig ()->params ();
+  const ParamsTable params(db);
+  const int64_t retention
+      = CappedParam (params, "jobs-history-retention",
+                     rocfg.jobs_history_retention (),
+                     std::numeric_limits<int64_t>::max (), /*floor=*/0);
+  if (retention > 0)
     {
-      /* The batch bound is what keeps one huge cohort ageing out from
-         forcing an unbounded single-statement delete, so a configuration
-         without it is a bug, not a mode.  */
-      CHECK_GT (params.jobs_history_prune_batch (), 0)
-          << "jobs_history_prune_batch must be positive";
-      jobs.PruneHistory (ctx.Timestamp () - params.jobs_history_retention (),
-                         params.jobs_history_prune_batch ());
+      /* The batch bound keeps one huge cohort ageing out from forcing an
+         unbounded single-statement delete.  The floor-1 clamp is LOAD-BEARING:
+         an admin-stored 0 is a legal ParamsTable value (distinct from
+         null-removal) that would otherwise hit the CHECK below -> LOG(FATAL)
+         chain halt on the next superblock; the clamp guarantees it passes, and
+         the CHECK stays as defence in depth.  */
+      const int64_t pruneBatch
+          = CappedParam (params, "jobs-history-prune-batch",
+                         rocfg.jobs_history_prune_batch (),
+                         CAP_JOBS_HISTORY_PRUNE_BATCH, /*floor=*/1);
+      CHECK_GT (pruneBatch, 0) << "jobs_history_prune_batch must be positive";
+      jobs.PruneHistory (ctx.Timestamp () - retention, pruneBatch);
     }
 
   /* Snapshot the due jobs (fully consuming the query) before mutating any

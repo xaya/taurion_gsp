@@ -720,6 +720,20 @@ message Params
   optional uint32 deal_max_fee_bps = 44;
   optional uint32 deal_tax_bps = 45;
 
+  /**
+   * DEFAULT reaction window (in seconds) for escrow deals, runtime-tunable
+   * like the other deal params ("deal-reaction-window").  A deal snapshots its
+   * effective window W = min(this clamped value at post, its posted duration d)
+   * into DealPayload.reaction_window at POST (a pure function of the row, so no
+   * later retune can strip an in-flight deal's advertised protection): a
+   * CONFIRM leaving the counterparty a live answer, or an arbiter-bound
+   * DISPUTE, landing strictly within W of the deadline pushes the deadline to
+   * now + W, so the successor move always keeps a full window.  0 disables the
+   * mechanism (exact v1 settlement).  The read at POST is clamped to
+   * [0, 2592000] (30 days) through the admission-cap clamp helper.
+   */
+  optional int64 deal_reaction_window = 46;
+
 }
 
 /* ************************************************************************** */

@@ -12,6 +12,11 @@ params:
     building_update_delay: 10
     dex_fee_bps: 1000  # 10% base fee for simpler numbers
 
+    # A short deal reaction window sized for the gametest/fork cadence
+    # (superblock_seconds 5), so a late confirm/dispute and its extension
+    # fit inside a handful of blocks.
+    deal_reaction_window: 30
+
     # We have tests that use up all materials (and then reprospect a region),
     # so that we need lower limits than on mainnet.
     min_region_ore: 10

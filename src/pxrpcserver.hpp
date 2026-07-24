@@ -213,6 +213,7 @@ public:
   Json::Value getjobshistory (const std::string& afterId,
                               const std::string& afterTime,
                               const std::string& fromTime, int limit) override;
+  Json::Value getjobsparams () override;
   Json::Value getcharacters () override;
   Json::Value getgroundloot () override;
   Json::Value getongoings () override;

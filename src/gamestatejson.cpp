@@ -679,6 +679,10 @@ template <typename J>
   const auto& designated = pb.designated_worker ();
   if (!designated.empty ())
     res["designated"] = designated;
+  /* An invite-only deal restricts who may accept; exposed only when set (like
+     designated), so a plain public deal carries neither key.  */
+  if (pb.invite_only ())
+    res["inviteonly"] = true;
 
   switch (pb.kind_case ())
     {
@@ -713,6 +717,13 @@ template <typename J>
         res["posterConfirmed"] = dp.poster_confirmed ();
         res["workerConfirmed"] = dp.worker_confirmed ();
         res["disputed"] = dp.disputed ();
+        /* The per-row reaction window (snapshot at post) and, once a dispute
+           has landed, the stamped dispute time (§1/§2).  reactionwindow rides
+           on live and settled rows; disputetime appears only after a dispute.  */
+        if (dp.has_reaction_window ())
+          res["reactionwindow"] = IntToJson (dp.reaction_window ());
+        if (dp.has_dispute_time ())
+          res["disputetime"] = IntToJson (dp.dispute_time ());
         /* The settlement metadata is stamped only on the history snapshot, so
            these keys appear on settled rows and never on the live board.  */
         if (dp.has_settle_mode ())
@@ -832,6 +843,65 @@ GameStateJson::MoneySupply ()
   res["total"] = IntToJson (total);
   res["entries"] = entries;
   res["burnsale"] = burnsale;
+
+  return res;
+}
+
+Json::Value
+GameStateJson::JobsParams ()
+{
+  const auto& p = ctx.RoConfig ()->params ();
+  const ParamsTable params(db);
+
+  Json::Value res(Json::objectValue);
+
+  /* The admission caps and the reaction window: report the POST-CLAMP
+     effective value -- exactly what consensus uses -- by routing through the
+     same CappedParam helper and ceilings the consensus reads do, so a client
+     never previews against a value the chain would clamp away (F4).  */
+  res["max-live-jobs"] = IntToJson (
+      CappedParam (params, "max-live-jobs", p.max_live_jobs (),
+                   CAP_MAX_LIVE_JOBS));
+  res["max-jobs-per-poster"] = IntToJson (
+      CappedParam (params, "max-jobs-per-poster", p.max_jobs_per_poster (),
+                   CAP_MAX_JOBS_PER_POSTER));
+  res["max-jobs-per-linked-entity"] = IntToJson (
+      CappedParam (params, "max-jobs-per-linked-entity",
+                   p.max_jobs_per_linked_entity (),
+                   CAP_MAX_JOBS_PER_LINKED_ENTITY));
+  res["max-bounty-pools-per-target"] = IntToJson (
+      CappedParam (params, "max-bounty-pools-per-target",
+                   p.max_bounty_pools_per_target (),
+                   CAP_MAX_BOUNTY_POOLS_PER_TARGET));
+  res["deal-reaction-window"] = IntToJson (
+      CappedParam (params, "deal-reaction-window", p.deal_reaction_window (),
+                   CAP_DEAL_REACTION_WINDOW));
+  res["jobs-history-retention"] = IntToJson (
+      CappedParam (params, "jobs-history-retention",
+                   p.jobs_history_retention (),
+                   std::numeric_limits<int64_t>::max (), /*floor=*/0));
+  res["jobs-history-prune-batch"] = IntToJson (
+      CappedParam (params, "jobs-history-prune-batch",
+                   p.jobs_history_prune_batch (),
+                   CAP_JOBS_HISTORY_PRUNE_BATCH, /*floor=*/1));
+
+  /* The self-bounding deal/reward-floor params: the settlement math bounds
+     them at the door on the snapshot values, so they carry no immutable
+     ceiling -- report the plain runtime overlay over the roconfig default.  */
+  res["min-job-reward"] = IntToJson (
+      params.Get ("min-job-reward", p.min_job_reward ()));
+  res["min-bounty-reward"] = IntToJson (
+      params.Get ("min-bounty-reward", p.min_bounty_reward ()));
+  res["min-deal-reward"] = IntToJson (
+      params.Get ("min-deal-reward", p.min_deal_reward ()));
+  res["deal-tax-bps"] = IntToJson (
+      params.Get ("deal-tax-bps", p.deal_tax_bps ()));
+  res["deal-max-collateral-bps"] = IntToJson (
+      params.Get ("deal-max-collateral-bps", p.deal_max_collateral_bps ()));
+  res["deal-max-collateral"] = IntToJson (
+      params.Get ("deal-max-collateral", p.deal_max_collateral ()));
+  res["deal-max-fee-bps"] = IntToJson (
+      params.Get ("deal-max-fee-bps", p.deal_max_fee_bps ()));
 
   return res;
 }

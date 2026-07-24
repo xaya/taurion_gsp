@@ -58,6 +58,11 @@
     "returns": {}
   },
   {
+    "name": "getjobsparams",
+    "params": {},
+    "returns": {}
+  },
+  {
     "name": "getcharacters",
     "params": {},
     "returns": {}

@@ -119,7 +119,45 @@ class JobsReorgTest (PXTest):
     # p=30: worker <- 1500 - 45(tax) - 150(fee) + 1500(collateral) = 2805.
     self.assertEqual (self.available ("worker"), wBefore + 2805)
 
+    self.testExtensionReorg ()
+
     self.mainLogger.info ("Jobs reorg test succeeded.")
+
+  def testExtensionReorg (self):
+    self.mainLogger.info ("A deadline extension unwinds and redoes bit-exactly...")
+    # A fresh accepted deal; a late confirm inside the reaction window moves the
+    # deadline column (consensus state), which must reorg like any other.
+    self.sendMove ("poster", {"j": [{
+      "t": "deal", "d": 600, "r": 5000, "co": 5000,
+      "arbiter": "arbiter", "fee": 1000, "terms": "extend me"}]})
+    self.generate (1)
+    extId = self.newestJob ()["id"]
+    self.sendMove ("worker", {"j": [{"a": extId}]})
+    self.generate (1)
+    d0 = next (j for j in self.getJobs () if j["id"] == extId)["deadline"]
+
+    snapshot = self.env.snapshot ()
+    preState = self.getGameState ()
+
+    # The branch to detach: a confirm 10s before the deadline extends it to
+    # confirm_ts + 30 (regtest W).
+    self.env.setMockTime (d0 - 10)
+    self.sendMove ("worker", {"j": [{"dl": extId, "confirm": True}]})
+    self.generate (1, superblocks=False)
+    extended = next (j for j in self.getJobs () if j["id"] == extId)["deadline"]
+    self.assertEqual (extended, d0 - 10 + 30)
+
+    self.mainLogger.info ("Detaching the extension block...")
+    snapshot.restore ()
+    self.expectGameState (preState)   # deadline back to d0, confirm gone
+
+    # Redo the identical confirm: the extended deadline rebuilds bit-for-bit.
+    self.env.setMockTime (d0 - 10)
+    self.sendMove ("worker", {"j": [{"dl": extId, "confirm": True}]})
+    self.generate (1, superblocks=False)
+    self.assertEqual (
+        next (j for j in self.getJobs () if j["id"] == extId)["deadline"],
+        extended)
 
 
 if __name__ == "__main__":

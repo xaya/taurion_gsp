@@ -83,13 +83,15 @@ class JobsDealsTest (PXTest):
 
     self.testHappyPathBothConfirm ()
     self.testDisputeArbiterRules ()
-    self.testAtomicConfirmDisputeRule ()
+    self.testPosterArbiterRejectedAndAtomicConfirm ()
     self.testTimeoutGhostSplits ()
     self.testTimeoutSingleConfirm ()
     self.testTimeoutNeitherRefunds ()
     self.testNoArbiterDispute ()
     self.testCancelBeforeAccept ()
     self.testRejectsUnknownOp ()
+    self.testReactionWindowExtension ()
+    self.testNoArbiterDisputeDoesNotExtend ()
 
     self.mainLogger.info ("Escrow-deal integration test succeeded.")
 
@@ -195,42 +197,36 @@ class JobsDealsTest (PXTest):
     self.assertEqual (stat["completed"], statBefore["completed"] + 1)
     self.assertEqual (stat["value"], statBefore["value"] + 1500)
 
-  def testAtomicConfirmDisputeRule (self):
-    self.mainLogger.info ("Atomic [confirm, dispute, rule:0] cannot pass"
-                          " the confirmation...")
-    pBefore = self.available ("poster")
-    wBefore = self.available ("worker")
+  def testPosterArbiterRejectedAndAtomicConfirm (self):
+    self.mainLogger.info ("Poster == arbiter is rejected; an atomic confirm"
+                          " bars the same party's dispute...")
+    # §1: a poster-as-arbiter deal is an armed trap under the reaction window
+    # (late dispute -> rule p=0 seizure), banned at the post door.
+    before = self.getJobs ()
+    self.sendMove ("poster", {"j": [{
+      "t": "deal", "d": 86400, "r": 5000, "co": 5000,
+      "arbiter": "poster", "fee": 1000, "terms": "trap"}]})
+    self.generate (1)
+    self.assertEqual (self.getJobs (), before)   # nothing admitted
 
-    # Poster-as-arbiter: the disclosed self-arbiter arrangement.  The H1
-    # merge-blocker was that this account could confirm (the binding
-    # all-clear), then dispute its own confirmed deal and rule p=0 -- all in
-    # ONE j array.  The move processor validates each op against the evolving
-    # state, so the confirm lands, the self-dispute is barred by it and the
-    # rule finds no dispute: the worker's p=100 protection survives the move.
-    jobId = self.postDeal (arbiter="poster")
+    # The atomic-array H1 pin survives on a normal (third-party arbiter) deal:
+    # in ONE j array the worker's confirm lands and bars its own later dispute
+    # (the move processor validates each op against the evolving state), so the
+    # deal stays accepted, confirmed and NOT disputed.
+    jobId = self.postDeal ()
     self.sendMove ("worker", {"j": [{"a": jobId}]})
     self.generate (1)
-    self.sendMove ("poster", {"j": [{"dl": jobId, "confirm": True},
-                                    {"dl": jobId, "dispute": True},
-                                    {"dl": jobId, "rule": 0}]})
+    self.sendMove ("worker", {"j": [{"dl": jobId, "confirm": True},
+                                    {"dl": jobId, "dispute": True}]})
     self.generate (1)
     job = next (j for j in self.getJobs () if j["id"] == jobId)
     self.assertEqual (job["state"], "accepted")
-    self.assertEqual (job["posterConfirmed"], True)
+    self.assertEqual (job["workerConfirmed"], True)
     self.assertEqual (job["disputed"], False)
-
-    # The worker's confirm completes the both-confirm release at p=100; the
-    # poster == arbiter account collects only its 500 fee.
-    self.sendMove ("worker", {"j": [{"dl": jobId, "confirm": True}]})
+    # Clean up so the board is empty for later reasoning.
+    self.sendMove ("poster", {"j": [{"dl": jobId, "confirm": True}]})
     self.generate (1)
     assert self.jobGone (jobId)
-    fee = self.postFee (5000)
-    self.assertEqual (self.available ("worker"), wBefore - 5000 + 9350)
-    self.assertEqual (self.available ("poster"), pBefore - 5000 - fee + 500)
-    entry = self.historyEntry (jobId)
-    self.assertEqual (entry["mode"], "both-confirm")
-    self.assertEqual (entry["settledp"], 100)
-    self.assertEqual (entry["feepaid"], True)
 
   def testTimeoutGhostSplits (self):
     self.mainLogger.info ("A ghosted arbiter falls back to the 50/50 sweep...")
@@ -373,6 +369,63 @@ class JobsDealsTest (PXTest):
     self.sendMove ("worker", {"j": [{"dl": jobId, "confirm": True}]})
     self.generate (1)
     assert self.jobGone (jobId)
+
+  def confirmAt (self, name, jobId, when, op):
+    """Sends one deal op at an exact block time (a single non-superblock)."""
+    self.env.setMockTime (when)
+    self.sendMove (name, {"j": [{"dl": jobId, **op}]})
+    self.generate (1, superblocks=False)
+
+  def testReactionWindowExtension (self):
+    self.mainLogger.info ("A late confirm extends the deadline; the counterparty"
+                          " and arbiter keep their window (regtest W = 30)...")
+    wBefore = self.available ("worker")
+    aBefore = self.available ("arbiter")
+    jobId = self.postDeal (terms="window")
+    self.sendMove ("worker", {"j": [{"a": jobId}]})
+    self.generate (1)
+    job = next (j for j in self.getJobs () if j["id"] == jobId)
+    d0 = job["deadline"]
+    self.assertEqual (job["reactionwindow"], 30)   # min(30, d) snapshot at post
+
+    # Worker confirms 10s before the deadline: it lands inside W and pushes the
+    # deadline to confirm_ts + 30.
+    self.confirmAt ("worker", jobId, d0 - 10, {"confirm": True})
+    job = next (j for j in self.getJobs () if j["id"] == jobId)
+    self.assertEqual (job["deadline"], d0 - 10 + 30)
+
+    # The still-unconfirmed poster disputes inside the extension: arbiter-bound,
+    # so it extends again and stamps dispute_time.
+    self.confirmAt ("poster", jobId, d0 + 15, {"dispute": True})
+    job = next (j for j in self.getJobs () if j["id"] == jobId)
+    self.assertEqual (job["disputed"], True)
+    self.assertEqual (job["disputetime"], d0 + 15)
+    self.assertEqual (job["deadline"], d0 + 15 + 30)
+
+    # The arbiter rules inside that window -- NOT denied (the v1.1 flip).
+    self.confirmAt ("arbiter", jobId, d0 + 40, {"rule": 50})
+    assert self.jobGone (jobId)
+    entry = self.historyEntry (jobId)
+    self.assertEqual (entry["mode"], "ruling")
+    self.assertEqual (entry["settledp"], 50)
+    self.assertEqual (entry["disputetime"], d0 + 15)
+    # p=50: worker 4675, arbiter 750.
+    self.assertEqual (self.available ("worker"), wBefore - 5000 + 4675)
+    self.assertEqual (self.available ("arbiter"), aBefore + 750)
+
+  def testNoArbiterDisputeDoesNotExtend (self):
+    self.mainLogger.info ("A no-arbiter dispute near the deadline does NOT"
+                          " extend (its only successor is the 50/50 sweep)...")
+    jobId = self.postDeal (arbiter=None, terms="noext")
+    self.sendMove ("worker", {"j": [{"a": jobId}]})
+    self.generate (1)
+    d0 = next (j for j in self.getJobs () if j["id"] == jobId)["deadline"]
+    self.confirmAt ("worker", jobId, d0 - 5, {"dispute": True})
+    self.assertEqual (
+        next (j for j in self.getJobs () if j["id"] == jobId)["deadline"], d0)
+    self.expire (d0)
+    assert self.jobGone (jobId)
+    self.assertEqual (self.historyEntry (jobId)["mode"], "ghost-split")
 
 
 if __name__ == "__main__":

@@ -667,7 +667,7 @@ public:
   PostTermKeys () const override
   {
     static const std::vector<std::string> keys
-        = {"arbiter", "fee", "tag", "terms", "dp"};
+        = {"arbiter", "fee", "tag", "terms", "dp", "w"};
     return keys;
   }
 
@@ -715,22 +715,61 @@ public:
     /* Arbiter is optional; if named, it must be a non-empty, initialised
        account (an empty string would be a silently-meaningless member,
        which the strict grammar rejects rather than ignores).  */
+    std::string arbiter;
     if (terms.isMember ("arbiter"))
       {
         if (!terms["arbiter"].isString ())
           return false;
-        const std::string arb = terms["arbiter"].asString ();
-        if (arb.empty ())
+        arbiter = terms["arbiter"].asString ();
+        if (arbiter.empty ())
           return false;
-        /* A self-arbiter (arbiter == poster) is the poster's own already-held,
-           obviously-initialised handle -- re-opening it here would collide on
-           the UniqueHandles tracker, so skip the lookup for that case.  */
-        if (arb != poster.GetName ())
+        /* Poster == arbiter is FORBIDDEN (design §1): under the reaction window
+           a poster-arbiter could dispute a late single-confirm (+W) and then
+           rule p=0 for a total seizure that v1's hard deadline capped at the
+           50/50 ghost split -- an armed trap primitive with no legitimate use,
+           banned at the post door.  This makes the arbiter a guaranteed third
+           party, so it is always a distinct account to look up.  */
+        if (arbiter == poster.GetName ())
           {
-            const auto a = jc.accounts.GetByName (arb);
+            LOG (WARNING) << "Deal arbiter cannot be the poster: " << arbiter;
+            return false;
+          }
+        const auto a = jc.accounts.GetByName (arbiter);
+        if (a == nullptr || !a->IsInitialised ())
+          {
+            LOG (WARNING) << "Deal arbiter not initialised: " << arbiter;
+            return false;
+          }
+      }
+
+    /* Optional worker designation at POST (design §3, closing F1's negotiate-
+       then-invite snipe): a non-empty "w" makes the deal private from birth --
+       it must be an existing initialised account, != the poster, and != the
+       arbiter named in the same post.  An empty string ("w":"") is the legal
+       private-unassigned state (invite-only, designee chosen later via ASSIGN).
+       Any violation rejects the WHOLE post (nothing charged).  ApplyPost
+       persists the designation and the invite_only flag.  */
+    if (terms.isMember ("w"))
+      {
+        if (!terms["w"].isString ())
+          return false;
+        const std::string w = terms["w"].asString ();
+        if (!w.empty ())
+          {
+            if (w == poster.GetName ())
+              {
+                LOG (WARNING) << "Deal worker cannot be the poster: " << w;
+                return false;
+              }
+            if (w == arbiter)
+              {
+                LOG (WARNING) << "Deal worker cannot be the arbiter: " << w;
+                return false;
+              }
+            const auto a = jc.accounts.GetByName (w);
             if (a == nullptr || !a->IsInitialised ())
               {
-                LOG (WARNING) << "Deal arbiter not initialised: " << arb;
+                LOG (WARNING) << "Deal designated worker not initialised: " << w;
                 return false;
               }
           }
@@ -820,6 +859,30 @@ public:
       d.set_terms (terms["terms"].asString ());
     if (terms.isMember ("dp"))
       d.set_destroyed_p (static_cast<uint32_t> (terms["dp"].asInt64 ()));
+
+    /* Worker designation (design §3): a "w" term makes the deal invite-only
+       from birth; a non-empty designee is the designated worker (the accept
+       gate enforces it), an empty "w" is the private-unassigned state named
+       later via ASSIGN.  */
+    if (terms.isMember ("w"))
+      {
+        const std::string w = terms["w"].asString ();
+        if (!w.empty ())
+          job.MutableProto ().set_designated_worker (w);
+        job.MutableProto ().set_invite_only (true);
+      }
+
+    /* Snapshot the reaction window at post -- W = min(the clamped
+       deal-reaction-window param, the posted duration d) -- exactly like the
+       tax snapshot above and for the same reason: the deal's terms must be a
+       pure function of the row, so no admin retune can strip an in-flight
+       deal's advertised protection, and a short deal never carries a window
+       longer than its own duration (§1).  DealOperation::Execute reads THIS.  */
+    const int64_t wParam
+        = CappedParam (jc.params, "deal-reaction-window",
+                       jc.ctx.RoConfig ()->params ().deal_reaction_window (),
+                       CAP_DEAL_REACTION_WINDOW);
+    d.set_reaction_window (std::min<int64_t> (wParam, terms["d"].asInt64 ()));
   }
 
   bool
@@ -828,8 +891,8 @@ public:
   {
     /* The arbiter must stay a third party: as worker it would judge its own
        dispute (accept + self-dispute + self-rule in one block would capture
-       the whole escrow).  Poster == arbiter remains allowed -- the worker
-       consents by accepting what the board already shows.  */
+       the whole escrow).  Poster == arbiter is barred at the post door now
+       (design §1), so the arbiter is a distinct third account from both sides.  */
     if (worker.GetName () == job.GetProto ().deal ().arbiter ())
       {
         LOG (WARNING)
