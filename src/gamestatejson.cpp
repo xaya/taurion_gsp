@@ -854,51 +854,43 @@ GameStateJson::JobsParams ()
 
   /* The admission caps and the reaction window: report the POST-CLAMP
      effective value -- exactly what consensus uses -- by routing through the
-     same CappedParam helper and ceilings the consensus reads do, so a client
-     never previews against a value the chain would clamp away (F4).  */
-  res["max-live-jobs"] = IntToJson (
-      CappedParam (params, "max-live-jobs", p.max_live_jobs (),
-                   CAP_MAX_LIVE_JOBS));
-  res["max-jobs-per-poster"] = IntToJson (
-      CappedParam (params, "max-jobs-per-poster", p.max_jobs_per_poster (),
-                   CAP_MAX_JOBS_PER_POSTER));
-  res["max-jobs-per-linked-entity"] = IntToJson (
-      CappedParam (params, "max-jobs-per-linked-entity",
-                   p.max_jobs_per_linked_entity (),
-                   CAP_MAX_JOBS_PER_LINKED_ENTITY));
-  res["max-bounty-pools-per-target"] = IntToJson (
-      CappedParam (params, "max-bounty-pools-per-target",
-                   p.max_bounty_pools_per_target (),
-                   CAP_MAX_BOUNTY_POOLS_PER_TARGET));
-  res["deal-reaction-window"] = IntToJson (
-      CappedParam (params, "deal-reaction-window", p.deal_reaction_window (),
-                   CAP_DEAL_REACTION_WINDOW));
-  res["jobs-history-retention"] = IntToJson (
-      CappedParam (params, "jobs-history-retention",
-                   p.jobs_history_retention (),
-                   std::numeric_limits<int64_t>::max (), /*floor=*/0));
-  res["jobs-history-prune-batch"] = IntToJson (
-      CappedParam (params, "jobs-history-prune-batch",
-                   p.jobs_history_prune_batch (),
-                   CAP_JOBS_HISTORY_PRUNE_BATCH, /*floor=*/1));
+     same CappedParam helper, ceilings AND FLOORS the consensus reads do, so a
+     client never previews against a value the chain would clamp away (F4).
+     The floor column is spelled out per row on purpose: the 1 on the prune
+     batch is LOAD-BEARING (see ExpireJobs -- a stored 0 would CHECK-halt).  */
+  const struct { const char* name; int64_t def, ceiling, floor; } capped[] = {
+    {"max-live-jobs", p.max_live_jobs (), CAP_MAX_LIVE_JOBS, 0},
+    {"max-jobs-per-poster", p.max_jobs_per_poster (),
+     CAP_MAX_JOBS_PER_POSTER, 0},
+    {"max-jobs-per-linked-entity", p.max_jobs_per_linked_entity (),
+     CAP_MAX_JOBS_PER_LINKED_ENTITY, 0},
+    {"max-bounty-pools-per-target", p.max_bounty_pools_per_target (),
+     CAP_MAX_BOUNTY_POOLS_PER_TARGET, 0},
+    {"deal-reaction-window", p.deal_reaction_window (),
+     CAP_DEAL_REACTION_WINDOW, 0},
+    {"jobs-history-retention", p.jobs_history_retention (),
+     std::numeric_limits<int64_t>::max (), 0},
+    {"jobs-history-prune-batch", p.jobs_history_prune_batch (),
+     CAP_JOBS_HISTORY_PRUNE_BATCH, 1},
+  };
+  for (const auto& e : capped)
+    res[e.name] = IntToJson (
+        CappedParam (params, e.name, e.def, e.ceiling, e.floor));
 
   /* The self-bounding deal/reward-floor params: the settlement math bounds
      them at the door on the snapshot values, so they carry no immutable
      ceiling -- report the plain runtime overlay over the roconfig default.  */
-  res["min-job-reward"] = IntToJson (
-      params.Get ("min-job-reward", p.min_job_reward ()));
-  res["min-bounty-reward"] = IntToJson (
-      params.Get ("min-bounty-reward", p.min_bounty_reward ()));
-  res["min-deal-reward"] = IntToJson (
-      params.Get ("min-deal-reward", p.min_deal_reward ()));
-  res["deal-tax-bps"] = IntToJson (
-      params.Get ("deal-tax-bps", p.deal_tax_bps ()));
-  res["deal-max-collateral-bps"] = IntToJson (
-      params.Get ("deal-max-collateral-bps", p.deal_max_collateral_bps ()));
-  res["deal-max-collateral"] = IntToJson (
-      params.Get ("deal-max-collateral", p.deal_max_collateral ()));
-  res["deal-max-fee-bps"] = IntToJson (
-      params.Get ("deal-max-fee-bps", p.deal_max_fee_bps ()));
+  const struct { const char* name; int64_t def; } plain[] = {
+    {"min-job-reward", p.min_job_reward ()},
+    {"min-bounty-reward", p.min_bounty_reward ()},
+    {"min-deal-reward", p.min_deal_reward ()},
+    {"deal-tax-bps", p.deal_tax_bps ()},
+    {"deal-max-collateral-bps", p.deal_max_collateral_bps ()},
+    {"deal-max-collateral", p.deal_max_collateral ()},
+    {"deal-max-fee-bps", p.deal_max_fee_bps ()},
+  };
+  for (const auto& e : plain)
+    res[e.name] = IntToJson (params.Get (e.name, e.def));
 
   return res;
 }
@@ -935,9 +927,11 @@ GameStateJson::Accounts ()
 
   /* Add in the coins reserved by an account: DEX open bids plus jobs-board
      escrow (posted rewards + accepted-job collateral).  */
-  const auto dexReserved = orders.GetReservedCoins ();
+  auto reserved = orders.GetReservedCoins ();
   JobsTable jobs(db);
-  const auto jobReserved = jobs.GetReservedCoins ();
+  for (const auto& entry : jobs.GetReservedCoins ())
+    reserved[entry.first] += entry.second;
+
   for (auto& entry : res)
     {
       const auto& nmVal = entry["name"];
@@ -945,12 +939,9 @@ GameStateJson::Accounts ()
       const std::string nm = nmVal.asString ();
 
       Amount cur = 0;
-      const auto dit = dexReserved.find (nm);
-      if (dit != dexReserved.end ())
-        cur += dit->second;
-      const auto jit = jobReserved.find (nm);
-      if (jit != jobReserved.end ())
-        cur += jit->second;
+      const auto it = reserved.find (nm);
+      if (it != reserved.end ())
+        cur = it->second;
 
       auto& bal = entry["balance"];
       CHECK (bal.isObject ());

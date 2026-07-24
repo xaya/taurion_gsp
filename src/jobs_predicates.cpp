@@ -125,27 +125,17 @@ RequireZeroCollateral (const Json::Value& terms, const char* what)
 }
 
 /**
- * Pays a worker for a successful job: their locked collateral plus the reward
- * (fee-free), and bumps their completion counters.  The account handle is
- * passed in -- the hook's fetched worker already holds it.
- */
-void
-PayWorkerSuccess (Account& worker, const Job& job)
-{
-  ReleaseJobCoins (worker, job.GetReward () + job.GetCollateral ());
-  BumpJobStats (worker, job.GetReward ());
-}
-
-/**
- * Hook-path settlement: the job succeeded (success-on-expiry types).  Pays
- * the worker the reward plus their collateral back and bumps their counters.
- * Must not be called while any account handle is live.
+ * Hook-path settlement: the job succeeded (success-on-expiry types).  Pays the
+ * worker their locked collateral plus the reward -- FEE-FREE, unlike the deal
+ * path, which deducts tax_bps + fee_bps -- and bumps their completion
+ * counters.  Must not be called while any account handle is live.
  */
 void
 SettleSuccessAtHook (const JobContext& jc, const Job& job)
 {
   auto worker = GetAccountChecked (jc, job.GetWorker ());
-  PayWorkerSuccess (*worker, job);
+  ReleaseJobCoins (*worker, job.GetReward () + job.GetCollateral ());
+  BumpJobStats (*worker, job.GetReward ());
 }
 
 /**
@@ -1096,21 +1086,18 @@ SettleDeal (const JobContext& jc, Job& job, const int p,
       const std::string& name = entry.first;
       const Amount amount = entry.second;
       const bool isWorker = (name == workerName);
-      if (executor != nullptr && name == executor->GetName ())
-        {
-          if (amount > 0)
-            ReleaseJobCoins (*executor, amount);
-          if (creditRep && isWorker)
-            BumpDealStats (*executor, earnedReward);
-        }
-      else
-        {
-          auto held = GetAccountChecked (jc, name);
-          if (amount > 0)
-            ReleaseJobCoins (*held, amount);
-          if (creditRep && isWorker)
-            BumpDealStats (*held, earnedReward);
-        }
+      /* The executor's row is already open, so reuse that handle rather than
+         opening a second one for the same account; `held` stays null then and
+         dies with the iteration, exactly as the two branches did before.  */
+      AccountsTable::Handle held;
+      if (executor == nullptr || name != executor->GetName ())
+        held = GetAccountChecked (jc, name);
+      Account& acc = (held != nullptr ? *held : *executor);
+
+      if (amount > 0)
+        ReleaseJobCoins (acc, amount);
+      if (creditRep && isWorker)
+        BumpDealStats (acc, earnedReward);
     }
 
   return p > 0 ? JobOutcome::COMPLETED : JobOutcome::FAILED;

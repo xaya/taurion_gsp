@@ -275,13 +275,7 @@ JobsTable::QueryForLinkedName (const std::string& name)
 namespace
 {
 
-/** Result type for the any-bounty existence probe.  */
-struct LinkedNameResult : public Database::ResultType
-{
-  RESULT_COLUMN (std::string, name, 1);
-};
-
-/** Result type for the admission-cap COUNT queries.  */
+/** Result type for the admission-cap COUNT queries and the bounty probe.  */
 struct CountResult : public Database::ResultType
 {
   RESULT_COLUMN (int64_t, cnt, 1);
@@ -303,14 +297,16 @@ StepCount (Database::Statement&& stmt)
 bool
 JobsTable::HasActiveBountyNames () const
 {
+  /* Existence only -- no column is ever read, and SELECT 1 needs no table row,
+     so this still runs off the covering jobs_by_linked_name index.  */
   auto stmt = db.Prepare (R"(
-    SELECT `linked_name` AS `name`
+    SELECT 1 AS `cnt`
       FROM `jobs`
       WHERE `linked_name` IS NOT NULL
       LIMIT 1
   )");
 
-  auto res = stmt.Query<LinkedNameResult> ();
+  auto res = stmt.Query<CountResult> ();
   return res.Step ();
 }
 

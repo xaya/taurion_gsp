@@ -2138,6 +2138,21 @@ template <typename Fn>
   return std::chrono::duration<double, std::milli> (t1 - t0).count ();
 }
 
+TEST_F (AdTests, LinkedEntityCapRejectsOverflowPost)
+{
+  /* The per-entity admission cap's REJECT branch: the cohort bench below only
+     proves that N posts are ADMITTED, so nothing covered the refusal.  With
+     the cap at 2, the third ad linked to the same building is rejected and the
+     board stays at 2.  */
+  static constexpr const char* AD =
+      R"({"t":"ad","d":86400,"r":10,"co":0,"b":1,"slot":0,"hash":"abc"})";
+  params.Set ("max-jobs-per-linked-entity", 2);
+  ASSERT_TRUE (Process ("courier", AD));
+  ASSERT_TRUE (Process ("courier", AD));
+  EXPECT_FALSE (Process ("courier", AD));
+  EXPECT_EQ (jobs.CountForLinkedId (1), 2);
+}
+
 TEST_F (AdTests, LinkedEntityDestructionCohortBench)
 {
   /* One building carrying the ceiling of linked ad jobs, all settled in the

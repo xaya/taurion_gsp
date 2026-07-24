@@ -149,20 +149,6 @@ namespace
 {
 
 /**
- * Whether the given entity is at the per-entity admission cap: the gate a
- * POST applies to every entity it would link.  One indexed equality count
- * plus one point parameter read, on move processing only.
- */
-bool
-EntityAtLinkedCap (const JobContext& jc, const Database::IdT id)
-{
-  return jc.jobs.CountForLinkedId (id)
-      >= CappedParam (jc.params, "max-jobs-per-linked-entity",
-                      jc.ctx.RoConfig ()->params ().max_jobs_per_linked_entity (),
-                      CAP_MAX_JOBS_PER_LINKED_ENTITY);
-}
-
-/**
  * POST: locks the reward + burns the posting fee and creates an OPEN job with
  * the type-specific payload (via the predicate).  Generic across job types.
  */
@@ -288,8 +274,13 @@ PostOperation::IsValid () const
         return false;
       }
 
+    /* Per linked entity: one indexed equality count plus one point parameter
+       read, on move processing only.  */
     for (const auto id : pred->PostLinkedIds (terms))
-      if (EntityAtLinkedCap (jc, id))
+      if (jc.jobs.CountForLinkedId (id)
+            >= CappedParam (jc.params, "max-jobs-per-linked-entity",
+                            p.max_jobs_per_linked_entity (),
+                            CAP_MAX_JOBS_PER_LINKED_ENTITY))
         {
           LOG (WARNING) << "Entity " << id << " is at its linked-jobs cap";
           return false;
