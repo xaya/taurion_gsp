@@ -152,10 +152,18 @@ struct JobContext
    liveness-bounding param clamps the ParamsTable overlay to a compile-time
    ceiling: a fat-fingered or compromised admin key can tighten a cap (or freeze
    an admission with 0) but never open an unbounded-sweep hole above these
-   bench-anchored values (v15/v16 stress: ~0.105s/settling block at 11x the 10k
-   default).  A negative override clamps to the floor 0 (a freeze), matching the
+   values.  A negative override clamps to the floor 0 (a freeze), matching the
    existing 0=freeze semantics.  The getjobsparams RPC reports the SAME clamped
-   value, so the client previews against exactly what consensus uses.  */
+   value, so the client previews against exactly what consensus uses.
+
+   EVIDENCE STATUS: the ceilings are headroom bounds, NOT benched limits.  The
+   only settling-block timings we hold (~0.105s at 11x the 10k default) were
+   measured on the superseded jobs-superblocks branch, whose job-type set
+   differs from this one, and no in-tree harness reproduces them here: the
+   largest ordinary sweep test is 200 rows.  Until an ExpireJobs benchmark runs
+   at CAP_MAX_LIVE_JOBS through full block wiring under a stated block-time
+   budget, keep max-live-jobs at its conservative 10k roconfig default and
+   treat the headroom above it as unproven.  */
 constexpr int64_t CAP_MAX_LIVE_JOBS = 100000;
 constexpr int64_t CAP_MAX_JOBS_PER_POSTER = 2000;
 constexpr int64_t CAP_MAX_JOBS_PER_LINKED_ENTITY = 1000;

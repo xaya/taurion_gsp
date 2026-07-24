@@ -1552,12 +1552,16 @@ TEST_F (DealTests, PostRejectsOverflowTaxFee)
 
 TEST_F (DealTests, AssignRestrictsAcceptToDesignatedWorker)
 {
-  /* L3: assignment turns the generic deal into a private / invite-only deal
-     -- the poster designates an exclusive worker and only that worker may
-     accept.  */
+  /* L3: assignment makes a PUBLIC deal exclusive -- the poster designates a
+     worker and only that worker may accept.  It does NOT make the row
+     born-private: invite_only stays unset (that bit is the POST-time
+     discriminator), so the exported exclusivity predicate is the pair
+     `inviteonly || designated != ""` and this row carries only the second.  */
   const auto id = PostDeal ();
   const std::string sid = std::to_string (id);
   EXPECT_TRUE (Process ("poster", R"({"s":)" + sid + R"(,"w":"courier"})"));
+  EXPECT_EQ (LiveJson (id)["designated"].asString (), "courier");
+  EXPECT_FALSE (LiveJson (id).isMember ("inviteonly"));
   EXPECT_FALSE (Process ("green", R"({"a":)" + sid + "}"));   // not designated
   EXPECT_TRUE (JobExists (id));
   EXPECT_TRUE (Process ("courier", R"({"a":)" + sid + "}"));  // the designee
@@ -1889,8 +1893,7 @@ TEST_F (DealTests, ReactionWindowSnapshotImmuneToRetune)
   EXPECT_EQ (Deadline (armed), BASE_TS + DAY - 1 + 30);
 
   ctx.SetTimestamp (BASE_TS);
-  params.Set ("deal-reaction-window", 0);
-  const auto frozen = PostAcceptDeal ();         // snapshot W = 0
+  const auto frozen = PostAcceptDeal ();         // param still 0 -> snapshot W = 0
   params.Set ("deal-reaction-window", 30);
   ctx.SetTimestamp (BASE_TS + DAY - 1);
   EXPECT_TRUE (Confirm ("courier", frozen));

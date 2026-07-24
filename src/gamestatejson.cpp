@@ -679,8 +679,11 @@ template <typename J>
   const auto& designated = pb.designated_worker ();
   if (!designated.empty ())
     res["designated"] = designated;
-  /* An invite-only deal restricts who may accept; exposed only when set (like
-     designated), so a plain public deal carries neither key.  */
+  /* "inviteonly" marks a deal POSTED private (born with a "w" term), not
+     every exclusive deal: a public deal later ASSIGNed carries "designated"
+     alone.  Both keys are exposed only when set, so a plain public deal has
+     neither, and the client predicate is the pair the accept gate enforces:
+     exclusive = inviteonly || designated != "".  */
   if (pb.invite_only ())
     res["inviteonly"] = true;
 

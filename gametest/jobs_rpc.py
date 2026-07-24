@@ -21,8 +21,9 @@ RPC-level test for the hardened jobs read surface, over a real JSON-RPC
 connection through the generated stub: the paged getjobspage walk (named
 parameter binding, keyset cursor, limit clamping), strict cursor errors
 propagating as RPC errors instead of silently reading as zero, the shared
-parser on getjobshistory, and the deliberate ABSENCE of any whole-board
-getjobs method.
+parser on getjobshistory, the deliberate ABSENCE of any whole-board getjobs
+method, and getjobsparams projecting the POST-CLAMP effective runtime params
+that consensus itself uses.
 """
 
 from pxtest import PXTest
@@ -109,6 +110,51 @@ class JobsRpcTest (PXTest):
       kwargs[field] = "junk"
       self.expectError (-1, ".*not a non-negative integer.*",
                         self.rpc.game.getjobshistory, **kwargs)
+
+    self.mainLogger.info ("getjobsparams projects post-clamp values...")
+    base = self.getRpc ("getjobsparams")
+    self.assertEqual (base["max-live-jobs"], 10000)
+    self.assertEqual (base["max-jobs-per-poster"], 200)
+    self.assertEqual (base["jobs-history-prune-batch"], 5000)
+    self.assertEqual (base["deal-tax-bps"], 300)
+    self.assertEqual (base["deal-reaction-window"], 30)
+
+    # Over-ceiling caps saturate, a negative window floors to 0 (a freeze),
+    # a stored 0 prune batch floors to 1 (the LOAD-BEARING floor keeping
+    # ExpireJobs off its CHECK), and the self-bounding economics params --
+    # bounded by the settlement math at the post door, not by a ceiling --
+    # pass through unclamped.
+    self.adminCommand ({"param": [
+      {"n": "max-live-jobs", "v": 10**9},
+      {"n": "max-jobs-per-poster", "v": 10**9},
+      {"n": "deal-reaction-window", "v": -1},
+      {"n": "jobs-history-prune-batch", "v": 0},
+      {"n": "deal-tax-bps", "v": 750},
+    ]})
+    self.generate (1)
+    capped = self.getRpc ("getjobsparams")
+    self.assertEqual (capped["max-live-jobs"], 100000)
+    self.assertEqual (capped["max-jobs-per-poster"], 2000)
+    self.assertEqual (capped["deal-reaction-window"], 0)
+    self.assertEqual (capped["jobs-history-prune-batch"], 1)
+    self.assertEqual (capped["deal-tax-bps"], 750)
+
+    self.mainLogger.info ("...and RPC == consensus, not a parallel formula.")
+    # The reported window is exactly the one a POST snapshots onto the row
+    # (min with the posted duration), so a client previewing off this RPC can
+    # never preview a value the chain would clamp away.
+    self.adminCommand ({"param": [
+      {"n": "deal-reaction-window", "v": 2592000 + 1000},   # over the 30d cap
+    ]})
+    self.generate (1)
+    eff = self.getRpc ("getjobsparams")["deal-reaction-window"]
+    self.assertEqual (eff, 2592000)
+    self.sendMove ("poster", {"j": [{
+      "t": "deal", "d": 2592000, "r": 1000, "co": 0, "terms": "w",
+    }]})
+    self.generate (1)
+    posted = max (self.getJobs (), key=lambda j: j["id"])
+    self.assertEqual (posted["reactionwindow"], eff)
 
     self.mainLogger.info ("Jobs RPC surface test succeeded.")
 

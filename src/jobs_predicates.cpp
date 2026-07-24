@@ -648,9 +648,12 @@ DealTaxBps (const JobContext& jc)
  * The one primitive that replaces the per-type verification jobs: an escrowed
  * reward + a worker collateral, settled by a completion percentage that a bound
  * arbiter dials on a dispute (ComputeDealSettlement / SettleDeal), or by the
- * end-date sweep when no one rules.  Open to all factions; no linked entity; a
- * fixed posted end-date; settled only by the deal-specific confirm/dispute/
- * rule ops (which live in jobs.cpp), never a generic fulfil.
+ * end-date sweep when no one rules.  Open to all factions; no linked entity;
+ * an end-date that moves FORWARD ONLY (the v1.1 reaction window: a late single
+ * confirm, or an arbiter-bound dispute, pushes the deadline to now + W, at most
+ * twice -- so the posted end date is a floor, never a promise); settled only by
+ * the deal-specific confirm/dispute/rule ops (which live in jobs.cpp), never a
+ * generic fulfil.
  */
 class DealPredicate : public JobPredicate
 {
@@ -727,8 +730,12 @@ public:
            a poster-arbiter could dispute a late single-confirm (+W) and then
            rule p=0 for a total seizure that v1's hard deadline capped at the
            50/50 ghost split -- an armed trap primitive with no legitimate use,
-           banned at the post door.  This makes the arbiter a guaranteed third
-           party, so it is always a distinct account to look up.  */
+           banned at the post door.  This guarantees a distinct ACCOUNT, not a
+           distinct person: nothing stops one operator from arbitrating their
+           own deal under a second Xaya name, and a named-arbiter model has no
+           Sybil-resistant identity to check.  The protection is disclosure --
+           the arbiter is bound at POST, so the worker sees who will judge
+           before staking collateral.  */
         if (arbiter == poster.GetName ())
           {
             LOG (WARNING) << "Deal arbiter cannot be the poster: " << arbiter;

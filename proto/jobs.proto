@@ -231,13 +231,18 @@ message JobData
   reserved 2;  // was work_window (removed with the delivery types)
 
   /**
-   * Whether this job is invite-only: acceptable by NOBODY while
-   * designated_worker is empty (a private-unassigned deal, posted with w:"").
-   * An empty designated_worker is otherwise indistinguishable from "open to
-   * all", so this flag is needed to mark the restricted-but-not-yet-designated
-   * state.  Set true by a deal POST that carries a "w" term (empty or not); a
-   * designated worker is by definition invite-only.  ASSIGN names/renames the
-   * designee without clearing it.
+   * Whether this deal was POSTED private: acceptable by NOBODY while
+   * designated_worker is empty (posted with w:"").  An empty
+   * designated_worker is otherwise indistinguishable from "open to all", so
+   * the flag exists purely to mark that restricted-but-not-yet-designated
+   * state -- it is the born-private discriminator, NOT a general "is
+   * exclusive" bit.  Set only by a deal POST carrying a "w" term (empty or
+   * not); ASSIGN names/renames the designee WITHOUT setting it, because a
+   * publicly posted deal was not born private and its designation alone
+   * already pins acceptance.  Exclusivity is therefore the pair, never this
+   * bit alone -- what the accept gate enforces and what clients must read:
+   *
+   *     exclusive = invite_only || designated_worker != ""
    */
   optional bool invite_only = 3;
 

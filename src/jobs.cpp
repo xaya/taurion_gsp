@@ -388,14 +388,17 @@ AssignOperation::IsValid () const
       return false;
     }
   /* Assignment designates an exclusive worker before anyone accepts: on the
-     one assignable type -- the generic deal -- this is the private /
-     invite-only deal, where only the designated worker may accept (the
-     generic accept gate enforces the pin).  A standing job (the wanted board)
-     is never accepted by a single worker, so a designated_worker on it would
-     be dead data polluting the public JSON; the type decides, not the
-     deadline column -- a notice-cancelled standing job carries a deadline but
-     is still standing.  An approval type (the ad slot) manages its own
-     designation and is rejected just below.  */
+     one assignable type -- the generic deal -- only the designated worker may
+     accept from here on (the generic accept gate enforces the pin).  It does
+     NOT set invite_only: that flag is the POST-time born-private
+     discriminator, and a publicly posted deal stays invite_only=false once
+     assigned (proto JobData.invite_only -- exclusive is the pair
+     `invite_only || designated_worker != ""`, not the bit alone).  A standing
+     job (the wanted board) is never accepted by a single worker, so a
+     designated_worker on it would be dead data polluting the public JSON; the
+     type decides, not the deadline column -- a notice-cancelled standing job
+     carries a deadline but is still standing.  An approval type (the ad slot)
+     manages its own designation and is rejected just below.  */
   const auto* pred = PredicateForType (job->GetType ());
   CHECK (pred != nullptr);
   if (pred->IsStanding ())
@@ -432,7 +435,7 @@ AssignOperation::IsValid () const
      rejected above), the designee must not be the deal's bound arbiter: an
      arbiter-worker would judge its own dispute.  The accept gate already bars
      it, so assigning it could only strand the row until expiry (F7).  */
-  if (job->GetProto ().has_deal ())
+  if (job->GetType () == Job::Type::DEAL)
     {
       const std::string& arbiter = job->GetProto ().deal ().arbiter ();
       if (!arbiter.empty () && designated == arbiter)
@@ -1049,7 +1052,14 @@ ExpireJobs (Database& db, const Context& ctx)
      simply matches nothing.  An unset retention (0) means keep forever
      rather than keep nothing.  Both knobs read the runtime overlay (the
      "param" command) over the roconfig default, so a launch-window retention
-     override is honoured here; the clamp floors keep the overlay safe.  */
+     override is honoured here; the clamp floors keep the overlay safe.
+
+     OPERATOR NOTE: because the floor is 0 and 0 means keep-forever, a
+     NEGATIVE retention override silently disables pruning rather than being
+     rejected -- an accidental -1 grows the history table unboundedly.  It is
+     consensus-safe (every node clamps identically) and never silent to a
+     reader: getjobsparams reports the post-clamp 0, so querying it is how an
+     operator sees that pruning is off.  */
   const auto& rocfg = ctx.RoConfig ()->params ();
   const ParamsTable params(db);
   const int64_t retention
