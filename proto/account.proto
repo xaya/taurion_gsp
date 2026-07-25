@@ -71,4 +71,34 @@ message Account
   optional uint32 deals_completed = 9;
   optional uint64 deals_value_completed = 10;
 
+  /**
+   * The POSTER side of the same settlements: deals this account posted that
+   * released value to a worker, and the total so released.  Gated on the very
+   * same tax anchor as the worker counters above (see BumpDealStats), so the
+   * two sides of one settlement move together or not at all.  A poster's
+   * record is what a prospective worker vets before staking collateral.
+   */
+  optional uint32 deals_posted_completed = 11;
+  optional uint64 deals_posted_value = 12;
+
+  /**
+   * Deals that ended in a DISPUTE -- an arbiter ruling or the blunt 50/50
+   * fallback -- bumped for BOTH parties, since which side was at fault is
+   * exactly what consensus cannot know.  Deliberately NOT tax-gated: the
+   * dispute happened whether or not the pot was large enough to pay tax, and
+   * unlike the completion counters this one is not worth farming upwards.
+   */
+  optional uint32 deals_disputed = 13;
+
+  /**
+   * The ARBITER's record: disputes this account was bound to and actually
+   * ruled, against those it let time out into the 50/50 fallback (the
+   * GHOST_SPLIT mode, which also covers no-arbiter disputes -- those bump
+   * NEITHER counter, since no arbiter was ever hired).  Ghosting is the one
+   * arbiter failure consensus can observe, so it is recorded beside the
+   * rulings rather than inferred from their absence.
+   */
+  optional uint32 arbiter_rulings = 14;
+  optional uint32 arbiter_ghosted = 15;
+
 }

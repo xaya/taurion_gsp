@@ -38,6 +38,9 @@ class JobsDealsTest (PXTest):
   def dealStats (self, name):
     return self.getAccounts ()[name].data["dealstats"]
 
+  def arbiterStats (self, name):
+    return self.getAccounts ()[name].data["arbiterstats"]
+
   def postFee (self, reward):
     """Mirrors PostOperation::Fee (jobs.cpp): the burned posting fee."""
     p = self.roConfig ().params
@@ -93,6 +96,8 @@ class JobsDealsTest (PXTest):
     wBefore = self.available ("worker")
     aBefore = self.available ("arbiter")
     statBefore = self.dealStats ("worker")
+    pStatBefore = self.dealStats ("poster")
+    aStatBefore = self.arbiterStats ("arbiter")
 
     jobId = self.postDeal ()
     job = next (j for j in self.getJobs () if j["id"] == jobId)
@@ -145,12 +150,22 @@ class JobsDealsTest (PXTest):
     stat = self.dealStats ("worker")
     self.assertEqual (stat["completed"], statBefore["completed"] + 1)
     self.assertEqual (stat["value"], statBefore["value"] + 5000)
+    # The poster's mirror of the same settlement, through the same JSON. A clean
+    # deal troubles nobody: no dispute on either side, no arbiter record.
+    pStat = self.dealStats ("poster")
+    self.assertEqual (pStat["posted"], pStatBefore["posted"] + 1)
+    self.assertEqual (pStat["postedvalue"], pStatBefore["postedvalue"] + 5000)
+    self.assertEqual (pStat["disputed"], pStatBefore["disputed"])
+    self.assertEqual (stat["disputed"], statBefore["disputed"])
+    self.assertEqual (self.arbiterStats ("arbiter"), aStatBefore)
 
   def testDisputeArbiterRules (self):
     self.mainLogger.info ("Dispute resolved by the arbiter's %-dial...")
     wBefore = self.available ("worker")
     aBefore = self.available ("arbiter")
     statBefore = self.dealStats ("worker")
+    pStatBefore = self.dealStats ("poster")
+    aStatBefore = self.arbiterStats ("arbiter")
 
     jobId = self.postDeal ()
     self.sendMove ("worker", {"j": [{"a": jobId}]})
@@ -188,6 +203,17 @@ class JobsDealsTest (PXTest):
     stat = self.dealStats ("worker")
     self.assertEqual (stat["completed"], statBefore["completed"] + 1)
     self.assertEqual (stat["value"], statBefore["value"] + 1500)
+    # Both parties carry the dispute; the arbiter carries the ruling it
+    # delivered; the poster's payout mirror scales with p exactly like the
+    # worker's (5000 * 30/100).
+    pStat = self.dealStats ("poster")
+    self.assertEqual (pStat["posted"], pStatBefore["posted"] + 1)
+    self.assertEqual (pStat["postedvalue"], pStatBefore["postedvalue"] + 1500)
+    self.assertEqual (pStat["disputed"], pStatBefore["disputed"] + 1)
+    self.assertEqual (stat["disputed"], statBefore["disputed"] + 1)
+    aStat = self.arbiterStats ("arbiter")
+    self.assertEqual (aStat["rulings"], aStatBefore["rulings"] + 1)
+    self.assertEqual (aStat["ghosted"], aStatBefore["ghosted"])
 
   def testPosterArbiterRejectedAndAtomicConfirm (self):
     self.mainLogger.info ("Poster == arbiter is rejected; an atomic confirm"
@@ -224,6 +250,7 @@ class JobsDealsTest (PXTest):
     self.mainLogger.info ("A ghosted arbiter falls back to the 50/50 sweep...")
     wBefore = self.available ("worker")
     aBefore = self.available ("arbiter")
+    aStatBefore = self.arbiterStats ("arbiter")
 
     jobId = self.postDeal ()
     self.sendMove ("worker", {"j": [{"a": jobId}]})
@@ -240,6 +267,11 @@ class JobsDealsTest (PXTest):
     self.assertEqual (self.available ("worker"), wBefore - 5000 + 4925)
     self.assertEqual (self.available ("arbiter"), aBefore)
     self.assertEqual (self.historyOutcome (jobId), "completed")
+    # The ghosting itself is now on the arbiter's permanent record, not merely
+    # implied by the forfeited fee.
+    aStat = self.arbiterStats ("arbiter")
+    self.assertEqual (aStat["ghosted"], aStatBefore["ghosted"] + 1)
+    self.assertEqual (aStat["rulings"], aStatBefore["rulings"])
 
   def testTimeoutSingleConfirm (self):
     self.mainLogger.info ("One unopposed confirm settles in full at timeout...")
@@ -294,6 +326,7 @@ class JobsDealsTest (PXTest):
     pBefore = self.available ("poster")
     wBefore = self.available ("worker")
     fee = self.postFee (5000)
+    aStatBefore = self.arbiterStats ("arbiter")
 
     # A genuinely no-arbiter deal: the post omits arbiter and fee entirely, so
     # no ruling can ever settle a dispute here.
@@ -330,6 +363,9 @@ class JobsDealsTest (PXTest):
     self.assertEqual (entry["mode"], "ghost-split")
     self.assertEqual (entry["settledp"], 50)
     assert "feepaid" not in entry
+    # ghost-split is ALSO the no-arbiter fallback, so no arbiter record may move
+    # here: "arbiter" is a bystander to this deal and must stay untouched.
+    self.assertEqual (self.arbiterStats ("arbiter"), aStatBefore)
 
   def testCancelBeforeAccept (self):
     self.mainLogger.info ("An open deal cancels and refunds the reward...")

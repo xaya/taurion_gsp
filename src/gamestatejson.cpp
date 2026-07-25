@@ -332,11 +332,24 @@ template <>
       res["jobstats"] = jobstats;
 
       /* Kept disjoint from the jobs-board counters above (a settled deal is
-         not a settled catalogue job).  See BumpDealStats.  */
+         not a settled catalogue job).  "completed"/"value" are the WORKER side,
+         "posted"/"postedvalue" the poster's mirror of the same settlements, and
+         "disputed" counts either party's deals that needed a dispute to end.
+         See BumpDealStats / BumpPosterDealStats / BumpDisputedStats.  */
       Json::Value dealstats(Json::objectValue);
       dealstats["completed"] = IntToJson (pb.deals_completed ());
       dealstats["value"] = IntToJson (pb.deals_value_completed ());
+      dealstats["posted"] = IntToJson (pb.deals_posted_completed ());
+      dealstats["postedvalue"] = IntToJson (pb.deals_posted_value ());
+      dealstats["disputed"] = IntToJson (pb.deals_disputed ());
       res["dealstats"] = dealstats;
+
+      /* The arbiter's own record: disputes ruled against disputes ghosted.
+         See BumpArbiterStats.  */
+      Json::Value arbiterstats(Json::objectValue);
+      arbiterstats["rulings"] = IntToJson (pb.arbiter_rulings ());
+      arbiterstats["ghosted"] = IntToJson (pb.arbiter_ghosted ());
+      res["arbiterstats"] = arbiterstats;
     }
 
   return res;

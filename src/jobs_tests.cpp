@@ -893,6 +893,31 @@ protected:
     return {pb.deals_completed (), pb.deals_value_completed ()};
   }
 
+  /** Returns the POSTER mirror (deals_posted_completed, deals_posted_value).
+      Gated on the same creditRep bool as DealStats above, so the treasury>=1
+      anti-wash boundary needs no separate case: both sides share one gate.  */
+  std::pair<unsigned, Amount>
+  PosterStats (const std::string& name)
+  {
+    const auto& pb = accounts.GetByName (name)->GetProto ();
+    return {pb.deals_posted_completed (), pb.deals_posted_value ()};
+  }
+
+  /** Returns deals_disputed for an account.  */
+  unsigned
+  Disputed (const std::string& name)
+  {
+    return accounts.GetByName (name)->GetProto ().deals_disputed ();
+  }
+
+  /** Returns (arbiter_rulings, arbiter_ghosted) for an account.  */
+  std::pair<unsigned, unsigned>
+  ArbiterStats (const std::string& name)
+  {
+    const auto& pb = accounts.GetByName (name)->GetProto ();
+    return {pb.arbiter_rulings (), pb.arbiter_ghosted ()};
+  }
+
   /** Posts a standard deal (reward 5000, collateral 5000, arbiter courier2,
       fee 10%).  Pass arbiter="" for a no-arbiter deal.  Returns its id.  */
   Database::IdT
@@ -974,6 +999,15 @@ protected:
     EXPECT_EQ (h["mode"].asString (), "ghost-split");
     EXPECT_EQ (h["settledp"].asUInt (), 50u);
     EXPECT_FALSE (h.isMember ("feepaid"));   // no arbiter bound
+    /* THE trap in the arbiter record: GHOST_SPLIT is also how a deal that
+       never named an arbiter settles a dispute, so no arbiter counter may move
+       here.  courier2 (the arbiter of every OTHER deal in this fixture) is a
+       bystander to these and must stay untouched -- otherwise a ghosting
+       penalty would land on whoever happens to arbitrate elsewhere.  Both
+       parties still carry the dispute itself.  */
+    EXPECT_EQ (ArbiterStats ("courier2"), std::make_pair (0u, 0u));
+    EXPECT_EQ (Disputed ("poster"), 1u);
+    EXPECT_EQ (Disputed ("courier"), 1u);
   }
 
   /** The deal actions as one-liners (all through validate + execute).  */
@@ -1013,6 +1047,12 @@ TEST_F (DealTests, HappyPathBothConfirm)
   EXPECT_EQ (Balance ("courier"), 1000000 - 5000 + 9350);
   EXPECT_EQ (Balance ("courier2"), 1000000 + 500);
   EXPECT_EQ (DealStats ("courier"), std::make_pair (1u, static_cast<Amount> (5000)));
+  /* The poster's mirror of the same settlement, and a clean deal that never
+     troubled the arbiter: no dispute on either party, no arbiter record.  */
+  EXPECT_EQ (PosterStats ("poster"), std::make_pair (1u, static_cast<Amount> (5000)));
+  EXPECT_EQ (Disputed ("poster"), 0u);
+  EXPECT_EQ (Disputed ("courier"), 0u);
+  EXPECT_EQ (ArbiterStats ("courier2"), std::make_pair (0u, 0u));
   /* The history snapshot records how the deal settled.  */
   const Json::Value h = HistoryJson (id);
   EXPECT_EQ (h["outcome"].asString (), "completed");
@@ -1030,6 +1070,14 @@ TEST_F (DealTests, DisputeArbiterRulesPartial)
   /* p=30: worker 2805, poster 6090, arbiter 850, treasury 255.  */
   EXPECT_EQ (Balance ("courier"), 1000000 - 5000 + 2805);
   EXPECT_EQ (Balance ("courier2"), 1000000 + 850);
+  /* All three records move: both sides carry the dispute, the arbiter carries
+     the ruling it actually delivered, and both value counters scale with p
+     (5000 * 30/100), so a low ruling credits proportionally less.  */
+  EXPECT_EQ (DealStats ("courier"), std::make_pair (1u, static_cast<Amount> (1500)));
+  EXPECT_EQ (PosterStats ("poster"), std::make_pair (1u, static_cast<Amount> (1500)));
+  EXPECT_EQ (Disputed ("poster"), 1u);
+  EXPECT_EQ (Disputed ("courier"), 1u);
+  EXPECT_EQ (ArbiterStats ("courier2"), std::make_pair (1u, 0u));
   const Json::Value h = HistoryJson (id);
   EXPECT_EQ (h["outcome"].asString (), "completed");
   EXPECT_EQ (h["mode"].asString (), "ruling");
@@ -1060,6 +1108,13 @@ TEST_F (DealTests, TimeoutGhostSplits5050)
      way.  */
   EXPECT_EQ (DealStats ("courier"),
              std::make_pair (1u, static_cast<Amount> (2500)));
+  /* The poster's mirror follows the same p; and THIS is the arbiter ghost --
+     bound to the dispute, never ruled it -- recorded as such rather than being
+     inferred from a missing ruling.  */
+  EXPECT_EQ (PosterStats ("poster"), std::make_pair (1u, static_cast<Amount> (2500)));
+  EXPECT_EQ (Disputed ("poster"), 1u);
+  EXPECT_EQ (Disputed ("courier"), 1u);
+  EXPECT_EQ (ArbiterStats ("courier2"), std::make_pair (0u, 1u));
 }
 
 TEST_F (DealTests, TimeoutSingleConfirmPaysWorker)
@@ -1071,6 +1126,12 @@ TEST_F (DealTests, TimeoutSingleConfirmPaysWorker)
   /* one confirm at timeout => p=100.  */
   EXPECT_EQ (Balance ("courier"), 1000000 - 5000 + 9350);
   EXPECT_EQ (Balance ("courier2"), 1000000 + 500);
+  /* A quiet timeout is not a dispute: the poster's payout is on record, but
+     neither party carries a dispute and the arbiter was never called on.  */
+  EXPECT_EQ (PosterStats ("poster"), std::make_pair (1u, static_cast<Amount> (5000)));
+  EXPECT_EQ (Disputed ("poster"), 0u);
+  EXPECT_EQ (Disputed ("courier"), 0u);
+  EXPECT_EQ (ArbiterStats ("courier2"), std::make_pair (0u, 0u));
   const Json::Value h = HistoryJson (id);
   EXPECT_EQ (h["mode"].asString (), "single-confirm");
   EXPECT_EQ (h["settledp"].asUInt (), 100u);
@@ -1089,6 +1150,13 @@ TEST_F (DealTests, TimeoutNeitherConfirmRefundsBoth)
   EXPECT_EQ (Balance ("courier"), 1000000);
   EXPECT_EQ (Balance ("poster"), 1000000 - 50);
   EXPECT_EQ (Balance ("courier2"), 1000000);
+  /* A no-fault refund moves NO record at all, on any of the three roles --
+     nobody worked, nobody was paid, nobody was judged.  */
+  EXPECT_EQ (DealStats ("courier"), std::make_pair (0u, static_cast<Amount> (0)));
+  EXPECT_EQ (PosterStats ("poster"), std::make_pair (0u, static_cast<Amount> (0)));
+  EXPECT_EQ (Disputed ("poster"), 0u);
+  EXPECT_EQ (Disputed ("courier"), 0u);
+  EXPECT_EQ (ArbiterStats ("courier2"), std::make_pair (0u, 0u));
   const Json::Value h = HistoryJson (id);
   EXPECT_EQ (h["outcome"].asString (), "void");
   EXPECT_EQ (h["mode"].asString (), "refund");
@@ -1334,6 +1402,14 @@ TEST_F (DealTests, RuleZeroFailsWorkerWithoutReputation)
   EXPECT_EQ (Balance ("courier2"), 1000000 + 1000);
   EXPECT_EQ (Balance ("poster"), 1000000 - 5000 - 50 + 8700);
   EXPECT_EQ (DealStats ("courier"), std::make_pair (0u, static_cast<Amount> (0)));
+  /* The earning gate (p>0) denies BOTH sides their completion record here --
+     nothing was delivered and nothing paid out.  The dispute and the arbiter's
+     ruling are recorded regardless: the arbiter did the work it was hired for,
+     and that must not depend on which way it ruled.  */
+  EXPECT_EQ (PosterStats ("poster"), std::make_pair (0u, static_cast<Amount> (0)));
+  EXPECT_EQ (Disputed ("poster"), 1u);
+  EXPECT_EQ (Disputed ("courier"), 1u);
+  EXPECT_EQ (ArbiterStats ("courier2"), std::make_pair (1u, 0u));
   /* A p=0 ruling still records the actual ruling (settledp 0) and the paid
      fee; the outcome stays "failed" (the client renders it neutrally).  */
   const Json::Value h = HistoryJson (id);

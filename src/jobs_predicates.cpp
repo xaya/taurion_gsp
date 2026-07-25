@@ -107,6 +107,47 @@ BumpDealStats (Account& a, const Amount value)
 }
 
 /**
+ * Bumps the POSTER's mirror of the counters above: called under the same
+ * tax-bearing gate, with the same `value` (what the worker earned is what the
+ * poster released), so one settlement moves both sides' records together.
+ */
+void
+BumpPosterDealStats (Account& a, const Amount value)
+{
+  auto& pb = a.MutableProto ();
+  pb.set_deals_posted_completed (pb.deals_posted_completed () + 1);
+  pb.set_deals_posted_value (pb.deals_posted_value () + value);
+}
+
+/**
+ * Records that a deal ended in a dispute, for one of its two parties.  Not
+ * tax-gated (see the proto comment): a dispute is a fact about the deal, not
+ * an earning, and it is the one counter nobody has an incentive to inflate.
+ */
+void
+BumpDisputedStats (Account& a)
+{
+  auto& pb = a.MutableProto ();
+  pb.set_deals_disputed (pb.deals_disputed () + 1);
+}
+
+/**
+ * Records the outcome of a dispute for the ARBITER that was bound to it:
+ * `ruled` true when the arbiter itself settled the deal, false when it let the
+ * dispute time out into the 50/50 fallback.  Only ever called for a deal that
+ * actually named an arbiter, so a no-arbiter dispute leaves no arbiter trace.
+ */
+void
+BumpArbiterStats (Account& a, const bool ruled)
+{
+  auto& pb = a.MutableProto ();
+  if (ruled)
+    pb.set_arbiter_rulings (pb.arbiter_rulings () + 1);
+  else
+    pb.set_arbiter_ghosted (pb.arbiter_ghosted () + 1);
+}
+
+/**
  * Validates that a job's terms carry zero worker collateral (the open-claim
  * and payer/payee-swapped types, where nobody posts a bond).  The generic
  * parse has already verified "co" is a well-formed amount.
@@ -1080,12 +1121,19 @@ SettleDeal (const JobContext& jc, Job& job, const int p,
   const Amount earnedReward = job.GetReward () * p / 100;
   const bool creditRep = (p > 0 && s.treasury >= 1);
   const std::string workerName = job.GetWorker ();
+  const std::string posterName = job.GetPoster ();
+  /* What took this deal off the happy path: either the bound arbiter ruled it,
+     or nobody did and the sweep fell back to the blunt 50/50 split.  */
+  const bool disputed = (mode == proto::DealPayload::RULING
+                            || mode == proto::DealPayload::GHOST_SPLIT);
 
   for (const auto& entry : credit)
     {
       const std::string& name = entry.first;
       const Amount amount = entry.second;
       const bool isWorker = (name == workerName);
+      const bool isPoster = (name == posterName);
+      const bool isArbiter = (!d.arbiter ().empty () && name == d.arbiter ());
       /* The executor's row is already open, so reuse that handle rather than
          opening a second one for the same account; `held` stays null then and
          dies with the iteration, exactly as the two branches did before.  */
@@ -1096,8 +1144,20 @@ SettleDeal (const JobContext& jc, Job& job, const int p,
 
       if (amount > 0)
         ReleaseJobCoins (acc, amount);
+      /* The role bumps are independent rather than mutually exclusive.  All
+         three names are distinct today (post bars poster == arbiter, accept
+         bars worker == poster and worker == arbiter), but written this way an
+         overlap could only ever record MORE, never silently drop a party's
+         record -- and no extra account read is taken: every name here already
+         has its handle open for the payout above.  */
       if (creditRep && isWorker)
         BumpDealStats (acc, earnedReward);
+      if (creditRep && isPoster)
+        BumpPosterDealStats (acc, earnedReward);
+      if (disputed && (isWorker || isPoster))
+        BumpDisputedStats (acc);
+      if (disputed && isArbiter)
+        BumpArbiterStats (acc, mode == proto::DealPayload::RULING);
     }
 
   return p > 0 ? JobOutcome::COMPLETED : JobOutcome::FAILED;
