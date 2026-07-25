@@ -25,6 +25,23 @@ namespace pxd
 {
 
 /**
+ * The Polygon block at which the game world is created: both the initial game
+ * state (PXLogic::GetInitialStateBlock) and the GameStart fork below.  Those two
+ * are the same block BY DEFINITION -- genesis is when gameplay begins -- so they
+ * share one constant rather than two literals that can drift apart.  Drift is a
+ * nasty failure: a GameStart above genesis leaves the daemon happily syncing
+ * while it SILENTLY discards every gameplay move (moveprocessor returns early,
+ * accounts appear with no faction and no error is logged).
+ *
+ * Moving these forward RESETS the game world -- state is the replay of all moves
+ * since this block, so nothing before it exists any more.  The hash must be the
+ * real hash of that height on Polygon.
+ */
+constexpr unsigned POLYGON_GENESIS_HEIGHT = 90'800'000;
+constexpr const char* POLYGON_GENESIS_HASH
+    = "9d904bb4a23243bc911922960b752c567ff04c9d3ddb7d3c5edf3a9d775214d6";
+
+/**
  * Hardforks that are done on the Taurion game world.
  */
 enum class Fork

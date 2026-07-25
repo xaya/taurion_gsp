@@ -20,6 +20,7 @@
 
 #include "buildings.hpp"
 #include "combat.hpp"
+#include "forks.hpp"           // POLYGON_GENESIS_HEIGHT / _HASH (shared with the GameStart fork)
 #include "dynobstacles.hpp"
 #include "mining.hpp"
 #include "movement.hpp"
@@ -170,9 +171,10 @@ PXLogic::GetInitialStateBlock (unsigned& height,
   switch (chain)
     {
     case xaya::Chain::POLYGON:
-      height = 76'690'000;
-      hashHex
-          = "97cfbed2133010eb3134ceb65ec9ae46ed76d996f0dfcee84d022d95ab468be1";
+      /* Genesis and the GameStart fork are ONE constant (forks.hpp) so they can
+         never drift apart -- see the rationale there.  */
+      height = POLYGON_GENESIS_HEIGHT;
+      hashHex = POLYGON_GENESIS_HASH;
       break;
 
     case xaya::Chain::GANACHE:
