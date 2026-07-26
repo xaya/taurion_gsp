@@ -211,9 +211,12 @@ class JobsDealsTest (PXTest):
     self.assertEqual (pStat["postedvalue"], pStatBefore["postedvalue"] + 1500)
     self.assertEqual (pStat["disputed"], pStatBefore["disputed"] + 1)
     self.assertEqual (stat["disputed"], statBefore["disputed"] + 1)
+    # The arbiter's value counter takes the whole pot it directed (5000 reward
+    # + 5000 collateral), not the worker's share -- a low ruling decided just as
+    # much money as a high one.
     aStat = self.arbiterStats ("arbiter")
     self.assertEqual (aStat["rulings"], aStatBefore["rulings"] + 1)
-    self.assertEqual (aStat["ghosted"], aStatBefore["ghosted"])
+    self.assertEqual (aStat["valueruled"], aStatBefore["valueruled"] + 10000)
 
   def testPosterArbiterRejectedAndAtomicConfirm (self):
     self.mainLogger.info ("Poster == arbiter is rejected; an atomic confirm"
@@ -267,11 +270,19 @@ class JobsDealsTest (PXTest):
     self.assertEqual (self.available ("worker"), wBefore - 5000 + 4925)
     self.assertEqual (self.available ("arbiter"), aBefore)
     self.assertEqual (self.historyOutcome (jobId), "completed")
-    # The ghosting itself is now on the arbiter's permanent record, not merely
-    # implied by the forfeited fee.
+    # A ghost leaves NO mark on the arbiter's account record, by design: the
+    # poster binds an arbiter without its consent, so a permanent counter here
+    # would be inflictable on a bystander.  Consensus punishes the ghost by
+    # forfeiting the fee (asserted above) and records it on the history row --
+    # mode ghost-split, feepaid false -- which is where a reputation layer
+    # reads it from.  No "ghosted" key exists in arbiterstats at all.
     aStat = self.arbiterStats ("arbiter")
-    self.assertEqual (aStat["ghosted"], aStatBefore["ghosted"] + 1)
-    self.assertEqual (aStat["rulings"], aStatBefore["rulings"])
+    self.assertEqual (aStat, aStatBefore)
+    assert "ghosted" not in aStat, aStat
+    row = self.historyEntry (jobId)
+    self.assertEqual (row["mode"], "ghost-split")
+    self.assertEqual (row["feepaid"], False)
+    self.assertEqual (row["arbiter"], "arbiter")
 
   def testTimeoutSingleConfirm (self):
     self.mainLogger.info ("One unopposed confirm settles in full at timeout...")

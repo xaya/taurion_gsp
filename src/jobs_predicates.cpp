@@ -132,19 +132,18 @@ BumpDisputedStats (Account& a)
 }
 
 /**
- * Records the outcome of a dispute for the ARBITER that was bound to it:
- * `ruled` true when the arbiter itself settled the deal, false when it let the
- * dispute time out into the 50/50 fallback.  Only ever called for a deal that
- * actually named an arbiter, so a no-arbiter dispute leaves no arbiter trace.
+ * Records one dispute RULED by the arbiter that was bound to it, weighted by
+ * the pot its judgement directed.  Only ever called for the arbiter's own
+ * signed ruling move -- a ghosted dispute and a no-arbiter dispute both leave
+ * no arbiter trace here on purpose (see the proto comment: the arbiter is
+ * bound without consent, so consensus must not brand it for inaction).
  */
 void
-BumpArbiterStats (Account& a, const bool ruled)
+BumpArbiterRulingStats (Account& a, const Amount pot)
 {
   auto& pb = a.MutableProto ();
-  if (ruled)
-    pb.set_arbiter_rulings (pb.arbiter_rulings () + 1);
-  else
-    pb.set_arbiter_ghosted (pb.arbiter_ghosted () + 1);
+  pb.set_arbiter_rulings (pb.arbiter_rulings () + 1);
+  pb.set_arbiter_value_ruled (pb.arbiter_value_ruled () + pot);
 }
 
 /**
@@ -1111,20 +1110,28 @@ SettleDeal (const JobContext& jc, Job& job, const int p,
   /* Accumulate the net credit per distinct account name, so a self-arbiter or
      poster==arbiter is opened exactly once and never collides with the
      executor's live handle.  The treasury tax is intentionally NOT credited --
-     it is burned until a faction treasury exists to receive it (Phase 4).  */
+     it is burned until a faction treasury exists to receive it (Phase 4).
+
+     A named arbiter joins that map only when there is something to do for it:
+     a fee to pay, or a ruling of its own to record.  Skipping it otherwise
+     spares an account read on the pro-bono happy path -- and, on a GHOST_SPLIT,
+     keeps settlement from so much as OPENING the row of an account that was
+     bound as arbiter without ever consenting and never acted.  */
+  const bool ruledByArbiter = (mode == proto::DealPayload::RULING);
   std::map<std::string, Amount> credit;
   credit[job.GetWorker ()] += s.worker;
   credit[job.GetPoster ()] += s.poster;
-  if (!d.arbiter ().empty ())
+  if (!d.arbiter ().empty () && (s.arbiter > 0 || ruledByArbiter))
     credit[d.arbiter ()] += s.arbiter;
 
   const Amount earnedReward = job.GetReward () * p / 100;
+  const Amount pot = job.GetReward () + job.GetCollateral ();
   const bool creditRep = (p > 0 && s.treasury >= 1);
   const std::string workerName = job.GetWorker ();
   const std::string posterName = job.GetPoster ();
   /* What took this deal off the happy path: either the bound arbiter ruled it,
      or nobody did and the sweep fell back to the blunt 50/50 split.  */
-  const bool disputed = (mode == proto::DealPayload::RULING
+  const bool disputed = (ruledByArbiter
                             || mode == proto::DealPayload::GHOST_SPLIT);
 
   for (const auto& entry : credit)
@@ -1156,8 +1163,8 @@ SettleDeal (const JobContext& jc, Job& job, const int p,
         BumpPosterDealStats (acc, earnedReward);
       if (disputed && (isWorker || isPoster))
         BumpDisputedStats (acc);
-      if (disputed && isArbiter)
-        BumpArbiterStats (acc, mode == proto::DealPayload::RULING);
+      if (ruledByArbiter && isArbiter)
+        BumpArbiterRulingStats (acc, pot);
     }
 
   return p > 0 ? JobOutcome::COMPLETED : JobOutcome::FAILED;

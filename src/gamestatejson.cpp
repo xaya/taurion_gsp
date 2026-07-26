@@ -344,11 +344,12 @@ template <>
       dealstats["disputed"] = IntToJson (pb.deals_disputed ());
       res["dealstats"] = dealstats;
 
-      /* The arbiter's own record: disputes ruled against disputes ghosted.
-         See BumpArbiterStats.  */
+      /* The arbiter's own record: disputes it ruled and the pot value those
+         rulings directed.  Ghosting is deliberately absent -- it is derived
+         from the settled history rows instead, see BumpArbiterRulingStats.  */
       Json::Value arbiterstats(Json::objectValue);
       arbiterstats["rulings"] = IntToJson (pb.arbiter_rulings ());
-      arbiterstats["ghosted"] = IntToJson (pb.arbiter_ghosted ());
+      arbiterstats["valueruled"] = IntToJson (pb.arbiter_value_ruled ());
       res["arbiterstats"] = arbiterstats;
     }
 
