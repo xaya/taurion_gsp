@@ -38,6 +38,7 @@
 #include "hexagonal/coord.hpp"
 #include "mapdata/basemap.hpp"
 
+#include <gflags/gflags.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -1650,24 +1651,43 @@ TEST_F (SuperblockTests, SuperblockHeightUsedCorrectly)
              sbHeight + 1);
 }
 
-TEST_F (SuperblockTests, ForksGateOnBlockHeightNotSuperblockHeight)
+/**
+ * Superblock tests with GameStart moved to a non-zero block height, so that the
+ * fork gate is actually exercised (on REGTEST it is 0, i.e. always active).  The
+ * override is restored by the destructor, which -- unlike a trailing assignment
+ * -- also runs when an ASSERT_* returns early and would otherwise leak the flag
+ * into every later test in this binary.
+ */
+class SuperblockForkTests : public SuperblockTests
+{
+
+protected:
+
+  SuperblockForkTests ()
+  {
+    FLAGS_fork_height_gamestart = 40;
+  }
+
+  ~SuperblockForkTests ()
+  {
+    FLAGS_fork_height_gamestart = -1;
+  }
+
+};
+
+TEST_F (SuperblockForkTests, ForksGateOnBlockHeightNotSuperblockHeight)
 {
   /* Fork activation heights are REAL chain-block heights (GameStart is a Polygon
      block number in the tens of millions).  Superblocks redefined
      Context::height to the superblock count from genesis, and wiring THAT into
      the ForkHandler compares a number in the hundreds against ~90 million: the
      fork never activates and EVERY gameplay move (faction init, spawns, DEX,
-     services) is silently dropped after creating only the bare account.  The
-     regular tests cannot catch it because REGTEST's GameStart height is 0, i.e.
-     always active.
+     services) is silently dropped after creating only the bare account.
 
-     Override GameStart to a non-zero block height and process the very first
-     block just above it.  That block is superblock #1 -- a superblock height far
-     BELOW the fork height -- so a faction-init move must still apply, proving the
-     gate reads the block height.  With the bug the account exists but stays
-     uninitialised.  */
-  FLAGS_fork_height_gamestart = 40;
-
+     Process the very first block just above the fork height.  That block is
+     superblock #1 -- a superblock height far BELOW the fork height -- so a
+     faction-init move must still apply, proving the gate reads the block
+     height.  With the bug the account exists but stays uninitialised.  */
   ASSERT_EQ (accounts.GetByName ("domob"), nullptr);
   UpdateForBlock (42, start, ParseJson (R"([
     {
@@ -1680,8 +1700,24 @@ TEST_F (SuperblockTests, ForksGateOnBlockHeightNotSuperblockHeight)
   ASSERT_NE (a, nullptr);
   EXPECT_TRUE (a->IsInitialised ());
   EXPECT_EQ (a->GetFaction (), Faction::RED);
+}
 
-  FLAGS_fork_height_gamestart = -1;
+TEST_F (SuperblockForkTests, ForkStillGatedBelowActivation)
+{
+  /* The negative half of the pair: below the fork height the gate must still
+     SHUT, or the test above would pass just as well against a gate wired to a
+     constant true.  Block 39 is under the override, so the account is created
+     but its faction move is dropped.  */
+  UpdateForBlock (39, start, ParseJson (R"([
+    {
+      "name": "domob",
+      "move": {"a": {"init": {"faction": "r"}}}
+    }
+  ])"));
+
+  auto a = accounts.GetByName ("domob");
+  ASSERT_NE (a, nullptr);
+  EXPECT_FALSE (a->IsInitialised ());
 }
 
 TEST_F (SuperblockTests, BlockHeightAndTimeUsed)

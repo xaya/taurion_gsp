@@ -96,9 +96,10 @@ ContextForTesting::SetHeight (const unsigned h)
 {
   LOG (INFO) << "Setting context height to " << h;
   height = h;
-  /* Keep the real block height in step, so fork-gated tests get a consistent
-     chain height by default.  Tests that need the super-block height and the
-     chain height to DIFFER call SetBlockHeight afterwards.  */
+  /* Keep the real block height in step, so fork-gated tests (which read the
+     chain height) get a consistent one from the single call they already make.
+     This overwrites any chain height set earlier -- tests that need the two to
+     differ must say so in one call, via SetHeights.  */
   blockHeight = h;
   RefreshInstances ();
 }
@@ -108,6 +109,17 @@ ContextForTesting::SetBlockHeight (const unsigned h)
 {
   LOG (INFO) << "Setting block height to " << h;
   blockHeight = h;
+  RefreshInstances ();
+}
+
+void
+ContextForTesting::SetHeights (const unsigned superblockHeight,
+                               const unsigned blockHeight_)
+{
+  LOG (INFO) << "Setting context height to " << superblockHeight
+             << ", block height to " << blockHeight_;
+  height = superblockHeight;
+  blockHeight = blockHeight_;
   RefreshInstances ();
 }
 

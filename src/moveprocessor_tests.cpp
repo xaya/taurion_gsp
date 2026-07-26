@@ -2884,8 +2884,8 @@ protected:
     : regions(db, 1'024),
       pos(-10, 42), region(ctx.Map ().Regions ().GetRegionId (pos))
   {
-    ctx.SetBlockHeight (1'024);
-    ctx.SetHeight (1'042);
+    /* Deliberately divergent, so anything reading the wrong clock shows up.  */
+    ctx.SetHeights (1'042, 1'024);
     GetTest ()->SetPosition (pos);
     GetTest ()->MutableProto ().set_prospecting_blocks (10);
   }

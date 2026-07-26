@@ -197,10 +197,12 @@ TEST_F (OngoingsTests, Prospection)
   c.reset ();
 
   RegionsTable regions(db, 5);
-  ctx.SetBlockHeight (5);
   regions.GetById (region)->MutableProto ().set_prospecting_character (cId);
 
-  ctx.SetHeight (10);
+  /* The op is due at super-block height 10, while the regions table it writes
+     back through is pinned to chain height 5 -- one call so the two cannot be
+     collapsed by ordering (SetHeight alone would drag the chain height to 10).  */
+  ctx.SetHeights (10, 5);
   ProcessAllOngoings (db, rnd, ctx);
 
   c = characters.GetById (cId);

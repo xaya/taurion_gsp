@@ -58,8 +58,25 @@ public:
   }
 
   void SetChain (xaya::Chain c);
+
+  /**
+   * Sets the super-block height, keeping the chain height in step with it.
+   * Most tests do not care about the difference and want exactly this.  Note
+   * that it OVERWRITES any chain height set before it -- to hold the two
+   * apart, use SetHeights rather than a pair of calls in a fragile order.
+   */
   void SetHeight (const unsigned h);
+
+  /** Sets the chain height alone, leaving the super-block height as it is.  */
   void SetBlockHeight (const unsigned h);
+
+  /**
+   * Sets both clocks at once, for the tests that need them to DIVERGE (the
+   * super-block height counts super-blocks from genesis, the chain height is
+   * the real block number).  Order-proof, unlike SetBlockHeight + SetHeight.
+   */
+  void SetHeights (unsigned superblockHeight, unsigned blockHeight);
+
   void SetTimestamp (const int64_t ts);
 
 };
