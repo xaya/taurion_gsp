@@ -54,9 +54,20 @@ enum class Fork
   Dummy,
 
   /**
-   * Fork at which we enable the actual gameplay.  Before this takes place,
-   * only Cubit operations are enabled (which are live with the burnsale
-   * since the third competition and won't be reset).
+   * Fork at which we enable the actual gameplay.  Before it, only Cubit
+   * operations are enabled.
+   *
+   * Historically this fork sat ABOVE genesis, so that burnsale Cubits bought
+   * during the third competition kept working while gameplay was still shut.
+   * It no longer does: GameStart IS genesis (see POLYGON_GENESIS_HEIGHT), so
+   * there is no pre-gameplay era left on this chain and nothing reaches this
+   * gate but the very first block.  The pre-genesis burnsale balances and the
+   * global sold-supply are NOT carried over -- InitialiseState seeds no
+   * accounts and MoneySupply::InitialiseDatabase starts every key at 0 -- and
+   * that reset is deliberate and approved (Andy, 2026-07-26: pre-anchor burnt
+   * coins are gone, the game is unreleased and all of this is testing).  Any
+   * future genesis move has the same consequence; re-read the comment on
+   * POLYGON_GENESIS_HEIGHT before making one.
    */
   GameStart,
 
