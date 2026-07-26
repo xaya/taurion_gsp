@@ -49,6 +49,8 @@
 namespace pxd
 {
 
+DECLARE_int32 (fork_height_gamestart);
+
 /* ************************************************************************** */
 
 /**
@@ -1646,6 +1648,40 @@ TEST_F (SuperblockTests, SuperblockHeightUsedCorrectly)
   EXPECT_EQ (buildings.GetById (200)
                 ->GetProto ().age_data ().founded_height (),
              sbHeight + 1);
+}
+
+TEST_F (SuperblockTests, ForksGateOnBlockHeightNotSuperblockHeight)
+{
+  /* Fork activation heights are REAL chain-block heights (GameStart is a Polygon
+     block number in the tens of millions).  Superblocks redefined
+     Context::height to the superblock count from genesis, and wiring THAT into
+     the ForkHandler compares a number in the hundreds against ~90 million: the
+     fork never activates and EVERY gameplay move (faction init, spawns, DEX,
+     services) is silently dropped after creating only the bare account.  The
+     regular tests cannot catch it because REGTEST's GameStart height is 0, i.e.
+     always active.
+
+     Override GameStart to a non-zero block height and process the very first
+     block just above it.  That block is superblock #1 -- a superblock height far
+     BELOW the fork height -- so a faction-init move must still apply, proving the
+     gate reads the block height.  With the bug the account exists but stays
+     uninitialised.  */
+  FLAGS_fork_height_gamestart = 40;
+
+  ASSERT_EQ (accounts.GetByName ("domob"), nullptr);
+  UpdateForBlock (42, start, ParseJson (R"([
+    {
+      "name": "domob",
+      "move": {"a": {"init": {"faction": "r"}}}
+    }
+  ])"));
+
+  auto a = accounts.GetByName ("domob");
+  ASSERT_NE (a, nullptr);
+  EXPECT_TRUE (a->IsInitialised ());
+  EXPECT_EQ (a->GetFaction (), Faction::RED);
+
+  FLAGS_fork_height_gamestart = -1;
 }
 
 TEST_F (SuperblockTests, BlockHeightAndTimeUsed)

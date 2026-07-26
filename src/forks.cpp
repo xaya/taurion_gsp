@@ -68,6 +68,10 @@ const std::unordered_map<Fork, ForkData> FORK_HEIGHTS =
       Fork::GameStart,
       {
         {
+          /* A REAL chain height (see context.cpp), tied to genesis so the two can
+             never drift: the world begins at POLYGON_GENESIS_HEIGHT, so its very
+             first block is already game time.  The burnsale-only era this fork
+             once gated is far behind the bumped genesis.  */
           {xaya::Chain::MAIN, POLYGON_GENESIS_HEIGHT},
           {xaya::Chain::REGTEST, 0},
         },

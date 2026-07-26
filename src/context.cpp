@@ -42,7 +42,14 @@ Context::RefreshInstances ()
 {
   params = std::make_unique<pxd::Params> (chain);
   cfg = std::make_unique<pxd::RoConfig> (chain);
-  forks = std::make_unique<ForkHandler> (chain, height);
+  /* Fork activation heights are REAL chain-block heights (GameStart is a Polygon
+     block number in the tens of millions), so forks must be evaluated against the
+     actual block height, NOT the super-block height -- that one counts
+     super-blocks from genesis and would never reach a chain-height threshold, so
+     every fork would stay inactive forever and each gameplay move would be
+     silently dropped after creating only the bare account.  The distinction is
+     invisible to the REGTEST unit tests, where every fork height is 0.  */
+  forks = std::make_unique<ForkHandler> (chain, blockHeight);
 }
 
 unsigned
