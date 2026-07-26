@@ -105,8 +105,17 @@ message Account
    * The ARBITER's record: disputes this account was bound to and actually
    * RULED, plus the total pot (reward + collateral) those rulings directed.
    * Both are bumped only by the arbiter's own signed ruling move, which is
-   * what keeps this record self-inflicted like the two above; the value
-   * counter carries the same proportionality caveat.
+   * what keeps this record self-inflicted like the two above.
+   *
+   * The pot is the right measure of what an arbiter's judgement governed -- a
+   * p=0 ruling decides the fate of all of it, exactly as a p=100 one does --
+   * but it is a WEAKER anti-Sybil anchor than the reward-based counters above,
+   * and the two must not be compared as if they were the same currency.  A
+   * sock-puppet trio buys value here at about 1.3% of the figure credited
+   * (R=1000 with the maximum 2x collateral, self-ruled p=100: 30 tax + 10
+   * posting fee = 40 burned against 3000 credited), versus ~4% for
+   * deals_posted_value, because collateral returned at a high p bears no tax
+   * and so rides into this counter for free.  Weight accordingly.
    *
    * Ghosting -- letting a dispute time out into the 50/50 fallback -- is
    * deliberately NOT counted here.  The poster binds an arbiter unilaterally

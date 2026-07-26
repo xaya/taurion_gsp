@@ -2580,8 +2580,7 @@ TEST_F (ProcessKillsCharacterTests, CancelsProspection)
   op.reset ();
   c.reset ();
 
-  ctx.SetHeight (1'042);
-  ctx.SetBlockHeight (1'042);
+  ctx.SetHeight (1'042);   /* keeps both clocks at 1042 */
   RegionsTable regions(db, ctx.BlockHeight ());
   auto r = regions.GetById (regionId);
   r->MutableProto ().set_prospecting_character (id);

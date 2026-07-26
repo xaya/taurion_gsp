@@ -291,8 +291,7 @@ protected:
 
   NewOrderTests ()
   {
-    ctx.SetHeight (10);
-    ctx.SetBlockHeight (50);
+    ctx.SetHeights (10, 50);
     ctx.SetTimestamp (1'042);
 
     accounts.CreateNew ("andy")->AddBalance (1'000);
@@ -651,13 +650,11 @@ TEST_F (OrderMatchingTests, FillingOwnOrder)
 
 TEST_F (OrderMatchingTests, TradeHistory)
 {
-  ctx.SetHeight (10);
-  ctx.SetBlockHeight (100);
+  ctx.SetHeights (10, 100);
   ctx.SetTimestamp (100);
   PlaceOrder ("andy", DexOrder::Type::BID, 2, 15);
 
-  ctx.SetHeight (11);
-  ctx.SetBlockHeight (101);
+  ctx.SetHeights (11, 101);
   ctx.SetTimestamp (99);
   PlaceOrder ("andy", DexOrder::Type::ASK, 3, 2);
 

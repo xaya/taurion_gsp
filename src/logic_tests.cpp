@@ -81,6 +81,9 @@ protected:
     : accounts(db), buildings(db), characters(db), orders(db), trades(db),
       inv(db), groundLoot(db), ongoings(db), regions(db, 0)
   {
+    /* Two calls, not SetHeights: the local SetHeight also pins the regions table.
+       It drags the chain height to 42, so the chain height is set AFTER it --
+       super-block 42 on chain block 100, deliberately apart.  */
     SetHeight (42);
     ctx.SetBlockHeight (100);
     ctx.SetTimestamp (1'500'000'000);
@@ -1453,8 +1456,11 @@ TEST_F (PXLogicTests, BuildingUpdateVsOperations)
      services and 100 bps (1%) for DEX trades, actually perform the actions.  */
   for (int i = 1; i <= 200; ++i)
     {
-      ctx.SetHeight (ctx.Height () + 1);
-      ctx.SetBlockHeight (ctx.BlockHeight () + 1);
+      /* Both clocks advance together.  Read the chain height BEFORE touching the
+         super-block one: SetHeight drags the chain height along with it, so the
+         old two-call form incremented a value it had already overwritten.  */
+      const unsigned nextBlock = ctx.BlockHeight () + 1;
+      ctx.SetHeights (ctx.Height () + 1, nextBlock);
 
       auto moves = ParseJson (R"([
         {

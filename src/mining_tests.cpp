@@ -51,8 +51,7 @@ protected:
     : characters(db), regions(db, 1'024),
       pos(-10, 42), region(ctx.Map ().Regions ().GetRegionId (pos))
   {
-    ctx.SetHeight (1'024);
-    ctx.SetBlockHeight (1'042);
+    ctx.SetHeights (1'024, 1'042);
 
     auto c = GetTest ();
     c->SetPosition (pos);
