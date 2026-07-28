@@ -30,6 +30,7 @@
 #include "spawn.hpp"
 
 #include "database/faction.hpp"
+#include "database/params.hpp"
 #include "proto/character.pb.h"
 #include "proto/roconfig.hpp"
 
@@ -1250,6 +1251,48 @@ MoveProcessor::ProcessOneAdmin (const Json::Value& cmd)
     return;
 
   HandleGodMode (cmd["god"]);
+  HandleParams (cmd["param"]);
+}
+
+void
+MoveProcessor::HandleParams (const Json::Value& cmd)
+{
+  if (!cmd.isArray ())
+    return;
+
+  /* The same admin shape as the soccerverse GSP: an array of {"n": name,
+     "v": value} entries, where a null value removes the override (falling
+     back to the roconfig default).  Parameter names are free-form -- reads
+     use known names, so setting an unread one is a harmless no-op.
+     Malformed entries are logged and skipped deterministically.  */
+  ParamsTable par(db);
+  for (const auto& entry : cmd)
+    {
+      /* Exactly the members n and v: a typo'd value key (e.g. "value")
+         must be a skipped malformed entry, NOT a missing-v null that would
+         remove the override -- the dangerous direction for a freeze.  */
+      if (!entry.isObject () || entry.size () != 2
+            || !entry.isMember ("v") || !entry["n"].isString ())
+        {
+          LOG (WARNING) << "Invalid set-param operation: " << entry;
+          continue;
+        }
+      const std::string name = entry["n"].asString ();
+
+      const auto& val = entry["v"];
+      if (val.isNull ())
+        {
+          LOG (INFO) << "Removing parameter: " << name;
+          par.Remove (name);
+        }
+      else if (val.isInt64 () && xaya::IsIntegerValue (val))
+        {
+          LOG (INFO) << "Setting parameter: " << name << " = " << val;
+          par.Set (name, val.asInt64 ());
+        }
+      else
+        LOG (WARNING) << "Invalid set-param operation: " << entry;
+    }
 }
 
 void

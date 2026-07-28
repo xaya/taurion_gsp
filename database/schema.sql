@@ -521,3 +521,13 @@ CREATE INDEX IF NOT EXISTS `ongoing_operations_by_building`
   ON `ongoing_operations` (`building`);
 
 -- =============================================================================
+
+-- Runtime-tunable named parameters (the "param" admin command): one row per
+-- overridden parameter, an absent name means the roconfig default applies.
+-- Consensus state -- see database/params.hpp for the semantics.
+CREATE TABLE IF NOT EXISTS `parameters` (
+  `name` TEXT PRIMARY KEY,
+  `value` INTEGER NOT NULL
+);
+
+-- =============================================================================

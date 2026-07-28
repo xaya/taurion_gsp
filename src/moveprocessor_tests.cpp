@@ -23,6 +23,7 @@
 #include "testutils.hpp"
 
 #include "database/dbtest.hpp"
+#include "database/params.hpp"
 
 #include <xayautil/jsonutils.hpp>
 
@@ -175,6 +176,36 @@ TEST_F (MoveProcessorTests, AllAdminDataAccepted)
 
       ProcessAdmin (fullAdm.str ());
     }
+}
+
+TEST_F (MoveProcessorTests, AdminSetParam)
+{
+  ParamsTable par(db);
+
+  /* Valid sets and a removal (null value resets to the default), plus
+     malformed entries that must be skipped deterministically: wrong shape,
+     non-string name, extra member, non-integer value, and -- crucially --
+     a typo'd value key: that must NOT read as a missing-v null and remove
+     the override (the dangerous direction, since an override is how a
+     limit gets tightened in an emergency).  */
+  ProcessAdmin (R"([{"cmd": {"param": [
+    {"n": "some-limit", "v": 5},
+    {"n": "other-limit", "v": 7},
+    {"n": "other-limit", "v": null},
+    42,
+    {"n": 10, "v": 1},
+    {"n": "third-limit", "v": 3, "x": 1},
+    {"n": "third-limit", "v": 2.5},
+    {"n": "some-limit", "value": 0}
+  ]}}])");
+
+  EXPECT_EQ (par.Get ("some-limit", 42), 5);
+  EXPECT_EQ (par.Get ("other-limit", 42), 42);
+  EXPECT_EQ (par.Get ("third-limit", 42), 42);
+
+  /* A non-array "param" command is ignored.  */
+  ProcessAdmin (R"([{"cmd": {"param": {"n": "some-limit", "v": 9}}}])");
+  EXPECT_EQ (par.Get ("some-limit", 42), 5);
 }
 
 /* ************************************************************************** */

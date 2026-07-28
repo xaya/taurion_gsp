@@ -391,6 +391,15 @@ private:
   void HandleGodMode (const Json::Value& cmd);
 
   /**
+   * Handles a "param" admin command, if any: runtime tuning of named
+   * parameters, in the exact admin shape of the soccerverse GSP.  Unlike
+   * god mode this is a legitimate mainnet operation -- admin commands only
+   * ever come from the game account's owner -- so tunable values can be
+   * adjusted without a redeploy.
+   */
+  void HandleParams (const Json::Value& cmd);
+
+  /**
    * Transfers the given character if the update JSON contains a request
    * to do so.
    */
