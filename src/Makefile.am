@@ -36,6 +36,7 @@ libtaurion_la_SOURCES = \
   fitments.cpp \
   forks.cpp \
   gamestatejson.cpp \
+  jobs.cpp \
   jsonutils.cpp \
   logic.cpp \
   mining.cpp \
@@ -61,6 +62,7 @@ libtaurionheaders = \
   fitments.hpp \
   forks.hpp \
   gamestatejson.hpp \
+  jobs.hpp \
   jsonutils.hpp \
   logic.hpp \
   mining.hpp \
@@ -147,6 +149,7 @@ tests_SOURCES = \
   fitments_tests.cpp \
   forks_tests.cpp \
   gamestatejson_tests.cpp \
+  jobs_tests.cpp \
   jsonutils_tests.cpp \
   logic_tests.cpp \
   mining_tests.cpp \

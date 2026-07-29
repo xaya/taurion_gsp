@@ -1,0 +1,137 @@
+/*
+    GSP for the Taurion blockchain game
+    Copyright (C) 2020-2021  Autonomous Worlds Ltd
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
+syntax = "proto2";
+option cc_enable_arenas = true;
+
+package pxd.proto;
+
+/**
+ * The non-column data of an escrow deal on the jobs board.  The poster escrows
+ * the `reward` column and the accepting worker the `collateral` column; when
+ * contested, a bound arbiter rules a single completion percentage that splits
+ * both pots (see ComputeDealSettlement / SettleDeal).  Everything the board and
+ * the expiry sweep must filter, sort or sum on is a real table column (see
+ * database/schema.sql and database/jobs.hpp); only what follows lives in this
+ * blob.
+ *
+ * Consensus hygiene: the state hash covers the raw serialised bytes and
+ * protobuf map ordering is not guaranteed, so consensus decisions never
+ * iterate a proto map directly.
+ */
+message JobData
+{
+
+  /**
+   * The designated worker (see the assign op).  Set by the poster, either at
+   * post time (the "w" term) or later by an assign.  Unset means anyone may
+   * accept -- unless invite_only is set below.
+   */
+  optional string designated_worker = 1;
+
+  /**
+   * Whether this deal was POSTED private: acceptable by NOBODY while
+   * designated_worker is empty (posted with w:"").  An empty
+   * designated_worker is otherwise indistinguishable from "open to all", so
+   * the flag exists purely to mark that restricted-but-not-yet-designated
+   * state -- it is the born-private discriminator, NOT a general "is
+   * exclusive" bit.  Set only by a POST carrying a "w" term (empty or not);
+   * ASSIGN names/renames the designee WITHOUT setting it, because a publicly
+   * posted deal was not born private and its designation alone already pins
+   * acceptance.  Exclusivity is therefore the pair, never this bit alone --
+   * what the accept gate enforces and what clients must read:
+   *
+   *     exclusive = invite_only || designated_worker != ""
+   */
+  optional bool invite_only = 2;
+
+  /**
+   * The arbiter account named by the poster to rule disputes (empty = a
+   * no-arbiter deal: the timeout resolves confirm-aware with no p-ruling path).
+   * The poster names it at post; the worker consents by accepting a deal that
+   * already shows it -- both-sided consent without a separate handshake.
+   */
+  optional string arbiter = 3;
+
+  /**
+   * The arbiter fee in basis points, snapshot at post (<= deal-max-fee-bps;
+   * a post may only carry a fee together with an arbiter).  The arbiter
+   * FORFEITS the fee if a disputed deal times out without its ruling (each
+   * party keeps its own fee share) -- ruling must never pay worse than
+   * ghosting the dispute.
+   */
+  optional uint32 fee_bps = 4;
+
+  /**
+   * The protocol tax in basis points, snapshot at post so the settlement
+   * is a pure function of the row -- immune to a governance retune between post
+   * and settle (the "min-reward floors reject historical posts on replay" trap).
+   */
+  optional uint32 tax_bps = 5;
+
+  /**
+   * Cosmetic job category (transport/haul/escort/... as an integer tag).  Drives
+   * the client's browsing and per-category reputation only; consensus settlement
+   * NEVER reads it.
+   */
+  optional uint32 type_tag = 6;
+
+  /** Free-text human-readable terms (byte-bounded at post; a charset/NFC
+      chain filter is deferred to Phase 2, so UIs MUST sanitise control and
+      bidi-override characters when rendering -- the arbiter reads this text
+      to rule).  Advisory only; settlement never parses it. */
+  optional string terms = 7;
+
+  /**
+   * Advisory pre-agreed completion % (0..100) the arbiter applies if the
+   * worker's ship is destroyed en route.  Honoured by the arbiter -- no chain
+   * enforcement in v1 (a trustless chain-fire is deferred).
+   */
+  optional uint32 destroyed_p = 8;
+
+  /** Happy-path confirmations; both true settles the deal at p=100. */
+  optional bool poster_confirmed = 9;
+  optional bool worker_confirmed = 10;
+
+  /**
+   * A dispute has been raised; thereafter only the arbiter's ruling settles it,
+   * or the end-date sweep's 50/50 fallback if the arbiter never rules.
+   */
+  optional bool disputed = 11;
+
+  /**
+   * The consensus timestamp (ctx.Timestamp()) at which DISPUTE executed;
+   * stamped once, when the dispute lands, and exposed on the JSON as
+   * disputetime.  Because an arbiter-bound dispute inside the reaction window
+   * extends the deadline to leave >= W ruling time, a later ghost-split is
+   * genuinely attributable arbiter fault -- Phase-2 reputation consumes this;
+   * no consensus rule reads it back.
+   */
+  optional int64 dispute_time = 12;
+
+  /**
+   * The deal's effective reaction window in seconds, snapshot ONCE at POST as
+   * min(the clamped deal-reaction-window param, the posted duration d) -- a
+   * pure function of the row like tax_bps/fee_bps, so no governance retune can
+   * change an in-flight deal's window.  DealOperation::Execute reads THIS,
+   * never the ParamsTable.  0 = the mechanism is off (exact v1 settlement).
+   * The extension rule and its bounds: see ExtendForReactionWindow.
+   */
+  optional int64 reaction_window = 13;
+
+}

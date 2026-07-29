@@ -19,6 +19,7 @@
 #include "gamestatejson.hpp"
 
 #include "buildings.hpp"
+#include "jobs.hpp"
 #include "jsonutils.hpp"
 #include "modifier.hpp"
 #include "protoutils.hpp"
@@ -29,6 +30,7 @@
 #include "database/character.hpp"
 #include "database/faction.hpp"
 #include "database/itemcounts.hpp"
+#include "database/jobs.hpp"
 #include "database/moneysupply.hpp"
 #include "database/ongoing.hpp"
 #include "database/region.hpp"
@@ -321,6 +323,27 @@ template <>
       res["faction"] = FactionToString (a.GetFaction ());
       res["kills"] = IntToJson (pb.kills ());
       res["fame"] = IntToJson (pb.fame ());
+
+      /* Consensus-stored vetting signals surfaced for clients; no consensus
+         rule consumes them.  "completed"/"value" are the WORKER side,
+         "posted"/"postedvalue" the poster's mirror of the same settlements, and
+         "disputed" counts either party's deals that needed a dispute to end.
+         See BumpDealStats / BumpPosterDealStats / BumpDisputedStats.  */
+      Json::Value dealstats(Json::objectValue);
+      dealstats["completed"] = IntToJson (pb.deals_completed ());
+      dealstats["value"] = IntToJson (pb.deals_value_completed ());
+      dealstats["posted"] = IntToJson (pb.deals_posted_completed ());
+      dealstats["postedvalue"] = IntToJson (pb.deals_posted_value ());
+      dealstats["disputed"] = IntToJson (pb.deals_disputed ());
+      res["dealstats"] = dealstats;
+
+      /* The arbiter's own record: disputes it ruled and the pot value those
+         rulings directed.  Ghosting is deliberately absent -- see
+         BumpArbiterRulingStats and the account.proto rationale.  */
+      Json::Value arbiterstats(Json::objectValue);
+      arbiterstats["rulings"] = IntToJson (pb.arbiter_rulings ());
+      arbiterstats["valueruled"] = IntToJson (pb.arbiter_value_ruled ());
+      res["arbiterstats"] = arbiterstats;
     }
 
   return res;
@@ -625,6 +648,69 @@ template <>
   return res;
 }
 
+template <>
+  Json::Value
+  GameStateJson::Convert<Job> (const Job& j) const
+{
+  Json::Value res(Json::objectValue);
+
+  res["id"] = IntToJson (j.GetId ());
+  res["poster"] = j.GetPoster ();
+  if (!j.GetWorker ().empty ())
+    res["worker"] = j.GetWorker ();
+
+  res["reward"] = IntToJson (j.GetReward ());
+  res["collateral"] = IntToJson (j.GetCollateral ());
+  res["deadline"] = IntToJson (j.GetDeadline ());
+
+  const auto& pb = j.GetProto ();
+
+  const auto& designated = pb.designated_worker ();
+  if (!designated.empty ())
+    res["designated"] = designated;
+  /* "inviteonly" marks a deal POSTED private (born with a "w" term), not
+     every exclusive deal: a public deal later ASSIGNed carries "designated"
+     alone.  Both keys are exposed only when set, so a plain public deal has
+     neither, and the client test is the pair the accept gate enforces:
+     exclusive = inviteonly || designated != "".  */
+  if (pb.invite_only ())
+    res["inviteonly"] = true;
+
+  if (!pb.arbiter ().empty ())
+    res["arbiter"] = pb.arbiter ();
+  res["fee"] = IntToJson (pb.fee_bps ());
+  res["tax"] = IntToJson (pb.tax_bps ());
+  res["tag"] = IntToJson (pb.type_tag ());
+  if (!pb.terms ().empty ())
+    res["terms"] = pb.terms ();
+  if (pb.destroyed_p () > 0)
+    res["destroyedp"] = IntToJson (pb.destroyed_p ());
+  res["posterConfirmed"] = pb.poster_confirmed ();
+  res["workerConfirmed"] = pb.worker_confirmed ();
+  res["disputed"] = pb.disputed ();
+  /* The per-row reaction window (snapshot at post) and, once a dispute has
+     landed, the stamped dispute time (§1/§2).  */
+  if (pb.has_reaction_window ())
+    res["reactionwindow"] = IntToJson (pb.reaction_window ());
+  if (pb.has_dispute_time ())
+    res["disputetime"] = IntToJson (pb.dispute_time ());
+
+  switch (j.GetStatus ())
+    {
+    case Job::Status::OPEN:
+      res["state"] = "open";
+      break;
+    case Job::Status::ACCEPTED:
+      res["state"] = "accepted";
+      break;
+    default:
+      res["state"] = "unknown";
+      break;
+    }
+
+  return res;
+}
+
 template <typename T, typename R>
   Json::Value
   GameStateJson::ResultsAsArray (T& tbl, Database::Result<R> res) const
@@ -690,6 +776,46 @@ GameStateJson::MoneySupply ()
 }
 
 Json::Value
+GameStateJson::JobsParams ()
+{
+  const auto& p = ctx.RoConfig ()->params ();
+  const ParamsTable params(db);
+
+  Json::Value res(Json::objectValue);
+
+  /* The admission caps and the reaction window: report the POST-CLAMP
+     effective value -- exactly what consensus uses -- by routing through the
+     same CappedParam helper, ceilings AND FLOORS the consensus reads do, so a
+     client never previews against a value the chain would clamp away (F4).  */
+  const struct { const char* name; int64_t def, ceiling, floor; } capped[] = {
+    {"max-live-jobs", p.max_live_jobs (), CAP_MAX_LIVE_JOBS, 0},
+    {"max-jobs-per-poster", p.max_jobs_per_poster (),
+     CAP_MAX_JOBS_PER_POSTER, 0},
+    {"deal-reaction-window", p.deal_reaction_window (),
+     CAP_DEAL_REACTION_WINDOW, 0},
+  };
+  for (const auto& e : capped)
+    res[e.name] = IntToJson (
+        CappedParam (params, e.name, e.def, e.ceiling, e.floor));
+
+  /* The self-bounding deal/reward-floor params: the settlement math bounds
+     them at the door on the snapshot values, so they carry no immutable
+     ceiling -- report the plain runtime overlay over the roconfig default.  */
+  const struct { const char* name; int64_t def; } plain[] = {
+    {"min-job-reward", p.min_job_reward ()},
+    {"min-deal-reward", p.min_deal_reward ()},
+    {"deal-tax-bps", p.deal_tax_bps ()},
+    {"deal-max-collateral-bps", p.deal_max_collateral_bps ()},
+    {"deal-max-collateral", p.deal_max_collateral ()},
+    {"deal-max-fee-bps", p.deal_max_fee_bps ()},
+  };
+  for (const auto& e : plain)
+    res[e.name] = IntToJson (params.Get (e.name, e.def));
+
+  return res;
+}
+
+Json::Value
 GameStateJson::PrizeStats ()
 {
   ItemCounts cnt(db);
@@ -719,19 +845,23 @@ GameStateJson::Accounts ()
   AccountsTable tbl(db);
   Json::Value res = ResultsAsArray (tbl, tbl.QueryAll ());
 
-  /* Add in also the Cubit balances reserved in open bids.  */
-  const auto reserved = orders.GetReservedCoins ();
+  /* Add in the coins reserved by an account: DEX open bids plus jobs-board
+     escrow (posted rewards + accepted-job collateral).  */
+  auto reserved = orders.GetReservedCoins ();
+  JobsTable jobs(db);
+  for (const auto& entry : jobs.GetReservedCoins ())
+    reserved[entry.first] += entry.second;
+
   for (auto& entry : res)
     {
       const auto& nmVal = entry["name"];
       CHECK (nmVal.isString ());
-      const auto mit = reserved.find (nmVal.asString ());
+      const std::string nm = nmVal.asString ();
 
-      Amount cur;
-      if (mit == reserved.end ())
-        cur = 0;
-      else
-        cur = mit->second;
+      Amount cur = 0;
+      const auto it = reserved.find (nm);
+      if (it != reserved.end ())
+        cur = it->second;
 
       auto& bal = entry["balance"];
       CHECK (bal.isObject ());
@@ -746,6 +876,13 @@ Json::Value
 GameStateJson::Buildings ()
 {
   BuildingsTable tbl(db);
+  return ResultsAsArray (tbl, tbl.QueryAll ());
+}
+
+Json::Value
+GameStateJson::Jobs ()
+{
+  JobsTable tbl(db);
   return ResultsAsArray (tbl, tbl.QueryAll ());
 }
 
@@ -814,6 +951,7 @@ GameStateJson::FullState ()
   res["characters"] = Characters ();
   res["groundloot"] = GroundLoot ();
   res["ongoings"] = OngoingOperations ();
+  res["jobs"] = Jobs ();
   res["moneysupply"] = MoneySupply ();
   res["regions"] = Regions (0);
   res["prizes"] = PrizeStats ();

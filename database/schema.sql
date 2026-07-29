@@ -531,3 +531,56 @@ CREATE TABLE IF NOT EXISTS `parameters` (
 );
 
 -- =============================================================================
+
+-- Jobs board: player-posted, coin-escrowed deals.  Everything the board and
+-- the expiry sweep must filter, sort or sum on is a real column (mirroring the
+-- dex_orders design), so the board query and reserved-balance sums are plain
+-- SQL statements and idle jobs never need to be read or rewritten; the rest of
+-- the deal lives in the `proto` blob.
+CREATE TABLE IF NOT EXISTS `jobs` (
+
+  -- Unique ID of the job (used in assign / accept / cancel moves).
+  `id` INTEGER PRIMARY KEY,
+
+  -- Lifecycle status.  The numeric values match the Job::Status enum in
+  -- jobs.hpp.  Terminal transitions (settlement / cancel / expiry) DELETE
+  -- the row, so the table stays bounded.
+  `status` INTEGER NOT NULL,
+
+  -- The account that posted the job (locks the reward on posting).
+  `poster` TEXT NOT NULL,
+
+  -- The account that accepted the job (locks the collateral on accepting).
+  -- NULL while the job is still OPEN.
+  `worker` TEXT NULL,
+
+  -- The reward, in vCHI.  Stored in a column (not the proto) so the board can
+  -- ORDER BY price and reserved rewards can be summed with a single
+  -- statement.
+  `reward` INTEGER NOT NULL,
+
+  -- The collateral the worker locks on accepting, in vCHI.  Stored in a
+  -- column so reserved collateral can likewise be summed for balance display.
+  `collateral` INTEGER NOT NULL,
+
+  -- Absolute block-consensus timestamp (seconds) at which the job expires.
+  -- Seconds (not block height) so deadlines are immune to cadence changes.
+  `deadline` INTEGER NOT NULL,
+
+  -- The rest of the deal (designated worker, arbiter, terms, confirmations,
+  -- ...) as a serialised JobData proto.
+  `proto` BLOB NOT NULL
+
+);
+
+-- Expiry sweep ("jobs due at or before the current timestamp") and
+-- "expiring soon" ordering for the board.
+CREATE INDEX IF NOT EXISTS `jobs_by_deadline` ON `jobs` (`deadline`);
+
+-- "My posted jobs" + reserved-reward sum for an account.
+CREATE INDEX IF NOT EXISTS `jobs_by_poster` ON `jobs` (`poster`);
+
+-- "My accepted jobs" + reserved-collateral sum for an account.
+CREATE INDEX IF NOT EXISTS `jobs_by_worker` ON `jobs` (`worker`);
+
+-- =============================================================================
