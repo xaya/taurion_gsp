@@ -30,6 +30,7 @@
 #include "database/building.hpp"
 #include "database/dex.hpp"
 #include "database/moneysupply.hpp"
+#include "database/roconfig.hpp"
 #include "database/schema.hpp"
 #include "proto/roconfig.hpp"
 
@@ -38,10 +39,17 @@
 namespace pxd
 {
 
-SQLiteGameDatabase::SQLiteGameDatabase (xaya::SQLiteDatabase& d, PXLogic& g)
+SQLiteGameDatabase::SQLiteGameDatabase (xaya::SQLiteDatabase& d, PXLogic& g,
+                                        const OnSnapshot)
   : game(g)
 {
   SetDatabase (d);
+}
+
+SQLiteGameDatabase::SQLiteGameDatabase (xaya::SQLiteDatabase& d, PXLogic& g)
+  : SQLiteGameDatabase(d, g, OnSnapshot ())
+{
+  RoConfigStorage (*this).Sync (game.GetChain ());
 }
 
 Database::IdT
@@ -247,7 +255,7 @@ PXLogic::GetCustomStateData (xaya::Game& game, const JsonStateFromRawDb& cb)
                    const unsigned height)
         {
           SQLiteGameDatabase dbObj(const_cast<xaya::SQLiteDatabase&> (db),
-                                   *this);
+                                   *this, SQLiteGameDatabase::OnSnapshot ());
           return cb (dbObj, hash, height);
         });
 }

@@ -47,6 +47,18 @@ class PXLogic;
 
 /**
  * Database instance that uses an SQLiteGame instance for everything.
+ *
+ * Constructing a handle on the main database (which callers only have while
+ * holding the libxayagame Game lock) also brings the in-memory configuration
+ * in sync with the roconfig table, so that everything working on the handle
+ * reads the configuration as of the chain tip.  A handle on a lock-free state
+ * snapshot must be constructed with the OnSnapshot tag instead, which does
+ * not sync:  the snapshot can lag the tip, and syncing from it would
+ * activate an outdated configuration underneath the block being processed.
+ * There is also no need to, since the instance state -- retrieved through a
+ * syncing handle -- is refreshed before a snapshot is published, and again
+ * right before a state read falls back to the locked main database when no
+ * snapshot is available.
  */
 class SQLiteGameDatabase : public Database
 {
@@ -58,7 +70,11 @@ private:
 
 public:
 
+  /** Tag type selecting the constructor for handles on state snapshots.  */
+  struct OnSnapshot {};
+
   explicit SQLiteGameDatabase (xaya::SQLiteDatabase& d, PXLogic& g);
+  SQLiteGameDatabase (xaya::SQLiteDatabase& d, PXLogic& g, OnSnapshot);
 
   SQLiteGameDatabase () = delete;
   SQLiteGameDatabase (const SQLiteGameDatabase&) = delete;

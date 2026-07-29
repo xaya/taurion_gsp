@@ -156,8 +156,6 @@ public:
                         const Json::Value& target) override;
   std::string encodewaypoints (const Json::Value& wp) override;
   Json::Value getregionat (const Json::Value& coord) override;
-  Json::Value getbuildingshape (const Json::Value& centre, int rot,
-                                const std::string& type) override;
   Json::Value getversion () override;
 
 };
@@ -201,6 +199,8 @@ public:
 
   Json::Value getaccounts () override;
   Json::Value getbuildings () override;
+  Json::Value getbuildingshape (const Json::Value& centre, int rot,
+                                const std::string& type) override;
   Json::Value getcharacters () override;
   Json::Value getgroundloot () override;
   Json::Value getongoings () override;
@@ -239,13 +239,6 @@ public:
   getregionat (const Json::Value& coord) override
   {
     return nonstate.getregionat (coord);
-  }
-
-  Json::Value
-  getbuildingshape (const Json::Value& centre, const int rot,
-                    const std::string& type) override
-  {
-    return nonstate.getbuildingshape (centre, rot, type);
   }
 
   Json::Value

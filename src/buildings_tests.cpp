@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2020-2021  Autonomous Worlds Ltd
+    Copyright (C) 2020-2026  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -78,13 +78,13 @@ TEST_F (BuildingsTests, GetBuildingShape)
 TEST_F (BuildingsTests, UpdateBuildingStats)
 {
   auto h = tbl.CreateNew ("r rt", "domob", Faction::RED);
-  UpdateBuildingStats (*h, ctx.Chain ());
+  UpdateBuildingStats (*h, ctx.RoConfig ());
   EXPECT_EQ (h->GetProto ().combat_data ().attacks_size (), 1);
   EXPECT_EQ (h->GetRegenData ().max_hp ().armour (), 1'000);
   EXPECT_EQ (h->GetHP ().armour (), 1'000);
 
   h->MutableProto ().set_foundation (true);
-  UpdateBuildingStats (*h, ctx.Chain ());
+  UpdateBuildingStats (*h, ctx.RoConfig ());
   EXPECT_EQ (h->GetProto ().combat_data ().attacks_size (), 0);
   EXPECT_EQ (h->GetRegenData ().max_hp ().armour (), 100);
   EXPECT_EQ (h->GetHP ().armour (), 100);

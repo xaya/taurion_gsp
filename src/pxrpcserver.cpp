@@ -128,7 +128,7 @@ NonStateRpcServer::AddBuildingsFromJson (const Json::Value& buildings,
   /* This is enforced already by libjson-rpc-cpp's stub generator.  */
   CHECK (buildings.isArray ());
 
-  const RoConfig cfg(chain);
+  const RoConfig& cfg = dyn.obstacles.Config ();
   for (const auto& b : buildings)
     {
       if (!b.isObject ())
@@ -414,37 +414,6 @@ NonStateRpcServer::getregionat (const Json::Value& coord)
 }
 
 Json::Value
-NonStateRpcServer::getbuildingshape (const Json::Value& centre, const int rot,
-                                     const std::string& type)
-{
-  LOG (INFO)
-      << "RPC method called: getbuildingshape " << type << "\n"
-      << "  centre=" << centre << "\n"
-      << "  rot=" << rot;
-
-  HexCoord c;
-  if (!CoordFromJson (centre, c))
-    ReturnError (ErrorCode::INVALID_ARGUMENT,
-                 "centre is not a valid coordinate");
-
-  if (rot < 0 || rot >= 6)
-    ReturnError (ErrorCode::INVALID_ARGUMENT,
-                 "rot is outside the valid range [0, 5]");
-
-  if (RoConfig (chain).BuildingOrNull (type) == nullptr)
-    ReturnError (ErrorCode::INVALID_ARGUMENT, "unknown building type");
-
-  proto::ShapeTransformation trafo;
-  trafo.set_rotation_steps (rot);
-
-  Json::Value res(Json::arrayValue);
-  for (const auto& t : GetBuildingShape (type, trafo, c, chain))
-    res.append (CoordToJson (t));
-
-  return res;
-}
-
-Json::Value
 NonStateRpcServer::getversion ()
 {
   LOG (INFO) << "RPC method called: getversion";
@@ -519,6 +488,47 @@ PXRpcServer::getbuildings ()
     [] (GameStateJson& gsj)
       {
         return gsj.Buildings ();
+      });
+}
+
+Json::Value
+PXRpcServer::getbuildingshape (const Json::Value& centre, const int rot,
+                               const std::string& type)
+{
+  LOG (INFO)
+      << "RPC method called: getbuildingshape " << type << "\n"
+      << "  centre=" << centre << "\n"
+      << "  rot=" << rot;
+
+  HexCoord c;
+  if (!CoordFromJson (centre, c))
+    ReturnError (ErrorCode::INVALID_ARGUMENT,
+                 "centre is not a valid coordinate");
+
+  if (rot < 0 || rot >= 6)
+    ReturnError (ErrorCode::INVALID_ARGUMENT,
+                 "rot is outside the valid range [0, 5]");
+
+  /* The shape comes from the building data in the roconfig, which admin
+     commands can modify at runtime, so this is a state read:  going through
+     the game state is what guarantees the configuration is in sync with
+     it.  */
+  return logic.GetCustomStateData (game,
+    [this, &c, rot, &type] (Database& db, const xaya::uint256& hash,
+                            const unsigned height)
+      {
+        const RoConfig cfg(logic.GetChain ());
+        if (cfg.BuildingOrNull (type) == nullptr)
+          ReturnError (ErrorCode::INVALID_ARGUMENT, "unknown building type");
+
+        proto::ShapeTransformation trafo;
+        trafo.set_rotation_steps (rot);
+
+        Json::Value res(Json::arrayValue);
+        for (const auto& t : GetBuildingShape (type, trafo, c, cfg))
+          res.append (CoordToJson (t));
+
+        return res;
       });
 }
 

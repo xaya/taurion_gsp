@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2021  Autonomous Worlds Ltd
+    Copyright (C) 2019-2026  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -389,6 +389,14 @@ private:
    * integration testing, so that this will only be done on regtest.
    */
   void HandleGodMode (const Json::Value& cmd);
+
+  /**
+   * Handles an admin command updating the read-only configuration:  an
+   * object holding, under "merge", a base64-encoded, serialised ConfigData
+   * that is merged into the current config, with the result stored as the
+   * new active configuration.
+   */
+  void HandleRoConfigUpdate (const Json::Value& cmd);
 
   /**
    * Transfers the given character if the update JSON contains a request

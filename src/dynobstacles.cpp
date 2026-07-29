@@ -26,11 +26,11 @@ namespace pxd
 {
 
 DynObstacles::DynObstacles (const xaya::Chain c)
-  : chain(c), vehicles(0), buildings(false)
+  : cfg(c), vehicles(0), buildings(false)
 {}
 
 DynObstacles::DynObstacles (Database& db, const Context& ctx)
-  : chain(ctx.Chain ()), vehicles(0), buildings(false)
+  : cfg(ctx.Chain ()), vehicles(0), buildings(false)
 {
   {
     CharacterTable tbl(db);
@@ -55,7 +55,7 @@ DynObstacles::AddBuilding (const std::string& type,
                            const HexCoord& pos,
                            std::vector<HexCoord>& shape)
 {
-  shape = GetBuildingShape (type, trafo, pos, chain);
+  shape = GetBuildingShape (type, trafo, pos, cfg);
   for (const auto& c : shape)
     {
       auto ref = buildings.Access (c);
@@ -80,7 +80,7 @@ DynObstacles::RemoveBuilding (const Building& b)
 {
   const auto shape
       = GetBuildingShape (b.GetType (), b.GetProto ().shape_trafo (),
-                          b.GetCentre (), chain);
+                          b.GetCentre (), cfg);
   for (const auto& c : shape)
     {
       auto ref = buildings.Access (c);
