@@ -105,6 +105,19 @@ public:
   Json::Value Buildings ();
 
   /**
+   * Returns the JSON data representing all jobs on the jobs board.
+   */
+  Json::Value Jobs ();
+
+  /**
+   * Returns every runtime jobs-board parameter mapped to the POST-CLAMP
+   * effective value consensus would use right now (the ParamsTable overlay of
+   * the roconfig default, clamped for the admission caps).  Reuses CappedParam,
+   * so the reported value equals what consensus uses by construction.
+   */
+  Json::Value JobsParams ();
+
+  /**
    * Returns the JSON data representing all characters in the game state.
    */
   Json::Value Characters ();

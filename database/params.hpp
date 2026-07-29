@@ -35,12 +35,11 @@ namespace pxd
  * state: values change only through admin commands in block data and
  * unwind with the normal changesets.
  *
- * No consensus rule reads a parameter yet: this is general infrastructure
- * rather than a feature, so it lands on its own.  Beyond emergency tuning
- * of a limit without a redeploy, it carries soccerverse-style "fork-*"
- * activation flags: a post-launch consensus change can ship dormant behind
- * Get ("fork-x", 0) > 0 and then be enabled chain-wide by one admin
- * command, with no wipe and no coordinated restart.
+ * Currently read by the jobs-board admission caps.  The mechanism also
+ * carries soccerverse-style "fork-*" activation flags: post-launch
+ * consensus changes can ship dormant behind Get ("fork-x", 0) > 0 and be
+ * enabled chain-wide by one admin command, with no wipe or coordinated
+ * restart.
  */
 class ParamsTable
 {

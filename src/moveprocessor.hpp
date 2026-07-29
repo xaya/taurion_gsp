@@ -21,6 +21,7 @@
 
 #include "context.hpp"
 #include "dynobstacles.hpp"
+#include "jobs.hpp"
 #include "services.hpp"
 #include "trading.hpp"
 
@@ -155,6 +156,9 @@ protected:
 
   /** Ongoing operations table.  */
   OngoingsTable ongoings;
+
+  /** Access handle for the jobs board table.  */
+  JobsTable jobs;
 
   /** Access to the regions table.  */
   RegionsTable regions;
@@ -305,6 +309,14 @@ protected:
   void TryDexOperations (const std::string& name, const Json::Value& mv);
 
   /**
+   * Parses and handles a potential move with requested job-board operations.
+   * Each valid operation will be passed to PerformJobOperation for execution.
+   * Jobs are confirmed-only: the pending path never dispatches the "j" key
+   * (see the timestamp note in jobs.hpp).
+   */
+  void TryJobOperations (const std::string& name, const Json::Value& mv);
+
+  /**
    * This function is called when TryCharacterCreation found a creation that
    * is valid and should be performed.
    */
@@ -353,6 +365,14 @@ protected:
   PerformDexOperation (DexOperation& op)
   {}
 
+  /**
+   * This function is called when TryJobOperations has found a valid
+   * job-board operation.
+   */
+  virtual void
+  PerformJobOperation (JobOperation& op)
+  {}
+
 public:
 
   virtual ~BaseMoveProcessor () = default;
@@ -392,10 +412,11 @@ private:
 
   /**
    * Handles a "param" admin command, if any: runtime tuning of named
-   * parameters, in the exact admin shape of the soccerverse GSP.  Unlike
-   * god mode this is a legitimate mainnet operation -- admin commands only
-   * ever come from the game account's owner -- so tunable values can be
-   * adjusted without a redeploy.
+   * parameters (currently the jobs-board admission caps), in the exact
+   * admin shape of the soccerverse GSP.  Unlike god mode this is a
+   * legitimate mainnet operation -- admin commands only ever come from the
+   * game account's owner -- so the caps can be adjusted, or posting frozen
+   * with 0, without a redeploy.
    */
   void HandleParams (const Json::Value& cmd);
 
@@ -493,6 +514,7 @@ protected:
 
   void PerformServiceOperation (ServiceOperation& op) override;
   void PerformDexOperation (DexOperation& op) override;
+  void PerformJobOperation (JobOperation& op) override;
 
 public:
 

@@ -367,6 +367,35 @@ class PXTest (XayaXGameTest):
 
     return self.getCustomState ("data", method, *args, **kwargs)
 
+  def getJobs (self):
+    """Returns the full live jobs board."""
+    return self.getRpc ("getjobs")
+
+  def newestJob (self):
+    """Returns the most recently posted job on the board."""
+    jobs = self.getJobs ()
+    assert len (jobs) > 0
+    return max (jobs, key=lambda j: j["id"])
+
+  def jobGone (self, jobId):
+    """Returns whether the given job is no longer on the board."""
+    return jobId not in [j["id"] for j in self.getJobs ()]
+
+  def lowerRewardFloors (self, *names):
+    """Lowers the named minimum-reward floors (roconfig 100/1000) to 1, the
+    same way an admin would: suites whose rewards predate the floors call
+    this.  The defaults themselves are exercised in jobs_caps.py."""
+    self.adminCommand ({"param": [{"n": n, "v": 1} for n in names]})
+    self.generate (1)
+
+  def available (self, name):
+    """Returns an account's available coin balance."""
+    return self.getAccounts ()[name].getBalance ("available")
+
+  def reserved (self, name):
+    """Returns an account's reserved coin balance (escrows, open bids)."""
+    return self.getAccounts ()[name].getBalance ("reserved")
+
   def sendMove (self, name, move, send=None, burn=0):
     """
     Sends a move, and optionally includes a coin burn.

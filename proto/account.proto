@@ -48,4 +48,87 @@ message Account
    */
   optional uint64 burnsale_balance = 4;
 
+  reserved 5, 6, 7, 8;
+
+  /**
+   * Escrow-DEAL reputation counters: display-only vetting signals consumed by
+   * NO consensus rule.  Bumped for the worker on ANY tax-bearing settlement
+   * with p>0, so a Phase-2 reputation layer MUST read "completed" as "settled
+   * with the worker earning something", never as "delivered in full".
+   * Rationale and scaling: see BumpDealStats (src/jobs.cpp).
+   *
+   * The increments are deliberately unchecked at the declared widths.  The
+   * counts are uint32, so wrapping one takes 2^32 (~4.3e9) settlements, each
+   * burning a posting fee; the value counters are uint64 and grow by at most
+   * MAX_COIN_AMOUNT (1e11) per settlement, so wrapping one takes ~1.8e8
+   * max-value deals, each escrowing that value and burning its fee.  Both are
+   * economically unreachable, and a wrap would in any case be deterministic
+   * across nodes (no split risk).  Saturation is deliberately NOT used: it
+   * would add consensus-visible code for an unreachable boundary.
+   */
+  optional uint32 deals_completed = 9;
+  optional uint64 deals_value_completed = 10;
+
+  /**
+   * The POSTER side of the same settlements: deals this account posted that
+   * released value to a worker, and the total so released.  Gated on the very
+   * same tax anchor as the worker counters above (see BumpDealStats), so the
+   * two sides of one settlement move together or not at all.
+   *
+   * Like every counter here this is a RAW TALLY, not a trust score: a ring of
+   * sock puppets can wash-trade its own deals and pay only the burn (tax plus
+   * posting fee, ~4% of face value at the current params) for the record it
+   * manufactures.  The value counter is what makes that cost proportional --
+   * a big claimed number costs a proportional burn -- so a reputation layer
+   * must weight by value and never read the bare count as an endorsement.
+   */
+  optional uint32 deals_posted_completed = 11;
+  optional uint64 deals_posted_value = 12;
+
+  /**
+   * Deals that ended in a DISPUTE -- an arbiter ruling or the blunt 50/50
+   * fallback -- bumped for BOTH parties, since which side was at fault is
+   * exactly what consensus cannot know.  Deliberately NOT tax-gated: the
+   * dispute happened whether or not the pot was large enough to pay tax.
+   *
+   * Nobody can inflate their OWN count usefully (it reads as a negative), but
+   * a hostile counterparty can inflate SOMEONE ELSE'S: one deal it was going
+   * to enter anyway, then dispute.  Read it as "how often this account's deals
+   * needed a dispute to end", relative to its completion counts -- never as
+   * fault, which consensus cannot attribute.
+   */
+  optional uint32 deals_disputed = 13;
+
+  /**
+   * The ARBITER's record: disputes this account was bound to and actually
+   * RULED, plus the total pot (reward + collateral) those rulings directed.
+   * Both are bumped only by the arbiter's own signed ruling move, which is
+   * what keeps this record self-inflicted like the two above.
+   *
+   * The pot is the right measure of what an arbiter's judgement governed -- a
+   * p=0 ruling decides the fate of all of it, exactly as a p=100 one does --
+   * but it is a WEAKER anti-Sybil anchor than the reward-based counters above,
+   * and the two must not be compared as if they were the same currency.  A
+   * sock-puppet trio buys value here at about 1.3% of the figure credited
+   * (R=1000 with the maximum 2x collateral, self-ruled p=100: 30 tax + 10
+   * posting fee = 40 burned against 3000 credited), versus ~4% for
+   * deals_posted_value, because collateral returned at a high p bears no tax
+   * and so rides into this counter for free.  Weight accordingly.
+   *
+   * Ghosting -- letting a dispute time out into the 50/50 fallback -- is
+   * deliberately NOT counted here.  The poster binds an arbiter unilaterally
+   * (a post names any initialised account; there is no consent step), so a
+   * ghost counter in the account proto would be a permanent, unremovable mark
+   * that two colluding accounts could inflict on any non-consenting third
+   * party for the price of one throwaway deal.  A ghost is still
+   * attributable off-chain: the deal row carries the arbiter and, once a
+   * dispute lands, dispute_time (see jobs.proto) -- an observer that follows
+   * the board sees which bound arbiter let its window elapse.  Derived there
+   * it stays scoped, decayable and rebuttable instead of branded into
+   * consensus state for good.
+   */
+  optional uint32 arbiter_rulings = 14;
+  reserved 15;  // was arbiter_ghosted (see above: poisonable, and derivable)
+  optional uint64 arbiter_value_ruled = 16;
+
 }

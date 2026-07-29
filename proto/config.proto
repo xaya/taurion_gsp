@@ -613,6 +613,71 @@ message Params
    */
   repeated ProspectingPrize prizes = 22;
 
+  /**
+   * Minimum posting fee (in vCHI, burned) for a jobs-board job.  The actual
+   * fee is max(job_post_fee_min, reward * job_post_fee_bps / 10000), so spam
+   * costs real money at any reward size.
+   */
+  optional int64 job_post_fee_min = 23;
+
+  /** Proportional part of the posting fee, in basis points of the reward.  */
+  optional uint32 job_post_fee_bps = 24;
+
+  /**
+   * Maximum listing window, in seconds.  Caps a job's calendar deadline (the
+   * booking horizon: how far ahead a job can be scheduled).
+   */
+  optional int64 max_listing_window = 25;
+
+  /**
+   * DEFAULT admission caps for the jobs board: the maximum number of live
+   * jobs in total and per poster.  A POST past a cap is rejected.  These are
+   * the roconfig DEFAULTS: the effective values are runtime-tunable through
+   * the "param" admin command (consensus state in the parameters table), so
+   * the limits can be adjusted -- or posting frozen entirely with 0 --
+   * without a redeploy.  Why admission control rather than a sweep bound:
+   * see the cap ceilings in src/jobs.hpp.
+   */
+  optional int64 max_live_jobs = 26;
+  optional int64 max_jobs_per_poster = 27;
+
+  /**
+   * DEFAULT minimum reward (whole vCHI), runtime-tunable like the caps
+   * ("min-job-reward").  Every post must escrow at least this much.  Together
+   * with the proportional posting fee this keeps the capped board slots from
+   * being monopolised for pocket change: filling one means locking real value.
+   */
+  optional int64 min_job_reward = 28;
+
+  /**
+   * DEFAULT escrow-deal economics, runtime-tunable like the other jobs
+   * parameters ("min-deal-reward" / "deal-max-collateral-bps" /
+   * "deal-max-collateral" / "deal-max-fee-bps" / "deal-tax-bps").  A deal
+   * escrows at least min_deal_reward; its worker collateral is bounded by
+   * BOTH reward * deal_max_collateral_bps / 10000 and the absolute
+   * deal_max_collateral; the poster's arbiter fee is capped at
+   * deal_max_fee_bps; and deal_tax_bps is the protocol tax snapshot into
+   * each row at post (burned at settlement until a faction treasury
+   * exists).  Post validation enforces tax + fee < 10000 on the snapshot
+   * values, so no admissible row can ever violate the settlement-math
+   * precondition, whatever these are retuned to later.
+   */
+  optional int64 min_deal_reward = 29;
+  optional uint32 deal_max_collateral_bps = 30;
+  optional int64 deal_max_collateral = 31;
+  optional uint32 deal_max_fee_bps = 32;
+  optional uint32 deal_tax_bps = 33;
+
+  /**
+   * DEFAULT reaction window (in seconds) for escrow deals, runtime-tunable
+   * like the other deal params ("deal-reaction-window").  A deal snapshots its
+   * effective window into JobData.reaction_window at POST, clamped to
+   * [0, 2592000] (30 days).  0 disables the mechanism (exact v1 settlement).
+   * The extension rule and its bounds: see ExtendForReactionWindow
+   * (src/jobs.cpp), the canonical site.
+   */
+  optional int64 deal_reaction_window = 34;
+
 }
 
 /* ************************************************************************** */

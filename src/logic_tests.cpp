@@ -32,6 +32,7 @@
 #include "database/dex.hpp"
 #include "database/faction.hpp"
 #include "database/inventory.hpp"
+#include "database/jobs.hpp"
 #include "database/ongoing.hpp"
 #include "database/region.hpp"
 #include "hexagonal/coord.hpp"
@@ -160,14 +161,24 @@ protected:
 
   /**
    * Calls PXLogic::UpdateState with the given moves and superblock height.
+   * superBlock defaults to true; pass it explicitly to drive ORDINARY blocks
+   * (moves processed, no superblock phases) as the real dispatch does.
    */
   void
-  UpdateStateWithHeight (const Json::Value& moves, const unsigned sbHeight)
+  UpdateStateWithHeight (const Json::Value& moves, const unsigned sbHeight,
+                         const bool superBlock = true)
   {
     Context newCtx(ctx.Chain (), ctx.Map (),
                    sbHeight, ctx.BlockHeight (), ctx.Timestamp ());
     FameUpdater fame(db, newCtx);
-    PXLogic::UpdateState (db, fame, rnd, newCtx, true, BuildBlockData (moves));
+    PXLogic::UpdateState (db, fame, rnd, newCtx, superBlock,
+                          BuildBlockData (moves));
+  }
+
+  void
+  UpdateStateBlock (const std::string& movesStr, const bool superBlock)
+  {
+    UpdateStateWithHeight (ParseJson (movesStr), ctx.Height (), superBlock);
   }
 
   /**
@@ -608,6 +619,79 @@ TEST_F (PXLogicTests, PickUpDeadDrop)
   ASSERT_TRUE (c != nullptr);
   EXPECT_EQ (c->GetInventory ().GetFungibleCount ("foo"), 3);
   c.reset ();
+}
+
+/* ************************************************************************** */
+
+TEST_F (PXLogicTests, JobsExpireOnlyOnSuperblocks)
+{
+  /* ExpireJobs is gated inside the superblock branch while moves run on
+     every block:  a deadline passing on an ordinary block must NOT settle
+     the job -- it stays on the board until the next superblock sweep.  */
+  for (const auto* name : {"poster", "courier"})
+    {
+      auto a = accounts.CreateNew (name);
+      a->SetFaction (Faction::RED);
+      a->AddBalance (1'000'000);
+    }
+
+  UpdateStateBlock (R"([
+    {"name": "poster", "move": {"j": [{
+      "t": "deal", "d": 86400, "r": 2000, "co": 0, "terms": "x"
+    }]}}
+  ])", true);
+
+  JobsTable jobs(db);
+  Database::IdT jobId;
+  {
+    auto res = jobs.QueryAll ();
+    ASSERT_TRUE (res.Step ());
+    jobId = jobs.GetFromResult (res)->GetId ();
+    ASSERT_FALSE (res.Step ());
+  }
+  ASSERT_EQ (accounts.GetByName ("poster")->GetBalance (),
+             1'000'000 - 2'000 - 20);
+
+  /* The deadline passes, but the block is ordinary:  the overdue job must
+     survive it untouched -- and an accept landing in this move-before-sweep
+     window (otherwise perfectly valid) must not resurrect a listing whose
+     void at the sweep is already determined.  */
+  ctx.SetTimestamp (ctx.Timestamp () + 86401);
+  UpdateStateBlock (R"([
+    {"name": "courier", "move": {"j": [{"a": )"
+      + std::to_string (jobId) + R"(}]}}
+  ])", false);
+  {
+    auto j = jobs.GetById (jobId);
+    ASSERT_NE (j, nullptr);
+    EXPECT_EQ (j->GetStatus (), Job::Status::OPEN);
+  }
+  EXPECT_EQ (accounts.GetByName ("poster")->GetBalance (),
+             1'000'000 - 2'000 - 20);
+
+  /* Likewise the poster's own assign and cancel in the same gap:  a due
+     job is the sweep's alone -- a gap-assign would write dead designation
+     data, and a gap-cancel would record CANCELLED history for a job that
+     expired.  */
+  UpdateStateBlock (R"([
+    {"name": "poster", "move": {"j": [
+      {"s": )" + std::to_string (jobId) + R"(, "w": "courier"},
+      {"c": )" + std::to_string (jobId) + R"(}
+    ]}}
+  ])", false);
+  {
+    auto j = jobs.GetById (jobId);
+    ASSERT_NE (j, nullptr);
+    EXPECT_EQ (j->GetStatus (), Job::Status::OPEN);
+    EXPECT_EQ (j->GetProto ().designated_worker (), "");
+  }
+  EXPECT_EQ (accounts.GetByName ("poster")->GetBalance (),
+             1'000'000 - 2'000 - 20);
+
+  /* The next superblock sweeps it:  the OPEN job voids and refunds.  */
+  UpdateStateBlock ("[]", true);
+  EXPECT_EQ (jobs.GetById (jobId), nullptr);
+  EXPECT_EQ (accounts.GetByName ("poster")->GetBalance (), 1'000'000 - 20);
 }
 
 TEST_F (PXLogicTests, DamageLists)
