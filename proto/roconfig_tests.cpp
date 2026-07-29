@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2026  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,6 +21,8 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
+#include <string>
+
 namespace pxd
 {
 namespace
@@ -35,7 +37,7 @@ TEST (RoConfigTests, ConstructionWorks)
   *RoConfig (xaya::Chain::REGTEST);
 }
 
-TEST (RoConfigTests, ProtoIsSingleton)
+TEST (RoConfigTests, ProtoIsShared)
 {
   const auto* ptr1 = &(*RoConfig (xaya::Chain::MAIN));
   const auto* ptr2 = &(*RoConfig (xaya::Chain::MAIN));
@@ -100,6 +102,143 @@ TEST (RoConfigTests, Building)
   const RoConfig cfg(xaya::Chain::REGTEST);
   EXPECT_EQ (cfg.BuildingOrNull ("invalid building"), nullptr);
   EXPECT_GT (cfg.Building ("ancient1").enter_radius (), 0);
+}
+
+/* ************************************************************************** */
+
+} // anonymous namespace
+
+/**
+ * Tests for applying a stored, admin-modified config.  What is activated
+ * applies to the whole process, so every test restores the compiled-in data
+ * by applying the empty stored config before it finishes.
+ */
+class RoConfigStoredTests : public testing::Test
+{
+
+protected:
+
+  ~RoConfigStoredTests ()
+  {
+    Apply ("");
+  }
+
+  /**
+   * Activates the given stored bytes for regtest.  This wraps the private
+   * RoConfig::ApplyStored for the test bodies, whose classes derive from
+   * this fixture and thus do not share its friendship.
+   */
+  static void
+  Apply (const std::string& stored)
+  {
+    RoConfig::ApplyStored (xaya::Chain::REGTEST, stored);
+  }
+
+  /**
+   * Returns the serialised bytes of the currently active regtest config
+   * with the given modification applied, as the admin command would
+   * produce them.
+   */
+  template <typename Fcn>
+    static std::string
+    ModifiedConfig (const Fcn& mod)
+  {
+    proto::ConfigData pb = *RoConfig (xaya::Chain::REGTEST);
+    mod (pb);
+    std::string res;
+    CHECK (pb.SerializeToString (&res));
+    return res;
+  }
+
+};
+
+namespace
+{
+
+TEST_F (RoConfigStoredTests, ScalarOverride)
+{
+  const unsigned base
+      = RoConfig (xaya::Chain::REGTEST)->params ().character_cost ();
+
+  Apply (ModifiedConfig ([base] (proto::ConfigData& pb)
+    {
+      pb.mutable_params ()->set_character_cost (base + 42);
+    }));
+  EXPECT_EQ (RoConfig (xaya::Chain::REGTEST)->params ().character_cost (),
+             base + 42);
+
+  Apply ("");
+  EXPECT_EQ (RoConfig (xaya::Chain::REGTEST)->params ().character_cost (),
+             base);
+}
+
+TEST_F (RoConfigStoredTests, ReplacesCompiledData)
+{
+  ASSERT_NE (RoConfig (xaya::Chain::REGTEST).ItemOrNull ("foo"), nullptr);
+
+  /* The stored config replaces the compiled-in data outright rather than
+     merging into it, so it can also remove entries.  */
+  Apply (ModifiedConfig ([] (proto::ConfigData& pb)
+    {
+      pb.mutable_fungible_items ()->erase ("foo");
+    }));
+  EXPECT_EQ (RoConfig (xaya::Chain::REGTEST).ItemOrNull ("foo"), nullptr);
+}
+
+TEST_F (RoConfigStoredTests, DerivedDataFollowsConfig)
+{
+  EXPECT_EQ (RoConfig (xaya::Chain::REGTEST).ItemOrNull ("extra prize"),
+             nullptr);
+
+  /* Constructed item data is derived from the proto (prize items exist only
+     for configured prizes), so it has to follow an activated config.  */
+  Apply (ModifiedConfig ([] (proto::ConfigData& pb)
+    {
+      auto* p = pb.mutable_params ()->add_prizes ();
+      p->set_name ("extra");
+      p->set_number (1);
+      p->set_probability (10);
+    }));
+  EXPECT_NE (RoConfig (xaya::Chain::REGTEST).ItemOrNull ("extra prize"),
+             nullptr);
+
+  Apply ("");
+  EXPECT_EQ (RoConfig (xaya::Chain::REGTEST).ItemOrNull ("extra prize"),
+             nullptr);
+}
+
+TEST_F (RoConfigStoredTests, InstanceKeepsItsData)
+{
+  const RoConfig cfg(xaya::Chain::REGTEST);
+  const auto* item = cfg.ItemOrNull ("foo");
+  ASSERT_NE (item, nullptr);
+
+  /* Activating a config must not touch what existing instances read, since
+     they may be handing out references into it on another thread.  */
+  Apply (ModifiedConfig ([] (proto::ConfigData& pb)
+    {
+      pb.mutable_fungible_items ()->erase ("foo");
+    }));
+  EXPECT_EQ (cfg.ItemOrNull ("foo"), item);
+  EXPECT_EQ (RoConfig (xaya::Chain::REGTEST).ItemOrNull ("foo"), nullptr);
+}
+
+TEST_F (RoConfigStoredTests, UnchangedBytesKeepCaches)
+{
+  const std::string bytes = ModifiedConfig ([] (proto::ConfigData& pb)
+    {
+      pb.mutable_params ()->set_character_cost (123);
+    });
+
+  Apply (bytes);
+  const RoConfig cfg(xaya::Chain::REGTEST);
+  const auto* item = cfg.ItemOrNull ("foo");
+  ASSERT_NE (item, nullptr);
+
+  /* Re-applying identical bytes must not build fresh data, so that instances
+     constructed afterwards still share what is already there.  */
+  Apply (bytes);
+  EXPECT_EQ (RoConfig (xaya::Chain::REGTEST).ItemOrNull ("foo"), item);
 }
 
 /* ************************************************************************** */

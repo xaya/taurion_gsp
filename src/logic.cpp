@@ -30,6 +30,7 @@
 #include "database/building.hpp"
 #include "database/dex.hpp"
 #include "database/moneysupply.hpp"
+#include "database/roconfig.hpp"
 #include "database/schema.hpp"
 #include "proto/roconfig.hpp"
 
@@ -77,6 +78,8 @@ PXLogic::UpdateState (Database& db, xaya::Random& rnd,
                       const xaya::Chain chain, const BaseMap& map,
                       const Json::Value& blockData)
 {
+  RoConfigStorage (db).Sync (chain);
+
   const auto& blockMeta = blockData["block"];
   CHECK (blockMeta.isObject ());
   const auto& heightVal = blockMeta["height"];
@@ -189,6 +192,7 @@ void
 PXLogic::InitialiseState (xaya::SQLiteDatabase& db)
 {
   SQLiteGameDatabase dbObj(db, *this);
+  RoConfigStorage (dbObj).Sync (GetChain ());
 
   InitialiseBuildings (dbObj, GetChain ());
 
@@ -214,6 +218,7 @@ Json::Value
 PXLogic::GetStateAsJson (const xaya::SQLiteDatabase& db)
 {
   SQLiteGameDatabase dbObj(const_cast<xaya::SQLiteDatabase&> (db), *this);
+  RoConfigStorage (dbObj).Sync (GetChain ());
   const Context ctx(GetChain (), GetBaseMap (),
                     Context::NO_HEIGHT, Context::NO_HEIGHT,
                     Context::NO_TIMESTAMP);
@@ -228,6 +233,7 @@ PXLogic::GetCustomInstanceState (const xaya::SQLiteDatabase& db,
                                  unsigned height)
 {
   SQLiteGameDatabase dbObj(const_cast<xaya::SQLiteDatabase&> (db), *this);
+  RoConfigStorage (dbObj).Sync (GetChain ());
   const Context ctx(GetChain (), GetBaseMap (),
                     Context::NO_HEIGHT, Context::NO_HEIGHT,
                     Context::NO_TIMESTAMP);
@@ -246,6 +252,8 @@ PXLogic::GetCustomStateData (xaya::Game& game, const JsonStateFromRawDb& cb)
       [this, &cb] (const xaya::SQLiteDatabase& db, const xaya::uint256& hash,
                    const unsigned height)
         {
+          /* No config sync here:  this runs lock-free on a state snapshot
+             that can lag the chain tip.  See RoConfigStorage::Sync.  */
           SQLiteGameDatabase dbObj(const_cast<xaya::SQLiteDatabase&> (db),
                                    *this);
           return cb (dbObj, hash, height);

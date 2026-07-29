@@ -23,7 +23,9 @@
 #include "testutils.hpp"
 
 #include "database/dbtest.hpp"
+#include "database/roconfig.hpp"
 
+#include <xayautil/base64.hpp>
 #include <xayautil/jsonutils.hpp>
 
 #include <gflags/gflags.h>
@@ -31,6 +33,7 @@
 
 #include <json/json.h>
 
+#include <functional>
 #include <string>
 
 namespace pxd
@@ -66,6 +69,19 @@ protected:
     DynObstacles dyn(db, ctx);
     MoveProcessor mvProc(db, dyn, rnd, ctx);
     mvProc.ProcessAdmin (ParseJson (str));
+  }
+
+  /**
+   * Serialises the given ConfigData and processes it as roconfig
+   * merge admin command.
+   */
+  void
+  SendRoConfig (const proto::ConfigData& upd)
+  {
+    std::string bytes;
+    CHECK (upd.SerializeToString (&bytes));
+    ProcessAdmin (R"([{"cmd": {"roconfig": {"merge": ")"
+                      + xaya::EncodeBase64 (bytes) + R"("}}}])");
   }
 
   /**
@@ -175,6 +191,119 @@ TEST_F (MoveProcessorTests, AllAdminDataAccepted)
 
       ProcessAdmin (fullAdm.str ());
     }
+}
+
+TEST_F (MoveProcessorTests, AdminRoConfigUpdate)
+{
+  proto::ConfigData upd;
+  upd.mutable_params ()->set_character_cost (123);
+  SendRoConfig (upd);
+
+  /* What gets stored is the full config with the update merged in, not
+     just the update itself.  */
+  RoConfigStorage tbl(db);
+  auto stored = tbl.Get ();
+  EXPECT_EQ (stored->params ().character_cost (), 123);
+  EXPECT_EQ (stored->fungible_items ().size (),
+             ctx.RoConfig ()->fungible_items ().size ());
+
+  /* A second update merges into the previously stored config.  */
+  proto::ConfigData upd2;
+  auto* p = upd2.mutable_params ()->add_prizes ();
+  p->set_name ("extra");
+  p->set_number (1);
+  p->set_probability (10);
+  SendRoConfig (upd2);
+
+  stored = tbl.Get ();
+  EXPECT_EQ (stored->params ().character_cost (), 123);
+  EXPECT_EQ (stored->params ().prizes ().rbegin ()->name (), "extra");
+}
+
+TEST_F (MoveProcessorTests, AdminRoConfigInvalid)
+{
+  /* Serialises the update built by the given modification into a quoted
+     base64 payload.  */
+  const auto payload = [] (const std::function<void (proto::ConfigData&)>& mod)
+    {
+      proto::ConfigData pb;
+      mod (pb);
+      std::string res;
+      CHECK (pb.SerializeToString (&res));
+      return R"(")" + xaya::EncodeBase64 (res) + R"(")";
+    };
+
+  /* Wraps such an update into a merge command.  */
+  const auto upd
+      = [&payload] (const std::function<void (proto::ConfigData&)>& mod)
+    {
+      return R"({"merge": )" + payload (mod) + R"(})";
+    };
+
+  /* A well-formed payload (as accepted in AdminRoConfigUpdate), proving that
+     the malformed shapes below are rejected for the shape itself.  */
+  const std::string ok = payload ([] (proto::ConfigData& pb)
+    {
+      pb.mutable_params ()->set_character_cost (123);
+    });
+
+  /* None of these may store anything: a command that is not exactly an
+     object holding a "merge" string, invalid base64, an empty payload,
+     bytes that do not parse as ConfigData, the compile-time chain-merge
+     fields, a change to god mode (which the regtest config has enabled),
+     safe zones, and taking away structure the game state refers to (a
+     vehicle, a fitment, blueprints, construction data).  */
+  RoConfigStorage tbl(db);
+  for (const std::string& cmdJson : {
+      std::string (R"(42)"),
+      ok,
+      std::string (R"({})"),
+      std::string (R"({"merge": 42})"),
+      R"({"update": )" + ok + R"(})",
+      R"({"merge": )" + ok + R"(, "other": 42})",
+      std::string (R"({"merge": "not base64!!"})"),
+      std::string (R"({"merge": ""})"),
+      R"({"merge": ")" + xaya::EncodeBase64 ("\xff\xff invalid bytes")
+          + R"("})",
+      upd ([] (proto::ConfigData& pb) { pb.mutable_testnet_merge (); }),
+      upd ([] (proto::ConfigData& pb) { pb.mutable_regtest_merge (); }),
+      upd ([] (proto::ConfigData& pb)
+        {
+          pb.mutable_params ()->set_god_mode (false);
+        }),
+      upd ([] (proto::ConfigData& pb) { pb.add_safe_zones (); }),
+      upd ([] (proto::ConfigData& pb)
+        {
+          (*pb.mutable_fungible_items ())["rv st"].set_space (5);
+        }),
+      upd ([] (proto::ConfigData& pb)
+        {
+          (*pb.mutable_fungible_items ())["lf gun"].set_space (5);
+        }),
+      upd ([] (proto::ConfigData& pb)
+        {
+          (*pb.mutable_fungible_items ())["lf gun"].mutable_fitment ();
+        }),
+      upd ([] (proto::ConfigData& pb)
+        {
+          (*pb.mutable_building_types ())["r rt"].set_enter_radius (3);
+        }),
+  })
+    {
+      ProcessAdmin (R"([{"cmd": {"roconfig": )" + cmdJson + R"(}}])");
+      EXPECT_EQ (tbl.Get (), nullptr) << "accepted: " << cmdJson;
+    }
+}
+
+TEST_F (MoveProcessorTests, AdminRoConfigUnchangedGodMode)
+{
+  /* Only a change to god mode is rejected, so that an update built by
+     modifying a copy of the current params can carry the field.  */
+  proto::ConfigData upd;
+  upd.mutable_params ()->set_god_mode (
+      ctx.RoConfig ()->params ().god_mode ());
+  SendRoConfig (upd);
+  EXPECT_NE (RoConfigStorage (db).Get (), nullptr);
 }
 
 /* ************************************************************************** */

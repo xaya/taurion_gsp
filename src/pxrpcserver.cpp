@@ -128,7 +128,7 @@ NonStateRpcServer::AddBuildingsFromJson (const Json::Value& buildings,
   /* This is enforced already by libjson-rpc-cpp's stub generator.  */
   CHECK (buildings.isArray ());
 
-  const RoConfig cfg(chain);
+  const RoConfig& cfg = dyn.obstacles.Config ();
   for (const auto& b : buildings)
     {
       if (!b.isObject ())
@@ -431,14 +431,15 @@ NonStateRpcServer::getbuildingshape (const Json::Value& centre, const int rot,
     ReturnError (ErrorCode::INVALID_ARGUMENT,
                  "rot is outside the valid range [0, 5]");
 
-  if (RoConfig (chain).BuildingOrNull (type) == nullptr)
+  const RoConfig cfg(chain);
+  if (cfg.BuildingOrNull (type) == nullptr)
     ReturnError (ErrorCode::INVALID_ARGUMENT, "unknown building type");
 
   proto::ShapeTransformation trafo;
   trafo.set_rotation_steps (rot);
 
   Json::Value res(Json::arrayValue);
-  for (const auto& t : GetBuildingShape (type, trafo, c, chain))
+  for (const auto& t : GetBuildingShape (type, trafo, c, cfg))
     res.append (CoordToJson (t));
 
   return res;
