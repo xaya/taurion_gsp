@@ -6,3 +6,7 @@ These files are needed:
 
 - `obstacledata.dat.xz`
 - `regiondata.dat.xz`
+
+They can be downloaded from the release assets at
+https://github.com/xaya/taurion_gsp/releases and must match the checksums
+in `mapdata/*.sha512`.

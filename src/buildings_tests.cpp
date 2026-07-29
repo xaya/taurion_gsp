@@ -30,6 +30,8 @@
 
 #include <glog/logging.h>
 
+#include <set>
+
 namespace pxd
 {
 namespace
@@ -88,6 +90,38 @@ TEST_F (BuildingsTests, UpdateBuildingStats)
   EXPECT_EQ (h->GetHP ().armour (), 100);
 }
 
+TEST_F (BuildingsTests, InitialBuildingsPlacement)
+{
+  /* InitialiseBuildings places the configured buildings without any
+     validation, so this verifies that the shipped configuration is
+     actually valid on the map:  every footprint tile must be on the map,
+     and the footprints must not overlap each other (DynObstacles
+     CHECK-fails on overlapping buildings when the state is loaded,
+     which would halt the node).  */
+  InitialiseBuildings (db, ctx.Chain ());
+
+  unsigned cnt = 0;
+  std::set<HexCoord> occupied;
+  auto res = tbl.QueryAll ();
+  while (res.Step ())
+    {
+      auto b = tbl.GetFromResult (res);
+      ++cnt;
+      for (const auto& c : GetBuildingShape (*b, ctx))
+        {
+          EXPECT_TRUE (ctx.Map ().IsOnMap (c))
+              << "Tile " << c << " of initial building " << b->GetId ()
+              << " (" << b->GetType () << ") is not on the map";
+          EXPECT_TRUE (occupied.insert (c).second)
+              << "Tile " << c << " of initial building " << b->GetId ()
+              << " (" << b->GetType () << ") overlaps another building";
+        }
+    }
+
+  EXPECT_EQ (cnt, RoConfig (ctx.Chain ())->initial_buildings_size ());
+  EXPECT_GT (cnt, 0);
+}
+
 /* ************************************************************************** */
 
 class CanPlaceBuildingTests : public BuildingsTests
@@ -118,7 +152,7 @@ TEST_F (CanPlaceBuildingTests, Ok)
 {
   /* Some offset added to all coordinates to make the situation fit
      into one region entirely.  */
-  const HexCoord offs(-1, -5);
+  const HexCoord offs(-50, -50);
 
   tbl.CreateNew ("huesli", "", Faction::ANCIENT)
       ->SetCentre (offs + HexCoord (-1, 0));

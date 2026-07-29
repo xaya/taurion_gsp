@@ -118,7 +118,7 @@ class MovementTest (PXTest):
 
     # Start off from a known good location to make sure all is fine and
     # not flaky depending on the randomised spawn position.
-    self.offset = {"x": -1377, "y": 1263}
+    self.offset = {"x": -1838, "y": 1040}
     self.moveCharactersTo ({"domob": self.offset})
 
     self.mainLogger.info ("Setting basic path for character...")

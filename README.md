@@ -9,11 +9,11 @@ To build you will need to install libxayagame - check the tutorials for building
 
 Once you have installed libxayagame you can clone this repository and build:
 
-you will need the region and obstacle layer data. Download these and put them in the `data` folder (or `mapdata` if the symlinks do not work for you)
-
-https://xaya.io/downloads/regiondata.dat.xz
-
-https://xaya.io/downloads/obstacledata.dat.xz
+you will need the region and obstacle layer data (`regiondata.dat.xz` and
+`obstacledata.dat.xz`). Download these from the release assets at
+https://github.com/xaya/taurion_gsp/releases and put them in the `data`
+folder (or `mapdata` if the symlinks do not work for you). The build
+verifies them against the checksums in `mapdata/*.sha512`.
 
 Then
 

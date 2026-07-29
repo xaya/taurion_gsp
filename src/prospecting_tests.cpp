@@ -189,9 +189,18 @@ TEST_F (FinishProspectingTests, Basic)
 TEST_F (FinishProspectingTests, Resources)
 {
   std::map<std::string, unsigned> regionsForResource;
+  /* The grid is chosen such that every swept position (except for the one
+     dead spot excluded explicitly) is within fall-off distance of at least
+     one resource area, so prospecting it yields a non-zero amount, and such
+     that all nine ore types occur among the results.  */
   for (int i = -30; i < 30; ++i)
-    for (int j = -30; j < 30; ++j)
+    for (int j = -20; j < 30; ++j)
       {
+        /* This spot is farther from every resource area than the fall-off
+           distance, so no ore at all can be found there.  */
+        if (i == 20 && j == 6)
+          continue;
+
         const HexCoord pos(100 * i, 100 * j);
         if (!ctx.Map ().IsOnMap (pos) || !ctx.Map ().IsPassable (pos))
           continue;

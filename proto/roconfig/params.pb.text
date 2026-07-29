@@ -32,20 +32,23 @@ params:
 
     god_mode: false
 
+    # The building IDs refer to each faction's starter station, following
+    # the genesis order in initialbuildings.pb.text (obelisks 1-3, then the
+    # r/g/b starter stations as 4-6).
     spawn_areas:
       {
         key: "r"
-        value: { building_id: 6 }
-      }
-    spawn_areas:
-      {
-        key: "g"
         value: { building_id: 4 }
       }
     spawn_areas:
       {
-        key: "b"
+        key: "g"
         value: { building_id: 5 }
+      }
+    spawn_areas:
+      {
+        key: "b"
+        value: { building_id: 6 }
       }
 
     burnsale_stages: { amount_sold: 10000000000 price_sat: 10000 }
