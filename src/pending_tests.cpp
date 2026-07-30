@@ -1351,7 +1351,7 @@ TEST_F (PendingStateUpdaterTests, Prospecting)
     {
       "characters":
         [
-          {"id": 1, "prospecting": 345820}
+          {"id": 1, "prospecting": 345782}
         ]
     }
   )");
@@ -1362,7 +1362,7 @@ TEST_F (PendingStateUpdaterTests, Mining)
   accounts.CreateNew ("domob")->SetFaction (Faction::RED);
 
   const HexCoord pos(456, -789);
-  constexpr Database::IdT regionId = 345'820;
+  constexpr Database::IdT regionId = 345'782;
   auto r = regions.GetById (regionId);
   r->MutableProto ().mutable_prospection ();
   r->SetResourceLeft (100);
@@ -1390,7 +1390,7 @@ TEST_F (PendingStateUpdaterTests, Mining)
     {
       "characters":
         [
-          {"id": 1, "mining": 345820}
+          {"id": 1, "mining": 345782}
         ]
     }
   )");

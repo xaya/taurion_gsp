@@ -74,8 +74,8 @@ class FindPathTest (PXTest):
   def run (self):
     # Pair of coordinates that are next to each other, but where one
     # is an obstacle.
-    obstacle = {"x": 0, "y": 505}
-    passable = {"x": 0, "y": 504}
+    obstacle = {"x": 0, "y": 151}
+    passable = {"x": 0, "y": 150}
 
     # Coordinates between which paths are possible.
     a = {"x": 0, "y": 1}

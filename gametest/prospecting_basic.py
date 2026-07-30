@@ -52,7 +52,7 @@ class BasicProspectingTest (PXTest):
     # Set up known positions of the characters.  We use a known good position
     # as origin and move all attackers there.  The target will be moved to a
     # point nearby (but not in range yet).
-    self.offset = {"x": -1050, "y": 1272}
+    self.offset = {"x": -1052, "y": 1270}
     self.moveCharactersTo ({
       "target": offsetCoord ({"x": 20, "y": 0}, self.offset, False),
       "attacker 1": offsetCoord ({"x": 0, "y": 1}, self.offset, False),

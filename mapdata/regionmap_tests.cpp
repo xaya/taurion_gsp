@@ -47,8 +47,8 @@ protected:
 
 TEST_F (RegionMapTests, OutOfMap)
 {
-  EXPECT_NE (rm.GetRegionId (HexCoord (0, 4064)), RegionMap::OUT_OF_MAP);
-  EXPECT_EQ (rm.GetRegionId (HexCoord (0, 4065)), RegionMap::OUT_OF_MAP);
+  EXPECT_NE (rm.GetRegionId (HexCoord (0, 4095)), RegionMap::OUT_OF_MAP);
+  EXPECT_EQ (rm.GetRegionId (HexCoord (0, 4096)), RegionMap::OUT_OF_MAP);
 }
 
 TEST_F (RegionMapTests, MatchesOriginalData)
@@ -78,10 +78,10 @@ TEST_F (RegionMapTests, GetRegionShape)
 {
   const HexCoord coords[] =
     {
-      HexCoord (0, -4064),
-      HexCoord (0, 4064),
-      HexCoord (-4064, 0),
-      HexCoord (4064, 0),
+      HexCoord (0, -4096),
+      HexCoord (0, 4095),
+      HexCoord (-4096, 0),
+      HexCoord (4095, 0),
       HexCoord (0, 0),
     };
 
