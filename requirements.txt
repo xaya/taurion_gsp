@@ -1,4 +1,4 @@
 jsonrpclib-pelix
 protobuf
-web3==7
+web3==7.15.0
 xayax>=1.4.1
