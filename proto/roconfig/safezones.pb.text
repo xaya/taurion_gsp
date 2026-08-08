@@ -7,9 +7,20 @@ safe_zones:
     faction: "r"
   }
 
+# Green's disc used to sit at (-3472, 1824), straight across a corridor. It never
+# severed the map -- on the full 8192^2 grid it strands 0 hexes -- but it forced a
+# 6.94x detour on anything crossing it (a 1,600-hex straight line cost 11,097
+# hops; it now costs 1,825). Moved 111 hexes clear of the chokepoint.
+#
+# The spawn does NOT move: spawn_areas carries a building_id, not a coordinate,
+# and green spawns into building 4 at (-3489, 1823). That building sits 110 hexes
+# from this centre, so it stays inside the 300 radius with 190 hexes to spare, and
+# resource balancing is untouched. The cliff is sharp -- 83 hexes of displacement
+# still gave 11,097 hops, 86 gave 1,825 -- so 111 is deliberate margin, not a
+# round number.
 safe_zones:
   {
-    centre: { x: -3472 y: 1824 }
+    centre: { x: -3401 y: 1713 }
     radius: 300
     faction: "g"
   }
