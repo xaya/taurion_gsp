@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2020  Autonomous Worlds Ltd
+    Copyright (C) 2020-2026  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@
 #include "database/ongoing.hpp"
 #include "hexagonal/coord.hpp"
 #include "proto/building.pb.h"
+#include "proto/roconfig.hpp"
 
 #include <xayautil/random.hpp>
 
@@ -42,7 +43,8 @@ namespace pxd
  */
 std::vector<HexCoord> GetBuildingShape (const std::string& type,
                                         const proto::ShapeTransformation& trafo,
-                                        const HexCoord& pos, xaya::Chain chain);
+                                        const HexCoord& pos,
+                                        const RoConfig& cfg);
 
 /**
  * Returns all shape tiles of a given building, taking the centre and
@@ -78,7 +80,7 @@ void MaybeStartBuildingConstruction (Building& b, OngoingsTable& ongoings,
  * Computes and updates the stats of a building (e.g. combat data, HP) from
  * its type and other attributes.
  */
-void UpdateBuildingStats (Building& b, xaya::Chain chain);
+void UpdateBuildingStats (Building& b, const RoConfig& cfg);
 
 /**
  * Processes the updates (without any validation) for entering the given

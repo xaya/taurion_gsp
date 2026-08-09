@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2021  Autonomous Worlds Ltd
+    Copyright (C) 2019-2026  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -30,12 +30,15 @@
 #include "spawn.hpp"
 
 #include "database/faction.hpp"
+#include "database/roconfig.hpp"
 #include "proto/character.pb.h"
 #include "proto/roconfig.hpp"
 
+#include <xayautil/base64.hpp>
 #include <xayautil/jsonutils.hpp>
 
 #include <sstream>
+#include <utility>
 
 namespace pxd
 {
@@ -1250,6 +1253,128 @@ MoveProcessor::ProcessOneAdmin (const Json::Value& cmd)
     return;
 
   HandleGodMode (cmd["god"]);
+  HandleRoConfigUpdate (cmd["roconfig"]);
+}
+
+namespace
+{
+
+/**
+ * Returns null if the given roconfig update may be applied on top of the
+ * given base config, and otherwise the reason why it must not be.
+ */
+const char*
+RoConfigUpdateRejection (const proto::ConfigData& base,
+                         const proto::ConfigData& upd)
+{
+  /* The chain merges are compile-time constructs that building the config has
+     already applied and cleared, so an update reintroducing them would linger
+     in every future config.  */
+  if (upd.has_testnet_merge () || upd.has_regtest_merge ())
+    return "it contains chain merges";
+
+  /* God mode exists for integration tests and is set by the compiled-in
+     config of the chains that want it.  It must stay fixed at runtime:
+     turning it on would open up the god commands on a live chain, and
+     turning it off would contradict the coins already gifted through them.
+     Only a change is rejected, so that an update built by modifying a copy
+     of the current params can carry the field.  */
+  if (upd.params ().has_god_mode ()
+        && upd.params ().god_mode () != base.params ().god_mode ())
+    return "it changes god mode";
+
+  /* Safe zones are baked into the base map's lookup tables when the process
+     starts and are not rebuilt afterwards, so changing them would apply to
+     some consumers but not others.  */
+  if (upd.safe_zones_size () > 0)
+    return "it contains safe zones";
+
+  /* Merging replaces a map entry as a whole rather than merging into it, so
+     redefining one drops what the base had set on it.  The game state refers
+     to this structure -- characters to their vehicle and its fitments,
+     inventories to blueprint items, buildings to their construction data --
+     and looking it up after it is gone is fatal, so an update must not take
+     it away.  */
+  for (const auto& entry : upd.fungible_items ())
+    {
+      const auto mit = base.fungible_items ().find (entry.first);
+      if (mit == base.fungible_items ().end ())
+        continue;
+      if (mit->second.has_vehicle () && !entry.second.has_vehicle ())
+        return "it turns a vehicle into a non-vehicle";
+      if (mit->second.has_fitment () && !entry.second.has_fitment ())
+        return "it turns a fitment into a non-fitment";
+      if (mit->second.with_blueprint () && !entry.second.with_blueprint ())
+        return "it takes away an item's blueprints";
+    }
+  for (const auto& entry : upd.building_types ())
+    {
+      const auto mit = base.building_types ().find (entry.first);
+      if (mit != base.building_types ().end ()
+            && mit->second.has_construction ()
+            && !entry.second.has_construction ())
+        return "it removes construction data from a building type";
+    }
+
+  return nullptr;
+}
+
+} // anonymous namespace
+
+void
+MoveProcessor::HandleRoConfigUpdate (const Json::Value& cmd)
+{
+  if (cmd.isNull ())
+    return;
+
+  /* The command is an object keyed by operation, so that operations going
+     beyond plain merging (such as clearing a repeated field before merging
+     into it) can be added later on.  Anything but the exact known shape is
+     rejected, so that a release never applies just the part of a command
+     it understands.  */
+  if (!cmd.isObject () || cmd.size () != 1 || !cmd["merge"].isString ())
+    {
+      LOG (WARNING) << "Invalid roconfig update: " << cmd;
+      return;
+    }
+
+  std::string bytes;
+  proto::ConfigData upd;
+  const char* rejected = nullptr;
+  if (!xaya::DecodeBase64 (cmd["merge"].asString (), bytes))
+    rejected = "it is not valid base64";
+  else if (bytes.empty ())
+    rejected = "it is empty";
+  else if (!upd.ParseFromString (bytes))
+    rejected = "it is not a valid ConfigData";
+
+  /* The update merges into the currently effective config:  the stored one
+     if present (which also covers earlier updates from the same block) and
+     the active compiled-in data otherwise.  The merged result is stored as
+     the new full config; it is synced into the in-memory config at the start
+     of each block's processing, so it takes effect from the next block.  */
+  RoConfigStorage tbl(db);
+  proto::ConfigData cfg;
+  if (rejected == nullptr)
+    {
+      const auto stored = tbl.Get ();
+      if (stored == nullptr)
+        cfg = *ctx.RoConfig ();
+      else
+        cfg = std::move (*stored);
+      rejected = RoConfigUpdateRejection (cfg, upd);
+    }
+  if (rejected != nullptr)
+    {
+      LOG (WARNING) << "Rejecting roconfig update: " << rejected;
+      return;
+    }
+
+  cfg.MergeFrom (upd);
+  LOG (INFO)
+      << "Merged admin update of " << bytes.size ()
+      << " bytes into the stored roconfig";
+  tbl.Set (cfg);
 }
 
 void
@@ -1628,7 +1753,7 @@ MoveProcessor::MaybeFoundBuilding (Character& c, const Json::Value& upd)
   for (const auto& entry : roBuilding.construction ().foundation ())
     inv.AddFungibleCount (entry.first, -static_cast<int> (entry.second));
 
-  UpdateBuildingStats (*b, ctx.Chain ());
+  UpdateBuildingStats (*b, ctx.RoConfig ());
   EnterBuilding (c, *b, dyn);
 
   /* EnterBuilding already removes the vehicle from dyn, but we have to add
@@ -2097,7 +2222,7 @@ MaybeGodBuild (AccountsTable& accounts, BuildingsTable& tbl, const Context& ctx,
       *pb.mutable_shape_trafo () = trafo;
       pb.mutable_age_data ()->set_founded_height (ctx.Height ());
       pb.mutable_age_data ()->set_finished_height (ctx.Height ());
-      UpdateBuildingStats (*b, ctx.Chain ());
+      UpdateBuildingStats (*b, ctx.RoConfig ());
       LOG (INFO)
           << "God building " << type
           << " for " << owner << " of faction " << FactionToString (f) << ":\n"
