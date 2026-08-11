@@ -1524,14 +1524,24 @@ MoveProcessor::MaybeEnterBuilding (Character& c, const Json::Value& upd)
 }
 
 void
-MoveProcessor::MaybeExitBuilding (Character& c, const Json::Value& upd)
+MoveProcessor::MaybeExitBuilding (Character& c, const Json::Value& upd,
+                                  const bool early)
 {
+  /* Look at the move only in the phase that handles its form.  Otherwise the
+     late phase would log a spurious rejection for a character that the early
+     phase has already moved out of its building.  */
+  const auto& val = upd["xb"];
+  const bool wantsPos = val.isObject () && val.isMember ("pos");
+  if (early != wantsPos)
+    return;
+
   HexCoord pos;
   bool hasPos;
   if (!ParseExitBuilding (c, upd, pos, hasPos))
     return;
+  CHECK_EQ (hasPos, early);
 
-  LeaveBuilding (buildings, c, rnd, dyn, ctx);
+  LeaveBuilding (buildings, c, rnd, dyn, ctx, hasPos, pos);
 }
 
 void
@@ -1877,6 +1887,13 @@ MoveProcessor::PerformCharacterUpdate (Character& c, const Json::Value& upd)
   MaybeChangeVehicle (c, upd);
   MaybeSetFitments (c, upd);
 
+  /* Exiting to an explicitly requested position is deterministic, so -- unlike
+     the random exit at the very end -- it makes sense to combine it with other
+     moves.  It has to happen before waypoints in particular, since those are
+     invalid while the character is still inside a building.  It comes after the
+     vehicle and fitment changes above, which are only valid inside one.  */
+  MaybeExitBuilding (c, upd, true);
+
   /* Mining should be started before setting waypoints.  This ensures that if
      a move does both, we do not end up moving and mining at the same time
      (which is not allowed).  */
@@ -1916,9 +1933,12 @@ MoveProcessor::PerformCharacterUpdate (Character& c, const Json::Value& upd)
      Also, by processing "enter" before "exit", it means that sending both
      commands is equivalent to just enter (because we only set the flag and
      thus the exit move will be invalid).  This is more straight-forward
-     than allowing to exit & enter again in the same move.  */
+     than allowing to exit & enter again in the same move.
+
+     An exit to an explicitly requested position is not random, and so is
+     handled earlier (before waypoints); only the random form is left here.  */
   MaybeEnterBuilding (c, upd);
-  MaybeExitBuilding (c, upd);
+  MaybeExitBuilding (c, upd, false);
 }
 
 void

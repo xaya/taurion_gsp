@@ -2164,6 +2164,119 @@ TEST_F (ExitBuildingMoveTests, InvalidPosition)
   EXPECT_TRUE (GetTest ()->IsInBuilding ());
 }
 
+TEST_F (ExitBuildingMoveTests, ValidPosition)
+{
+  const HexCoord centre(10, 42);
+  const HexCoord target(12, 42);
+
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  b->SetCentre (centre);
+  GetTest ()->SetBuildingId (b->GetId ());
+  b.reset ();
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"id": 1, "xb": {"pos": {"x": 12, "y": 42}}}}
+    }
+  ])");
+
+  ASSERT_FALSE (GetTest ()->IsInBuilding ());
+  EXPECT_EQ (GetTest ()->GetPosition (), target);
+}
+
+TEST_F (ExitBuildingMoveTests, PositionOutsideRadius)
+{
+  const HexCoord centre(10, 42);
+
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  b->SetCentre (centre);
+  GetTest ()->SetBuildingId (b->GetId ());
+  b.reset ();
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"id": 1, "xb": {"pos": {"x": 100, "y": 42}}}}
+    }
+  ])");
+
+  EXPECT_TRUE (GetTest ()->IsInBuilding ());
+}
+
+TEST_F (ExitBuildingMoveTests, ExplicitPositionAndWaypoints)
+{
+  const HexCoord centre(10, 42);
+
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  b->SetCentre (centre);
+  GetTest ()->SetBuildingId (b->GetId ());
+  b.reset ();
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"id": 1, "xb": {"pos": {"x": 12, "y": 42}},
+                     "wp": )" + WpStr ({HexCoord (14, 42)}) + R"(}}
+    }
+  ])");
+
+  ASSERT_FALSE (GetTest ()->IsInBuilding ());
+  EXPECT_EQ (GetTest ()->GetPosition (), HexCoord (12, 42));
+  ASSERT_TRUE (GetTest ()->GetProto ().has_movement ());
+  EXPECT_EQ (GetTest ()->GetProto ().movement ().waypoints_size (), 1);
+}
+
+TEST_F (ExitBuildingMoveTests, RandomExitStillRejectsWaypoints)
+{
+  const HexCoord centre(10, 42);
+
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  b->SetCentre (centre);
+  GetTest ()->SetBuildingId (b->GetId ());
+  b.reset ();
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"id": 1, "xb": {},
+                     "wp": )" + WpStr ({HexCoord (14, 42)}) + R"(}}
+    }
+  ])");
+
+  ASSERT_FALSE (GetTest ()->IsInBuilding ());
+  EXPECT_FALSE (GetTest ()->GetProto ().has_movement ());
+}
+
+TEST_F (ExitBuildingMoveTests, ExplicitExitHappensBeforePickup)
+{
+  const HexCoord centre(10, 42);
+
+  db.SetNextId (100);
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  ASSERT_EQ (b->GetId (), 100);
+  b->SetCentre (centre);
+  inv.Get (100, "domob")->GetInventory ().SetFungibleCount ("foo", 10);
+  GetTest ()->SetBuildingId (100);
+  b.reset ();
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"id": 1, "xb": {"pos": {"x": 12, "y": 42}},
+                     "pu": {"f": {"foo": 5}}}}
+    }
+  ])");
+
+  /* The character left first, so the pick-up applied to (empty) ground loot at
+     the exit tile rather than the building's storage.  Combining a pick-up with
+     an exit still works with the random form, which is processed last.  */
+  ASSERT_FALSE (GetTest ()->IsInBuilding ());
+  EXPECT_EQ (GetTest ()->GetInventory ().GetFungibleCount ("foo"), 0);
+  EXPECT_EQ (inv.Get (100, "domob")->GetInventory ().GetFungibleCount ("foo"),
+            10);
+}
+
 TEST_F (ExitBuildingMoveTests, WhenBusy)
 {
   const auto buildingId

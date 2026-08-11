@@ -419,9 +419,12 @@ private:
   void MaybeEnterBuilding (Character& c, const Json::Value& upd);
 
   /**
-   * Processes a command to exit a building the character is in.
+   * Processes a command to exit the current building.  Exiting to an
+   * explicitly requested position is deterministic and is done in the "early"
+   * phase, before waypoints; a random exit is done last.  Each phase ignores
+   * the other's form of the move.
    */
-  void MaybeExitBuilding (Character& c, const Json::Value& upd);
+  void MaybeExitBuilding (Character& c, const Json::Value& upd, bool early);
 
   /**
    * Processes a command to start prospecting at the character's current
