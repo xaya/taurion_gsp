@@ -333,7 +333,7 @@ TEST_F (PendingStateTests, ExitBuilding)
         [
           {
             "id": 1,
-            "exitbuilding": {"building": 42}
+            "exitbuilding": {"building": 42, "pos": null}
           },
           {
             "id": 2,
@@ -342,6 +342,24 @@ TEST_F (PendingStateTests, ExitBuilding)
         ]
     }
   )");
+}
+
+TEST_F (PendingStateTests, ExitBuildingWithPosition)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  ASSERT_EQ (c->GetId (), 1);
+  c->SetBuildingId (100);
+  state.AddExitBuilding (*c, true, HexCoord (5, -3));
+
+  ExpectStateJson (R"({
+    "characters":
+      [
+        {
+          "id": 1,
+          "exitbuilding": {"building": 100, "pos": {"x": 5, "y": -3}}
+        }
+      ]
+  })");
 }
 
 TEST_F (PendingStateTests, DropPickup)

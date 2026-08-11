@@ -105,6 +105,12 @@ private:
      */
     Database::IdT exitBuilding = Database::EMPTY_ID;
 
+    /** Whether the exit-building command requests an explicit position.  */
+    bool hasExitBuildingPos = false;
+
+    /** The explicitly requested exit position, if hasExitBuildingPos.  */
+    HexCoord exitBuildingPos;
+
     /** Set to true if there is a pending pickup command.  */
     bool pickup = false;
 
@@ -260,7 +266,8 @@ public:
   /**
    * Updates the state, turning on the "exit building" flag.
    */
-  void AddExitBuilding (const Character& ch);
+  void AddExitBuilding (const Character& ch, bool hasPos = false,
+                        const HexCoord& pos = HexCoord ());
 
   /**
    * Marks the character state as having a pending drop command.
