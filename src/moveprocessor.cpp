@@ -1933,15 +1933,14 @@ MoveProcessor::PerformCharacterUpdate (Character& c, const Json::Value& upd)
      Also, by processing "enter" before "exit", it means that sending both
      commands is equivalent to just enter (because we only set the flag and
      thus the exit move will be invalid).  This is more straight-forward
-     than allowing to exit & enter again in the same move.  The exception is
-     an exit to an explicitly requested position:  that has already happened
-     in the early phase above (before we even get here), so a character that
-     sends both "xb":{"pos":...} and "eb" will actually exit to the requested
-     position and queue the enter -- harmless, since entering calls
-     StopCharacter, but no longer equivalent to just "eb" alone.
-
-     An exit to an explicitly requested position is not random, and so is
-     handled earlier (before waypoints); only the random form is left here.  */
+     than allowing to exit & enter again in the same move.  Only the random
+     form is handled here, though:  an exit to an explicitly requested
+     position is not random, so it was already handled in the early phase
+     above, before waypoints (which are invalid while docked).  That breaks
+     the enter-before-exit equivalence for the explicit form -- a character
+     that sends both "xb":{"pos":...} and "eb" will actually exit to the
+     requested position and queue the enter -- but harmlessly so, since
+     entering calls StopCharacter.  */
   MaybeEnterBuilding (c, upd);
   MaybeExitBuilding (c, upd, false);
 }
