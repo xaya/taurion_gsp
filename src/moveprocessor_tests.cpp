@@ -2211,6 +2211,7 @@ TEST_F (ExitBuildingMoveTests, ExplicitPositionAndWaypoints)
   auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
   b->SetCentre (centre);
   GetTest ()->SetBuildingId (b->GetId ());
+  GetTest ()->MutableProto ().set_speed (1000);
   b.reset ();
 
   Process (R"([
@@ -2234,6 +2235,7 @@ TEST_F (ExitBuildingMoveTests, RandomExitStillRejectsWaypoints)
   auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
   b->SetCentre (centre);
   GetTest ()->SetBuildingId (b->GetId ());
+  GetTest ()->MutableProto ().set_speed (1000);
   b.reset ();
 
   Process (R"([
@@ -2258,6 +2260,7 @@ TEST_F (ExitBuildingMoveTests, ExplicitExitHappensBeforePickup)
   b->SetCentre (centre);
   inv.Get (100, "domob")->GetInventory ().SetFungibleCount ("foo", 10);
   GetTest ()->SetBuildingId (100);
+  GetTest ()->MutableProto ().set_cargo_space (1000);
   b.reset ();
 
   Process (R"([

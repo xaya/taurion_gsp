@@ -350,16 +350,19 @@ TEST_F (PendingStateTests, ExitBuildingWithPosition)
   ASSERT_EQ (c->GetId (), 1);
   c->SetBuildingId (100);
   state.AddExitBuilding (*c, true, HexCoord (5, -3));
+  c.reset ();
 
-  ExpectStateJson (R"({
-    "characters":
-      [
-        {
-          "id": 1,
-          "exitbuilding": {"building": 100, "pos": {"x": 5, "y": -3}}
-        }
-      ]
-  })");
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {
+            "id": 1,
+            "exitbuilding": {"building": 100, "pos": {"x": 5, "y": -3}}
+          }
+        ]
+    }
+  )");
 }
 
 TEST_F (PendingStateTests, DropPickup)

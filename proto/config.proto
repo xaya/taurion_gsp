@@ -286,8 +286,10 @@ message BuildingData
 
   /**
    * The enter/exit L1 radius of this building.  Characters can enter
-   * the building if they are within this L1 radius of the centre coordinate,
-   * and when exiting, they will appear on a random spot within that radius.
+   * the building if they are within this L1 radius of the centre coordinate.
+   * When exiting, they will appear on a random spot within that radius,
+   * unless they requested an explicit position, in which case it must be
+   * within the radius (and passable and free) or the exit is rejected.
    */
   optional uint32 enter_radius = 1;
 
