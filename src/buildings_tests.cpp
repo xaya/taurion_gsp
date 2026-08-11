@@ -464,6 +464,18 @@ protected:
     return c->GetPosition ();
   }
 
+  /**
+   * Calls LeaveBuilding with an explicitly requested position, and returns
+   * whether the character was able to leave.  Unlike Leave, this does not
+   * assume success.
+   */
+  bool
+  LeaveAt (DynObstacles& dyn, const HexCoord& pos)
+  {
+    auto c = characters.GetById (10);
+    return LeaveBuilding (tbl, *c, rnd, dyn, ctx, true, pos);
+  }
+
 };
 
 TEST_F (LeaveBuildingTests, Basic)
@@ -549,6 +561,38 @@ TEST_F (LeaveBuildingTests, PossibleLocations)
       LOG (INFO) << "Count at " << entry.first << ": " << entry.second;
       EXPECT_GE (entry.second, 3);
     }
+}
+
+TEST_F (LeaveBuildingTests, ExplicitPosition)
+{
+  DynObstacles dyn(db, ctx);
+  const HexCoord target(centre + HexCoord (2, 0));
+  ASSERT_TRUE (ctx.Map ().IsPassable (target));
+  ASSERT_TRUE (dyn.IsFree (target));
+
+  ASSERT_TRUE (LeaveAt (dyn, target));
+  EXPECT_EQ (characters.GetById (10)->GetPosition (), target);
+  EXPECT_FALSE (characters.GetById (10)->IsInBuilding ());
+}
+
+TEST_F (LeaveBuildingTests, ExplicitPositionOutsideRadius)
+{
+  DynObstacles dyn(db, ctx);
+  const HexCoord target(centre + HexCoord (radius + 1, 0));
+
+  EXPECT_FALSE (LeaveAt (dyn, target));
+  EXPECT_TRUE (characters.GetById (10)->IsInBuilding ());
+}
+
+TEST_F (LeaveBuildingTests, ExplicitPositionOccupied)
+{
+  DynObstacles dyn(db, ctx);
+  const HexCoord target(centre + HexCoord (2, 0));
+  ASSERT_TRUE (dyn.IsFree (target));
+  dyn.AddVehicle (target);
+
+  EXPECT_FALSE (LeaveAt (dyn, target));
+  EXPECT_TRUE (characters.GetById (10)->IsInBuilding ());
 }
 
 /* ************************************************************************** */

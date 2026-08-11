@@ -94,10 +94,18 @@ void ProcessEnterBuildings (Database& db, DynObstacles& dyn,
                             const Context& ctx);
 
 /**
- * Makes the given character leave the building it is currently in.
+ * Makes the given character leave the building it is currently in.  If hasPos
+ * is set, the character is placed at reqPos rather than a random location;
+ * that position must be inside the building's exit radius and actually free,
+ * and if it is not, the character stays inside and false is returned.  We must
+ * not displace them to a nearby tile instead:  clients pre-compute waypoints
+ * from the requested position, and movement is cancelled outright if the first
+ * waypoint is not in a principal direction from where the character really is.
  */
-void LeaveBuilding (BuildingsTable& buildings, Character& c,
-                    xaya::Random& rnd, DynObstacles& dyn, const Context& ctx);
+bool LeaveBuilding (BuildingsTable& buildings, Character& c,
+                    xaya::Random& rnd, DynObstacles& dyn, const Context& ctx,
+                    bool hasPos = false,
+                    const HexCoord& reqPos = HexCoord ());
 
 } // namespace pxd
 

@@ -232,16 +232,34 @@ ProcessEnterBuildings (Database& db, DynObstacles& dyn, const Context& ctx)
       << entered << " were able to enter";
 }
 
-void
+bool
 LeaveBuilding (BuildingsTable& buildings, Character& c,
-               xaya::Random& rnd, DynObstacles& dyn, const Context& ctx)
+               xaya::Random& rnd, DynObstacles& dyn, const Context& ctx,
+               const bool hasPos, const HexCoord& reqPos)
 {
   CHECK (c.IsInBuilding ());
   auto b = buildings.GetById (c.GetBuildingId ());
   CHECK (b != nullptr);
 
   const auto radius = ctx.RoConfig ().Building (b->GetType ()).enter_radius ();
-  const auto pos = ChooseSpawnLocation (b->GetCentre (), radius, rnd, dyn, ctx);
+
+  HexCoord pos;
+  if (hasPos)
+    {
+      const unsigned dist = HexCoord::DistanceL1 (reqPos, b->GetCentre ());
+      if (dist > radius || !ctx.Map ().IsOnMap (reqPos)
+            || !ctx.Map ().IsPassable (reqPos) || !dyn.IsFree (reqPos))
+        {
+          LOG (WARNING)
+              << "Character " << c.GetId ()
+              << " can't leave building " << b->GetId ()
+              << " to requested location " << reqPos;
+          return false;
+        }
+      pos = reqPos;
+    }
+  else
+    pos = ChooseSpawnLocation (b->GetCentre (), radius, rnd, dyn, ctx);
 
   LOG (INFO)
       << "Character " << c.GetId ()
@@ -249,6 +267,8 @@ LeaveBuilding (BuildingsTable& buildings, Character& c,
       << " to location " << pos;
   c.SetPosition (pos);
   dyn.AddVehicle (pos);
+
+  return true;
 }
 
 } // namespace pxd
