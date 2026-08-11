@@ -728,19 +728,28 @@ BaseMoveProcessor::ParseEnterBuilding (const Character& c,
 
 bool
 BaseMoveProcessor::ParseExitBuilding (const Character& c,
-                                      const Json::Value& upd)
+                                      const Json::Value& upd,
+                                      HexCoord& pos, bool& hasPos)
 {
   CHECK (upd.isObject ());
   const auto& val = upd["xb"];
   if (!val.isObject ())
     return false;
 
+  /* The only field we accept is an explicit position to exit to.  Without it,
+     the character is placed randomly as before.  */
+  hasPos = false;
   if (val.size () != 0)
     {
-      LOG (WARNING) << "[MOVE_REJECTED] Character " << c.GetId ()
-                    << " (owner: " << c.GetOwner ()
-                    << "): Invalid exit-building move format: " << upd;
-      return false;
+      if (val.size () != 1 || !val.isMember ("pos")
+            || !CoordFromJson (val["pos"], pos))
+        {
+          LOG (WARNING) << "[MOVE_REJECTED] Character " << c.GetId ()
+                        << " (owner: " << c.GetOwner ()
+                        << "): Invalid exit-building move format: " << upd;
+          return false;
+        }
+      hasPos = true;
     }
 
   if (c.IsBusy ())
@@ -759,9 +768,15 @@ BaseMoveProcessor::ParseExitBuilding (const Character& c,
       return false;
     }
 
-  LOG (INFO) << "[MOVE_OK] Character " << c.GetId ()
-             << " (owner: " << c.GetOwner ()
-             << "): Exiting building " << c.GetBuildingId ();
+  if (hasPos)
+    LOG (INFO) << "[MOVE_OK] Character " << c.GetId ()
+               << " (owner: " << c.GetOwner ()
+               << "): Exiting building " << c.GetBuildingId ()
+               << " to " << pos;
+  else
+    LOG (INFO) << "[MOVE_OK] Character " << c.GetId ()
+               << " (owner: " << c.GetOwner ()
+               << "): Exiting building " << c.GetBuildingId ();
 
   return true;
 }
@@ -1511,7 +1526,9 @@ MoveProcessor::MaybeEnterBuilding (Character& c, const Json::Value& upd)
 void
 MoveProcessor::MaybeExitBuilding (Character& c, const Json::Value& upd)
 {
-  if (!ParseExitBuilding (c, upd))
+  HexCoord pos;
+  bool hasPos;
+  if (!ParseExitBuilding (c, upd, pos, hasPos))
     return;
 
   LeaveBuilding (buildings, c, rnd, dyn, ctx);

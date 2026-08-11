@@ -614,7 +614,9 @@ PendingStateUpdater::PerformCharacterUpdate (Character& c,
   Database::IdT buildingId;
   if (ParseEnterBuilding (c, upd, buildingId))
     state.AddEnterBuilding (c, buildingId);
-  if (ParseExitBuilding (c, upd))
+  HexCoord exitPos;
+  bool hasExitPos;
+  if (ParseExitBuilding (c, upd, exitPos, hasExitPos))
     state.AddExitBuilding (c);
 
   std::string type;

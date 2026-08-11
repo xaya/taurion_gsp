@@ -214,8 +214,13 @@ protected:
 
   /**
    * Parses and verifies a potential update to exit the current building.
+   * If the move requests an explicit position to exit to, hasPos is set and
+   * pos holds the requested coordinate.  Whether that position can actually
+   * be used is checked later, when the character is placed -- mirroring how
+   * entering a building validates its radius while being processed.
    */
-  static bool ParseExitBuilding (const Character& c, const Json::Value& upd);
+  static bool ParseExitBuilding (const Character& c, const Json::Value& upd,
+                                 HexCoord& pos, bool& hasPos);
 
   /**
    * Parses and validates the content of a drop or pick-up character command.

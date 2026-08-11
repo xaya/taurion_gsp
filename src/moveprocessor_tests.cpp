@@ -2142,6 +2142,28 @@ TEST_F (ExitBuildingMoveTests, Invalid)
   EXPECT_EQ (GetTest ()->GetBuildingId (), 20);
 }
 
+TEST_F (ExitBuildingMoveTests, InvalidPosition)
+{
+  GetTest ()->SetBuildingId (20);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"id": 1, "xb": {"pos": 42}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"id": 1, "xb": {"pos": {"x": 1}}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"id": 1, "xb": {"pos": {"x": 1, "y": 2}, "a": 3}}}
+    }
+  ])");
+
+  EXPECT_TRUE (GetTest ()->IsInBuilding ());
+}
+
 TEST_F (ExitBuildingMoveTests, WhenBusy)
 {
   const auto buildingId
