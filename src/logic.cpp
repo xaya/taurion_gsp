@@ -136,9 +136,14 @@ PXLogic::GetInitialStateBlock (unsigned& height,
   switch (chain)
     {
     case xaya::Chain::POLYGON:
-      height = 89'298'809;
+      /* The emulated harness forks its Anvil basechain at exactly this block,
+         so the fork endpoint must still be able to serve historical state
+         here.  Public Polygon RPCs prune state after roughly 460k blocks
+         (about eleven days), and a genesis left behind that window can no
+         longer be started from scratch at all.  */
+      height = 91'950'000;
       hashHex
-          = "d1c7f16ba1378d2302751edbaf7feb35dd5d9bdbb257616280c93bbe35f933f6";
+          = "39cf91c4ed6e4eaa4f9cafdcec236fc4281080a275b0c5ce1186ec6895803fc9";
       break;
 
     case xaya::Chain::GANACHE:
