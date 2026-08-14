@@ -73,6 +73,9 @@ private:
    * The real block height corresponding to the Context.  This tracks the
    * actual chain block height, in contrast to the modified "height" field
    * which tracks the game's virtual pacing (superblocks).
+   *
+   * This is what fork activation is evaluated against, since fork heights
+   * are heights of the underlying chain.
    */
   unsigned blockHeight;
 
