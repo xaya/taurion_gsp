@@ -467,7 +467,7 @@ protected:
 
 TEST_F (GameStartTests, Before)
 {
-  ctx.SetHeight (99);
+  ctx.SetBlockHeight (99);
   accounts.CreateNew ("domob")->AddBalance (100);
 
   ProcessWithBurn (R"([
@@ -490,12 +490,32 @@ TEST_F (GameStartTests, Before)
 
 TEST_F (GameStartTests, After)
 {
-  ctx.SetHeight (100);
+  ctx.SetBlockHeight (100);
   Process (R"([
     {"name": "domob", "move": {"a": {"init": {"faction": "r"}}}}
   ])");
 
   auto a = accounts.GetByName ("domob");
+  EXPECT_TRUE (a->IsInitialised ());
+  EXPECT_EQ (a->GetFaction (), Faction::RED);
+}
+
+/* This is the production situation with superblocks:  the fork height is a
+   height of the underlying chain, which is long past, while ctx.Height () is
+   the superblock counter and is still tiny.  Gating gameplay on the latter
+   silently swallowed every move but coin operations - accounts were created
+   uninitialised and faction registration never completed.  */
+TEST_F (GameStartTests, ActiveWhileTheSuperblockCounterIsStillLow)
+{
+  ctx.SetBlockHeight (1'000);
+  ctx.SetHeight (1);
+
+  Process (R"([
+    {"name": "domob", "move": {"a": {"init": {"faction": "r"}}}}
+  ])");
+
+  auto a = accounts.GetByName ("domob");
+  ASSERT_NE (a, nullptr);
   EXPECT_TRUE (a->IsInitialised ());
   EXPECT_EQ (a->GetFaction (), Faction::RED);
 }

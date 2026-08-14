@@ -42,16 +42,33 @@ protected:
 TEST_F (ForksTests, IsActive)
 {
   ctx.SetChain (xaya::Chain::REGTEST);
-  ctx.SetHeight (99);
+  ctx.SetBlockHeight (99);
   EXPECT_FALSE (ctx.Forks ().IsActive (Fork::Dummy));
-  ctx.SetHeight (100);
+  ctx.SetBlockHeight (100);
   EXPECT_TRUE (ctx.Forks ().IsActive (Fork::Dummy));
-  ctx.SetHeight (101);
+  ctx.SetBlockHeight (101);
   EXPECT_TRUE (ctx.Forks ().IsActive (Fork::Dummy));
 
   ctx.SetChain (xaya::Chain::MAIN);
   EXPECT_FALSE (ctx.Forks ().IsActive (Fork::Dummy));
-  ctx.SetHeight (3'000'000);
+  ctx.SetBlockHeight (3'000'000);
+  EXPECT_TRUE (ctx.Forks ().IsActive (Fork::Dummy));
+}
+
+/* Forks are keyed to heights of the underlying chain, while Context::Height ()
+   is the superblock counter and starts back at one for every game.  Activation
+   must therefore follow the block height alone, no matter how far the two have
+   drifted apart.  */
+TEST_F (ForksTests, FollowsChainHeightNotSuperblockHeight)
+{
+  ctx.SetChain (xaya::Chain::REGTEST);
+
+  ctx.SetHeight (1'000'000);
+  ctx.SetBlockHeight (99);
+  EXPECT_FALSE (ctx.Forks ().IsActive (Fork::Dummy));
+
+  ctx.SetHeight (1);
+  ctx.SetBlockHeight (100);
   EXPECT_TRUE (ctx.Forks ().IsActive (Fork::Dummy));
 }
 

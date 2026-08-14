@@ -42,7 +42,11 @@ Context::RefreshInstances ()
 {
   params = std::make_unique<pxd::Params> (chain);
   cfg = std::make_unique<pxd::RoConfig> (chain);
-  forks = std::make_unique<ForkHandler> (chain, height);
+  /* Forks are activated at *chain* heights (GameStart at 76'690'000), so they
+     must be evaluated against the real block height and not against the
+     superblock counter, which starts near zero at genesis and would leave
+     every fork inactive forever.  */
+  forks = std::make_unique<ForkHandler> (chain, blockHeight);
 }
 
 unsigned
