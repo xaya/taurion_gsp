@@ -227,22 +227,9 @@ PXLogic::GetStateAsJson (const xaya::SQLiteDatabase& db)
   return gsj.FullState ();
 }
 
-Json::Value
-PXLogic::GetCustomInstanceState (const xaya::SQLiteDatabase& db,
-                                 const xaya::uint256& hash,
-                                 unsigned height)
-{
-  SQLiteGameDatabase dbObj(const_cast<xaya::SQLiteDatabase&> (db), *this);
-  const Context ctx(GetChain (), GetBaseMap (),
-                    Context::NO_HEIGHT, Context::NO_HEIGHT,
-                    Context::NO_TIMESTAMP);
-  GameStateJson gsj(dbObj, ctx);
-
-  Json::Value res(Json::objectValue);
-  res["superblock"] = gsj.SuperBlock ();
-
-  return res;
-}
+/* GetCustomInstanceState (upstream 2a43af5) is omitted -- see the note in
+   logic.hpp.  The virtual it overrides does not exist in libxayagame 1.0.2,
+   and it was a reporting hook only, not part of the superblock pace.  */
 
 Json::Value
 PXLogic::GetCustomStateData (xaya::Game& game, const JsonStateFromRawDb& cb)

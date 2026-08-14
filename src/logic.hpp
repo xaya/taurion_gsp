@@ -130,9 +130,22 @@ protected:
                     const Json::Value& blockData) override;
 
   Json::Value GetStateAsJson (const xaya::SQLiteDatabase& db) override;
-  Json::Value GetCustomInstanceState (const xaya::SQLiteDatabase& db,
-                                      const xaya::uint256& hash,
-                                      unsigned height) override;
+
+  /* GetCustomInstanceState is deliberately NOT overridden here, although
+     upstream's superblock commit (2a43af5) adds it.  That virtual does not
+     exist in the libxayagame this GSP is built against (1.0.2, the version in
+     the tn-base image), so declaring it `override` is a hard compile error:
+     "marked 'override', but does not override".
+
+     Nothing is lost from the game.  Its whole body was a reporting hook -
+     `res["superblock"] = gsj.SuperBlock ()` - exposing the superblock counter
+     over libxayagame's instance-state channel.  The PACE itself lives entirely
+     in UpdateState below plus Database::LastSuperBlock/SetSuperBlock, none of
+     which this touches, and GameStateJson::SuperBlock () is still built and
+     still covered by gamestatejson_tests.
+
+     Restore it verbatim from 2a43af5 if libxayagame is ever upgraded to a
+     version that declares the virtual.  */
 
 public:
 
