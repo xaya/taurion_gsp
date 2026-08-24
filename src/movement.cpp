@@ -305,14 +305,36 @@ template <typename Fcn>
       {
         const auto& pos = c.GetPosition ();
         HexCoord::IntT steps;
+
+        /* Movement is only processed on 30s superblocks, so a unit's official
+           position stays frozen between ticks while clients animate and
+           predict continuously.  When a client re-tasks a moving unit, it has
+           to guess the origin hex for the new route; if that guess crossed a
+           route corner the unit has not officially passed yet, the first
+           waypoint is not in a principal direction from the unit's true
+           position.  This used to silently discard the whole order here, which
+           killed roughly 3% of mid-flight re-tasks on the test chain.  Instead
+           we re-anchor: we insert the minimal, deterministic connecting corner
+           so the unit walks a two-leg dogleg to the ordered waypoint.  No
+           pathfinding is added, and obstacle handling is unchanged (stepping
+           still applies the blocked-turns retries).  This cannot loop, as the
+           connector differs from both the position and the waypoint, and once
+           the head is principal it stays principal from every position on the
+           way to it.  */
         if (!pos.IsPrincipalDirectionTo (nextWp, dir, steps))
           {
+            const HexCoord mid = pos.ConnectingWaypoint (nextWp);
             LOG (WARNING)
                 << "Character " << c.GetId ()
                 << " is at " << pos << " with next waypoint " << nextWp
-                << ", which is not in principal direction";
-            StopCharacter (c);
-            return;
+                << ", which is not in principal direction;"
+                << " re-anchoring through " << mid;
+            auto& wp
+                = *c.MutableProto ().mutable_movement ()->mutable_waypoints ();
+            *wp.Add () = CoordToProto (mid);
+            for (int i = wp.size () - 1; i > 0; --i)
+              wp.SwapElements (i, i - 1);
+            continue;
           }
       }
 

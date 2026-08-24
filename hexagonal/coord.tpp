@@ -20,6 +20,7 @@
 
 #include <glog/logging.h>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <limits>
@@ -135,6 +136,29 @@ HexCoord::IsPrincipalDirectionTo (const HexCoord& target,
   dir.x = diff.GetX () / steps;
   dir.y = diff.GetY () / steps;
   return true;
+}
+
+inline HexCoord
+HexCoord::ConnectingWaypoint (const HexCoord& target) const
+{
+  const IntT dx = target.GetX () - GetX ();
+  const IntT dy = target.GetY () - GetY ();
+
+  /* The function is only defined for a target that is neither equal to the
+     current instance nor in a principal direction from it.  */
+  CHECK (dx != 0 && dy != 0 && dx + dy != 0)
+      << "ConnectingWaypoint requires a non-principal, non-equal target";
+
+  /* If both deltas have the same sign, the connector is the axis-aligned
+     corner (x + dx, y); the two legs are (dx, 0) and (0, dy).  Otherwise we
+     first walk the anti-diagonal axis and the remainder has one zero
+     component.  */
+  if ((dx > 0) == (dy > 0))
+    return HexCoord (GetX () + dx, GetY ());
+
+  const IntT s = std::min (std::abs (dx), std::abs (dy));
+  const IntT t = (dx > 0 ? s : -s);
+  return HexCoord (GetX () + t, GetY () - t);
 }
 
 inline HexCoord::IntT

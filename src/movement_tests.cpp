@@ -490,13 +490,37 @@ TEST_F (MovementTests, DuplicateWaypoints)
     });
 }
 
-TEST_F (MovementTests, WaypointsNotInPrincipalDirection)
+TEST_F (MovementTests, WaypointsNotInPrincipalDirectionReanchors)
 {
+  /* The second waypoint is not in a principal direction from the first, so
+     the unit re-anchors through the connecting corner (11, 0) instead of
+     discarding the order.  */
   SetWaypoints ({HexCoord (10, 0), HexCoord (11, 1)});
   ExpectSteps (1, EdgeWeights (10),
     {
-      {100, HexCoord (10, 0)},
+      {120, HexCoord (11, 1)},
     });
+}
+
+TEST_F (MovementTests, ReanchorOppositeSignDelta)
+{
+  /* Mimic a mid-flight re-task: the unit is already part-way along a route
+     when a new order arrives whose first waypoint is in a non-principal
+     direction from the current position, here with an opposite-sign delta.  */
+  GetTest ()->SetPosition (HexCoord (10, 0));
+  SetWaypoints ({HexCoord (12, -1)});
+
+  /* Walk the first leg of the dogleg (to the connector) on free ground; the
+     blocked-turns counter must stay untouched.  */
+  StepCharacter (1, EdgeWeights (10), 10);
+  EXPECT_EQ (GetTest ()->GetPosition (), HexCoord (11, -1));
+  EXPECT_TRUE (IsMoving ());
+  EXPECT_FALSE (GetTest ()->GetVolatileMv ().has_blocked_turns ());
+
+  /* Finish the second leg and arrive at the final waypoint.  */
+  StepCharacter (1, EdgeWeights (10), 10);
+  EXPECT_EQ (GetTest ()->GetPosition (), HexCoord (12, -1));
+  EXPECT_FALSE (IsMoving ());
 }
 
 TEST_F (MovementTests, Obstacle)

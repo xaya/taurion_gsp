@@ -107,6 +107,15 @@ public:
                                HexCoord& dir, IntT& steps) const;
 
   /**
+   * For a target that is NOT in a principal direction from the current
+   * instance (and not equal to it), returns a coordinate m such that both
+   * this->m and m->target are principal directions and the two legs add up
+   * to DistanceL1 (*this, target).  The choice between the two minimal
+   * corners is deterministic.
+   */
+  HexCoord ConnectingWaypoint (const HexCoord& target) const;
+
+  /**
    * Returns an "opaque" object that can be iterated over to yield the
    * neighbouring hex cells.
    */

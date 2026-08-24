@@ -210,6 +210,52 @@ TEST_F (CoordTests, IsPrincipalDirectionTo)
     }
 }
 
+TEST_F (CoordTests, ConnectingWaypoint)
+{
+  /* Same-sign deltas: the connector is the axis-aligned corner (x + dx, y).  */
+  EXPECT_EQ (HexCoord (0, 0).ConnectingWaypoint (HexCoord (2, 3)),
+             HexCoord (2, 0));
+  EXPECT_EQ (HexCoord (0, 0).ConnectingWaypoint (HexCoord (-2, -3)),
+             HexCoord (-2, 0));
+
+  /* Opposite-sign deltas: the connector lies on the anti-diagonal axis.  */
+  EXPECT_EQ (HexCoord (0, 0).ConnectingWaypoint (HexCoord (5, -2)),
+             HexCoord (2, -2));
+  EXPECT_EQ (HexCoord (0, 0).ConnectingWaypoint (HexCoord (2, -5)),
+             HexCoord (2, -2));
+
+  /* Cases not anchored at the origin.  */
+  EXPECT_EQ (HexCoord (10, 0).ConnectingWaypoint (HexCoord (11, 1)),
+             HexCoord (11, 0));
+  EXPECT_EQ (HexCoord (10, 0).ConnectingWaypoint (HexCoord (12, -1)),
+             HexCoord (11, -1));
+}
+
+TEST_F (CoordTests, ConnectingWaypointExhaustive)
+{
+  constexpr HexCoord pos(7, -3);
+
+  for (int dx = -6; dx <= 6; ++dx)
+    for (int dy = -6; dy <= 6; ++dy)
+      {
+        /* Skip deltas that are principal (or zero), as ConnectingWaypoint is
+           not defined for those.  */
+        if (dx == 0 || dy == 0 || dx + dy == 0)
+          continue;
+
+        const HexCoord target = pos + HexCoord (dx, dy);
+        const HexCoord m = pos.ConnectingWaypoint (target);
+
+        HexCoord dir;
+        HexCoord::IntT steps;
+        ASSERT_TRUE (pos.IsPrincipalDirectionTo (m, dir, steps));
+        ASSERT_TRUE (m.IsPrincipalDirectionTo (target, dir, steps));
+        ASSERT_EQ (HexCoord::DistanceL1 (pos, m)
+                     + HexCoord::DistanceL1 (m, target),
+                   HexCoord::DistanceL1 (pos, target));
+      }
+}
+
 TEST_F (CoordTests, StreamOutput)
 {
   std::ostringstream out;
