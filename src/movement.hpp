@@ -130,6 +130,9 @@ PathFinder::DistanceT MovementEdgeWeight (
 void ProcessCharacterMovement (Character& c, const Context& ctx,
                                const EdgeWeightFcn& edges);
 
+/** Applies a pending movement order to the given character.  */
+void ApplyPendingMovement (Character& c, const Context& ctx);
+
 } // namespace test
 
 } // namespace pxd

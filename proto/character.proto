@@ -88,6 +88,17 @@ message Character
   optional Movement movement = 3;
 
   /**
+   * A movement order that landed while the character was already moving.
+   * A moving character's route cannot be replaced inside the current block
+   * (clients animate the block's movement from it); the new order takes effect
+   * at the end of this block's movement processing, from wherever the
+   * character then stands.  No waypoints means a deferred stop.  Lives outside
+   * `movement` so that it survives StopCharacter when the character arrives
+   * within the block.
+   */
+  optional Movement pending_movement = 11;
+
+  /**
    * Static combat data for thie character.  That data is derived from other
    * information (e.g. equipped weapons, current vehicle), but it is cached
    * here for easy computation of combat.  The data here changes only

@@ -1036,6 +1036,8 @@ TEST_F (CharacterUpdateTests, BasicWaypoints)
   h = GetTest ();
   EXPECT_EQ (h->GetVolatileMv ().partial_step (), 42);
   EXPECT_EQ (h->GetProto ().movement ().waypoints_size (), 1);
+  /* Since 2026-08-25, a moving character defers replacement waypoints.  */
+  h->MutableProto ().clear_movement ();
   h.reset ();
 
   /* Process a valid waypoints update move.  */
@@ -1071,6 +1073,102 @@ TEST_F (CharacterUpdateTests, EmptyWaypoints)
   h = GetTest ();
   EXPECT_FALSE (h->GetVolatileMv ().has_partial_step ());
   EXPECT_FALSE (h->GetProto ().has_movement ());
+}
+
+TEST_F (CharacterUpdateTests, WaypointsForAStationaryCharacterAreImmediate)
+{
+  GetTest ()->MutableProto ().set_speed (1'000);
+  Process (R"([{"name":"domob","move":{"c":{"id":1,"wp":)"
+      + WpStr ({HexCoord (10, 1)}) + R"(}}}])");
+
+  const auto& pb = GetTest ()->GetProto ();
+  ASSERT_EQ (pb.movement ().waypoints_size (), 1);
+  EXPECT_EQ (CoordFromProto (pb.movement ().waypoints (0)), HexCoord (10, 1));
+  EXPECT_FALSE (pb.has_pending_movement ());
+}
+
+TEST_F (CharacterUpdateTests, WaypointsForAMovingCharacterAreDeferred)
+{
+  auto h = GetTest ();
+  h->MutableProto ().set_speed (1'000);
+  *h->MutableProto ().mutable_movement ()->add_waypoints ()
+      = CoordToProto (HexCoord (10, 1));
+  h->MutableVolatileMv ().set_partial_step (42);
+  h.reset ();
+  Process (R"([{"name":"domob","move":{"c":{"id":1,"wp":)"
+      + WpStr ({HexCoord (20, 1)}) + R"(}}}])");
+
+  h = GetTest ();
+  EXPECT_EQ (CoordFromProto (h->GetProto ().movement ().waypoints (0)),
+             HexCoord (10, 1));
+  ASSERT_TRUE (h->GetProto ().has_pending_movement ());
+  EXPECT_EQ (CoordFromProto (h->GetProto ().pending_movement ().waypoints (0)),
+             HexCoord (20, 1));
+  EXPECT_EQ (h->GetVolatileMv ().partial_step (), 42);
+}
+
+TEST_F (CharacterUpdateTests, ASecondDeferredOrderReplacesTheFirst)
+{
+  auto h = GetTest ();
+  h->MutableProto ().set_speed (1'000);
+  *h->MutableProto ().mutable_movement ()->add_waypoints ()
+      = CoordToProto (HexCoord (10, 1));
+  h.reset ();
+
+  Process (R"([{"name":"domob","move":{"c":[)"
+      R"({"id":1,"wp":)" + WpStr ({HexCoord (20, 1)}) + R"(},)"
+      R"({"id":1,"wp":)" + WpStr ({HexCoord (30, 1)}) + R"(}]}}])");
+
+  const auto& pb = GetTest ()->GetProto ();
+  ASSERT_EQ (pb.pending_movement ().waypoints_size (), 1);
+  EXPECT_EQ (CoordFromProto (pb.pending_movement ().waypoints (0)),
+             HexCoord (30, 1));
+}
+
+TEST_F (CharacterUpdateTests, DeferredStop)
+{
+  auto h = GetTest ();
+  h->MutableProto ().set_speed (1'000);
+  *h->MutableProto ().mutable_movement ()->add_waypoints ()
+      = CoordToProto (HexCoord (10, 1));
+  h.reset ();
+  Process (R"([{"name":"domob","move":{"c":{"id":1,"wp":null}}}])");
+
+  const auto& pb = GetTest ()->GetProto ();
+  EXPECT_TRUE (pb.has_movement ());
+  ASSERT_TRUE (pb.has_pending_movement ());
+  EXPECT_TRUE (pb.pending_movement ().waypoints ().empty ());
+}
+
+TEST_F (CharacterUpdateTests,
+        ASecondOrderForAFreshlyStartedCharacterIsDeferred)
+{
+  GetTest ()->MutableProto ().set_speed (1'000);
+  Process (R"([{"name":"domob","move":{"c":[)"
+      R"({"id":1,"wp":)" + WpStr ({HexCoord (10, 1)}) + R"(},)"
+      R"({"id":1,"wp":)" + WpStr ({HexCoord (20, 1)}) + R"(}]}}])");
+
+  const auto& pb = GetTest ()->GetProto ();
+  ASSERT_EQ (pb.movement ().waypoints_size (), 1);
+  EXPECT_EQ (CoordFromProto (pb.movement ().waypoints (0)), HexCoord (10, 1));
+  ASSERT_EQ (pb.pending_movement ().waypoints_size (), 1);
+  EXPECT_EQ (CoordFromProto (pb.pending_movement ().waypoints (0)),
+             HexCoord (20, 1));
+}
+
+TEST_F (CharacterUpdateTests, ExtensionOfAMovingCharacterIsImmediate)
+{
+  auto h = GetTest ();
+  *h->MutableProto ().mutable_movement ()->add_waypoints ()
+      = CoordToProto (HexCoord (10, 1));
+  h.reset ();
+  Process (R"([{"name":"domob","move":{"c":{"id":1,"wpx":)"
+      + WpStr ({HexCoord (20, 1)}) + R"(}}}])");
+
+  const auto& pb = GetTest ()->GetProto ();
+  ASSERT_EQ (pb.movement ().waypoints_size (), 2);
+  EXPECT_EQ (CoordFromProto (pb.movement ().waypoints (1)), HexCoord (20, 1));
+  EXPECT_FALSE (pb.has_pending_movement ());
 }
 
 TEST_F (CharacterUpdateTests, WaypointsWithZeroSpeed)
@@ -1163,6 +1261,7 @@ TEST_F (CharacterUpdateTests, WaypointExtension)
   EXPECT_EQ (CoordFromProto (wp.Get (0)), HexCoord (-3, 4));
   EXPECT_EQ (CoordFromProto (wp.Get (1)), HexCoord (-4, 4));
   EXPECT_EQ (CoordFromProto (wp.Get (2)), HexCoord (-4, 7));
+  EXPECT_FALSE (h->GetProto ().has_pending_movement ());
 }
 
 TEST_F (CharacterUpdateTests, ChosenSpeedWithoutMovement)
@@ -3037,7 +3136,7 @@ TEST_F (ProspectingMoveTests, Success)
 {
   auto h = GetTest ();
   h->MutableVolatileMv ().set_partial_step (42);
-  h->MutableProto ().mutable_movement ()->add_waypoints ();
+  /* Moving prospecting is rejected; see ProspectingAMovingCharacterIsRejected.  */
   h.reset ();
 
   ctx.SetHeight (100);
@@ -3066,6 +3165,29 @@ TEST_F (ProspectingMoveTests, Success)
 
   auto r = regions.GetById (region);
   EXPECT_EQ (r->GetProto ().prospecting_character (), 1);
+  EXPECT_FALSE (r->GetProto ().has_prospection ());
+}
+
+TEST_F (ProspectingMoveTests, ProspectingAMovingCharacterIsRejected)
+{
+  auto h = GetTest ();
+  *h->MutableProto ().mutable_movement ()->add_waypoints ()
+      = CoordToProto (HexCoord (5, -2));
+  h.reset ();
+
+  Process (R"([{
+    "name": "domob",
+    "move": {"c": {"id": 1, "prospect": {}}}
+  }])");
+
+  h = GetTest ();
+  EXPECT_FALSE (h->IsBusy ());
+  ASSERT_EQ (h->GetProto ().movement ().waypoints_size (), 1);
+  EXPECT_EQ (CoordFromProto (h->GetProto ().movement ().waypoints (0)),
+             HexCoord (5, -2));
+
+  auto r = regions.GetById (region);
+  EXPECT_FALSE (r->GetProto ().has_prospecting_character ());
   EXPECT_FALSE (r->GetProto ().has_prospection ());
 }
 

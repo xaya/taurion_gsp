@@ -186,6 +186,59 @@ TEST_F (CharacterJsonTests, Waypoints)
   })");
 }
 
+TEST_F (CharacterJsonTests, PendingWaypoints)
+{
+  auto c = tbl.CreateNew ("domob", Faction::RED);
+  auto* wp = c->MutableProto ().mutable_pending_movement ()
+      ->mutable_waypoints ();
+  *wp->Add () = CoordToProto (HexCoord (-3, 0));
+  *wp->Add () = CoordToProto (HexCoord (0, 42));
+  c.reset ();
+
+  ExpectStateJson (R"({
+    "characters":
+      [
+        {
+          "movement":
+            {
+              "pendingwaypoints": [{"x": -3, "y": 0}, {"x": 0, "y": 42}]
+            }
+        }
+      ]
+  })");
+}
+
+TEST_F (CharacterJsonTests, PendingMovementWithoutCurrentMovement)
+{
+  tbl.CreateNew ("domob", Faction::RED)
+      ->MutableProto ().mutable_pending_movement ()->add_waypoints ()
+      ->CopyFrom (CoordToProto (HexCoord (5, 6)));
+
+  ExpectStateJson (R"({
+    "characters":
+      [
+        {
+          "movement": {"pendingwaypoints": [{"x": 5, "y": 6}]}
+        }
+      ]
+  })");
+}
+
+TEST_F (CharacterJsonTests, PendingStop)
+{
+  tbl.CreateNew ("domob", Faction::RED)
+      ->MutableProto ().mutable_pending_movement ();
+
+  ExpectStateJson (R"({
+    "characters":
+      [
+        {
+          "movement": {"pendingwaypoints": []}
+        }
+      ]
+  })");
+}
+
 TEST_F (CharacterJsonTests, VehicleAndFitments)
 {
   auto c = tbl.CreateNew ("domob", Faction::RED);

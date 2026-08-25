@@ -876,6 +876,17 @@ BaseMoveProcessor::ParseCharacterProspecting (const Character& c,
       return false;
     }
 
+  /* Prospecting stops the character, and nothing but the block's own
+     movement step may stop a moving character (one movement order per block).  */
+  const auto& pb = c.GetProto ();
+  if (pb.has_movement () && pb.movement ().waypoints_size () > 0)
+    {
+      LOG (WARNING)
+          << "[MOVE_REJECTED] Character " << c.GetId ()
+          << " is moving and cannot start prospecting";
+      return false;
+    }
+
   if (c.IsInBuilding ())
     {
       LOG (WARNING)
@@ -1476,6 +1487,24 @@ MoveProcessor::MaybeSetCharacterWaypoints (Character& c, const Json::Value& upd)
       << "Updating movement for character " << c.GetId ()
       << " from waypoints: " << upd["wp"];
 
+  /* One movement order per block:  A moving character's route is not replaced
+     inside the block, because clients animate this block's movement from it.
+     The order takes effect after this block's movement step (see
+     ApplyPendingMovement).  The last deferred order wins; the current movement
+     and mining are untouched now.  */
+  const auto& charPb = c.GetProto ();
+  if (charPb.has_movement () && charPb.movement ().waypoints_size () > 0)
+    {
+      LOG (INFO)
+          << "[MOVE_DEFERRED] Character " << c.GetId ()
+          << " is moving; deferring " << wp.size ()
+          << " waypoints to the end of this block";
+      auto* pend = c.MutableProto ().mutable_pending_movement ();
+      pend->Clear ();
+      AddRepeatedCoords (wp, *pend->mutable_waypoints ());
+      return;
+    }
+
   StopCharacter (c);
   StopMining (c);
 
@@ -1509,6 +1538,8 @@ MoveProcessor::MaybeExtendCharacterWaypoints (Character& c,
       << "Extending waypoints of character " << c.GetId ()
       << " by: " << upd["wpx"];
 
+  /* Extending the tail of a route does not replace this block's movement, so
+     it is not deferred.  The native client never sends wpx.  */
   auto* pb = c.MutableProto ().mutable_movement ()->mutable_waypoints ();
   AddRepeatedCoords (wp, *pb);
 }

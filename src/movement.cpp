@@ -19,6 +19,7 @@
 #include "movement.hpp"
 
 #include "jsonutils.hpp"
+#include "mining.hpp"
 #include "modifier.hpp"
 #include "protoutils.hpp"
 
@@ -174,6 +175,33 @@ GetCharacterSpeed (const Character& c)
 
   CHECK_GE (res, 0);
   return res;
+}
+
+/**
+ * Applies a movement order deferred from the current block.
+ */
+void
+ApplyPendingMovement (Character& c, const Context& ctx)
+{
+  CHECK (c.GetProto ().has_pending_movement ());
+  const proto::Movement pending = c.GetProto ().pending_movement ();
+
+  StopCharacter (c);
+  StopMining (c);
+  c.MutableProto ().clear_pending_movement ();
+
+  if (pending.waypoints ().empty ())
+    return;
+
+  if (c.GetProto ().speed () == 0)
+    {
+      LOG (WARNING)
+          << "Ignoring pending waypoints for character " << c.GetId ()
+          << " with zero speed";
+      return;
+    }
+
+  *c.MutableProto ().mutable_movement () = pending;
 }
 
 /**
@@ -369,6 +397,19 @@ ProcessAllMovement (Database& db, DynObstacles& dyn, const Context& ctx)
 
       CharacterMovement (*c, ctx, edges);
     }
+
+  /* Deferred movement orders (one movement order per block) take effect now,
+     after this block's steps, from wherever each character stands.  All
+     characters are scanned, not just the moving ones: a character that
+     arrived during this block has no movement any more but may well carry a
+     pending order.  The per-block HP update makes the same full scan.  */
+  auto all = tbl.QueryAll ();
+  while (all.Step ())
+    {
+      auto c = tbl.GetFromResult (all);
+      if (c->GetProto ().has_pending_movement ())
+        ApplyPendingMovement (*c, ctx);
+    }
 }
 
 MoveInDynObstacles::MoveInDynObstacles (const Character& c, DynObstacles& d)
@@ -405,6 +446,12 @@ ProcessCharacterMovement (Character& c, const Context& ctx,
                           const EdgeWeightFcn& edges)
 {
   return CharacterMovement (c, ctx, edges);
+}
+
+void
+ApplyPendingMovement (Character& c, const Context& ctx)
+{
+  return ::pxd::ApplyPendingMovement (c, ctx);
 }
 
 /* ************************************************************************** */

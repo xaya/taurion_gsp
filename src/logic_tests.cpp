@@ -210,8 +210,10 @@ AddUnityAttack (Character& c, const HexCoord::IntT range)
 
 /* ************************************************************************** */
 
-TEST_F (PXLogicTests, WaypointsBeforeMovement)
+TEST_F (PXLogicTests, WaypointsForAMovingCharacterApplyAfterTheBlocksMovement)
 {
+  /* Since 2026-08-25, this is inverted: replacement waypoints for a moving
+     character apply after the block's movement rather than before it.  */
   auto c = CreateCharacter ("domob", Faction::RED);
   ASSERT_EQ (c->GetId (), 1);
   c->MutableVolatileMv ().set_partial_step (1000);
@@ -228,9 +230,18 @@ TEST_F (PXLogicTests, WaypointsBeforeMovement)
     }
   ])");
 
-  EXPECT_EQ (characters.GetById (1)->GetPosition (), HexCoord (0, 0));
+  c = characters.GetById (1);
+  EXPECT_EQ (c->GetPosition (), HexCoord (1, 0));
+  ASSERT_EQ (c->GetProto ().movement ().waypoints_size (), 1);
+  EXPECT_EQ (CoordFromProto (c->GetProto ().movement ().waypoints (0)),
+             HexCoord (-1, 0));
+  EXPECT_FALSE (c->GetProto ().has_pending_movement ());
+  c.reset ();
+
   UpdateState ("[]");
-  EXPECT_EQ (characters.GetById (1)->GetPosition (), HexCoord (-1, 0));
+  EXPECT_EQ (characters.GetById (1)->GetPosition (), HexCoord (1, 0));
+  UpdateState ("[]");
+  EXPECT_EQ (characters.GetById (1)->GetPosition (), HexCoord (0, 0));
 }
 
 TEST_F (PXLogicTests, MovementBeforeTargeting)
@@ -729,13 +740,14 @@ TEST_F (PXLogicTests, CombatEffectRetarder)
   EXPECT_EQ (characters.GetById (idTarget)->GetPosition (), HexCoord (20, -10));
 }
 
-TEST_F (PXLogicTests, ProspectingBeforeMovement)
+TEST_F (PXLogicTests, ProspectingAMovingCharacterIsRejectedAndItKeepsMoving)
 {
   /* This should test that prospecting is started before processing
      movement.  In other words, if a character is about to move to the
      next region when a "prospect" command hits, then prospecting should
      be started at the "old" region.  For this, we need two coordinates
-     next to each other but in different regions.  */
+     next to each other but in different regions.  Since 2026-08-25, this is
+     inverted: prospecting is rejected and the existing movement proceeds.  */
   HexCoord pos1, pos2;
   RegionMap::IdT region1, region2;
   for (HexCoord::IntT x = 0; ; ++x)
@@ -758,6 +770,7 @@ TEST_F (PXLogicTests, ProspectingBeforeMovement)
   c->SetPosition (pos1);
   c->MutableVolatileMv ().set_partial_step (1000);
   auto& pb = c->MutableProto ();
+  pb.set_speed (1000);
   pb.mutable_combat_data ();
   *pb.mutable_movement ()->add_waypoints () = CoordToProto (pos2);
   pb.set_prospecting_blocks (10);
@@ -771,11 +784,11 @@ TEST_F (PXLogicTests, ProspectingBeforeMovement)
   ])");
 
   c = characters.GetById (1);
-  EXPECT_EQ (c->GetPosition (), pos1);
-  EXPECT_TRUE (c->IsBusy ());
+  EXPECT_EQ (c->GetPosition (), pos2);
+  EXPECT_FALSE (c->IsBusy ());
 
   auto r = regions.GetById (region1);
-  EXPECT_EQ (r->GetProto ().prospecting_character (), 1);
+  EXPECT_FALSE (r->GetProto ().has_prospecting_character ());
   r = regions.GetById (region2);
   EXPECT_FALSE (r->GetProto ().has_prospecting_character ());
 }
@@ -1278,6 +1291,59 @@ TEST_F (SuperblockTests, FirstBlockIsSuperblock)
   EXPECT_EQ (sbHeight, 1);
   EXPECT_EQ (sbTime, start);
   EXPECT_EQ (GetStepsMoved (), 1);
+}
+
+TEST_F (SuperblockTests, TwoOrdersInOneBlockWalkTheFirstThenTheSecond)
+{
+  UpdateForBlock (42, start, ParseJson (R"([
+    {
+      "name": "moving",
+      "move": {"c": {"id": 1, "wp": )"
+        + WpStr ({HexCoord (100, 0)}) + R"(}}
+    },
+    {
+      "name": "moving",
+      "move": {"c": {"id": 1, "wp": )"
+        + WpStr ({HexCoord (0, 100)}) + R"(}}
+    }
+  ])"));
+
+  auto c = characters.GetById (cidMoving);
+  EXPECT_EQ (c->GetPosition (), HexCoord (1, 0));
+  ASSERT_TRUE (c->GetProto ().has_movement ());
+  EXPECT_EQ (CoordFromProto (c->GetProto ().movement ().waypoints (0)),
+             HexCoord (0, 100));
+  EXPECT_FALSE (c->GetProto ().has_pending_movement ());
+  c.reset ();
+
+  UpdateForBlock (43, start + step, ParseJson ("[]"));
+  /* From (1, 0), dx=-1 and dy=100.  Their signs differ, so s=1 and
+     t=-1; ConnectingWaypoint is (1+t, 0-t) = (0, 1), the first step.  */
+  EXPECT_EQ (characters.GetById (cidMoving)->GetPosition (), HexCoord (0, 1));
+}
+
+TEST_F (SuperblockTests, ADeferredOrderSurvivesAnArrivalInsideTheBlock)
+{
+  UpdateForBlock (42, start, ParseJson (R"([
+    {
+      "name": "moving",
+      "move": {"c": {"id": 1, "wp": )"
+        + WpStr ({HexCoord (1, 0)}) + R"(}}
+    },
+    {
+      "name": "moving",
+      "move": {"c": {"id": 1, "wp": )"
+        + WpStr ({HexCoord (1, 100)}) + R"(}}
+    }
+  ])"));
+
+  const auto c = characters.GetById (cidMoving);
+  EXPECT_EQ (c->GetPosition (), HexCoord (1, 0));
+  ASSERT_TRUE (c->GetProto ().has_movement ());
+  ASSERT_EQ (c->GetProto ().movement ().waypoints_size (), 1);
+  EXPECT_EQ (CoordFromProto (c->GetProto ().movement ().waypoints (0)),
+             HexCoord (1, 100));
+  EXPECT_FALSE (c->GetProto ().has_pending_movement ());
 }
 
 TEST_F (SuperblockTests, NextSuperblocksByTime)

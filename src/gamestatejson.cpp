@@ -122,6 +122,14 @@ GetMovementJsonObject (const Character& c)
         res["waypoints"] = wp;
     }
 
+  if (pb.has_pending_movement ())
+    {
+      Json::Value wp(Json::arrayValue);
+      for (const auto& entry : pb.pending_movement ().waypoints ())
+        wp.append (CoordToJson (CoordFromProto (entry)));
+      res["pendingwaypoints"] = wp;
+    }
+
   return res;
 }
 
@@ -277,7 +285,8 @@ template <>
   res["cargospace"] = GetCargoSpaceJsonObject (c, ctx);
 
   const Json::Value mv = GetMovementJsonObject (c);
-  if (!mv.empty ())
+  const auto& pb = c.GetProto ();
+  if (pb.has_movement () || pb.has_pending_movement ())
     res["movement"] = mv;
 
   if (c.IsBusy ())
@@ -287,7 +296,6 @@ template <>
   if (!mining.isNull ())
     res["mining"] = mining;
 
-  const auto& pb = c.GetProto ();
   if (pb.has_prospecting_blocks ())
     res["prospectingblocks"] = IntToJson (pb.prospecting_blocks ());
 
