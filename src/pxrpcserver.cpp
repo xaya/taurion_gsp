@@ -476,7 +476,30 @@ Json::Value
 PXRpcServer::getnullstate ()
 {
   LOG (INFO) << "RPC method called: getnullstate";
-  return game.GetNullJsonState ();
+
+  /* Upstream (2a43af5) reports the superblock counter through
+     GameLogic::GetCustomInstanceState, under the "custom" key of every
+     state envelope.  That virtual does not exist in libxayagame 1.0.2 (see
+     the note in logic.hpp), so the same object is attached here, under the
+     same key, for the one RPC clients poll for the chain tip:  gametest's
+     getSuperblockHeight () and the native client read one shape either way.
+     The "data" field GetCustomStateData fills is renamed rather than left,
+     so this stays a null state (no game data) for every existing caller.  */
+  Json::Value res = logic.GetCustomStateData (game,
+    [] (GameStateJson& gsj)
+      {
+        Json::Value custom(Json::objectValue);
+        custom["superblock"] = gsj.SuperBlock ();
+        return custom;
+      });
+
+  if (res.isMember ("data"))
+    {
+      res["custom"] = res["data"];
+      res.removeMember ("data");
+    }
+
+  return res;
 }
 
 Json::Value
