@@ -612,9 +612,9 @@ BaseMoveProcessor::ParseCharacterWaypoints (const Character& c,
       return false;
     }
 
-  LOG (INFO) << "[MOVE_OK] Character " << c.GetId ()
+  LOG (INFO) << "[MOVE_PARSED] Character " << c.GetId ()
              << " (owner: " << c.GetOwner ()
-             << "): Setting " << wp.size () << " waypoints";
+             << "): Parsed " << wp.size () << " waypoints";
   return true;
 }
 
@@ -1505,6 +1505,9 @@ MoveProcessor::MaybeSetCharacterWaypoints (Character& c, const Json::Value& upd)
       return;
     }
 
+  LOG (INFO) << "[MOVE_OK] Character " << c.GetId ()
+             << " (owner: " << c.GetOwner ()
+             << "): Setting " << wp.size () << " waypoints";
   StopCharacter (c);
   StopMining (c);
 
