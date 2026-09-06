@@ -172,10 +172,14 @@ PXLogic::GetInitialStateBlock (unsigned& height,
          so the fork endpoint must still be able to serve historical state
          here.  Public Polygon RPCs prune state after roughly 460k blocks
          (about eleven days), and a genesis left behind that window can no
-         longer be started from scratch at all.  */
-      height = 91'950'000;
+         longer be started from scratch at all.  Moved 2026-09-06 from
+         91'950'000 (2026-08-13): drpc had no state for that block any more
+         (the accounts policy read "account not found" while blocks on either
+         side of it still answered), so the scratch stack could not register
+         a single name.  Block 93'300'000 is 2026-09-05, verified served.  */
+      height = 93'300'000;
       hashHex
-          = "39cf91c4ed6e4eaa4f9cafdcec236fc4281080a275b0c5ce1186ec6895803fc9";
+          = "51e0244199b1f388c4769021b7419f7c4d68311255bc6462c2258da91f23bd60";
       break;
 
     case xaya::Chain::GANACHE:
