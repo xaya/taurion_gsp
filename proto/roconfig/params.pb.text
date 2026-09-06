@@ -5,8 +5,9 @@ params:
     # whole game - movement, combat, repairs, mining, construction, blueprint
     # copying and prospection expiry all move with it, not just movement.
     # VehicleMotion::kBlockSeconds in the native client MUST equal this.
-    # Pace halved from 30 seconds on 2026-08-27 at the owner's ruling.
-    superblock_seconds: 15
+    # Pace halved from 30 seconds on 2026-08-27 and cut to 10 on 2026-09-06 ("2
+    # superblocks" of the ~5 s anvil cadence), both at the owner's ruling.
+    superblock_seconds: 10
 
     character_cost: 10
     character_limit: 20
