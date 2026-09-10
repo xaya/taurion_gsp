@@ -742,8 +742,11 @@ DamageProcessor::ApplyDamage (const unsigned dmg, const CombatEntity& attacker,
 
   /* If this is a gain_hp attack, record the drained HP in the map of
      drain attacks done so we can later process the potential HP gains
-     for the attackers.  */
-  if (attack.gain_hp ())
+     for the attackers.  A drain of nothing -- a miss, a target already
+     dead, or a shield-only syphon against an empty shield -- is not
+     recorded: the reconciliation in Process counts the drainers of each
+     target and requires a positive drain from every one of them.  */
+  if (attack.gain_hp () && done.armour () + done.shield () > 0)
     {
       const TargetKey targetId(target.GetIdAsTarget ());
       const TargetKey attackerId(attacker.GetIdAsTarget ());
