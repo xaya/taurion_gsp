@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2020  Autonomous Worlds Ltd
+    Copyright (C) 2020-2026  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,9 +35,9 @@ namespace pxd
 std::vector<HexCoord>
 GetBuildingShape (const std::string& type,
                   const proto::ShapeTransformation& trafo,
-                  const HexCoord& pos, const xaya::Chain chain)
+                  const HexCoord& pos, const RoConfig& cfg)
 {
-  const auto& roData = RoConfig (chain).Building (type);
+  const auto& roData = cfg.Building (type);
 
   std::vector<HexCoord> res;
   res.reserve (roData.shape_tiles ().size ());
@@ -56,7 +56,7 @@ std::vector<HexCoord>
 GetBuildingShape (const Building& b, const Context& ctx)
 {
   return GetBuildingShape (b.GetType (), b.GetProto ().shape_trafo (),
-                           b.GetCentre (), ctx.Chain ());
+                           b.GetCentre (), ctx.RoConfig ());
 }
 
 bool
@@ -66,7 +66,7 @@ CanPlaceBuilding (const std::string& type,
                   const DynObstacles& dyn, const Context& ctx)
 {
   RegionMap::IdT region = RegionMap::OUT_OF_MAP;
-  for (const auto& c : GetBuildingShape (type, trafo, pos, ctx.Chain ()))
+  for (const auto& c : GetBuildingShape (type, trafo, pos, ctx.RoConfig ()))
     {
       if (!ctx.Map ().IsPassable (c))
         {
@@ -116,7 +116,7 @@ InitialiseBuildings (Database& db, const xaya::Chain chain)
       *pb.mutable_shape_trafo () = ib.shape_trafo ();
       pb.mutable_age_data ()->set_founded_height (0);
       pb.mutable_age_data ()->set_finished_height (0);
-      UpdateBuildingStats (*b, chain);
+      UpdateBuildingStats (*b, cfg);
     }
 }
 
@@ -149,9 +149,9 @@ MaybeStartBuildingConstruction (Building& b, OngoingsTable& ongoings,
 }
 
 void
-UpdateBuildingStats (Building& b, const xaya::Chain chain)
+UpdateBuildingStats (Building& b, const RoConfig& cfg)
 {
-  const auto& roData = RoConfig (chain).Building (b.GetType ());
+  const auto& roData = cfg.Building (b.GetType ());
   const proto::BuildingData::AllCombatData* data;
 
   if (b.GetProto ().foundation ())

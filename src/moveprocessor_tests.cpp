@@ -23,7 +23,9 @@
 #include "testutils.hpp"
 
 #include "database/dbtest.hpp"
+#include "database/roconfig.hpp"
 
+#include <xayautil/base64.hpp>
 #include <xayautil/jsonutils.hpp>
 
 #include <gflags/gflags.h>
@@ -66,6 +68,28 @@ protected:
     DynObstacles dyn(db, ctx);
     MoveProcessor mvProc(db, dyn, rnd, ctx);
     mvProc.ProcessAdmin (ParseJson (str));
+  }
+
+  /**
+   * Returns the given ConfigData serialised and base64-encoded, as the
+   * roconfig admin command carries it.
+   */
+  static std::string
+  EncodeRoConfig (const proto::ConfigData& pb)
+  {
+    std::string bytes;
+    CHECK (pb.SerializeToString (&bytes));
+    return xaya::EncodeBase64 (bytes);
+  }
+
+  /**
+   * Processes the given ConfigData as roconfig merge admin command.
+   */
+  void
+  SendRoConfig (const proto::ConfigData& upd)
+  {
+    ProcessAdmin (R"([{"cmd": {"roconfig": {"merge": ")"
+                      + EncodeRoConfig (upd) + R"("}}}])");
   }
 
   /**
@@ -175,6 +199,107 @@ TEST_F (MoveProcessorTests, AllAdminDataAccepted)
 
       ProcessAdmin (fullAdm.str ());
     }
+}
+
+TEST_F (MoveProcessorTests, AdminRoConfigUpdate)
+{
+  proto::ConfigData upd;
+  upd.mutable_params ()->set_character_cost (123);
+  SendRoConfig (upd);
+
+  /* What gets stored is the full config with the update merged in, not
+     just the update itself.  */
+  RoConfigStorage tbl(db);
+  auto stored = tbl.Get ();
+  EXPECT_EQ (stored->params ().character_cost (), 123);
+  EXPECT_EQ (stored->fungible_items ().size (),
+             ctx.RoConfig ()->fungible_items ().size ());
+
+  /* A second update merges into the previously stored config.  */
+  proto::ConfigData upd2;
+  auto* p = upd2.mutable_params ()->add_prizes ();
+  p->set_name ("extra");
+  p->set_number (1);
+  p->set_probability (10);
+  SendRoConfig (upd2);
+
+  stored = tbl.Get ();
+  EXPECT_EQ (stored->params ().character_cost (), 123);
+  EXPECT_EQ (stored->params ().prizes ().rbegin ()->name (), "extra");
+}
+
+TEST_F (MoveProcessorTests, AdminRoConfigInvalid)
+{
+  /* Encodes the update built by the given modification into a quoted
+     base64 payload.  */
+  const auto payload = [] (const auto& mod)
+    {
+      proto::ConfigData pb;
+      mod (pb);
+      return R"(")" + EncodeRoConfig (pb) + R"(")";
+    };
+
+  /* Wraps such an update into a merge command.  */
+  const auto upd = [&payload] (const auto& mod)
+    {
+      return R"({"merge": )" + payload (mod) + R"(})";
+    };
+
+  /* A well-formed payload (as accepted in AdminRoConfigUpdate), proving that
+     the malformed shapes below are rejected for the shape itself.  */
+  const std::string ok = payload ([] (proto::ConfigData& pb)
+    {
+      pb.mutable_params ()->set_character_cost (123);
+    });
+
+  /* None of these may store anything: a command that is not exactly an
+     object holding a "merge" string, invalid base64, an empty payload,
+     bytes that do not parse as ConfigData, and the compile-time chain-merge
+     fields.  */
+  RoConfigStorage tbl(db);
+  for (const std::string& cmdJson : {
+      std::string (R"(42)"),
+      ok,
+      std::string (R"({})"),
+      std::string (R"({"merge": 42})"),
+      R"({"update": )" + ok + R"(})",
+      R"({"merge": )" + ok + R"(, "other": 42})",
+      std::string (R"({"merge": "not base64!!"})"),
+      std::string (R"({"merge": ""})"),
+      R"({"merge": ")" + xaya::EncodeBase64 ("\xff\xff invalid bytes")
+          + R"("})",
+      upd ([] (proto::ConfigData& pb) { pb.mutable_testnet_merge (); }),
+      upd ([] (proto::ConfigData& pb) { pb.mutable_regtest_merge (); }),
+  })
+    {
+      ProcessAdmin (R"([{"cmd": {"roconfig": )" + cmdJson + R"(}}])");
+      EXPECT_EQ (tbl.Get (), nullptr) << "accepted: " << cmdJson;
+    }
+}
+
+TEST_F (MoveProcessorTests, AdminRoConfigGodMode)
+{
+  RoConfigStorage tbl(db);
+  const bool current = ctx.RoConfig ()->params ().god_mode ();
+
+  /* A change to god mode is rejected as a safety net.  */
+  proto::ConfigData upd;
+  upd.mutable_params ()->set_god_mode (!current);
+  SendRoConfig (upd);
+  EXPECT_EQ (tbl.Get (), nullptr);
+
+  /* Only a change is rejected, so that an update built by modifying a copy
+     of the current params can carry the field.  */
+  upd.mutable_params ()->set_god_mode (current);
+  SendRoConfig (upd);
+  ASSERT_NE (tbl.Get (), nullptr);
+  EXPECT_EQ (tbl.Get ()->params ().god_mode (), current);
+
+  /* Later updates merge into the stored config, against which the same
+     check applies.  */
+  upd.mutable_params ()->set_god_mode (!current);
+  SendRoConfig (upd);
+  EXPECT_EQ (tbl.Get ()->params ().god_mode (), current);
 }
 
 /* ************************************************************************** */

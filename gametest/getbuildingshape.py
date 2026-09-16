@@ -38,9 +38,10 @@ class GetBuildingShapeTest (PXTest):
                       getbuildingshape, type="invalid",
                       centre={"x": 1, "y": 2}, rot=0)
 
-    # Valid result.
-    self.assertEqual (getbuildingshape (type="checkmark",
-                                        centre={"x": -1, "y": 5}, rot=2),
+    # Valid result.  The shape comes from the (runtime-modifiable) config,
+    # so this is a state read returning the usual envelope.
+    self.assertEqual (self.getRpc ("getbuildingshape", type="checkmark",
+                                   centre={"x": -1, "y": 5}, rot=2),
                       [{"x": -1, "y": 5},
                        {"x": -1, "y": 4},
                        {"x": 0, "y": 4},

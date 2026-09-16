@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2020  Autonomous Worlds Ltd
+    Copyright (C) 2019-2026  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,6 +23,9 @@
 
 #include <xayagame/gamelogic.hpp>
 
+#include <memory>
+#include <string>
+
 namespace pxd
 {
 
@@ -31,40 +34,65 @@ namespace pxd
  * access to the proto data itself as well as provides some helper methods
  * for accessing the data on a higher level (e.g. specifically for items
  * or buildings).
+ *
+ * An instance reads the configuration as it was when the instance was
+ * constructed, and everything it returns stays valid for as long as the
+ * instance exists -- but not beyond it, since an admin command may have
+ * activated a different configuration in the meantime.  Thus keep the
+ * instance around (rather than a temporary) whenever a reference or pointer
+ * obtained from it is used later on.
  */
 class RoConfig
 {
 
-private:
+public:
 
+  /**
+   * The data an instance reads:  the proto with everything derived from it.
+   * It is defined in roconfig.cpp and exposed here only so that the code
+   * there managing the current data of each chain can name it.
+   */
   class Data;
 
-  /**
-   * A reference to the singleton instance that actually holds all the
-   * global state wrapped by this instance.
-   */
-  const Data* data;
+private:
 
   /**
-   * The global singleton data instance for mainnet or null when it is not yet
-   * initialised.  This is never destructed.
+   * The data this instance reads.  Holding it keeps the proto and everything
+   * derived from it alive for as long as the instance exists, even if newer
+   * data is activated meanwhile.
    */
-  static Data* mainnet;
+  std::shared_ptr<const Data> data;
 
-  /** The singleton instance for testnet.  */
-  static Data* testnet;
+  /**
+   * Activates a stored config for the given chain, passed as the serialised
+   * bytes of the ConfigData held in the roconfig database table (the empty
+   * string means that nothing is stored, and activates the compiled-in
+   * configuration).  If they differ from the bytes the current data was
+   * built from, fresh data is built and is what instances constructed from
+   * now on read; passing the bytes rather than the proto is what keeps that
+   * comparison cheap.
+   *
+   * Existing instances keep the data they were constructed with, so this is
+   * safe to call while other threads read the config.  It must, however, only
+   * be called with the config as of the current chain tip (see
+   * SQLiteGameDatabase).
+   */
+  static void ApplyStored (xaya::Chain chain, const std::string& stored);
 
-  /** The singleton instance for regtest.  */
-  static Data* regtest;
+  /* The stored bytes are an implementation detail between this class and
+     the database table wrapper, which syncs them via ApplyStored.  The
+     test fixture exercises activation directly.  */
+  friend class RoConfigStorage;
+  friend class RoConfigStoredTests;
 
 public:
 
   /**
    * Constructs a fresh instance of the wrapper class, which will give
-   * access to the underlying data.
+   * access to the configuration that is current for the given chain.
    *
-   * On the first call, this will also instantiate and set up the underlying
-   * singleton instance with the real data.
+   * On the first call, this will also build that data from the compiled-in
+   * configuration.
    */
   explicit RoConfig (xaya::Chain chain);
 

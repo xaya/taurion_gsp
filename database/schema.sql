@@ -521,3 +521,25 @@ CREATE INDEX IF NOT EXISTS `ongoing_operations_by_building`
   ON `ongoing_operations` (`building`);
 
 -- =============================================================================
+
+-- Runtime-modified copy of the otherwise read-only configuration data (the
+-- "roconfig" admin command).  The single row holds the full ConfigData as
+-- last modified by an admin command; while it exists, it replaces the
+-- compiled-in configuration entirely, so that later changes to the
+-- compiled-in data no longer apply, and an absent row means the compiled-in
+-- data applies unchanged.  This is consensus state like any other table --
+-- reorgs restore it through the normal changesets -- but the serialised
+-- bytes are not canonical (proto map fields have no defined order), so they
+-- may differ between nodes, which would matter only if state hashes covering
+-- this table were ever enabled.
+CREATE TABLE IF NOT EXISTS `roconfig` (
+
+  -- There is only ever a single row, holding the current configuration.
+  `id` INTEGER PRIMARY KEY CHECK (`id` = 1),
+
+  -- The serialised ConfigData proto.
+  `data` BLOB NOT NULL
+
+);
+
+-- =============================================================================
