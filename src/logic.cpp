@@ -235,17 +235,96 @@ PXLogic::GetStateAsJson (const xaya::SQLiteDatabase& db)
    logic.hpp.  The virtual it overrides does not exist in libxayagame 1.0.2,
    and it was a reporting hook only, not part of the superblock pace.  */
 
+void
+PXLogic::InstanceStateChanged (const Json::Value& state)
+{
+  SQLiteGame::InstanceStateChanged (state);
+  upToDate = (state["state"].asString () == "up-to-date");
+}
+
+/* Every data RPC goes through here, and it must never read the main database
+   while blocks are being written to it.
+
+   libxayagame 1.0.2's SQLiteGame::GetCustomStateData reads a lock-free state
+   snapshot, but a snapshot only exists while the game is up-to-date.  In any
+   other state (catching-up during a sync, after a stale ZMQ connection) it
+   falls back to the MAIN database and runs the callback after RELEASING the
+   Game lock (it uses the ExtractJsonFromStateWithBlock overload, which
+   unlocks before the call).  The ZMQ thread keeps attaching blocks on the
+   same connection meanwhile.  On the production stack's first Polygon sync
+   (2026-09-16) a getbuildings call raced a block attach there and its RPC
+   thread spun at 100% CPU indefinitely; every later RPC and the block
+   processing itself queued behind it, so the GSP froze at one height.
+   libxayagame's master fixed this by keeping the lock for that fallback.
+
+   This does the same without the library upgrade: the Game lock is taken
+   first, and while it is held the up-to-date flag (only ever changed under
+   that lock) decides.  Not up-to-date: read the main database WITH the lock
+   still held, so block processing waits for the read.  Up-to-date: release
+   it and use the snapshot path.  If there is no snapshot after all (the game
+   left up-to-date in between, or SQLiteGame could not take one), the callback
+   is handed the main database without the lock; that read is skipped and the
+   call is repeated once, reading under the lock regardless of the flag.
+   (SQLiteGame's own EnsureCurrentState check still runs unlocked on that
+   rare fallback before handing over the database; only the game's reads are
+   moved under the lock.)  */
 Json::Value
 PXLogic::GetCustomStateData (xaya::Game& game, const JsonStateFromRawDb& cb)
 {
-  return SQLiteGame::GetCustomStateData (game, "data",
-      [this, &cb] (const xaya::SQLiteDatabase& db, const xaya::uint256& hash,
-                   const unsigned height)
-        {
-          SQLiteGameDatabase dbObj(const_cast<xaya::SQLiteDatabase&> (db),
-                                   *this);
-          return cb (dbObj, hash, height);
-        });
+  const auto readDb = [this, &cb] (const xaya::SQLiteDatabase& db,
+                                   const xaya::uint256& hash,
+                                   const unsigned height)
+    {
+      SQLiteGameDatabase dbObj(const_cast<xaya::SQLiteDatabase&> (db),
+                               *this);
+      return cb (dbObj, hash, height);
+    };
+
+  bool forceLock = false;
+  while (true)
+    {
+      bool useSnapshot = false;
+      Json::Value res = game.GetCustomStateData ("data",
+          [this, &readDb, &useSnapshot, forceLock] (
+              const xaya::GameStateData& state, const xaya::uint256& hash,
+              const unsigned height, std::unique_lock<std::mutex> lock)
+            {
+              CHECK (lock.owns_lock ());
+              if (upToDate && !forceLock)
+                {
+                  useSnapshot = true;
+                  return Json::Value ();
+                }
+
+              /* The one handle to the main database SQLiteGame exposes; its
+                 own fallback reads exactly this connection.  */
+              VLOG (1) << "Reading state data under the game lock";
+              return readDb (GetDatabaseForTesting (), hash, height);
+            });
+      if (!useSnapshot)
+        return res;
+
+      bool unlockedMainDb = false;
+      res = SQLiteGame::GetCustomStateData (game, "data",
+          [this, &readDb, &unlockedMainDb] (const xaya::SQLiteDatabase& db,
+                                            const xaya::uint256& hash,
+                                            const unsigned height)
+            {
+              if (&db == &GetDatabaseForTesting ())
+                {
+                  unlockedMainDb = true;
+                  return Json::Value ();
+                }
+              return readDb (db, hash, height);
+            });
+      if (!unlockedMainDb)
+        return res;
+
+      LOG (WARNING)
+          << "No state snapshot for a read while up-to-date,"
+             " reading under the game lock instead";
+      forceLock = true;
+    }
 }
 
 Json::Value

@@ -36,6 +36,7 @@
 
 #include <sqlite3.h>
 
+#include <atomic>
 #include <functional>
 #include <memory>
 #include <string>
@@ -113,6 +114,14 @@ private:
    */
   static void ValidateStateSlow (Database& db, const Context& ctx);
 
+  /**
+   * Whether the game instance is "up-to-date", as last reported through
+   * InstanceStateChanged.  libxayagame only calls that with the Game lock
+   * held, so reading this while holding the same lock gives the state that
+   * decided whether a lock-free snapshot exists.  See GetCustomStateData.
+   */
+  std::atomic<bool> upToDate{false};
+
   friend class PXLogicTests;
   friend class PXRpcServer;
   friend class SuperblockTests;
@@ -130,6 +139,8 @@ protected:
                     const Json::Value& blockData) override;
 
   Json::Value GetStateAsJson (const xaya::SQLiteDatabase& db) override;
+
+  void InstanceStateChanged (const Json::Value& state) override;
 
   /* GetCustomInstanceState is deliberately NOT overridden here, although
      upstream's superblock commit (2a43af5) adds it.  That virtual does not
