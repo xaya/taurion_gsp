@@ -656,6 +656,21 @@ TEST_F (BuildingJsonTests, Ancient)
   })");
 }
 
+TEST_F (BuildingJsonTests, Initial)
+{
+  tbl.CreateNew ("checkmark", "", Faction::ANCIENT);
+  tbl.CreateNew ("checkmark", "", Faction::ANCIENT)
+      ->MutableProto ().set_initial_building (true);
+
+  ExpectStateJson (R"({
+    "buildings":
+      [
+        {"initial": null},
+        {"initial": true}
+      ]
+  })");
+}
+
 TEST_F (BuildingJsonTests, Foundation)
 {
   tbl.CreateNew ("checkmark", "foo", Faction::RED);

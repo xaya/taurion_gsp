@@ -313,9 +313,12 @@ ValidateBuildings (Database& db, const Context& ctx)
               << "Building " << b->GetId () << " is finished in the future";
         }
 
+      /* Initial buildings are always ancient, even if their type is one
+         that can also be constructed by a faction (e.g. a faction's command
+         centre used as its starter station).  */
       const auto& ro = ctx.RoConfig ().Building (b->GetType ());
       const auto& constr = ro.construction ();
-      if (constr.has_faction ())
+      if (constr.has_faction () && !pb.initial_building ())
         {
           const auto roFaction = FactionFromString (constr.faction ());
           CHECK (b->GetFaction () == roFaction)

@@ -95,26 +95,24 @@ TEST_F (BuildingsTests, InitialBuildingsPlacement)
   /* InitialiseBuildings places the configured buildings without any
      validation, so this verifies that the shipped configuration is
      actually valid on the map:  every footprint tile must be on the map,
-     and the footprints must not overlap each other (DynObstacles
-     CHECK-fails on overlapping buildings when the state is loaded,
-     which would halt the node).  */
+     and loading them into DynObstacles must work.  The footprints of
+     initial buildings may overlap each other, see DynObstacles.  */
   InitialiseBuildings (db, ctx.Chain ());
+  DynObstacles dyn(db, ctx);
 
   unsigned cnt = 0;
-  std::set<HexCoord> occupied;
   auto res = tbl.QueryAll ();
   while (res.Step ())
     {
       auto b = tbl.GetFromResult (res);
       ++cnt;
+      EXPECT_TRUE (b->GetProto ().initial_building ());
       for (const auto& c : GetBuildingShape (*b, ctx))
         {
           EXPECT_TRUE (ctx.Map ().IsOnMap (c))
               << "Tile " << c << " of initial building " << b->GetId ()
               << " (" << b->GetType () << ") is not on the map";
-          EXPECT_TRUE (occupied.insert (c).second)
-              << "Tile " << c << " of initial building " << b->GetId ()
-              << " (" << b->GetType () << ") overlaps another building";
+          EXPECT_TRUE (dyn.IsBuilding (c));
         }
     }
 

@@ -38,7 +38,7 @@ class SpawnTest (PXTest):
       c = chars[f]
       self.assertEqual (c.isInBuilding (), True)
       b = buildings[c.getBuildingId ()]
-      self.assertEqual (b.getType (), "%s ss" % f)
+      self.assertEqual (b.getType (), "%s cc" % f)
 
 
 if __name__ == "__main__":

@@ -415,6 +415,8 @@ template <>
   res["type"] = b.GetType ();
   if (pb.foundation ())
     res["foundation"] = true;
+  if (pb.initial_building ())
+    res["initial"] = true;
 
   res["faction"] = FactionToString (b.GetFaction ());
   if (b.GetFaction () != Faction::ANCIENT)

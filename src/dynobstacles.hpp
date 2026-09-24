@@ -108,7 +108,20 @@ public:
                     std::vector<HexCoord>& shape);
 
   /**
-   * Adds a new building.  CHECK-fails if something goes wrong.
+   * Adds an initial building from the raw data.  Unlike AddBuilding, this
+   * allows the building to overlap other buildings.  Those are just the
+   * initial buildings, which form the starting cities; their parts are
+   * placed so that each city looks coherent visually, which requires
+   * their footprints to overlap in places.
+   */
+  void AddInitialBuilding (const std::string& type,
+                           const proto::ShapeTransformation& trafo,
+                           const HexCoord& pos,
+                           std::vector<HexCoord>& shape);
+
+  /**
+   * Adds a new building.  CHECK-fails if something goes wrong, e.g. if the
+   * building overlaps another one (unless it is an initial building).
    */
   void AddBuilding (const Building& b);
 

@@ -92,11 +92,12 @@ private:
     DynObstacles obstacles;
 
     /**
-     * Map from coordinate to the corresponding building ID.  We use that
+     * Map from coordinate to the corresponding building IDs.  We use that
      * to selectively exclude buildings by ID from the obstacle map, e.g.
-     * when pathing "to" a building to enter it.
+     * when pathing "to" a building to enter it.  A coordinate may belong
+     * to more than one building, as initial buildings can overlap.
      */
-    std::unordered_map<HexCoord, Database::IdT> buildingIds;
+    std::unordered_multimap<HexCoord, Database::IdT> buildingIds;
 
     explicit PathingData (const xaya::Chain c)
       : obstacles(c)

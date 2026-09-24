@@ -125,6 +125,27 @@ TEST_F (DynObstaclesTests, AddingRemovingBuildings)
   }
 }
 
+TEST_F (DynObstaclesTests, OverlappingInitialBuildings)
+{
+  auto b1 = buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+  b1->MutableProto ().set_initial_building (true);
+  auto b2 = buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+  b2->SetCentre (HexCoord (1, 0));
+  b2->MutableProto ().set_initial_building (true);
+  auto b3 = buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+  b3->SetCentre (HexCoord (1, 0));
+
+  DynObstacles dyn(ctx.Chain ());
+  dyn.AddBuilding (*b1);
+  dyn.AddBuilding (*b2);
+  EXPECT_TRUE (dyn.IsBuilding (HexCoord (0, 0)));
+  EXPECT_TRUE (dyn.IsBuilding (HexCoord (1, 0)));
+  EXPECT_TRUE (dyn.IsBuilding (HexCoord (1, 2)));
+
+  /* Only initial buildings may overlap.  */
+  EXPECT_DEATH (dyn.AddBuilding (*b3), "Error adding building");
+}
+
 TEST_F (DynObstaclesTests, MultipleVehicles)
 {
   const HexCoord c(10, 0);

@@ -134,6 +134,7 @@ RoConfig::RoConfig (const xaya::Chain chain)
         {
           pb.clear_safe_zones ();
           pb.mutable_params ()->clear_prizes ();
+          pb.mutable_resource_dist ()->clear_areas ();
           pb.MergeFrom (pb.regtest_merge ());
         }
       pb.clear_testnet_merge ();
