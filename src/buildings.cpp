@@ -116,6 +116,7 @@ InitialiseBuildings (Database& db, const xaya::Chain chain)
       *pb.mutable_shape_trafo () = ib.shape_trafo ();
       pb.mutable_age_data ()->set_founded_height (0);
       pb.mutable_age_data ()->set_finished_height (0);
+      pb.set_initial_building (true);
       UpdateBuildingStats (*b, chain);
     }
 }

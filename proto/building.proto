@@ -117,4 +117,10 @@ message Building
   /** Age data for this building.  */
   optional AgeData age_data = 7;
 
+  /**
+   * Set for the initial buildings, which are placed on the map at the start
+   * of the game.  Those are allowed to overlap each other (see DynObstacles).
+   */
+  optional bool initial_building = 8;
+
 }

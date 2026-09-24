@@ -67,9 +67,34 @@ DynObstacles::AddBuilding (const std::string& type,
 }
 
 void
+DynObstacles::AddInitialBuilding (const std::string& type,
+                                  const proto::ShapeTransformation& trafo,
+                                  const HexCoord& pos,
+                                  std::vector<HexCoord>& shape)
+{
+  /* Overlapping buildings are fine for the game logic, as a building tile
+     is just an obstacle, no matter how many buildings are on it.  Initial
+     buildings are ancient and can't be attacked, so they are also never
+     destroyed (and thus never removed from the map again).  */
+  shape = GetBuildingShape (type, trafo, pos, chain);
+  for (const auto& c : shape)
+    {
+      auto ref = buildings.Access (c);
+      ref = true;
+    }
+}
+
+void
 DynObstacles::AddBuilding (const Building& b)
 {
   std::vector<HexCoord> shape;
+  if (b.GetProto ().initial_building ())
+    {
+      AddInitialBuilding (b.GetType (), b.GetProto ().shape_trafo (),
+                          b.GetCentre (), shape);
+      return;
+    }
+
   CHECK (AddBuilding (b.GetType (), b.GetProto ().shape_trafo (),
                       b.GetCentre (), shape))
       << "Error adding building " << b.GetId ();

@@ -158,15 +158,21 @@ NonStateRpcServer::AddBuildingsFromJson (const Json::Value& buildings,
       if (!CoordFromJson (b["centre"], centre))
         return false;
 
+      const auto& initialVal = b["initial"];
+      if (!initialVal.isNull () && !initialVal.isBool ())
+        return false;
+
       std::vector<HexCoord> shape;
-      if (!dyn.obstacles.AddBuilding (type, trafo, centre, shape))
+      if (initialVal.isBool () && initialVal.asBool ())
+        dyn.obstacles.AddInitialBuilding (type, trafo, centre, shape);
+      else if (!dyn.obstacles.AddBuilding (type, trafo, centre, shape))
         {
           LOG (WARNING) << "Adding the building failed\n" << b;
           return false;
         }
 
       for (const auto& tile : shape)
-        CHECK (dyn.buildingIds.emplace (tile, id).second);
+        dyn.buildingIds.emplace (tile, id);
     }
 
   return true;
@@ -302,13 +308,16 @@ NonStateRpcServer::findpath (const Json::Value& exbuildings,
         return PathFinder::NO_CONNECTION;
 
       /* If the path is blocked by a building, look closer to see if it is one
-         of the buildings we want to ignore or not.  */
+         of the buildings we want to ignore or not.  If the tile belongs to
+         more than one building, all of them have to be ignored.  */
       if (dynCopy->obstacles.IsBuilding (to))
         {
-          const auto mitTiles = dynCopy->buildingIds.find (to);
-          if (mitTiles == dynCopy->buildingIds.end ()
-                || exBuildingIds.count (mitTiles->second) == 0)
+          const auto range = dynCopy->buildingIds.equal_range (to);
+          if (range.first == range.second)
             return PathFinder::NO_CONNECTION;
+          for (auto it = range.first; it != range.second; ++it)
+            if (exBuildingIds.count (it->second) == 0)
+              return PathFinder::NO_CONNECTION;
         }
 
       if (dynCopy->obstacles.HasVehicle (to))
