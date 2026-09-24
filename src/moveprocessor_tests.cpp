@@ -1016,6 +1016,8 @@ TEST_F (CharacterUpdateTests, BasicWaypoints)
   h = GetTest ();
   EXPECT_EQ (h->GetVolatileMv ().partial_step (), 42);
   EXPECT_EQ (h->GetProto ().movement ().waypoints_size (), 1);
+  /* Stop the character, so that the next update is not pending.  */
+  h->MutableProto ().clear_movement ();
   h.reset ();
 
   /* Process a valid waypoints update move.  */
@@ -1051,6 +1053,137 @@ TEST_F (CharacterUpdateTests, EmptyWaypoints)
   h = GetTest ();
   EXPECT_FALSE (h->GetVolatileMv ().has_partial_step ());
   EXPECT_FALSE (h->GetProto ().has_movement ());
+}
+
+TEST_F (CharacterUpdateTests, WaypointsWhileMoving)
+{
+  auto h = GetTest ();
+  h->MutableProto ().set_speed (1'000);
+  *h->MutableProto ().mutable_movement ()->add_waypoints ()
+      = CoordToProto (HexCoord (10, 1));
+  h->MutableVolatileMv ().set_partial_step (42);
+  h.reset ();
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"id": 1, "wp": )" + WpStr ({HexCoord (20, 1)}) + R"(}}
+    }
+  ])");
+
+  h = GetTest ();
+  const auto& pb = h->GetProto ();
+  ASSERT_EQ (pb.movement ().waypoints_size (), 1);
+  EXPECT_EQ (CoordFromProto (pb.movement ().waypoints (0)), HexCoord (10, 1));
+  ASSERT_EQ (pb.pending_movement ().waypoints_size (), 1);
+  EXPECT_EQ (CoordFromProto (pb.pending_movement ().waypoints (0)),
+             HexCoord (20, 1));
+  EXPECT_EQ (h->GetVolatileMv ().partial_step (), 42);
+}
+
+TEST_F (CharacterUpdateTests, PendingWaypointsReplaced)
+{
+  GetTest ()->MutableProto ().set_speed (1'000);
+
+  /* The first update starts movement right away, the second is pending
+     and then replaced by the third.  */
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"id": 1, "wp": )" + WpStr ({HexCoord (10, 1)}) + R"(}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"id": 1, "wp": )" + WpStr ({HexCoord (20, 1)}) + R"(}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"id": 1, "wp": )" + WpStr ({HexCoord (30, 1)}) + R"(}}
+    }
+  ])");
+
+  const auto& pb = GetTest ()->GetProto ();
+  ASSERT_EQ (pb.movement ().waypoints_size (), 1);
+  EXPECT_EQ (CoordFromProto (pb.movement ().waypoints (0)), HexCoord (10, 1));
+  ASSERT_EQ (pb.pending_movement ().waypoints_size (), 1);
+  EXPECT_EQ (CoordFromProto (pb.pending_movement ().waypoints (0)),
+             HexCoord (30, 1));
+}
+
+TEST_F (CharacterUpdateTests, StopWhileMoving)
+{
+  auto h = GetTest ();
+  h->MutableProto ().set_speed (1'000);
+  *h->MutableProto ().mutable_movement ()->add_waypoints ()
+      = CoordToProto (HexCoord (10, 1));
+  h.reset ();
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"id": 1, "wp": null}}
+    }
+  ])");
+
+  const auto& pb = GetTest ()->GetProto ();
+  EXPECT_EQ (pb.movement ().waypoints_size (), 1);
+  ASSERT_TRUE (pb.has_pending_movement ());
+  EXPECT_EQ (pb.pending_movement ().waypoints_size (), 0);
+}
+
+TEST_F (CharacterUpdateTests, ExtensionOfPendingWaypoints)
+{
+  auto h = GetTest ();
+  h->MutableProto ().set_speed (1'000);
+  *h->MutableProto ().mutable_movement ()->add_waypoints ()
+      = CoordToProto (HexCoord (10, 1));
+  h.reset ();
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"id": 1, "wp": )" + WpStr ({HexCoord (20, 1)}) + R"(}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"id": 1, "wpx": )" + WpStr ({HexCoord (20, 5)}) + R"(}}
+    }
+  ])");
+
+  const auto& pb = GetTest ()->GetProto ();
+  EXPECT_EQ (pb.movement ().waypoints_size (), 1);
+  const auto& wp = pb.pending_movement ().waypoints ();
+  ASSERT_EQ (wp.size (), 2);
+  EXPECT_EQ (CoordFromProto (wp.Get (0)), HexCoord (20, 1));
+  EXPECT_EQ (CoordFromProto (wp.Get (1)), HexCoord (20, 5));
+}
+
+TEST_F (CharacterUpdateTests, ChosenSpeedWithPendingWaypoints)
+{
+  auto h = GetTest ();
+  h->MutableProto ().set_speed (1'000);
+  *h->MutableProto ().mutable_movement ()->add_waypoints ()
+      = CoordToProto (HexCoord (10, 1));
+  h.reset ();
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move":
+        {
+          "c":
+            {
+              "id": 1,
+              "wp": )" + WpStr ({HexCoord (20, 1)}) + R"(,
+              "speed": 500
+            }
+        }
+    }
+  ])");
+
+  const auto& pb = GetTest ()->GetProto ();
+  EXPECT_EQ (pb.movement ().chosen_speed (), 500);
+  EXPECT_EQ (pb.pending_movement ().chosen_speed (), 500);
 }
 
 TEST_F (CharacterUpdateTests, WaypointsWithZeroSpeed)
@@ -1912,6 +2045,34 @@ TEST_F (FoundBuildingMoveTests, Success)
   EXPECT_EQ (c->GetInventory ().GetFungibleCount ("foo"), 8);
   ASSERT_TRUE (c->IsInBuilding ());
   EXPECT_EQ (c->GetBuildingId (), b->GetId ());
+}
+
+TEST_F (FoundBuildingMoveTests, PendingWaypointsCleared)
+{
+  GetTest ()->GetInventory ().AddFungibleCount ("foo", 10);
+  GetTest ()->MutableProto ().set_speed (1'000);
+  *GetTest ()->MutableProto ().mutable_movement ()->add_waypoints ()
+      = CoordToProto (HexCoord (10, 1));
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move":
+        {
+          "c":
+            {
+              "id": 1,
+              "wp": )" + WpStr ({HexCoord (20, 1)}) + R"(,
+              "fb": {"t": "huesli", "rot": 0}
+            }
+        }
+    }
+  ])");
+
+  auto c = GetTest ();
+  ASSERT_TRUE (c->IsInBuilding ());
+  EXPECT_FALSE (c->GetProto ().has_movement ());
+  EXPECT_FALSE (c->GetProto ().has_pending_movement ());
 }
 
 TEST_F (FoundBuildingMoveTests, FoundationBeforeDrop)
@@ -2879,7 +3040,6 @@ TEST_F (ProspectingMoveTests, Success)
 {
   auto h = GetTest ();
   h->MutableVolatileMv ().set_partial_step (42);
-  h->MutableProto ().mutable_movement ()->add_waypoints ();
   h.reset ();
 
   ctx.SetHeight (100);
@@ -2908,6 +3068,29 @@ TEST_F (ProspectingMoveTests, Success)
 
   auto r = regions.GetById (region);
   EXPECT_EQ (r->GetProto ().prospecting_character (), 1);
+  EXPECT_FALSE (r->GetProto ().has_prospection ());
+}
+
+TEST_F (ProspectingMoveTests, WhileMoving)
+{
+  auto h = GetTest ();
+  *h->MutableProto ().mutable_movement ()->add_waypoints ()
+      = CoordToProto (HexCoord (5, -2));
+  h.reset ();
+
+  Process (R"([{
+    "name": "domob",
+    "move": {"c": {"id": 1, "prospect": {}}}
+  }])");
+
+  h = GetTest ();
+  EXPECT_FALSE (h->IsBusy ());
+  ASSERT_EQ (h->GetProto ().movement ().waypoints_size (), 1);
+  EXPECT_EQ (CoordFromProto (h->GetProto ().movement ().waypoints (0)),
+             HexCoord (5, -2));
+
+  auto r = regions.GetById (region);
+  EXPECT_FALSE (r->GetProto ().has_prospecting_character ());
   EXPECT_FALSE (r->GetProto ().has_prospection ());
 }
 
@@ -3787,6 +3970,7 @@ TEST_F (GodModeTests, Teleport)
   ASSERT_EQ (id, 1);
   c->MutableVolatileMv ().set_partial_step (42);
   c->MutableProto ().mutable_movement ();
+  c->MutableProto ().mutable_pending_movement ();
   c.reset ();
 
   ProcessAdmin (R"([{"cmd": {
@@ -3805,6 +3989,7 @@ TEST_F (GodModeTests, Teleport)
   EXPECT_EQ (c->GetPosition (), HexCoord (5, -42));
   EXPECT_FALSE (c->GetVolatileMv ().has_partial_step ());
   EXPECT_FALSE (c->GetProto ().has_movement ());
+  EXPECT_FALSE (c->GetProto ().has_pending_movement ());
 }
 
 TEST_F (GodModeTests, SetHp)

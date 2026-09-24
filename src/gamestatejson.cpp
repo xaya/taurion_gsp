@@ -122,6 +122,14 @@ GetMovementJsonObject (const Character& c)
         res["waypoints"] = wp;
     }
 
+  if (pb.has_pending_movement ())
+    {
+      Json::Value wp(Json::arrayValue);
+      for (const auto& entry : pb.pending_movement ().waypoints ())
+        wp.append (CoordToJson (CoordFromProto (entry)));
+      res["pendingwaypoints"] = wp;
+    }
+
   return res;
 }
 

@@ -172,6 +172,7 @@ EnterBuilding (Character& c, const Building& b, DynObstacles& dyn)
   c.ClearTarget ();
   c.SetEnterBuilding (Database::EMPTY_ID);
   StopCharacter (c);
+  c.MutableProto ().clear_pending_movement ();
   StopMining (c);
 }
 

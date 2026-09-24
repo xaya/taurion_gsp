@@ -829,6 +829,16 @@ BaseMoveProcessor::ParseCharacterProspecting (const Character& c,
       return false;
     }
 
+  /* Starting to prospect stops the character.  This is not possible while
+     it is moving, as changes to the movement only take effect after the next
+     movement step (see MaybeSetCharacterWaypoints).  */
+  if (c.GetProto ().movement ().waypoints_size () > 0)
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId () << " is moving, can't prospect";
+      return false;
+    }
+
   if (c.IsInBuilding ())
     {
       LOG (WARNING)
@@ -1373,7 +1383,13 @@ MaybeSetCharacterSpeed (Character& c, const Json::Value& upd)
   VLOG (1)
       << "Setting chosen speed for character " << c.GetId ()
       << " to: " << speed;
-  c.MutableProto ().mutable_movement ()->set_chosen_speed (speed);
+  auto& pb = c.MutableProto ();
+  pb.mutable_movement ()->set_chosen_speed (speed);
+
+  /* When waypoints are sent for a moving character, they become pending
+     movement.  The chosen speed should apply to them as well.  */
+  if (pb.has_pending_movement ())
+    pb.mutable_pending_movement ()->set_chosen_speed (speed);
 }
 
 } // anonymous namespace
@@ -1429,6 +1445,24 @@ MoveProcessor::MaybeSetCharacterWaypoints (Character& c, const Json::Value& upd)
       << "Updating movement for character " << c.GetId ()
       << " from waypoints: " << upd["wp"];
 
+  /* If the character is already moving, the new waypoints do not replace
+     its movement right away.  They are stored as pending movement instead,
+     and take effect only after the character's next movement step (from
+     wherever it is then).  This ensures that the route a moving character
+     takes in its next step is always determined by the confirmed game state,
+     independent of moves still to come (so clients can e.g. already show
+     it reliably).  */
+  if (c.GetProto ().movement ().waypoints_size () > 0)
+    {
+      VLOG (1)
+          << "Character " << c.GetId ()
+          << " is moving, setting pending movement";
+      auto& pending = *c.MutableProto ().mutable_pending_movement ();
+      pending.Clear ();
+      AddRepeatedCoords (wp, *pending.mutable_waypoints ());
+      return;
+    }
+
   StopCharacter (c);
   StopMining (c);
 
@@ -1462,8 +1496,13 @@ MoveProcessor::MaybeExtendCharacterWaypoints (Character& c,
       << "Extending waypoints of character " << c.GetId ()
       << " by: " << upd["wpx"];
 
-  auto* pb = c.MutableProto ().mutable_movement ()->mutable_waypoints ();
-  AddRepeatedCoords (wp, *pb);
+  /* If there is pending movement, then it will replace the current movement
+     later on.  So extend that instead.  */
+  auto& pb = c.MutableProto ();
+  auto* mv = (pb.has_pending_movement ()
+                ? pb.mutable_pending_movement ()
+                : pb.mutable_movement ());
+  AddRepeatedCoords (wp, *mv->mutable_waypoints ());
 }
 
 void
@@ -1954,6 +1993,7 @@ MaybeGodTeleport (CharacterTable& tbl, const Json::Value& cmd)
       LOG (INFO) << "Teleporting character " << id << " to: " << target;
       c->SetPosition (target);
       StopCharacter (*c);
+      c->MutableProto ().clear_pending_movement ();
     }
 }
 

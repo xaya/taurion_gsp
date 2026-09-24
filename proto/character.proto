@@ -88,6 +88,16 @@ message Character
   optional Movement movement = 3;
 
   /**
+   * Movement that has been set while the character was already moving.
+   * It replaces the current movement only after the next movement step.
+   * If there are no waypoints in it, the character will stop then.
+   *
+   * This is not part of "movement", so that it is kept even if the character
+   * stops during the movement step (e.g. because it reached its target).
+   */
+  optional Movement pending_movement = 11;
+
+  /**
    * Static combat data for thie character.  That data is derived from other
    * information (e.g. equipped weapons, current vehicle), but it is cached
    * here for easy computation of combat.  The data here changes only

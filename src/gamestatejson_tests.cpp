@@ -186,6 +186,53 @@ TEST_F (CharacterJsonTests, Waypoints)
   })");
 }
 
+TEST_F (CharacterJsonTests, PendingWaypoints)
+{
+  auto c = tbl.CreateNew ("domob", Faction::RED);
+  *c->MutableProto ().mutable_movement ()->add_waypoints ()
+      = CoordToProto (HexCoord (5, 0));
+  auto* wp = c->MutableProto ().mutable_pending_movement ()
+      ->mutable_waypoints ();
+  *wp->Add () = CoordToProto (HexCoord (-3, 0));
+  *wp->Add () = CoordToProto (HexCoord (0, 42));
+  c.reset ();
+
+  ExpectStateJson (R"({
+    "characters":
+      [
+        {
+          "movement":
+            {
+              "waypoints": [{"x": 5, "y": 0}],
+              "pendingwaypoints": [{"x": -3, "y": 0}, {"x": 0, "y": 42}]
+            }
+        }
+      ]
+  })");
+}
+
+TEST_F (CharacterJsonTests, PendingStop)
+{
+  auto c = tbl.CreateNew ("domob", Faction::RED);
+  *c->MutableProto ().mutable_movement ()->add_waypoints ()
+      = CoordToProto (HexCoord (5, 0));
+  c->MutableProto ().mutable_pending_movement ();
+  c.reset ();
+
+  ExpectStateJson (R"({
+    "characters":
+      [
+        {
+          "movement":
+            {
+              "waypoints": [{"x": 5, "y": 0}],
+              "pendingwaypoints": []
+            }
+        }
+      ]
+  })");
+}
+
 TEST_F (CharacterJsonTests, VehicleAndFitments)
 {
   auto c = tbl.CreateNew ("domob", Faction::RED);

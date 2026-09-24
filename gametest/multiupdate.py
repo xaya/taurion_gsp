@@ -40,11 +40,20 @@ class MultiUpdateTest (PXTest):
     c = self.getCharacters ()["domob"]
     c.moveTowards (offsetCoord ({"x": 10, "y": 0}, self.offset, False))
     c.moveTowards (offsetCoord ({"x": 0, "y": 10}, self.offset, False))
+
+    # The first movement starts right away.  The second one is only applied
+    # after the next movement step, since the character is already moving
+    # by then.  It is then followed from where the character is.
     self.generate (1)
     c = self.getCharacters ()["domob"]
-    expected = {"x": 0, "y": c.getSpeed () // 1000}
+    expected = {"x": c.getSpeed () // 1000, "y": 0}
     self.assertEqual (offsetCoord (c.getPosition (), self.offset, True),
                       expected)
+
+    self.generate (20)
+    c = self.getCharacters ()["domob"]
+    self.assertEqual (offsetCoord (c.getPosition (), self.offset, True),
+                      {"x": 0, "y": 10})
 
 
 if __name__ == "__main__":

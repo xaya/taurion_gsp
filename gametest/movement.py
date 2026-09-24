@@ -145,9 +145,15 @@ class MovementTest (PXTest):
     self.mainLogger.info ("Testing empty waypoints...")
     self.moveTowards ("domob", {"x": 5, "y": 7})
     self.generate (1)
-    correctPos, mv = self.getMovement ("domob")
+    oldPos, mv = self.getMovement ("domob")
     assert mv is not None
+    # Since the character is moving, the stop only takes effect after
+    # the next movement step.
     self.setWaypoints ("domob", [])
+    self.generate (1)
+    correctPos, mv = self.getMovement ("domob")
+    assert correctPos != oldPos
+    assert mv is None
     self.generate (1)
     pos, mv = self.getMovement ("domob")
     self.assertEqual ((pos, mv), (correctPos, None))
@@ -193,7 +199,9 @@ class MovementTest (PXTest):
     self.assertEqual (mv["chosenspeed"], 10000)
 
     # Sending another movement in-between without speed will revert it to
-    # the default one.
+    # the default one.  Since the character is moving, new waypoints only
+    # take effect after the next step.  A chosen speed sent with them
+    # applies to that step already, though.
     self.setWaypoints ("domob", [{"x": 100, "y": 0}], speed=1000)
     self.generate (10)
     pos, _ = self.getMovement ("domob")
@@ -201,7 +209,7 @@ class MovementTest (PXTest):
     self.setWaypoints ("domob", [{"x": 0, "y": 0}])
     self.generate (10)
     pos, mv = self.getMovement ("domob")
-    self.assertEqual (pos, {"x": 20, "y": 0})
+    self.assertEqual (pos, {"x": 24, "y": 0})
     assert "chosenspeed" not in mv
 
     # Letting the movement finish and then sending a new movement will also
@@ -209,7 +217,7 @@ class MovementTest (PXTest):
     self.setWaypoints ("domob", [{"x": 100, "y": 0}], speed=1000)
     self.generate (10)
     pos, _ = self.getMovement ("domob")
-    self.assertEqual (pos, {"x": 30, "y": 0})
+    self.assertEqual (pos, {"x": 32, "y": 0})
     self.generate (100)
     pos, _ = self.getMovement ("domob")
     self.assertEqual (pos, {"x": 100, "y": 0})

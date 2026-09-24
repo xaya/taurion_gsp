@@ -171,6 +171,34 @@ GetCharacterSpeed (const Character& c)
 }
 
 /**
+ * Replaces the movement of a character by its pending movement.
+ */
+void
+ApplyPendingMovement (Character& c)
+{
+  CHECK (c.GetProto ().has_pending_movement ());
+  CHECK (!c.IsInBuilding ());
+  const proto::Movement pending = c.GetProto ().pending_movement ();
+
+  VLOG (1) << "Applying pending movement for character " << c.GetId ();
+  StopCharacter (c);
+  c.MutableProto ().clear_pending_movement ();
+
+  if (pending.waypoints ().empty ())
+    return;
+
+  if (c.GetProto ().speed () == 0)
+    {
+      LOG (WARNING)
+          << "Ignoring pending waypoints for character " << c.GetId ()
+          << " with zero speed";
+      return;
+    }
+
+  *c.MutableProto ().mutable_movement () = pending;
+}
+
+/**
  * Tries to step the given character for one hex into the given direction.
  * Returns true if that has been done successfully, and false if it wasn't
  * possible (e.g. because there's an obstacle there or because the
@@ -357,6 +385,12 @@ ProcessAllMovement (Database& db, DynObstacles& dyn, const Context& ctx)
         };
 
       CharacterMovement (*c, ctx, edges);
+
+      /* Pending movement can only be set for a character that is moving,
+         so we can apply it here.  This is done also if the character
+         stopped during this step (e.g. because it reached its target).  */
+      if (c->GetProto ().has_pending_movement ())
+        ApplyPendingMovement (*c);
     }
 }
 

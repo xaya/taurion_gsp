@@ -59,15 +59,26 @@ class BasicProspectingTest (PXTest):
       "attacker 2": offsetCoord ({"x": -1, "y": 0}, self.offset, False),
     })
 
-    # Move character and start prospecting.  This should stop the movement.
-    # Further movements should be ignored.  Verify the prospection effects.
+    # Move character and try to start prospecting.  This is not possible
+    # while it is moving.  Then stop it and start prospecting.  Further
+    # movements should be ignored.  Verify the prospection effects.
     self.mainLogger.info ("Basic prospecting and movement...")
 
     self.getCharacters ()["target"].moveTowards (self.offset)
-    self.generate (2)
+    self.generate (1)
+    c = self.getCharacters ()["target"]
+    oldPos = c.getPosition ()
+    assert c.isMoving ()
+
+    # The stop only takes effect after the next movement step.
+    c.sendMove ({"prospect": {}})
+    c.sendMove ({"wp": None})
+    self.generate (1)
     c = self.getCharacters ()["target"]
     pos = c.getPosition ()
-    assert c.isMoving ()
+    assert pos != oldPos
+    assert not c.isMoving ()
+    self.assertEqual (c.getBusy (), None)
     region = self.getRegionAt (pos)
     assert "prospection" not in region.data
     assert region.getId () != self.getRegionAt (self.offset).getId ()

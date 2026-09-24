@@ -173,6 +173,9 @@ Character::Validate () const
   CHECK (!pb.mining ().active () || !pb.has_movement ())
       << "Character " << id << " is moving and mining at the same time";
 
+  CHECK (!pb.has_pending_movement () || pb.has_movement ())
+      << "Character " << id << " has pending movement but is not moving";
+
 #endif // ENABLE_SLOW_ASSERTS
 }
 
