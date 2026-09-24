@@ -20,6 +20,7 @@
 
 #include <glog/logging.h>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <limits>
@@ -135,6 +136,26 @@ HexCoord::IsPrincipalDirectionTo (const HexCoord& target,
   dir.x = diff.GetX () / steps;
   dir.y = diff.GetY () / steps;
   return true;
+}
+
+inline HexCoord
+HexCoord::ConnectingWaypoint (const HexCoord& target) const
+{
+  const IntT dx = target.GetX () - GetX ();
+  const IntT dy = target.GetY () - GetY ();
+
+  CHECK (dx != 0 && dy != 0 && dx + dy != 0)
+      << "Target " << target << " is in principal direction from " << *this;
+
+  /* If both differences have the same sign, we can simply go along the
+     x and y axes.  Otherwise, we first go along the (1, -1) direction
+     as far as possible, so that one of the remaining differences is zero.  */
+  if ((dx > 0) == (dy > 0))
+    return HexCoord (GetX () + dx, GetY ());
+
+  const IntT s = std::min (std::abs (dx), std::abs (dy));
+  const IntT t = (dx > 0 ? s : -s);
+  return HexCoord (GetX () + t, GetY () - t);
 }
 
 inline HexCoord::IntT

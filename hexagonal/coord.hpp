@@ -107,6 +107,15 @@ public:
                                HexCoord& dir, IntT& steps) const;
 
   /**
+   * For a target that is not in principal direction from this coordinate
+   * (and also not equal to it), returns a "corner" coordinate between them.
+   * The corner is in principal direction from here, the target is in
+   * principal direction from the corner, and the L1 distances along the
+   * two legs add up to the L1 distance to the target.
+   */
+  HexCoord ConnectingWaypoint (const HexCoord& target) const;
+
+  /**
    * Returns an "opaque" object that can be iterated over to yield the
    * neighbouring hex cells.
    */

@@ -299,14 +299,31 @@ template <typename Fcn>
       {
         const auto& pos = c.GetPosition ();
         HexCoord::IntT steps;
+
+        /* If the next waypoint is not in principal direction, we insert
+           a corner waypoint in front of it, and walk there first.  This can
+           happen in particular when the waypoints were computed by the client
+           from a position the character is no longer at when the move gets
+           confirmed (e.g. because the move was sent while it was moving).
+           Stopping the character in that case is most likely not what the
+           player wants.
+
+           After the corner has been inserted, the next waypoint is
+           in principal direction, so this does not loop.  */
         if (!pos.IsPrincipalDirectionTo (nextWp, dir, steps))
           {
-            LOG (WARNING)
+            const HexCoord corner = pos.ConnectingWaypoint (nextWp);
+            VLOG (1)
                 << "Character " << c.GetId ()
                 << " is at " << pos << " with next waypoint " << nextWp
-                << ", which is not in principal direction";
-            StopCharacter (c);
-            return;
+                << ", which is not in principal direction;"
+                << " going through " << corner << " first";
+            auto& wp
+                = *c.MutableProto ().mutable_movement ()->mutable_waypoints ();
+            *wp.Add () = CoordToProto (corner);
+            for (int i = wp.size () - 1; i > 0; --i)
+              wp.SwapElements (i, i - 1);
+            continue;
           }
       }
 

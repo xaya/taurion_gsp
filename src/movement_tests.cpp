@@ -492,11 +492,28 @@ TEST_F (MovementTests, DuplicateWaypoints)
 
 TEST_F (MovementTests, WaypointsNotInPrincipalDirection)
 {
+  /* The second waypoint is not in principal direction from the first,
+     so the character walks there through (11, 0).  */
   SetWaypoints ({HexCoord (10, 0), HexCoord (11, 1)});
   ExpectSteps (1, EdgeWeights (10),
     {
-      {100, HexCoord (10, 0)},
+      {120, HexCoord (11, 1)},
     });
+}
+
+TEST_F (MovementTests, FirstWaypointNotInPrincipalDirection)
+{
+  GetTest ()->SetPosition (HexCoord (10, 0));
+  SetWaypoints ({HexCoord (12, -1)});
+
+  StepCharacter (1, EdgeWeights (10), 10);
+  EXPECT_EQ (GetTest ()->GetPosition (), HexCoord (11, -1));
+  EXPECT_TRUE (IsMoving ());
+  EXPECT_FALSE (GetTest ()->GetVolatileMv ().has_blocked_turns ());
+
+  StepCharacter (1, EdgeWeights (10), 10);
+  EXPECT_EQ (GetTest ()->GetPosition (), HexCoord (12, -1));
+  EXPECT_FALSE (IsMoving ());
 }
 
 TEST_F (MovementTests, Obstacle)

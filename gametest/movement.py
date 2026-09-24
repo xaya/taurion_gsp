@@ -152,7 +152,7 @@ class MovementTest (PXTest):
     pos, mv = self.getMovement ("domob")
     self.assertEqual ((pos, mv), (correctPos, None))
 
-    self.mainLogger.info ("Testing path with invalid waypoints...")
+    self.mainLogger.info ("Testing path with non-principal waypoints...")
     wp = [
       {"x": 0, "y": 0},
       {"x": 200, "y": 0},
@@ -161,7 +161,7 @@ class MovementTest (PXTest):
     self.setWaypoints ("domob", wp)
     self.generate (300)
     pos, mv = self.getMovement ("domob")
-    self.assertEqual (pos, {"x": 200, "y": 0})
+    self.assertEqual (pos, {"x": 201, "y": 1})
     assert mv is None
 
     self.testChosenSpeed ()
