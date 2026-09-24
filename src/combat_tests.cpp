@@ -1768,6 +1768,99 @@ TEST_F (GainHpTests, MultipleAttackersCompleteDrain)
   EXPECT_EQ (c->GetHP ().armour (), 10);
 }
 
+TEST_F (GainHpTests, AttackMisses)
+{
+  auto c = characters.CreateNew ("red", Faction::RED);
+  const auto idAttacker = c->GetId ();
+  SetHp (*c, 10, 10, 100, 100);
+  c->MutableProto ().mutable_combat_data ()
+      ->mutable_hit_chance_modifier ()->set_percent (-100);
+  AddAttack (*c, 1, 10, 10).set_gain_hp (true);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idTarget = c->GetId ();
+  SetHp (*c, 50, 50, 100, 100);
+  NoAttacks (*c);
+  c.reset ();
+
+  EXPECT_THAT (FindTargetsAndDamage (), IsEmpty ());
+
+  c = characters.GetById (idTarget);
+  EXPECT_EQ (c->GetHP ().shield (), 50);
+  EXPECT_EQ (c->GetHP ().armour (), 50);
+
+  c = characters.GetById (idAttacker);
+  EXPECT_EQ (c->GetHP ().shield (), 10);
+  EXPECT_EQ (c->GetHP ().armour (), 10);
+}
+
+TEST_F (GainHpTests, NoShieldToDrain)
+{
+  auto c = characters.CreateNew ("red", Faction::RED);
+  const auto idAttacker = c->GetId ();
+  SetHp (*c, 10, 10, 100, 100);
+  auto& attack = AddAttack (*c, 1, 10, 10);
+  attack.set_gain_hp (true);
+  attack.mutable_damage ()->set_armour_percent (0);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idTarget = c->GetId ();
+  SetHp (*c, 0, 50, 100, 100);
+  NoAttacks (*c);
+  c.reset ();
+
+  EXPECT_THAT (FindTargetsAndDamage (), IsEmpty ());
+
+  c = characters.GetById (idTarget);
+  EXPECT_EQ (c->GetHP ().shield (), 0);
+  EXPECT_EQ (c->GetHP ().armour (), 50);
+
+  c = characters.GetById (idAttacker);
+  EXPECT_EQ (c->GetHP ().shield (), 10);
+  EXPECT_EQ (c->GetHP ().armour (), 10);
+}
+
+TEST_F (GainHpTests, MultipleAttackersOneMisses)
+{
+  auto c = characters.CreateNew ("red", Faction::RED);
+  const auto idGainer = c->GetId ();
+  SetHp (*c, 0, 10, 100, 100);
+  AddAttack (*c, 1, 10, 10).set_gain_hp (true);
+  c.reset ();
+
+  c = characters.CreateNew ("red", Faction::RED);
+  const auto idMissed = c->GetId ();
+  SetHp (*c, 0, 10, 100, 100);
+  c->MutableProto ().mutable_combat_data ()
+      ->mutable_hit_chance_modifier ()->set_percent (-100);
+  AddAttack (*c, 1, 10, 10).set_gain_hp (true);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idTarget = c->GetId ();
+  SetHp (*c, 10, 10, 100, 100);
+  NoAttacks (*c);
+  c.reset ();
+
+  EXPECT_THAT (FindTargetsAndDamage (), IsEmpty ());
+
+  c = characters.GetById (idTarget);
+  EXPECT_EQ (c->GetHP ().shield (), 0);
+  EXPECT_EQ (c->GetHP ().armour (), 10);
+
+  /* The target's shield is completely drained, but since only one of the
+     attackers actually drained anything, that one still gets the HP.  */
+  c = characters.GetById (idGainer);
+  EXPECT_EQ (c->GetHP ().shield (), 10);
+  EXPECT_EQ (c->GetHP ().armour (), 10);
+
+  c = characters.GetById (idMissed);
+  EXPECT_EQ (c->GetHP ().shield (), 0);
+  EXPECT_EQ (c->GetHP ().armour (), 10);
+}
+
 /* ************************************************************************** */
 
 using LowHpBoostTests = DealDamageTests;
