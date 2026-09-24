@@ -700,14 +700,27 @@ BaseMoveProcessor::ParseEnterBuilding (const Character& c,
 
 bool
 BaseMoveProcessor::ParseExitBuilding (const Character& c,
-                                      const Json::Value& upd)
+                                      const Json::Value& upd,
+                                      bool& hasPos, HexCoord& pos)
 {
   CHECK (upd.isObject ());
   const auto& val = upd["xb"];
   if (!val.isObject ())
     return false;
 
-  if (val.size () != 0)
+  /* The move is either {} for exiting to a random location, or
+     {"pos": COORD} to exit to the given location.  */
+  hasPos = false;
+  if (val.size () == 1 && val.isMember ("pos"))
+    {
+      if (!CoordFromJson (val["pos"], pos))
+        {
+          LOG (WARNING) << "Invalid exit-building move: " << upd;
+          return false;
+        }
+      hasPos = true;
+    }
+  else if (val.size () != 0)
     {
       LOG (WARNING) << "Invalid exit-building move: " << upd;
       return false;
@@ -1477,12 +1490,27 @@ MoveProcessor::MaybeEnterBuilding (Character& c, const Json::Value& upd)
 }
 
 void
-MoveProcessor::MaybeExitBuilding (Character& c, const Json::Value& upd)
+MoveProcessor::MaybeExitBuilding (Character& c, const Json::Value& upd,
+                                  const bool withPos)
 {
-  if (!ParseExitBuilding (c, upd))
+  /* This is called twice while processing a move, once for each form of
+     the exit command (see PerformCharacterUpdate).  Each call ignores the
+     other form, so that we do not try to process (and log a warning about)
+     the same move twice.  */
+  const auto& val = upd["xb"];
+  if (!val.isObject () || val.isMember ("pos") != withPos)
     return;
 
-  LeaveBuilding (buildings, c, rnd, dyn, ctx);
+  bool hasPos;
+  HexCoord pos;
+  if (!ParseExitBuilding (c, upd, hasPos, pos))
+    return;
+  CHECK_EQ (hasPos, withPos);
+
+  if (hasPos)
+    LeaveBuildingTo (buildings, c, pos, dyn, ctx);
+  else
+    LeaveBuilding (buildings, c, rnd, dyn, ctx);
 }
 
 void
@@ -1828,6 +1856,16 @@ MoveProcessor::PerformCharacterUpdate (Character& c, const Json::Value& upd)
   MaybeChangeVehicle (c, upd);
   MaybeSetFitments (c, upd);
 
+  /* Exiting to an explicitly chosen location is done next.  Unlike a random
+     exit (see below), the resulting position is known in advance, so it
+     makes sense to exit and e.g. set waypoints in a single move.  This has to
+     be done before mining and waypoints, which are only valid outside of
+     a building, but after vehicle and fitment changes, which are only
+     valid inside.  All other parts of the move (e.g. drop and pickup,
+     or entering a building) are then processed for the character
+     already outside.  */
+  MaybeExitBuilding (c, upd, true);
+
   /* Mining should be started before setting waypoints.  This ensures that if
      a move does both, we do not end up moving and mining at the same time
      (which is not allowed).  */
@@ -1867,9 +1905,12 @@ MoveProcessor::PerformCharacterUpdate (Character& c, const Json::Value& upd)
      Also, by processing "enter" before "exit", it means that sending both
      commands is equivalent to just enter (because we only set the flag and
      thus the exit move will be invalid).  This is more straight-forward
-     than allowing to exit & enter again in the same move.  */
+     than allowing to exit & enter again in the same move.
+
+     All of this applies only to exiting to a random location.  An exit to
+     an explicit position has already been processed above.  */
   MaybeEnterBuilding (c, upd);
-  MaybeExitBuilding (c, upd);
+  MaybeExitBuilding (c, upd, false);
 }
 
 void

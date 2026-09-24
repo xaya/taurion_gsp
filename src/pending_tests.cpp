@@ -344,6 +344,27 @@ TEST_F (PendingStateTests, ExitBuilding)
   )");
 }
 
+TEST_F (PendingStateTests, ExitBuildingWithPosition)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  ASSERT_EQ (c->GetId (), 1);
+  c->SetBuildingId (42);
+  state.AddExitBuilding (*c, HexCoord (5, -3));
+  c.reset ();
+
+  ExpectStateJson (R"(
+    {
+      "characters":
+        [
+          {
+            "id": 1,
+            "exitbuilding": {"building": 42, "pos": {"x": 5, "y": -3}}
+          }
+        ]
+    }
+  )");
+}
+
 TEST_F (PendingStateTests, DropPickup)
 {
   auto c1 = characters.CreateNew ("domob", Faction::RED);
@@ -1226,6 +1247,11 @@ TEST_F (PendingStateUpdaterTests, ExitBuilding)
   c->SetBuildingId (20);
   c.reset ();
 
+  c = characters.CreateNew ("domob", Faction::RED);
+  ASSERT_EQ (c->GetId (), 4);
+  c->SetBuildingId (20);
+  c.reset ();
+
   /* Some invalid updates that will just not show up (i.e. IDs 1 and 2 will
      have no pending updates later on).  */
   Process ("domob", R"({
@@ -1234,17 +1260,24 @@ TEST_F (PendingStateUpdaterTests, ExitBuilding)
   Process ("domob", R"({
     "c": {"id": 2, "xb": 20}
   })");
+  Process ("domob", R"({
+    "c": {"id": 2, "xb": {"pos": 42}}
+  })");
 
-  /* Perform valid update.  */
+  /* Perform valid updates.  */
   Process ("domob", R"({
     "c": {"id": 3, "xb": {}}
+  })");
+  Process ("domob", R"({
+    "c": {"id": 4, "xb": {"pos": {"x": 1, "y": 2}}}
   })");
 
   ExpectStateJson (R"(
     {
       "characters":
         [
-          {"id": 3, "exitbuilding": {"building": 20}}
+          {"id": 3, "exitbuilding": {"building": 20, "pos": null}},
+          {"id": 4, "exitbuilding": {"building": 20, "pos": {"x": 1, "y": 2}}}
         ]
     }
   )");
