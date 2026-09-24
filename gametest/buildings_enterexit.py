@@ -59,6 +59,19 @@ class BuildingsEnterExitTest (PXTest):
     self.generate (1)
     self.assertEqual (self.getCharacters ()["domob"].isInBuilding (), False)
 
+    self.mainLogger.info ("Exiting building to a chosen position...")
+    self.getCharacters ()["domob"].sendMove ({"eb": building})
+    self.generate (1)
+    self.assertEqual (self.getCharacters ()["domob"].isInBuilding (), True)
+    self.getCharacters ()["domob"].sendMove ({
+      "xb": {"pos": {"x": 3, "y": 0}},
+      "wp": self.rpc.game.encodewaypoints (wp=[{"x": 6, "y": 0}]),
+    })
+    self.generate (5)
+    c = self.getCharacters ()["domob"]
+    self.assertEqual (c.isInBuilding (), False)
+    self.assertEqual (c.getPosition (), {"x": 6, "y": 0})
+
     self.mainLogger.info ("Attacking and being inside buildings...")
     self.initAccount ("andy", "g")
     self.createCharacters ("andy")

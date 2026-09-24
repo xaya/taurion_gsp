@@ -251,4 +251,53 @@ LeaveBuilding (BuildingsTable& buildings, Character& c,
   dyn.AddVehicle (pos);
 }
 
+bool
+LeaveBuildingTo (BuildingsTable& buildings, Character& c,
+                 const HexCoord& pos,
+                 DynObstacles& dyn, const Context& ctx)
+{
+  CHECK (c.IsInBuilding ());
+  auto b = buildings.GetById (c.GetBuildingId ());
+  CHECK (b != nullptr);
+
+  /* The position is checked only now and not already when parsing the move,
+     since whether or not it is free depends on other moves and vehicles.
+     If it can't be used, we do not fall back to a random location.  The
+     player may have planned for the chosen location (e.g. sent waypoints
+     starting from there), so it is better to just stay inside.  */
+  const auto radius = ctx.RoConfig ().Building (b->GetType ()).enter_radius ();
+  const unsigned dist = HexCoord::DistanceL1 (pos, b->GetCentre ());
+  if (dist > radius
+        || !ctx.Map ().IsOnMap (pos) || !ctx.Map ().IsPassable (pos)
+        || !dyn.IsFree (pos))
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId ()
+          << " can't leave building " << b->GetId ()
+          << " to location " << pos;
+      return false;
+    }
+
+  /* Starter zones of other factions are obstacles for movement, so we
+     also do not allow characters to exit into them.  */
+  const Faction starter = ctx.Map ().SafeZones ().StarterFor (pos);
+  if (starter != Faction::INVALID && starter != c.GetFaction ())
+    {
+      LOG (WARNING)
+          << "Character " << c.GetId ()
+          << " can't leave building " << b->GetId ()
+          << " to location " << pos << " in another faction's starter zone";
+      return false;
+    }
+
+  LOG (INFO)
+      << "Character " << c.GetId ()
+      << " is leaving building " << b->GetId ()
+      << " to chosen location " << pos;
+  c.SetPosition (pos);
+  dyn.AddVehicle (pos);
+
+  return true;
+}
+
 } // namespace pxd

@@ -2240,6 +2240,129 @@ TEST_F (ExitBuildingMoveTests, InventoryBeforeExit)
   EXPECT_TRUE (loot.GetByCoord (pos)->GetInventory ().IsEmpty ());
 }
 
+TEST_F (ExitBuildingMoveTests, InvalidPosition)
+{
+  GetTest ()->SetBuildingId (20);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"id": 1, "xb": {"pos": 42}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"id": 1, "xb": {"pos": {"x": 1}}}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"id": 1, "xb": {"pos": {"x": 1, "y": 2}, "a": 10}}}
+    }
+  ])");
+
+  ASSERT_TRUE (GetTest ()->IsInBuilding ());
+  EXPECT_EQ (GetTest ()->GetBuildingId (), 20);
+}
+
+TEST_F (ExitBuildingMoveTests, ChosenPosition)
+{
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  b->SetCentre (HexCoord (10, 42));
+  GetTest ()->SetBuildingId (b->GetId ());
+  b.reset ();
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"id": 1, "xb": {"pos": {"x": 12, "y": 42}}}}
+    }
+  ])");
+
+  ASSERT_FALSE (GetTest ()->IsInBuilding ());
+  EXPECT_EQ (GetTest ()->GetPosition (), HexCoord (12, 42));
+}
+
+TEST_F (ExitBuildingMoveTests, ChosenPositionOutsideRadius)
+{
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  b->SetCentre (HexCoord (10, 42));
+  GetTest ()->SetBuildingId (b->GetId ());
+  b.reset ();
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"id": 1, "xb": {"pos": {"x": 100, "y": 42}}}}
+    }
+  ])");
+
+  EXPECT_TRUE (GetTest ()->IsInBuilding ());
+}
+
+TEST_F (ExitBuildingMoveTests, WaypointsWithChosenPosition)
+{
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  const auto buildingId = b->GetId ();
+  b->SetCentre (HexCoord (10, 42));
+  b.reset ();
+
+  GetTest ()->SetBuildingId (buildingId);
+  GetTest ()->MutableProto ().set_speed (1'000);
+
+  /* With a random exit, the waypoints are processed while the character
+     is still inside and thus invalid.  With a chosen position, the exit is
+     done before the waypoints, so they are set.  */
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"id": 1, "xb": {},
+                     "wp": )" + WpStr ({HexCoord (14, 42)}) + R"(}}
+    }
+  ])");
+  ASSERT_FALSE (GetTest ()->IsInBuilding ());
+  EXPECT_FALSE (GetTest ()->GetProto ().has_movement ());
+
+  GetTest ()->SetBuildingId (buildingId);
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"id": 1, "xb": {"pos": {"x": 12, "y": 42}},
+                     "wp": )" + WpStr ({HexCoord (14, 42)}) + R"(}}
+    }
+  ])");
+  ASSERT_FALSE (GetTest ()->IsInBuilding ());
+  EXPECT_EQ (GetTest ()->GetPosition (), HexCoord (12, 42));
+  ASSERT_TRUE (GetTest ()->GetProto ().has_movement ());
+  EXPECT_EQ (GetTest ()->GetProto ().movement ().waypoints_size (), 1);
+}
+
+TEST_F (ExitBuildingMoveTests, InventoryAfterChosenPosition)
+{
+  db.SetNextId (100);
+  auto b = buildings.CreateNew ("checkmark", "domob", Faction::RED);
+  ASSERT_EQ (b->GetId (), 100);
+  b->SetCentre (HexCoord (10, 42));
+  GetTest ()->SetBuildingId (100);
+  b.reset ();
+
+  GetTest ()->GetInventory ().SetFungibleCount ("foo", 1);
+
+  /* Exiting to a chosen position is done before the drop, so that the
+     items end up on the ground (in contrast to InventoryBeforeExit).  */
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"id": 1, "xb": {"pos": {"x": 12, "y": 42}},
+                     "drop": {"f": {"foo": 1}}}}
+    }
+  ])");
+
+  EXPECT_TRUE (inv.Get (100, "domob")->GetInventory ().IsEmpty ());
+  const HexCoord pos(12, 42);
+  EXPECT_EQ (GetTest ()->GetPosition (), pos);
+  EXPECT_EQ (loot.GetByCoord (pos)->GetInventory ().GetFungibleCount ("foo"),
+             1);
+}
+
 /* ************************************************************************** */
 
 class MobileRefiningMoveTests : public CharacterUpdateTests

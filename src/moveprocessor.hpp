@@ -214,8 +214,13 @@ protected:
 
   /**
    * Parses and verifies a potential update to exit the current building.
+   * If the move requests an explicit position to exit to, then hasPos
+   * is set to true and pos to the requested position.  Whether or not
+   * that position can actually be used is only checked when processing
+   * the exit.
    */
-  static bool ParseExitBuilding (const Character& c, const Json::Value& upd);
+  static bool ParseExitBuilding (const Character& c, const Json::Value& upd,
+                                 bool& hasPos, HexCoord& pos);
 
   /**
    * Parses and validates the content of a drop or pick-up character command.
@@ -414,9 +419,11 @@ private:
   void MaybeEnterBuilding (Character& c, const Json::Value& upd);
 
   /**
-   * Processes a command to exit a building the character is in.
+   * Processes a command to exit a building the character is in.  If withPos
+   * is true, then only exits to an explicit position are processed, and
+   * otherwise only exits to a random location.
    */
-  void MaybeExitBuilding (Character& c, const Json::Value& upd);
+  void MaybeExitBuilding (Character& c, const Json::Value& upd, bool withPos);
 
   /**
    * Processes a command to start prospecting at the character's current

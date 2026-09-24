@@ -99,6 +99,17 @@ void ProcessEnterBuildings (Database& db, DynObstacles& dyn,
 void LeaveBuilding (BuildingsTable& buildings, Character& c,
                     xaya::Random& rnd, DynObstacles& dyn, const Context& ctx);
 
+/**
+ * Makes the given character leave the building it is currently in, and
+ * places it at the given position.  The position must be within the
+ * building's enter radius, free for a vehicle and not in the starter
+ * zone of another faction.  If it is not, then the character remains
+ * inside the building and false is returned.
+ */
+bool LeaveBuildingTo (BuildingsTable& buildings, Character& c,
+                      const HexCoord& pos,
+                      DynObstacles& dyn, const Context& ctx);
+
 } // namespace pxd
 
 #endif // PXD_BUILDINGS_HPP

@@ -498,6 +498,16 @@ protected:
     return c->GetPosition ();
   }
 
+  /**
+   * Calls LeaveBuildingTo with the given position and returns the result.
+   */
+  bool
+  LeaveTo (DynObstacles& dyn, const HexCoord& pos)
+  {
+    auto c = characters.GetById (10);
+    return LeaveBuildingTo (tbl, *c, pos, dyn, ctx);
+  }
+
 };
 
 TEST_F (LeaveBuildingTests, Basic)
@@ -583,6 +593,65 @@ TEST_F (LeaveBuildingTests, PossibleLocations)
       LOG (INFO) << "Count at " << entry.first << ": " << entry.second;
       EXPECT_GE (entry.second, 3);
     }
+}
+
+TEST_F (LeaveBuildingTests, ChosenPosition)
+{
+  const HexCoord pos = centre + HexCoord (2, 0);
+  DynObstacles dyn(db, ctx);
+  ASSERT_TRUE (ctx.Map ().IsPassable (pos));
+  ASSERT_TRUE (dyn.IsFree (pos));
+
+  ASSERT_TRUE (LeaveTo (dyn, pos));
+  auto c = characters.GetById (10);
+  EXPECT_FALSE (c->IsInBuilding ());
+  EXPECT_EQ (c->GetPosition (), pos);
+  EXPECT_TRUE (dyn.HasVehicle (pos));
+}
+
+TEST_F (LeaveBuildingTests, ChosenPositionOutsideRadius)
+{
+  DynObstacles dyn(db, ctx);
+  EXPECT_FALSE (LeaveTo (dyn, centre + HexCoord (radius + 1, 0)));
+  EXPECT_TRUE (characters.GetById (10)->IsInBuilding ());
+}
+
+TEST_F (LeaveBuildingTests, ChosenPositionOccupied)
+{
+  const HexCoord pos = centre + HexCoord (2, 0);
+  characters.CreateNew ("domob", Faction::GREEN)->SetPosition (pos);
+
+  DynObstacles dyn(db, ctx);
+  EXPECT_FALSE (LeaveTo (dyn, pos));
+  EXPECT_TRUE (characters.GetById (10)->IsInBuilding ());
+}
+
+TEST_F (LeaveBuildingTests, ChosenPositionInStarterZone)
+{
+  const HexCoord starter(-2'042, 100);
+  const HexCoord pos = starter + HexCoord (2, 0);
+  ASSERT_EQ (ctx.Map ().SafeZones ().StarterFor (pos), Faction::RED);
+  ASSERT_TRUE (ctx.Map ().IsPassable (pos));
+
+  auto b = tbl.CreateNew ("checkmark", "", Faction::ANCIENT);
+  const auto buildingId = b->GetId ();
+  b->SetCentre (starter);
+  b.reset ();
+
+  characters.GetById (10)->SetBuildingId (buildingId);
+  auto c = characters.CreateNew ("andy", Faction::GREEN);
+  const auto idGreen = c->GetId ();
+  c->SetBuildingId (buildingId);
+  c.reset ();
+
+  DynObstacles dyn(db, ctx);
+  c = characters.GetById (idGreen);
+  EXPECT_FALSE (LeaveBuildingTo (tbl, *c, pos, dyn, ctx));
+  EXPECT_TRUE (c->IsInBuilding ());
+  c.reset ();
+
+  EXPECT_TRUE (LeaveTo (dyn, pos));
+  EXPECT_EQ (characters.GetById (10)->GetPosition (), pos);
 }
 
 /* ************************************************************************** */
