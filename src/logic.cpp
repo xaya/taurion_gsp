@@ -271,18 +271,36 @@ PXLogic::InstanceStateChanged (const Json::Value& state)
 Json::Value
 PXLogic::GetCustomStateData (xaya::Game& game, const JsonStateFromRawDb& cb)
 {
-  const auto readDb = [this, &cb] (const xaya::SQLiteDatabase& db,
-                                   const xaya::uint256& hash,
-                                   const unsigned height)
+  /* The turn this state belongs to, read from the same database state as
+     the data.  Upstream reports it through GetCustomInstanceState under
+     "custom" in every state envelope; that hook is not in libxayagame 1.0.2,
+     so it is attached here, where every state RPC passes.  The read-scaling
+     fanout (taurionui) takes it from getcharacters.  */
+  Json::Value superblock;
+  const auto readDb = [this, &cb, &superblock] (
+      const xaya::SQLiteDatabase& db, const xaya::uint256& hash,
+      const unsigned height)
     {
       SQLiteGameDatabase dbObj(const_cast<xaya::SQLiteDatabase&> (db),
                                *this);
+      const Context ctx(GetChain (), GetBaseMap (),
+                        Context::NO_HEIGHT, Context::NO_HEIGHT,
+                        Context::NO_TIMESTAMP);
+      GameStateJson gsj(dbObj, ctx);
+      superblock = gsj.SuperBlock ();
       return cb (dbObj, hash, height);
+    };
+  const auto withCustom = [&superblock] (Json::Value res)
+    {
+      if (res.isObject () && !superblock.isNull ())
+        res["custom"]["superblock"] = superblock;
+      return res;
     };
 
   bool forceLock = false;
   while (true)
     {
+      superblock = Json::Value ();
       bool useSnapshot = false;
       Json::Value res = game.GetCustomStateData ("data",
           [this, &readDb, &useSnapshot, forceLock] (
@@ -302,7 +320,7 @@ PXLogic::GetCustomStateData (xaya::Game& game, const JsonStateFromRawDb& cb)
               return readDb (GetDatabaseForTesting (), hash, height);
             });
       if (!useSnapshot)
-        return res;
+        return withCustom (res);
 
       bool unlockedMainDb = false;
       res = SQLiteGame::GetCustomStateData (game, "data",
@@ -318,7 +336,7 @@ PXLogic::GetCustomStateData (xaya::Game& game, const JsonStateFromRawDb& cb)
               return readDb (db, hash, height);
             });
       if (!unlockedMainDb)
-        return res;
+        return withCustom (res);
 
       LOG (WARNING)
           << "No state snapshot for a read while up-to-date,"
