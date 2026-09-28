@@ -242,6 +242,26 @@ PXLogic::InstanceStateChanged (const Json::Value& state)
   upToDate = (state["state"].asString () == "up-to-date");
 }
 
+Json::Value
+PXLogic::ReadSuperBlock (Database& db, const xaya::Chain chain,
+                         const BaseMap& map)
+{
+  const Context ctx(chain, map,
+                    Context::NO_HEIGHT, Context::NO_HEIGHT,
+                    Context::NO_TIMESTAMP);
+  GameStateJson gsj(db, ctx);
+  return gsj.SuperBlock ();
+}
+
+Json::Value
+PXLogic::AttachSuperBlock (Json::Value res,
+                           const Json::Value& superblock)
+{
+  if (res.isObject () && !superblock.isNull ())
+    res["custom"]["superblock"] = superblock;
+  return res;
+}
+
 /* Every data RPC goes through here, and it must never read the main database
    while blocks are being written to it.
 
@@ -283,18 +303,8 @@ PXLogic::GetCustomStateData (xaya::Game& game, const JsonStateFromRawDb& cb)
     {
       SQLiteGameDatabase dbObj(const_cast<xaya::SQLiteDatabase&> (db),
                                *this);
-      const Context ctx(GetChain (), GetBaseMap (),
-                        Context::NO_HEIGHT, Context::NO_HEIGHT,
-                        Context::NO_TIMESTAMP);
-      GameStateJson gsj(dbObj, ctx);
-      superblock = gsj.SuperBlock ();
+      superblock = ReadSuperBlock (dbObj, GetChain (), GetBaseMap ());
       return cb (dbObj, hash, height);
-    };
-  const auto withCustom = [&superblock] (Json::Value res)
-    {
-      if (res.isObject () && !superblock.isNull ())
-        res["custom"]["superblock"] = superblock;
-      return res;
     };
 
   bool forceLock = false;
@@ -320,7 +330,7 @@ PXLogic::GetCustomStateData (xaya::Game& game, const JsonStateFromRawDb& cb)
               return readDb (GetDatabaseForTesting (), hash, height);
             });
       if (!useSnapshot)
-        return withCustom (res);
+        return AttachSuperBlock (res, superblock);
 
       bool unlockedMainDb = false;
       res = SQLiteGame::GetCustomStateData (game, "data",
@@ -336,7 +346,7 @@ PXLogic::GetCustomStateData (xaya::Game& game, const JsonStateFromRawDb& cb)
               return readDb (db, hash, height);
             });
       if (!unlockedMainDb)
-        return withCustom (res);
+        return AttachSuperBlock (res, superblock);
 
       LOG (WARNING)
           << "No state snapshot for a read while up-to-date,"

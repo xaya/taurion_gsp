@@ -1262,6 +1262,20 @@ protected:
     PXLogic::UpdateState (db, rnd, ctx.Chain (), ctx.Map (), blockData);
   }
 
+  /** Reads the current superblock through the PXLogic helper.  */
+  Json::Value
+  ReadSuperBlock ()
+  {
+    return PXLogic::ReadSuperBlock (db, ctx.Chain (), ctx.Map ());
+  }
+
+  /** Attaches a superblock to an envelope through the PXLogic helper.  */
+  Json::Value
+  AttachSuperBlock (Json::Value res, const Json::Value& superblock)
+  {
+    return PXLogic::AttachSuperBlock (res, superblock);
+  }
+
 };
 
 namespace
@@ -1278,6 +1292,48 @@ TEST_F (SuperblockTests, FirstBlockIsSuperblock)
   EXPECT_EQ (sbHeight, 1);
   EXPECT_EQ (sbTime, start);
   EXPECT_EQ (GetStepsMoved (), 1);
+}
+
+TEST_F (SuperblockTests, ReadSuperBlockBeforeAnyBlock)
+{
+  EXPECT_EQ (ReadSuperBlock (), ParseJson (R"({"exists": false})"));
+}
+
+TEST_F (SuperblockTests, ReadSuperBlockAfterUpdates)
+{
+  UpdateForBlock (42, start, ParseJson ("[]"));
+  UpdateForBlock (43, start + step, ParseJson ("[]"));
+
+  ASSERT_TRUE (db.LastSuperBlock (sbHeight, sbTime));
+  EXPECT_EQ (sbHeight, 2);
+  EXPECT_EQ (sbTime, start + step);
+  const auto actual = ReadSuperBlock ();
+  Json::Value expected(Json::objectValue);
+  expected["exists"] = true;
+  expected["height"] = IntToJson (sbHeight);
+  expected["timestamp"] = IntToJson (sbTime);
+  EXPECT_EQ (actual, expected);
+}
+
+TEST_F (SuperblockTests, AttachSuperBlockToEnvelope)
+{
+  UpdateForBlock (42, start, ParseJson ("[]"));
+  const auto superblock = ReadSuperBlock ();
+  const auto data = ParseJson (R"({"answer": 42})");
+
+  Json::Value envelope(Json::objectValue);
+  envelope["data"] = data;
+  envelope["height"] = 5;
+  const auto actual = AttachSuperBlock (envelope, superblock);
+
+  EXPECT_EQ (actual["custom"]["superblock"], superblock);
+  EXPECT_EQ (actual["data"], data);
+  EXPECT_EQ (actual["height"], envelope["height"]);
+
+  EXPECT_EQ (AttachSuperBlock (envelope, Json::Value ()), envelope);
+
+  const auto nonObject = ParseJson (R"(["unchanged"])");
+  EXPECT_EQ (AttachSuperBlock (nonObject, superblock), nonObject);
 }
 
 TEST_F (SuperblockTests, NextSuperblocksByTime)

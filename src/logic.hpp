@@ -115,6 +115,20 @@ private:
   static void ValidateStateSlow (Database& db, const Context& ctx);
 
   /**
+   * Reads the current superblock as JSON from the given database.  The chain
+   * and map are used to construct the GameStateJson context.
+   */
+  static Json::Value ReadSuperBlock (Database& db, xaya::Chain chain,
+                                     const BaseMap& map);
+
+  /**
+   * Attaches the given superblock value to a state-data envelope.  If the
+   * envelope is not an object or the value is null, it is returned unchanged.
+   */
+  static Json::Value AttachSuperBlock (Json::Value res,
+                                       const Json::Value& superblock);
+
+  /**
    * Whether the game instance is "up-to-date", as last reported through
    * InstanceStateChanged.  libxayagame only calls that with the Game lock
    * held, so reading this while holding the same lock gives the state that
