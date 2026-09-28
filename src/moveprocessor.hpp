@@ -405,13 +405,13 @@ private:
    * Sets the character's waypoints if a valid command for starting a move
    * is there.
    */
-  void MaybeSetCharacterWaypoints (Character& c, const Json::Value& upd);
+  static void MaybeSetCharacterWaypoints (Character& c, const Json::Value& upd);
 
   /**
    * Extends the character's waypoints with an wpx move.
    */
-  void MaybeExtendCharacterWaypoints (Character& c,
-                                      const Json::Value& upd);
+  static void MaybeExtendCharacterWaypoints (Character& c,
+                                             const Json::Value& upd);
 
   /**
    * Processes a command to set (or clear) a character's "enter building".
