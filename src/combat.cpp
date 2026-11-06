@@ -19,6 +19,7 @@
 #include "combat.hpp"
 
 #include "modifier.hpp"
+#include "phasetimer.hpp"
 
 #include "database/account.hpp"
 #include "database/building.hpp"
@@ -1387,15 +1388,28 @@ void
 AllHpUpdates (Database& db, DynObstacles& dyn, FameUpdater& fame,
               xaya::Random& rnd, const Context& ctx)
 {
-  const auto dead = DealCombatDamage (db, fame.GetDamageLists (), rnd, ctx);
+  std::set<TargetKey> dead;
+  {
+    ScopedPhase phase("damage");
+    dead = DealCombatDamage (db, fame.GetDamageLists (), rnd, ctx);
+  }
 
-  for (const auto& id : dead)
-    fame.UpdateForKill (id.ToProto ());
+  {
+    ScopedPhase phase("fame");
+    for (const auto& id : dead)
+      fame.UpdateForKill (id.ToProto ());
+  }
 
-  GroundLootTable loot(db);
-  ProcessKills (db, dyn, fame.GetDamageLists (), loot, dead, rnd, ctx);
+  {
+    ScopedPhase phase("kills");
+    GroundLootTable loot(db);
+    ProcessKills (db, dyn, fame.GetDamageLists (), loot, dead, rnd, ctx);
+  }
 
-  RegenerateHP (db);
+  {
+    ScopedPhase phase("regen");
+    RegenerateHP (db);
+  }
 }
 
 } // namespace pxd
