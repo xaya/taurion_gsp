@@ -63,6 +63,33 @@ private:
   std::map<std::string, int> deltas;
 
   /**
+   * Owners of characters and handles of accounts looked up for the fame
+   * update.  While a KillBatch is active, they are kept, so that each is
+   * read and written only once for many kills.  Otherwise they are dropped
+   * (and the accounts written) after each kill.
+   */
+  std::map<Database::IdT, std::string> ownerOf;
+  std::map<std::string, AccountsTable::Handle> accountHandles;
+
+  /** Whether a KillBatch is active.  */
+  bool inBatch = false;
+
+  /**
+   * Returns the owner of the given character.
+   */
+  const std::string& GetOwner (Database::IdT id);
+
+  /**
+   * Returns the account with the given name.
+   */
+  Account& GetAccount (const std::string& name);
+
+  /**
+   * Drops the looked-up owners and accounts, writing back the accounts.
+   */
+  void ClearLookups ();
+
+  /**
    * Computes the "fame level" of a player.  This is used to determine who
    * gets fame (namely those max one level above/below).  This is an int so
    * that we can safely compute differences.
@@ -108,6 +135,32 @@ public:
    * Updates fame when the given fighter target has been killed.
    */
   void UpdateForKill (const proto::TargetId& target);
+
+  class KillBatch;
+
+};
+
+/**
+ * While an instance exists, the accounts and character owners that a
+ * FameUpdater looks up for kills are kept, and the accounts are only written
+ * back when it is destroyed.  Many kills (e.g. in a battle) thus read each of
+ * them only once.  Nothing else may access the accounts in the meantime.
+ */
+class FameUpdater::KillBatch
+{
+
+private:
+
+  FameUpdater& fame;
+
+public:
+
+  explicit KillBatch (FameUpdater& f);
+  ~KillBatch ();
+
+  KillBatch () = delete;
+  KillBatch (const KillBatch&) = delete;
+  void operator= (const KillBatch&) = delete;
 
 };
 
