@@ -370,7 +370,11 @@ TEST_F (TargetFinderTests, MatchesDatabaseQuery)
   for (unsigned i = 0; i < 1'000; ++i)
     {
       const HexCoord centre = coord ();
-      const auto range = std::uniform_int_distribution<int> (0, 20) (rnd);
+      /* Small and large ranges, so that queries are answered both by looking
+         at the tiles in range and at the candidates in overlapping cells.  */
+      const int maxRange = (i % 5 == 0 ? 40 : 6);
+      const auto range
+          = std::uniform_int_distribution<int> (0, maxRange) (rnd);
       const Faction f = faction ();
       const bool enemies = (i % 3 != 1);
       const bool friendlies = (i % 3 != 0);
@@ -403,6 +407,7 @@ TEST_F (TargetFinderTests, MatchesDatabaseQuery)
         }
 
       /* The closest ones, excluding one of them (if any).  */
+      const auto& query = (filter ? filtered : finder);
       proto::TargetId exclude;
       if (!expected.empty ())
         exclude = expected[i % expected.size ()].second;
@@ -423,7 +428,7 @@ TEST_F (TargetFinderTests, MatchesDatabaseQuery)
             closest.push_back (e.second);
         }
 
-      const auto actual = (filter ? filtered : finder).FindClosest (
+      const auto actual = query.FindClosest (
           centre, range, f, enemies, friendlies, exclude);
       ASSERT_EQ (actual.size (), closest.size ());
       for (unsigned j = 0; j < actual.size (); ++j)

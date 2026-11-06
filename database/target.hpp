@@ -25,6 +25,7 @@
 #include "hexagonal/coord.hpp"
 #include "proto/combat.pb.h"
 
+#include <array>
 #include <cstdint>
 #include <functional>
 #include <unordered_map>
@@ -58,11 +59,29 @@ private:
     Database::IdT id;
   };
 
+  /** Number of Faction values, for the counts per faction.  */
+  static constexpr unsigned NUM_FACTIONS = 5;
+
   /** Side length of the square cells that targets are bucketed into.  */
   static constexpr int CELL_SIZE = 8;
 
-  /** All targets, bucketed into cells keyed by CellKey.  */
-  std::unordered_map<uint32_t, std::vector<Target>> cells;
+  /** The targets in one cell.  */
+  struct Cell
+  {
+    std::vector<Target> targets;
+
+    /** Number of the targets per faction.  */
+    std::array<unsigned, NUM_FACTIONS> counts = {};
+  };
+
+  /**
+   * All targets that queries consider, bucketed into cells keyed by CoordKey
+   * of the cell indices.
+   */
+  std::unordered_map<uint32_t, Cell> cells;
+
+  /** The same targets, keyed by CoordKey of their position.  */
+  std::unordered_map<uint32_t, std::vector<Target>> tiles;
 
   /** Positions of all targets, keyed by PositionKey.  */
   std::unordered_map<uint64_t, HexCoord> positions;
@@ -86,10 +105,10 @@ private:
   }
 
   /**
-   * Returns the key in cells for the cell with given indices.
+   * Returns the key in cells or tiles for the given x and y.
    */
   static uint32_t
-  CellKey (const int x, const int y)
+  CoordKey (const int x, const int y)
   {
     return (static_cast<uint32_t> (static_cast<uint16_t> (x)) << 16)
               | static_cast<uint16_t> (y);
@@ -97,12 +116,14 @@ private:
 
   /**
    * Calls fcn with each target and its distance that matches a query as
-   * done by ProcessL1Targets, in no particular order.
+   * done by ProcessL1Targets.  The order is unspecified, except that if
+   * targets are processed in order of distance, then done is called after
+   * each distance and the search stops if it returns true.
    */
-  template <typename Fcn>
+  template <typename Fcn, typename Done>
     void ForEachInRange (const HexCoord& centre, HexCoord::IntT l1range,
                          Faction faction, bool enemies, bool friendlies,
-                         const Fcn& fcn) const;
+                         const Fcn& fcn, const Done& done) const;
 
 public:
 

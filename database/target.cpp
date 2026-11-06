@@ -18,6 +18,8 @@
 
 #include "target.hpp"
 
+#include "hexagonal/ring.hpp"
+
 #include <algorithm>
 #include <tuple>
 
@@ -26,6 +28,22 @@ namespace pxd
 
 namespace
 {
+
+/**
+ * Returns true if a target of the given faction matches the faction
+ * conditions of a query.
+ */
+inline bool
+MatchesFaction (const Faction target, const Faction faction,
+                const bool enemies, const bool friendlies)
+{
+  /* Faction conditions for an invalid faction match nothing (as a comparison
+     with NULL in SQL).  */
+  if (faction == Faction::INVALID)
+    return enemies && friendlies;
+
+  return target == faction ? friendlies : enemies;
+}
 
 struct TargetResult : public ResultWithFaction
 {
@@ -72,30 +90,34 @@ TargetFinder::TargetFinder (Database& db, const PositionFilter& ignore)
       if (ignore != nullptr && ignore (t.pos))
         continue;
 
-      const auto key = CellKey (CellIndex (t.pos.GetX ()),
-                                CellIndex (t.pos.GetY ()));
-      cells[key].push_back (t);
+      const auto f = static_cast<unsigned> (t.faction);
+      CHECK_LT (f, NUM_FACTIONS);
+      auto& cell = cells[CoordKey (CellIndex (t.pos.GetX ()),
+                                   CellIndex (t.pos.GetY ()))];
+      cell.targets.push_back (t);
+      ++cell.counts[f];
+      tiles[CoordKey (t.pos.GetX (), t.pos.GetY ())].push_back (t);
     }
 }
 
-template <typename Fcn>
+template <typename Fcn, typename Done>
   void
   TargetFinder::ForEachInRange (const HexCoord& centre,
                                 const HexCoord::IntT l1range,
                                 const Faction faction,
                                 const bool enemies, const bool friendlies,
-                                const Fcn& fcn) const
+                                const Fcn& fcn, const Done& done) const
 {
   CHECK (enemies || friendlies)
       << "Neither enemy nor friendly targets requested?";
-
-  /* Faction conditions for an invalid faction match nothing (as a comparison
-     with NULL in SQL).  */
-  if (faction == Faction::INVALID && !(enemies && friendlies))
+  if (l1range < 0)
     return;
 
-  /* Look through all cells overlapping the L-infinity range, which
-     certainly includes the L1 range.  */
+  /* Find the cells overlapping the L-infinity range (which certainly
+     includes the L1 range) that have targets of matching factions, and
+     count those targets.  */
+  std::vector<const Cell*> overlapping;
+  size_t candidates = 0;
   const int minX = CellIndex (centre.GetX () - l1range);
   const int maxX = CellIndex (centre.GetX () + l1range);
   const int minY = CellIndex (centre.GetY () - l1range);
@@ -103,20 +125,56 @@ template <typename Fcn>
   for (int x = minX; x <= maxX; ++x)
     for (int y = minY; y <= maxY; ++y)
       {
-        const auto mit = cells.find (CellKey (x, y));
+        const auto mit = cells.find (CoordKey (x, y));
         if (mit == cells.end ())
           continue;
 
-        for (const auto& t : mit->second)
+        size_t matching = 0;
+        for (unsigned f = 0; f < NUM_FACTIONS; ++f)
+          if (MatchesFaction (static_cast<Faction> (f), faction,
+                              enemies, friendlies))
+            matching += mit->second.counts[f];
+
+        if (matching > 0)
           {
-            if (!friendlies && t.faction == faction)
-              continue;
-            if (!enemies && t.faction != faction)
-              continue;
-            const auto dist = HexCoord::DistanceL1 (centre, t.pos);
-            if (dist <= l1range)
-              fcn (t, dist);
+            overlapping.push_back (&mit->second);
+            candidates += matching;
           }
+      }
+
+  /* Then either look at all those candidates, or at the tiles in range
+     ring by ring (in order of distance), whichever means looking at less.  */
+  const size_t tilesInRange = 1 + 3 * static_cast<size_t> (l1range)
+                                    * (l1range + 1);
+  if (tilesInRange < candidates)
+    {
+      for (HexCoord::IntT r = 0; r <= l1range; ++r)
+        {
+          for (const auto& c : L1Ring (centre, r))
+            {
+              const auto mit = tiles.find (CoordKey (c.GetX (), c.GetY ()));
+              if (mit == tiles.end ())
+                continue;
+
+              for (const auto& t : mit->second)
+                if (MatchesFaction (t.faction, faction, enemies, friendlies))
+                  fcn (t, r);
+            }
+
+          if (done ())
+            return;
+        }
+      return;
+    }
+
+  for (const auto* cell : overlapping)
+    for (const auto& t : cell->targets)
+      {
+        if (!MatchesFaction (t.faction, faction, enemies, friendlies))
+          continue;
+        const auto dist = HexCoord::DistanceL1 (centre, t.pos);
+        if (dist <= l1range)
+          fcn (t, dist);
       }
 }
 
@@ -161,7 +219,8 @@ TargetFinder::ProcessL1Targets (const HexCoord& centre,
     [&found] (const Target& t, const HexCoord::IntT dist)
     {
       found.push_back (&t);
-    });
+    },
+    [] () { return false; });
 
   const auto ids = SortedIds (found);
   for (size_t i = 0; i < ids.size (); ++i)
@@ -190,7 +249,8 @@ TargetFinder::FindClosest (const HexCoord& centre,
           closestDist = dist;
         }
       closest.push_back (&t);
-    });
+    },
+    [&closest] () { return !closest.empty (); });
 
   return SortedIds (closest);
 }
