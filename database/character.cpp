@@ -20,6 +20,9 @@
 
 #include <glog/logging.h>
 
+#include <string>
+#include <vector>
+
 namespace pxd
 {
 
@@ -103,11 +106,11 @@ Character::~Character ()
            ?9, ?10,
            ?101,
            ?102, ?103, ?104, ?105,
-           ?106, ?107, ?108, ?109, ?110)
+           ?106, ?11, ?108, ?109, ?110)
       )");
 
       BindFieldValues (stmt);
-      CombatEntity::BindFullFields (stmt, 106, 107, 104, 105);
+      CombatEntity::BindFullFields (stmt, 106, 104, 105);
 
       if (effects.IsEmpty ())
         stmt.BindNull (109);
@@ -130,20 +133,29 @@ Character::~Character ()
           << "Character " << id << " has been modified in the DB fields only,"
           << " updating those";
 
-      auto stmt = db.Prepare (R"(
-        UPDATE `characters`
-          SET `owner` = ?2,
-              `x` = ?3, `y` = ?4,
-              `inbuilding` = ?5,
-              `enterbuilding` = ?6,
-              `volatilemv` = ?7,
-              `hp` = ?8,
-              `canregen` = ?9,
-              `friendlytargets` = ?10
-          WHERE `id` = ?1
-      )");
+      /* Only the columns that changed are set, since SQLite updates the
+         indices of all columns that are set (even to the same value).  */
+      std::vector<std::string> assignments;
+      if (dirtyFields)
+        assignments.push_back ("`owner` = ?2, `x` = ?3, `y` = ?4,"
+                               " `inbuilding` = ?5, `enterbuilding` = ?6");
+      if (volatileMv.IsDirty ())
+        assignments.push_back ("`volatilemv` = ?7");
+      CombatEntity::AppendDirtyFields (assignments, 8, 10, 9, 11);
+      CHECK (!assignments.empty ());
 
-      BindFieldValues (stmt);
+      std::string sql = "UPDATE `characters` SET " + assignments[0];
+      for (size_t i = 1; i < assignments.size (); ++i)
+        sql += ", " + assignments[i];
+      sql += " WHERE `id` = ?1";
+
+      auto stmt = db.Prepare (sql);
+      stmt.Bind (1, id);
+      if (dirtyFields)
+        BindLocationValues (stmt);
+      if (volatileMv.IsDirty ())
+        stmt.BindProto (7, volatileMv);
+      CombatEntity::BindFields (stmt, 8, 10, 9, 11, true);
       stmt.Execute ();
       return;
     }
@@ -179,9 +191,16 @@ Character::Validate () const
 void
 Character::BindFieldValues (Database::Statement& stmt) const
 {
-  CombatEntity::BindFields (stmt, 8, 10, 9);
+  CombatEntity::BindFields (stmt, 8, 10, 9, 11);
 
   stmt.Bind (1, id);
+  BindLocationValues (stmt);
+  stmt.BindProto (7, volatileMv);
+}
+
+void
+Character::BindLocationValues (Database::Statement& stmt) const
+{
   stmt.Bind (2, owner);
   if (IsInBuilding ())
     {
@@ -198,7 +217,6 @@ Character::BindFieldValues (Database::Statement& stmt) const
     stmt.BindNull (6);
   else
     stmt.Bind (6, enterBuilding);
-  stmt.BindProto (7, volatileMv);
 }
 
 const HexCoord&
