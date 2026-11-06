@@ -1409,23 +1409,29 @@ void
 AllHpUpdates (Database& db, DynObstacles& dyn, FameUpdater& fame,
               xaya::Random& rnd, const Context& ctx)
 {
-  std::set<TargetKey> dead;
   {
-    ScopedPhase phase("damage");
-    dead = DealCombatDamage (db, fame.GetDamageLists (), rnd, ctx);
-  }
+    /* New damage-list entries are written only after the kills removed
+       those of the dead.  */
+    DamageLists::Batch damageEntries(fame.GetDamageLists ());
 
-  {
-    ScopedPhase phase("fame");
-    FameUpdater::KillBatch batch(fame);
-    for (const auto& id : dead)
-      fame.UpdateForKill (id.ToProto ());
-  }
+    std::set<TargetKey> dead;
+    {
+      ScopedPhase phase("damage");
+      dead = DealCombatDamage (db, fame.GetDamageLists (), rnd, ctx);
+    }
 
-  {
-    ScopedPhase phase("kills");
-    GroundLootTable loot(db);
-    ProcessKills (db, dyn, fame.GetDamageLists (), loot, dead, rnd, ctx);
+    {
+      ScopedPhase phase("fame");
+      FameUpdater::KillBatch batch(fame);
+      for (const auto& id : dead)
+        fame.UpdateForKill (id.ToProto ());
+    }
+
+    {
+      ScopedPhase phase("kills");
+      GroundLootTable loot(db);
+      ProcessKills (db, dyn, fame.GetDamageLists (), loot, dead, rnd, ctx);
+    }
   }
 
   {
