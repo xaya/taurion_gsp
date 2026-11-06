@@ -1415,6 +1415,7 @@ AllHpUpdates (Database& db, DynObstacles& dyn, FameUpdater& fame,
 
   {
     ScopedPhase phase("fame");
+    FameUpdater::KillBatch batch(fame);
     for (const auto& id : dead)
       fame.UpdateForKill (id.ToProto ());
   }

@@ -42,6 +42,8 @@ constexpr unsigned FAME_PER_KILL = 100;
 
 FameUpdater::~FameUpdater ()
 {
+  CHECK (accountHandles.empty ());
+
   /* A victim loses up to FAME_PER_KILL for each of its characters killed, but
      several kills in the same block split its fame between them.  If each
      took up to FAME_PER_KILL of it, the killers could gain more than the
@@ -70,14 +72,49 @@ FameUpdater::~FameUpdater ()
     {
       VLOG (1)
           << "Applying fame delta " << entry.second << " for " << entry.first;
-
       auto h = accounts.GetByName (entry.first);
       CHECK (h != nullptr);
+
       int fame = h->GetProto ().fame ();
       fame += entry.second;
       fame = std::min<int> (MAX_FAME, std::max (0, fame));
       h->MutableProto ().set_fame (fame);
     }
+}
+
+const std::string&
+FameUpdater::GetOwner (const Database::IdT id)
+{
+  auto mit = ownerOf.find (id);
+  if (mit == ownerOf.end ())
+    {
+      auto c = characters.GetById (id);
+      CHECK (c != nullptr) << "Character " << id << " does not exist";
+      mit = ownerOf.emplace (id, c->GetOwner ()).first;
+    }
+
+  return mit->second;
+}
+
+Account&
+FameUpdater::GetAccount (const std::string& name)
+{
+  auto mit = accountHandles.find (name);
+  if (mit == accountHandles.end ())
+    {
+      auto h = accounts.GetByName (name);
+      CHECK (h != nullptr) << "Account " << name << " does not exist";
+      mit = accountHandles.emplace (name, std::move (h)).first;
+    }
+
+  return *mit->second;
+}
+
+void
+FameUpdater::ClearLookups ()
+{
+  accountHandles.clear ();
+  ownerOf.clear ();
 }
 
 int
@@ -94,15 +131,11 @@ FameUpdater::UpdateForKill (const Database::IdT victim,
   VLOG (1) << "Updating fame for killing of character " << victim;
 
   /* Determine the victim's fame level.  */
-  auto victimCharacter = characters.GetById (victim);
-  const std::string& victimOwner = victimCharacter->GetOwner ();
-  auto victimAccount = accounts.GetByName (victimOwner);
-  CHECK (victimAccount != nullptr);
-  const unsigned victimFame = victimAccount->GetProto ().fame ();
+  const std::string victimOwner = GetOwner (victim);
+  const unsigned victimFame = GetAccount (victimOwner).GetProto ().fame ();
   const int victimLevel = GetLevel (victimFame);
   VLOG (1)
       << "Victim fame: " << victimFame << " (level: " << victimLevel << ")";
-  victimAccount.reset ();
 
   /* Find the set of distinct accounts that killed the victim.  Characters of
      the victim's own account (which can damage it with mentecon) are not
@@ -110,10 +143,9 @@ FameUpdater::UpdateForKill (const Database::IdT victim,
   std::set<std::string> owners;
   for (const auto attackerId : attackers)
     {
-      auto c = characters.GetById (attackerId);
-      CHECK (c != nullptr);
-      if (c->GetOwner () != victimOwner)
-        owners.insert (c->GetOwner ());
+      const std::string& owner = GetOwner (attackerId);
+      if (owner != victimOwner)
+        owners.insert (owner);
     }
 
   /* Process the killer accounts in a first round.  We update the kills counter
@@ -123,9 +155,7 @@ FameUpdater::UpdateForKill (const Database::IdT victim,
   for (const auto& owner : owners)
     {
       VLOG (1) << "Killing account: " << owner;
-      auto a = accounts.GetByName (owner);
-      CHECK (a != nullptr);
-      auto& pb = a->MutableProto ();
+      auto& pb = GetAccount (owner).MutableProto ();
       pb.set_kills (pb.kills () + 1);
 
       const unsigned fame = pb.fame ();
@@ -142,6 +172,9 @@ FameUpdater::UpdateForKill (const Database::IdT victim,
   if (!inRangeKillers.empty ())
     kills.push_back ({victimOwner, victimFame, std::move (inRangeKillers),
                       static_cast<unsigned> (owners.size ())});
+
+  if (!inBatch)
+    ClearLookups ();
 }
 
 void
@@ -152,6 +185,19 @@ FameUpdater::UpdateForKill (const proto::TargetId& target)
 
   const auto& attackers = dl.GetAttackers (target.id ());
   UpdateForKill (target.id (), attackers);
+}
+
+FameUpdater::KillBatch::KillBatch (FameUpdater& f)
+  : fame(f)
+{
+  CHECK (!fame.inBatch);
+  fame.inBatch = true;
+}
+
+FameUpdater::KillBatch::~KillBatch ()
+{
+  fame.inBatch = false;
+  fame.ClearLookups ();
 }
 
 } // namespace pxd
