@@ -27,6 +27,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <random>
 #include <string>
 #include <vector>
@@ -358,7 +359,14 @@ TEST_F (TargetFinderTests, MatchesDatabaseQuery)
         characters.GetById (id)->SetBuildingId (buildingIds[i % 100]);
     }
 
+  /* The second finder ignores some positions (like no-combat zones).  */
+  const auto ignored = [] (const HexCoord& c)
+    {
+      return (c.GetX () + 100) % 7 == 0;
+    };
   const TargetFinder finder(db);
+  const TargetFinder filtered(db, ignored);
+
   for (unsigned i = 0; i < 1'000; ++i)
     {
       const HexCoord centre = coord ();
@@ -366,22 +374,62 @@ TEST_F (TargetFinderTests, MatchesDatabaseQuery)
       const Faction f = faction ();
       const bool enemies = (i % 3 != 1);
       const bool friendlies = (i % 3 != 0);
+      const bool filter = (i % 2 == 0);
+
+      auto expected = QueryDatabaseTargets (db, centre, range, f,
+                                            enemies, friendlies);
+      if (filter)
+        expected.erase (std::remove_if (expected.begin (), expected.end (),
+                                        [&] (const auto& e)
+                                          {
+                                            return ignored (e.first);
+                                          }),
+                        expected.end ());
 
       found.clear ();
-      finder.ProcessL1Targets (centre, range, f, enemies, friendlies,
+      (filter ? filtered : finder).ProcessL1Targets (
+          centre, range, f, enemies, friendlies,
           [this] (const HexCoord& c, const proto::TargetId& t)
             {
               found.emplace_back (c, t);
             });
 
-      const auto expected = QueryDatabaseTargets (db, centre, range, f,
-                                                  enemies, friendlies);
       ASSERT_EQ (found.size (), expected.size ());
       for (unsigned j = 0; j < found.size (); ++j)
         {
           EXPECT_EQ (found[j].first, expected[j].first);
           EXPECT_EQ (found[j].second.type (), expected[j].second.type ());
           EXPECT_EQ (found[j].second.id (), expected[j].second.id ());
+        }
+
+      /* The closest ones, excluding one of them (if any).  */
+      proto::TargetId exclude;
+      if (!expected.empty ())
+        exclude = expected[i % expected.size ()].second;
+      std::vector<proto::TargetId> closest;
+      HexCoord::IntT closestDist = range + 1;
+      for (const auto& e : expected)
+        {
+          if (e.second.type () == exclude.type ()
+                && e.second.id () == exclude.id ())
+            continue;
+          const auto dist = HexCoord::DistanceL1 (centre, e.first);
+          if (dist < closestDist)
+            {
+              closest.clear ();
+              closestDist = dist;
+            }
+          if (dist == closestDist)
+            closest.push_back (e.second);
+        }
+
+      const auto actual = (filter ? filtered : finder).FindClosest (
+          centre, range, f, enemies, friendlies, exclude);
+      ASSERT_EQ (actual.size (), closest.size ());
+      for (unsigned j = 0; j < actual.size (); ++j)
+        {
+          EXPECT_EQ (actual[j].type (), closest[j].type ());
+          EXPECT_EQ (actual[j].id (), closest[j].id ());
         }
     }
 }

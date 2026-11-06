@@ -59,7 +59,7 @@ private:
   };
 
   /** Side length of the square cells that targets are bucketed into.  */
-  static constexpr int CELL_SIZE = 16;
+  static constexpr int CELL_SIZE = 8;
 
   /** All targets, bucketed into cells keyed by CellKey.  */
   std::unordered_map<uint32_t, std::vector<Target>> cells;
@@ -95,13 +95,29 @@ private:
               | static_cast<uint16_t> (y);
   }
 
+  /**
+   * Calls fcn with each target and its distance that matches a query as
+   * done by ProcessL1Targets, in no particular order.
+   */
+  template <typename Fcn>
+    void ForEachInRange (const HexCoord& centre, HexCoord::IntT l1range,
+                         Faction faction, bool enemies, bool friendlies,
+                         const Fcn& fcn) const;
+
 public:
 
   /** Type for a callback function that processes targets.  */
   using ProcessingFcn
       = std::function<void (const HexCoord&, const proto::TargetId&)>;
 
-  explicit TargetFinder (Database& db);
+  /** Type for a predicate on positions.  */
+  using PositionFilter = std::function<bool (const HexCoord&)>;
+
+  /**
+   * Reads all targets from the database.  Queries ignore targets at
+   * positions for which the ignore predicate (if given) is true.
+   */
+  explicit TargetFinder (Database& db, const PositionFilter& ignore = nullptr);
 
   TargetFinder () = delete;
   TargetFinder (const TargetFinder&) = delete;
@@ -117,6 +133,18 @@ public:
   void ProcessL1Targets (const HexCoord& centre, HexCoord::IntT l1range,
                          Faction faction, bool enemies, bool friendlies,
                          const ProcessingFcn& cb) const;
+
+  /**
+   * Returns those of the targets ProcessL1Targets would process that are
+   * closest to the centre, except for the one with ID exclude, in the same
+   * order.  This is faster than finding them with ProcessL1Targets.
+   */
+  std::vector<proto::TargetId> FindClosest (const HexCoord& centre,
+                                            HexCoord::IntT l1range,
+                                            Faction faction,
+                                            bool enemies, bool friendlies,
+                                            const proto::TargetId& exclude)
+      const;
 
   /**
    * Returns the position of a target.  It must be a potential target

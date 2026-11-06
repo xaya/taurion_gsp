@@ -131,15 +131,27 @@ namespace
 {
 
 /**
- * Wrapper around ProcessL1Targets, which filters out targets in a no-combat
- * safe zone as well as the fighter itself.  If enemies is true, it will look
- * for enemies and not friendlies; if enemies is false, the other way round.
- * If the fighter is affected by a mentecon, it will instead just ignore the
- * enemies flag and always look for enemies and friendlies alike.
+ * Returns the position filter for TargetFinder that ignores targets in a
+ * no-combat safe zone.
+ */
+TargetFinder::PositionFilter
+NoCombatZones (const Context& ctx)
+{
+  return [&ctx] (const HexCoord& c)
+    {
+      return ctx.Map ().SafeZones ().IsNoCombat (c);
+    };
+}
+
+/**
+ * Wrapper around ProcessL1Targets (of a TargetFinder that ignores no-combat
+ * zones), which filters out the fighter itself.  If enemies is true, it will
+ * look for enemies and not friendlies; if enemies is false, the other way
+ * round.  If the fighter is affected by a mentecon, it will instead just
+ * ignore the enemies flag and always look for enemies and friendlies alike.
  */
 void
-ProcessCombatTargets (const TargetFinder& targets, const Context& ctx,
-                      const CombatEntity& f,
+ProcessCombatTargets (const TargetFinder& targets, const CombatEntity& f,
                       const HexCoord& centre, const HexCoord::IntT range,
                       const bool enemies,
                       const TargetFinder::ProcessingFcn& cb)
@@ -154,14 +166,6 @@ ProcessCombatTargets (const TargetFinder& targets, const Context& ctx,
                             lookForEnemies, lookForFriendlies,
     [&] (const HexCoord& c, const proto::TargetId& id)
     {
-      if (ctx.Map ().SafeZones ().IsNoCombat (c))
-        {
-          VLOG (2)
-              << "Ignoring fighter in no-combat zone:\n"
-              << id.DebugString ();
-          return;
-        }
-
       if (myId == TargetKey (id))
         return;
 
@@ -220,7 +224,7 @@ public:
   TargetFindingProcessor (Database& db, xaya::Random& r, const Context& c)
     : buildings(db), characters(db),
       fighters(buildings, characters),
-      targets(db),
+      targets(db, NoCombatZones (c)),
       rnd(r), ctx(c)
   {}
 
@@ -287,34 +291,17 @@ TargetFindingProcessor::SelectNormalTarget (const CombatModifier& mod,
   CHECK_GE (range, 0);
   range = mod.range (range);
 
-  HexCoord::IntT closestRange;
-
-  ProcessCombatTargets (targets, ctx, *res.f, pos, range, true,
-    [&] (const HexCoord& c, const proto::TargetId& id)
-    {
-      const HexCoord::IntT curDist = HexCoord::DistanceL1 (pos, c);
-      if (res.enemyTargets.empty () || curDist < closestRange)
-        {
-          closestRange = curDist;
-          res.enemyTargets = {id};
-          return;
-        }
-
-      if (curDist == closestRange)
-        {
-          res.enemyTargets.push_back (id);
-          return;
-        }
-
-      CHECK_GT (curDist, closestRange);
-    });
+  /* This is what ProcessCombatTargets with enemies would process.  */
+  res.enemyTargets = targets.FindClosest (pos, range, res.f->GetFaction (),
+                                          true, res.f->GetEffects ().mentecon (),
+                                          res.f->GetIdAsTarget ());
 
   if (res.enemyTargets.empty ())
     VLOG (1) << "Found no targets around " << pos;
   else
     VLOG (1)
-        << "Found " << res.enemyTargets.size () << " targets in closest range "
-        << closestRange << " around " << pos;
+        << "Found " << res.enemyTargets.size ()
+        << " targets in closest range around " << pos;
 }
 
 void
@@ -334,7 +321,7 @@ TargetFindingProcessor::SelectFriendlyTargets (const CombatModifier& mod,
   range = mod.range (range);
 
   res.hasFriendlyTarget = false;
-  ProcessCombatTargets (targets, ctx, *res.f, pos, range, false,
+  ProcessCombatTargets (targets, *res.f, pos, range, false,
     [&] (const HexCoord& c, const proto::TargetId& id)
     {
       res.hasFriendlyTarget = true;
@@ -552,7 +539,7 @@ public:
     : dl(lst), rnd(r), ctx(c),
       buildings(db), characters(db),
       fighters(buildings, characters),
-      targets(db)
+      targets(db, NoCombatZones (c))
   {}
 
   /**
@@ -838,7 +825,7 @@ DamageProcessor::DealDamage (FighterTable::Handle f, const bool forGainHp,
           else
             centre = pos;
 
-          ProcessCombatTargets (targets, ctx,
+          ProcessCombatTargets (targets,
                                 *f, centre, mod.range (attack.area ()),
                                 !attack.friendlies (),
             [&] (const HexCoord& c, const proto::TargetId& id)
@@ -881,7 +868,7 @@ DamageProcessor::ProcessSelfDestructs (FighterTable::Handle f,
           << " of damage for self-destruct of "
           << f->GetIdAsTarget ().DebugString ();
 
-      ProcessCombatTargets (targets, ctx,
+      ProcessCombatTargets (targets,
                             *f, pos, mod.range (sd.area ()),
                             true,
         [&] (const HexCoord& c, const proto::TargetId& id)

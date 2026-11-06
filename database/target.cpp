@@ -37,7 +37,7 @@ struct TargetResult : public ResultWithFaction
 
 } // anonymous namespace
 
-TargetFinder::TargetFinder (Database& db)
+TargetFinder::TargetFinder (Database& db, const PositionFilter& ignore)
 {
   /* Characters inside buildings have no position and are never targets.
      Neither are buildings of the ancient faction.  */
@@ -68,28 +68,23 @@ TargetFinder::TargetFinder (Database& db)
       else
         LOG (FATAL) << "Unexpected target type: " << type;
 
+      CHECK (positions.emplace (PositionKey (t.type, t.id), t.pos).second);
+      if (ignore != nullptr && ignore (t.pos))
+        continue;
+
       const auto key = CellKey (CellIndex (t.pos.GetX ()),
                                 CellIndex (t.pos.GetY ()));
       cells[key].push_back (t);
-      CHECK (positions.emplace (PositionKey (t.type, t.id), t.pos).second);
     }
 }
 
-const HexCoord&
-TargetFinder::GetPosition (const proto::TargetId& id) const
-{
-  const auto mit = positions.find (PositionKey (id.type (), id.id ()));
-  CHECK (mit != positions.end ())
-      << "Not a potential target:\n" << id.DebugString ();
-  return mit->second;
-}
-
-void
-TargetFinder::ProcessL1Targets (const HexCoord& centre,
+template <typename Fcn>
+  void
+  TargetFinder::ForEachInRange (const HexCoord& centre,
                                 const HexCoord::IntT l1range,
                                 const Faction faction,
                                 const bool enemies, const bool friendlies,
-                                const ProcessingFcn& cb) const
+                                const Fcn& fcn) const
 {
   CHECK (enemies || friendlies)
       << "Neither enemy nor friendly targets requested?";
@@ -101,7 +96,6 @@ TargetFinder::ProcessL1Targets (const HexCoord& centre,
 
   /* Look through all cells overlapping the L-infinity range, which
      certainly includes the L1 range.  */
-  std::vector<const Target*> found;
   const int minX = CellIndex (centre.GetX () - l1range);
   const int maxX = CellIndex (centre.GetX () + l1range);
   const int minY = CellIndex (centre.GetY () - l1range);
@@ -119,26 +113,95 @@ TargetFinder::ProcessL1Targets (const HexCoord& centre,
               continue;
             if (!enemies && t.faction != faction)
               continue;
-            if (HexCoord::DistanceL1 (centre, t.pos) > l1range)
-              continue;
-            found.push_back (&t);
+            const auto dist = HexCoord::DistanceL1 (centre, t.pos);
+            if (dist <= l1range)
+              fcn (t, dist);
           }
       }
+}
 
-  /* The type enum values sort buildings before characters.  */
-  std::sort (found.begin (), found.end (),
-             [] (const Target* a, const Target* b)
+namespace
+{
+
+/**
+ * Sorts targets in the order of TargetKey (the type enum values sort
+ * buildings before characters) and returns their IDs.
+ */
+template <typename T>
+  std::vector<proto::TargetId>
+  SortedIds (std::vector<const T*>& targets)
+{
+  std::sort (targets.begin (), targets.end (),
+             [] (const T* a, const T* b)
                {
                  return std::tie (a->type, a->id) < std::tie (b->type, b->id);
                });
 
-  for (const auto* t : found)
+  std::vector<proto::TargetId> res(targets.size ());
+  for (size_t i = 0; i < targets.size (); ++i)
     {
-      proto::TargetId targetId;
-      targetId.set_type (t->type);
-      targetId.set_id (t->id);
-      cb (t->pos, targetId);
+      res[i].set_type (targets[i]->type);
+      res[i].set_id (targets[i]->id);
     }
+
+  return res;
+}
+
+} // anonymous namespace
+
+void
+TargetFinder::ProcessL1Targets (const HexCoord& centre,
+                                const HexCoord::IntT l1range,
+                                const Faction faction,
+                                const bool enemies, const bool friendlies,
+                                const ProcessingFcn& cb) const
+{
+  std::vector<const Target*> found;
+  ForEachInRange (centre, l1range, faction, enemies, friendlies,
+    [&found] (const Target& t, const HexCoord::IntT dist)
+    {
+      found.push_back (&t);
+    });
+
+  const auto ids = SortedIds (found);
+  for (size_t i = 0; i < ids.size (); ++i)
+    cb (found[i]->pos, ids[i]);
+}
+
+std::vector<proto::TargetId>
+TargetFinder::FindClosest (const HexCoord& centre,
+                           const HexCoord::IntT l1range,
+                           const Faction faction,
+                           const bool enemies, const bool friendlies,
+                           const proto::TargetId& exclude) const
+{
+  std::vector<const Target*> closest;
+  HexCoord::IntT closestDist = 0;
+  ForEachInRange (centre, l1range, faction, enemies, friendlies,
+    [&] (const Target& t, const HexCoord::IntT dist)
+    {
+      if (t.type == exclude.type () && t.id == exclude.id ())
+        return;
+      if (!closest.empty () && dist > closestDist)
+        return;
+      if (closest.empty () || dist < closestDist)
+        {
+          closest.clear ();
+          closestDist = dist;
+        }
+      closest.push_back (&t);
+    });
+
+  return SortedIds (closest);
+}
+
+const HexCoord&
+TargetFinder::GetPosition (const proto::TargetId& id) const
+{
+  const auto mit = positions.find (PositionKey (id.type (), id.id ()));
+  CHECK (mit != positions.end ())
+      << "Not a potential target:\n" << id.DebugString ();
+  return mit->second;
 }
 
 } // namespace pxd
