@@ -34,6 +34,7 @@
 #include <memory>
 #include <string>
 #include <type_traits>
+#include <unordered_map>
 
 namespace pxd
 {
@@ -299,7 +300,14 @@ private:
   xaya::SQLiteDatabase::Statement stmt;
 
   /** Map of ColumnId values to the indices in the SQLite statement.  */
-  mutable std::array<int, ResultType::MAX_ID> columnInd;
+  using ColumnIndices = std::array<int, ResultType::MAX_ID>;
+
+  /**
+   * The column indices for this statement's SQL.  They depend only on the
+   * SQL (with the fixed schema), so they are shared by all results of the
+   * same SQL and result type (on the same thread).
+   */
+  ColumnIndices* columnInd;
 
   /**
    * Constructs an instance based on the given statement handle.  This is called
