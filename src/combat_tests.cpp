@@ -206,11 +206,9 @@ class TargetKeyTests : public CombatTests
 protected:
 
   FighterTable fighters;
-  TargetFinder targets;
 
   TargetKeyTests ()
-    : fighters(buildings, characters),
-      targets(db)
+    : fighters(buildings, characters)
   {}
 
 };
@@ -245,7 +243,8 @@ TEST_F (TargetKeyTests, Ordering)
   EXPECT_TRUE (std::is_sorted (fromFighters.begin (), fromFighters.end ()));
 
   std::vector<TargetKey> fromTarget;
-  targets.ProcessL1Targets (HexCoord (0, 0), 10, Faction::GREEN, true, false,
+  TargetFinder (db).ProcessL1Targets (HexCoord (0, 0), 10, Faction::GREEN,
+                                      true, false,
       [&fromTarget] (const HexCoord& c, const proto::TargetId& id)
         {
           fromTarget.emplace_back (id);

@@ -18,13 +18,16 @@
 
 #include "target.hpp"
 
+#include <algorithm>
+#include <tuple>
+
 namespace pxd
 {
 
 namespace
 {
 
-struct TargetResult : public Database::ResultType
+struct TargetResult : public ResultWithFaction
 {
   RESULT_COLUMN (std::string, type, 1);
   RESULT_COLUMN (int64_t, id, 2);
@@ -33,6 +36,43 @@ struct TargetResult : public Database::ResultType
 };
 
 } // anonymous namespace
+
+TargetFinder::TargetFinder (Database& db)
+{
+  /* Characters inside buildings have no position and are never targets.
+     Neither are buildings of the ancient faction.  */
+  auto stmt = db.Prepare (R"(
+    SELECT `x`, `y`, `id`, `faction`, 'character' AS `type`
+      FROM `characters`
+      WHERE `x` IS NOT NULL AND `y` IS NOT NULL
+    UNION ALL
+    SELECT `x`, `y`, `id`, `faction`, 'building' AS `type`
+      FROM `buildings`
+      WHERE `x` IS NOT NULL AND `y` IS NOT NULL AND `faction` != 4
+  )");
+
+  auto res = stmt.Query<TargetResult> ();
+  while (res.Step ())
+    {
+      Target t;
+      t.pos = HexCoord (res.Get<TargetResult::x> (),
+                        res.Get<TargetResult::y> ());
+      t.faction = GetFactionFromColumn (res);
+      t.id = res.Get<TargetResult::id> ();
+
+      const auto type = res.Get<TargetResult::type> ();
+      if (type == "building")
+        t.type = proto::TargetId::TYPE_BUILDING;
+      else if (type == "character")
+        t.type = proto::TargetId::TYPE_CHARACTER;
+      else
+        LOG (FATAL) << "Unexpected target type: " << type;
+
+      const auto key = CellKey (CellIndex (t.pos.GetX ()),
+                                CellIndex (t.pos.GetY ()));
+      cells[key].push_back (t);
+    }
+}
 
 void
 TargetFinder::ProcessL1Targets (const HexCoord& centre,
@@ -44,66 +84,50 @@ TargetFinder::ProcessL1Targets (const HexCoord& centre,
   CHECK (enemies || friendlies)
       << "Neither enemy nor friendly targets requested?";
 
-  std::string characterCond = "TRUE";
-  std::string buildingCond = "`faction` != 4";
-  if (!friendlies)
+  /* Faction conditions for an invalid faction match nothing (as a comparison
+     with NULL in SQL).  */
+  if (faction == Faction::INVALID && !(enemies && friendlies))
+    return;
+
+  /* Look through all cells overlapping the L-infinity range, which
+     certainly includes the L1 range.  */
+  std::vector<const Target*> found;
+  const int minX = CellIndex (centre.GetX () - l1range);
+  const int maxX = CellIndex (centre.GetX () + l1range);
+  const int minY = CellIndex (centre.GetY () - l1range);
+  const int maxY = CellIndex (centre.GetY () + l1range);
+  for (int x = minX; x <= maxX; ++x)
+    for (int y = minY; y <= maxY; ++y)
+      {
+        const auto mit = cells.find (CellKey (x, y));
+        if (mit == cells.end ())
+          continue;
+
+        for (const auto& t : mit->second)
+          {
+            if (!friendlies && t.faction == faction)
+              continue;
+            if (!enemies && t.faction != faction)
+              continue;
+            if (HexCoord::DistanceL1 (centre, t.pos) > l1range)
+              continue;
+            found.push_back (&t);
+          }
+      }
+
+  /* The type enum values sort buildings before characters.  */
+  std::sort (found.begin (), found.end (),
+             [] (const Target* a, const Target* b)
+               {
+                 return std::tie (a->type, a->id) < std::tie (b->type, b->id);
+               });
+
+  for (const auto* t : found)
     {
-      characterCond += " AND `faction` != ?5";
-      buildingCond += " AND `faction` != ?5";
-    }
-  if (!enemies)
-    {
-      characterCond += " AND `faction` = ?5";
-      buildingCond += " AND `faction` = ?5";
-    }
-
-  /* Note that the "between" statement is automatically false for NULL values,
-     hence characters in buildings are ignored (as they should).  */
-  std::ostringstream sql;
-  sql << R"(
-    SELECT `x`, `y`, `id`, 'character' AS `type`
-      FROM `characters`
-      WHERE (`x` BETWEEN ?1 AND ?2) AND (`y` BETWEEN ?3 AND ?4) AND
-  )" << characterCond << R"(
-    UNION ALL
-    SELECT `x`, `y`, `id`, 'building' AS `type`
-      FROM `buildings`
-      WHERE (`x` BETWEEN ?1 AND ?2) AND (`y` BETWEEN ?3 AND ?4) AND
-  )" << buildingCond << R"(
-    ORDER BY `type`, `id`
-  )";
-  auto stmt = db.Prepare (sql.str ());
-
-  /* The query is actually about an L-infinity range, since that is easy
-     to formulate in the database.  This certainly includes the L1 range.  */
-  stmt.Bind (1, centre.GetX () - l1range);
-  stmt.Bind (2, centre.GetX () + l1range);
-  stmt.Bind (3, centre.GetY () - l1range);
-  stmt.Bind (4, centre.GetY () + l1range);
-
-  if (!friendlies || !enemies)
-    BindFactionParameter (stmt, 5, faction);
-
-  auto res = stmt.Query<TargetResult> ();
-  while (res.Step ())
-    {
-      const HexCoord coord (res.Get<TargetResult::x> (),
-                            res.Get<TargetResult::y> ());
-      if (HexCoord::DistanceL1 (centre, coord) > l1range)
-        continue;
-
       proto::TargetId targetId;
-      targetId.set_id (res.Get<TargetResult::id> ());
-
-      const auto type = res.Get<TargetResult::type> ();
-      if (type == "building")
-        targetId.set_type (proto::TargetId::TYPE_BUILDING);
-      else if (type == "character")
-        targetId.set_type (proto::TargetId::TYPE_CHARACTER);
-      else
-        LOG (FATAL) << "Unexpected target type: " << type;
-
-      cb (coord, targetId);
+      targetId.set_type (t->type);
+      targetId.set_id (t->id);
+      cb (t->pos, targetId);
     }
 }
 
