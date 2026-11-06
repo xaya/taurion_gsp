@@ -120,6 +120,11 @@ private:
                                const proto::RegenData& regen);
 
   /**
+   * Returns the canregen flag for the current HP and RegenData.
+   */
+  bool GetNewCanRegen () const;
+
+  /**
    * Computes the attack range of a fighter with the given combat data,
    * or the range of the longest friendly attack.
    *

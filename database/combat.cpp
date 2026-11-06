@@ -64,14 +64,11 @@ CombatEntity::BindFields (Database::Statement& stmt, const unsigned indHp,
                           const bool onlyDirty) const
 {
   if (!onlyDirty || hp.IsDirty ())
-    {
-      bool canRegen = oldCanRegen;
-      if (hp.IsDirty () || regenData.IsDirty ())
-        canRegen = ComputeCanRegen (hp.Get (), regenData.Get ());
+    stmt.BindProto (indHp, hp);
 
-      stmt.BindProto (indHp, hp);
-      stmt.Bind (indCanRegen, canRegen);
-    }
+  const bool canRegen = GetNewCanRegen ();
+  if (!onlyDirty || canRegen != oldCanRegen)
+    stmt.Bind (indCanRegen, canRegen);
 
   if (!onlyDirty || isDirty)
     stmt.Bind (indFriendlyTargets, friendlyTargets);
@@ -98,14 +95,21 @@ CombatEntity::AppendDirtyFields (std::vector<std::string>& assignments,
     };
 
   if (hp.IsDirty ())
-    {
-      add ("hp", indHp);
-      add ("canregen", indCanRegen);
-    }
+    add ("hp", indHp);
+  if (GetNewCanRegen () != oldCanRegen)
+    add ("canregen", indCanRegen);
   if (isDirty)
     add ("friendlytargets", indFriendlyTargets);
   if (target.IsDirty ())
     add ("target", indTarget);
+}
+
+bool
+CombatEntity::GetNewCanRegen () const
+{
+  if (hp.IsDirty () || regenData.IsDirty ())
+    return ComputeCanRegen (hp.Get (), regenData.Get ());
+  return oldCanRegen;
 }
 
 void
