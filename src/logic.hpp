@@ -113,6 +113,7 @@ private:
    */
   static void ValidateStateSlow (Database& db, const Context& ctx);
 
+  friend class BattleBench;
   friend class PXLogicTests;
   friend class PXRpcServer;
   friend class SuperblockTests;

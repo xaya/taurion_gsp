@@ -25,6 +25,7 @@
 #include "movement.hpp"
 #include "moveprocessor.hpp"
 #include "ongoings.hpp"
+#include "phasetimer.hpp"
 
 #include "database/account.hpp"
 #include "database/building.hpp"
@@ -33,7 +34,11 @@
 #include "database/schema.hpp"
 #include "proto/roconfig.hpp"
 
+#include <gflags/gflags.h>
 #include <glog/logging.h>
+
+DEFINE_bool (pxd_phase_timing, false,
+             "Log the time spent in each phase of processing a super block");
 
 namespace pxd
 {
@@ -103,8 +108,16 @@ PXLogic::UpdateState (Database& db, xaya::Random& rnd,
           || sbTimestamp + ctx.RoConfig ()->params ().superblock_seconds ()
                 <= timestamp;
 
-  FameUpdater fame(db, ctx);
-  UpdateState (db, fame, rnd, ctx, isNextSuperBlock, blockData);
+  PhaseTimes times(FLAGS_pxd_phase_timing && isNextSuperBlock);
+  {
+    ScopedPhase total("total");
+    FameUpdater fame(db, ctx);
+    UpdateState (db, fame, rnd, ctx, isNextSuperBlock, blockData);
+  }
+  if (FLAGS_pxd_phase_timing && isNextSuperBlock)
+    LOG (INFO)
+        << "Super block " << ctx.Height () << " phases (ms):"
+        << times.Summary ();
 
   if (isNextSuperBlock)
     db.SetSuperBlock (sbHeight + 1, timestamp);
@@ -115,31 +128,59 @@ PXLogic::UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
                       const Context& ctx,
                       const bool superBlock, const Json::Value& blockData)
 {
-  DynObstacles dyn(db, ctx);
-  MoveProcessor mvProc(db, dyn, rnd, ctx);
-  mvProc.ProcessAdmin (blockData["admin"]);
-  mvProc.ProcessAll (blockData["moves"]);
+  std::unique_ptr<DynObstacles> dyn;
+  {
+    ScopedPhase phase("dynobstacles");
+    dyn = std::make_unique<DynObstacles> (db, ctx);
+  }
+  MoveProcessor mvProc(db, *dyn, rnd, ctx);
+  {
+    ScopedPhase phase("moves");
+    mvProc.ProcessAdmin (blockData["admin"]);
+    mvProc.ProcessAll (blockData["moves"]);
+  }
 
   if (superBlock)
     {
       LOG (INFO) << "Processing super block height " << ctx.Height ();
 
-      fame.GetDamageLists ().RemoveOld (
-          ctx.RoConfig ()->params ().damage_list_blocks ());
+      {
+        ScopedPhase phase("damagelists");
+        fame.GetDamageLists ().RemoveOld (
+            ctx.RoConfig ()->params ().damage_list_blocks ());
+      }
 
-      AllHpUpdates (db, dyn, fame, rnd, ctx);
-      ProcessAllOngoings (db, rnd, ctx);
+      {
+        ScopedPhase phase("hp");
+        AllHpUpdates (db, *dyn, fame, rnd, ctx);
+      }
+      {
+        ScopedPhase phase("ongoings");
+        ProcessAllOngoings (db, rnd, ctx);
+      }
 
-      ProcessAllMining (db, rnd, ctx);
-      ProcessAllMovement (db, dyn, ctx);
+      {
+        ScopedPhase phase("mining");
+        ProcessAllMining (db, rnd, ctx);
+      }
+      {
+        ScopedPhase phase("movement");
+        ProcessAllMovement (db, *dyn, ctx);
+      }
 
       /* Entering buildings should be after moves and movement, so that players
          enter as soon as possible (perhaps in the same instant the move for it
          gets confirmed).  It should be before combat targets, so that players
          entering a building won't be attacked any more.  */
-      ProcessEnterBuildings (db, dyn, ctx);
+      {
+        ScopedPhase phase("enter");
+        ProcessEnterBuildings (db, *dyn, ctx);
+      }
 
-      FindCombatTargets (db, rnd, ctx);
+      {
+        ScopedPhase phase("targets");
+        FindCombatTargets (db, rnd, ctx);
+      }
     }
 
 #ifdef ENABLE_SLOW_ASSERTS
