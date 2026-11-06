@@ -23,6 +23,7 @@
    block) and logs the time of each processing phase.  */
 
 #include "context.hpp"
+#include "fitments.hpp"
 #include "gamestatejson.hpp"
 #include "logic.hpp"
 #include "movement.hpp"
@@ -49,6 +50,7 @@
 #include <set>
 #include <thread>
 #include <sstream>
+#include <string>
 #include <vector>
 
 DECLARE_bool (pxd_phase_timing);
@@ -62,6 +64,9 @@ DEFINE_int32 (radius, 10, "L1 radius of the battle area");
 DEFINE_int32 (cx, 0, "x of the battle centre");
 DEFINE_int32 (cy, 0, "y of the battle centre");
 DEFINE_int32 (movers, 0, "Other characters to set moving");
+DEFINE_string (fit, "",
+               "Comma-separated fitments that replace the fighters' own"
+               " (e.g. 'lf laser' for an AoE battle)");
 DEFINE_bool (session, true, "Record an undo changeset per block");
 DEFINE_bool (json, false, "Time the full characters JSON after each block");
 DEFINE_int32 (findpath_threads, 0,
@@ -194,6 +199,11 @@ StageScenario (Database& db, const Context& ctx)
         ids.push_back (IdleCharacters (tbl, factions[i],
                                        FLAGS_per_faction, used));
 
+      std::vector<std::string> fitments;
+      std::istringstream fitIn(FLAGS_fit);
+      for (std::string f; std::getline (fitIn, f, ',');)
+        fitments.push_back (f);
+
       /* Stride through the tiles by a prime so the factions mix.  */
       constexpr size_t stride = 7919;
       size_t n = 0;
@@ -204,6 +214,14 @@ StageScenario (Database& db, const Context& ctx)
               auto c = tbl.GetById (lst[k]);
               StopCharacter (*c);
               c->SetPosition (tiles[(n++ * stride) % tiles.size ()]);
+              if (!fitments.empty ())
+                {
+                  auto& pb = c->MutableProto ();
+                  pb.clear_fitments ();
+                  for (const auto& f : fitments)
+                    pb.add_fitments (f);
+                  DeriveCharacterStats (*c, ctx);
+                }
               used.insert (lst[k]);
             }
       LOG (INFO)
