@@ -64,6 +64,18 @@ private:
   /** All targets, bucketed into cells keyed by CellKey.  */
   std::unordered_map<uint32_t, std::vector<Target>> cells;
 
+  /** Positions of all targets, keyed by PositionKey.  */
+  std::unordered_map<uint64_t, HexCoord> positions;
+
+  /**
+   * Returns the key in positions for a target.
+   */
+  static uint64_t
+  PositionKey (const proto::TargetId::Type type, const Database::IdT id)
+  {
+    return (id << 2) | type;
+  }
+
   /**
    * Returns the cell index (along one axis) of a coordinate.
    */
@@ -105,6 +117,12 @@ public:
   void ProcessL1Targets (const HexCoord& centre, HexCoord::IntT l1range,
                          Faction faction, bool enemies, bool friendlies,
                          const ProcessingFcn& cb) const;
+
+  /**
+   * Returns the position of a target.  It must be a potential target
+   * (e.g. not an ancient building or a character inside a building).
+   */
+  const HexCoord& GetPosition (const proto::TargetId& id) const;
 
 };
 

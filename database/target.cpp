@@ -71,7 +71,17 @@ TargetFinder::TargetFinder (Database& db)
       const auto key = CellKey (CellIndex (t.pos.GetX ()),
                                 CellIndex (t.pos.GetY ()));
       cells[key].push_back (t);
+      CHECK (positions.emplace (PositionKey (t.type, t.id), t.pos).second);
     }
+}
+
+const HexCoord&
+TargetFinder::GetPosition (const proto::TargetId& id) const
+{
+  const auto mit = positions.find (PositionKey (id.type (), id.id ()));
+  CHECK (mit != positions.end ())
+      << "Not a potential target:\n" << id.DebugString ();
+  return mit->second;
 }
 
 void

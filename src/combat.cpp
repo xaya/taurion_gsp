@@ -799,8 +799,7 @@ DamageProcessor::DealDamage (FighterTable::Handle f, const bool forGainHp,
   HexCoord::IntT targetDist = std::numeric_limits<HexCoord::IntT>::max ();
   if (hasTarget)
     {
-      FighterTable::Handle tf = fighters.GetForTarget (f->GetTarget ());
-      targetPos = tf->GetCombatPosition ();
+      targetPos = targets.GetPosition (f->GetTarget ());
       targetDist = HexCoord::DistanceL1 (pos, targetPos);
     }
   else
@@ -896,23 +895,30 @@ DamageProcessor::ProcessSelfDestructs (FighterTable::Handle f,
 void
 DamageProcessor::Process ()
 {
+  /* Fighters with gain_hp attacks, in the order of ProcessWithTarget.  */
+  std::vector<TargetKey> withGainHp;
+
   modifiers.clear ();
   fighters.ProcessWithTarget ([&] (FighterTable::Handle f)
     {
       CombatModifier mod;
       ComputeModifier (*f, mod);
       CHECK (modifiers.emplace (f->GetIdAsTarget (), std::move (mod)).second);
+
+      const auto& attacks = f->GetCombatData ().attacks ();
+      if (std::any_of (attacks.begin (), attacks.end (),
+                       [] (const proto::Attack& a) { return a.gain_hp (); }))
+        withGainHp.emplace_back (f->GetIdAsTarget ());
     });
 
   std::set<TargetKey> newDead;
 
   /* We first process all attacks with gain_hp, and only later all without.
      This ensures that normal attacks against shields do not remove the HP
-     first before they can be drained by a syphon.  */
-  fighters.ProcessWithTarget ([&] (FighterTable::Handle f)
-    {
-      DealDamage (std::move (f), true, newDead);
-    });
+     first before they can be drained by a syphon.  (Other fighters would
+     not do anything in this round.)  */
+  for (const auto& id : withGainHp)
+    DealDamage (fighters.GetForTarget (id.ToProto ()), true, newDead);
 
   /* Reconcile the set of HP gained by attackers now (before normal attacks
      may bring shields down to zero when they aren't yet, for instance).  */
