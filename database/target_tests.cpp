@@ -27,6 +27,9 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <random>
+#include <string>
 #include <vector>
 
 namespace pxd
@@ -38,8 +41,6 @@ class TargetFinderTests : public DBTestWithSchema
 {
 
 private:
-
-  TargetFinder finder;
 
   /** Callback that inserts targets into found.  */
   TargetFinder::ProcessingFcn cb;
@@ -56,7 +57,7 @@ protected:
   CharacterTable characters;
 
   TargetFinderTests ()
-    : finder(db), buildings(db), characters(db)
+    : buildings(db), characters(db)
   {
     cb = [this] (const HexCoord& c, const proto::TargetId& t)
       {
@@ -97,7 +98,8 @@ protected:
   void
   ProcessEnemies (const HexCoord& centre, const HexCoord::IntT l1range)
   {
-    finder.ProcessL1Targets (centre, l1range, Faction::RED, true, false, cb);
+    TargetFinder (db).ProcessL1Targets (centre, l1range, Faction::RED,
+                                        true, false, cb);
   }
 
   /**
@@ -107,7 +109,8 @@ protected:
   void
   ProcessFriendlies (const HexCoord& centre, const HexCoord::IntT l1range)
   {
-    finder.ProcessL1Targets (centre, l1range, Faction::RED, false, true, cb);
+    TargetFinder (db).ProcessL1Targets (centre, l1range, Faction::RED,
+                                        false, true, cb);
   }
 
   /**
@@ -117,7 +120,8 @@ protected:
   void
   ProcessEveryone (const HexCoord& centre, const HexCoord::IntT l1range)
   {
-    finder.ProcessL1Targets (centre, l1range, Faction::RED, true, true, cb);
+    TargetFinder (db).ProcessL1Targets (centre, l1range, Faction::RED,
+                                        true, true, cb);
   }
 
 };
@@ -147,6 +151,36 @@ TEST_F (TargetFinderTests, InBuilding)
   characters.CreateNew ("domob", Faction::GREEN)->SetBuildingId (100);
   ProcessEnemies (HexCoord (0, 0), 1);
   EXPECT_TRUE (found.empty ());
+}
+
+TEST_F (TargetFinderTests, FindPosition)
+{
+  const auto outside = InsertCharacter (HexCoord (12, -15), Faction::GREEN);
+  const auto ignored = InsertCharacter (HexCoord (9, -15), Faction::GREEN);
+  const auto inBuilding = InsertCharacter (HexCoord (10, -15), Faction::GREEN);
+  characters.GetById (inBuilding)->SetBuildingId (42);
+
+  const auto id = [] (const Database::IdT i)
+    {
+      proto::TargetId res;
+      res.set_type (proto::TargetId::TYPE_CHARACTER);
+      res.set_id (i);
+      return res;
+    };
+
+  const TargetFinder finder(db, [] (const HexCoord& c)
+    {
+      return c == HexCoord (9, -15);
+    });
+
+  ASSERT_NE (finder.FindPosition (id (outside)), nullptr);
+  EXPECT_EQ (*finder.FindPosition (id (outside)), HexCoord (12, -15));
+  /* Ignored targets (like those in no-combat zones) are only left out of
+     the queries.  */
+  ASSERT_NE (finder.FindPosition (id (ignored)), nullptr);
+  EXPECT_EQ (*finder.FindPosition (id (ignored)), HexCoord (9, -15));
+  EXPECT_EQ (finder.FindPosition (id (inBuilding)), nullptr);
+  EXPECT_EQ (finder.FindPosition (id (12345)), nullptr);
 }
 
 TEST_F (TargetFinderTests, CharacterRange)
@@ -267,6 +301,172 @@ TEST_F (TargetFinderTests, FriendlyAndEnemies)
   EXPECT_EQ (found[2].second.id (), idCharacter1);
   EXPECT_EQ (found[3].second.type (), proto::TargetId::TYPE_CHARACTER);
   EXPECT_EQ (found[3].second.id (), idCharacter2);
+}
+
+/**
+ * The query that TargetFinder answered directly from the database before it
+ * read all targets into memory, as the reference for its results.
+ */
+std::vector<std::pair<HexCoord, proto::TargetId>>
+QueryDatabaseTargets (Database& db, const HexCoord& centre,
+                      const HexCoord::IntT l1range, const Faction faction,
+                      const bool enemies, const bool friendlies)
+{
+  std::string characterCond = "TRUE";
+  std::string buildingCond = "`faction` != 4";
+  if (!friendlies)
+    {
+      characterCond += " AND `faction` != ?5";
+      buildingCond += " AND `faction` != ?5";
+    }
+  if (!enemies)
+    {
+      characterCond += " AND `faction` = ?5";
+      buildingCond += " AND `faction` = ?5";
+    }
+
+  auto stmt = (*db).Prepare (R"(
+    SELECT `x`, `y`, `id`, 'character' AS `type`
+      FROM `characters`
+      WHERE (`x` BETWEEN ?1 AND ?2) AND (`y` BETWEEN ?3 AND ?4) AND
+  )" + characterCond + R"(
+    UNION ALL
+    SELECT `x`, `y`, `id`, 'building' AS `type`
+      FROM `buildings`
+      WHERE (`x` BETWEEN ?1 AND ?2) AND (`y` BETWEEN ?3 AND ?4) AND
+  )" + buildingCond + R"(
+    ORDER BY `type`, `id`
+  )");
+  stmt.Bind (1, centre.GetX () - l1range);
+  stmt.Bind (2, centre.GetX () + l1range);
+  stmt.Bind (3, centre.GetY () - l1range);
+  stmt.Bind (4, centre.GetY () + l1range);
+  if (!friendlies || !enemies)
+    stmt.Bind (5, static_cast<int64_t> (faction));
+
+  std::vector<std::pair<HexCoord, proto::TargetId>> res;
+  while (stmt.Step ())
+    {
+      const HexCoord c(stmt.Get<int64_t> (0), stmt.Get<int64_t> (1));
+      if (HexCoord::DistanceL1 (centre, c) > l1range)
+        continue;
+
+      proto::TargetId id;
+      id.set_id (stmt.Get<int64_t> (2));
+      id.set_type (stmt.Get<std::string> (3) == "building"
+                      ? proto::TargetId::TYPE_BUILDING
+                      : proto::TargetId::TYPE_CHARACTER);
+      res.emplace_back (c, id);
+    }
+
+  return res;
+}
+
+TEST_F (TargetFinderTests, MatchesDatabaseQuery)
+{
+  /* Random targets (some inside buildings) across several cells, including
+     negative coordinates, and random queries compared to the database.  */
+  std::mt19937 rnd(42);
+  const auto coord = [&rnd] ()
+    {
+      return HexCoord (std::uniform_int_distribution<int> (-40, 40) (rnd),
+                       std::uniform_int_distribution<int> (-40, 40) (rnd));
+    };
+  const Faction factions[] = {Faction::RED, Faction::GREEN, Faction::BLUE};
+  const auto faction = [&] ()
+    {
+      return factions[std::uniform_int_distribution<int> (0, 2) (rnd)];
+    };
+
+  std::vector<Database::IdT> buildingIds;
+  for (unsigned i = 0; i < 100; ++i)
+    buildingIds.push_back (InsertBuilding (
+        coord (), i % 10 == 0 ? Faction::ANCIENT : faction ()));
+  for (unsigned i = 0; i < 2'000; ++i)
+    {
+      const auto id = InsertCharacter (coord (), faction ());
+      if (i % 20 == 0)
+        characters.GetById (id)->SetBuildingId (buildingIds[i % 100]);
+    }
+
+  /* The second finder ignores some positions (like no-combat zones).  */
+  const auto ignored = [] (const HexCoord& c)
+    {
+      return (c.GetX () + 100) % 7 == 0;
+    };
+  const TargetFinder finder(db);
+  const TargetFinder filtered(db, ignored);
+
+  for (unsigned i = 0; i < 1'000; ++i)
+    {
+      const HexCoord centre = coord ();
+      /* Small and large ranges, so that queries are answered both by looking
+         at the tiles in range and at the candidates in overlapping cells.  */
+      const int maxRange = (i % 5 == 0 ? 40 : 6);
+      const auto range
+          = std::uniform_int_distribution<int> (0, maxRange) (rnd);
+      const Faction f = faction ();
+      const bool enemies = (i % 3 != 1);
+      const bool friendlies = (i % 3 != 0);
+      const bool filter = (i % 2 == 0);
+
+      auto expected = QueryDatabaseTargets (db, centre, range, f,
+                                            enemies, friendlies);
+      if (filter)
+        expected.erase (std::remove_if (expected.begin (), expected.end (),
+                                        [&] (const auto& e)
+                                          {
+                                            return ignored (e.first);
+                                          }),
+                        expected.end ());
+
+      found.clear ();
+      (filter ? filtered : finder).ProcessL1Targets (
+          centre, range, f, enemies, friendlies,
+          [this] (const HexCoord& c, const proto::TargetId& t)
+            {
+              found.emplace_back (c, t);
+            });
+
+      ASSERT_EQ (found.size (), expected.size ());
+      for (unsigned j = 0; j < found.size (); ++j)
+        {
+          EXPECT_EQ (found[j].first, expected[j].first);
+          EXPECT_EQ (found[j].second.type (), expected[j].second.type ());
+          EXPECT_EQ (found[j].second.id (), expected[j].second.id ());
+        }
+
+      /* The closest ones, excluding one of them (if any).  */
+      const auto& query = (filter ? filtered : finder);
+      proto::TargetId exclude;
+      if (!expected.empty ())
+        exclude = expected[i % expected.size ()].second;
+      std::vector<proto::TargetId> closest;
+      HexCoord::IntT closestDist = range + 1;
+      for (const auto& e : expected)
+        {
+          if (e.second.type () == exclude.type ()
+                && e.second.id () == exclude.id ())
+            continue;
+          const auto dist = HexCoord::DistanceL1 (centre, e.first);
+          if (dist < closestDist)
+            {
+              closest.clear ();
+              closestDist = dist;
+            }
+          if (dist == closestDist)
+            closest.push_back (e.second);
+        }
+
+      const auto actual = query.FindClosest (
+          centre, range, f, enemies, friendlies, exclude);
+      ASSERT_EQ (actual.size (), closest.size ());
+      for (unsigned j = 0; j < actual.size (); ++j)
+        {
+          EXPECT_EQ (actual[j].type (), closest[j].type ());
+          EXPECT_EQ (actual[j].id (), closest[j].id ());
+        }
+    }
 }
 
 } // anonymous namespace

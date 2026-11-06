@@ -131,15 +131,27 @@ namespace
 {
 
 /**
- * Wrapper around ProcessL1Targets, which filters out targets in a no-combat
- * safe zone as well as the fighter itself.  If enemies is true, it will look
- * for enemies and not friendlies; if enemies is false, the other way round.
- * If the fighter is affected by a mentecon, it will instead just ignore the
- * enemies flag and always look for enemies and friendlies alike.
+ * Returns the position filter for TargetFinder that ignores targets in a
+ * no-combat safe zone.
+ */
+TargetFinder::PositionFilter
+NoCombatZones (const Context& ctx)
+{
+  return [&ctx] (const HexCoord& c)
+    {
+      return ctx.Map ().SafeZones ().IsNoCombat (c);
+    };
+}
+
+/**
+ * Wrapper around ProcessL1Targets (of a TargetFinder that ignores no-combat
+ * zones), which filters out the fighter itself.  If enemies is true, it will
+ * look for enemies and not friendlies; if enemies is false, the other way
+ * round.  If the fighter is affected by a mentecon, it will instead just
+ * ignore the enemies flag and always look for enemies and friendlies alike.
  */
 void
-ProcessCombatTargets (const TargetFinder& targets, const Context& ctx,
-                      const CombatEntity& f,
+ProcessCombatTargets (const TargetFinder& targets, const CombatEntity& f,
                       const HexCoord& centre, const HexCoord::IntT range,
                       const bool enemies,
                       const TargetFinder::ProcessingFcn& cb)
@@ -154,14 +166,6 @@ ProcessCombatTargets (const TargetFinder& targets, const Context& ctx,
                             lookForEnemies, lookForFriendlies,
     [&] (const HexCoord& c, const proto::TargetId& id)
     {
-      if (ctx.Map ().SafeZones ().IsNoCombat (c))
-        {
-          VLOG (2)
-              << "Ignoring fighter in no-combat zone:\n"
-              << id.DebugString ();
-          return;
-        }
-
       if (myId == TargetKey (id))
         return;
 
@@ -220,7 +224,7 @@ public:
   TargetFindingProcessor (Database& db, xaya::Random& r, const Context& c)
     : buildings(db), characters(db),
       fighters(buildings, characters),
-      targets(db),
+      targets(db, NoCombatZones (c)),
       rnd(r), ctx(c)
   {}
 
@@ -287,34 +291,17 @@ TargetFindingProcessor::SelectNormalTarget (const CombatModifier& mod,
   CHECK_GE (range, 0);
   range = mod.range (range);
 
-  HexCoord::IntT closestRange;
-
-  ProcessCombatTargets (targets, ctx, *res.f, pos, range, true,
-    [&] (const HexCoord& c, const proto::TargetId& id)
-    {
-      const HexCoord::IntT curDist = HexCoord::DistanceL1 (pos, c);
-      if (res.enemyTargets.empty () || curDist < closestRange)
-        {
-          closestRange = curDist;
-          res.enemyTargets = {id};
-          return;
-        }
-
-      if (curDist == closestRange)
-        {
-          res.enemyTargets.push_back (id);
-          return;
-        }
-
-      CHECK_GT (curDist, closestRange);
-    });
+  /* This is what ProcessCombatTargets with enemies would process.  */
+  res.enemyTargets = targets.FindClosest (pos, range, res.f->GetFaction (),
+                                          true, res.f->GetEffects ().mentecon (),
+                                          res.f->GetIdAsTarget ());
 
   if (res.enemyTargets.empty ())
     VLOG (1) << "Found no targets around " << pos;
   else
     VLOG (1)
-        << "Found " << res.enemyTargets.size () << " targets in closest range "
-        << closestRange << " around " << pos;
+        << "Found " << res.enemyTargets.size ()
+        << " targets in closest range around " << pos;
 }
 
 void
@@ -334,7 +321,7 @@ TargetFindingProcessor::SelectFriendlyTargets (const CombatModifier& mod,
   range = mod.range (range);
 
   res.hasFriendlyTarget = false;
-  ProcessCombatTargets (targets, ctx, *res.f, pos, range, false,
+  ProcessCombatTargets (targets, *res.f, pos, range, false,
     [&] (const HexCoord& c, const proto::TargetId& id)
     {
       res.hasFriendlyTarget = true;
@@ -552,7 +539,7 @@ public:
     : dl(lst), rnd(r), ctx(c),
       buildings(db), characters(db),
       fighters(buildings, characters),
-      targets(db)
+      targets(db, NoCombatZones (c))
   {}
 
   /**
@@ -797,20 +784,20 @@ DamageProcessor::DealDamage (FighterTable::Handle f, const bool forGainHp,
      to be handled fine.  (In this situation, only friendly attacks will need
      to be processed in the end, which only have area and no range.)
 
-     The stored target may also have left the map:  a character that founds
-     a building enters it during move processing, before damage.  Then the
-     fighter has no target this round (attacks centred on itself still hit),
-     and gets a new one in the next target selection.  */
+     The stored target may also no longer be a potential target:  a character
+     that founds a building enters it during move processing, before damage.
+     Then the fighter has no target this round (attacks centred on itself
+     still hit), and gets a new one in the next target selection.  */
   bool hasTarget = false;
   HexCoord targetPos;
   HexCoord::IntT targetDist = std::numeric_limits<HexCoord::IntT>::max ();
   if (f->HasTarget ())
     {
-      FighterTable::Handle tf = fighters.GetForTarget (f->GetTarget ());
-      if (tf->HasCombatPosition ())
+      const HexCoord* found = targets.FindPosition (f->GetTarget ());
+      if (found != nullptr)
         {
           hasTarget = true;
-          targetPos = tf->GetCombatPosition ();
+          targetPos = *found;
           targetDist = HexCoord::DistanceL1 (pos, targetPos);
         }
     }
@@ -850,7 +837,7 @@ DamageProcessor::DealDamage (FighterTable::Handle f, const bool forGainHp,
           else
             centre = pos;
 
-          ProcessCombatTargets (targets, ctx,
+          ProcessCombatTargets (targets,
                                 *f, centre, mod.range (attack.area ()),
                                 !attack.friendlies (),
             [&] (const HexCoord& c, const proto::TargetId& id)
@@ -901,7 +888,7 @@ DamageProcessor::ProcessSelfDestructs (FighterTable::Handle f,
           << " of damage for self-destruct of "
           << f->GetIdAsTarget ().DebugString ();
 
-      ProcessCombatTargets (targets, ctx,
+      ProcessCombatTargets (targets,
                             *f, pos, mod.range (sd.area ()),
                             true,
         [&] (const HexCoord& c, const proto::TargetId& id)
@@ -915,23 +902,30 @@ DamageProcessor::ProcessSelfDestructs (FighterTable::Handle f,
 void
 DamageProcessor::Process ()
 {
+  /* Fighters with gain_hp attacks, in the order of ProcessWithTarget.  */
+  std::vector<TargetKey> withGainHp;
+
   modifiers.clear ();
   fighters.ProcessWithTarget ([&] (FighterTable::Handle f)
     {
       CombatModifier mod;
       ComputeModifier (*f, mod);
       CHECK (modifiers.emplace (f->GetIdAsTarget (), std::move (mod)).second);
+
+      const auto& attacks = f->GetCombatData ().attacks ();
+      if (std::any_of (attacks.begin (), attacks.end (),
+                       [] (const proto::Attack& a) { return a.gain_hp (); }))
+        withGainHp.emplace_back (f->GetIdAsTarget ());
     });
 
   std::set<TargetKey> newDead;
 
   /* We first process all attacks with gain_hp, and only later all without.
      This ensures that normal attacks against shields do not remove the HP
-     first before they can be drained by a syphon.  */
-  fighters.ProcessWithTarget ([&] (FighterTable::Handle f)
-    {
-      DealDamage (std::move (f), true, newDead);
-    });
+     first before they can be drained by a syphon.  (Other fighters would
+     not do anything in this round.)  */
+  for (const auto& id : withGainHp)
+    DealDamage (fighters.GetForTarget (id.ToProto ()), true, newDead);
 
   /* Reconcile the set of HP gained by attackers now (before normal attacks
      may bring shields down to zero when they aren't yet, for instance).  */

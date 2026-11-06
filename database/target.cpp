@@ -18,19 +18,192 @@
 
 #include "target.hpp"
 
+#include "hexagonal/ring.hpp"
+
+#include <algorithm>
+#include <tuple>
+
 namespace pxd
 {
 
 namespace
 {
 
-struct TargetResult : public Database::ResultType
+/**
+ * Returns true if a target of the given faction matches the faction
+ * conditions of a query.
+ */
+inline bool
+MatchesFaction (const Faction target, const Faction faction,
+                const bool enemies, const bool friendlies)
+{
+  /* Faction conditions for an invalid faction match nothing (as a comparison
+     with NULL in SQL).  */
+  if (faction == Faction::INVALID)
+    return enemies && friendlies;
+
+  return target == faction ? friendlies : enemies;
+}
+
+struct TargetResult : public ResultWithFaction
 {
   RESULT_COLUMN (std::string, type, 1);
   RESULT_COLUMN (int64_t, id, 2);
   RESULT_COLUMN (int64_t, x, 3);
   RESULT_COLUMN (int64_t, y, 4);
 };
+
+} // anonymous namespace
+
+TargetFinder::TargetFinder (Database& db, const PositionFilter& ignore)
+{
+  /* Characters inside buildings have no position and are never targets.
+     Neither are buildings of the ancient faction.  */
+  auto stmt = db.Prepare (R"(
+    SELECT `x`, `y`, `id`, `faction`, 'character' AS `type`
+      FROM `characters`
+      WHERE `x` IS NOT NULL AND `y` IS NOT NULL
+    UNION ALL
+    SELECT `x`, `y`, `id`, `faction`, 'building' AS `type`
+      FROM `buildings`
+      WHERE `x` IS NOT NULL AND `y` IS NOT NULL AND `faction` != 4
+  )");
+
+  auto res = stmt.Query<TargetResult> ();
+  while (res.Step ())
+    {
+      Target t;
+      t.pos = HexCoord (res.Get<TargetResult::x> (),
+                        res.Get<TargetResult::y> ());
+      t.faction = GetFactionFromColumn (res);
+      t.id = res.Get<TargetResult::id> ();
+
+      const auto type = res.Get<TargetResult::type> ();
+      if (type == "building")
+        t.type = proto::TargetId::TYPE_BUILDING;
+      else if (type == "character")
+        t.type = proto::TargetId::TYPE_CHARACTER;
+      else
+        LOG (FATAL) << "Unexpected target type: " << type;
+
+      CHECK (positions.emplace (PositionKey (t.type, t.id), t.pos).second);
+      if (ignore != nullptr && ignore (t.pos))
+        continue;
+
+      const auto f = static_cast<unsigned> (t.faction);
+      CHECK_LT (f, NUM_FACTIONS);
+      auto& cell = cells[HexCoord (CellIndex (t.pos.GetX ()),
+                                   CellIndex (t.pos.GetY ()))];
+      cell.targets.push_back (t);
+      ++cell.counts[f];
+      tiles[t.pos].push_back (t);
+    }
+}
+
+template <typename Fcn, typename Done>
+  void
+  TargetFinder::ForEachInRange (const HexCoord& centre,
+                                const HexCoord::IntT l1range,
+                                const Faction faction,
+                                const bool enemies, const bool friendlies,
+                                const Fcn& fcn, const Done& done) const
+{
+  CHECK (enemies || friendlies)
+      << "Neither enemy nor friendly targets requested?";
+  if (l1range < 0)
+    return;
+
+  /* Find the cells overlapping the L-infinity range (which certainly
+     includes the L1 range) that have targets of matching factions, and
+     count those targets.  */
+  std::vector<const Cell*> overlapping;
+  size_t candidates = 0;
+  const int minX = CellIndex (centre.GetX () - l1range);
+  const int maxX = CellIndex (centre.GetX () + l1range);
+  const int minY = CellIndex (centre.GetY () - l1range);
+  const int maxY = CellIndex (centre.GetY () + l1range);
+  for (int x = minX; x <= maxX; ++x)
+    for (int y = minY; y <= maxY; ++y)
+      {
+        const auto mit = cells.find (HexCoord (x, y));
+        if (mit == cells.end ())
+          continue;
+
+        size_t matching = 0;
+        for (unsigned f = 0; f < NUM_FACTIONS; ++f)
+          if (MatchesFaction (static_cast<Faction> (f), faction,
+                              enemies, friendlies))
+            matching += mit->second.counts[f];
+
+        if (matching > 0)
+          {
+            overlapping.push_back (&mit->second);
+            candidates += matching;
+          }
+      }
+
+  /* Then either look at all those candidates, or at the tiles in range
+     ring by ring (in order of distance), whichever means looking at less.  */
+  const size_t tilesInRange = 1 + 3 * static_cast<size_t> (l1range)
+                                    * (l1range + 1);
+  if (tilesInRange < candidates)
+    {
+      for (HexCoord::IntT r = 0; r <= l1range; ++r)
+        {
+          for (const auto& c : L1Ring (centre, r))
+            {
+              const auto mit = tiles.find (c);
+              if (mit == tiles.end ())
+                continue;
+
+              for (const auto& t : mit->second)
+                if (MatchesFaction (t.faction, faction, enemies, friendlies))
+                  fcn (t, r);
+            }
+
+          if (done ())
+            return;
+        }
+      return;
+    }
+
+  for (const auto* cell : overlapping)
+    for (const auto& t : cell->targets)
+      {
+        if (!MatchesFaction (t.faction, faction, enemies, friendlies))
+          continue;
+        const auto dist = HexCoord::DistanceL1 (centre, t.pos);
+        if (dist <= l1range)
+          fcn (t, dist);
+      }
+}
+
+namespace
+{
+
+/**
+ * Sorts targets in the order of TargetKey (the type enum values sort
+ * buildings before characters) and returns their IDs.
+ */
+template <typename T>
+  std::vector<proto::TargetId>
+  SortedIds (std::vector<const T*>& targets)
+{
+  std::sort (targets.begin (), targets.end (),
+             [] (const T* a, const T* b)
+               {
+                 return std::tie (a->type, a->id) < std::tie (b->type, b->id);
+               });
+
+  std::vector<proto::TargetId> res(targets.size ());
+  for (size_t i = 0; i < targets.size (); ++i)
+    {
+      res[i].set_type (targets[i]->type);
+      res[i].set_id (targets[i]->id);
+    }
+
+  return res;
+}
 
 } // anonymous namespace
 
@@ -41,70 +214,52 @@ TargetFinder::ProcessL1Targets (const HexCoord& centre,
                                 const bool enemies, const bool friendlies,
                                 const ProcessingFcn& cb) const
 {
-  CHECK (enemies || friendlies)
-      << "Neither enemy nor friendly targets requested?";
-
-  std::string characterCond = "TRUE";
-  std::string buildingCond = "`faction` != 4";
-  if (!friendlies)
+  std::vector<const Target*> found;
+  ForEachInRange (centre, l1range, faction, enemies, friendlies,
+    [&found] (const Target& t, const HexCoord::IntT dist)
     {
-      characterCond += " AND `faction` != ?5";
-      buildingCond += " AND `faction` != ?5";
-    }
-  if (!enemies)
+      found.push_back (&t);
+    },
+    [] () { return false; });
+
+  const auto ids = SortedIds (found);
+  for (size_t i = 0; i < ids.size (); ++i)
+    cb (found[i]->pos, ids[i]);
+}
+
+std::vector<proto::TargetId>
+TargetFinder::FindClosest (const HexCoord& centre,
+                           const HexCoord::IntT l1range,
+                           const Faction faction,
+                           const bool enemies, const bool friendlies,
+                           const proto::TargetId& exclude) const
+{
+  std::vector<const Target*> closest;
+  HexCoord::IntT closestDist = 0;
+  ForEachInRange (centre, l1range, faction, enemies, friendlies,
+    [&] (const Target& t, const HexCoord::IntT dist)
     {
-      characterCond += " AND `faction` = ?5";
-      buildingCond += " AND `faction` = ?5";
-    }
+      if (t.type == exclude.type () && t.id == exclude.id ())
+        return;
+      if (!closest.empty () && dist > closestDist)
+        return;
+      if (closest.empty () || dist < closestDist)
+        {
+          closest.clear ();
+          closestDist = dist;
+        }
+      closest.push_back (&t);
+    },
+    [&closest] () { return !closest.empty (); });
 
-  /* Note that the "between" statement is automatically false for NULL values,
-     hence characters in buildings are ignored (as they should).  */
-  std::ostringstream sql;
-  sql << R"(
-    SELECT `x`, `y`, `id`, 'character' AS `type`
-      FROM `characters`
-      WHERE (`x` BETWEEN ?1 AND ?2) AND (`y` BETWEEN ?3 AND ?4) AND
-  )" << characterCond << R"(
-    UNION ALL
-    SELECT `x`, `y`, `id`, 'building' AS `type`
-      FROM `buildings`
-      WHERE (`x` BETWEEN ?1 AND ?2) AND (`y` BETWEEN ?3 AND ?4) AND
-  )" << buildingCond << R"(
-    ORDER BY `type`, `id`
-  )";
-  auto stmt = db.Prepare (sql.str ());
+  return SortedIds (closest);
+}
 
-  /* The query is actually about an L-infinity range, since that is easy
-     to formulate in the database.  This certainly includes the L1 range.  */
-  stmt.Bind (1, centre.GetX () - l1range);
-  stmt.Bind (2, centre.GetX () + l1range);
-  stmt.Bind (3, centre.GetY () - l1range);
-  stmt.Bind (4, centre.GetY () + l1range);
-
-  if (!friendlies || !enemies)
-    BindFactionParameter (stmt, 5, faction);
-
-  auto res = stmt.Query<TargetResult> ();
-  while (res.Step ())
-    {
-      const HexCoord coord (res.Get<TargetResult::x> (),
-                            res.Get<TargetResult::y> ());
-      if (HexCoord::DistanceL1 (centre, coord) > l1range)
-        continue;
-
-      proto::TargetId targetId;
-      targetId.set_id (res.Get<TargetResult::id> ());
-
-      const auto type = res.Get<TargetResult::type> ();
-      if (type == "building")
-        targetId.set_type (proto::TargetId::TYPE_BUILDING);
-      else if (type == "character")
-        targetId.set_type (proto::TargetId::TYPE_CHARACTER);
-      else
-        LOG (FATAL) << "Unexpected target type: " << type;
-
-      cb (coord, targetId);
-    }
+const HexCoord*
+TargetFinder::FindPosition (const proto::TargetId& id) const
+{
+  const auto mit = positions.find (PositionKey (id.type (), id.id ()));
+  return mit == positions.end () ? nullptr : &mit->second;
 }
 
 } // namespace pxd
