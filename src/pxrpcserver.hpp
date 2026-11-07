@@ -206,6 +206,7 @@ public:
   Json::Value gettradehistory (int building, const std::string& item) override;
 
   Json::Value getbootstrapdata () override;
+  Json::Value getchanges (const std::string& fromBlock) override;
 
   Json::Value getserviceinfo (const std::string& name,
                               const Json::Value& op) override;

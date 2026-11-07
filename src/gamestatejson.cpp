@@ -26,6 +26,7 @@
 
 #include "database/account.hpp"
 #include "database/building.hpp"
+#include "database/changes.hpp"
 #include "database/character.hpp"
 #include "database/faction.hpp"
 #include "database/itemcounts.hpp"
@@ -713,15 +714,62 @@ GameStateJson::PrizeStats ()
   return res;
 }
 
-Json::Value
-GameStateJson::Accounts ()
+namespace
 {
-  AccountsTable tbl(db);
-  Json::Value res = ResultsAsArray (tbl, tbl.QueryAll ());
+
+Json::Value
+KeyToJson (const std::string& name)
+{
+  return name;
+}
+
+Json::Value
+KeyToJson (const HexCoord& c)
+{
+  return CoordToJson (c);
+}
+
+template <typename T>
+  Json::Value
+  KeyToJson (const T id)
+{
+  return IntToJson (id);
+}
+
+} // anonymous namespace
+
+template <typename K, typename Fcn>
+  Json::Value
+  GameStateJson::ChangesFor (const std::set<K>& keys, const Fcn& get) const
+{
+  Json::Value changed(Json::arrayValue);
+  Json::Value deleted(Json::arrayValue);
+
+  for (const auto& k : keys)
+    {
+      const auto h = get (k);
+      if (h == nullptr)
+        deleted.append (KeyToJson (k));
+      else
+        changed.append (Convert (*h));
+    }
+
+  Json::Value res(Json::objectValue);
+  res["changed"] = changed;
+  res["deleted"] = deleted;
+
+  return res;
+}
+
+void
+GameStateJson::AddReservedCoins (Json::Value& accounts) const
+{
+  if (accounts.empty ())
+    return;
 
   /* Add in also the Cubit balances reserved in open bids.  */
   const auto reserved = orders.GetReservedCoins ();
-  for (auto& entry : res)
+  for (auto& entry : accounts)
     {
       const auto& nmVal = entry["name"];
       CHECK (nmVal.isString ());
@@ -738,6 +786,14 @@ GameStateJson::Accounts ()
       bal["reserved"] = IntToJson (cur);
       bal["total"] = IntToJson (cur + bal["available"].asInt64 ());
     }
+}
+
+Json::Value
+GameStateJson::Accounts ()
+{
+  AccountsTable tbl(db);
+  Json::Value res = ResultsAsArray (tbl, tbl.QueryAll ());
+  AddReservedCoins (res);
 
   return res;
 }
@@ -826,6 +882,47 @@ GameStateJson::BootstrapData ()
 {
   Json::Value res(Json::objectValue);
   res["regions"] = Regions (0);
+
+  return res;
+}
+
+Json::Value
+GameStateJson::Changes (const xaya::uint256& block, const unsigned height)
+{
+  ChangedKeys keys;
+  if (!keys.ReadSince (db, block, height))
+    return Json::Value ();
+
+  AccountsTable accounts(db);
+  BuildingsTable buildings(db);
+  CharacterTable characters(db);
+  GroundLootTable loot(db);
+  OngoingsTable ongoings(db);
+  RegionsTable regions(db, RegionsTable::HEIGHT_READONLY);
+
+  const auto byId = [] (auto& tbl)
+    {
+      return [&tbl] (const auto id) { return tbl.GetById (id); };
+    };
+
+  Json::Value res(Json::objectValue);
+  res["accounts"] = ChangesFor (keys.accounts, [&accounts] (const auto& nm)
+    {
+      return accounts.GetByName (nm);
+    });
+  AddReservedCoins (res["accounts"]["changed"]);
+  res["buildings"] = ChangesFor (keys.buildings, byId (buildings));
+  res["characters"] = ChangesFor (keys.characters, byId (characters));
+  res["groundloot"] = ChangesFor (keys.groundLoot, [&loot] (const auto& c)
+    {
+      /* Empty piles of loot are not part of the state.  */
+      auto h = loot.GetByCoord (c);
+      if (h->GetInventory ().IsEmpty ())
+        h.reset ();
+      return h;
+    });
+  res["ongoings"] = ChangesFor (keys.ongoings, byId (ongoings));
+  res["regions"] = ChangesFor (keys.regions, byId (regions));
 
   return res;
 }

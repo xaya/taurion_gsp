@@ -107,8 +107,7 @@ noinst_HEADERS = $(libtaurionheaders) $(tauriondheaders)
 
 EXTRA_PROGRAMS = battlebench
 battlebench_CXXFLAGS = $(tauriond_CXXFLAGS) $(SQLITE3_CFLAGS) \
-  -Wno-error=return-type \
-  -DSQLITE_ENABLE_SESSION -DSQLITE_ENABLE_PREUPDATE_HOOK
+  -Wno-error=return-type
 battlebench_LDADD = $(tauriond_LDADD) $(SQLITE3_LIBS)
 battlebench_SOURCES = battlebench.cpp
 

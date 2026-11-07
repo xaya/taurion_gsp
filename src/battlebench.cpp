@@ -69,6 +69,8 @@ DEFINE_string (fit, "",
                " (e.g. 'lf laser' for an AoE battle)");
 DEFINE_bool (session, true, "Record an undo changeset per block");
 DEFINE_bool (json, false, "Time the full characters JSON after each block");
+DEFINE_bool (changes, false,
+             "Store each block's undo data and time getchanges for it");
 DEFINE_int32 (findpath_threads, 0,
               "Threads running findpath calls during processing");
 DEFINE_int32 (findpath_l1range, 4000, "l1range of those findpath calls");
@@ -148,6 +150,70 @@ public:
   }
 
 };
+
+/**
+ * Read-only connection to a state file with SQLite's default settings, as
+ * libxayagame opens one for each RPC call.
+ */
+class ReadOnlyDatabase : public Database
+{
+
+private:
+
+  xaya::SQLiteDatabase db;
+
+public:
+
+  explicit ReadOnlyDatabase (const std::string& file)
+    : db(file, SQLITE_OPEN_READONLY)
+  {
+    SetDatabase (db);
+  }
+
+  IdT
+  GetNextId () override
+  {
+    LOG (FATAL) << "Read-only database";
+  }
+
+  IdT
+  GetLogId () override
+  {
+    LOG (FATAL) << "Read-only database";
+  }
+
+};
+
+/**
+ * Returns a made-up hash for the bench's block at the given height.
+ */
+xaya::uint256
+BlockHash (const unsigned height)
+{
+  xaya::SHA256 hasher;
+  hasher << "battlebench block " << std::to_string (height);
+  return hasher.Finalise ();
+}
+
+/**
+ * Logs the time it takes to build a JSON value and write it as string.
+ */
+template <typename Fcn>
+  void
+  TimeJson (const std::string& what, const Fcn& build)
+{
+  const auto start = Clock::now ();
+  const Json::Value val = build ();
+  const double buildMs = MsSince (start);
+
+  Json::StreamWriterBuilder wbuilder;
+  wbuilder["indentation"] = "";
+  const auto str = Json::writeString (wbuilder, val);
+
+  LOG (INFO)
+      << what << " JSON: build " << buildMs << " ms, total "
+      << MsSince (start) << " ms, " << str.size () << " B";
+}
 
 /**
  * Returns the IDs of up to n characters of a faction that are on the map
@@ -314,11 +380,19 @@ Run ()
   unsigned sbHeight;
   int64_t sbTimestamp;
   CHECK (db.LastSuperBlock (sbHeight, sbTimestamp));
+  CHECK (FLAGS_session || !FLAGS_changes) << "--changes needs --session";
   unsigned height;
+  xaya::uint256 lastHash;
   {
-    auto stmt = (*db).Prepare ("SELECT MAX (`height`) FROM `xayagame_undo`");
+    auto stmt = (*db).Prepare (R"(
+      SELECT `height`, `hash`
+        FROM `xayagame_undo`
+        ORDER BY `height` DESC
+        LIMIT 1
+    )");
     CHECK (stmt.Step ());
     height = stmt.Get<int64_t> (0);
+    lastHash = stmt.Get<xaya::uint256> (1);
   }
   LOG (INFO)
       << "State at block " << height << ", super block " << sbHeight;
@@ -371,15 +445,31 @@ Run ()
 
       auto t = Clock::now ();
       int changesetBytes = 0;
+      void* changeset = nullptr;
       if (session != nullptr)
         {
-          void* data;
-          CHECK_EQ (sqlite3session_changeset (session, &changesetBytes, &data),
+          CHECK_EQ (sqlite3session_changeset (session, &changesetBytes,
+                                              &changeset),
                     SQLITE_OK);
-          sqlite3_free (data);
           sqlite3session_delete (session);
         }
       const double changesetMs = MsSince (t);
+
+      /* libxayagame stores the forward changeset as undo data, which is
+         what getchanges reads.  */
+      if (FLAGS_changes)
+        {
+          auto stmt = (*db).Prepare (R"(
+            INSERT INTO `xayagame_undo` (`hash`, `data`, `height`)
+              VALUES (?1, ?2, ?3)
+          )");
+          stmt.Bind (1, BlockHash (height));
+          stmt.BindBlob (2, std::string (static_cast<const char*> (changeset),
+                                         changesetBytes));
+          stmt.Bind (3, height);
+          stmt.Execute ();
+        }
+      sqlite3_free (changeset);
 
       t = Clock::now ();
       (*db).Execute ("COMMIT");
@@ -391,19 +481,25 @@ Run ()
           << " B), commit " << commitMs << " ms, total " << MsSince (start)
           << " ms; " << CountState (db);
 
+      const Context ctx(db, chain, map, sbHeight + 1, height, sbTimestamp);
       if (FLAGS_json)
+        TimeJson ("Characters", [&] ()
+          {
+            return GameStateJson (db, ctx).Characters ();
+          });
+      if (FLAGS_changes)
         {
-          t = Clock::now ();
-          const Context ctx(db, chain, map, sbHeight + 1, height, sbTimestamp);
-          GameStateJson gsj(db, ctx);
-          const auto chars = gsj.Characters ();
-          const double buildMs = MsSince (t);
-          Json::StreamWriterBuilder wbuilder;
-          wbuilder["indentation"] = "";
-          const auto str = Json::writeString (wbuilder, chars);
-          LOG (INFO)
-              << "Characters JSON: build " << buildMs << " ms, total "
-              << MsSince (t) << " ms, " << str.size () << " B";
+          TimeJson ("Changes", [&] ()
+            {
+              ReadOnlyDatabase rpcDb(FLAGS_db);
+              auto res = GameStateJson (rpcDb, ctx).Changes (lastHash, height);
+              CHECK (!res.isNull ());
+              LOG (INFO)
+                  << "Changes: " << res["characters"]["changed"].size ()
+                  << " characters";
+              return res;
+            });
+          lastHash = BlockHash (height);
         }
     }
 

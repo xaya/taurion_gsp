@@ -29,6 +29,7 @@ REGTESTS = \
   findpath.py \
   fork_gamestart.py \
   getbuildingshape.py \
+  getchanges.py \
   getregionat.py \
   getserviceinfo.py \
   getversion.py \

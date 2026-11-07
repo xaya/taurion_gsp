@@ -28,7 +28,11 @@
 #include "mapdata/basemap.hpp"
 #include "proto/building.pb.h"
 
+#include <xayautil/uint256.hpp>
+
 #include <json/json.h>
+
+#include <set>
 
 namespace pxd
 {
@@ -69,6 +73,20 @@ private:
    */
   template <typename T, typename R>
     Json::Value ResultsAsArray (T& tbl, Database::Result<R> res) const;
+
+  /**
+   * Returns the changes of the entities with the given keys, with the JSON
+   * of those that exist (as returned by the get function) as "changed" and
+   * the keys of all others as "deleted".
+   */
+  template <typename K, typename Fcn>
+    Json::Value ChangesFor (const std::set<K>& keys, const Fcn& get) const;
+
+  /**
+   * Adds the coins reserved by each account (as well as its total balance)
+   * to an array of account JSON objects.
+   */
+  void AddReservedCoins (Json::Value& accounts) const;
 
 public:
 
@@ -159,6 +177,16 @@ public:
    * potentially an expensive operation and has a large result.
    */
   Json::Value BootstrapData ();
+
+  /**
+   * Returns the changes to accounts, buildings, characters, ground loot,
+   * ongoing operations and regions since the given block, up to the
+   * current state at the given height.  For each, these are the JSON objects
+   * (as in the full results) of all that changed and the keys of all that
+   * were deleted.  Returns null if the changes are not available, in which
+   * case clients should read the full state instead.
+   */
+  Json::Value Changes (const xaya::uint256& block, unsigned height);
 
 };
 
