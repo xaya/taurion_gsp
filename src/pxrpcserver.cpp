@@ -620,21 +620,33 @@ PXRpcServer::getbootstrapdata ()
 }
 
 Json::Value
-PXRpcServer::getchanges (const std::string& fromBlock)
+PXRpcServer::GetChanges (const std::string& fromBlock, const bool compact)
 {
-  LOG (INFO) << "RPC method called: getchanges " << fromBlock;
-
   xaya::uint256 block;
   if (!block.FromHex (fromBlock))
     ReturnError (ErrorCode::INVALID_ARGUMENT,
                  "invalid block hash: " + fromBlock);
 
   return logic.GetCustomStateData (game,
-    [&block] (GameStateJson& gsj, const xaya::uint256& hash,
-              const unsigned height)
+    [&block, compact] (GameStateJson& gsj, const xaya::uint256& hash,
+                       const unsigned height)
       {
-        return gsj.Changes (block, height);
+        return gsj.Changes (block, height, compact);
       });
+}
+
+Json::Value
+PXRpcServer::getchanges (const std::string& fromBlock)
+{
+  LOG (INFO) << "RPC method called: getchanges " << fromBlock;
+  return GetChanges (fromBlock, false);
+}
+
+Json::Value
+PXRpcServer::getcompactchanges (const std::string& fromBlock)
+{
+  LOG (INFO) << "RPC method called: getcompactchanges " << fromBlock;
+  return GetChanges (fromBlock, true);
 }
 
 Json::Value

@@ -50,6 +50,30 @@ struct ChangedKeys
   std::set<Database::IdT> ongoings;
   std::set<RegionMap::IdT> regions;
 
+  /*
+   * Some characters change only in parts of their JSON:  all their changes
+   * in all blocks were updates of their row in the characters table that
+   * changed nothing but the columns of movement (x, y and volatilemv) and
+   * combat (hp, target, effects, canregen and friendlytargets), and changes
+   * of the damage lists with them as victim.  These are also in one or both
+   * of the following subsets of characters.
+   */
+
+  /**
+   * The characters with only partial changes, if any of them were of
+   * movement.  Their JSON can have changed in its position and movement
+   * (and in the region of an active miner, which shows that of its
+   * position).
+   */
+  std::set<Database::IdT> movedCharacters;
+
+  /**
+   * The characters with only partial changes, if any of them were of combat
+   * or the damage lists.  Their JSON can have changed in the HP, target,
+   * effects and attackers of its combat data.
+   */
+  std::set<Database::IdT> combatCharacters;
+
   /**
    * Reads the keys changed by all blocks after the given one, up to the
    * current state of the database at the given height.  Returns false if

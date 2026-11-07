@@ -34,10 +34,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include <sqlite3.h>
-
-#include <string>
-
 namespace pxd
 {
 namespace
@@ -46,13 +42,10 @@ namespace
 using testing::ElementsAre;
 using testing::IsEmpty;
 
-class ChangedKeysTests : public DBTestWithSchema
+class ChangedKeysTests : public DBTestWithUndo
 {
 
 protected:
-
-  /** Height of the last block.  */
-  unsigned height = 10;
 
   ChangedKeys keys;
 
@@ -63,63 +56,7 @@ protected:
 
   ChangedKeysTests ()
     : accounts(db), buildings(db), characters(db), orders(db)
-  {
-    (*db).Execute (R"(
-      CREATE TABLE `xayagame_undo`
-          (`hash` BLOB PRIMARY KEY,
-           `data` BLOB NOT NULL,
-           `height` INTEGER NOT NULL);
-    )");
-  }
-
-  /**
-   * Runs the given function as the state update of a new block, and stores
-   * its changeset as undo data like libxayagame does.  Returns the block hash.
-   */
-  template <typename Fcn>
-    xaya::uint256
-    Block (const Fcn& update)
-  {
-    std::string changeset;
-    (*db).AccessDatabase ([&] (sqlite3* h)
-      {
-        sqlite3_session* session;
-        CHECK_EQ (sqlite3session_create (h, "main", &session), SQLITE_OK);
-        CHECK_EQ (sqlite3session_attach (session, nullptr), SQLITE_OK);
-
-        update ();
-
-        int size;
-        void* data;
-        CHECK_EQ (sqlite3session_changeset (session, &size, &data), SQLITE_OK);
-        changeset.assign (static_cast<const char*> (data), size);
-        sqlite3_free (data);
-        sqlite3session_delete (session);
-      });
-
-    ++height;
-    const auto hash = xaya::SHA256::Hash (std::to_string (height));
-
-    auto stmt = (*db).Prepare (R"(
-      INSERT INTO `xayagame_undo` (`hash`, `data`, `height`)
-        VALUES (?1, ?2, ?3)
-    )");
-    stmt.Bind (1, hash);
-    stmt.BindBlob (2, changeset);
-    stmt.Bind (3, height);
-    stmt.Execute ();
-
-    return hash;
-  }
-
-  /**
-   * Adds a block without any changes.
-   */
-  xaya::uint256
-  EmptyBlock ()
-  {
-    return Block ([] () {});
-  }
+  {}
 
   bool
   ReadSince (const xaya::uint256& block)
@@ -197,6 +134,185 @@ TEST_F (ChangedKeysTests, DataShownWithOtherEntities)
   EXPECT_THAT (keys.characters, ElementsAre (5));
   EXPECT_THAT (keys.buildings, ElementsAre (7, 10, 11));
   EXPECT_THAT (keys.accounts, ElementsAre ("bidder", "seller"));
+}
+
+TEST_F (ChangedKeysTests, MovementSteps)
+{
+  for (int i = 0; i < 3; ++i)
+    characters.CreateNew ("domob", Faction::RED)->SetPosition (HexCoord (i, 0));
+  const auto from = EmptyBlock ();
+
+  Block ([this] ()
+    {
+      auto c = characters.GetById (1);
+      c->SetPosition (HexCoord (1, 1));
+      c->MutableVolatileMv ().set_partial_step (10);
+      c.reset ();
+
+      characters.GetById (2)->MutableVolatileMv ().set_partial_step (20);
+
+      /* Like a teleport, this writes the full row but changes only
+         the position.  */
+      c = characters.GetById (3);
+      c->MutableProto ().clear_movement ();
+      c->SetPosition (HexCoord (5, 5));
+    });
+
+  ASSERT_TRUE (ReadSince (from));
+  EXPECT_THAT (keys.characters, ElementsAre (1, 2, 3));
+  EXPECT_THAT (keys.movedCharacters, ElementsAre (1, 2, 3));
+  EXPECT_THAT (keys.combatCharacters, IsEmpty ());
+}
+
+TEST_F (ChangedKeysTests, CombatChanges)
+{
+  for (int i = 0; i < 7; ++i)
+    characters.CreateNew ("domob", Faction::RED);
+  auto c = characters.GetById (4);
+  c->MutableRegenData ().mutable_regeneration_mhp ()->set_shield (100);
+  c->MutableRegenData ().mutable_max_hp ()->set_shield (10);
+  c->MutableHP ().set_shield (10);
+  c.reset ();
+  characters.GetById (6)->MutableEffects ().set_mentecon (true);
+  const auto from = EmptyBlock ();
+
+  Block ([this] ()
+    {
+      characters.ClearAllEffects ();
+      characters.GetById (1)->MutableHP ().set_armour (5);
+
+      proto::TargetId t;
+      t.set_id (42);
+      characters.GetById (2)->SetTarget (t);
+
+      characters.GetById (3)->MutableEffects ().mutable_speed ()
+          ->set_percent (10);
+
+      /* This changes canregen as well.  */
+      characters.GetById (4)->MutableHP ().set_shield (5);
+
+      characters.GetById (5)->SetFriendlyTargets (true);
+
+      /* canregen alone does not change with the API.  */
+      (*db).Execute ("UPDATE `characters` SET `canregen` = 1 WHERE `id` = 7");
+    });
+
+  ASSERT_TRUE (ReadSince (from));
+  EXPECT_THAT (keys.characters, ElementsAre (1, 2, 3, 4, 5, 6, 7));
+  EXPECT_THAT (keys.movedCharacters, IsEmpty ());
+  EXPECT_THAT (keys.combatCharacters, ElementsAre (1, 2, 3, 4, 5, 6, 7));
+}
+
+TEST_F (ChangedKeysTests, DamageListChanges)
+{
+  DamageLists (db, height).AddEntry (1, 10);
+  DamageLists (db, height).AddEntry (2, 12);
+  const auto from = EmptyBlock ();
+
+  Block ([this] ()
+    {
+      DamageLists dl(db, height);
+      dl.AddEntry (1, 10);
+      dl.AddEntry (3, 10);
+      dl.RemoveCharacter (12);
+    });
+
+  ASSERT_TRUE (ReadSince (from));
+  EXPECT_THAT (keys.characters, ElementsAre (1, 2, 3));
+  EXPECT_THAT (keys.movedCharacters, IsEmpty ());
+  EXPECT_THAT (keys.combatCharacters, ElementsAre (1, 2, 3));
+}
+
+TEST_F (ChangedKeysTests, MovedAndCombat)
+{
+  for (int i = 0; i < 3; ++i)
+    characters.CreateNew ("domob", Faction::RED)->SetPosition (HexCoord (i, 0));
+  const auto from = EmptyBlock ();
+
+  Block ([this] ()
+    {
+      auto c = characters.GetById (1);
+      c->SetPosition (HexCoord (1, 1));
+      c->MutableHP ().set_armour (5);
+      c.reset ();
+
+      proto::TargetId t;
+      t.set_id (42);
+      c = characters.GetById (2);
+      c->MutableVolatileMv ().set_partial_step (10);
+      c->SetTarget (t);
+      c.reset ();
+
+      characters.GetById (3)->MutableVolatileMv ().set_partial_step (10);
+      DamageLists (db, height).AddEntry (3, 1);
+    });
+
+  ASSERT_TRUE (ReadSince (from));
+  EXPECT_THAT (keys.characters, ElementsAre (1, 2, 3));
+  EXPECT_THAT (keys.movedCharacters, ElementsAre (1, 2, 3));
+  EXPECT_THAT (keys.combatCharacters, ElementsAre (1, 2, 3));
+}
+
+TEST_F (ChangedKeysTests, OtherCharacterChanges)
+{
+  for (int i = 0; i < 6; ++i)
+    characters.CreateNew ("domob", Faction::RED)->SetPosition (HexCoord (i, 0));
+  const auto from = EmptyBlock ();
+
+  Block ([this] ()
+    {
+      for (Database::IdT id = 1; id <= 6; ++id)
+        {
+          auto c = characters.GetById (id);
+          c->MutableVolatileMv ().set_partial_step (10);
+          c->MutableHP ().set_armour (5);
+        }
+
+      characters.GetById (1)->MutableProto ().set_speed (100);
+      characters.GetById (2)->SetBuildingId (100);
+      characters.GetById (3)->MutableRegenData ().mutable_max_hp ()
+          ->set_armour (10);
+      characters.GetById (4)->SetEnterBuilding (100);
+      characters.DeleteById (5);
+      characters.CreateNew ("domob", Faction::RED);
+    });
+
+  ASSERT_TRUE (ReadSince (from));
+  EXPECT_THAT (keys.characters, ElementsAre (1, 2, 3, 4, 5, 6, 7));
+  EXPECT_THAT (keys.movedCharacters, ElementsAre (6));
+  EXPECT_THAT (keys.combatCharacters, ElementsAre (6));
+}
+
+TEST_F (ChangedKeysTests, ChangesInAllBlocks)
+{
+  for (int i = 0; i < 3; ++i)
+    characters.CreateNew ("domob", Faction::RED);
+  const auto from = EmptyBlock ();
+
+  const auto middle = Block ([this] ()
+    {
+      characters.GetById (1)->MutableVolatileMv ().set_partial_step (10);
+      characters.GetById (2)->MutableHP ().set_armour (5);
+      characters.GetById (3)->MutableProto ().set_speed (100);
+      characters.CreateNew ("domob", Faction::RED);
+    });
+  Block ([this] ()
+    {
+      characters.GetById (1)->MutableHP ().set_armour (5);
+      characters.GetById (2)->MutableVolatileMv ().set_partial_step (10);
+      characters.GetById (3)->MutableHP ().set_armour (5);
+      characters.GetById (4)->MutableVolatileMv ().set_partial_step (10);
+    });
+
+  ASSERT_TRUE (ReadSince (from));
+  EXPECT_THAT (keys.characters, ElementsAre (1, 2, 3, 4));
+  EXPECT_THAT (keys.movedCharacters, ElementsAre (1, 2));
+  EXPECT_THAT (keys.combatCharacters, ElementsAre (1, 2));
+
+  ASSERT_TRUE (ReadSince (middle));
+  EXPECT_THAT (keys.characters, ElementsAre (1, 2, 3, 4));
+  EXPECT_THAT (keys.movedCharacters, ElementsAre (2, 4));
+  EXPECT_THAT (keys.combatCharacters, ElementsAre (1, 3));
 }
 
 TEST_F (ChangedKeysTests, TooManyBlocks)

@@ -70,7 +70,8 @@ DEFINE_string (fit, "",
 DEFINE_bool (session, true, "Record an undo changeset per block");
 DEFINE_bool (json, false, "Time the full characters JSON after each block");
 DEFINE_bool (changes, false,
-             "Store each block's undo data and time getchanges for it");
+             "Store each block's undo data and time getchanges for it"
+             " (full and compact)");
 DEFINE_int32 (findpath_threads, 0,
               "Threads running findpath calls during processing");
 DEFINE_int32 (findpath_l1range, 4000, "l1range of those findpath calls");
@@ -489,16 +490,22 @@ Run ()
           });
       if (FLAGS_changes)
         {
-          TimeJson ("Changes", [&] ()
-            {
-              ReadOnlyDatabase rpcDb(FLAGS_db);
-              auto res = GameStateJson (rpcDb, ctx).Changes (lastHash, height);
-              CHECK (!res.isNull ());
-              LOG (INFO)
-                  << "Changes: " << res["characters"]["changed"].size ()
-                  << " characters";
-              return res;
-            });
+          /* The allocator only consolidates the memory freed after one call
+             during the next, so the bigger full result comes last.  */
+          for (const bool compact : {true, false})
+            TimeJson (compact ? "Compact changes" : "Changes", [&] ()
+              {
+                ReadOnlyDatabase rpcDb(FLAGS_db);
+                GameStateJson gsj(rpcDb, ctx);
+                auto res = gsj.Changes (lastHash, height, compact);
+                CHECK (!res.isNull ());
+                const auto& chars = res["characters"];
+                LOG (INFO)
+                    << "Changes: " << chars["changed"].size ()
+                    << " characters, " << chars["moved"].size ()
+                    << " moved, " << chars["combat"].size () << " combat";
+                return res;
+              });
           lastHash = BlockHash (height);
         }
     }

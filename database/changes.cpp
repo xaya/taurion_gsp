@@ -72,11 +72,34 @@ private:
   /** The keys being collected.  */
   ChangedKeys& keys;
 
+  /**
+   * Flags for what the changes of a character can have changed in its JSON.
+   * The flags of all its changes are combined.
+   */
+  enum CharacterChange : unsigned
+  {
+    /** The position and movement.  */
+    MOVED = 1,
+    /** The HP, target, effects and attackers in its combat data.  */
+    COMBAT = 2,
+    /** Anything.  */
+    FULL = 4,
+  };
+
   /** IDs of changed DEX orders.  */
   std::set<Database::IdT> orders;
 
+  /** The CharacterChange flags of each changed character.  */
+  std::map<Database::IdT, unsigned> characterChanges;
+
   /** Indices of columns by table and name, filled in as needed.  */
   std::map<std::string, std::map<std::string, int>> columns;
+
+  /**
+   * The CharacterChange that a change of each column of the characters table
+   * means, by index.  Filled in as needed.
+   */
+  std::vector<unsigned> characterColumns;
 
   /** Changeset iterator at the current row.  */
   sqlite3_changeset_iter* it;
@@ -84,8 +107,16 @@ private:
   /** The current row's table.  */
   std::string table;
 
+  /** The number of columns of the current row's table.  */
+  int numCols;
+
   /** The current row's operation (insert, update or delete).  */
   int op;
+
+  /**
+   * Returns the index of the given column in the current row's table.
+   */
+  int Column (const std::string& col);
 
   /**
    * Returns the values of the given column in the current row, i.e. the old
@@ -119,6 +150,12 @@ private:
   }
 
   /**
+   * Returns the CharacterChange flags of the current row (of the characters
+   * table).
+   */
+  unsigned CharacterRowChange ();
+
+  /**
    * Adds the keys from the current row.
    */
   void AddRow ();
@@ -140,14 +177,15 @@ public:
 
   /**
    * Adds the keys from DEX orders that were changed and still exist, which
-   * are not known from the changesets if they did not change.
+   * are not known from the changesets if they did not change, and the
+   * keys of the changed characters.
    */
   void Finish ();
 
 };
 
-std::vector<sqlite3_value*>
-ChangesReader::Values (const std::string& col)
+int
+ChangesReader::Column (const std::string& col)
 {
   auto& indices = columns[table];
   if (indices.empty ())
@@ -162,6 +200,14 @@ ChangesReader::Values (const std::string& col)
   const auto mit = indices.find (col);
   CHECK (mit != indices.end ()) << "Table " << table << " has no " << col;
 
+  return mit->second;
+}
+
+std::vector<sqlite3_value*>
+ChangesReader::Values (const std::string& col)
+{
+  const int index = Column (col);
+
   std::vector<sqlite3_value*> res;
   const auto add = [&res] (sqlite3_value* val)
     {
@@ -172,13 +218,56 @@ ChangesReader::Values (const std::string& col)
   sqlite3_value* val;
   if (op != SQLITE_INSERT)
     {
-      CHECK_EQ (sqlite3changeset_old (it, mit->second, &val), SQLITE_OK);
+      CHECK_EQ (sqlite3changeset_old (it, index, &val), SQLITE_OK);
       add (val);
     }
   if (op != SQLITE_DELETE)
     {
-      CHECK_EQ (sqlite3changeset_new (it, mit->second, &val), SQLITE_OK);
+      CHECK_EQ (sqlite3changeset_new (it, index, &val), SQLITE_OK);
       add (val);
+    }
+
+  return res;
+}
+
+unsigned
+ChangesReader::CharacterRowChange ()
+{
+  /* The JSON of a character shows x and y only as its position (and in the
+     region of an active miner, which is left to the user of ChangedKeys),
+     volatilemv only in its movement, and hp, target and effects only as the
+     keys of its combat data with the same names.  canregen and
+     friendlytargets are not shown at all; they are flags for the combat
+     processing (whether the HP can regenerate, and whether friendlies are in
+     range of a friendly attack).
+
+     The changeset of an update has new values only for the columns that
+     changed:  e.g. a movement step (StepCharacter in src/movement.cpp) only
+     has x, y and volatilemv, although Character writes all location columns
+     (owner, x, y, inbuilding and enterbuilding).  Reaching a waypoint or
+     stopping changes the proto (and ismoving) as well.  */
+
+  if (op != SQLITE_UPDATE)
+    return FULL;
+
+  if (characterColumns.empty ())
+    {
+      characterColumns.assign (numCols, FULL);
+      for (const auto* col : {"x", "y", "volatilemv"})
+        characterColumns[Column (col)] = MOVED;
+      for (const auto* col : {"hp", "target", "effects",
+                              "canregen", "friendlytargets"})
+        characterColumns[Column (col)] = COMBAT;
+    }
+  CHECK_EQ (characterColumns.size (), static_cast<size_t> (numCols));
+
+  unsigned res = 0;
+  for (int i = 0; i < numCols; ++i)
+    {
+      sqlite3_value* val;
+      CHECK_EQ (sqlite3changeset_new (it, i, &val), SQLITE_OK);
+      if (val != nullptr)
+        res |= characterColumns[i];
     }
 
   return res;
@@ -194,9 +283,9 @@ ChangesReader::AddRow ()
   else if (table == "building_inventories")
     Add ("building", keys.buildings);
   else if (table == "characters")
-    Add ("id", keys.characters);
+    characterChanges[Key<Database::IdT> ("id")] |= CharacterRowChange ();
   else if (table == "damage_lists")
-    Add ("victim", keys.characters);
+    characterChanges[Key<Database::IdT> ("victim")] |= COMBAT;
   else if (table == "dex_orders")
     {
       /* Orders are shown with their building, and bids in the reserved coins
@@ -226,7 +315,6 @@ ChangesReader::AddChangeset (const std::string& data)
   while ((rc = sqlite3changeset_next (it)) == SQLITE_ROW)
     {
       const char* tbl;
-      int numCols;
       CHECK_EQ (sqlite3changeset_op (it, &tbl, &numCols, &op, nullptr),
                 SQLITE_OK);
       table = tbl;
@@ -249,6 +337,18 @@ ChangesReader::Finish ()
           keys.buildings.insert (o->GetBuilding ());
           keys.accounts.insert (o->GetAccount ());
         }
+    }
+
+  for (const auto& entry : characterChanges)
+    {
+      const auto id = entry.first;
+      keys.characters.insert (keys.characters.end (), id);
+      if (entry.second & FULL)
+        continue;
+      if (entry.second & MOVED)
+        keys.movedCharacters.insert (keys.movedCharacters.end (), id);
+      if (entry.second & COMBAT)
+        keys.combatCharacters.insert (keys.combatCharacters.end (), id);
     }
 }
 

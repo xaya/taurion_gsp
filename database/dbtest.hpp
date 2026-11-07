@@ -22,6 +22,7 @@
 #include "database.hpp"
 
 #include <xayagame/sqlitestorage.hpp>
+#include <xayautil/uint256.hpp>
 
 #include <gtest/gtest.h>
 
@@ -29,6 +30,7 @@
 
 #include <sqlite3.h>
 
+#include <functional>
 #include <string>
 
 namespace pxd
@@ -100,6 +102,33 @@ class DBTestWithSchema : public DBTestFixture
 protected:
 
   DBTestWithSchema ();
+
+};
+
+/**
+ * Test fixture with the game-state schema and libxayagame's table of undo
+ * data, which stores the changeset of each block like libxayagame does.
+ */
+class DBTestWithUndo : public DBTestWithSchema
+{
+
+protected:
+
+  /** Height of the last block.  */
+  unsigned height = 10;
+
+  DBTestWithUndo ();
+
+  /**
+   * Runs the given function as the state update of a new block, and stores
+   * its changeset as undo data like libxayagame does.  Returns the block hash.
+   */
+  xaya::uint256 Block (const std::function<void ()>& update);
+
+  /**
+   * Adds a block without any changes.
+   */
+  xaya::uint256 EmptyBlock ();
 
 };
 

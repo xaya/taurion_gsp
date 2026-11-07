@@ -185,8 +185,16 @@ public:
    * (as in the full results) of all that changed and the keys of all that
    * were deleted.  Returns null if the changes are not available, in which
    * case clients should read the full state instead.
+   *
+   * If compact is set, the characters whose JSON changed only in some parts
+   * are not changed, but listed with their ID and just those parts (as in
+   * their JSON, so a part is missing if the JSON has none):  "moved" with
+   * the position and movement if those can have changed, and "combat" with
+   * a "combat" object of the hp, target, effects and attackers if those can
+   * have changed.  A character can be in both lists.
    */
-  Json::Value Changes (const xaya::uint256& block, unsigned height);
+  Json::Value Changes (const xaya::uint256& block, unsigned height,
+                       bool compact);
 
 };
 
