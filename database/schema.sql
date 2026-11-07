@@ -251,9 +251,8 @@ CREATE TABLE IF NOT EXISTS `damage_lists` (
   `height` INTEGER NOT NULL,
 
   -- For each (victim, attacker) combination, there should only be a single
-  -- entry.  For each new round of damage done, we "INSERT OR REPLACE" into
-  -- the table, which updates the height for existing rows rather than
-  -- adding new ones.
+  -- entry.  For each new round of damage done, we upsert into the table,
+  -- which updates the height for existing rows rather than adding new ones.
   PRIMARY KEY (`victim`, `attacker`)
 
 );

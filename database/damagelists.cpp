@@ -79,10 +79,15 @@ void
 DamageLists::WriteEntry (const Database::IdT victim,
                          const Database::IdT attacker)
 {
+  /* An existing entry only gets its height updated, which (unlike a
+     REPLACE that deletes and re-inserts the row) leaves the other
+     indices alone.  */
   auto stmt = db.Prepare (R"(
-    INSERT OR REPLACE INTO `damage_lists`
+    INSERT INTO `damage_lists`
       (`victim`, `attacker`, `height`)
       VALUES (?1, ?2, ?3)
+      ON CONFLICT (`victim`, `attacker`) DO UPDATE
+        SET `height` = `excluded`.`height`
   )");
   stmt.Bind (1, victim);
   stmt.Bind (2, attacker);
