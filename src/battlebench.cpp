@@ -88,6 +88,12 @@ public:
     PXLogic::UpdateState (db, rnd, chain, map, blockData);
   }
 
+  static void
+  TuneDatabase (xaya::SQLiteDatabase& db)
+  {
+    PXLogic::TuneDatabase (db);
+  }
+
 };
 
 namespace
@@ -120,6 +126,7 @@ public:
     : db(file, SQLITE_OPEN_READWRITE)
   {
     SetDatabase (db);
+    BattleBench::TuneDatabase (db);
 
     auto stmt = db.Prepare (R"(
       SELECT `nextid` FROM `xayagame_autoids` WHERE `key` = 'pxd'

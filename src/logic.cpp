@@ -37,8 +37,13 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
+#include <string>
+
 DEFINE_bool (pxd_phase_timing, false,
              "Log the time spent in each phase of processing a super block");
+DEFINE_int32 (pxd_sqlite_cache_mb, 256,
+              "Size of the game state database's page cache in MiB"
+              " (0 keeps SQLite's default of 2 MiB)");
 
 namespace pxd
 {
@@ -189,8 +194,24 @@ PXLogic::UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
 }
 
 void
+PXLogic::TuneDatabase (xaya::SQLiteDatabase& db)
+{
+  /* These only make processing faster and change no results.  A big battle
+     touches far more pages than the default cache holds, which then get
+     written out and read back within the block's transaction.  And every
+     statement of that transaction first copies the pages it changes into
+     a statement journal, which by default goes to a temporary file once it
+     is larger than 64 KiB.  */
+  if (FLAGS_pxd_sqlite_cache_mb > 0)
+    db.Execute ("PRAGMA `cache_size` = -"
+                  + std::to_string (FLAGS_pxd_sqlite_cache_mb * 1'024));
+  db.Execute ("PRAGMA `temp_store` = MEMORY");
+}
+
+void
 PXLogic::SetupSchema (xaya::SQLiteDatabase& db)
 {
+  TuneDatabase (db);
   SetupDatabaseSchema (db);
 }
 

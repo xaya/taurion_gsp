@@ -113,6 +113,12 @@ private:
    */
   static void ValidateStateSlow (Database& db, const Context& ctx);
 
+  /**
+   * Applies the connection settings (like the cache size) for processing
+   * the game state in the given database.
+   */
+  static void TuneDatabase (xaya::SQLiteDatabase& db);
+
   friend class BattleBench;
   friend class PXLogicTests;
   friend class PXRpcServer;
