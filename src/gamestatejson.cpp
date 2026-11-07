@@ -95,6 +95,42 @@ HpProtoToJson (const proto::HP& hp)
 }
 
 /**
+ * Converts a StatModifier proto to JSON, leaving out fields that are
+ * not set.
+ */
+Json::Value
+StatModifierToJson (const proto::StatModifier& mod)
+{
+  Json::Value res(Json::objectValue);
+  if (mod.has_percent ())
+    res["percent"] = IntToJson (mod.percent ());
+  if (mod.has_absolute ())
+    res["absolute"] = IntToJson (mod.absolute ());
+  return res;
+}
+
+/**
+ * Converts a CombatEffects proto to JSON.  Only effects that are set
+ * are included, so the result is empty if there are none.
+ */
+Json::Value
+CombatEffectsToJson (const proto::CombatEffects& eff)
+{
+  Json::Value res(Json::objectValue);
+  if (eff.has_speed ())
+    res["speed"] = StatModifierToJson (eff.speed ());
+  if (eff.has_range ())
+    res["range"] = StatModifierToJson (eff.range ());
+  if (eff.has_hit_chance ())
+    res["hitchance"] = StatModifierToJson (eff.hit_chance ());
+  if (eff.has_shield_regen ())
+    res["shieldregen"] = StatModifierToJson (eff.shield_regen ());
+  if (eff.mentecon ())
+    res["mentecon"] = true;
+  return res;
+}
+
+/**
  * Computes the "movement" sub-object for a Character's JSON state.
  */
 Json::Value
@@ -157,10 +193,18 @@ GetCombatJsonObject (const CombatEntity& h)
           obj["damage"] = dmg;
         }
 
+      const Json::Value effects = CombatEffectsToJson (attack.effects ());
+      if (!effects.empty ())
+        obj["effects"] = effects;
+
       attacks.append (obj);
     }
   if (!attacks.empty ())
     res["attacks"] = attacks;
+
+  const Json::Value effects = CombatEffectsToJson (h.GetEffects ());
+  if (!effects.empty ())
+    res["effects"] = effects;
 
   const auto& regen = h.GetRegenData ();
   Json::Value hp(Json::objectValue);

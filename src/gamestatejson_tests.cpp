@@ -256,6 +256,11 @@ TEST_F (CharacterJsonTests, Attacks)
   attack->set_area (10);
   attack->set_friendlies (true);
 
+  attack = cd->add_attacks ();
+  attack->set_range (4);
+  attack->mutable_effects ()->mutable_speed ()->set_percent (-15);
+  attack->mutable_effects ()->set_mentecon (true);
+
   c.reset ();
 
   ExpectStateJson (R"({
@@ -268,7 +273,8 @@ TEST_F (CharacterJsonTests, Attacks)
                 [
                   {
                     "range": 5,
-                    "damage": {"min": 2, "max": 10}
+                    "damage": {"min": 2, "max": 10},
+                    "effects": null
                   },
                   {
                     "area": 1,
@@ -278,9 +284,58 @@ TEST_F (CharacterJsonTests, Attacks)
                   {
                     "area": 10,
                     "friendlies": true
+                  },
+                  {
+                    "range": 4,
+                    "damage": null,
+                    "effects":
+                      {
+                        "speed": {"percent": -15, "absolute": null},
+                        "range": null,
+                        "mentecon": true
+                      }
                   }
                 ]
             }
+        }
+      ]
+  })");
+}
+
+TEST_F (CharacterJsonTests, Effects)
+{
+  auto c = tbl.CreateNew ("domob", Faction::RED);
+  auto& eff = c->MutableEffects ();
+  eff.mutable_speed ()->set_percent (-20);
+  eff.mutable_range ()->set_absolute (-1);
+  eff.mutable_hit_chance ()->set_percent (-8);
+  eff.mutable_shield_regen ()->set_percent (50);
+  eff.mutable_shield_regen ()->set_absolute (10);
+  eff.set_mentecon (true);
+  c.reset ();
+
+  tbl.CreateNew ("andy", Faction::GREEN);
+
+  ExpectStateJson (R"({
+    "characters":
+      [
+        {
+          "owner": "domob",
+          "combat":
+            {
+              "effects":
+                {
+                  "speed": {"percent": -20, "absolute": null},
+                  "range": {"percent": null, "absolute": -1},
+                  "hitchance": {"percent": -8},
+                  "shieldregen": {"percent": 50, "absolute": 10},
+                  "mentecon": true
+                }
+            }
+        },
+        {
+          "owner": "andy",
+          "combat": {"effects": null}
         }
       ]
   })");
@@ -968,6 +1023,7 @@ TEST_F (BuildingJsonTests, CombatData)
   t.set_id (10);
   t.set_type (proto::TargetId::TYPE_CHARACTER);
   h->SetTarget (t);
+  h->MutableEffects ().mutable_range ()->set_percent (-10);
   h.reset ();
 
   ExpectStateJson (R"({
@@ -975,7 +1031,7 @@ TEST_F (BuildingJsonTests, CombatData)
       [
         {
           "id": 1,
-          "combat": {"target": null}
+          "combat": {"target": null, "effects": null}
         },
         {
           "id": 2,
@@ -991,6 +1047,7 @@ TEST_F (BuildingJsonTests, CombatData)
                 [
                   {"range": 5, "damage": {"min": 1, "max": 2}}
                 ],
+              "effects": {"range": {"percent": -10}},
               "target": { "id": 10 }
             }
         }
