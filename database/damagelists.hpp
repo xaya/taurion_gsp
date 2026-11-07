@@ -22,6 +22,7 @@
 #include "database.hpp"
 
 #include <set>
+#include <utility>
 
 namespace pxd
 {
@@ -47,6 +48,32 @@ private:
    */
   const unsigned height;
 
+  /**
+   * Entries added while a Batch is active, as (victim, attacker) and as
+   * (attacker, victim) pairs.  They are only written to the database when
+   * the batch ends, so that those removed again before (e.g. when both
+   * characters die in the same battle) never are.
+   */
+  std::set<std::pair<Database::IdT, Database::IdT>> pendingByVictim;
+  std::set<std::pair<Database::IdT, Database::IdT>> pendingByAttacker;
+
+  /** Whether a Batch is active.  */
+  bool inBatch = false;
+
+  /**
+   * Writes (or refreshes) an entry in the database.
+   */
+  void WriteEntry (Database::IdT victim, Database::IdT attacker);
+
+  /**
+   * Removes the pending entries in which the given character is first
+   * in the pairs of one set, and the matching ones from the other set.
+   */
+  static void RemovePending (
+      std::set<std::pair<Database::IdT, Database::IdT>>& by,
+      std::set<std::pair<Database::IdT, Database::IdT>>& other,
+      Database::IdT id);
+
 public:
 
   /** Set of attackers.  */
@@ -64,6 +91,8 @@ public:
   explicit DamageLists (Database& d, const unsigned h)
     : db(d), height(h)
   {}
+
+  ~DamageLists ();
 
   DamageLists () = delete;
   DamageLists (const DamageLists&) = delete;
@@ -91,6 +120,31 @@ public:
    * Returns all attackers on the damage list for the given ID.
    */
   Attackers GetAttackers (Database::IdT victim) const;
+
+  class Batch;
+
+};
+
+/**
+ * While an instance exists, new entries added to a DamageLists are kept in
+ * memory (they are still seen by GetAttackers and removed by RemoveCharacter)
+ * and only written to the database when it is destroyed.
+ */
+class DamageLists::Batch
+{
+
+private:
+
+  DamageLists& dl;
+
+public:
+
+  explicit Batch (DamageLists& d);
+  ~Batch ();
+
+  Batch () = delete;
+  Batch (const Batch&) = delete;
+  void operator= (const Batch&) = delete;
 
 };
 

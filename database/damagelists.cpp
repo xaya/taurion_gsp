@@ -23,6 +23,12 @@
 namespace pxd
 {
 
+DamageLists::~DamageLists ()
+{
+  CHECK (!inBatch);
+  CHECK (pendingByVictim.empty ());
+}
+
 void
 DamageLists::RemoveOld (const unsigned n)
 {
@@ -41,6 +47,13 @@ DamageLists::RemoveOld (const unsigned n)
   stmt.Bind (1, height - n);
 
   stmt.Execute ();
+
+  /* Pending entries have the current height.  */
+  if (n == 0)
+    {
+      pendingByVictim.clear ();
+      pendingByAttacker.clear ();
+    }
 }
 
 void
@@ -52,10 +65,29 @@ DamageLists::AddEntry (const Database::IdT victim, const Database::IdT attacker)
       << "Adding damage-list entry for height " << height << ": "
       << attacker << " damaged " << victim;
 
+  if (inBatch)
+    {
+      pendingByVictim.emplace (victim, attacker);
+      pendingByAttacker.emplace (attacker, victim);
+      return;
+    }
+
+  WriteEntry (victim, attacker);
+}
+
+void
+DamageLists::WriteEntry (const Database::IdT victim,
+                         const Database::IdT attacker)
+{
+  /* An existing entry only gets its height updated, which (unlike a
+     REPLACE that deletes and re-inserts the row) leaves the other
+     indices alone.  */
   auto stmt = db.Prepare (R"(
-    INSERT OR REPLACE INTO `damage_lists`
+    INSERT INTO `damage_lists`
       (`victim`, `attacker`, `height`)
       VALUES (?1, ?2, ?3)
+      ON CONFLICT (`victim`, `attacker`) DO UPDATE
+        SET `height` = `excluded`.`height`
   )");
   stmt.Bind (1, victim);
   stmt.Bind (2, attacker);
@@ -76,6 +108,23 @@ DamageLists::RemoveCharacter (const Database::IdT id)
   stmt.Bind (1, id);
 
   stmt.Execute ();
+
+  RemovePending (pendingByVictim, pendingByAttacker, id);
+  RemovePending (pendingByAttacker, pendingByVictim, id);
+}
+
+void
+DamageLists::RemovePending (
+    std::set<std::pair<Database::IdT, Database::IdT>>& by,
+    std::set<std::pair<Database::IdT, Database::IdT>>& other,
+    const Database::IdT id)
+{
+  auto it = by.lower_bound (std::make_pair (id, Database::IdT (0)));
+  while (it != by.end () && it->first == id)
+    {
+      other.erase (std::make_pair (it->second, it->first));
+      it = by.erase (it);
+    }
 }
 
 namespace
@@ -107,7 +156,29 @@ DamageLists::GetAttackers (const Database::IdT victim) const
       CHECK (insert.second);
     }
 
+  /* Pending entries may refresh ones in the database.  */
+  auto it = pendingByVictim.lower_bound (
+      std::make_pair (victim, Database::IdT (0)));
+  for (; it != pendingByVictim.end () && it->first == victim; ++it)
+    attackers.insert (it->second);
+
   return attackers;
+}
+
+DamageLists::Batch::Batch (DamageLists& d)
+  : dl(d)
+{
+  CHECK (!dl.inBatch);
+  dl.inBatch = true;
+}
+
+DamageLists::Batch::~Batch ()
+{
+  dl.inBatch = false;
+  for (const auto& entry : dl.pendingByVictim)
+    dl.WriteEntry (entry.first, entry.second);
+  dl.pendingByVictim.clear ();
+  dl.pendingByAttacker.clear ();
 }
 
 } // namespace pxd

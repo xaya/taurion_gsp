@@ -22,6 +22,12 @@
 
 #include <gtest/gtest.h>
 
+#include <memory>
+#include <random>
+#include <sstream>
+#include <string>
+#include <vector>
+
 namespace pxd
 {
 namespace
@@ -53,6 +59,79 @@ protected:
     DamageLists dl(db, height);
     dl.AddEntry (victim, attacker);
   }
+
+  /**
+   * Runs a fixed random sequence of operations at height 10 (on top of some
+   * older entries), optionally in a Batch.  Returns the attackers that the
+   * queries in between returned, followed by the final rows.
+   */
+  std::vector<std::string>
+  RunRandomOperations (const bool batch)
+  {
+    db.Prepare ("DELETE FROM `damage_lists`").Execute ();
+    for (Database::IdT i = 1; i <= 30; i += 3)
+      AddWithHeight (i, i + 1, 5);
+
+    std::mt19937 rnd(42);
+    std::vector<std::string> res;
+    {
+      DamageLists dl(db, 10);
+      std::unique_ptr<DamageLists::Batch> b;
+      if (batch)
+        b = std::make_unique<DamageLists::Batch> (dl);
+
+      for (unsigned i = 0; i < 2'000; ++i)
+        {
+          const Database::IdT x = 1 + rnd () % 30;
+          const Database::IdT y = 1 + rnd () % 30;
+          switch (rnd () % 10)
+            {
+            case 0:
+              dl.RemoveCharacter (x);
+              break;
+            case 1:
+            case 2:
+              {
+                std::ostringstream out;
+                out << x << ":";
+                for (const auto a : dl.GetAttackers (x))
+                  out << " " << a;
+                res.push_back (out.str ());
+                break;
+              }
+            default:
+              dl.AddEntry (x, y);
+              break;
+            }
+        }
+    }
+
+    auto stmt = db.Prepare (R"(
+      SELECT `victim`, `attacker`, `height`
+        FROM `damage_lists`
+        ORDER BY `victim`, `attacker`
+    )");
+    auto rows = stmt.Query<EntryResult> ();
+    while (rows.Step ())
+      {
+        std::ostringstream out;
+        out << rows.Get<EntryResult::victim> ()
+            << " " << rows.Get<EntryResult::attacker> ()
+            << " " << rows.Get<EntryResult::height> ();
+        res.push_back (out.str ());
+      }
+
+    return res;
+  }
+
+private:
+
+  struct EntryResult : public Database::ResultType
+  {
+    RESULT_COLUMN (int64_t, victim, 1);
+    RESULT_COLUMN (int64_t, attacker, 2);
+    RESULT_COLUMN (int64_t, height, 3);
+  };
 
 };
 
@@ -116,6 +195,26 @@ TEST_F (DamageListsTests, RemoveOldLargeN)
   dl.RemoveOld (500);
 
   ExpectAttackers (1, {2, 3});
+}
+
+TEST_F (DamageListsTests, BatchWritesAtEnd)
+{
+  DamageLists dl(db, 100);
+  {
+    DamageLists::Batch batch(dl);
+    dl.AddEntry (1, 2);
+    ExpectAttackers (1, {});
+    EXPECT_EQ (dl.GetAttackers (1), DamageLists::Attackers ({2}));
+  }
+  ExpectAttackers (1, {2});
+}
+
+TEST_F (DamageListsTests, BatchMatchesDirectWrites)
+{
+  const auto direct = RunRandomOperations (false);
+  const auto batched = RunRandomOperations (true);
+  EXPECT_GT (direct.size (), 400);
+  EXPECT_EQ (direct, batched);
 }
 
 TEST_F (DamageListsTests, WithoutHeight)
