@@ -125,15 +125,25 @@ private:
                       const Database::Result<CharacterResult>& res);
 
   /**
-   * Binds parameters in a statement to the mutable non-proto fields.  This is
-   * to share code between the proto and non-proto updates.  The ID is always
-   * bound to parameter ?1, and other fields to following integer IDs.
+   * Binds parameters in the full update statement to the mutable non-proto
+   * fields.  The ID is always bound to parameter ?1, and other fields to
+   * following integer IDs (the same as in the partial UPDATE).
    *
-   * The immutable non-proto field faction is also not bound
-   * here, since it is only present in the INSERT OR REPLACE statement
-   * (with proto update) and not the UPDATE one.
+   * The immutable non-proto field faction is also not bound here.
    */
   void BindFieldValues (Database::Statement& stmt) const;
+
+  /**
+   * Binds the owner and location fields (?2 to ?6), a part of
+   * BindFieldValues.
+   */
+  void BindLocationValues (Database::Statement& stmt) const;
+
+  /**
+   * Binds the effects (NULL if there are none) to parameter ?109, in both
+   * the full and the partial update.
+   */
+  void BindEffects (Database::Statement& stmt) const;
 
   friend class CharacterTable;
 

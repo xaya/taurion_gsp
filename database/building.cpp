@@ -97,8 +97,8 @@ Building::~Building ()
       else
         stmt.Bind (4, owner);
       BindCoordParameter (stmt, 5, 6, pos);
-      CombatEntity::BindFields (stmt, 7, 10, 13);
-      CombatEntity::BindFullFields (stmt, 8, 9, 11, 12);
+      CombatEntity::BindFields (stmt, 7, 10, 13, 9);
+      CombatEntity::BindFullFields (stmt, 8, 11, 12);
 
       if (effects.IsEmpty ())
         stmt.BindNull (14);
