@@ -374,13 +374,14 @@ TEST_F (ProcessEnterBuildingsTests, TooFar)
 
 TEST_F (ProcessEnterBuildingsTests, EnteringEffects)
 {
-  /* Target is cleared, dynamic obstacles are updated.  */
+  /* Targets are cleared, dynamic obstacles are updated.  */
   auto c = GetCharacter (10);
   c->SetPosition (HexCoord (5, 0));
   c->SetEnterBuilding (1);
   proto::TargetId t;
   t.set_id (42);
   c->SetTarget (t);
+  c->SetFriendlyTargets (true);
   c.reset ();
 
   auto dyn = std::make_unique<DynObstacles> (db, ctx);
@@ -393,6 +394,7 @@ TEST_F (ProcessEnterBuildingsTests, EnteringEffects)
   EXPECT_EQ (c->GetBuildingId (), 1);
   EXPECT_EQ (c->GetEnterBuilding (), Database::EMPTY_ID);
   EXPECT_FALSE (c->HasTarget ());
+  EXPECT_FALSE (c->HasFriendlyTargets ());
   EXPECT_FALSE (dyn->HasVehicle (HexCoord (5, 0)));
   c.reset ();
 

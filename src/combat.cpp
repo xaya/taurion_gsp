@@ -794,15 +794,24 @@ DamageProcessor::DealDamage (FighterTable::Handle f, const bool forGainHp,
   /* If the fighter has friendly attacks and friendlies in range, it may
      happen that we get here without it having a proper target.  This needs
      to be handled fine.  (In this situation, only friendly attacks will need
-     to be processed in the end, which only have area and no range.)  */
-  const bool hasTarget = f->HasTarget ();
+     to be processed in the end, which only have area and no range.)
+
+     The stored target may also have left the map:  a character that founds
+     a building enters it during move processing, before damage.  Then the
+     fighter has no target this round (attacks centred on itself still hit),
+     and gets a new one in the next target selection.  */
+  bool hasTarget = false;
   HexCoord targetPos;
   HexCoord::IntT targetDist = std::numeric_limits<HexCoord::IntT>::max ();
-  if (hasTarget)
+  if (f->HasTarget ())
     {
       FighterTable::Handle tf = fighters.GetForTarget (f->GetTarget ());
-      targetPos = tf->GetCombatPosition ();
-      targetDist = HexCoord::DistanceL1 (pos, targetPos);
+      if (tf->HasCombatPosition ())
+        {
+          hasTarget = true;
+          targetPos = tf->GetCombatPosition ();
+          targetDist = HexCoord::DistanceL1 (pos, targetPos);
+        }
     }
   else
     CHECK (f->HasFriendlyTargets ());
@@ -854,6 +863,14 @@ DamageProcessor::DealDamage (FighterTable::Handle f, const bool forGainHp,
         {
           CHECK (hasTarget);
           CHECK (!attack.friendlies ());
+
+          /* A target that founded a building between superblocks may also
+             have left it again before this damage step, into a no-combat
+             zone near the building.  It cannot be hit there (while area
+             attacks centred on it still hit what is around it).  */
+          if (ctx.Map ().SafeZones ().IsNoCombat (targetPos))
+            continue;
+
           auto t = fighters.GetForTarget (f->GetTarget ());
           ApplyDamage (dmg, *f, attack, mod, *t, newDead);
           ApplyEffects (attack, *t);

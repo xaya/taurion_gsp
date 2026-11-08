@@ -1140,6 +1140,110 @@ TEST_F (DealDamageTests, FriendlyAttack)
     EXPECT_FALSE (characters.GetById (id)->GetEffects ().has_shield_regen ());
 }
 
+TEST_F (DealDamageTests, TargetEnteredBuilding)
+{
+  /* A character that founds a building enters it during move processing,
+     after targets were selected and before damage.  Fighters that still
+     have it as target skip their targeted attacks this round (attacks
+     centred on themselves still hit), and get a new target in the next
+     selection.  */
+  auto c = characters.CreateNew ("red", Faction::RED);
+  const auto idAttacker = c->GetId ();
+  c->SetPosition (NOT_SAFE);
+  AddAttack (*c, 10, 1, 1);
+  AddAreaAttack (*c, 10, 1, 1);
+  c.reset ();
+
+  c = characters.CreateNew ("red", Faction::RED);
+  const auto idHealer = c->GetId ();
+  c->SetPosition (NOT_SAFE);
+  auto& friendly = CombatTests::AddFriendlyAttack (*c);
+  friendly.set_area (5);
+  friendly.mutable_effects ()->mutable_shield_regen ()->set_percent (50);
+  AddAttack (*c, 10, 1, 1);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idTarget = c->GetId ();
+  c->SetPosition (NOT_SAFE_FURTHER);
+  NoAttacks (*c);
+  SetHp (*c, 0, 10, 0, 10);
+  c.reset ();
+
+  const HexCoord further = NOT_SAFE_FURTHER + HexCoord (1, 0);
+  ASSERT_FALSE (ctx.Map ().SafeZones ().IsNoCombat (further));
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idOther = c->GetId ();
+  c->SetPosition (further);
+  NoAttacks (*c);
+  SetHp (*c, 0, 10, 0, 10);
+  c.reset ();
+
+  const auto targetOf = [this] (const Database::IdT id)
+    {
+      return characters.GetById (id)->GetTarget ().id ();
+    };
+
+  FindCombatTargets (db, rnd, ctx);
+  ASSERT_EQ (targetOf (idAttacker), idTarget);
+  ASSERT_EQ (targetOf (idHealer), idTarget);
+  ASSERT_TRUE (characters.GetById (idHealer)->HasFriendlyTargets ());
+  characters.GetById (idTarget)->SetBuildingId (42);
+
+  DealCombatDamage (db, dl, rnd, ctx);
+  EXPECT_EQ (characters.GetById (idTarget)->GetHP ().armour (), 10);
+  EXPECT_EQ (characters.GetById (idOther)->GetHP ().armour (), 9);
+  EXPECT_EQ (characters.GetById (idAttacker)
+                ->GetEffects ().shield_regen ().percent (),
+             50);
+
+  FindCombatTargets (db, rnd, ctx);
+  EXPECT_EQ (targetOf (idAttacker), idOther);
+  EXPECT_EQ (targetOf (idHealer), idOther);
+}
+
+TEST_F (DealDamageTests, TargetInNoCombatZone)
+{
+  /* A character that founds a building between superblocks can also leave
+     it again before the next damage step, into a no-combat zone near the
+     building.  Fighters that still have it as target do not hit it there,
+     while their area attacks centred on it still hit what is around it.  */
+  const HexCoord closer = NOT_SAFE + HexCoord (0, 1);
+  ASSERT_FALSE (ctx.Map ().SafeZones ().IsNoCombat (closer));
+
+  auto c = characters.CreateNew ("red", Faction::RED);
+  const auto idAttacker = c->GetId ();
+  c->SetPosition (NOT_SAFE_FURTHER);
+  AddAttack (*c, 10, 1, 1);
+  AddAttack (*c, 10, 1, 1).set_area (1);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idTarget = c->GetId ();
+  c->SetPosition (closer);
+  NoAttacks (*c);
+  SetHp (*c, 0, 10, 0, 10);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idOther = c->GetId ();
+  c->SetPosition (NOT_SAFE);
+  NoAttacks (*c);
+  SetHp (*c, 0, 10, 0, 10);
+  c.reset ();
+
+  FindCombatTargets (db, rnd, ctx);
+  ASSERT_EQ (characters.GetById (idAttacker)->GetTarget ().id (), idTarget);
+  characters.GetById (idTarget)->SetPosition (SAFE);
+
+  DealCombatDamage (db, dl, rnd, ctx);
+  EXPECT_EQ (characters.GetById (idTarget)->GetHP ().armour (), 10);
+  EXPECT_EQ (characters.GetById (idOther)->GetHP ().armour (), 9);
+
+  FindCombatTargets (db, rnd, ctx);
+  EXPECT_EQ (characters.GetById (idAttacker)->GetTarget ().id (), idOther);
+}
+
 TEST_F (DealDamageTests, ReceivedDamageModifier)
 {
   auto c = characters.CreateNew ("domob", Faction::RED);
