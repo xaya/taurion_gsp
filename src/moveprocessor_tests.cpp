@@ -28,11 +28,14 @@
 #include <xayautil/base64.hpp>
 #include <xayautil/jsonutils.hpp>
 
+#include <glog/logging.h>
 #include <gtest/gtest.h>
 
 #include <json/json.h>
 
+#include <sstream>
 #include <string>
+#include <vector>
 
 namespace pxd
 {
@@ -1292,6 +1295,165 @@ TEST_F (CharacterUpdateTests, WaypointsOutsideMap)
   const auto& wp = h->GetProto ().movement ().waypoints ();
   ASSERT_EQ (wp.size (), 1);
   EXPECT_EQ (CoordFromProto (wp.Get (0)), HexCoord (0, 0));
+}
+
+TEST_F (CharacterUpdateTests, WaypointLimit)
+{
+  GetTest ()->MutableProto ().set_speed (1000);
+
+  /* Use distinct waypoints, so that they are not rejected for compressing
+     too well.  */
+  const auto updateWithWaypoints = [] (const std::string& key,
+                                       const unsigned n)
+    {
+      std::vector<HexCoord> wp;
+      for (unsigned i = 0; i < n; ++i)
+        wp.emplace_back (i % 1'000, i / 1'000);
+      return R"([{
+        "name": "domob",
+        "move": {"c": {"id": 1, ")" + key + R"(": )" + WpStr (wp) + R"(}}
+      }])";
+    };
+  const auto numWaypoints = [this] () -> size_t
+    {
+      return GetTest ()->GetProto ().movement ().waypoints_size ();
+    };
+
+  Process (updateWithWaypoints ("wp", MAX_WAYPOINTS + 1));
+  EXPECT_EQ (numWaypoints (), 0u);
+
+  Process (updateWithWaypoints ("wp", MAX_WAYPOINTS - 1));
+  EXPECT_EQ (numWaypoints (), MAX_WAYPOINTS - 1);
+
+  Process (updateWithWaypoints ("wpx", 2));
+  EXPECT_EQ (numWaypoints (), MAX_WAYPOINTS - 1);
+
+  Process (updateWithWaypoints ("wpx", 1));
+  EXPECT_EQ (numWaypoints (), MAX_WAYPOINTS);
+}
+
+TEST_F (CharacterUpdateTests, SharedWaypoints)
+{
+  SetupCharacter (10, "domob");
+  SetupCharacter (11, "domob");
+  for (const Database::IdT id : {1, 10, 11})
+    tbl.GetById (id)->MutableProto ().set_speed (1000);
+
+  /* Decoded waypoints are reused for the next character only if
+     the string is the same.  */
+  const std::string a = WpStr ({HexCoord (5, 0)});
+  const std::string b = WpStr ({HexCoord (-5, 0), HexCoord (-5, 5)});
+  const std::string offMap = WpStr ({HexCoord (0, 4096)});
+  Process (R"([{
+    "name": "domob",
+    "move":
+      {
+        "c":
+          [
+            {"id": [1, 10], "wp": )" + a + R"(},
+            {"id": 11, "wp": )" + b + R"(},
+            {"id": 1, "wp": )" + offMap + R"(},
+            {"id": 10, "wpx": )" + b + R"(}
+          ]
+      }
+  }])");
+
+  const auto getWaypoints = [this] (const Database::IdT id)
+    {
+      const auto h = tbl.GetById (id);
+      std::vector<HexCoord> res;
+      for (const auto& c : h->GetProto ().movement ().waypoints ())
+        res.push_back (CoordFromProto (c));
+      return res;
+    };
+  EXPECT_EQ (getWaypoints (1), std::vector<HexCoord> ({HexCoord (5, 0)}));
+  EXPECT_EQ (getWaypoints (10), std::vector<HexCoord> ({
+    HexCoord (5, 0), HexCoord (-5, 0), HexCoord (-5, 5),
+  }));
+  EXPECT_EQ (getWaypoints (11), std::vector<HexCoord> ({
+    HexCoord (-5, 0), HexCoord (-5, 5),
+  }));
+}
+
+/**
+ * Log sink that counts the warnings about invalid waypoints, i.e. how often
+ * an invalid waypoint string was actually decoded.
+ */
+class InvalidWaypointsCounter : public google::LogSink
+{
+
+public:
+
+  unsigned count = 0;
+
+  InvalidWaypointsCounter ()
+  {
+    google::AddLogSink (this);
+  }
+
+  ~InvalidWaypointsCounter ()
+  {
+    google::RemoveLogSink (this);
+  }
+
+  void
+  send (google::LogSeverity, const char*, const char*, int,
+        const google::LogMessageTime&,
+        const char* message, const size_t len) override
+  {
+    if (std::string (message, len).rfind ("Invalid waypoint: ", 0) == 0)
+      ++count;
+  }
+
+};
+
+TEST_F (CharacterUpdateTests, SharedWaypointsAndExtension)
+{
+  std::vector<Database::IdT> ids = {1};
+  for (Database::IdT id = 10; id < 29; ++id)
+    {
+      SetupCharacter (id, "domob");
+      ids.push_back (id);
+    }
+
+  std::ostringstream idArray;
+  idArray << "[";
+  for (const auto id : ids)
+    {
+      tbl.GetById (id)->MutableProto ().set_speed (1000);
+      idArray << (id == ids.front () ? "" : ", ") << id;
+    }
+  idArray << "]";
+
+  const auto update = [&idArray] (const std::vector<HexCoord>& wp,
+                                  const std::vector<HexCoord>& wpx)
+    {
+      return R"([{
+        "name": "domob",
+        "move": {"c": {
+          "id": )" + idArray.str () + R"(,
+          "wp": )" + WpStr (wp) + R"(,
+          "wpx": )" + WpStr (wpx) + R"(
+        }}
+      }])";
+    };
+
+  Process (update ({HexCoord (5, 0)}, {HexCoord (-5, 0)}));
+  for (const auto id : ids)
+    {
+      const auto h = tbl.GetById (id);
+      const auto& wp = h->GetProto ().movement ().waypoints ();
+      ASSERT_EQ (wp.size (), 2);
+      EXPECT_EQ (CoordFromProto (wp.Get (0)), HexCoord (5, 0));
+      EXPECT_EQ (CoordFromProto (wp.Get (1)), HexCoord (-5, 0));
+    }
+
+  /* Each of the two strings is decoded only once for all characters,
+     which we can see from the warnings logged for invalid waypoints.  */
+  InvalidWaypointsCounter counter;
+  Process (update ({HexCoord (0, 4'096)}, {HexCoord (0, -4'097)}));
+  EXPECT_EQ (counter.count, 2u);
+  EXPECT_EQ (tbl.GetById (28)->GetProto ().movement ().waypoints_size (), 2);
 }
 
 TEST_F (CharacterUpdateTests, ChosenSpeedWithoutMovement)

@@ -69,11 +69,10 @@ TEST_F (WaypointEncodingTests, Roundtrip)
       HexCoord (-123, 0),
       HexCoord (0, 0),
     };
-  for (unsigned i = 0; i < 10'000; ++i)
-    {
-      wp.push_back (HexCoord (1'000, 0));
-      wp.push_back (HexCoord (-1'000, 0));
-    }
+  /* A long staircase of single steps is about as compressible as real
+     paths get.  */
+  for (int i = 0; i < 4'000; ++i)
+    wp.push_back (wp.back () + HexCoord (i % 2, 1 - i % 2));
 
   Json::Value jsonWp;
   std::string encoded;
@@ -111,6 +110,26 @@ TEST_F (WaypointEncodingTests, TooLargeForEncoding)
   Json::Value jsonWp;
   std::string encoded;
   ASSERT_FALSE (EncodeWaypoints (wp, jsonWp, encoded));
+}
+
+TEST_F (WaypointEncodingTests, TooCompressible)
+{
+  /* Many copies of the same waypoint compress very well, but are still
+     a lot of data to parse.  */
+  const std::vector<HexCoord> wp(10'000, HexCoord (0, 0));
+  Json::Value jsonWp;
+  std::string encoded;
+  EXPECT_FALSE (EncodeWaypoints (wp, jsonWp, encoded));
+
+  std::ostringstream repeated;
+  repeated << R"([{"x":0,"y":0})";
+  for (unsigned i = 1; i < wp.size (); ++i)
+    repeated << R"(,{"x":0,"y":0})";
+  repeated << "]";
+
+  encoded = xaya::EncodeBase64 (xaya::CompressData (repeated.str ()));
+  std::vector<HexCoord> recovered;
+  EXPECT_FALSE (DecodeWaypoints (encoded, ctx.Map (), recovered));
 }
 
 TEST_F (WaypointEncodingTests, InvalidDataForDecode)
