@@ -798,7 +798,7 @@ unsigned GetBpCopyBlocks (const std::string& bpcType, const Context& ctx)
       = ctx.RoConfig ().Item (bpData.is_blueprint ().for_item ());
   CHECK_GT (baseData.complexity (), 0);
 
-  return ctx.RoConfig ()->params ().construction_blocks ()
+  return ctx.RoConfig ()->params ().bp_copy_blocks ()
             * baseData.complexity ();
 }
 

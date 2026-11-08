@@ -58,7 +58,7 @@ class ServicesBlueprintCopyTest (PXTest):
         "buildingid": building,
         "account": "domob",
         "start_height": start,
-        "end_height": start + 30,
+        "end_height": start + 15,
         "original": "sword bpo",
         "output": {"sword bpc": 3},
       },
@@ -68,14 +68,14 @@ class ServicesBlueprintCopyTest (PXTest):
         "buildingid": building,
         "account": "domob",
         "start_height": start,
-        "end_height": start + 20,
+        "end_height": start + 10,
         "original": "sword bpo",
         "output": {"sword bpc": 2},
       },
     ])
 
     self.mainLogger.info ("Partial copying...")
-    self.generate (20)
+    self.generate (10)
     b = self.getBuildings ()[building]
     self.assertEqual (b.getFungibleInventory ("domob"), {
       "sword bpo": 1,
@@ -88,7 +88,7 @@ class ServicesBlueprintCopyTest (PXTest):
         "buildingid": building,
         "account": "domob",
         "start_height": start,
-        "end_height": start + 30,
+        "end_height": start + 15,
         "original": "sword bpo",
         "output": {"sword bpc": 1},
       },
