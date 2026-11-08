@@ -44,7 +44,11 @@ class GetServiceInfoTest (PXTest):
     b = self.getBuildings ()[building]
     self.assertEqual (b.data["config"]["servicefee"], 50)
 
-    self.dropIntoBuilding (building, "andy", {"test ore": 3})
+    self.dropIntoBuilding (building, "andy", {
+      "test ore": 3,
+      "basetank bpo": 1,
+      "rv vla bpo": 1,
+    })
 
     self.giftCoins ({"domob": 100})
     self.createCharacters ("domob")
@@ -88,6 +92,20 @@ class GetServiceInfoTest (PXTest):
       {"b": building, "t": "bld", "i": "test ore", "n": 1},
     ]:
       self.assertEqual (getserviceinfo ("andy", op), {"valid": False})
+
+    # The resources and cost for huge amounts are not representable, which
+    # makes the operations invalid (and must not crash the GSP).
+    self.mainLogger.info ("Testing huge amounts...")
+    op = {"b": building, "t": "bld", "i": "rv vla bpo", "n": 2**50}
+    self.assertEqual (getserviceinfo ("andy", op), {"valid": False})
+    op = {"b": building, "t": "cp", "i": "basetank bpo", "n": 2**32 - 1}
+    self.assertEqual (getserviceinfo ("andy", op), {
+      "type": "bpcopy",
+      "building": building,
+      "original": "basetank bpo",
+      "output": {"basetank bpc": 2**32 - 1},
+      "valid": False,
+    })
 
 
 if __name__ == "__main__":

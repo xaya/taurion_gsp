@@ -23,6 +23,7 @@
 
 #include <glog/logging.h>
 
+#include <limits>
 #include <sstream>
 
 namespace pxd
@@ -59,6 +60,25 @@ public:
 
 namespace
 {
+
+/**
+ * Computes the product of a quantity from a service operation (e.g. the
+ * number of items to construct) and some value per unit (e.g. the cost
+ * of one item).  Returns false if the result is larger than MAX_QUANTITY.
+ * That is far beyond anything that can be paid, and rejecting such operations
+ * ensures that we neither extract an unrepresentable QuantityProduct nor
+ * overflow when computing e.g. the service fee from the result.
+ */
+bool
+CheckedProduct (const Quantity n, const Quantity perUnit, Quantity& res)
+{
+  const QuantityProduct prod(n, perUnit);
+  if (prod > MAX_QUANTITY)
+    return false;
+
+  res = prod.Extract ();
+  return true;
+}
 
 /* ************************************************************************** */
 
@@ -104,7 +124,7 @@ private:
    * Returns the number of refining steps this operation represents.  Assumes
    * that the operation is otherwise valid (e.g. we have refData).
    */
-  unsigned
+  Quantity
   GetSteps () const
   {
     return amount / InputUnitsPerStep ();
@@ -125,10 +145,10 @@ protected:
     return c.GetProto ().has_refining ();
   }
 
-  Amount
-  GetBaseCost () const override
+  bool
+  GetBaseCost (Amount& cost) const override
   {
-    return GetSteps () * refData->cost ();
+    return CheckedProduct (GetSteps (), refData->cost (), cost);
   }
 
   bool IsValid () const override;
@@ -234,7 +254,7 @@ RefiningOperation::SpecificToPendingJson () const
   inp[type] = IntToJson (amount);
 
   CHECK (refData != nullptr);
-  const unsigned steps = GetSteps ();
+  const Quantity steps = GetSteps ();
   Json::Value outp(Json::objectValue);
   for (const auto& out : refData->outputs ())
     outp[out.first] = IntToJson (steps * out.second);
@@ -260,7 +280,7 @@ RefiningOperation::ExecuteSpecific (xaya::Random& rnd)
   auto& inv = GetBaseInventory ();
   inv.AddFungibleCount (type, -amount);
 
-  const unsigned steps = GetSteps ();
+  const Quantity steps = GetSteps ();
   for (const auto& out : refData->outputs ())
     inv.AddFungibleCount (out.first, steps * out.second);
 }
@@ -299,7 +319,7 @@ protected:
   }
 
   bool IsValid () const override;
-  Amount GetBaseCost () const override;
+  bool GetBaseCost (Amount& cost) const override;
   Json::Value SpecificToPendingJson () const override;
   void ExecuteSpecific (xaya::Random& rnd) override;
 
@@ -373,17 +393,17 @@ RepairOperation::IsValid () const
   return true;
 }
 
-Amount
-RepairOperation::GetBaseCost () const
+bool
+RepairOperation::GetBaseCost (Amount& cost) const
 {
   /* There is some configured cost per HP (possibly fractional), and we round
      up the total cost.  */
   const Amount perHp = ctx.RoConfig ()->params ().armour_repair_cost_millis ();
   const Amount costMillis = GetMissingHp () * perHp;
-  const Amount res = (costMillis + 999) / 1'000;
-  CHECK_GE (res, 0);
+  cost = (costMillis + 999) / 1'000;
+  CHECK_GE (cost, 0);
 
-  return res;
+  return true;
 }
 
 Json::Value
@@ -463,10 +483,10 @@ protected:
         .offered_services ().reverse_engineering ();
   }
 
-  Amount
-  GetBaseCost () const override
+  bool
+  GetBaseCost (Amount& cost) const override
   {
-    return QuantityProduct (num, revEngData->cost ()).Extract ();
+    return CheckedProduct (num, revEngData->cost (), cost);
   }
 
   bool IsValid () const override;
@@ -623,11 +643,11 @@ protected:
         .offered_services ().blueprint_copy ();
   }
 
-  Amount
-  GetBaseCost () const override
+  bool
+  GetBaseCost (Amount& cost) const override
   {
     const Amount one = ctx.RoConfig ()->params ().bp_copy_cost () * complexity;
-    return QuantityProduct (num, one).Extract ();
+    return CheckedProduct (num, one, cost);
   }
 
   bool IsValid () const override;
@@ -677,6 +697,13 @@ BlueprintCopyOperation::IsValid () const
 
   if (num <= 0)
     return false;
+
+  /* The ongoing operation stores the number of copies as uint32.  */
+  if (num > std::numeric_limits<uint32_t>::max ())
+    {
+      LOG (WARNING) << "Too many blueprint copies requested: " << num;
+      return false;
+    }
 
   const auto balance = GetBaseInventory ().GetFungibleCount (original);
   if (balance == 0)
@@ -783,12 +810,12 @@ protected:
 
   bool IsSupported (const Building& b) const override;
 
-  Amount
-  GetBaseCost () const override
+  bool
+  GetBaseCost (Amount& cost) const override
   {
     const Amount baseCost = ctx.RoConfig ()->params ().construction_cost ();
     const Amount one = baseCost * outputData->complexity ();
-    return QuantityProduct (num, one).Extract ();
+    return CheckedProduct (num, one, cost);
   }
 
   bool IsValid () const override;
@@ -847,6 +874,13 @@ ConstructionOperation::IsValid () const
   if (num <= 0)
     return false;
 
+  /* The ongoing operation stores the number of items as uint32.  */
+  if (num > std::numeric_limits<uint32_t>::max ())
+    {
+      LOG (WARNING) << "Too many items to construct requested: " << num;
+      return false;
+    }
+
   if (outputData->has_faction ())
     {
       const auto roFaction = FactionFromString (outputData->faction ());
@@ -873,7 +907,7 @@ ConstructionOperation::IsValid () const
               << "Can't construct " << num << " " << output
               << " with " << GetLocationInfo ()
               << " as there is only " << balance << " " << entry.first
-              << " while the construction needs " << required.Extract ();
+              << " while each item needs " << entry.second;
           return false;
         }
     }
@@ -978,10 +1012,11 @@ ServiceOperation::ServiceOperation (Account& a, Character& c,
     ctx(refs.ctx), itemCounts(refs.cnt)
 {}
 
-void
+bool
 ServiceOperation::GetCosts (Amount& base, Amount& fee) const
 {
-  base = GetBaseCost ();
+  if (!GetBaseCost (base))
+    return false;
   CHECK_GE (base, 0);
 
   /* If this is not happening inside a building (but instead with a character),
@@ -989,7 +1024,7 @@ ServiceOperation::GetCosts (Amount& base, Amount& fee) const
   if (building == nullptr)
     {
       fee = 0;
-      return;
+      return true;
     }
 
   /* Service is free if the building is an ancient one or if the owner is
@@ -1001,14 +1036,17 @@ ServiceOperation::GetCosts (Amount& base, Amount& fee) const
         || building->GetOwner () == acc.GetName ())
     {
       fee = 0;
-      return;
+      return true;
     }
 
   /* Otherwise the service fee is determined as a percentage of the base cost,
      with the percentage given by the building configuration.  The result
-     is rounded up.  */
+     is rounded up.  This does not overflow, as the base cost is at most
+     MAX_QUANTITY and the percentage at most 1'000.  */
   const auto& cfg = building->GetProto ().config ();
   fee = (base * cfg.service_fee_percent () + 99) / 100;
+
+  return true;
 }
 
 std::string
@@ -1085,7 +1123,11 @@ ServiceOperation::IsFullyValid () const
     }
 
   Amount base, fee;
-  GetCosts (base, fee);
+  if (!GetCosts (base, fee))
+    {
+      LOG (WARNING) << "Service operation is too expensive: " << rawMove;
+      return false;
+    }
   if (base + fee > acc.GetBalance ())
     {
       LOG (WARNING)
@@ -1110,12 +1152,13 @@ ServiceOperation::ToPendingJson () const
     res["character"] = IntToJson (character->GetId ());
 
   Amount base, fee;
-  GetCosts (base, fee);
-
-  Json::Value costs(Json::objectValue);
-  costs["base"] = IntToJson (base);
-  costs["fee"] = IntToJson (fee);
-  res["cost"] = costs;
+  if (GetCosts (base, fee))
+    {
+      Json::Value costs(Json::objectValue);
+      costs["base"] = IntToJson (base);
+      costs["fee"] = IntToJson (fee);
+      res["cost"] = costs;
+    }
 
   return res;
 }
@@ -1124,7 +1167,7 @@ void
 ServiceOperation::Execute (xaya::Random& rnd)
 {
   Amount base, fee;
-  GetCosts (base, fee);
+  CHECK (GetCosts (base, fee));
 
   acc.AddBalance (-base - fee);
   CHECK_GE (fee, 0);

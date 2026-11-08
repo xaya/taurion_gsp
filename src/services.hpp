@@ -100,9 +100,10 @@ private:
   /**
    * Computes the base and service cost.  The base cost is burnt (and defined
    * by the service operation subclasses), while the service fee is sent
-   * to the building's owner and controlled by them.
+   * to the building's owner and controlled by them.  Returns false if the
+   * base cost is out of range, which makes the operation invalid.
    */
-  void GetCosts (Amount& base, Amount& fee) const;
+  bool GetCosts (Amount& base, Amount& fee) const;
 
   /**
    * Basic parser routine for the common case of (item type, amount) as
@@ -178,9 +179,11 @@ protected:
   }
 
   /**
-   * Returns the base cost (vCHI that are burnt) for this operation.
+   * Computes the base cost (vCHI that are burnt) for this operation.
+   * Returns false if it would be larger than MAX_QUANTITY, which makes
+   * the operation invalid.
    */
-  virtual Amount GetBaseCost () const = 0;
+  virtual bool GetBaseCost (Amount& cost) const = 0;
 
   /**
    * Executes the subclass-specific part of this operation, which is all updates
@@ -231,7 +234,7 @@ public:
   /**
    * Returns a JSON representation of this operation for pending moves.
    * Must only be called if the operation IsValid, as e.g. its cost is
-   * not defined otherwise.
+   * not defined otherwise.  The cost is left out if it is out of range.
    */
   Json::Value ToPendingJson () const;
 
