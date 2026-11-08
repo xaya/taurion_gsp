@@ -2491,6 +2491,33 @@ TEST_F (MobileRefiningMoveTests, BeforeDrop)
   EXPECT_EQ (GetLoot ()->GetInventory ().GetFungibleCount ("test ore"), 14);
 }
 
+TEST_F (MobileRefiningMoveTests, BeforeTransfer)
+{
+  /* Refining is done before a transfer of the character in the same
+     update, so that it is paid for by the original owner.  */
+
+  accounts.CreateNew ("andy")->SetFaction (Faction::RED);
+  accounts.GetByName ("andy")->AddBalance (100);
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c":
+        {
+          "id": 1,
+          "send": "andy",
+          "ref": {"i": "test ore", "n": 12}
+        }
+      }
+    }
+  ])");
+
+  ExpectCharacterOwners ({{1, "andy"}});
+  EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 80);
+  EXPECT_EQ (accounts.GetByName ("andy")->GetBalance (), 100);
+  EXPECT_EQ (GetTest ()->GetInventory ().GetFungibleCount ("bar"), 4);
+}
+
 /* ************************************************************************** */
 
 class DropPickupMoveTests : public CharacterUpdateTests
@@ -2831,6 +2858,50 @@ TEST_F (DropPickupMoveTests, InBuilding)
   ExpectInventoryItems (GetTest ()->GetInventory (), {
     {"bar", 3},
     {"foo", 25},
+  });
+}
+
+TEST_F (DropPickupMoveTests, InBuildingBeforeTransfer)
+{
+  /* Drop and pickup inside a building are done before a transfer of
+     the character in the same update, so that they use the building
+     inventory of the original owner.  */
+
+  accounts.CreateNew ("andy")->SetFaction (Faction::RED);
+
+  auto b = buildings.CreateNew ("checkmark", "", Faction::ANCIENT);
+  const auto bId = b->GetId ();
+  b.reset ();
+
+  GetTest ()->SetBuildingId (bId);
+
+  SetInventoryItems (inv.Get (bId, "domob")->GetInventory (), {{"bar", 2}});
+  SetInventoryItems (inv.Get (bId, "andy")->GetInventory (), {{"bar", 2}});
+  SetInventoryItems (GetTest ()->GetInventory (), {{"foo", 5}});
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c":
+        {
+          "id": 1,
+          "send": "andy",
+          "drop": {"f": {"foo": 5}},
+          "pu": {"f": {"bar": 2}}
+        }
+      }
+    }
+  ])");
+
+  ExpectCharacterOwners ({{1, "andy"}});
+  ExpectInventoryItems (inv.Get (bId, "domob")->GetInventory (), {
+    {"foo", 5},
+  });
+  ExpectInventoryItems (inv.Get (bId, "andy")->GetInventory (), {
+    {"bar", 2},
+  });
+  ExpectInventoryItems (GetTest ()->GetInventory (), {
+    {"bar", 2},
   });
 }
 

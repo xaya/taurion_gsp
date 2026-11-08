@@ -1889,7 +1889,6 @@ MoveProcessor::MaybePickupLoot (Character& c, const Json::Value& cmd)
 void
 MoveProcessor::PerformCharacterUpdate (Character& c, const Json::Value& upd)
 {
-  MaybeTransferCharacter (c, upd);
   MaybeStartProspecting (c, upd);
 
   /* Updates to the vehicle and fitments are done before handling item
@@ -1945,6 +1944,10 @@ MoveProcessor::PerformCharacterUpdate (Character& c, const Json::Value& upd)
      than allowing to exit & enter again in the same move.  */
   MaybeEnterBuilding (c, upd);
   MaybeExitBuilding (c, upd);
+
+  /* The transfer is done after all other updates, so that they are still
+     done by (and e.g. paid for by) the account that sent the move.  */
+  MaybeTransferCharacter (c, upd);
 }
 
 void
