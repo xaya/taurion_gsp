@@ -19,7 +19,6 @@
 #ifndef PXD_CONTEXT_HPP
 #define PXD_CONTEXT_HPP
 
-#include "forks.hpp"
 #include "params.hpp"
 
 #include "database/database.hpp"
@@ -57,9 +56,6 @@ private:
 
   /** The configuration as of the game state.  */
   pxd::RoConfig cfg;
-
-  /** Fork handler based on chain and height.  */
-  std::unique_ptr<ForkHandler> forks;
 
   /**
    * The current superblock's height.  This is set to the confirmed height plus
@@ -136,12 +132,6 @@ public:
   RoConfig () const
   {
     return cfg;
-  }
-
-  const ForkHandler&
-  Forks () const
-  {
-    return *forks;
   }
 
   /**
