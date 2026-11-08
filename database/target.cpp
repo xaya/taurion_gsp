@@ -22,6 +22,7 @@
 
 #include <algorithm>
 #include <tuple>
+#include <utility>
 
 namespace pxd
 {
@@ -207,24 +208,41 @@ template <typename T>
 
 } // anonymous namespace
 
-void
-TargetFinder::ProcessL1Targets (const HexCoord& centre,
-                                const HexCoord::IntT l1range,
-                                const Faction faction,
-                                const bool enemies, const bool friendlies,
-                                const ProcessingFcn& cb) const
+std::vector<proto::TargetId>
+TargetFinder::FindInRange (const HexCoord& centre,
+                           const HexCoord::IntT l1range,
+                           const Faction faction,
+                           const bool enemies, const bool friendlies,
+                           const proto::TargetId& exclude,
+                           const size_t limit) const
 {
-  std::vector<const Target*> found;
+  std::vector<std::pair<HexCoord::IntT, const Target*>> found;
   ForEachInRange (centre, l1range, faction, enemies, friendlies,
-    [&found] (const Target& t, const HexCoord::IntT dist)
+    [&] (const Target& t, const HexCoord::IntT dist)
     {
-      found.push_back (&t);
+      if (t.type != exclude.type () || t.id != exclude.id ())
+        found.emplace_back (dist, &t);
     },
-    [] () { return false; });
+    [&] () { return limit > 0 && found.size () >= limit; });
 
-  const auto ids = SortedIds (found);
-  for (size_t i = 0; i < ids.size (); ++i)
-    cb (found[i]->pos, ids[i]);
+  if (limit > 0 && found.size () > limit)
+    {
+      const auto closer = [] (const auto& a, const auto& b)
+        {
+          return std::tie (a.first, a.second->type, a.second->id)
+                    < std::tie (b.first, b.second->type, b.second->id);
+        };
+      std::nth_element (found.begin (), found.begin () + (limit - 1),
+                        found.end (), closer);
+      found.resize (limit);
+    }
+
+  std::vector<const Target*> targets;
+  targets.reserve (found.size ());
+  for (const auto& entry : found)
+    targets.push_back (entry.second);
+
+  return SortedIds (targets);
 }
 
 std::vector<proto::TargetId>

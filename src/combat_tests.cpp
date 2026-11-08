@@ -31,6 +31,7 @@
 #include "database/fighter.hpp"
 #include "database/ongoing.hpp"
 #include "database/region.hpp"
+#include "database/roconfig.hpp"
 #include "database/target.hpp"
 #include "hexagonal/coord.hpp"
 #include "proto/combat.pb.h"
@@ -243,12 +244,10 @@ TEST_F (TargetKeyTests, Ordering)
   EXPECT_TRUE (std::is_sorted (fromFighters.begin (), fromFighters.end ()));
 
   std::vector<TargetKey> fromTarget;
-  TargetFinder (db).ProcessL1Targets (HexCoord (0, 0), 10, Faction::GREEN,
-                                      true, false,
-      [&fromTarget] (const HexCoord& c, const proto::TargetId& id)
-        {
-          fromTarget.emplace_back (id);
-        });
+  for (const auto& id : TargetFinder (db).FindInRange (
+                            HexCoord (0, 0), 10, Faction::GREEN, true, false,
+                            proto::TargetId ()))
+    fromTarget.emplace_back (id);
   EXPECT_EQ (fromTarget, fromFighters);
 }
 
@@ -852,6 +851,17 @@ protected:
     return DealCombatDamage (db, dl, rnd, ctx);
   }
 
+  /**
+   * Stores the given config (as an admin command does) and lets the
+   * context use it.
+   */
+  void
+  SetConfig (const proto::ConfigData& cfg)
+  {
+    RoConfigStorage (db).Set (cfg);
+    ctx.SetRoConfig (RoConfigStorage (db).Load (ctx.Chain ()));
+  }
+
 };
 
 TEST_F (DealDamageTests, NoAttacks)
@@ -906,7 +916,11 @@ TEST_F (DealDamageTests, AreaAttacks)
     }
 
   /* The single attack should do randomised but per-turn consistent damage
-     to all of the targets.  */
+     to all of the targets it hits.  They are all at the same distance, so it
+     hits the first ones by ID up to the limit.  */
+  const unsigned limit = ctx.RoConfig ()->params ().max_area_targets ();
+  ASSERT_GT (limit, 0);
+  ASSERT_LT (limit, idTargets.size ());
 
   unsigned cnt[] = {0, 0, 0};
   constexpr unsigned trials = 100;
@@ -916,8 +930,9 @@ TEST_F (DealDamageTests, AreaAttacks)
       FindTargetsAndDamage ();
 
       const auto newHP = characters.GetById (idTargets[0])->GetHP ().armour ();
-      for (const auto id : idTargets)
-        ASSERT_EQ (characters.GetById (id)->GetHP ().armour (), newHP);
+      for (unsigned j = 0; j < idTargets.size (); ++j)
+        ASSERT_EQ (characters.GetById (idTargets[j])->GetHP ().armour (),
+                   j < limit ? newHP : 1'000);
 
       ++cnt[oldHP - newHP];
     }
@@ -925,6 +940,36 @@ TEST_F (DealDamageTests, AreaAttacks)
   EXPECT_EQ (cnt[1] + cnt[2], trials);
   EXPECT_GT (cnt[1], 0);
   EXPECT_GT (cnt[2], 0);
+}
+
+TEST_F (DealDamageTests, AreaAttackHitsTheClosest)
+{
+  const unsigned limit = ctx.RoConfig ()->params ().max_area_targets ();
+  ASSERT_GT (limit, 1);
+
+  auto c = characters.CreateNew ("red", Faction::RED);
+  AddAreaAttack (*c, 10, 1, 1);
+  c.reset ();
+
+  /* Two targets at distance 2, created first so that they come first by ID,
+     and then one less than the limit at distance 1.  The attack hits all of
+     the closer ones and the first of the farther ones.  */
+  std::vector<Database::IdT> far, near;
+  for (unsigned i = 0; i < 2 + (limit - 1); ++i)
+    {
+      c = characters.CreateNew ("green", Faction::GREEN);
+      (i < 2 ? far : near).push_back (c->GetId ());
+      c->SetPosition (HexCoord (i < 2 ? 2 : 1, 0));
+      NoAttacks (*c);
+      SetHp (*c, 0, 10, 0, 10);
+      c.reset ();
+    }
+
+  FindTargetsAndDamage ();
+  for (const auto id : near)
+    EXPECT_EQ (characters.GetById (id)->GetHP ().armour (), 9);
+  EXPECT_EQ (characters.GetById (far[0])->GetHP ().armour (), 9);
+  EXPECT_EQ (characters.GetById (far[1])->GetHP ().armour (), 10);
 }
 
 TEST_F (DealDamageTests, AreaAroundTarget)
@@ -2080,7 +2125,45 @@ TEST_F (LowHpBoostTests, BasedOnOriginalHp)
 
 /* ************************************************************************** */
 
-using SelfDestructTests = DealDamageTests;
+class SelfDestructTests : public DealDamageTests
+{
+
+protected:
+
+  /**
+   * Sets up a self-destruct next to its killer and the given number of
+   * enemies one further away, and returns their IDs.  The killer is hit
+   * first, as the closest, and then the enemies by ID.
+   */
+  std::vector<Database::IdT>
+  AddVictims (const unsigned n)
+  {
+    auto c = characters.CreateNew ("red", Faction::RED);
+    SetHp (*c, 0, 1, 0, 1);
+    AddSelfDestruct (*c, 10, 5);
+    c.reset ();
+
+    c = characters.CreateNew ("green", Faction::GREEN);
+    c->SetPosition (HexCoord (1, 0));
+    SetHp (*c, 0, 100, 0, 100);
+    AddAttack (*c, 5, 1, 1);
+    c.reset ();
+
+    std::vector<Database::IdT> victims;
+    for (unsigned i = 0; i < n; ++i)
+      {
+        c = characters.CreateNew ("green", Faction::GREEN);
+        victims.push_back (c->GetId ());
+        c->SetPosition (HexCoord (2, 0));
+        SetHp (*c, 0, 100, 0, 100);
+        NoAttacks (*c);
+        c.reset ();
+      }
+
+    return victims;
+  }
+
+};
 
 TEST_F (SelfDestructTests, Basic)
 {
@@ -2116,6 +2199,33 @@ TEST_F (SelfDestructTests, Basic)
   ));
   EXPECT_EQ (characters.GetById (idAlive)->GetHP ().armour (), 70);
   EXPECT_EQ (characters.GetById (idStandby)->GetHP ().armour (), 100);
+}
+
+TEST_F (SelfDestructTests, LimitedTargets)
+{
+  /* A self-destruct hits at most max_self_destruct_targets:  its killer
+     (the closest) and then the first victims by ID.  */
+  const unsigned limit
+      = ctx.RoConfig ()->params ().max_self_destruct_targets ();
+  ASSERT_GT (limit, 1);
+
+  const auto victims = AddVictims (limit + 2);
+  FindTargetsAndDamage ();
+  for (unsigned i = 0; i < victims.size (); ++i)
+    EXPECT_EQ (characters.GetById (victims[i])->GetHP ().armour (),
+               i + 1 < limit ? 95 : 100);
+}
+
+TEST_F (SelfDestructTests, NoLimit)
+{
+  auto modified = *ctx.RoConfig ();
+  modified.mutable_params ()->set_max_self_destruct_targets (0);
+  SetConfig (modified);
+
+  const auto victims = AddVictims (20);
+  FindTargetsAndDamage ();
+  for (const auto id : victims)
+    EXPECT_EQ (characters.GetById (id)->GetHP ().armour (), 95);
 }
 
 TEST_F (SelfDestructTests, StackingAndLowHpBoost)
@@ -2496,7 +2606,136 @@ TEST_F (DamagingRandomRollsTests, HitMissForEachTarget)
       c.reset ();
     }
 
-  ExpectRollsForDamaging (1 + 10);
+  /* Only up to the limit of them are hit.  */
+  const unsigned limit = ctx.RoConfig ()->params ().max_area_targets ();
+  ASSERT_GT (limit, 0);
+  ExpectRollsForDamaging (1 + std::min (10u, limit));
+}
+
+/**
+ * Tests of the limits on area targets, also with other parameters than
+ * the compiled ones.
+ */
+class AreaTargetsTests : public DamagingRandomRollsTests
+{
+
+protected:
+
+  /**
+   * Adds an attacker with the given number of area attacks, and the given
+   * number of targets in their area.  Each attack rolls its damage and the
+   * hit chance for each target it hits.
+   */
+  void
+  AddAttackerAndTargets (const unsigned attacks, const unsigned targets)
+  {
+    auto c = characters.CreateNew ("attacker", Faction::RED);
+    c->SetPosition (HexCoord (0, 0));
+    for (unsigned i = 0; i < attacks; ++i)
+      AddAreaAttack (*c, 10, 1, 1).mutable_damage ()->set_weapon_size (10);
+    c.reset ();
+
+    for (unsigned i = 0; i < targets; ++i)
+      {
+        c = characters.CreateNew ("target", Faction::GREEN);
+        c->SetPosition (HexCoord (5, 0));
+        c->MutableProto ().mutable_combat_data ()->set_target_size (1);
+        NoAttacks (*c);
+        c.reset ();
+      }
+  }
+
+};
+
+TEST_F (AreaTargetsTests, SplitBetweenAttacks)
+{
+  /* A fighter's area attacks split max_area_targets_per_fighter evenly
+     between them, the first ones getting one more if it does not divide
+     evenly, so that together they hit exactly that many.  */
+  const auto& p = ctx.RoConfig ()->params ();
+  const unsigned perFighter = p.max_area_targets_per_fighter ();
+  ASSERT_NE (perFighter % 3, 0);
+  ASSERT_LT (perFighter / 3 + 1, p.max_area_targets ());
+
+  AddAttackerAndTargets (3, 10);
+  ExpectRollsForDamaging (3 + perFighter);
+}
+
+TEST_F (AreaTargetsTests, FighterLimitBelowAttacks)
+{
+  /* If the fighter's limit is less than its number of area attacks, the
+     last ones hit nothing (and do not even roll their damage).  */
+  auto modified = *ctx.RoConfig ();
+  modified.mutable_params ()->set_max_area_targets_per_fighter (2);
+  SetConfig (modified);
+  AddAttackerAndTargets (3, 10);
+  ExpectRollsForDamaging (2 * (1 + 1));
+}
+
+TEST_F (AreaTargetsTests, FighterLimitCoversFriendlyAttacks)
+{
+  /* Area attacks on enemies and friendlies share the fighter's limit, in
+     the order of its attacks.  */
+  auto modified = *ctx.RoConfig ();
+  modified.mutable_params ()->set_max_area_targets_per_fighter (1);
+  SetConfig (modified);
+
+  auto c = characters.CreateNew ("attacker", Faction::RED);
+  c->SetPosition (HexCoord (0, 0));
+  SetHp (*c, 0, 100, 0, 100);
+  AddAreaAttack (*c, 10, 1, 1);
+  auto& friendly = AddFriendlyAttack (*c);
+  friendly.set_area (10);
+  friendly.mutable_effects ()->mutable_shield_regen ()->set_percent (30);
+  c.reset ();
+
+  c = characters.CreateNew ("enemy", Faction::GREEN);
+  const auto idEnemy = c->GetId ();
+  c->SetPosition (HexCoord (1, 0));
+  SetHp (*c, 0, 100, 0, 100);
+  NoAttacks (*c);
+  c.reset ();
+
+  c = characters.CreateNew ("ally", Faction::RED);
+  const auto idAlly = c->GetId ();
+  c->SetPosition (HexCoord (0, 1));
+  SetHp (*c, 0, 100, 0, 100);
+  NoAttacks (*c);
+  c.reset ();
+
+  FindTargetsAndDamage ();
+  EXPECT_EQ (characters.GetById (idEnemy)->GetHP ().armour (), 99);
+  EXPECT_FALSE (characters.GetById (idAlly)->GetEffects ().has_shield_regen ());
+}
+
+TEST_F (AreaTargetsTests, OnlyAttackLimit)
+{
+  auto modified = *ctx.RoConfig ();
+  modified.mutable_params ()->set_max_area_targets (3);
+  modified.mutable_params ()->set_max_area_targets_per_fighter (0);
+  SetConfig (modified);
+  AddAttackerAndTargets (5, 10);
+  ExpectRollsForDamaging (5 * (1 + 3));
+}
+
+TEST_F (AreaTargetsTests, OnlyFighterLimit)
+{
+  auto modified = *ctx.RoConfig ();
+  modified.mutable_params ()->set_max_area_targets (0);
+  modified.mutable_params ()->set_max_area_targets_per_fighter (7);
+  SetConfig (modified);
+  AddAttackerAndTargets (1, 10);
+  ExpectRollsForDamaging (1 + 7);
+}
+
+TEST_F (AreaTargetsTests, NoLimits)
+{
+  auto modified = *ctx.RoConfig ();
+  modified.mutable_params ()->set_max_area_targets (0);
+  modified.mutable_params ()->set_max_area_targets_per_fighter (0);
+  SetConfig (modified);
+  AddAttackerAndTargets (2, 12);
+  ExpectRollsForDamaging (2 * (1 + 12));
 }
 
 TEST_F (DamagingRandomRollsTests, HitMissRolledForZeroDamage)

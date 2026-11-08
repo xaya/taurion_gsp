@@ -78,18 +78,10 @@ TargetFinding (benchmark::State& state)
   TargetFinder finder(db);
   for (auto _ : state)
     {
-      unsigned cnt = 0;
-      TargetFinder::ProcessingFcn cb = [&cnt] (const HexCoord& c,
-                                               const proto::TargetId& t)
-        {
-          ++cnt;
-        };
-
-      finder.ProcessL1Targets (HexCoord (0, 0), range,
-                               Faction::RED, true, false,
-                               cb);
-
-      CHECK_EQ (cnt, inRange);
+      const auto found = finder.FindInRange (HexCoord (0, 0), range,
+                                             Faction::RED, true, false,
+                                             proto::TargetId ());
+      CHECK_EQ (found.size (), inRange);
     }
 }
 BENCHMARK (TargetFinding)

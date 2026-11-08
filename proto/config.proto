@@ -613,6 +613,33 @@ message Params
    */
   repeated ProspectingPrize prizes = 22;
 
+  /**
+   * The most targets an area attack hits:  those closest to its centre, and
+   * of those at the same distance the first in target order (buildings
+   * before characters, each by ID).  0 means no limit.  This bounds the work
+   * of combat in dense battles, which otherwise grows with the number of
+   * fighters times those in each one's area.  Self-destructs have their own
+   * limit, max_self_destruct_targets.
+   */
+  optional uint32 max_area_targets = 23;
+
+  /**
+   * The most targets all area attacks of one fighter hit together, split
+   * evenly between them in their order:  the first ones may hit one more if
+   * it does not divide evenly, and the last ones nothing if it is less than
+   * their number.  Each still hits at most max_area_targets.
+   * 0 means no limit.
+   */
+  optional uint32 max_area_targets_per_fighter = 24;
+
+  /**
+   * The most targets each self-destruct of a killed fighter hits, chosen as
+   * for max_area_targets.  This bounds the work of a mass self-destruct,
+   * which otherwise grows with the number of fighters times those in each
+   * one's area.  0 means no limit.
+   */
+  optional uint32 max_self_destruct_targets = 25;
+
 }
 
 /* ************************************************************************** */
