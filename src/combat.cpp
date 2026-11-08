@@ -243,10 +243,10 @@ struct TargetFindingProcessor::TargetingResult
   TargetKey id;
 
   /**
-   * Array of closest enemy targets found, if any.  From this list, we will
+   * The closest enemy targets found, if any.  From those, we will
    * randomly pick one as "the" target.
    */
-  std::vector<proto::TargetId> enemyTargets;
+  TargetFinder::Closest enemyTargets;
 
   /** Whether or not there is a friendly target in range.  */
   bool hasFriendlyTarget;

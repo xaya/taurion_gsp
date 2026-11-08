@@ -21,6 +21,7 @@
 #include "hexagonal/ring.hpp"
 
 #include <algorithm>
+#include <limits>
 #include <tuple>
 #include <utility>
 
@@ -56,6 +57,23 @@ struct TargetResult : public ResultWithFaction
 
 } // anonymous namespace
 
+uint64_t
+TargetFinder::Key (const proto::TargetId::Type type, const Database::IdT id)
+{
+  /* The type enum values sort buildings before characters.  */
+  CHECK_LT (id, uint64_t{1} << ID_BITS);
+  return (static_cast<uint64_t> (type) << ID_BITS) | id;
+}
+
+proto::TargetId
+TargetFinder::IdFromKey (const uint64_t key)
+{
+  proto::TargetId res;
+  res.set_type (static_cast<proto::TargetId::Type> (key >> ID_BITS));
+  res.set_id (key & ((uint64_t{1} << ID_BITS) - 1));
+  return res;
+}
+
 TargetFinder::TargetFinder (Database& db, const PositionFilter& ignore)
 {
   /* Characters inside buildings have no position and are never targets.
@@ -70,54 +88,72 @@ TargetFinder::TargetFinder (Database& db, const PositionFilter& ignore)
       WHERE `x` IS NOT NULL AND `y` IS NOT NULL AND `faction` != 4
   )");
 
+  std::vector<std::pair<Target, Faction>> all;
   auto res = stmt.Query<TargetResult> ();
   while (res.Step ())
     {
+      proto::TargetId::Type type;
+      const auto typeStr = res.Get<TargetResult::type> ();
+      if (typeStr == "building")
+        type = proto::TargetId::TYPE_BUILDING;
+      else if (typeStr == "character")
+        type = proto::TargetId::TYPE_CHARACTER;
+      else
+        LOG (FATAL) << "Unexpected target type: " << typeStr;
+
       Target t;
       t.pos = HexCoord (res.Get<TargetResult::x> (),
                         res.Get<TargetResult::y> ());
-      t.faction = GetFactionFromColumn (res);
-      t.id = res.Get<TargetResult::id> ();
+      t.key = Key (type, res.Get<TargetResult::id> ());
+      all.emplace_back (t, GetFactionFromColumn (res));
+    }
 
-      const auto type = res.Get<TargetResult::type> ();
-      if (type == "building")
-        t.type = proto::TargetId::TYPE_BUILDING;
-      else if (type == "character")
-        t.type = proto::TargetId::TYPE_CHARACTER;
-      else
-        LOG (FATAL) << "Unexpected target type: " << type;
+  /* The lists of targets are filled in key order.  */
+  std::sort (all.begin (), all.end (),
+             [] (const auto& a, const auto& b)
+               {
+                 return a.first.key < b.first.key;
+               });
 
-      CHECK (positions.emplace (PositionKey (t.type, t.id), t.pos).second);
-      if (ignore != nullptr && ignore (t.pos))
+  for (const auto& entry : all)
+    {
+      const auto& t = entry.first;
+      const bool ignored = ignore != nullptr && ignore (t.pos);
+      CHECK (entries.emplace (t.key, Entry {t.pos, entry.second, ignored})
+                .second);
+      if (ignored)
         continue;
 
-      const auto f = static_cast<unsigned> (t.faction);
+      const auto f = static_cast<unsigned> (entry.second);
       CHECK_LT (f, NUM_FACTIONS);
-      auto& cell = cells[HexCoord (CellIndex (t.pos.GetX ()),
-                                   CellIndex (t.pos.GetY ()))];
-      cell.targets.push_back (t);
-      ++cell.counts[f];
-      tiles[t.pos].push_back (t);
+      cells[HexCoord (CellIndex (t.pos.GetX ()),
+                      CellIndex (t.pos.GetY ()))][f].push_back (t);
+      tiles[t.pos][f].push_back (t);
     }
 }
 
-template <typename Fcn, typename Done>
+template <typename Fcn>
   void
   TargetFinder::ForEachInRange (const HexCoord& centre,
                                 const HexCoord::IntT l1range,
                                 const Faction faction,
                                 const bool enemies, const bool friendlies,
-                                const Fcn& fcn, const Done& done) const
+                                const Fcn& fcn) const
 {
   CHECK (enemies || friendlies)
       << "Neither enemy nor friendly targets requested?";
   if (l1range < 0)
     return;
 
+  std::array<bool, NUM_FACTIONS> matching;
+  for (unsigned f = 0; f < NUM_FACTIONS; ++f)
+    matching[f] = MatchesFaction (static_cast<Faction> (f), faction,
+                                  enemies, friendlies);
+
   /* Find the cells overlapping the L-infinity range (which certainly
-     includes the L1 range) that have targets of matching factions, and
-     count those targets.  */
-  std::vector<const Cell*> overlapping;
+     includes the L1 range) with their lists of targets of matching factions,
+     and count those targets.  */
+  std::vector<const std::vector<Target>*> overlapping;
   size_t candidates = 0;
   const int minX = CellIndex (centre.GetX () - l1range);
   const int maxX = CellIndex (centre.GetX () + l1range);
@@ -130,83 +166,71 @@ template <typename Fcn, typename Done>
         if (mit == cells.end ())
           continue;
 
-        size_t matching = 0;
         for (unsigned f = 0; f < NUM_FACTIONS; ++f)
-          if (MatchesFaction (static_cast<Faction> (f), faction,
-                              enemies, friendlies))
-            matching += mit->second.counts[f];
-
-        if (matching > 0)
-          {
-            overlapping.push_back (&mit->second);
-            candidates += matching;
-          }
+          if (matching[f] && !mit->second[f].empty ())
+            {
+              overlapping.push_back (&mit->second[f]);
+              candidates += mit->second[f].size ();
+            }
       }
 
-  /* Then either look at all those candidates, or at the tiles in range
-     ring by ring (in order of distance), whichever means looking at less.  */
+  /* Then either look at the tiles in range ring by ring, or at all those
+     candidates, whichever means looking at less.  */
+  std::vector<Span> spans;
   const size_t tilesInRange = 1 + 3 * static_cast<size_t> (l1range)
                                     * (l1range + 1);
   if (tilesInRange < candidates)
     {
       for (HexCoord::IntT r = 0; r <= l1range; ++r)
         {
+          spans.clear ();
           for (const auto& c : L1Ring (centre, r))
             {
               const auto mit = tiles.find (c);
               if (mit == tiles.end ())
                 continue;
 
-              for (const auto& t : mit->second)
-                if (MatchesFaction (t.faction, faction, enemies, friendlies))
-                  fcn (t, r);
+              for (unsigned f = 0; f < NUM_FACTIONS; ++f)
+                {
+                  const auto& list = mit->second[f];
+                  if (matching[f] && !list.empty ())
+                    spans.push_back ({list.data (),
+                                      list.data () + list.size ()});
+                }
             }
 
-          if (done ())
+          if (!spans.empty () && fcn (spans))
             return;
         }
       return;
     }
 
-  for (const auto* cell : overlapping)
-    for (const auto& t : cell->targets)
+  std::vector<std::pair<HexCoord::IntT, const Target*>> inRange;
+  for (const auto* list : overlapping)
+    for (const auto& t : *list)
       {
-        if (!MatchesFaction (t.faction, faction, enemies, friendlies))
-          continue;
         const auto dist = HexCoord::DistanceL1 (centre, t.pos);
         if (dist <= l1range)
-          fcn (t, dist);
+          inRange.emplace_back (dist, &t);
       }
-}
-
-namespace
-{
-
-/**
- * Sorts targets in the order of TargetKey (the type enum values sort
- * buildings before characters) and returns their IDs.
- */
-template <typename T>
-  std::vector<proto::TargetId>
-  SortedIds (std::vector<const T*>& targets)
-{
-  std::sort (targets.begin (), targets.end (),
-             [] (const T* a, const T* b)
+  std::sort (inRange.begin (), inRange.end (),
+             [] (const auto& a, const auto& b)
                {
-                 return std::tie (a->type, a->id) < std::tie (b->type, b->id);
+                 return std::tie (a.first, a.second->key)
+                          < std::tie (b.first, b.second->key);
                });
 
-  std::vector<proto::TargetId> res(targets.size ());
-  for (size_t i = 0; i < targets.size (); ++i)
+  for (auto it = inRange.begin (); it != inRange.end (); )
     {
-      res[i].set_type (targets[i]->type);
-      res[i].set_id (targets[i]->id);
+      spans.clear ();
+      const auto dist = it->first;
+      for (; it != inRange.end () && it->first == dist; ++it)
+        spans.push_back ({it->second, it->second + 1});
+
+      if (fcn (spans))
+        return;
     }
-
-  return res;
 }
-
-} // anonymous namespace
 
 std::vector<proto::TargetId>
 TargetFinder::FindInRange (const HexCoord& centre,
@@ -216,61 +240,64 @@ TargetFinder::FindInRange (const HexCoord& centre,
                            const proto::TargetId& exclude,
                            const size_t limit) const
 {
-  std::vector<std::pair<HexCoord::IntT, const Target*>> found;
+  const uint64_t excluded = Key (exclude.type (), exclude.id ());
+  std::vector<uint64_t> found;
   ForEachInRange (centre, l1range, faction, enemies, friendlies,
-    [&] (const Target& t, const HexCoord::IntT dist)
+    [&] (const std::vector<Span>& spans)
     {
-      if (t.type != exclude.type () || t.id != exclude.id ())
-        found.emplace_back (dist, &t);
-    },
-    [&] () { return limit > 0 && found.size () >= limit; });
-
-  if (limit > 0 && found.size () > limit)
-    {
-      const auto closer = [] (const auto& a, const auto& b)
+      /* Of the targets at this distance, the first ones in key order are
+         needed if there is a limit.  They are among the first of each list.  */
+      const size_t need = (limit > 0 ? limit - found.size ()
+                                     : std::numeric_limits<size_t>::max ());
+      const size_t start = found.size ();
+      for (const auto& s : spans)
         {
-          return std::tie (a.first, a.second->type, a.second->id)
-                    < std::tie (b.first, b.second->type, b.second->id);
-        };
-      std::nth_element (found.begin (), found.begin () + (limit - 1),
-                        found.end (), closer);
-      found.resize (limit);
-    }
+          size_t taken = 0;
+          for (const Target* t = s.begin; t != s.end && taken < need; ++t)
+            if (t->key != excluded)
+              {
+                found.push_back (t->key);
+                ++taken;
+              }
+        }
 
-  std::vector<const Target*> targets;
-  targets.reserve (found.size ());
-  for (const auto& entry : found)
-    targets.push_back (entry.second);
+      if (found.size () - start > need)
+        {
+          std::nth_element (found.begin () + start,
+                            found.begin () + start + need, found.end ());
+          found.resize (start + need);
+        }
 
-  return SortedIds (targets);
+      return limit > 0 && found.size () == limit;
+    });
+
+  std::sort (found.begin (), found.end ());
+
+  std::vector<proto::TargetId> res;
+  res.reserve (found.size ());
+  for (const auto key : found)
+    res.push_back (IdFromKey (key));
+
+  return res;
 }
 
-std::vector<proto::TargetId>
+TargetFinder::Closest
 TargetFinder::FindClosest (const HexCoord& centre,
                            const HexCoord::IntT l1range,
                            const Faction faction,
                            const bool enemies, const bool friendlies,
                            const proto::TargetId& exclude) const
 {
-  std::vector<const Target*> closest;
-  HexCoord::IntT closestDist = 0;
+  const uint64_t excluded = Key (exclude.type (), exclude.id ());
+  Closest res;
   ForEachInRange (centre, l1range, faction, enemies, friendlies,
-    [&] (const Target& t, const HexCoord::IntT dist)
+    [&] (const std::vector<Span>& spans)
     {
-      if (t.type == exclude.type () && t.id == exclude.id ())
-        return;
-      if (!closest.empty () && dist > closestDist)
-        return;
-      if (closest.empty () || dist < closestDist)
-        {
-          closest.clear ();
-          closestDist = dist;
-        }
-      closest.push_back (&t);
-    },
-    [&closest] () { return !closest.empty (); });
+      res = Closest (spans, excluded);
+      return !res.empty ();
+    });
 
-  return SortedIds (closest);
+  return res;
 }
 
 bool
@@ -278,29 +305,80 @@ TargetFinder::IsInRange (const proto::TargetId& id, const HexCoord& centre,
                          const HexCoord::IntT l1range, const Faction faction,
                          const bool enemies, const bool friendlies) const
 {
-  const auto pit = positions.find (PositionKey (id.type (), id.id ()));
-  if (pit == positions.end ()
-        || HexCoord::DistanceL1 (centre, pit->second) > l1range)
+  const auto mit = entries.find (Key (id.type (), id.id ()));
+  if (mit == entries.end ())
     return false;
 
-  /* Only targets that queries consider (e.g. not in a safe zone) are
-     in tiles.  */
-  const auto& pos = pit->second;
-  const auto tit = tiles.find (pos);
-  if (tit == tiles.end ())
-    return false;
-  for (const auto& t : tit->second)
-    if (t.type == id.type () && t.id == id.id ())
-      return MatchesFaction (t.faction, faction, enemies, friendlies);
-
-  return false;
+  const auto& e = mit->second;
+  return !e.ignored && HexCoord::DistanceL1 (centre, e.pos) <= l1range
+            && MatchesFaction (e.faction, faction, enemies, friendlies);
 }
 
 const HexCoord*
 TargetFinder::FindPosition (const proto::TargetId& id) const
 {
-  const auto mit = positions.find (PositionKey (id.type (), id.id ()));
-  return mit == positions.end () ? nullptr : &mit->second;
+  const auto mit = entries.find (Key (id.type (), id.id ()));
+  return mit == entries.end () ? nullptr : &mit->second.pos;
+}
+
+TargetFinder::Closest::Closest (const std::vector<Span>& s,
+                                const uint64_t exclude)
+  : spans(s)
+{
+  for (const auto& span : spans)
+    count += span.end - span.begin;
+
+  excludedRank = CountUpTo (exclude - 1);
+  if (CountUpTo (exclude) > excludedRank)
+    --count;
+  else
+    excludedRank = count;
+}
+
+size_t
+TargetFinder::Closest::CountUpTo (const uint64_t key) const
+{
+  size_t res = 0;
+  for (const auto& s : spans)
+    res += std::upper_bound (s.begin, s.end, key,
+                             [] (const uint64_t k, const Target& t)
+                               {
+                                 return k < t.key;
+                               })
+              - s.begin;
+
+  return res;
+}
+
+proto::TargetId
+TargetFinder::Closest::operator[] (size_t i) const
+{
+  CHECK_LT (i, count);
+  if (i >= excludedRank)
+    ++i;
+
+  if (spans.size () == 1)
+    return IdFromKey (spans.front ().begin[i].key);
+
+  /* Of the targets in all spans, the i-th in key order has the smallest key
+     that more than i of them are up to.  */
+  uint64_t lo = std::numeric_limits<uint64_t>::max ();
+  uint64_t hi = 0;
+  for (const auto& s : spans)
+    {
+      lo = std::min (lo, s.begin->key);
+      hi = std::max (hi, (s.end - 1)->key);
+    }
+  while (lo < hi)
+    {
+      const uint64_t mid = lo + (hi - lo) / 2;
+      if (CountUpTo (mid) > i)
+        hi = mid;
+      else
+        lo = mid + 1;
+    }
+
+  return IdFromKey (lo);
 }
 
 } // namespace pxd

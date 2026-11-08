@@ -29,7 +29,9 @@
 
 #include <algorithm>
 #include <random>
+#include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace pxd
@@ -447,7 +449,8 @@ QueryDatabaseTargets (Database& db, const HexCoord& centre,
 TEST_F (TargetFinderTests, MatchesDatabaseQuery)
 {
   /* Random targets (some inside buildings) across several cells, including
-     negative coordinates, and random queries compared to the database.  */
+     negative coordinates, and piles of them on single tiles.  Random queries
+     (also around the piles) are compared to the database.  */
   std::mt19937 rnd(42);
   const auto coord = [&rnd] ()
     {
@@ -460,15 +463,46 @@ TEST_F (TargetFinderTests, MatchesDatabaseQuery)
       return factions[std::uniform_int_distribution<int> (0, 2) (rnd)];
     };
 
+  std::vector<proto::TargetId> ids;
+  const auto add = [&ids] (const proto::TargetId::Type type,
+                           const Database::IdT id)
+    {
+      ids.emplace_back ();
+      ids.back ().set_type (type);
+      ids.back ().set_id (id);
+      return id;
+    };
+
   std::vector<Database::IdT> buildingIds;
   for (unsigned i = 0; i < 100; ++i)
-    buildingIds.push_back (InsertBuilding (
-        coord (), i % 10 == 0 ? Faction::ANCIENT : faction ()));
+    buildingIds.push_back (add (proto::TargetId::TYPE_BUILDING,
+        InsertBuilding (coord (),
+                        i % 10 == 0 ? Faction::ANCIENT : faction ())));
   for (unsigned i = 0; i < 2'000; ++i)
     {
-      const auto id = InsertCharacter (coord (), faction ());
+      const auto id = add (proto::TargetId::TYPE_CHARACTER,
+                           InsertCharacter (coord (), faction ()));
       if (i % 20 == 0)
         characters.GetById (id)->SetBuildingId (buildingIds[i % 100]);
+    }
+
+  /* Piles of many targets on one tile, three of them around (and so at the
+     same distance from) another one.  */
+  const HexCoord pileCentre(20, -20);
+  const HexCoord piles[] = {
+    pileCentre,
+    pileCentre + HexCoord (1, 0),
+    pileCentre + HexCoord (0, 1),
+    pileCentre + HexCoord (-1, 1),
+    coord (),
+  };
+  for (unsigned i = 0; i < 2'000; ++i)
+    {
+      const auto& pos = piles[i % 5];
+      if (i % 40 == 0)
+        add (proto::TargetId::TYPE_BUILDING, InsertBuilding (pos, faction ()));
+      else
+        add (proto::TargetId::TYPE_CHARACTER, InsertCharacter (pos, faction ()));
     }
 
   /* The second finder ignores some positions (like no-combat zones).  */
@@ -481,7 +515,7 @@ TEST_F (TargetFinderTests, MatchesDatabaseQuery)
 
   for (unsigned i = 0; i < 1'000; ++i)
     {
-      const HexCoord centre = coord ();
+      const HexCoord centre = (i % 4 == 3 ? piles[i % 5] : coord ());
       /* Small and large ranges, so that queries are answered both by looking
          at the tiles in range and at the candidates in overlapping cells.  */
       const int maxRange = (i % 5 == 0 ? 40 : 6);
@@ -513,6 +547,15 @@ TEST_F (TargetFinderTests, MatchesDatabaseQuery)
           EXPECT_EQ (all[j].id (), expected[j].second.id ());
         }
 
+      /* IsInRange agrees for some of all targets.  */
+      std::set<std::pair<proto::TargetId::Type, Database::IdT>> inRange;
+      for (const auto& e : expected)
+        inRange.emplace (e.second.type (), e.second.id ());
+      for (size_t j = i % 10; j < ids.size (); j += 10)
+        EXPECT_EQ (query.IsInRange (ids[j], centre, range, f,
+                                    enemies, friendlies),
+                   inRange.count ({ids[j].type (), ids[j].id ()}) > 0);
+
       /* Excluding one of them (if any), and with a limit:  the ones
          closest to the centre, of those at the same distance the first,
          and returned in target order.  */
@@ -524,8 +567,8 @@ TEST_F (TargetFinderTests, MatchesDatabaseQuery)
           return id.type () == exclude.type () && id.id () == exclude.id ();
         };
 
-      const size_t limits[] = {1, 2, 5, 20};
-      const size_t limit = limits[i % 4];
+      const size_t limits[] = {1, 2, 5, 20, 100};
+      const size_t limit = limits[(i / 4) % 5];
       std::vector<std::pair<HexCoord::IntT, size_t>> byDistance;
       for (size_t j = 0; j < expected.size (); ++j)
         if (!isExcluded (expected[j].second))
