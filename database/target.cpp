@@ -273,6 +273,29 @@ TargetFinder::FindClosest (const HexCoord& centre,
   return SortedIds (closest);
 }
 
+bool
+TargetFinder::IsInRange (const proto::TargetId& id, const HexCoord& centre,
+                         const HexCoord::IntT l1range, const Faction faction,
+                         const bool enemies, const bool friendlies) const
+{
+  const auto pit = positions.find (PositionKey (id.type (), id.id ()));
+  if (pit == positions.end ()
+        || HexCoord::DistanceL1 (centre, pit->second) > l1range)
+    return false;
+
+  /* Only targets that queries consider (e.g. not in a safe zone) are
+     in tiles.  */
+  const auto& pos = pit->second;
+  const auto tit = tiles.find (pos);
+  if (tit == tiles.end ())
+    return false;
+  for (const auto& t : tit->second)
+    if (t.type == id.type () && t.id == id.id ())
+      return MatchesFaction (t.faction, faction, enemies, friendlies);
+
+  return false;
+}
+
 const HexCoord*
 TargetFinder::FindPosition (const proto::TargetId& id) const
 {

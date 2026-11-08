@@ -161,6 +161,15 @@ public:
       const;
 
   /**
+   * Returns true if FindInRange with these arguments (and no limit) would
+   * return the given target.  This only looks up that target, so it is a
+   * fast check whether it is still in range and attackable.
+   */
+  bool IsInRange (const proto::TargetId& id, const HexCoord& centre,
+                  HexCoord::IntT l1range, Faction faction,
+                  bool enemies, bool friendlies) const;
+
+  /**
    * Returns the position of a target, or null if it is not a potential target
    * (e.g. an ancient building or a character inside a building).
    */

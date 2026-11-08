@@ -251,6 +251,12 @@ struct TargetFindingProcessor::TargetingResult
   /** Whether or not there is a friendly target in range.  */
   bool hasFriendlyTarget;
 
+  /**
+   * Whether the fighter keeps its current target (and enemyTargets is
+   * thus empty).
+   */
+  bool keepTarget = false;
+
   TargetingResult () = default;
 
   explicit TargetingResult (FighterTable::Handle h)
@@ -281,10 +287,21 @@ TargetFindingProcessor::SelectNormalTarget (const CombatModifier& mod,
   CHECK_GE (range, 0);
   range = mod.range (range);
 
-  /* The closest of what TargetsInRange with enemies would return.  */
+  /* A fighter stays locked on to its target for as long as that is in range
+     and could still be attacked.  Only otherwise it picks a new one at random
+     from the closest of what TargetsInRange with enemies would return.  */
+  const bool mentecon = res.f->GetEffects ().mentecon ();
+  if (res.f->HasTarget ()
+        && targets.IsInRange (res.f->GetTarget (), pos, range,
+                              res.f->GetFaction (), true, mentecon))
+    {
+      VLOG (1) << "Fighter at " << pos << " keeps its target";
+      res.keepTarget = true;
+      return;
+    }
+
   res.enemyTargets = targets.FindClosest (pos, range, res.f->GetFaction (),
-                                          true,
-                                          res.f->GetEffects ().mentecon (),
+                                          true, mentecon,
                                           res.f->GetIdAsTarget ());
 
   if (res.enemyTargets.empty ())
@@ -351,7 +368,9 @@ TargetFindingProcessor::SelectTarget (FighterTable::Handle f)
 void
 TargetFindingProcessor::Finalise (TargetingResult res)
 {
-  if (res.enemyTargets.empty ())
+  if (res.keepTarget)
+    CHECK (res.f->HasTarget ());
+  else if (res.enemyTargets.empty ())
     res.f->ClearTarget ();
   else
     {
