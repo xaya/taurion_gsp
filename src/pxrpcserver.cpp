@@ -34,6 +34,7 @@
 
 #include <glog/logging.h>
 
+#include <algorithm>
 #include <sstream>
 #include <string>
 
@@ -45,8 +46,11 @@ namespace pxd
 namespace
 {
 
-/** Maximum number of past blocks for which getregions can be called.  */
-constexpr int MAX_REGIONS_HEIGHT_DIFFERENCE = 2 * 60 * 24 * 3;
+/**
+ * Maximum number of past blocks for which getregions can be called.  This is
+ * about three days of Polygon blocks (at around 1.5 seconds per block).
+ */
+constexpr int MAX_REGIONS_HEIGHT_DIFFERENCE = 40 * 60 * 24 * 3;
 
 /**
  * Maximum l1range accepted for findpath.  A search with range l needs about
@@ -571,17 +575,17 @@ PXRpcServer::getregions (const int fromHeight)
     [fromHeight] (GameStateJson& gsj, const xaya::uint256 hash,
                   const int height)
       {
-        if (fromHeight + MAX_REGIONS_HEIGHT_DIFFERENCE < height)
+        const int minHeight = height - MAX_REGIONS_HEIGHT_DIFFERENCE;
+        if (fromHeight < minHeight)
           {
             std::ostringstream msg;
             msg << "fromHeight " << fromHeight
                 << " is too low for current block height " << height
-                << ", needs to be at least "
-                << height - MAX_REGIONS_HEIGHT_DIFFERENCE;
+                << ", needs to be at least " << minHeight;
             ReturnError (ErrorCode::GETREGIONS_FROM_TOO_LOW, msg.str ());
           }
 
-        return gsj.Regions (fromHeight);
+        return gsj.Regions (std::max (fromHeight, 0));
       });
 }
 

@@ -67,9 +67,14 @@ class ModifiedRegionsTest (PXTest):
     self.assertEqual (self.queryRegions (h2), set ([r2, r3]))
     self.assertEqual (self.queryRegions (h3), set ([r3]))
     self.assertEqual (self.queryRegions (1000), set ([]))
+    self.assertEqual (self.queryRegions (2**31 - 1), set ([]))
+    self.assertEqual (self.queryRegions (-10), set ([r1, r2, r3]))
 
+    # The allowed window is about three days of blocks on Polygon,
+    # so it includes 10k blocks before the current height.
+    self.assertEqual (self.queryRegions (-10000), set ([r1, r2, r3]))
     self.expectError (3, ".*too low for current block height.*",
-                      self.queryRegions, -10000)
+                      self.queryRegions, -200000)
 
 
 if __name__ == "__main__":
