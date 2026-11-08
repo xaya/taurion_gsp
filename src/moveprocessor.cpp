@@ -37,6 +37,7 @@
 #include <xayautil/base64.hpp>
 #include <xayautil/jsonutils.hpp>
 
+#include <set>
 #include <sstream>
 
 namespace pxd
@@ -212,6 +213,9 @@ BaseMoveProcessor::TryCharacterUpdates (const std::string& name,
       else
         ids.append (idOrIds);
 
+      /* Each character is updated at most once per entry, so that the work
+         for an entry is bounded by the number of characters of the account.  */
+      std::set<Database::IdT> updated;
       for (const auto& idVal : ids)
         {
           Database::IdT id;
@@ -219,6 +223,13 @@ BaseMoveProcessor::TryCharacterUpdates (const std::string& name,
             {
               LOG (WARNING)
                   << "Invalid ID in character update entry: " << idVal;
+              continue;
+            }
+
+          if (!updated.insert (id).second)
+            {
+              LOG (WARNING)
+                  << "Repeated ID in character update entry: " << id;
               continue;
             }
 

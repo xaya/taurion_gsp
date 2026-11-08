@@ -1047,6 +1047,31 @@ TEST_F (CharacterUpdateTests, InvalidUpdate)
   h->SetOwner ("domob");
 }
 
+TEST_F (CharacterUpdateTests, RepeatedIds)
+{
+  SetupCharacter (9, "domob");
+  for (const Database::IdT id : {1, 9})
+    {
+      auto h = tbl.GetById (id);
+      h->MutableProto ().set_speed (1000);
+      h->MutableProto ().mutable_movement ()->mutable_waypoints ()->Add ();
+    }
+
+  /* A repeated ID within one update entry is ignored, while separate
+     entries for the same character are all processed.  */
+  const std::string wpx = WpStr ({HexCoord (5, 0)});
+  Process (R"([{
+    "name": "domob",
+    "move": {"c": [
+      {"id": [1, 9, 1, 1], "wpx": )" + wpx + R"(},
+      {"id": 9, "wpx": )" + wpx + R"(}
+    ]}
+  }])");
+
+  EXPECT_EQ (tbl.GetById (1)->GetProto ().movement ().waypoints_size (), 2);
+  EXPECT_EQ (tbl.GetById (9)->GetProto ().movement ().waypoints_size (), 3);
+}
+
 TEST_F (CharacterUpdateTests, WhenBusy)
 {
   auto h = GetTest ();
