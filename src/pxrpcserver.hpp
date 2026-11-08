@@ -117,21 +117,21 @@ private:
   /**
    * Processes a JSON array of building specifications and adds them
    * to the given dynamic obstacle map, which uses the given config.
-   * Returns false if something goes wrong, e.g. the JSON format is invalid
-   * or some buildings overlap.
+   * Returns false if something goes wrong, e.g. the JSON format is invalid,
+   * some buildings overlap or they are not fully on the map.
    */
-  static bool AddBuildingsFromJson (const RoConfig& cfg,
-                                    const Json::Value& buildings,
-                                    PathingData& dyn);
+  bool AddBuildingsFromJson (const RoConfig& cfg,
+                             const Json::Value& buildings,
+                             PathingData& dyn) const;
 
   /**
    * Processes a JSON array of character data (including at least position
    * and faction), and adds them to the given dynobstacle map.  Returns false
-   * if something is wrong (invalid format or characters overlap in an
-   * invalid way).
+   * if something is wrong (invalid format, positions not on the map
+   * or characters overlap in an invalid way).
    */
-  static bool AddCharactersFromJson (const Json::Value& characters,
-                                     PathingData& dyn);
+  bool AddCharactersFromJson (const Json::Value& characters,
+                              PathingData& dyn) const;
 
 public:
 

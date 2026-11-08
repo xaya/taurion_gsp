@@ -34,7 +34,6 @@
 
 #include <glog/logging.h>
 
-#include <limits>
 #include <sstream>
 #include <string>
 
@@ -48,6 +47,15 @@ namespace
 
 /** Maximum number of past blocks for which getregions can be called.  */
 constexpr int MAX_REGIONS_HEIGHT_DIFFERENCE = 2 * 60 * 24 * 3;
+
+/**
+ * Maximum l1range accepted for findpath.  A search with range l needs about
+ * 8 * (2l + 1)^2 bytes, i.e. 5 GB at the cap, and parallel calls each need
+ * that much; the RPC interface is meant for the operator's own use.
+ * The value is still larger than the L1 distance between any two tiles
+ * on the map (about 12.3k), so it does not restrict which paths can be found.
+ */
+constexpr int MAX_FINDPATH_L1RANGE = 12'500;
 
 /**
  * Error codes returned from the PX RPC server.  All values should have an
@@ -120,7 +128,7 @@ NonStateRpcServer::NonStateRpcServer (jsonrpc::AbstractServerConnector& conn,
 bool
 NonStateRpcServer::AddBuildingsFromJson (const RoConfig& cfg,
                                          const Json::Value& buildings,
-                                         PathingData& dyn)
+                                         PathingData& dyn) const
 {
   /* This is enforced already by libjson-rpc-cpp's stub generator.  */
   CHECK (buildings.isArray ());
@@ -154,6 +162,11 @@ NonStateRpcServer::AddBuildingsFromJson (const RoConfig& cfg,
       if (!CoordFromJson (b["centre"], centre))
         return false;
 
+      /* The dynamic obstacles can only hold tiles on the map.  */
+      for (const auto& tile : GetBuildingShape (type, trafo, centre, cfg))
+        if (!map.IsOnMap (tile))
+          return false;
+
       std::vector<HexCoord> shape;
       if (!dyn.obstacles.AddBuilding (type, trafo, centre, shape))
         {
@@ -170,7 +183,7 @@ NonStateRpcServer::AddBuildingsFromJson (const RoConfig& cfg,
 
 bool
 NonStateRpcServer::AddCharactersFromJson (const Json::Value& characters,
-                                          PathingData& dyn)
+                                          PathingData& dyn) const
 {
   /* This is enforced already by libjson-rpc-cpp's stub generator.  */
   CHECK (characters.isArray ());
@@ -186,7 +199,7 @@ NonStateRpcServer::AddCharactersFromJson (const Json::Value& characters,
         continue;
 
       HexCoord pos;
-      if (!CoordFromJson (c["position"], pos))
+      if (!CoordFromJson (c["position"], pos) || !map.IsOnMap (pos))
         return false;
 
       dyn.obstacles.AddVehicle (pos);
@@ -257,8 +270,7 @@ NonStateRpcServer::findpath (const Json::Value& exbuildings,
       break;
     }
 
-  const int maxInt = std::numeric_limits<HexCoord::IntT>::max ();
-  CheckIntBounds ("l1range", l1range, 0, maxInt);
+  CheckIntBounds ("l1range", l1range, 0, MAX_FINDPATH_L1RANGE);
 
   std::unordered_set<Database::IdT> exBuildingIds;
   CHECK (exbuildings.isArray ());

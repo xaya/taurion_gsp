@@ -87,8 +87,9 @@ class FindPathTest (PXTest):
                       self.call, source={}, target=a, l1range=10)
     self.expectError (-1, "target is not a valid coordinate",
                       self.call, source=a, target={}, l1range=10)
-    self.expectError (-1, "l1range is out of bounds",
-                      self.call, source=a, target=a, l1range=-1)
+    for r in [-1, 12_501]:
+      self.expectError (-1, "l1range is out of bounds",
+                        self.call, source=a, target=a, l1range=r)
     for f in ["a", "invalid"]:
       self.expectError (-1, "faction is invalid",
                         self.call, source=a, target=a, faction=f, l1range=1)
@@ -188,6 +189,11 @@ class FindPathTest (PXTest):
       [{"id": 10, "type": "checkmark", "rotationsteps": 0}],
       [{"id": 10, "type": "checkmark", "rotationsteps": 0, "centre": "(0, 0)"}],
       [{"id": 10, "type": "checkmark", "rotationsteps": 0, "centre": {"x": 1}}],
+      [{"id": 10, "type": "checkmark", "rotationsteps": 0,
+        "centre": {"x": 0, "y": 30000}}],
+      # The centre is on the map, but other tiles of the shape are not.
+      [{"id": 10, "type": "checkmark", "rotationsteps": 0,
+        "centre": {"x": 0, "y": 4095}}],
       [
         {"id": 10, "type": "checkmark", "rotationsteps": 0, "centre": coord},
         {"id": 10, "type": "checkmark", "rotationsteps": 0, "centre": coord},
@@ -204,6 +210,8 @@ class FindPathTest (PXTest):
       [{"x": "foo"}],
       [{"position": "foo"}],
       [{"position": {"x": 1}}],
+      [{"position": {"x": 10000, "y": 0}}],
+      [{"position": {"x": 0, "y": 30000}}],
     ]:
       self.expectError (-1, "characters is invalid",
                         self.rpc.game.setpathdata,
