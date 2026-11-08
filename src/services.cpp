@@ -24,6 +24,7 @@
 #include <glog/logging.h>
 
 #include <limits>
+#include <map>
 #include <sstream>
 
 namespace pxd
@@ -455,6 +456,15 @@ RepairOperation::Parse (Account& acc, BuildingsTable::Handle b,
 /* ************************************************************************** */
 
 /**
+ * The maximum number of artefacts that can be reverse engineered in a single
+ * operation.  Each one is a separate random trial, so this bounds the work
+ * done for one operation.  Larger numbers can be split into multiple
+ * operations in the same move, which (except for the rounding of the
+ * service fee) yields the same result.  This is consensus relevant.
+ */
+constexpr Quantity MAX_REVENG_PER_OPERATION = 10'000;
+
+/**
  * A reverse engineering operation (artefacts to blueprints).
  */
 class RevEngOperation : public ServiceOperation
@@ -534,6 +544,14 @@ RevEngOperation::IsValid () const
   if (num <= 0)
     return false;
 
+  if (num > MAX_REVENG_PER_OPERATION)
+    {
+      LOG (WARNING)
+          << "Can't reveng " << num << " " << type
+          << " at once, the maximum is " << MAX_REVENG_PER_OPERATION;
+      return false;
+    }
+
   const auto balance = GetBaseInventory ().GetFungibleCount (type);
   if (num > balance)
     {
@@ -563,10 +581,6 @@ RevEngOperation::SpecificToPendingJson () const
 void
 RevEngOperation::ExecuteSpecific (xaya::Random& rnd)
 {
-  LOG (INFO)
-      << GetLocationInfo ()
-      << " reverse engineers " << num << " " << type;
-
   auto& inv = GetBaseInventory ();
   inv.AddFungibleCount (type, -num);
 
@@ -588,15 +602,23 @@ RevEngOperation::ExecuteSpecific (xaya::Random& rnd)
     }
   CHECK (!possibleOutputs.empty ());
 
+  /* The found counts of the possible outputs only change through successful
+     trials of this operation.  So we look them up once and keep track of
+     them here, rather than querying the database in every trial.  */
+  std::map<std::string, unsigned> found;
+  for (const auto& o : possibleOutputs)
+    found.emplace (o, itemCounts.GetFound (o));
+
+  unsigned successes = 0;
   for (unsigned trial = 0; trial < num; ++trial)
     {
       const size_t chosenOption = rnd.NextInt (possibleOutputs.size ());
-      const std::string outType = possibleOutputs[chosenOption];
+      const std::string& outType = possibleOutputs[chosenOption];
 
-      const unsigned existingCount = itemCounts.GetFound (outType);
+      unsigned& existingCount = found[outType];
       const unsigned chance = ctx.Params ().RevEngSuccessChance (existingCount);
       const bool success = rnd.ProbabilityRoll (1, chance);
-      LOG (INFO)
+      VLOG (1)
           << "Chosen output type " << outType
           << " has chance 1 / " << chance
           << "; success = " << success;
@@ -605,8 +627,15 @@ RevEngOperation::ExecuteSpecific (xaya::Random& rnd)
         {
           inv.AddFungibleCount (outType, 1);
           itemCounts.IncrementFound (outType);
+          ++existingCount;
+          ++successes;
         }
     }
+
+  LOG (INFO)
+      << GetLocationInfo ()
+      << " reverse engineered " << num << " " << type
+      << " with " << successes << " successes";
 }
 
 /* ************************************************************************** */

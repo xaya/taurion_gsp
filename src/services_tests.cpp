@@ -1015,6 +1015,29 @@ TEST_F (RevEngTests, TooMuch)
   })"));
 }
 
+TEST_F (RevEngTests, MaximumAmount)
+{
+  accounts.GetByName ("domob")->AddBalance (1'000'000);
+  inv.Get (ANCIENT_BUILDING, "domob")
+      ->GetInventory ().AddFungibleCount ("test artefact", 10'001);
+
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "rve",
+    "b": 100,
+    "i": "test artefact",
+    "n": 10001
+  })"));
+  ASSERT_TRUE (Process ("domob", R"({
+    "t": "rve",
+    "b": 100,
+    "i": "test artefact",
+    "n": 10000
+  })"));
+
+  EXPECT_EQ (inv.Get (ANCIENT_BUILDING, "domob")
+                ->GetInventory ().GetFungibleCount ("test artefact"), 4);
+}
+
 TEST_F (RevEngTests, OneItem)
 {
   ASSERT_TRUE (Process ("domob", R"({
@@ -1067,6 +1090,38 @@ TEST_F (RevEngTests, ManyTries)
   EXPECT_EQ (itemCounts.GetFound ("bow bpo"), bow + bowOffset);
   EXPECT_EQ (itemCounts.GetFound ("sword bpo"), sword);
   EXPECT_EQ (itemCounts.GetFound ("red fitment bpo"), red);
+}
+
+TEST_F (RevEngTests, ExactOutcome)
+{
+  /* With a fixed seed, the outcome of a large operation is fully determined,
+     including the found counts (which change the success chances during
+     the operation) and the random numbers used up.  The expected values
+     were obtained with the original implementation, which looked up the
+     found count from the database in each trial.  */
+
+  accounts.GetByName ("domob")->AddBalance (1'000'000);
+  inv.Get (ANCIENT_BUILDING, "domob")
+      ->GetInventory ().AddFungibleCount ("test artefact", 10'000);
+  for (unsigned i = 0; i < 10; ++i)
+    itemCounts.IncrementFound ("bow bpo");
+
+  rnd.Seed (xaya::SHA256::Hash ("reveng"));
+  ASSERT_TRUE (Process ("domob", R"({
+    "t": "rve",
+    "b": 100,
+    "i": "test artefact",
+    "n": 10000
+  })"));
+
+  auto i = inv.Get (ANCIENT_BUILDING, "domob");
+  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("bow bpo"), 13);
+  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("sword bpo"), 23);
+  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("red fitment bpo"), 26);
+  EXPECT_EQ (itemCounts.GetFound ("bow bpo"), 23);
+  EXPECT_EQ (itemCounts.GetFound ("sword bpo"), 23);
+  EXPECT_EQ (itemCounts.GetFound ("red fitment bpo"), 26);
+  EXPECT_EQ (rnd.Next<uint64_t> (), 16'780'122'964'807'017'339u);
 }
 
 TEST_F (RevEngTests, FactionRestriction)
