@@ -86,21 +86,9 @@ PXLogic::UpdateState (Database& db, xaya::Random& rnd,
   CHECK (timestampVal.isInt64 ());
   const int64_t timestamp = timestampVal.asInt64 ();
 
-  const RoConfig cfg(chain);
-
-  unsigned sbHeight;
+  unsigned sbHeight = 0;
   int64_t sbTimestamp;
-  bool isNextSuperBlock;
-  if (db.LastSuperBlock (sbHeight, sbTimestamp))
-    {
-      const int64_t nextSB = sbTimestamp + cfg->params ().superblock_seconds ();
-      isNextSuperBlock = (nextSB <= timestamp);
-    }
-  else
-    {
-      sbHeight = 0;
-      isNextSuperBlock = true;
-    }
+  const bool hasSuperBlock = db.LastSuperBlock (sbHeight, sbTimestamp);
 
   /* The timestamp is (apart from triggering superblocks) only used for
      historical records about DEX trades, we can just use the real block
@@ -108,7 +96,12 @@ PXLogic::UpdateState (Database& db, xaya::Random& rnd,
      a superblock, that is what it will be; and for a non-superblock, that is
      the superblock height at which the next processing will be performed and
      we want to use that (similar to pending moves).  */
-  Context ctx(chain, map, sbHeight + 1, height, timestamp);
+  Context ctx(db, chain, map, sbHeight + 1, height, timestamp);
+
+  const bool isNextSuperBlock
+      = !hasSuperBlock
+          || sbTimestamp + ctx.RoConfig ()->params ().superblock_seconds ()
+                <= timestamp;
 
   FameUpdater fame(db, ctx);
   UpdateState (db, fame, rnd, ctx, isNextSuperBlock, blockData);
@@ -214,7 +207,7 @@ Json::Value
 PXLogic::GetStateAsJson (const xaya::SQLiteDatabase& db)
 {
   SQLiteGameDatabase dbObj(const_cast<xaya::SQLiteDatabase&> (db), *this);
-  const Context ctx(GetChain (), GetBaseMap (),
+  const Context ctx(dbObj, GetChain (), GetBaseMap (),
                     Context::NO_HEIGHT, Context::NO_HEIGHT,
                     Context::NO_TIMESTAMP);
   GameStateJson gsj(dbObj, ctx);
@@ -228,7 +221,7 @@ PXLogic::GetCustomInstanceState (const xaya::SQLiteDatabase& db,
                                  unsigned height)
 {
   SQLiteGameDatabase dbObj(const_cast<xaya::SQLiteDatabase&> (db), *this);
-  const Context ctx(GetChain (), GetBaseMap (),
+  const Context ctx(dbObj, GetChain (), GetBaseMap (),
                     Context::NO_HEIGHT, Context::NO_HEIGHT,
                     Context::NO_TIMESTAMP);
   GameStateJson gsj(dbObj, ctx);
@@ -259,7 +252,7 @@ PXLogic::GetCustomStateData (xaya::Game& game,
   return GetCustomStateData (game,
     [this, &cb] (Database& db, const xaya::uint256& hash, const unsigned height)
         {
-          const Context ctx(GetChain (), GetBaseMap (),
+          const Context ctx(db, GetChain (), GetBaseMap (),
                             Context::NO_HEIGHT, Context::NO_HEIGHT,
                             Context::NO_TIMESTAMP);
           GameStateJson gsj(db, ctx);

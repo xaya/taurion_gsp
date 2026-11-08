@@ -27,6 +27,7 @@
 #include "version.hpp"
 
 #include "database/itemcounts.hpp"
+#include "database/roconfig.hpp"
 #include "proto/roconfig.hpp"
 
 #include <xayagame/gamerpcserver.hpp>
@@ -109,26 +110,21 @@ CheckIntBounds (const std::string& name, const int value,
 
 NonStateRpcServer::NonStateRpcServer (jsonrpc::AbstractServerConnector& conn,
                                       const BaseMap& m, const xaya::Chain c)
-  : NonStateRpcServerStub(conn), chain(c), map(m)
+  : NonStateRpcServerStub(conn), map(m)
 {
+  /* There are no buildings yet, so the config does not matter.  */
   std::lock_guard<std::mutex> lock(mutDynObstacles);
-  dyn = InitPathingData ();
-}
-
-std::shared_ptr<NonStateRpcServer::PathingData>
-NonStateRpcServer::InitPathingData () const
-{
-  return std::make_shared<PathingData> (chain);
+  dyn = std::make_shared<PathingData> (RoConfig (c));
 }
 
 bool
-NonStateRpcServer::AddBuildingsFromJson (const Json::Value& buildings,
-                                         PathingData& dyn) const
+NonStateRpcServer::AddBuildingsFromJson (const RoConfig& cfg,
+                                         const Json::Value& buildings,
+                                         PathingData& dyn)
 {
   /* This is enforced already by libjson-rpc-cpp's stub generator.  */
   CHECK (buildings.isArray ());
 
-  const RoConfig cfg(chain);
   for (const auto& b : buildings)
     {
       if (!b.isObject ())
@@ -199,20 +195,17 @@ NonStateRpcServer::AddCharactersFromJson (const Json::Value& characters,
   return true;
 }
 
-bool
-NonStateRpcServer::setpathdata (const Json::Value& buildings,
+void
+NonStateRpcServer::SetPathData (const RoConfig& cfg,
+                                const Json::Value& buildings,
                                 const Json::Value& characters)
 {
-  LOG (INFO) << "RPC method called: setpathdata";
-  VLOG (1) << "  Buildings data:\n" << buildings;
-  VLOG (1) << "  Character data:\n" << characters;
-
   /* We first construct the full obstacle map, and only lock the mutex
      later on when replacing the pointer in the instance.  This avoids
      locking for a longer time while processing the buildings.  */
 
-  auto fresh = InitPathingData ();
-  if (!AddBuildingsFromJson (buildings, *fresh))
+  auto fresh = std::make_shared<PathingData> (cfg);
+  if (!AddBuildingsFromJson (cfg, buildings, *fresh))
     ReturnError (ErrorCode::INVALID_ARGUMENT, "buildings is invalid");
   if (!AddCharactersFromJson (characters, *fresh))
     ReturnError (ErrorCode::INVALID_ARGUMENT, "characters is invalid");
@@ -221,12 +214,6 @@ NonStateRpcServer::setpathdata (const Json::Value& buildings,
     std::lock_guard<std::mutex> lock(mutDynObstacles);
     dyn = std::move (fresh);
   }
-
-  /* The return value does not really mean anything.  But we can't nicely
-     tell libjson-rpc-cpp that the method returns null, and we can't make it
-     into a notification either, as the caller might want feedback on when
-     processing is done.  */
-  return true;
 }
 
 Json::Value
@@ -414,37 +401,6 @@ NonStateRpcServer::getregionat (const Json::Value& coord)
 }
 
 Json::Value
-NonStateRpcServer::getbuildingshape (const Json::Value& centre, const int rot,
-                                     const std::string& type)
-{
-  LOG (INFO)
-      << "RPC method called: getbuildingshape " << type << "\n"
-      << "  centre=" << centre << "\n"
-      << "  rot=" << rot;
-
-  HexCoord c;
-  if (!CoordFromJson (centre, c))
-    ReturnError (ErrorCode::INVALID_ARGUMENT,
-                 "centre is not a valid coordinate");
-
-  if (rot < 0 || rot >= 6)
-    ReturnError (ErrorCode::INVALID_ARGUMENT,
-                 "rot is outside the valid range [0, 5]");
-
-  if (RoConfig (chain).BuildingOrNull (type) == nullptr)
-    ReturnError (ErrorCode::INVALID_ARGUMENT, "unknown building type");
-
-  proto::ShapeTransformation trafo;
-  trafo.set_rotation_steps (rot);
-
-  Json::Value res(Json::arrayValue);
-  for (const auto& t : GetBuildingShape (type, trafo, c, chain))
-    res.append (CoordToJson (t));
-
-  return res;
-}
-
-Json::Value
 NonStateRpcServer::getversion ()
 {
   LOG (INFO) << "RPC method called: getversion";
@@ -519,6 +475,45 @@ PXRpcServer::getbuildings ()
     [] (GameStateJson& gsj)
       {
         return gsj.Buildings ();
+      });
+}
+
+Json::Value
+PXRpcServer::getbuildingshape (const Json::Value& centre, const int rot,
+                               const std::string& type)
+{
+  LOG (INFO)
+      << "RPC method called: getbuildingshape " << type << "\n"
+      << "  centre=" << centre << "\n"
+      << "  rot=" << rot;
+
+  HexCoord c;
+  if (!CoordFromJson (centre, c))
+    ReturnError (ErrorCode::INVALID_ARGUMENT,
+                 "centre is not a valid coordinate");
+
+  if (rot < 0 || rot >= 6)
+    ReturnError (ErrorCode::INVALID_ARGUMENT,
+                 "rot is outside the valid range [0, 5]");
+
+  /* The shape comes from the building data in the roconfig, which admin
+     commands can modify at runtime, so this is a state read.  */
+  return logic.GetCustomStateData (game,
+    [this, &c, rot, &type] (Database& db, const xaya::uint256& hash,
+                            const unsigned height)
+      {
+        const RoConfig cfg = RoConfigStorage (db).Load (logic.GetChain ());
+        if (cfg.BuildingOrNull (type) == nullptr)
+          ReturnError (ErrorCode::INVALID_ARGUMENT, "unknown building type");
+
+        proto::ShapeTransformation trafo;
+        trafo.set_rotation_steps (rot);
+
+        Json::Value res(Json::arrayValue);
+        for (const auto& t : GetBuildingShape (type, trafo, c, cfg))
+          res.append (CoordToJson (t));
+
+        return res;
       });
 }
 
@@ -636,7 +631,7 @@ PXRpcServer::getserviceinfo (const std::string& name, const Json::Value& op)
       if (db.LastSuperBlock (sbHeight, sbTimestamp))
         sbHeight += 1;
 
-      const Context ctx(logic.GetChain (), logic.GetBaseMap (),
+      const Context ctx(db, logic.GetChain (), logic.GetBaseMap (),
                         sbHeight, height + 1, Context::NO_TIMESTAMP);
 
       AccountsTable accounts(db);
@@ -666,6 +661,33 @@ PXRpcServer::getserviceinfo (const std::string& name, const Json::Value& op)
 
       return res;
     });
+}
+
+bool
+PXRpcServer::setpathdata (const Json::Value& buildings,
+                          const Json::Value& characters)
+{
+  LOG (INFO) << "RPC method called: setpathdata";
+  VLOG (1) << "  Buildings data:\n" << buildings;
+  VLOG (1) << "  Character data:\n" << characters;
+
+  /* The building shapes come from the roconfig as of the game state, which
+     is the compiled-in one as long as there is no state yet.  */
+  RoConfig cfg(logic.GetChain ());
+  logic.GetCustomStateData (game,
+    [this, &cfg] (Database& db, const xaya::uint256& hash,
+                  const unsigned height)
+      {
+        cfg = RoConfigStorage (db).Load (logic.GetChain ());
+        return Json::Value ();
+      });
+  nonstate.SetPathData (cfg, buildings, characters);
+
+  /* The return value does not really mean anything.  But we can't nicely
+     tell libjson-rpc-cpp that the method returns null, and we can't make it
+     into a notification either, as the caller might want feedback on when
+     processing is done.  */
+  return true;
 }
 
 /* ************************************************************************** */

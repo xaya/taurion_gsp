@@ -30,6 +30,7 @@ libdatabase_la_SOURCES = \
   moneysupply.cpp \
   ongoing.cpp \
   region.cpp \
+  roconfig.cpp \
   schema.cpp \
   target.cpp \
   uniquehandles.cpp
@@ -51,6 +52,7 @@ noinst_HEADERS = \
   ongoing.hpp \
   lazyproto.hpp lazyproto.tpp \
   region.hpp \
+  roconfig.hpp \
   schema.hpp \
   target.hpp \
   uniquehandles.hpp uniquehandles.tpp
@@ -102,6 +104,7 @@ tests_SOURCES = \
   moneysupply_tests.cpp \
   ongoing_tests.cpp \
   region_tests.cpp \
+  roconfig_tests.cpp \
   schema_tests.cpp \
   target_tests.cpp \
   uniquehandles_tests.cpp

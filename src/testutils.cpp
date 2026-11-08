@@ -88,6 +88,7 @@ ContextForTesting::SetChain (const xaya::Chain c)
   LOG (INFO) << "Setting context chain to " << xaya::ChainToString (c);
   chain = c;
   map = &dynamic_cast<const BaseMapInstances*> (maps)->Get (c);
+  cfg = pxd::RoConfig (c);
   RefreshInstances ();
 }
 

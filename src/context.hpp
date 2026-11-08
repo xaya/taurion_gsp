@@ -22,6 +22,7 @@
 #include "forks.hpp"
 #include "params.hpp"
 
+#include "database/database.hpp"
 #include "mapdata/basemap.hpp"
 #include "proto/roconfig.hpp"
 
@@ -54,8 +55,8 @@ private:
    */
   std::unique_ptr<pxd::Params> params;
 
-  /** RoConfig instance dependant on the chain.  */
-  std::unique_ptr<pxd::RoConfig> cfg;
+  /** The configuration as of the game state.  */
+  pxd::RoConfig cfg;
 
   /** Fork handler based on chain and height.  */
   std::unique_ptr<ForkHandler> forks;
@@ -90,7 +91,7 @@ private:
 
   /**
    * Sets up all instances that are based on the basic state, like the
-   * Params or RoConfig one.  This is usually just done as part of the
+   * Params one.  This is usually just done as part of the
    * constructor, but in tests, we use it to refresh them when we explicitly
    * change values.
    */
@@ -107,9 +108,10 @@ public:
   static constexpr unsigned NO_HEIGHT = static_cast<unsigned> (-1);
 
   /**
-   * Constructs an instance based on the given data.
+   * Constructs an instance based on the given data.  The configuration is
+   * the one as of the state in the given database.
    */
-  explicit Context (xaya::Chain c, const BaseMap& m,
+  explicit Context (Database& db, xaya::Chain c, const BaseMap& m,
                     unsigned h, unsigned bh, int64_t ts);
 
   xaya::Chain
@@ -133,7 +135,7 @@ public:
   const pxd::RoConfig&
   RoConfig () const
   {
-    return *cfg;
+    return cfg;
   }
 
   const ForkHandler&

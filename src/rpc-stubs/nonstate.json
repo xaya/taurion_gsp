@@ -1,14 +1,5 @@
 [
   {
-    "name": "setpathdata",
-    "params":
-      {
-        "buildings": [],
-        "characters": []
-      },
-    "returns": true
-  },
-  {
     "name": "findpath",
     "params":
       {
@@ -35,16 +26,6 @@
         "coord": {}
       },
     "returns": {}
-  },
-  {
-    "name": "getbuildingshape",
-    "params":
-      {
-        "type": "huesli",
-        "centre": {},
-        "rot": 42
-      },
-    "returns": []
   },
   {
     "name": "getversion",

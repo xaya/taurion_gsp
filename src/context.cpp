@@ -18,20 +18,22 @@
 
 #include "context.hpp"
 
+#include "database/roconfig.hpp"
+
 #include <glog/logging.h>
 
 namespace pxd
 {
 
 Context::Context (const xaya::Chain c)
-  : map(nullptr), chain(c),
+  : map(nullptr), chain(c), cfg(c),
     height(0), blockHeight(0),
     timestamp(NO_TIMESTAMP)
 {}
 
-Context::Context (const xaya::Chain c, const BaseMap& m,
+Context::Context (Database& db, const xaya::Chain c, const BaseMap& m,
                   const unsigned h, const unsigned bh, const int64_t ts)
-  : map(&m), chain(c),
+  : map(&m), chain(c), cfg(RoConfigStorage (db).Load (c)),
     height(h), blockHeight(bh), timestamp(ts)
 {
   RefreshInstances ();
@@ -41,7 +43,6 @@ void
 Context::RefreshInstances ()
 {
   params = std::make_unique<pxd::Params> (chain);
-  cfg = std::make_unique<pxd::RoConfig> (chain);
   forks = std::make_unique<ForkHandler> (chain, height);
 }
 
