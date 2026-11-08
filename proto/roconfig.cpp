@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2019-2025  Autonomous Worlds Ltd
+    Copyright (C) 2019-2026  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -38,17 +38,10 @@ namespace pxd
 
 /* ************************************************************************** */
 
-namespace
-{
-
-/** Lock for constructing and accessing the global singletons.  */
-std::mutex mutInstances;
-
-} // anonymous namespace
-
 /**
- * Data for the singleton instance of the proto with all associated
- * extra stuff (like constructed items).
+ * The proto with all associated extra stuff (like constructed items).  Once
+ * built, the proto in an instance is never modified again (the caches of
+ * derived data only ever grow).
  */
 struct RoConfig::Data
 {
@@ -62,8 +55,9 @@ struct RoConfig::Data
   /**
    * Cache for constructed item data, where we have already done so.
    * Entries are always added to this map and never removed
-   * during the entire runtime.  We store pointers rather than instances
-   * so that references remain valid no matter what happens to the map.
+   * during the lifetime of the instance.  We store pointers rather than
+   * instances so that references remain valid no matter what happens
+   * to the map.
    */
   mutable
   std::unordered_map<std::string, std::unique_ptr<const proto::ItemData>>
@@ -74,50 +68,80 @@ struct RoConfig::Data
   std::unordered_map<std::string, std::unique_ptr<const proto::BuildingData>>
       constructedBuildings;
 
+  /**
+   * The stored config bytes this data was built from (empty when it was
+   * built from the compiled-in blob).  Byte equality against this decides
+   * whether cached data can be reused.
+   */
+  std::string stored;
+
 };
 
-RoConfig::Data* RoConfig::mainnet = nullptr;
-RoConfig::Data* RoConfig::testnet = nullptr;
-RoConfig::Data* RoConfig::regtest = nullptr;
-
-RoConfig::RoConfig (const xaya::Chain chain)
+namespace
 {
-  std::lock_guard<std::mutex> lock(mutInstances);
 
-  Data** instancePtr = nullptr;
-  bool mergeTestnet, mergeRegtest;
+/**
+ * The variants of the configuration that exist.  Which one applies is
+ * determined by the chain, and each has its own compile-time merges.
+ */
+enum class Variant
+{
+  MAINNET = 0,
+  TESTNET = 1,
+  REGTEST = 2,
+};
+
+/** Number of variants, i.e. the size of the array of compiled-in data.  */
+constexpr int NUM_VARIANTS = 3;
+
+/** Lock for accessing the cached data.  */
+std::mutex mutCache;
+
+/**
+ * Data that has already been built, for sharing between instances:  the
+ * compiled-in data of each variant (or null before it is first used), and
+ * the data built from the most recently used stored config (only one is in
+ * use at a time, except briefly after an update while state reads on the
+ * previous state are still running).  The data is fully determined by what
+ * it was built from, so this is a pure cache.
+ */
+std::shared_ptr<const RoConfig::Data> compiled[NUM_VARIANTS];
+std::shared_ptr<const RoConfig::Data> lastStored;
+
+/** Returns the variant that applies for the given chain.  */
+Variant
+VariantFor (const xaya::Chain chain)
+{
   switch (chain)
     {
     case xaya::Chain::MAIN:
     case xaya::Chain::POLYGON:
-      instancePtr = &mainnet;
-      mergeTestnet = false;
-      mergeRegtest = false;
-      break;
+      return Variant::MAINNET;
     case xaya::Chain::TEST:
     case xaya::Chain::MUMBAI:
-      instancePtr = &testnet;
-      mergeTestnet = true;
-      mergeRegtest = false;
-      break;
+      return Variant::TESTNET;
     case xaya::Chain::REGTEST:
     case xaya::Chain::GANACHE:
-      instancePtr = &regtest;
-      mergeTestnet = true;
-      mergeRegtest = true;
-      break;
+      return Variant::REGTEST;
     default:
       LOG (FATAL) << "Unexpected chain: " << static_cast<int> (chain);
     }
-  CHECK (instancePtr != nullptr);
+}
 
-  if (*instancePtr == nullptr)
+/**
+ * Builds a fresh instance of the data:  from the given stored config if it
+ * is non-empty, and from the compiled-in blob with the variant's merges
+ * applied otherwise.
+ */
+std::shared_ptr<const RoConfig::Data>
+Build (const Variant v, const std::string& stored)
+{
+  auto d = std::make_shared<RoConfig::Data> ();
+  d->stored = stored;
+  auto& pb = d->proto;
+
+  if (stored.empty ())
     {
-      LOG (INFO) << "Initialising hard-coded ConfigData proto instance...";
-
-      *instancePtr = new Data ();
-      auto& pb = (*instancePtr)->proto;
-
       const auto* begin = &blob_roconfig_start;
       const auto* end = &blob_roconfig_end;
       CHECK (pb.ParseFromArray (begin, end - begin));
@@ -128,9 +152,9 @@ RoConfig::RoConfig (const xaya::Chain chain)
       CHECK (!pb.regtest_merge ().has_testnet_merge ());
       CHECK (!pb.regtest_merge ().has_regtest_merge ());
 
-      if (mergeTestnet)
+      if (v != Variant::MAINNET)
         pb.MergeFrom (pb.testnet_merge ());
-      if (mergeRegtest)
+      if (v == Variant::REGTEST)
         {
           pb.clear_safe_zones ();
           pb.mutable_params ()->clear_prizes ();
@@ -139,10 +163,42 @@ RoConfig::RoConfig (const xaya::Chain chain)
       pb.clear_testnet_merge ();
       pb.clear_regtest_merge ();
     }
+  else
+    {
+      /* A stored config is the full data as modified by admin commands.  It
+         is a serialised copy of a config that was active before, so anything
+         wrong with it means database corruption rather than bad input, and
+         the compile-time merges can never be present.  */
+      CHECK (pb.ParseFromString (stored)) << "Invalid stored roconfig";
+      CHECK (!pb.has_testnet_merge () && !pb.has_regtest_merge ())
+          << "Stored roconfig contains chain merges";
+    }
 
-  data = *instancePtr;
-  CHECK (data != nullptr);
+  return d;
 }
+
+} // anonymous namespace
+
+RoConfig::RoConfig (const xaya::Chain chain, const std::string& stored)
+{
+  const auto v = VariantFor (chain);
+
+  std::lock_guard<std::mutex> lock(mutCache);
+  auto& cached = stored.empty () ? compiled[static_cast<int> (v)] : lastStored;
+  if (cached == nullptr || cached->stored != stored)
+    {
+      LOG (INFO)
+          << "Building the " << (stored.empty () ? "compiled-in" : "stored")
+          << " ConfigData proto...";
+      cached = Build (v, stored);
+    }
+
+  data = cached;
+}
+
+RoConfig::RoConfig (const xaya::Chain chain)
+  : RoConfig(chain, "")
+{}
 
 const proto::ConfigData&
 RoConfig::operator* () const

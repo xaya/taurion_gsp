@@ -1,6 +1,6 @@
 /*
     GSP for the Taurion blockchain game
-    Copyright (C) 2020  Autonomous Worlds Ltd
+    Copyright (C) 2020-2026  Autonomous Worlds Ltd
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -139,7 +139,7 @@ FinishBuildingConstruction (Building& b, const Context& ctx,
   pb.clear_ongoing_construction ();
   pb.mutable_age_data ()->set_finished_height (ctx.Height ());
 
-  UpdateBuildingStats (b, ctx.Chain ());
+  UpdateBuildingStats (b, ctx.RoConfig ());
 }
 
 } // anonymous namespace

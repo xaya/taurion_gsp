@@ -719,7 +719,7 @@ PendingMoves::AddPendingMove (const Json::Value& mv)
   if (dbObj.LastSuperBlock (sbHeight, sbTimestamp))
     sbHeight += 1;
 
-  const Context ctx(GetChain (), rules.GetBaseMap (),
+  const Context ctx(dbObj, GetChain (), rules.GetBaseMap (),
                     sbHeight, heightVal.asUInt () + 1, Context::NO_TIMESTAMP);
 
   if (dyn == nullptr)

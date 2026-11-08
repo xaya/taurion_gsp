@@ -105,7 +105,7 @@ TEST_F (DynObstaclesTests, AddingRemovingBuildings)
   }
 
   {
-    DynObstacles dyn(ctx.Chain ());
+    DynObstacles dyn(ctx.RoConfig ());
     std::vector<HexCoord> shape;
     ASSERT_TRUE (dyn.AddBuilding (b1->GetType (),
                                   b1->GetProto ().shape_trafo (),

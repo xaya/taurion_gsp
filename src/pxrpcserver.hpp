@@ -66,17 +66,13 @@ public:
 };
 
 /**
- * Implementation of RPC methods that do not require a full GSP but instead
- * just operate on e.g. map data.  These methods are exposed locally also
- * for Charon clients (rather than through the server link).
+ * Implementation of RPC methods that do not require the game state but
+ * instead just operate on e.g. map data.
  */
 class NonStateRpcServer : public NonStateRpcServerStub
 {
 
 private:
-
-  /** The chain this is running on.  */
-  const xaya::Chain chain;
 
   /** The basemap we use.  */
   const BaseMap& map;
@@ -98,18 +94,16 @@ private:
      */
     std::unordered_map<HexCoord, Database::IdT> buildingIds;
 
-    explicit PathingData (const xaya::Chain c)
-      : obstacles(c)
+    explicit PathingData (const RoConfig& cfg)
+      : obstacles(cfg)
     {}
 
   };
 
   /**
-   * Building data used for findpath.  This is decoupled from the
-   * actual game state, so that it can be done even for Charon clients
-   * locally.  It contains a set of buildings, which are specified
-   * explicitly by the caller (with a separate RPC and then remembered
-   * in the server state at runtime).
+   * Building data used for findpath.  It contains a set of buildings, which
+   * are specified explicitly by the caller (with a separate RPC and then
+   * remembered in the server state at runtime).
    *
    * We use a shared_ptr here so that it can be "copied" when a call is made
    * and then the instance itself does not need to be kept locked while the
@@ -121,18 +115,14 @@ private:
   std::mutex mutDynObstacles;
 
   /**
-   * Constructs a fresh PathingData instance without any extra
-   * buildings added yet.
-   */
-  std::shared_ptr<PathingData> InitPathingData () const;
-
-  /**
    * Processes a JSON array of building specifications and adds them
-   * to the given dynamic obstacle map.  Returns false if something
-   * goes wrong, e.g. the JSON format is invalid or some buildings overlap.
+   * to the given dynamic obstacle map, which uses the given config.
+   * Returns false if something goes wrong, e.g. the JSON format is invalid
+   * or some buildings overlap.
    */
-  bool AddBuildingsFromJson (const Json::Value& buildings,
-                             PathingData& dyn) const;
+  static bool AddBuildingsFromJson (const RoConfig& cfg,
+                                    const Json::Value& buildings,
+                                    PathingData& dyn);
 
   /**
    * Processes a JSON array of character data (including at least position
@@ -148,16 +138,20 @@ public:
   explicit NonStateRpcServer (jsonrpc::AbstractServerConnector& conn,
                               const BaseMap& m, const xaya::Chain c);
 
-  bool setpathdata (const Json::Value& buildings,
-                    const Json::Value& characters) override;
+  /**
+   * Replaces the data for findpath with the given buildings and characters,
+   * taking the building shapes from the given config.  This implements
+   * setpathdata, for which PXRpcServer reads the config from the game state.
+   */
+  void SetPathData (const RoConfig& cfg, const Json::Value& buildings,
+                    const Json::Value& characters);
+
   Json::Value findpath (const Json::Value& exbuildings,
                         const std::string& faction,
                         int l1range, const Json::Value& source,
                         const Json::Value& target) override;
   std::string encodewaypoints (const Json::Value& wp) override;
   Json::Value getregionat (const Json::Value& coord) override;
-  Json::Value getbuildingshape (const Json::Value& centre, int rot,
-                                const std::string& type) override;
   Json::Value getversion () override;
 
 };
@@ -201,6 +195,8 @@ public:
 
   Json::Value getaccounts () override;
   Json::Value getbuildings () override;
+  Json::Value getbuildingshape (const Json::Value& centre, int rot,
+                                const std::string& type) override;
   Json::Value getcharacters () override;
   Json::Value getgroundloot () override;
   Json::Value getongoings () override;
@@ -214,12 +210,8 @@ public:
   Json::Value getserviceinfo (const std::string& name,
                               const Json::Value& op) override;
 
-  bool
-  setpathdata (const Json::Value& buildings,
-               const Json::Value& characters) override
-  {
-    return nonstate.setpathdata (buildings, characters);
-  }
+  bool setpathdata (const Json::Value& buildings,
+                    const Json::Value& characters) override;
 
   Json::Value
   findpath (const Json::Value& exbuildings, const std::string& faction,
@@ -239,13 +231,6 @@ public:
   getregionat (const Json::Value& coord) override
   {
     return nonstate.getregionat (coord);
-  }
-
-  Json::Value
-  getbuildingshape (const Json::Value& centre, const int rot,
-                    const std::string& type) override
-  {
-    return nonstate.getbuildingshape (centre, rot, type);
   }
 
   Json::Value

@@ -34,6 +34,7 @@
 #include "database/inventory.hpp"
 #include "database/ongoing.hpp"
 #include "database/region.hpp"
+#include "database/roconfig.hpp"
 #include "hexagonal/coord.hpp"
 #include "mapdata/basemap.hpp"
 
@@ -164,7 +165,7 @@ protected:
   void
   UpdateStateWithHeight (const Json::Value& moves, const unsigned sbHeight)
   {
-    Context newCtx(ctx.Chain (), ctx.Map (),
+    Context newCtx(db, ctx.Chain (), ctx.Map (),
                    sbHeight, ctx.BlockHeight (), ctx.Timestamp ());
     FameUpdater fame(db, newCtx);
     PXLogic::UpdateState (db, fame, rnd, newCtx, true, BuildBlockData (moves));
@@ -1311,6 +1312,22 @@ TEST_F (SuperblockTests, NextSuperblocksByTime)
   EXPECT_EQ (sbHeight, 3);
   EXPECT_EQ (sbTime, start + 11 * step + 1);
   EXPECT_EQ (GetStepsMoved (), 3);
+}
+
+TEST_F (SuperblockTests, PaceFromStoredConfig)
+{
+  UpdateForBlock (42, start, ParseJson ("[]"));
+
+  /* The pace comes from the config as of the state, which an admin command
+     may have modified (by storing the modified config).  */
+  auto modified = *ctx.RoConfig ();
+  modified.mutable_params ()->set_superblock_seconds (2 * step);
+  RoConfigStorage (db).Set (modified);
+
+  UpdateForBlock (43, start + step, ParseJson ("[]"));
+  EXPECT_EQ (GetStepsMoved (), 1);
+  UpdateForBlock (44, start + 2 * step, ParseJson ("[]"));
+  EXPECT_EQ (GetStepsMoved (), 2);
 }
 
 TEST_F (SuperblockTests, SuperblockHeightUsedCorrectly)

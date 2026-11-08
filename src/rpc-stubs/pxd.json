@@ -141,7 +141,7 @@
         "centre": {},
         "rot": 42
       },
-    "returns": []
+    "returns": {}
   },
   {
     "name": "getversion",

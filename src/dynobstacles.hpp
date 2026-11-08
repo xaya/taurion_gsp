@@ -29,6 +29,7 @@
 #include "mapdata/dyntiles.hpp"
 #include "mapdata/sparsemap.hpp"
 #include "proto/building.pb.h"
+#include "proto/roconfig.hpp"
 
 namespace pxd
 {
@@ -44,8 +45,8 @@ class DynObstacles
 
 private:
 
-  /** Chain to extract the roconfig building shapes.  */
-  const xaya::Chain chain;
+  /** Config from which the building shapes are extracted.  */
+  const RoConfig cfg;
 
   /** Vehicles (of any faction) on the map.  */
   SparseTileMap<unsigned> vehicles;
@@ -56,10 +57,10 @@ private:
 public:
 
   /**
-   * Constructs an "empty" instance.  This is used by the non-state RPC
-   * server for "findpath".
+   * Constructs an "empty" instance, taking building shapes from the given
+   * config.  This is used by the non-state RPC server for "findpath".
    */
-  DynObstacles (xaya::Chain c);
+  DynObstacles (const RoConfig& c);
 
   /**
    * Constructs an initialised instance with all vehicles and buildings
