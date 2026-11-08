@@ -445,6 +445,16 @@ TEST_F (NewOrderTests, InsufficientBalance)
   })"));
 }
 
+TEST_F (NewOrderTests, ZeroPriceBid)
+{
+  EXPECT_FALSE (Process ("domob", R"({
+    "b": 1,
+    "i": "foo",
+    "n": 1,
+    "bp": 0
+  })"));
+}
+
 TEST_F (NewOrderTests, PendingJson)
 {
   EXPECT_TRUE (PartialJsonEqual (GetPending (R"({
@@ -773,8 +783,9 @@ TEST_F (DexFeeTests, AncientBuilding)
 TEST_F (DexFeeTests, ZeroPrice)
 {
   PlaceOrder ("domob", DexOrder::Type::ASK, 1, 0);
-  PlaceOrder ("andy", DexOrder::Type::BID, 2, 0);
+  PlaceOrder ("andy", DexOrder::Type::BID, 1, 1);
   PlaceOrder ("domob", DexOrder::Type::ASK, 1, 0);
+  PlaceOrder ("andy", DexOrder::Type::BID, 1, 1);
 
   EXPECT_EQ (accounts.GetByName ("andy")->GetBalance (), 1'000);
   EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 1'000);

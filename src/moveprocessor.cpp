@@ -519,8 +519,10 @@ BaseMoveProcessor::ParseCoinTransferBurn (const Account& a,
           CHECK (it.key ().isString ());
           const std::string to = it.key ().asString ();
 
+          /* Zero transfers are pointless, but would create an account
+             for the recipient.  So we treat them as invalid.  */
           Amount amount;
-          if (!CoinAmountFromJson (*it, amount))
+          if (!CoinAmountFromJson (*it, amount) || amount == 0)
             {
               LOG (WARNING)
                   << "Invalid coin transfer from " << a.GetName ()

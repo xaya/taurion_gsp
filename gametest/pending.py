@@ -163,7 +163,7 @@ class PendingTest (PXTest):
         [
           # The first one is invalid (insufficient balance).
           {"b": building, "i": "foo", "n": 1_000, "bp": 10},
-          {"b": building, "i": "foo", "n": 1, "bp": 0},
+          {"b": building, "i": "foo", "n": 1, "bp": 1},
         ],
     })
 
@@ -232,7 +232,7 @@ class PendingTest (PXTest):
                   "building": building,
                   "item": "foo",
                   "num": 1,
-                  "price": 0,
+                  "price": 1,
                 },
               ],
           },

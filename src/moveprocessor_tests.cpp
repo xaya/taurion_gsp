@@ -442,7 +442,8 @@ TEST_F (CoinOperationTests, BurnAndTransfer)
     {"name": "domob", "move": {"vc":
       {
         "b": 10,
-        "t": {"a": "invalid", "b": -5, "c": 1000, "second": 5, "third": 3}
+        "t": {"a": "invalid", "b": -5, "c": 1000, "d": 0,
+              "second": 5, "third": 3}
       }}
     },
     {"name": "domob", "move": {"vc":
@@ -459,6 +460,7 @@ TEST_F (CoinOperationTests, BurnAndTransfer)
     {"second", 4},
     {"third", 5},
   });
+  EXPECT_EQ (accounts.GetByName ("d"), nullptr);
 }
 
 TEST_F (CoinOperationTests, BurnAll)

@@ -363,6 +363,17 @@ BidOperation::IsValid () const
   if (!IsItemOperationValid ())
     return false;
 
+  /* A bid with zero price would sit on the order book without reserving
+     any coins.  It is not needed to take asks with zero price either,
+     since those are filled (for free) by any bid.  */
+  if (price == 0)
+    {
+      LOG (WARNING)
+          << "User " << account.GetName ()
+          << " can't place buy order with zero price:\n" << rawMove;
+      return false;
+    }
+
   if (QuantityProduct (quantity, price) > account.GetBalance ())
     {
       LOG (WARNING)
