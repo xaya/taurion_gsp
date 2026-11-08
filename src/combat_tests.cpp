@@ -1724,6 +1724,33 @@ TEST_F (GainHpTests, CappedAtMax)
   EXPECT_EQ (c->GetHP ().armour (), 99);
 }
 
+TEST_F (GainHpTests, FullShieldHasNoMilliHp)
+{
+  /* The attacker still regenerates armour after its shield is filled up.
+     That must not see the full shield with milli HP left over.  */
+  auto c = characters.CreateNew ("red", Faction::RED);
+  const auto idAttacker = c->GetId ();
+  SetHp (*c, 99, 99, 100, 100);
+  c->MutableHP ().mutable_mhp ()->set_shield (500);
+  c->MutableRegenData ().mutable_regeneration_mhp ()->set_armour (100);
+  AddAttack (*c, 1, 10, 10).set_gain_hp (true);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  SetHp (*c, 100, 100, 100, 100);
+  NoAttacks (*c);
+  c.reset ();
+
+  FindTargetsAndDamage ();
+  RegenerateHP (db);
+
+  c = characters.GetById (idAttacker);
+  EXPECT_EQ (c->GetHP ().shield (), 100);
+  EXPECT_EQ (c->GetHP ().mhp ().shield (), 0);
+  EXPECT_EQ (c->GetHP ().armour (), 99);
+  EXPECT_EQ (c->GetHP ().mhp ().armour (), 100);
+}
+
 TEST_F (GainHpTests, BeforeOtherAttacks)
 {
   auto c = characters.CreateNew ("red", Faction::RED);

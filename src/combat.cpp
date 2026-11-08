@@ -1028,6 +1028,12 @@ DamageProcessor::Process ()
                                maxHp.armour ()));
       hp.set_shield (std::min (hp.shield () + entry.second.shield (),
                                maxHp.shield ()));
+
+      /* As with regeneration, full HP have no milli HP left.  */
+      if (hp.armour () == maxHp.armour ())
+        hp.mutable_mhp ()->set_armour (0);
+      if (hp.shield () == maxHp.shield ())
+        hp.mutable_mhp ()->set_shield (0);
     }
 
   /* Update combat effects on fighters (clear all previous effects in the

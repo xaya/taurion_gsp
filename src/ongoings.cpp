@@ -185,6 +185,7 @@ ProcessAllOngoings (Database& db, xaya::Random& rnd, const Context& ctx)
           CHECK (c != nullptr);
           LOG (INFO) << "Finished armour repair of character " << c->GetId ();
           c->MutableHP ().set_armour (c->GetRegenData ().max_hp ().armour ());
+          c->MutableHP ().mutable_mhp ()->set_armour (0);
           c->MutableProto ().clear_ongoing ();
           break;
 
