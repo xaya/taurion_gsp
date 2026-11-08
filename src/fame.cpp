@@ -104,13 +104,16 @@ FameUpdater::UpdateForKill (const Database::IdT victim,
       << "Victim fame: " << victimFame << " (level: " << victimLevel << ")";
   victimAccount.reset ();
 
-  /* Find the set of distinct accounts that killed the victim.  */
+  /* Find the set of distinct accounts that killed the victim.  Characters of
+     the victim's own account (which can damage it with mentecon) are not
+     killers of it.  */
   std::set<std::string> owners;
   for (const auto attackerId : attackers)
     {
       auto c = characters.GetById (attackerId);
       CHECK (c != nullptr);
-      owners.insert (c->GetOwner ());
+      if (c->GetOwner () != victimOwner)
+        owners.insert (c->GetOwner ());
     }
 
   /* Process the killer accounts in a first round.  We update the kills counter

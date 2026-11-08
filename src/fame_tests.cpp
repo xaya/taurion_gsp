@@ -168,12 +168,12 @@ TEST_F (FameTests, TrackingKills)
   /* Add initial data to make sure that's taken into account.  */
   accounts.GetByName ("foo")->MutableProto ().set_kills (10);
 
-  /* Multiple killers (including the character owner himself) as well as
-     multiple killing characters of one owner.  */
+  /* Multiple killing characters of one owner, and one of the victim's own
+     account (which is not a killer of it).  */
   UpdateForKill (id4, {id1, id2, id3});
 
   EXPECT_EQ (accounts.GetByName ("foo")->GetProto ().kills (), 11);
-  EXPECT_EQ (accounts.GetByName ("bar")->GetProto ().kills (), 1);
+  EXPECT_EQ (accounts.GetByName ("bar")->GetProto ().kills (), 0);
 }
 
 TEST_F (FameTests, BasicUpdates)
@@ -272,12 +272,14 @@ TEST_F (FameTests, AccountsWithMultipleCharacters)
   const auto id4 = CreateCharacter ("bar");
   const auto id5 = CreateCharacter ("baz");
 
+  /* The fame is split between bar and baz (out of range), foo's own
+     character does not count.  */
   accounts.GetByName ("baz")->MutableProto ().set_fame (5000);
   UpdateForKill (id1, {id2, id3, id4, id5});
   FlushDeltas ();
 
-  EXPECT_EQ (accounts.GetByName ("foo")->GetProto ().fame (), 33);
-  EXPECT_EQ (accounts.GetByName ("bar")->GetProto ().fame (), 133);
+  EXPECT_EQ (accounts.GetByName ("foo")->GetProto ().fame (), 0);
+  EXPECT_EQ (accounts.GetByName ("bar")->GetProto ().fame (), 150);
   EXPECT_EQ (accounts.GetByName ("baz")->GetProto ().fame (), 5000);
 }
 
