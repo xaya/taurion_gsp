@@ -234,6 +234,50 @@ TEST_F (PXLogicTests, WaypointsBeforeMovement)
   EXPECT_EQ (characters.GetById (1)->GetPosition (), HexCoord (-1, 0));
 }
 
+TEST_F (PXLogicTests, WaypointsOutsideMap)
+{
+  auto c = CreateCharacter ("domob", Faction::RED);
+  ASSERT_EQ (c->GetId (), 1);
+  auto& pb = c->MutableProto ();
+  pb.set_speed (1'000);
+  pb.mutable_combat_data ();
+  c.reset ();
+
+  /* Waypoints outside of the map are invalid.  This includes those at the
+     extreme ends of the coordinate range, for which computing the direction
+     from the character's position would overflow.  */
+  for (const auto& target : {HexCoord (-32'768, 0), HexCoord (0, -32'768),
+                             HexCoord (32'767, 0), HexCoord (32'767, -32'767),
+                             HexCoord (32'767, 32'767), HexCoord (0, 4'096)})
+    {
+      UpdateState (R"([
+        {
+          "name": "domob",
+          "move": {"c": {"id": 1, "wp": )" + WpStr ({target}) + R"(}}
+        }
+      ])");
+      UpdateState ("[]");
+
+      c = characters.GetById (1);
+      EXPECT_EQ (c->GetPosition (), HexCoord (0, 0)) << target;
+      EXPECT_FALSE (c->GetProto ().has_movement ()) << target;
+      c.reset ();
+    }
+
+  /* A waypoint at the edge of the map is fine.  */
+  UpdateState (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"id": 1, "wp": )" + WpStr ({HexCoord (-4'096, 0)}) + R"(}}
+    }
+  ])");
+  UpdateState ("[]");
+
+  c = characters.GetById (1);
+  EXPECT_EQ (c->GetPosition (), HexCoord (-2, 0));
+  EXPECT_TRUE (c->GetProto ().has_movement ());
+}
+
 TEST_F (PXLogicTests, MovementBeforeTargeting)
 {
   auto c = CreateCharacter ("domob", Faction::RED);

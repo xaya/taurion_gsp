@@ -46,7 +46,14 @@ namespace
 
 /* ************************************************************************** */
 
-using WaypointEncodingTests = testing::Test;
+class WaypointEncodingTests : public testing::Test
+{
+
+protected:
+
+  ContextForTesting ctx;
+
+};
 
 TEST_F (WaypointEncodingTests, Roundtrip)
 {
@@ -74,7 +81,7 @@ TEST_F (WaypointEncodingTests, Roundtrip)
   EXPECT_EQ (jsonWp.size (), wp.size ());
 
   std::vector<HexCoord> recovered;
-  ASSERT_TRUE (DecodeWaypoints (encoded, recovered));
+  ASSERT_TRUE (DecodeWaypoints (encoded, ctx.Map (), recovered));
   EXPECT_EQ (recovered, wp);
 }
 
@@ -88,7 +95,7 @@ TEST_F (WaypointEncodingTests, EmptyList)
   EXPECT_EQ (jsonWp.size (), 0);
 
   std::vector<HexCoord> recovered;
-  ASSERT_TRUE (DecodeWaypoints (encoded, recovered));
+  ASSERT_TRUE (DecodeWaypoints (encoded, ctx.Map (), recovered));
   EXPECT_TRUE (recovered.empty ());
 }
 
@@ -124,6 +131,8 @@ TEST_F (WaypointEncodingTests, InvalidDataForDecode)
       "[] junk",
       R"([{"x": 10, "y": "foo"}])",
       R"([{"x": 10, "y": 20, "z": ["too deep"]}])",
+      R"([{"x": 0, "y": 4096}])",
+      R"([{"x": -32768, "y": 0}])",
       tooLarge.str (),
     };
 
@@ -131,7 +140,7 @@ TEST_F (WaypointEncodingTests, InvalidDataForDecode)
     {
       const std::string encoded = xaya::EncodeBase64 (xaya::CompressData (t));
       std::vector<HexCoord> recovered;
-      ASSERT_FALSE (DecodeWaypoints (encoded, recovered));
+      ASSERT_FALSE (DecodeWaypoints (encoded, ctx.Map (), recovered));
     }
 }
 

@@ -73,7 +73,8 @@ EncodeWaypoints (const std::vector<HexCoord>& wp,
 }
 
 bool
-DecodeWaypoints (const std::string& encoded, std::vector<HexCoord>& wp)
+DecodeWaypoints (const std::string& encoded, const BaseMap& map,
+                 std::vector<HexCoord>& wp)
 {
   Json::Value jsonWp;
   std::string uncompressed;
@@ -96,7 +97,7 @@ DecodeWaypoints (const std::string& encoded, std::vector<HexCoord>& wp)
   for (const auto& entry : jsonWp)
     {
       HexCoord c;
-      if (!CoordFromJson (entry, c))
+      if (!CoordFromJson (entry, c) || !map.IsOnMap (c))
         {
           LOG (WARNING) << "Invalid waypoint: " << entry;
           return false;

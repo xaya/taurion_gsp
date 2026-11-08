@@ -57,9 +57,11 @@ bool EncodeWaypoints (const std::vector<HexCoord>& wp,
 
 /**
  * Tries to decode an encoded list of waypoints.  Returns true on success
- * and false if they were completely invalid (e.g. malformed).
+ * and false if they were completely invalid (e.g. malformed) or if any
+ * of them is not on the map.
  */
-bool DecodeWaypoints (const std::string& encoded, std::vector<HexCoord>& wp);
+bool DecodeWaypoints (const std::string& encoded, const BaseMap& map,
+                      std::vector<HexCoord>& wp);
 
 /**
  * Computes the edge weight used for movement of a given faction character

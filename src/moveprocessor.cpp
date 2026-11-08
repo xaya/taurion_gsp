@@ -603,7 +603,7 @@ BaseMoveProcessor::ParseCharacterWaypoints (const Character& c,
       return false;
     }
 
-  if (!DecodeWaypoints (wpVal.asString (), wp))
+  if (!DecodeWaypoints (wpVal.asString (), ctx.Map (), wp))
     {
       LOG (WARNING)
           << "Invalid waypoints given for character " << c.GetId ()
@@ -639,7 +639,7 @@ BaseMoveProcessor::ParseCharacterWaypointExtension (const Character& c,
       return false;
     }
 
-  if (!DecodeWaypoints (wpx.asString (), wp))
+  if (!DecodeWaypoints (wpx.asString (), ctx.Map (), wp))
     {
       LOG (WARNING)
           << "Invalid waypoints given for character " << c.GetId ()

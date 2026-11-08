@@ -189,19 +189,18 @@ protected:
    * in the update JSON.  Returns true if a valid waypoint update was found,
    * in which case wp will be set accordingly.
    */
-  static bool ParseCharacterWaypoints (const Character& c,
-                                       const Json::Value& upd,
-                                       std::vector<HexCoord>& wp);
+  bool ParseCharacterWaypoints (const Character& c, const Json::Value& upd,
+                                std::vector<HexCoord>& wp);
 
   /**
    * Parses and verifies a potential waypoint extension for the
    * character.  If pendingWp is true, we assume that there are already
    * pending waypoints, which we accept also as "is already moving".
    */
-  static bool ParseCharacterWaypointExtension (const Character& c,
-                                               const Json::Value& upd,
-                                               bool pendingWp,
-                                               std::vector<HexCoord>& wp);
+  bool ParseCharacterWaypointExtension (const Character& c,
+                                        const Json::Value& upd,
+                                        bool pendingWp,
+                                        std::vector<HexCoord>& wp);
 
   /**
    * Parses and verifies a potential update to the character's
@@ -408,13 +407,12 @@ private:
    * Sets the character's waypoints if a valid command for starting a move
    * is there.
    */
-  static void MaybeSetCharacterWaypoints (Character& c, const Json::Value& upd);
+  void MaybeSetCharacterWaypoints (Character& c, const Json::Value& upd);
 
   /**
    * Extends the character's waypoints with an wpx move.
    */
-  static void MaybeExtendCharacterWaypoints (Character& c,
-                                             const Json::Value& upd);
+  void MaybeExtendCharacterWaypoints (Character& c, const Json::Value& upd);
 
   /**
    * Processes a command to set (or clear) a character's "enter building".

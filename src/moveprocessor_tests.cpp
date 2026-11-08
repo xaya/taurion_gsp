@@ -1267,6 +1267,33 @@ TEST_F (CharacterUpdateTests, WaypointExtension)
   EXPECT_EQ (CoordFromProto (wp.Get (2)), HexCoord (-4, 7));
 }
 
+TEST_F (CharacterUpdateTests, WaypointsOutsideMap)
+{
+  auto h = GetTest ();
+  h->MutableProto ().set_speed (1000);
+  auto* mv = h->MutableProto ().mutable_movement ();
+  mv->mutable_waypoints ()->Add ();
+  h.reset ();
+
+  Process (R"([
+    {
+      "name": "domob",
+      "move": {"c": {"id": 1, "wp": )"
+          + WpStr ({HexCoord (5, 0), HexCoord (0, 4'096)}) + R"(}}
+    },
+    {
+      "name": "domob",
+      "move": {"c": {"id": 1, "wpx": )"
+          + WpStr ({HexCoord (-32'768, 0)}) + R"(}}
+    }
+  ])");
+
+  h = GetTest ();
+  const auto& wp = h->GetProto ().movement ().waypoints ();
+  ASSERT_EQ (wp.size (), 1);
+  EXPECT_EQ (CoordFromProto (wp.Get (0)), HexCoord (0, 0));
+}
+
 TEST_F (CharacterUpdateTests, ChosenSpeedWithoutMovement)
 {
   GetTest ()->MutableProto ().set_speed (1000);
