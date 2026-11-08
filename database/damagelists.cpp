@@ -20,6 +20,8 @@
 
 #include <glog/logging.h>
 
+#include <algorithm>
+
 namespace pxd
 {
 
@@ -81,17 +83,20 @@ DamageLists::WriteEntry (const Database::IdT victim,
 {
   /* An existing entry only gets its height updated, which (unlike a
      REPLACE that deletes and re-inserts the row) leaves the other
-     indices alone.  */
+     indices alone, and only once it is old enough:  an unchanged row
+     costs no write and no undo data.  */
   auto stmt = db.Prepare (R"(
     INSERT INTO `damage_lists`
       (`victim`, `attacker`, `height`)
       VALUES (?1, ?2, ?3)
       ON CONFLICT (`victim`, `attacker`) DO UPDATE
         SET `height` = `excluded`.`height`
+        WHERE `height` <= `excluded`.`height` - ?4
   )");
   stmt.Bind (1, victim);
   stmt.Bind (2, attacker);
   stmt.Bind (3, height);
+  stmt.Bind (4, std::max (refresh, 1u));
 
   stmt.Execute ();
 }

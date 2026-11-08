@@ -48,6 +48,9 @@ private:
    */
   const unsigned height;
 
+  /** The age (in blocks) at which a hit refreshes an existing entry.  */
+  const unsigned refresh;
+
   /**
    * Entries added while a Batch is active, as (victim, attacker) and as
    * (attacker, victim) pairs.  They are only written to the database when
@@ -85,11 +88,15 @@ public:
    * that depend on the height.
    */
   explicit DamageLists (Database& d)
-    : db(d), height(NO_HEIGHT)
+    : db(d), height(NO_HEIGHT), refresh(1)
   {}
 
-  explicit DamageLists (Database& d, const unsigned h)
-    : db(d), height(h)
+  /**
+   * Constructs a damage list for the given height.  A hit refreshes the
+   * height of an existing entry only once it is at least r blocks old.
+   */
+  explicit DamageLists (Database& d, const unsigned h, const unsigned r = 1)
+    : db(d), height(h), refresh(r)
   {}
 
   ~DamageLists ();
@@ -105,7 +112,8 @@ public:
   void RemoveOld (const unsigned n);
 
   /**
-   * Adds (or refreshes) an entry for the given victim / attacker pair.
+   * Adds an entry for the given victim / attacker pair, or refreshes its
+   * height if it is at least the refresh age old.
    */
   void AddEntry (Database::IdT victim, Database::IdT attacker);
 

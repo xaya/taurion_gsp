@@ -186,6 +186,22 @@ TEST_F (DamageListsTests, RefreshHeight)
   ExpectAttackers (1, {3});
 }
 
+TEST_F (DamageListsTests, RefreshOnlyOldEntries)
+{
+  AddWithHeight (1, 2, 1);
+  AddWithHeight (1, 3, 1);
+
+  /* With a refresh age of 5, a hit at height 5 leaves the entry from
+     height 1 alone, and one at height 6 refreshes it.  */
+  DamageLists (db, 5, 5).AddEntry (1, 2);
+  DamageLists (db, 6, 5).AddEntry (1, 3);
+
+  DamageLists dl(db, 6);
+  dl.RemoveOld (5);
+
+  ExpectAttackers (1, {3});
+}
+
 TEST_F (DamageListsTests, RemoveOldLargeN)
 {
   AddWithHeight (1, 2, 5);

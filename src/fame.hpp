@@ -127,7 +127,9 @@ protected:
 public:
 
   explicit FameUpdater (Database& db, const Context& ctx)
-    : dl(db, ctx.Height ()), characters(db), accounts(db)
+    : dl(db, ctx.Height (),
+         ctx.RoConfig ()->params ().damage_list_refresh_blocks ()),
+      characters(db), accounts(db)
   {}
 
   virtual ~FameUpdater ();

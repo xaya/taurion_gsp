@@ -552,6 +552,15 @@ message Params
   optional uint32 damage_list_blocks = 5;
 
   /**
+   * A hit refreshes the height of an existing damage-list entry only once
+   * it is this many blocks old (0 or 1:  on every hit).  Attackers then stay
+   * on the list for between damage_list_blocks - N + 1 and damage_list_blocks
+   * blocks after their last hit, but a sustained fight rewrites each entry
+   * only every N blocks instead of every block.
+   */
+  optional uint32 damage_list_refresh_blocks = 26;
+
+  /**
    * The number of blocks after which a region can be reprospected (if there
    * are no other factors preventing it).
    */
