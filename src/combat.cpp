@@ -415,6 +415,12 @@ namespace
 {
 
 /**
+ * Applies HP regeneration (if any) to a given fighter.  Defined with
+ * RegenerateHP below.
+ */
+void RegenerateFighterHP (CombatEntity& f);
+
+/**
  * Helper class to perform the damage-dealing processing step.
  */
 class DamageProcessor
@@ -476,6 +482,18 @@ private:
   std::set<TargetKey> alreadyDead;
 
   /**
+   * Handles of the fighters and targets loaded so far, so that each is read
+   * from and written to the database only once while damage is dealt.  All
+   * access to them goes through Get.
+   */
+  std::map<TargetKey, FighterTable::Handle> handles;
+
+  /**
+   * Returns the fighter or target with the given ID, loading it if needed.
+   */
+  CombatEntity& Get (const TargetKey& id);
+
+  /**
    * Performs a random roll to determine the damage a particular attack does.
    * The min/max damage is modified according to the stats modifier.
    */
@@ -522,15 +540,14 @@ private:
    * (or any AoE targets).  Only processes attacks with gain_hp equal to
    * the argument value passed in.
    */
-  void DealDamage (FighterTable::Handle f, bool forGainHp,
+  void DealDamage (CombatEntity& f, bool forGainHp,
                    std::set<TargetKey>& newDead);
 
   /**
    * Processes all damage the given fighter does due to self-destruct
    * abilities when killed.
    */
-  void ProcessSelfDestructs (FighterTable::Handle f,
-                             std::set<TargetKey>& newDead);
+  void ProcessSelfDestructs (CombatEntity& f, std::set<TargetKey>& newDead);
 
 public:
 
@@ -548,6 +565,15 @@ public:
   void Process ();
 
   /**
+   * Regenerates the HP of all loaded fighters that are not dead and would be
+   * up for regeneration, so that they are written only once, and adds them
+   * to the given set.  Since
+   * regeneration only depends on the fighter itself, this is the same as
+   * doing it after the kills (which do not touch survivors).
+   */
+  void RegenerateSurvivors (std::set<TargetKey>& regenerated);
+
+  /**
    * Returns the list of killed fighters.
    */
   const std::set<TargetKey>&
@@ -557,6 +583,15 @@ public:
   }
 
 };
+
+CombatEntity&
+DamageProcessor::Get (const TargetKey& id)
+{
+  auto mit = handles.find (id);
+  if (mit == handles.end ())
+    mit = handles.emplace (id, fighters.GetForTarget (id.ToProto ())).first;
+  return *mit->second;
+}
 
 unsigned
 DamageProcessor::RollAttackDamage (const proto::Attack::Damage& dmg,
@@ -772,11 +807,11 @@ DamageProcessor::ApplyEffects (const proto::Attack& attack,
 }
 
 void
-DamageProcessor::DealDamage (FighterTable::Handle f, const bool forGainHp,
+DamageProcessor::DealDamage (CombatEntity& f, const bool forGainHp,
                              std::set<TargetKey>& newDead)
 {
-  const auto& cd = f->GetCombatData ();
-  const auto& pos = f->GetCombatPosition ();
+  const auto& cd = f.GetCombatData ();
+  const auto& pos = f.GetCombatPosition ();
   CHECK (!ctx.Map ().SafeZones ().IsNoCombat (pos));
 
   /* If the fighter has friendly attacks and friendlies in range, it may
@@ -791,9 +826,9 @@ DamageProcessor::DealDamage (FighterTable::Handle f, const bool forGainHp,
   bool hasTarget = false;
   HexCoord targetPos;
   HexCoord::IntT targetDist = std::numeric_limits<HexCoord::IntT>::max ();
-  if (f->HasTarget ())
+  if (f.HasTarget ())
     {
-      const HexCoord* found = targets.FindPosition (f->GetTarget ());
+      const HexCoord* found = targets.FindPosition (f.GetTarget ());
       if (found != nullptr)
         {
           hasTarget = true;
@@ -802,9 +837,9 @@ DamageProcessor::DealDamage (FighterTable::Handle f, const bool forGainHp,
         }
     }
   else
-    CHECK (f->HasFriendlyTargets ());
+    CHECK (f.HasFriendlyTargets ());
 
-  const auto& mod = modifiers.at (f->GetIdAsTarget ());
+  const auto& mod = modifiers.at (f.GetIdAsTarget ());
 
   for (const auto& attack : cd.attacks ())
     {
@@ -838,13 +873,13 @@ DamageProcessor::DealDamage (FighterTable::Handle f, const bool forGainHp,
             centre = pos;
 
           ProcessCombatTargets (targets,
-                                *f, centre, mod.range (attack.area ()),
+                                f, centre, mod.range (attack.area ()),
                                 !attack.friendlies (),
             [&] (const HexCoord& c, const proto::TargetId& id)
             {
-              auto t = fighters.GetForTarget (id);
-              ApplyDamage (dmg, *f, attack, mod, *t, newDead);
-              ApplyEffects (attack, *t);
+              auto& t = Get (TargetKey (id));
+              ApplyDamage (dmg, f, attack, mod, t, newDead);
+              ApplyEffects (attack, t);
             });
         }
       else
@@ -859,42 +894,42 @@ DamageProcessor::DealDamage (FighterTable::Handle f, const bool forGainHp,
           if (ctx.Map ().SafeZones ().IsNoCombat (targetPos))
             continue;
 
-          auto t = fighters.GetForTarget (f->GetTarget ());
-          ApplyDamage (dmg, *f, attack, mod, *t, newDead);
-          ApplyEffects (attack, *t);
+          auto& t = Get (TargetKey (f.GetTarget ()));
+          ApplyDamage (dmg, f, attack, mod, t, newDead);
+          ApplyEffects (attack, t);
         }
     }
 }
 
 void
-DamageProcessor::ProcessSelfDestructs (FighterTable::Handle f,
+DamageProcessor::ProcessSelfDestructs (CombatEntity& f,
                                        std::set<TargetKey>& newDead)
 {
-  const auto& pos = f->GetCombatPosition ();
+  const auto& pos = f.GetCombatPosition ();
   CHECK (!ctx.Map ().SafeZones ().IsNoCombat (pos));
 
   /* The killed fighter should have zero HP left, and thus also should get
      all low-HP boosts now.  */
-  CHECK_EQ (f->GetHP ().armour (), 0);
-  CHECK_EQ (f->GetHP ().shield (), 0);
+  CHECK_EQ (f.GetHP ().armour (), 0);
+  CHECK_EQ (f.GetHP ().shield (), 0);
   CombatModifier mod;
-  ComputeModifier (*f, mod);
+  ComputeModifier (f, mod);
 
-  for (const auto& sd : f->GetCombatData ().self_destructs ())
+  for (const auto& sd : f.GetCombatData ().self_destructs ())
     {
       const auto dmg = RollAttackDamage (sd.damage (), mod.damage);
       VLOG (1)
           << "Dealing " << dmg
           << " of damage for self-destruct of "
-          << f->GetIdAsTarget ().DebugString ();
+          << f.GetIdAsTarget ().DebugString ();
 
       ProcessCombatTargets (targets,
-                            *f, pos, mod.range (sd.area ()),
+                            f, pos, mod.range (sd.area ()),
                             true,
         [&] (const HexCoord& c, const proto::TargetId& id)
         {
-          auto t = fighters.GetForTarget (id);
-          ApplyDamage (dmg, *f, sd.damage (), mod, *t, newDead);
+          ApplyDamage (dmg, f, sd.damage (), mod, Get (TargetKey (id)),
+                       newDead);
         });
     }
 }
@@ -902,20 +937,27 @@ DamageProcessor::ProcessSelfDestructs (FighterTable::Handle f,
 void
 DamageProcessor::Process ()
 {
-  /* Fighters with gain_hp attacks, in the order of ProcessWithTarget.  */
+  /* All fighters with a target, and those with gain_hp attacks, in the
+     order of ProcessWithTarget.  */
+  std::vector<TargetKey> withTarget;
   std::vector<TargetKey> withGainHp;
 
   modifiers.clear ();
   fighters.ProcessWithTarget ([&] (FighterTable::Handle f)
     {
+      const TargetKey id(f->GetIdAsTarget ());
+      withTarget.push_back (id);
+
       CombatModifier mod;
       ComputeModifier (*f, mod);
-      CHECK (modifiers.emplace (f->GetIdAsTarget (), std::move (mod)).second);
+      CHECK (modifiers.emplace (id, std::move (mod)).second);
 
       const auto& attacks = f->GetCombatData ().attacks ();
       if (std::any_of (attacks.begin (), attacks.end (),
                        [] (const proto::Attack& a) { return a.gain_hp (); }))
-        withGainHp.emplace_back (f->GetIdAsTarget ());
+        withGainHp.push_back (id);
+
+      CHECK (handles.emplace (id, std::move (f)).second);
     });
 
   std::set<TargetKey> newDead;
@@ -925,7 +967,7 @@ DamageProcessor::Process ()
      first before they can be drained by a syphon.  (Other fighters would
      not do anything in this round.)  */
   for (const auto& id : withGainHp)
-    DealDamage (fighters.GetForTarget (id.ToProto ()), true, newDead);
+    DealDamage (Get (id), true, newDead);
 
   /* Reconcile the set of HP gained by attackers now (before normal attacks
      may bring shields down to zero when they aren't yet, for instance).  */
@@ -934,8 +976,7 @@ DamageProcessor::Process ()
     {
       CHECK (!targetEntry.second.empty ());
 
-      const auto tf = fighters.GetForTarget (targetEntry.first.ToProto ());
-      const auto& tHp = tf->GetHP ();
+      const auto& tHp = Get (targetEntry.first).GetHP ();
 
       for (const auto& attackEntry : targetEntry.second)
         {
@@ -974,10 +1015,8 @@ DamageProcessor::Process ()
         }
     }
 
-  fighters.ProcessWithTarget ([&] (FighterTable::Handle f)
-    {
-      DealDamage (std::move (f), false, newDead);
-    });
+  for (const auto& id : withTarget)
+    DealDamage (Get (id), false, newDead);
 
   /* After applying the base damage, we process all self-destruct actions
      of kills.  This may lead to more damage and more kills, so we have
@@ -998,7 +1037,7 @@ DamageProcessor::Process ()
       CHECK (newDead.empty ());
 
       for (const auto& d : toProcess)
-        ProcessSelfDestructs (fighters.GetForTarget (d.ToProto ()), newDead);
+        ProcessSelfDestructs (Get (d), newDead);
     }
 
   /* Credit gained HP to everyone who is not dead.  */
@@ -1016,9 +1055,9 @@ DamageProcessor::Process ()
           << "Fighter " << entry.first.ToProto ().DebugString ()
           << " gained HP:\n" << entry.second.DebugString ();
 
-      const auto f = fighters.GetForTarget (entry.first.ToProto ());
-      const auto& maxHp = f->GetRegenData ().max_hp ();
-      auto& hp = f->MutableHP ();
+      auto& f = Get (entry.first);
+      const auto& maxHp = f.GetRegenData ().max_hp ();
+      auto& hp = f.MutableHP ();
       hp.set_armour (std::min (hp.armour () + entry.second.armour (),
                                maxHp.armour ()));
       hp.set_shield (std::min (hp.shield () + entry.second.shield (),
@@ -1038,23 +1077,40 @@ DamageProcessor::Process ()
      applying damaging is "one thing".  Swapping over the effects is done
      here, so it is right after that whole "combat block" for the rest
      of processing (e.g. movement or regeneration) and also the next
-     combat block.  */
+     combat block.
+
+     The database is cleared in bulk and the loaded handles in memory, so
+     that each of them is written only once.  */
   fighters.ClearAllEffects ();
+  for (auto& entry : handles)
+    entry.second->EffectsCleared ();
   for (auto& entry : newEffects)
-    {
-      auto f = fighters.GetForTarget (entry.first.ToProto ());
-      f->MutableEffects () = std::move (entry.second);
-    }
+    Get (entry.first).MutableEffects () = std::move (entry.second);
+}
+
+void
+DamageProcessor::RegenerateSurvivors (std::set<TargetKey>& regenerated)
+{
+  for (auto& entry : handles)
+    if (alreadyDead.count (entry.first) == 0
+          && entry.second->GetNewCanRegen ())
+      {
+        RegenerateFighterHP (*entry.second);
+        regenerated.insert (entry.first);
+      }
 }
 
 } // anonymous namespace
 
 std::set<TargetKey>
 DealCombatDamage (Database& db, DamageLists& dl,
-                  xaya::Random& rnd, const Context& ctx)
+                  xaya::Random& rnd, const Context& ctx,
+                  std::set<TargetKey>* regenerated)
 {
   DamageProcessor proc(db, dl, rnd, ctx);
   proc.Process ();
+  if (regenerated != nullptr)
+    proc.RegenerateSurvivors (*regenerated);
   return proc.GetDead ();
 }
 
@@ -1354,14 +1410,11 @@ RegenerateHpType (const unsigned max, const unsigned mhpRate,
   return newCur != oldCur || newMilli != oldMilli;
 }
 
-/**
- * Applies HP regeneration (if any) to a given fighter.
- */
 void
-RegenerateFighterHP (FighterTable::Handle f)
+RegenerateFighterHP (CombatEntity& f)
 {
-  const auto& regen = f->GetRegenData ();
-  const auto& hp = f->GetHP ();
+  const auto& regen = f.GetRegenData ();
+  const auto& hp = f.GetHP ();
 
   unsigned cur, milli;
 
@@ -1369,11 +1422,11 @@ RegenerateFighterHP (FighterTable::Handle f)
           regen.max_hp ().armour (), regen.regeneration_mhp ().armour (),
           hp.armour (), hp.mhp ().armour (), cur, milli))
     {
-      f->MutableHP ().set_armour (cur);
-      f->MutableHP ().mutable_mhp ()->set_armour (milli);
+      f.MutableHP ().set_armour (cur);
+      f.MutableHP ().mutable_mhp ()->set_armour (milli);
     }
 
-  const StatModifier shieldRegenMod(f->GetEffects ().shield_regen ());
+  const StatModifier shieldRegenMod(f.GetEffects ().shield_regen ());
   const unsigned shieldRate
       = shieldRegenMod (regen.regeneration_mhp ().shield ());
 
@@ -1381,23 +1434,24 @@ RegenerateFighterHP (FighterTable::Handle f)
           regen.max_hp ().shield (), shieldRate,
           hp.shield (), hp.mhp ().shield (), cur, milli))
     {
-      f->MutableHP ().set_shield (cur);
-      f->MutableHP ().mutable_mhp ()->set_shield (milli);
+      f.MutableHP ().set_shield (cur);
+      f.MutableHP ().mutable_mhp ()->set_shield (milli);
     }
 }
 
 } // anonymous namespace
 
 void
-RegenerateHP (Database& db)
+RegenerateHP (Database& db, const std::set<TargetKey>& skip)
 {
   BuildingsTable buildings(db);
   CharacterTable characters(db);
   FighterTable fighters(buildings, characters);
 
-  fighters.ProcessForRegen ([] (FighterTable::Handle f)
+  fighters.ProcessForRegen ([&skip] (FighterTable::Handle f)
     {
-      RegenerateFighterHP (std::move (f));
+      if (skip.count (TargetKey (f->GetIdAsTarget ())) == 0)
+        RegenerateFighterHP (*f);
     });
 }
 
@@ -1407,6 +1461,9 @@ void
 AllHpUpdates (Database& db, DynObstacles& dyn, FameUpdater& fame,
               xaya::Random& rnd, const Context& ctx)
 {
+  /* The fighters of the damage step regenerate already there.  */
+  std::set<TargetKey> regenerated;
+
   {
     /* New damage-list entries are written only after the kills removed
        those of the dead.  */
@@ -1415,7 +1472,8 @@ AllHpUpdates (Database& db, DynObstacles& dyn, FameUpdater& fame,
     std::set<TargetKey> dead;
     {
       ScopedPhase phase("damage");
-      dead = DealCombatDamage (db, fame.GetDamageLists (), rnd, ctx);
+      dead = DealCombatDamage (db, fame.GetDamageLists (), rnd, ctx,
+                               &regenerated);
     }
 
     {
@@ -1434,7 +1492,7 @@ AllHpUpdates (Database& db, DynObstacles& dyn, FameUpdater& fame,
 
   {
     ScopedPhase phase("regen");
-    RegenerateHP (db);
+    RegenerateHP (db, regenerated);
   }
 }
 

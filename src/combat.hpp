@@ -78,10 +78,14 @@ unsigned BaseHitChance (const proto::CombatData& target,
 /**
  * Deals damage from combat and returns the target IDs of all fighters
  * that are now dead (and need to be handled accordingly).  This also
- * applies non-damage effects like slowing.
+ * applies non-damage effects like slowing.  If regenerated is given, the
+ * surviving fighters involved also regenerate their HP right away (in the
+ * same database write) and are added to it, for RegenerateHP to skip.
  */
 std::set<TargetKey> DealCombatDamage (Database& db, DamageLists& dl,
-                                      xaya::Random& rnd, const Context& ctx);
+                                      xaya::Random& rnd, const Context& ctx,
+                                      std::set<TargetKey>* regenerated
+                                          = nullptr);
 
 /**
  * Processes killed fighers from the given list, actually performing the
@@ -93,9 +97,10 @@ void ProcessKills (Database& db, DynObstacles& dyn,
                    xaya::Random& rnd, const Context& ctx);
 
 /**
- * Handles HP regeneration.
+ * Handles HP regeneration, except for the fighters in skip (which
+ * have already regenerated this block).
  */
-void RegenerateHP (Database& db);
+void RegenerateHP (Database& db, const std::set<TargetKey>& skip = {});
 
 /**
  * Runs the three coupled steps to update HP at the beginning of computing

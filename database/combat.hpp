@@ -120,11 +120,6 @@ private:
                                const proto::RegenData& regen);
 
   /**
-   * Returns the canregen flag for the current HP and RegenData.
-   */
-  bool GetNewCanRegen () const;
-
-  /**
    * Computes the attack range of a fighter with the given combat data,
    * or the range of the longest friendly attack.
    *
@@ -315,6 +310,19 @@ public:
    * Returns a mutable reference to the effects proto.
    */
   virtual proto::CombatEffects& MutableEffects () = 0;
+
+  /**
+   * Returns the canregen flag for the current HP and RegenData, i.e. whether
+   * HP regeneration will process this entity once it is written.
+   */
+  bool GetNewCanRegen () const;
+
+  /**
+   * Resets the effects in memory to none after they have been cleared
+   * in the database (by ClearAllEffects of the table), so that the
+   * handle neither writes the old ones back nor needs another write.
+   */
+  virtual void EffectsCleared () = 0;
 
 };
 
