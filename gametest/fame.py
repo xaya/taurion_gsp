@@ -118,10 +118,11 @@ class FameTest (PXTest):
     chars = self.getCharacters ()
     assert "target" not in chars
     assert "target 2" not in chars
+    # Both kills are in the same block, so they split the 100 fame of target.
     self.assertEqual (accounts["army"].data["kills"], 1)
-    self.assertEqual (accounts["army"].data["fame"], 200)
+    self.assertEqual (accounts["army"].data["fame"], 150)
     self.assertEqual (accounts["other army"].data["kills"], 1)
-    self.assertEqual (accounts["other army"].data["fame"], 200)
+    self.assertEqual (accounts["other army"].data["fame"], 150)
     self.assertEqual (accounts["target"].data["kills"], 0)
     self.assertEqual (accounts["target"].data["fame"], 0)
 
