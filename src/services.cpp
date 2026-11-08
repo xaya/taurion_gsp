@@ -381,10 +381,6 @@ RepairOperation::GetBaseCost () const
   const Amount perHp = ctx.RoConfig ()->params ().armour_repair_cost_millis ();
   const Amount costMillis = GetMissingHp () * perHp;
   const Amount res = (costMillis + 999) / 1'000;
-
-  /* If there are no missing HP, then the operation is invalid.  But through
-     getserviceinfo, the cost can still be calculated, and will then just
-     be zero.  */
   CHECK_GE (res, 0);
 
   return res;

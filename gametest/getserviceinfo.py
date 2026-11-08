@@ -74,16 +74,20 @@ class GetServiceInfoTest (PXTest):
     self.giftCoins ({"andy": 100})
     self.assertEqual (getserviceinfo ("andy", op)["valid"], True)
 
-    # This used to crash the GSP because of its zero cost.
-    self.mainLogger.info ("Testing zero-cost repair...")
-    op = {"b": building, "t": "fix", "c": cId}
-    self.assertEqual (getserviceinfo ("andy", op), {
-      "type": "armourrepair",
-      "building": building,
-      "character": cId,
-      "cost": {"base": 0, "fee": 0},
-      "valid": False,
-    })
+    # These used to crash the GSP when computing the cost, which is not
+    # defined for invalid operations (e.g. a repair of full armour or of a
+    # character that doesn't exist, or items that can't be used for it).
+    self.mainLogger.info ("Testing invalid operations...")
+    for op in [
+      {"b": building, "t": "fix", "c": cId},
+      {"b": building, "t": "fix", "c": 999999},
+      {"b": building, "t": "ref", "i": "invalid item", "n": 3},
+      {"b": building, "t": "ref", "i": "bar", "n": 3},
+      {"b": building, "t": "rve", "i": "test ore", "n": 1},
+      {"b": building, "t": "cp", "i": "test ore", "n": 1},
+      {"b": building, "t": "bld", "i": "test ore", "n": 1},
+    ]:
+      self.assertEqual (getserviceinfo ("andy", op), {"valid": False})
 
 
 if __name__ == "__main__":

@@ -178,12 +178,6 @@ protected:
   }
 
   /**
-   * Returns true if the operation is actually valid according to game
-   * and move rules.
-   */
-  virtual bool IsValid () const = 0;
-
-  /**
    * Returns the base cost (vCHI that are burnt) for this operation.
    */
   virtual Amount GetBaseCost () const = 0;
@@ -221,6 +215,13 @@ public:
   }
 
   /**
+   * Returns true if the operation itself is valid according to game
+   * and move rules, not yet checking whether the building or character
+   * supports it and whether the account can pay for it.
+   */
+  virtual bool IsValid () const = 0;
+
+  /**
    * Performs some additional validations (over what Parse already does)
    * and returns true if the operation is fully valid (i.e. should be executed
    * when confirmed / reported in the pending state).
@@ -229,6 +230,8 @@ public:
 
   /**
    * Returns a JSON representation of this operation for pending moves.
+   * Must only be called if the operation IsValid, as e.g. its cost is
+   * not defined otherwise.
    */
   Json::Value ToPendingJson () const;
 
