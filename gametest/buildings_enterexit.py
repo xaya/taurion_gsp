@@ -23,6 +23,12 @@ Tests entering and exiting buildings with characters.
 from pxtest import PXTest
 
 
+def l1Distance (a, b):
+  dx = a["x"] - b["x"]
+  dy = a["y"] - b["y"]
+  return max (abs (dx), abs (dy), abs (dx + dy))
+
+
 class BuildingsEnterExitTest (PXTest):
 
   def run (self):
@@ -82,7 +88,34 @@ class BuildingsEnterExitTest (PXTest):
     assert "target" not in chars["andy"].data["combat"]
     assert "target" not in chars["domob"].data["combat"]
 
+    self.testStationGateway ()
     self.testReorg ()
+
+  def testStationGateway (self):
+    self.mainLogger.info ("Docking at a station through its gateway...")
+    self.initAccount ("newbie", "r")
+    self.createCharacters ("newbie")
+    self.generate (1)
+    station = self.getCharacters ()["newbie"].getBuildingId ()
+    gateway = self.getBuildings ()[station].data["gateway"]
+
+    self.getCharacters ()["newbie"].sendMove ({"xb": {}})
+    self.generate (1)
+    c = self.getCharacters ()["newbie"]
+    self.assertEqual (c.isInBuilding (), False)
+    assert l1Distance (c.getPosition (), gateway["centre"]) <= gateway["radius"]
+
+    # This is within the station's enter radius, but not its gateway.
+    outside = {"x": gateway["centre"]["x"] + 20, "y": gateway["centre"]["y"]}
+    self.moveCharactersTo ({"newbie": outside})
+    self.getCharacters ()["newbie"].sendMove ({"eb": station})
+    self.generate (1)
+    self.assertEqual (self.getCharacters ()["newbie"].isInBuilding (), False)
+
+    c = self.getCharacters ()["newbie"]
+    c.sendMove ({"wp": c.findPath (gateway["centre"])})
+    self.generate (20)
+    self.assertEqual (self.getCharacters ()["newbie"].getBuildingId (), station)
 
   def testReorg (self):
     self.mainLogger.info ("Testing reorg...")

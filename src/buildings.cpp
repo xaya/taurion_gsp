@@ -32,6 +32,22 @@
 namespace pxd
 {
 
+namespace
+{
+
+/**
+ * Transforms a coordinate given relative to a building (like its shape
+ * tiles) onto the map, based on the building's centre and shape trafo.
+ */
+HexCoord
+TransformTile (const proto::HexCoord& pb,
+               const proto::ShapeTransformation& trafo, const HexCoord& pos)
+{
+  return CoordFromProto (pb).RotateCW (trafo.rotation_steps ()) + pos;
+}
+
+} // anonymous namespace
+
 std::vector<HexCoord>
 GetBuildingShape (const std::string& type,
                   const proto::ShapeTransformation& trafo,
@@ -42,12 +58,7 @@ GetBuildingShape (const std::string& type,
   std::vector<HexCoord> res;
   res.reserve (roData.shape_tiles ().size ());
   for (const auto& pbTile : roData.shape_tiles ())
-    {
-      HexCoord c = CoordFromProto (pbTile);
-      c = c.RotateCW (trafo.rotation_steps ()); 
-      c += pos;
-      res.push_back (c);
-    }
+    res.push_back (TransformTile (pbTile, trafo, pos));
 
   return res;
 }
@@ -57,6 +68,23 @@ GetBuildingShape (const Building& b, const Context& ctx)
 {
   return GetBuildingShape (b.GetType (), b.GetProto ().shape_trafo (),
                            b.GetCentre (), ctx.RoConfig ());
+}
+
+void
+GetGateway (const Building& b, const Context& ctx,
+            HexCoord& centre, unsigned& radius)
+{
+  const auto& roData = ctx.RoConfig ().Building (b.GetType ());
+  if (!roData.has_gateway ())
+    {
+      centre = b.GetCentre ();
+      radius = roData.enter_radius ();
+      return;
+    }
+
+  centre = TransformTile (roData.gateway ().centre (),
+                          b.GetProto ().shape_trafo (), b.GetCentre ());
+  radius = roData.gateway ().radius ();
 }
 
 bool
@@ -212,9 +240,11 @@ ProcessEnterBuildings (Database& db, DynObstacles& dyn, const Context& ctx)
           continue;
         }
 
-      const unsigned dist
-          = HexCoord::DistanceL1 (c->GetPosition (), b->GetCentre ());
-      if (dist > ctx.RoConfig ().Building (b->GetType ()).enter_radius ())
+      HexCoord centre;
+      unsigned radius;
+      GetGateway (*b, ctx, centre, radius);
+      const unsigned dist = HexCoord::DistanceL1 (c->GetPosition (), centre);
+      if (dist > radius)
         {
           /* This is probably the most common case, no log spam here.  */
           continue;
@@ -240,8 +270,10 @@ LeaveBuilding (BuildingsTable& buildings, Character& c,
   auto b = buildings.GetById (c.GetBuildingId ());
   CHECK (b != nullptr);
 
-  const auto radius = ctx.RoConfig ().Building (b->GetType ()).enter_radius ();
-  const auto pos = ChooseSpawnLocation (b->GetCentre (), radius, rnd, dyn, ctx);
+  HexCoord centre;
+  unsigned radius;
+  GetGateway (*b, ctx, centre, radius);
+  const auto pos = ChooseSpawnLocation (centre, radius, rnd, dyn, ctx);
 
   LOG (INFO)
       << "Character " << c.GetId ()
