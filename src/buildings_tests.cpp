@@ -18,11 +18,14 @@
 
 #include "buildings.hpp"
 
+#include "dynobstacles.hpp"
+#include "protoutils.hpp"
 #include "testutils.hpp"
 
 #include "database/character.hpp"
 #include "database/dbtest.hpp"
 #include "hexagonal/ring.hpp"
+#include "mapdata/dyntiles.hpp"
 #include "proto/roconfig.hpp"
 
 #include <gmock/gmock.h>
@@ -31,6 +34,7 @@
 #include <glog/logging.h>
 
 #include <set>
+#include <vector>
 
 namespace pxd
 {
@@ -120,6 +124,65 @@ TEST_F (BuildingsTests, InitialBuildingsPlacement)
 
   EXPECT_EQ (cnt, RoConfig (ctx.Chain ())->initial_buildings_size ());
   EXPECT_GT (cnt, 0);
+}
+
+TEST_F (BuildingsTests, NoEnclosedTiles)
+{
+  /* Characters start out in the safe zones, and leave buildings to a free
+     tile within their enter radius (or the nearest one).  No free tile there
+     may be enclosed by the terrain, obstacles and buildings, or a character
+     placed on it could never leave.  So every free tile in those areas must
+     connect to the free tiles on a ring some distance around them.  */
+  ctx.SetChain (xaya::Chain::MAIN);
+  InitialiseBuildings (db, ctx.Chain ());
+  const DynObstacles dyn(db, ctx);
+
+  const auto isFree = [&] (const HexCoord& c)
+    {
+      return ctx.Map ().IsPassable (c) && !dyn.IsBuilding (c);
+    };
+
+  const auto checkArea = [&] (const HexCoord& centre,
+                              const HexCoord::IntT radius)
+    {
+      const HexCoord::IntT outer = radius + 50;
+      DynTiles<bool> reached(false);
+      std::vector<HexCoord> todo;
+      for (const auto& c : L1Ring (centre, outer))
+        if (isFree (c))
+          {
+            reached.Access (c) = true;
+            todo.push_back (c);
+          }
+      while (!todo.empty ())
+        {
+          const auto cur = todo.back ();
+          todo.pop_back ();
+          for (const auto& n : cur.Neighbours ())
+            if (HexCoord::DistanceL1 (n, centre) < outer && isFree (n)
+                  && !reached.Get (n))
+              {
+                reached.Access (n) = true;
+                todo.push_back (n);
+              }
+        }
+
+      for (HexCoord::IntT r = 0; r <= radius; ++r)
+        for (const auto& c : L1Ring (centre, r))
+          EXPECT_TRUE (!isFree (c) || reached.Get (c))
+              << "Tile " << c << " is enclosed";
+    };
+
+  for (const auto& sz : ctx.RoConfig ()->safe_zones ())
+    checkArea (CoordFromProto (sz.centre ()), sz.radius ());
+
+  auto res = tbl.QueryAll ();
+  while (res.Step ())
+    {
+      auto b = tbl.GetFromResult (res);
+      checkArea (b->GetCentre (),
+                 ctx.RoConfig ().Building (b->GetType ()).enter_radius ());
+    }
 }
 
 /* ************************************************************************** */

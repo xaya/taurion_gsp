@@ -1285,17 +1285,17 @@ MoveProcessor::HandleRoConfigUpdate (const Json::Value& cmd)
      responsibility, just like the compiled-in configuration.  The chain
      merges are compile-time constructs that building the config has already
      applied and cleared, so an update reintroducing them would linger in
-     every future config.  The safe zones are part of the map, which is
-     built once at startup from the compiled-in config, so they cannot change
-     at runtime; and the initial buildings only describe the genesis state.
-     Since repeated fields append in a merge, an update containing either
-     would change them, so it is rejected rather than storing data that
-     would then be ignored.  God mode is set by the compiled-in config of the
-     chains that want it and stays fixed at runtime as a safety net:  turning
-     it on would open up the god commands on a live chain, and turning it off
-     would contradict the coins already gifted through them.  Only a change is
-     rejected, so that an update built by modifying a copy of the current
-     params can carry the field.  */
+     every future config.  The safe zones and obstacles are part of the map,
+     which is built once at startup from the compiled-in config, so they
+     cannot change at runtime; and the initial buildings only describe the
+     genesis state.  Since repeated fields append in a merge, an update
+     containing any of them would change them, so it is rejected rather than
+     storing data that would then be ignored.  God mode is set by the
+     compiled-in config of the chains that want it and stays fixed at runtime
+     as a safety net:  turning it on would open up the god commands on a live
+     chain, and turning it off would contradict the coins already gifted
+     through them.  Only a change is rejected, so that an update built by
+     modifying a copy of the current params can carry the field.  */
   std::string bytes;
   proto::ConfigData upd;
   const char* rejected = nullptr;
@@ -1311,6 +1311,8 @@ MoveProcessor::HandleRoConfigUpdate (const Json::Value& cmd)
     rejected = "it changes the safe zones";
   else if (upd.initial_buildings_size () > 0)
     rejected = "it changes the initial buildings";
+  else if (upd.obstacles_size () > 0)
+    rejected = "it changes the obstacles";
   else if (upd.params ().has_god_mode ()
             && upd.params ().god_mode () != cfg.params ().god_mode ())
     rejected = "it changes god mode";

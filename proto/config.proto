@@ -647,6 +647,13 @@ message ConfigData
   optional Params params = 6;
 
   /**
+   * Tiles that are obstacles in addition to the terrain, like the structures
+   * of the starter cities.  They are part of the map, which is built once
+   * at startup, so they cannot change at runtime.
+   */
+  repeated HexCoord obstacles = 7;
+
+  /**
    * The testnet-specific configuration data.  This is merged into the main
    * configuration when running on testnet or regtest.
    */

@@ -22,10 +22,17 @@ namespace pxd
 {
 
 BaseMap::BaseMap (const xaya::Chain c)
-  : cfg(c), sz(cfg)
+  : cfg(c), sz(cfg), obstacles(false)
 {
   CHECK_EQ (&blob_obstacles_end - &blob_obstacles_start,
             tiledata::obstacles::bitDataSize);
+
+  for (const auto& pb : cfg->obstacles ())
+    {
+      const HexCoord pos(pb.x (), pb.y ());
+      CHECK (IsOnMap (pos)) << "Obstacle " << pos << " is not on the map";
+      obstacles.Access (pos) = true;
+    }
 }
 
 } // namespace pxd

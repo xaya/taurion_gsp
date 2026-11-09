@@ -5,6 +5,7 @@ noinst_LTLIBRARIES = libpxproto.la
 
 ROCONFIG_TEXT_PROTOS = \
   roconfig/initialbuildings.pb.text \
+  roconfig/obstacles.pb.text \
   roconfig/params.pb.text \
   roconfig/resourcedist.pb.text \
   roconfig/safezones.pb.text \

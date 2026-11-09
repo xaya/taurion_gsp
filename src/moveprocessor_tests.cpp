@@ -255,8 +255,8 @@ TEST_F (MoveProcessorTests, AdminRoConfigInvalid)
   /* None of these may store anything: a command that is not exactly an
      object holding a "merge" string, invalid base64, an empty payload,
      bytes that do not parse as ConfigData, the compile-time chain-merge
-     fields, and the safe zones and initial buildings (which cannot change
-     at runtime).  */
+     fields, and the safe zones, initial buildings and obstacles (which
+     cannot change at runtime).  */
   RoConfigStorage tbl(db);
   for (const std::string& cmdJson : {
       std::string (R"(42)"),
@@ -273,6 +273,7 @@ TEST_F (MoveProcessorTests, AdminRoConfigInvalid)
       upd ([] (proto::ConfigData& pb) { pb.mutable_regtest_merge (); }),
       upd ([] (proto::ConfigData& pb) { pb.add_safe_zones (); }),
       upd ([] (proto::ConfigData& pb) { pb.add_initial_buildings (); }),
+      upd ([] (proto::ConfigData& pb) { pb.add_obstacles (); }),
   })
     {
       ProcessAdmin (R"([{"cmd": {"roconfig": )" + cmdJson + R"(}}])");

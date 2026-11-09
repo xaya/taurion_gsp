@@ -19,6 +19,7 @@
 #ifndef MAPDATA_BASEMAP_HPP
 #define MAPDATA_BASEMAP_HPP
 
+#include "dyntiles.hpp"
 #include "regionmap.hpp"
 #include "safezones.hpp"
 
@@ -48,6 +49,9 @@ private:
   /** SafeZones instance used.  */
   const pxd::SafeZones sz;
 
+  /** The obstacles from the config, in addition to the obstacle layer.  */
+  DynTiles<bool> obstacles;
+
 public:
 
   explicit BaseMap (const xaya::Chain c);
@@ -63,7 +67,7 @@ public:
 
   /**
    * Returns true if the given coordinate is passable according to the
-   * obstacle layer data.
+   * obstacle layer data and the obstacles from the config.
    */
   bool IsPassable (const HexCoord& c) const;
 
