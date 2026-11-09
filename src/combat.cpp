@@ -452,7 +452,7 @@ private:
   BuildingsTable buildings;
   CharacterTable characters;
   FighterTable fighters;
-  TargetFinder targets;
+  const TargetFinder targets;
 
   /**
    * The configured limits of the targets of area attacks and self-destructs
@@ -619,7 +619,10 @@ DamageProcessor::Get (const TargetKey& id)
 {
   auto mit = handles.find (id);
   if (mit == handles.end ())
-    mit = handles.emplace (id, fighters.GetForTarget (id.ToProto ())).first;
+    {
+      mit = handles.emplace (id, fighters.GetForTarget (id.ToProto ())).first;
+      CHECK (mit->second != nullptr);
+    }
   return *mit->second;
 }
 

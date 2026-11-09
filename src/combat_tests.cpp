@@ -349,6 +349,12 @@ TEST_F (TargetSelectionTests, KeepsTarget)
   c.reset ();
   EXPECT_EQ (targetId (), idFirst);
 
+  /* Keeping the target needs no random number.  */
+  auto branched = rnd.BranchOff ("branch");
+  FindCombatTargets (db, branched, ctx);
+  ExpectRandomRolls (branched, rnd.BranchOff ("branch"), 0);
+  EXPECT_EQ (characters.GetById (idFighter)->GetTarget ().id (), idFirst);
+
   /* Once the target is out of range, the fighter picks a new one.  */
   characters.GetById (idFirst)->SetPosition (HexCoord (11, 0));
   EXPECT_EQ (targetId (), idSecond);
@@ -455,6 +461,11 @@ TEST_F (TargetSelectionTests, Mentecon)
                   ->HasFriendlyTargets ());
   EXPECT_EQ (characters.GetById (idEnemy)->GetTarget ().id (),
              idEnemyAsFriendlyTarget);
+
+  /* Without the mentecon, the friendly is no target any more.  */
+  characters.GetById (idTargetsFriendly)->MutableEffects ().clear_mentecon ();
+  FindCombatTargets (db, rnd, ctx);
+  EXPECT_FALSE (characters.GetById (idTargetsFriendly)->HasTarget ());
 }
 
 TEST_F (TargetSelectionTests, WithBuildings)

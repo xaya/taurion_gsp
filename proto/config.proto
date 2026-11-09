@@ -556,7 +556,8 @@ message Params
    * it is this many blocks old (0 or 1:  on every hit).  Attackers then stay
    * on the list for between damage_list_blocks - N + 1 and damage_list_blocks
    * blocks after their last hit, but a sustained fight rewrites each entry
-   * only every N blocks instead of every block.
+   * only every N blocks instead of every block.  The value should not be
+   * larger than damage_list_blocks.
    */
   optional uint32 damage_list_refresh_blocks = 26;
 

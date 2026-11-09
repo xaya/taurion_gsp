@@ -121,10 +121,11 @@ private:
   }
 
   /**
-   * Calls fcn (spans) for the targets in range that match a query as done by
-   * FindInRange, grouped by distance in increasing order, until it returns
-   * true.  The targets at one distance are given as spans, so that also a pile
-   * of them on one tile is passed without looking at each.
+   * Calls fcn (spans) for the targets in range that match the faction
+   * conditions (enemies or friendlies of the given faction), grouped by
+   * distance in increasing order, until it returns true.  The targets at
+   * one distance are given as spans, so that also a pile of them on one tile
+   * is passed without looking at each.
    */
   template <typename Fcn>
     void ForEachInRange (const HexCoord& centre, HexCoord::IntT l1range,
@@ -177,9 +178,9 @@ public:
                        const proto::TargetId& exclude) const;
 
   /**
-   * Returns true if FindInRange with these arguments (and no limit) would
-   * return the given target.  This only looks up that target, so it is a
-   * fast check whether it is still in range and attackable.
+   * Returns true if FindInRange with these arguments (excluding nothing and
+   * without a limit) would return the given target.  This only looks up that
+   * target, so it is a fast check whether it is still in range and attackable.
    */
   bool IsInRange (const proto::TargetId& id, const HexCoord& centre,
                   HexCoord::IntT l1range, Faction faction,
@@ -187,7 +188,8 @@ public:
 
   /**
    * Returns the position of a target, or null if it is not a potential target
-   * (e.g. an ancient building or a character inside a building).
+   * (e.g. an ancient building or a character inside a building).  Targets
+   * that queries ignore have a position as well.
    */
   const HexCoord* FindPosition (const proto::TargetId& id) const;
 
