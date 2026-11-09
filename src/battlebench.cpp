@@ -45,10 +45,8 @@
 
 #include <sqlite3.h>
 
-#include <atomic>
 #include <chrono>
 #include <set>
-#include <thread>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -67,14 +65,13 @@ DEFINE_int32 (movers, 0, "Other characters to set moving");
 DEFINE_string (fit, "",
                "Comma-separated fitments that replace the fighters' own"
                " (e.g. 'lf laser' for an AoE battle)");
-DEFINE_bool (session, true, "Record an undo changeset per block");
+DEFINE_int32 (hp, 0,
+              "If set, the fighters start with this armour and no shield"
+              " (e.g. 1, so that every hit kills)");
 DEFINE_bool (json, false, "Time the full characters JSON after each block");
 DEFINE_bool (changes, false,
              "Store each block's undo data and time getchanges for it"
              " (full and compact)");
-DEFINE_int32 (findpath_threads, 0,
-              "Threads running findpath calls during processing");
-DEFINE_int32 (findpath_l1range, 4000, "l1range of those findpath calls");
 
 namespace pxd
 {
@@ -175,12 +172,14 @@ public:
   GetNextId () override
   {
     LOG (FATAL) << "Read-only database";
+    return EMPTY_ID;
   }
 
   IdT
   GetLogId () override
   {
     LOG (FATAL) << "Read-only database";
+    return EMPTY_ID;
   }
 
 };
@@ -296,6 +295,12 @@ StageScenario (Database& db, const Context& ctx)
                     pb.add_fitments (f);
                   DeriveCharacterStats (*c, ctx);
                 }
+              if (FLAGS_hp > 0)
+                {
+                  auto& hp = c->MutableHP ();
+                  hp.set_armour (FLAGS_hp);
+                  hp.set_shield (0);
+                }
               used.insert (lst[k]);
             }
       LOG (INFO)
@@ -343,31 +348,6 @@ CountState (Database& db)
   return out.str ();
 }
 
-/**
- * Runs findpath computations like the RPC method (base map only) between
- * points of a 1000-tile square until stop is set, as the fork's stress
- * driver does with --l1range.  Returns the number of calls in calls.
- */
-void
-FindPathLoad (const BaseMap& map, const int seed, std::atomic<bool>& stop,
-              std::atomic<unsigned>& calls)
-{
-  unsigned n = seed;
-  while (!stop)
-    {
-      n = n * 1103515245 + 12345;
-      const HexCoord source(1000 + (n >> 8) % 1000, 1000 + (n >> 18) % 1000);
-      const HexCoord target(1000 + (n >> 4) % 1000, 1000 + (n >> 14) % 1000);
-      PathFinder finder(target);
-      const auto edges = [&] (const HexCoord& from, const HexCoord& to)
-        {
-          return MovementEdgeWeight (map, Faction::RED, from, to);
-        };
-      finder.Compute (edges, source, FLAGS_findpath_l1range);
-      ++calls;
-    }
-}
-
 void
 Run ()
 {
@@ -381,7 +361,6 @@ Run ()
   unsigned sbHeight;
   int64_t sbTimestamp;
   CHECK (db.LastSuperBlock (sbHeight, sbTimestamp));
-  CHECK (FLAGS_session || !FLAGS_changes) << "--changes needs --session";
   unsigned height;
   xaya::uint256 lastHash;
   {
@@ -405,16 +384,6 @@ Run ()
   }
   (*db).Execute ("COMMIT");
 
-  std::atomic<bool> stop(false);
-  std::atomic<unsigned> calls(0);
-  std::vector<std::thread> load;
-  for (int i = 0; i < FLAGS_findpath_threads; ++i)
-    load.emplace_back ([&map, &stop, &calls, i] ()
-      {
-        FindPathLoad (map, i, stop, calls);
-      });
-  const auto loadStart = Clock::now ();
-
   for (int i = 0; i < FLAGS_blocks; ++i)
     {
       ++height;
@@ -433,27 +402,23 @@ Run ()
 
       const auto start = Clock::now ();
       (*db).Execute ("BEGIN");
-      sqlite3_session* session = nullptr;
-      if (FLAGS_session)
-        (*db).AccessDatabase ([&session] (sqlite3* h)
-          {
-            CHECK_EQ (sqlite3session_create (h, "main", &session), SQLITE_OK);
-            CHECK_EQ (sqlite3session_attach (session, nullptr), SQLITE_OK);
-          });
+      sqlite3_session* session;
+      (*db).AccessDatabase ([&session] (sqlite3* h)
+        {
+          CHECK_EQ (sqlite3session_create (h, "main", &session), SQLITE_OK);
+          CHECK_EQ (sqlite3session_attach (session, nullptr), SQLITE_OK);
+        });
 
       BattleBench::UpdateState (db, rnd, chain, map, blockData);
       const double processMs = MsSince (start);
 
       auto t = Clock::now ();
-      int changesetBytes = 0;
-      void* changeset = nullptr;
-      if (session != nullptr)
-        {
-          CHECK_EQ (sqlite3session_changeset (session, &changesetBytes,
-                                              &changeset),
-                    SQLITE_OK);
-          sqlite3session_delete (session);
-        }
+      int changesetBytes;
+      void* changeset;
+      CHECK_EQ (sqlite3session_changeset (session, &changesetBytes,
+                                          &changeset),
+                SQLITE_OK);
+      sqlite3session_delete (session);
       const double changesetMs = MsSince (t);
 
       /* libxayagame stores the forward changeset as undo data, which is
@@ -482,7 +447,9 @@ Run ()
           << " B), commit " << commitMs << " ms, total " << MsSince (start)
           << " ms; " << CountState (db);
 
-      const Context ctx(db, chain, map, sbHeight + 1, height, sbTimestamp);
+      /* The context of RPC calls.  */
+      const Context ctx(db, chain, map, Context::NO_HEIGHT,
+                        Context::NO_HEIGHT, Context::NO_TIMESTAMP);
       if (FLAGS_json)
         TimeJson ("Characters", [&] ()
           {
@@ -509,14 +476,6 @@ Run ()
           lastHash = BlockHash (height);
         }
     }
-
-  stop = true;
-  for (auto& t : load)
-    t.join ();
-  if (!load.empty ())
-    LOG (INFO)
-        << "Set " << calls << " findpath calls in "
-        << MsSince (loadStart) / 1'000 << " s";
 }
 
 } // anonymous namespace
