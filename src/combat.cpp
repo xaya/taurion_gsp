@@ -452,7 +452,7 @@ private:
   BuildingsTable buildings;
   CharacterTable characters;
   FighterTable fighters;
-  const TargetFinder targets;
+  TargetFinder targets;
 
   /**
    * The configured limits of the targets of area attacks and self-destructs
@@ -505,6 +505,14 @@ private:
    * here only after the round.
    */
   std::set<TargetKey> alreadyDead;
+
+  /**
+   * The fighters in alreadyDead that are still in the snapshot of targets.
+   * They are removed from it when the next self-destruct looks for its
+   * targets (most battles have none), so that its limit only counts
+   * fighters that were still alive before its round.
+   */
+  std::vector<TargetKey> deadTargets;
 
   /**
    * Handles of the fighters and targets loaded so far, so that each is read
@@ -981,6 +989,10 @@ DamageProcessor::ProcessSelfDestructs (CombatEntity& f,
           << " of damage for self-destruct of "
           << f.GetIdAsTarget ().DebugString ();
 
+      for (const auto& d : deadTargets)
+        targets.Remove (d.ToProto ());
+      deadTargets.clear ();
+
       const auto inArea = TargetsInRange (targets, f, pos,
                                           ModifiedRange (mod, sd.area ()), true,
                                           maxSelfDestructTargets);
@@ -1088,6 +1100,7 @@ DamageProcessor::Process ()
         CHECK (alreadyDead.insert (n).second)
             << "Target was already dead before:\n"
             << n.ToProto ().DebugString ();
+      deadTargets.insert (deadTargets.end (), newDead.begin (), newDead.end ());
 
       const auto toProcess = std::move (newDead);
       CHECK (newDead.empty ());

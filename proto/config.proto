@@ -644,7 +644,8 @@ message Params
 
   /**
    * The most targets each self-destruct of a killed fighter hits, chosen as
-   * for max_area_targets.  This bounds the work of a mass self-destruct,
+   * for max_area_targets from those that were still alive before its round
+   * of self-destructs.  This bounds the work of a mass self-destruct,
    * which otherwise grows with the number of fighters times those in each
    * one's area.  0 means no limit.
    */

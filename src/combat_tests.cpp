@@ -2288,6 +2288,43 @@ TEST_F (SelfDestructTests, LimitedTargets)
                i + 1 < limit ? 95 : 100);
 }
 
+TEST_F (SelfDestructTests, LimitCountsOnlyLiving)
+{
+  /* The limit only counts fighters that were still alive before the round
+     of a self-destruct.  Here the first blast kills the weak victims.  One
+     of them takes out the second self-destruct with its own, and that then
+     hits the victims after the weak (and already dead) ones.  */
+  const unsigned limit
+      = ctx.RoConfig ()->params ().max_self_destruct_targets ();
+  ASSERT_GT (limit, 2);
+
+  const auto weak = AddVictims (limit - 1);
+  for (const auto id : weak)
+    SetHp (*characters.GetById (id), 0, 1, 0, 1);
+  AddSelfDestruct (*characters.GetById (weak[0]), 10, 5);
+
+  auto c = characters.CreateNew ("red", Faction::RED);
+  SetHp (*c, 0, 1, 0, 1);
+  AddSelfDestruct (*c, 10, 5);
+  c.reset ();
+
+  std::vector<Database::IdT> others;
+  for (unsigned i = 0; i < limit; ++i)
+    {
+      c = characters.CreateNew ("green", Faction::GREEN);
+      others.push_back (c->GetId ());
+      c->SetPosition (HexCoord (2, 0));
+      SetHp (*c, 0, 100, 0, 100);
+      NoAttacks (*c);
+      c.reset ();
+    }
+
+  EXPECT_EQ (FindTargetsAndDamage ().size (), limit + 1);
+  for (unsigned i = 0; i < others.size (); ++i)
+    EXPECT_EQ (characters.GetById (others[i])->GetHP ().armour (),
+               i + 1 < limit ? 95 : 100);
+}
+
 TEST_F (SelfDestructTests, NoLimit)
 {
   auto modified = *ctx.RoConfig ();

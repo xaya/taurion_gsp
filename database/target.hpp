@@ -41,9 +41,10 @@ namespace pxd
  *
  * The positions and factions of all targets are read from the database once,
  * when the instance is constructed, and queries are answered from memory.
- * An instance must thus only be used while no target is added, removed,
- * moved or changes faction (e.g. within one phase of combat processing);
- * changes to all other data (like HP) are fine.
+ * An instance must thus only be used while no target is added, moved or
+ * changes faction (e.g. within one phase of combat processing), and targets
+ * that are destroyed have to be removed with Remove; changes to all other
+ * data (like HP) are fine.
  */
 class TargetFinder
 {
@@ -192,6 +193,12 @@ public:
    * that queries ignore have a position as well.
    */
   const HexCoord* FindPosition (const proto::TargetId& id) const;
+
+  /**
+   * Makes queries ignore the given target from now on (e.g. because it
+   * was destroyed).  It keeps its position.
+   */
+  void Remove (const proto::TargetId& id);
 
 };
 
