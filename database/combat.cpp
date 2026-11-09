@@ -60,48 +60,16 @@ void
 CombatEntity::BindFields (Database::Statement& stmt, const unsigned indHp,
                           const unsigned indFriendlyTargets,
                           const unsigned indCanRegen,
-                          const unsigned indTarget,
-                          const bool onlyDirty) const
+                          const unsigned indTarget) const
 {
-  if (!onlyDirty || hp.IsDirty ())
-    stmt.BindProto (indHp, hp);
+  stmt.BindProto (indHp, hp);
+  stmt.Bind (indFriendlyTargets, friendlyTargets);
+  stmt.Bind (indCanRegen, GetNewCanRegen ());
 
-  const bool canRegen = GetNewCanRegen ();
-  if (!onlyDirty || canRegen != oldCanRegen)
-    stmt.Bind (indCanRegen, canRegen);
-
-  if (!onlyDirty || isDirty)
-    stmt.Bind (indFriendlyTargets, friendlyTargets);
-
-  if (!onlyDirty || target.IsDirty ())
-    {
-      if (HasTarget ())
-        stmt.BindProto (indTarget, target);
-      else
-        stmt.BindNull (indTarget);
-    }
-}
-
-void
-CombatEntity::AppendDirtyFields (std::vector<std::string>& assignments,
-                                 const unsigned indHp,
-                                 const unsigned indFriendlyTargets,
-                                 const unsigned indCanRegen,
-                                 const unsigned indTarget) const
-{
-  const auto add = [&assignments] (const std::string& col, const unsigned ind)
-    {
-      assignments.push_back ("`" + col + "` = ?" + std::to_string (ind));
-    };
-
-  if (hp.IsDirty ())
-    add ("hp", indHp);
-  if (GetNewCanRegen () != oldCanRegen)
-    add ("canregen", indCanRegen);
-  if (isDirty)
-    add ("friendlytargets", indFriendlyTargets);
-  if (target.IsDirty ())
-    add ("target", indTarget);
+  if (HasTarget ())
+    stmt.BindProto (indTarget, target);
+  else
+    stmt.BindNull (indTarget);
 }
 
 bool

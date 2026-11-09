@@ -26,9 +26,6 @@
 #include "hexagonal/coord.hpp"
 #include "proto/combat.pb.h"
 
-#include <string>
-#include <vector>
-
 namespace pxd
 {
 
@@ -174,23 +171,39 @@ protected:
 
   /**
    * Binds statement parameters for updating the small / fast changing
-   * fields (HP, canRegen, friendly targets, target).  If onlyDirty is set,
-   * binds just the ones that changed, for a statement with the assignments
-   * from AppendDirtyFields.
+   * fields (HP, canRegen, friendly targets, target).
    */
   void
   BindFields (Database::Statement& stmt, unsigned indHp,
               unsigned indFriendlyTargets, unsigned indCanRegen,
-              unsigned indTarget, bool onlyDirty = false) const;
+              unsigned indTarget) const;
 
-  /**
-   * Appends the "column = ?n" assignments for the fields of BindFields that
-   * changed to an UPDATE's list.
-   */
-  void
-  AppendDirtyFields (std::vector<std::string>& assignments, unsigned indHp,
-                     unsigned indFriendlyTargets, unsigned indCanRegen,
-                     unsigned indTarget) const;
+  /* Whether each of the fields of BindFields changed, for a partial update
+     that sets only the columns that did.  */
+
+  bool
+  IsDirtyHp () const
+  {
+    return hp.IsDirty ();
+  }
+
+  bool
+  IsDirtyCanRegen () const
+  {
+    return GetNewCanRegen () != oldCanRegen;
+  }
+
+  bool
+  IsDirtyFriendlyTargets () const
+  {
+    return isDirty;
+  }
+
+  bool
+  IsDirtyTarget () const
+  {
+    return target.IsDirty ();
+  }
 
   /**
    * Validates the state for consistency.  CHECK-fails if there

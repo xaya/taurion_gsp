@@ -21,7 +21,7 @@
 #include <glog/logging.h>
 
 #include <string>
-#include <vector>
+#include <utility>
 
 namespace pxd
 {
@@ -99,19 +99,18 @@ Character::~Character ()
            `ismoving`, `ismining`, `attackrange`, `friendlyrange`,
            `regendata`, `target`, `inventory`, `effects`, `proto`)
           VALUES
-          (?1,
+          (?13,
            ?2, ?3, ?4,
            ?5, ?6,
            ?7, ?8,
            ?9, ?10,
            ?101,
            ?102, ?103, ?104, ?105,
-           ?106, ?11, ?108, ?109, ?110)
+           ?106, ?11, ?108, ?12, ?110)
       )");
 
       BindFieldValues (stmt);
       CombatEntity::BindFullFields (stmt, 106, 104, 105);
-      BindEffects (stmt);
 
       BindFactionParameter (stmt, 101, faction);
       stmt.Bind (102, data.Get ().has_movement ());
@@ -132,31 +131,29 @@ Character::~Character ()
 
       /* Only the columns that changed are set, since SQLite updates the
          indices of all columns that are set (even to the same value).  */
-      std::vector<std::string> assignments;
-      if (dirtyFields)
-        assignments.push_back ("`owner` = ?2, `x` = ?3, `y` = ?4,"
-                               " `inbuilding` = ?5, `enterbuilding` = ?6");
-      if (volatileMv.IsDirty ())
-        assignments.push_back ("`volatilemv` = ?7");
-      if (effects.IsDirty ())
-        assignments.push_back ("`effects` = ?109");
-      CombatEntity::AppendDirtyFields (assignments, 8, 10, 9, 11);
-      CHECK (!assignments.empty ());
+      const std::pair<bool, std::string> columns[] =
+        {
+          {dirtyFields, "`owner` = ?2, `x` = ?3, `y` = ?4,"
+                        " `inbuilding` = ?5, `enterbuilding` = ?6"},
+          {volatileMv.IsDirty (), "`volatilemv` = ?7"},
+          {IsDirtyHp (), "`hp` = ?8"},
+          {IsDirtyCanRegen (), "`canregen` = ?9"},
+          {IsDirtyFriendlyTargets (), "`friendlytargets` = ?10"},
+          {IsDirtyTarget (), "`target` = ?11"},
+          {effects.IsDirty (), "`effects` = ?12"},
+        };
+      std::string sql;
+      for (const auto& c : columns)
+        if (c.first)
+          sql += (sql.empty () ? "UPDATE `characters` SET " : ", ") + c.second;
+      CHECK (!sql.empty ());
+      sql += " WHERE `id` = ?13";
 
-      std::string sql = "UPDATE `characters` SET " + assignments[0];
-      for (size_t i = 1; i < assignments.size (); ++i)
-        sql += ", " + assignments[i];
-      sql += " WHERE `id` = ?1";
-
+      /* The values of all these columns are bound.  SQLite accepts that for
+         a parameter the statement does not use, as long as it uses one with
+         a higher number (which is why the ID has the highest).  */
       auto stmt = db.Prepare (sql);
-      stmt.Bind (1, id);
-      if (dirtyFields)
-        BindLocationValues (stmt);
-      if (volatileMv.IsDirty ())
-        stmt.BindProto (7, volatileMv);
-      if (effects.IsDirty ())
-        BindEffects (stmt);
-      CombatEntity::BindFields (stmt, 8, 10, 9, 11, true);
+      BindFieldValues (stmt);
       stmt.Execute ();
       return;
     }
@@ -194,23 +191,7 @@ Character::BindFieldValues (Database::Statement& stmt) const
 {
   CombatEntity::BindFields (stmt, 8, 10, 9, 11);
 
-  stmt.Bind (1, id);
-  BindLocationValues (stmt);
-  stmt.BindProto (7, volatileMv);
-}
-
-void
-Character::BindEffects (Database::Statement& stmt) const
-{
-  if (effects.IsEmpty ())
-    stmt.BindNull (109);
-  else
-    stmt.BindProto (109, effects);
-}
-
-void
-Character::BindLocationValues (Database::Statement& stmt) const
-{
+  stmt.Bind (13, id);
   stmt.Bind (2, owner);
   if (IsInBuilding ())
     {
@@ -227,6 +208,11 @@ Character::BindLocationValues (Database::Statement& stmt) const
     stmt.BindNull (6);
   else
     stmt.Bind (6, enterBuilding);
+  stmt.BindProto (7, volatileMv);
+  if (effects.IsEmpty ())
+    stmt.BindNull (12);
+  else
+    stmt.BindProto (12, effects);
 }
 
 const HexCoord&
