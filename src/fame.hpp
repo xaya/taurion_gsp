@@ -77,16 +77,18 @@ private:
   std::vector<FameKill> kills;
 
   /**
-   * Owners of characters and handles of accounts looked up for the fame
-   * update.  While a KillBatch is active, they are kept, so that each is
-   * read and written only once for many kills.  Otherwise they are dropped
-   * (and the accounts written) after each kill.
+   * The owners of characters and the fame of accounts looked up for kills.
+   * Neither changes while kills are processed, so each is read only once
+   * also for many kills (e.g. in a battle).
    */
   std::map<Database::IdT, std::string> ownerOf;
-  std::map<std::string, AccountsTable::Handle> accountHandles;
+  std::map<std::string, unsigned> fameOf;
 
-  /** Whether a KillBatch is active.  */
-  bool inBatch = false;
+  /**
+   * The kills of each account.  They are added to its counter in the end,
+   * together with the change of its fame.
+   */
+  std::map<std::string, unsigned> numKills;
 
   /**
    * Returns the owner of the given character.
@@ -94,14 +96,9 @@ private:
   const std::string& GetOwner (Database::IdT id);
 
   /**
-   * Returns the account with the given name.
+   * Returns the fame of the account with the given name.
    */
-  Account& GetAccount (const std::string& name);
-
-  /**
-   * Drops the looked-up owners and accounts, writing back the accounts.
-   */
-  void ClearLookups ();
+  unsigned GetFame (const std::string& name);
 
   /**
    * Computes the "fame level" of a player.  This is used to determine who
@@ -151,32 +148,6 @@ public:
    * Updates fame when the given fighter target has been killed.
    */
   void UpdateForKill (const proto::TargetId& target);
-
-  class KillBatch;
-
-};
-
-/**
- * While an instance exists, the accounts and character owners that a
- * FameUpdater looks up for kills are kept, and the accounts are only written
- * back when it is destroyed.  Many kills (e.g. in a battle) thus read each of
- * them only once.  Nothing else may access the accounts in the meantime.
- */
-class FameUpdater::KillBatch
-{
-
-private:
-
-  FameUpdater& fame;
-
-public:
-
-  explicit KillBatch (FameUpdater& f);
-  ~KillBatch ();
-
-  KillBatch () = delete;
-  KillBatch (const KillBatch&) = delete;
-  void operator= (const KillBatch&) = delete;
 
 };
 

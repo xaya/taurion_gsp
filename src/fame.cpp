@@ -42,8 +42,6 @@ constexpr unsigned FAME_PER_KILL = 100;
 
 FameUpdater::~FameUpdater ()
 {
-  CHECK (accountHandles.empty ());
-
   /* A victim loses up to FAME_PER_KILL for each of its characters killed, but
      several kills in the same block split its fame between them.  If each
      took up to FAME_PER_KILL of it, the killers could gain more than the
@@ -72,13 +70,21 @@ FameUpdater::~FameUpdater ()
     {
       VLOG (1)
           << "Applying fame delta " << entry.second << " for " << entry.first;
+
       auto h = accounts.GetByName (entry.first);
       CHECK (h != nullptr);
-
       int fame = h->GetProto ().fame ();
       fame += entry.second;
       fame = std::min<int> (MAX_FAME, std::max (0, fame));
       h->MutableProto ().set_fame (fame);
+    }
+
+  for (const auto& entry : numKills)
+    {
+      auto h = accounts.GetByName (entry.first);
+      CHECK (h != nullptr);
+      auto& pb = h->MutableProto ();
+      pb.set_kills (pb.kills () + entry.second);
     }
 }
 
@@ -96,25 +102,18 @@ FameUpdater::GetOwner (const Database::IdT id)
   return mit->second;
 }
 
-Account&
-FameUpdater::GetAccount (const std::string& name)
+unsigned
+FameUpdater::GetFame (const std::string& name)
 {
-  auto mit = accountHandles.find (name);
-  if (mit == accountHandles.end ())
+  auto mit = fameOf.find (name);
+  if (mit == fameOf.end ())
     {
-      auto h = accounts.GetByName (name);
+      const auto h = accounts.GetByName (name);
       CHECK (h != nullptr) << "Account " << name << " does not exist";
-      mit = accountHandles.emplace (name, std::move (h)).first;
+      mit = fameOf.emplace (name, h->GetProto ().fame ()).first;
     }
 
-  return *mit->second;
-}
-
-void
-FameUpdater::ClearLookups ()
-{
-  accountHandles.clear ();
-  ownerOf.clear ();
+  return mit->second;
 }
 
 int
@@ -131,8 +130,8 @@ FameUpdater::UpdateForKill (const Database::IdT victim,
   VLOG (1) << "Updating fame for killing of character " << victim;
 
   /* Determine the victim's fame level.  */
-  const std::string victimOwner = GetOwner (victim);
-  const unsigned victimFame = GetAccount (victimOwner).GetProto ().fame ();
+  const std::string& victimOwner = GetOwner (victim);
+  const unsigned victimFame = GetFame (victimOwner);
   const int victimLevel = GetLevel (victimFame);
   VLOG (1)
       << "Victim fame: " << victimFame << " (level: " << victimLevel << ")";
@@ -148,17 +147,16 @@ FameUpdater::UpdateForKill (const Database::IdT victim,
         owners.insert (owner);
     }
 
-  /* Process the killer accounts in a first round.  We update the kills counter
-     here already, and find the set of killers that are within the level range
-     to receive fame.  */
+  /* Process the killer accounts in a first round.  We count the kill for
+     them here already, and find the set of killers that are within the
+     level range to receive fame.  */
   std::vector<std::string> inRangeKillers;
   for (const auto& owner : owners)
     {
       VLOG (1) << "Killing account: " << owner;
-      auto& pb = GetAccount (owner).MutableProto ();
-      pb.set_kills (pb.kills () + 1);
+      ++numKills[owner];
 
-      const unsigned fame = pb.fame ();
+      const unsigned fame = GetFame (owner);
       const int level = GetLevel (fame);
       VLOG (1) << "Killer fame: " << fame << " (level: " << level << ")";
 
@@ -172,9 +170,6 @@ FameUpdater::UpdateForKill (const Database::IdT victim,
   if (!inRangeKillers.empty ())
     kills.push_back ({victimOwner, victimFame, std::move (inRangeKillers),
                       static_cast<unsigned> (owners.size ())});
-
-  if (!inBatch)
-    ClearLookups ();
 }
 
 void
@@ -185,19 +180,6 @@ FameUpdater::UpdateForKill (const proto::TargetId& target)
 
   const auto& attackers = dl.GetAttackers (target.id ());
   UpdateForKill (target.id (), attackers);
-}
-
-FameUpdater::KillBatch::KillBatch (FameUpdater& f)
-  : fame(f)
-{
-  CHECK (!fame.inBatch);
-  fame.inBatch = true;
-}
-
-FameUpdater::KillBatch::~KillBatch ()
-{
-  fame.inBatch = false;
-  fame.ClearLookups ();
 }
 
 } // namespace pxd
