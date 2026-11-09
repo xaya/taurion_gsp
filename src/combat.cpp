@@ -1514,32 +1514,22 @@ void
 AllHpUpdates (Database& db, DynObstacles& dyn, FameUpdater& fame,
               xaya::Random& rnd, const Context& ctx)
 {
+  PhaseTimes::Next ("damage");
   /* The fighters of the damage step regenerate already there.  */
   std::set<TargetKey> regenerated;
+  const auto dead = DealCombatDamage (db, fame.GetDamageLists (), rnd, ctx,
+                                      &regenerated);
 
-  std::set<TargetKey> dead;
-  {
-    ScopedPhase phase("damage");
-    dead = DealCombatDamage (db, fame.GetDamageLists (), rnd, ctx,
-                             &regenerated);
-  }
+  PhaseTimes::Next ("fame");
+  for (const auto& id : dead)
+    fame.UpdateForKill (id.ToProto ());
 
-  {
-    ScopedPhase phase("fame");
-    for (const auto& id : dead)
-      fame.UpdateForKill (id.ToProto ());
-  }
+  PhaseTimes::Next ("kills");
+  GroundLootTable loot(db);
+  ProcessKills (db, dyn, fame.GetDamageLists (), loot, dead, rnd, ctx);
 
-  {
-    ScopedPhase phase("kills");
-    GroundLootTable loot(db);
-    ProcessKills (db, dyn, fame.GetDamageLists (), loot, dead, rnd, ctx);
-  }
-
-  {
-    ScopedPhase phase("regen");
-    RegenerateHP (db, regenerated);
-  }
+  PhaseTimes::Next ("regen");
+  RegenerateHP (db, regenerated);
 }
 
 } // namespace pxd

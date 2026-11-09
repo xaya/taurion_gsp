@@ -18,6 +18,8 @@
 
 #include "phasetimer.hpp"
 
+#include <glog/logging.h>
+
 #include <iomanip>
 #include <sstream>
 
@@ -26,7 +28,8 @@ namespace pxd
 
 PhaseTimes* PhaseTimes::active = nullptr;
 
-PhaseTimes::PhaseTimes (const bool enabled)
+PhaseTimes::PhaseTimes (const bool enabled, const unsigned h)
+  : height(h)
 {
   if (enabled)
     active = this;
@@ -34,35 +37,33 @@ PhaseTimes::PhaseTimes (const bool enabled)
 
 PhaseTimes::~PhaseTimes ()
 {
-  if (active == this)
-    active = nullptr;
-}
+  if (active != this)
+    return;
+  active = nullptr;
 
-std::string
-PhaseTimes::Summary () const
-{
+  const auto ms = [] (const Clock::time_point from, const Clock::time_point to)
+    {
+      return std::chrono::duration<double, std::milli> (to - from).count ();
+    };
+
+  const auto end = Clock::now ();
   std::ostringstream out;
   out << std::fixed << std::setprecision (1);
-  for (const auto& p : phases)
-    out << ' ' << p.first << ' ' << p.second;
-  return out.str ();
+  for (size_t i = 0; i < phases.size (); ++i)
+    out << ' ' << phases[i].first << ' '
+        << ms (phases[i].second,
+               i + 1 < phases.size () ? phases[i + 1].second : end);
+  if (!phases.empty ())
+    out << " total " << ms (phases.front ().second, end);
+
+  LOG (INFO) << "Super block " << height << " phases (ms):" << out.str ();
 }
 
-ScopedPhase::ScopedPhase (const char* n)
-  : times(PhaseTimes::active), name(n)
+void
+PhaseTimes::Next (const char* name)
 {
-  if (times != nullptr)
-    start = std::chrono::steady_clock::now ();
-}
-
-ScopedPhase::~ScopedPhase ()
-{
-  if (times == nullptr)
-    return;
-
-  const std::chrono::duration<double, std::milli> d
-      = std::chrono::steady_clock::now () - start;
-  times->phases.emplace_back (name, d.count ());
+  if (active != nullptr)
+    active->phases.emplace_back (name, Clock::now ());
 }
 
 } // namespace pxd

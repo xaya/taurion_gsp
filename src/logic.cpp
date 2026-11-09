@@ -113,16 +113,9 @@ PXLogic::UpdateState (Database& db, xaya::Random& rnd,
           || sbTimestamp + ctx.RoConfig ()->params ().superblock_seconds ()
                 <= timestamp;
 
-  PhaseTimes times(FLAGS_pxd_phase_timing && isNextSuperBlock);
-  {
-    ScopedPhase total("total");
-    FameUpdater fame(db, ctx);
-    UpdateState (db, fame, rnd, ctx, isNextSuperBlock, blockData);
-  }
-  if (FLAGS_pxd_phase_timing && isNextSuperBlock)
-    LOG (INFO)
-        << "Super block " << ctx.Height () << " phases (ms):"
-        << times.Summary ();
+  PhaseTimes times(FLAGS_pxd_phase_timing && isNextSuperBlock, ctx.Height ());
+  FameUpdater fame(db, ctx);
+  UpdateState (db, fame, rnd, ctx, isNextSuperBlock, blockData);
 
   if (isNextSuperBlock)
     db.SetSuperBlock (sbHeight + 1, timestamp);
@@ -140,60 +133,46 @@ PXLogic::UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
         && blockData["admin"].empty ())
     return;
 
-  std::unique_ptr<DynObstacles> dyn;
-  {
-    ScopedPhase phase("dynobstacles");
-    dyn = std::make_unique<DynObstacles> (db, ctx);
-  }
-  MoveProcessor mvProc(db, *dyn, rnd, ctx);
-  {
-    ScopedPhase phase("moves");
-    mvProc.ProcessAdmin (blockData["admin"]);
-    mvProc.ProcessAll (blockData["moves"]);
-  }
+  PhaseTimes::Next ("dynobstacles");
+  DynObstacles dyn(db, ctx);
+
+  PhaseTimes::Next ("moves");
+  MoveProcessor mvProc(db, dyn, rnd, ctx);
+  mvProc.ProcessAdmin (blockData["admin"]);
+  mvProc.ProcessAll (blockData["moves"]);
 
   if (superBlock)
     {
       LOG (INFO) << "Processing super block height " << ctx.Height ();
 
-      {
-        ScopedPhase phase("damagelists");
-        fame.GetDamageLists ().RemoveOld (
-            ctx.RoConfig ()->params ().damage_list_blocks ());
-      }
+      PhaseTimes::Next ("damagelists");
+      fame.GetDamageLists ().RemoveOld (
+          ctx.RoConfig ()->params ().damage_list_blocks ());
 
-      {
-        ScopedPhase phase("hp");
-        AllHpUpdates (db, *dyn, fame, rnd, ctx);
-      }
-      {
-        ScopedPhase phase("ongoings");
-        ProcessAllOngoings (db, rnd, ctx);
-      }
+      AllHpUpdates (db, dyn, fame, rnd, ctx);
 
-      {
-        ScopedPhase phase("mining");
-        ProcessAllMining (db, rnd, ctx);
-      }
-      {
-        ScopedPhase phase("movement");
-        ProcessAllMovement (db, *dyn, ctx);
-      }
+      PhaseTimes::Next ("ongoings");
+      ProcessAllOngoings (db, rnd, ctx);
+
+      PhaseTimes::Next ("mining");
+      ProcessAllMining (db, rnd, ctx);
+
+      PhaseTimes::Next ("movement");
+      ProcessAllMovement (db, dyn, ctx);
 
       /* Entering buildings should be after moves and movement, so that players
          enter as soon as possible (perhaps in the same instant the move for it
          gets confirmed).  It should be before combat targets, so that players
          entering a building won't be attacked any more.  */
-      {
-        ScopedPhase phase("enter");
-        ProcessEnterBuildings (db, *dyn, ctx);
-      }
+      PhaseTimes::Next ("enter");
+      ProcessEnterBuildings (db, dyn, ctx);
 
-      {
-        ScopedPhase phase("targets");
-        FindCombatTargets (db, rnd, ctx);
-      }
+      PhaseTimes::Next ("targets");
+      FindCombatTargets (db, rnd, ctx);
     }
+
+  /* What is left are the writes of fame and new damage-list entries.  */
+  PhaseTimes::Next ("finish");
 
 #ifdef ENABLE_SLOW_ASSERTS
   ValidateStateSlow (db, ctx);

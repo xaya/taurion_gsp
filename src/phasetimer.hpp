@@ -20,7 +20,6 @@
 #define PXD_PHASETIMER_HPP
 
 #include <chrono>
-#include <string>
 #include <utility>
 #include <vector>
 
@@ -30,66 +29,45 @@ namespace pxd
 /**
  * Wall-clock times of the phases of processing one block.  This is purely
  * instrumentation (it never influences the state):  while an instance is
- * active, every ScopedPhase adds its duration to it.  Block processing is
- * single-threaded, so a plain global pointer is enough.
+ * active, each call to Next starts a phase, which lasts until the next one
+ * starts or the instance is destroyed.  Then the times of all phases are
+ * logged.  Block processing is single-threaded, so a plain global pointer
+ * is enough.
  */
 class PhaseTimes
 {
 
 private:
 
+  using Clock = std::chrono::steady_clock;
+
   /** The active instance, if any.  */
   static PhaseTimes* active;
 
-  /** The recorded phases in order, with their durations in milliseconds.  */
-  std::vector<std::pair<std::string, double>> phases;
+  /** The superblock height that is processed.  */
+  const unsigned height;
 
-  friend class ScopedPhase;
+  /** The phases in order, with their names and when they started.  */
+  std::vector<std::pair<const char*, Clock::time_point>> phases;
 
 public:
 
   /**
-   * Constructs an instance and makes it active if enabled is true.
+   * Constructs an instance for processing the given superblock height, and
+   * makes it active if enabled is true.
    */
-  explicit PhaseTimes (bool enabled);
+  explicit PhaseTimes (bool enabled, unsigned h);
 
   ~PhaseTimes ();
 
+  PhaseTimes () = delete;
   PhaseTimes (const PhaseTimes&) = delete;
   void operator= (const PhaseTimes&) = delete;
 
   /**
-   * Returns the recorded phases as a single line, "name ms" each.
+   * Starts the phase with the given name, if an instance is active.
    */
-  std::string Summary () const;
-
-};
-
-/**
- * RAII timer that records its lifetime as a phase of the active PhaseTimes.
- * Phases may nest; each records its own total time.
- */
-class ScopedPhase
-{
-
-private:
-
-  /** The PhaseTimes instance this records to, or null if none is active.  */
-  PhaseTimes* times;
-
-  /** The phase's name.  */
-  const char* name;
-
-  /** Start of the phase.  */
-  std::chrono::steady_clock::time_point start;
-
-public:
-
-  explicit ScopedPhase (const char* n);
-  ~ScopedPhase ();
-
-  ScopedPhase (const ScopedPhase&) = delete;
-  void operator= (const ScopedPhase&) = delete;
+  static void Next (const char* name);
 
 };
 
