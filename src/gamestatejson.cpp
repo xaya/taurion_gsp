@@ -429,6 +429,14 @@ template <>
     tiles.append (CoordToJson (c));
   res["tiles"] = tiles;
 
+  HexCoord gatewayCentre;
+  unsigned gatewayRadius;
+  GetGateway (b, ctx, gatewayCentre, gatewayRadius);
+  Json::Value gateway(Json::objectValue);
+  gateway["centre"] = CoordToJson (gatewayCentre);
+  gateway["radius"] = IntToJson (gatewayRadius);
+  res["gateway"] = gateway;
+
   res["combat"] = GetCombatJsonObject (b);
 
   if (pb.foundation ())
