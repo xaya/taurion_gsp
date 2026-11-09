@@ -720,6 +720,30 @@ TEST_F (TargetSelectionTests, CombatEffect)
   EXPECT_EQ (characters.GetById (id2)->GetTarget ().id (), id1);
 }
 
+TEST_F (TargetSelectionTests, RangeReducedBelowZero)
+{
+  /* The range-reducing effects of very many attackers add up.  The range
+     then reaches nothing, also if it would overflow HexCoord::IntT (and
+     wrap around to a large range).  */
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  const auto id1 = c->GetId ();
+  c->SetPosition (HexCoord (0, 0));
+  c->MutableEffects ().mutable_range ()->set_percent (-600'000);
+  AddAttack (*c).set_range (10);
+  c.reset ();
+
+  c = characters.CreateNew ("andy", Faction::GREEN);
+  const auto id2 = c->GetId ();
+  c->SetPosition (HexCoord (0, 0));
+  c->MutableEffects ().mutable_range ()->set_percent (-600'000);
+  AddAttack (*c).set_area (10);
+  c.reset ();
+
+  FindCombatTargets (db, rnd, ctx);
+  EXPECT_FALSE (characters.GetById (id1)->HasTarget ());
+  EXPECT_FALSE (characters.GetById (id2)->HasTarget ());
+}
+
 TEST_F (TargetSelectionTests, NoRandomNumbersRequested)
 {
   /* Target finding for none of the following situations should request

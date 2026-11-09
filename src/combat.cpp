@@ -107,6 +107,17 @@ ComputeModifier (const CombatEntity& f, CombatModifier& mod)
   mod.hitChance += eff.hit_chance ();
 }
 
+/**
+ * Returns a range or area with the fighter's range modifier applied.  The
+ * range-reducing effects of all attackers add up, and a range below zero
+ * reaches nothing; it is returned as -1, so that it cannot overflow.
+ */
+HexCoord::IntT
+ModifiedRange (const CombatModifier& mod, const HexCoord::IntT base)
+{
+  return std::max<int64_t> (mod.range (base), -1);
+}
+
 } // anonymous namespace
 
 TargetKey::TargetKey (const proto::TargetId& id)
@@ -285,7 +296,7 @@ TargetFindingProcessor::SelectNormalTarget (const CombatModifier& mod,
       return;
     }
   CHECK_GE (range, 0);
-  range = mod.range (range);
+  range = ModifiedRange (mod, range);
 
   /* A fighter stays locked on to its target for as long as that is in range
      and could still be attacked.  Only otherwise it picks a new one at random
@@ -326,7 +337,7 @@ TargetFindingProcessor::SelectFriendlyTargets (const CombatModifier& mod,
       return;
     }
   CHECK_GE (range, 0);
-  range = mod.range (range);
+  range = ModifiedRange (mod, range);
 
   res.hasFriendlyTarget
       = !TargetsInRange (targets, *res.f, pos, range, false, 1).empty ();
@@ -895,7 +906,7 @@ DamageProcessor::DealDamage (CombatEntity& f, const bool forGainHp,
         {
           if (!hasTarget)
             continue;
-          if (targetDist > static_cast<int> (mod.range (attack.range ())))
+          if (targetDist > ModifiedRange (mod, attack.range ()))
             continue;
         }
 
@@ -915,7 +926,8 @@ DamageProcessor::DealDamage (CombatEntity& f, const bool forGainHp,
             centre = pos;
 
           const auto inArea = TargetsInRange (targets, f, centre,
-                                              mod.range (attack.area ()),
+                                              ModifiedRange (mod,
+                                                             attack.area ()),
                                               !attack.friendlies (),
                                               areaLimit);
           for (const auto& id : inArea)
@@ -967,7 +979,7 @@ DamageProcessor::ProcessSelfDestructs (CombatEntity& f,
           << f.GetIdAsTarget ().DebugString ();
 
       const auto inArea = TargetsInRange (targets, f, pos,
-                                          mod.range (sd.area ()), true,
+                                          ModifiedRange (mod, sd.area ()), true,
                                           maxSelfDestructTargets);
       for (const auto& id : inArea)
         ApplyDamage (dmg, f, sd.damage (), mod, Get (TargetKey (id)),
