@@ -4071,7 +4071,8 @@ TEST_F (GodModeTests, SetHp)
   EXPECT_EQ (c->GetRegenData ().max_hp ().shield (), 90);
   c.reset ();
 
-  /* Full HP have no milli HP left over.  */
+  /* The HP that a command sets (or sets the maximum of) are capped at
+     the maximum, and full HP have no milli HP left over.  */
   c = tbl.GetById (id);
   c->MutableHP ().mutable_mhp ()->set_armour (500);
   c->MutableHP ().mutable_mhp ()->set_shield (500);
@@ -4086,6 +4087,16 @@ TEST_F (GodModeTests, SetHp)
   EXPECT_EQ (c->GetHP ().mhp ().armour (), 0);
   EXPECT_EQ (c->GetHP ().shield (), 15);
   EXPECT_EQ (c->GetHP ().mhp ().shield (), 500);
+  c.reset ();
+
+  ProcessAdmin (R"([{"cmd": {
+    "god": {"sethp": {"c": [{"id": 1, "a": 250, "ms": 10}]}}
+  }}])");
+
+  c = tbl.GetById (id);
+  EXPECT_EQ (c->GetHP ().armour (), 100);
+  EXPECT_EQ (c->GetHP ().shield (), 10);
+  EXPECT_EQ (c->GetHP ().mhp ().shield (), 0);
 }
 
 TEST_F (GodModeTests, Build)

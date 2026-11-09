@@ -2096,12 +2096,21 @@ template <typename T>
       if (xaya::IsIntegerValue (val) && val.isUInt64 ())
         maxHP.set_shield (val.asUInt64 ());
 
-      /* Full HP have no milli HP left over (the regeneration relies
-         on that).  */
-      if (hp.armour () >= maxHP.armour ())
-        hp.mutable_mhp ()->set_armour (0);
-      if (hp.shield () >= maxHP.shield ())
-        hp.mutable_mhp ()->set_shield (0);
+      /* The HP that the command sets (or sets the maximum of) are at most
+         their maximum, and full HP have no milli HP left over.  The
+         regeneration relies on both.  */
+      if ((entry.isMember ("a") || entry.isMember ("ma"))
+            && hp.armour () >= maxHP.armour ())
+        {
+          hp.set_armour (maxHP.armour ());
+          hp.mutable_mhp ()->set_armour (0);
+        }
+      if ((entry.isMember ("s") || entry.isMember ("ms"))
+            && hp.shield () >= maxHP.shield ())
+        {
+          hp.set_shield (maxHP.shield ());
+          hp.mutable_mhp ()->set_shield (0);
+        }
     }
 }
 
