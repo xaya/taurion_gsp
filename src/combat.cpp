@@ -106,6 +106,17 @@ ComputeModifier (const CombatEntity& f, CombatModifier& mod)
   mod.hitChance += eff.hit_chance ();
 }
 
+/**
+ * Returns a range or area with the fighter's range modifier applied.  The
+ * range-reducing effects of all attackers add up, and a range below zero
+ * reaches nothing; it is returned as -1, so that it cannot overflow.
+ */
+HexCoord::IntT
+ModifiedRange (const CombatModifier& mod, const HexCoord::IntT base)
+{
+  return std::max<int64_t> (mod.range (base), -1);
+}
+
 } // anonymous namespace
 
 TargetKey::TargetKey (const proto::TargetId& id)
@@ -284,7 +295,7 @@ TargetFindingProcessor::SelectNormalTarget (const CombatModifier& mod,
       return;
     }
   CHECK_GE (range, 0);
-  range = mod.range (range);
+  range = ModifiedRange (mod, range);
 
   HexCoord::IntT closestRange;
 
@@ -330,7 +341,7 @@ TargetFindingProcessor::SelectFriendlyTargets (const CombatModifier& mod,
       return;
     }
   CHECK_GE (range, 0);
-  range = mod.range (range);
+  range = ModifiedRange (mod, range);
 
   res.hasFriendlyTarget = false;
   ProcessCombatTargets (targets, ctx, *res.f, pos, range, false,
@@ -830,7 +841,7 @@ DamageProcessor::DealDamage (FighterTable::Handle f, const bool forGainHp,
         {
           if (!hasTarget)
             continue;
-          if (targetDist > static_cast<int> (mod.range (attack.range ())))
+          if (targetDist > ModifiedRange (mod, attack.range ()))
             continue;
         }
 
@@ -850,7 +861,7 @@ DamageProcessor::DealDamage (FighterTable::Handle f, const bool forGainHp,
             centre = pos;
 
           ProcessCombatTargets (targets, ctx,
-                                *f, centre, mod.range (attack.area ()),
+                                *f, centre, ModifiedRange (mod, attack.area ()),
                                 !attack.friendlies (),
             [&] (const HexCoord& c, const proto::TargetId& id)
             {
@@ -901,7 +912,7 @@ DamageProcessor::ProcessSelfDestructs (FighterTable::Handle f,
           << f->GetIdAsTarget ().DebugString ();
 
       ProcessCombatTargets (targets, ctx,
-                            *f, pos, mod.range (sd.area ()),
+                            *f, pos, ModifiedRange (mod, sd.area ()),
                             true,
         [&] (const HexCoord& c, const proto::TargetId& id)
         {
