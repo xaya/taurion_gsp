@@ -321,33 +321,6 @@ TargetFinder::FindPosition (const proto::TargetId& id) const
   return mit == entries.end () ? nullptr : &mit->second.pos;
 }
 
-void
-TargetFinder::Remove (const proto::TargetId& id)
-{
-  const uint64_t key = Key (id.type (), id.id ());
-  const auto mit = entries.find (key);
-  CHECK (mit != entries.end ());
-  auto& e = mit->second;
-  if (e.ignored)
-    return;
-  e.ignored = true;
-
-  const auto erase = [&] (ByFaction& lists)
-    {
-      auto& list = lists[static_cast<unsigned> (e.faction)];
-      const auto it = std::lower_bound (list.begin (), list.end (), key,
-                                        [] (const Target& t, const uint64_t k)
-                                          {
-                                            return t.key < k;
-                                          });
-      CHECK (it != list.end () && it->key == key);
-      list.erase (it);
-    };
-  erase (cells.at (HexCoord (CellIndex (e.pos.GetX ()),
-                             CellIndex (e.pos.GetY ()))));
-  erase (tiles.at (e.pos));
-}
-
 TargetFinder::Closest::Closest (const std::vector<Span>& s,
                                 const uint64_t exclude)
   : spans(s)

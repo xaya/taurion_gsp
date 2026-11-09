@@ -84,18 +84,6 @@ protected:
   }
 
   /**
-   * Returns the target ID of the character with the given ID.
-   */
-  static proto::TargetId
-  id (const Database::IdT i)
-  {
-    proto::TargetId res;
-    res.set_type (proto::TargetId::TYPE_CHARACTER);
-    res.set_id (i);
-    return res;
-  }
-
-  /**
    * Calls FindInRange for a red "attacker" (excluding nothing) and appends
    * the targets it returns to found.
    */
@@ -173,6 +161,14 @@ TEST_F (TargetFinderTests, FindPosition)
   const auto ignored = InsertCharacter (HexCoord (9, -15), Faction::GREEN);
   const auto inBuilding = InsertCharacter (HexCoord (10, -15), Faction::GREEN);
   characters.GetById (inBuilding)->SetBuildingId (42);
+
+  const auto id = [] (const Database::IdT i)
+    {
+      proto::TargetId res;
+      res.set_type (proto::TargetId::TYPE_CHARACTER);
+      res.set_id (i);
+      return res;
+    };
 
   const TargetFinder finder(db, [] (const HexCoord& c)
     {
@@ -318,6 +314,14 @@ TEST_F (TargetFinderTests, IsInRange)
   const auto inBuilding = InsertCharacter (centre, Faction::GREEN);
   characters.GetById (inBuilding)->SetBuildingId (42);
 
+  const auto id = [] (const Database::IdT i)
+    {
+      proto::TargetId res;
+      res.set_type (proto::TargetId::TYPE_CHARACTER);
+      res.set_id (i);
+      return res;
+    };
+
   const TargetFinder finder(db, [] (const HexCoord& c)
     {
       return c == HexCoord (9, -15);
@@ -337,35 +341,6 @@ TEST_F (TargetFinderTests, IsInRange)
   EXPECT_FALSE (check (safe, 2, true, false));
   EXPECT_FALSE (check (inBuilding, 2, true, false));
   EXPECT_FALSE (check (12345, 2, true, false));
-}
-
-TEST_F (TargetFinderTests, Remove)
-{
-  const HexCoord centre(10, -15);
-  const auto first = InsertCharacter (centre, Faction::GREEN);
-  const auto removed = InsertCharacter (centre, Faction::GREEN);
-  const auto last = InsertCharacter (HexCoord (11, -15), Faction::GREEN);
-
-  TargetFinder finder(db);
-  finder.Remove (id (removed));
-  /* Removing a target again is fine.  */
-  finder.Remove (id (removed));
-
-  const auto found = finder.FindInRange (centre, 5, Faction::RED, true, false,
-                                         proto::TargetId ());
-  ASSERT_EQ (found.size (), 2);
-  EXPECT_EQ (found[0].id (), first);
-  EXPECT_EQ (found[1].id (), last);
-
-  const auto closest = finder.FindClosest (centre, 5, Faction::RED,
-                                           true, false, proto::TargetId ());
-  ASSERT_EQ (closest.size (), 1);
-  EXPECT_EQ (closest[0].id (), first);
-
-  EXPECT_FALSE (finder.IsInRange (id (removed), centre, 5, Faction::RED,
-                                  true, false));
-  ASSERT_NE (finder.FindPosition (id (removed)), nullptr);
-  EXPECT_EQ (*finder.FindPosition (id (removed)), centre);
 }
 
 TEST_F (TargetFinderTests, Limit)
