@@ -3760,6 +3760,36 @@ TEST_F (RegenerateHpTests, RateModifierEffect)
   EXPECT_EQ (c->GetHP ().shield (), 10 + 15);
 }
 
+TEST_F (RegenerateHpTests, VeryLargeBoostedRate)
+{
+  /* The boosts of very many supporters add up, and the modified rate then
+     does not fit into 32 bits any more.  That just fills up the shield.
+     (The rates here would wrap around to 2^32 - 484 and to 304 milli HP;
+     with the first, the milli HP left over would even go down.)  */
+  std::vector<Database::IdT> ids;
+  for (const auto& rateAndPercent : {std::make_pair (40'250, 10'670'625),
+                                     std::make_pair (77'000, 5'577'780)})
+    {
+      auto c = characters.CreateNew ("domob", Faction::RED);
+      ids.push_back (c->GetId ());
+      c->MutableHP ().mutable_mhp ()->set_shield (500);
+      auto* regen = &c->MutableRegenData ();
+      regen->mutable_max_hp ()->set_shield (5'000);
+      regen->mutable_regeneration_mhp ()->set_shield (rateAndPercent.first);
+      c->MutableEffects ().mutable_shield_regen ()
+          ->set_percent (rateAndPercent.second);
+    }
+
+  RegenerateHP (db);
+
+  for (const auto id : ids)
+    {
+      auto c = characters.GetById (id);
+      EXPECT_EQ (c->GetHP ().shield (), 5'000);
+      EXPECT_EQ (c->GetHP ().mhp ().shield (), 0);
+    }
+}
+
 /* ************************************************************************** */
 
 } // anonymous namespace

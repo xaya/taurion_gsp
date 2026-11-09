@@ -1446,20 +1446,27 @@ namespace
  * and true iff something changed.
  */
 bool
-RegenerateHpType (const unsigned max, const unsigned mhpRate,
+RegenerateHpType (const unsigned max, const uint64_t mhpRate,
                   const unsigned oldCur, const unsigned oldMilli,
                   unsigned& newCur, unsigned& newMilli)
 {
   CHECK (oldCur < max || (oldCur == max && oldMilli == 0));
 
-  newMilli = oldMilli + mhpRate;
-  newCur = oldCur + newMilli / 1'000;
-  newMilli %= 1'000;
+  /* The rate can be huge with the boosts of very many fighters, so the new
+     values are computed in 64 bits and capped at the maximum before they
+     are stored.  */
+  const uint64_t milli = oldMilli + mhpRate;
+  const uint64_t cur = oldCur + milli / 1'000;
 
-  if (newCur >= max)
+  if (cur >= max)
     {
       newCur = max;
       newMilli = 0;
+    }
+  else
+    {
+      newCur = cur;
+      newMilli = milli % 1'000;
     }
 
   CHECK (newCur > oldCur || (newCur == oldCur && newMilli >= oldMilli));
@@ -1482,9 +1489,13 @@ RegenerateFighterHP (CombatEntity& f)
       f.MutableHP ().mutable_mhp ()->set_armour (milli);
     }
 
+  /* The effects of all fighters boosting the regeneration add up, so the
+     modified rate may not fit into 32 bits.  One reduced below zero
+     regenerates nothing.  */
   const StatModifier shieldRegenMod(f.GetEffects ().shield_regen ());
-  const unsigned shieldRate
-      = shieldRegenMod (regen.regeneration_mhp ().shield ());
+  const uint64_t shieldRate
+      = std::max<int64_t> (
+            shieldRegenMod (regen.regeneration_mhp ().shield ()), 0);
 
   if (RegenerateHpType (
           regen.max_hp ().shield (), shieldRate,
