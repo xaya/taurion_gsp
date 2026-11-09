@@ -21,6 +21,7 @@
 
 #include "database.hpp"
 
+#include <algorithm>
 #include <set>
 #include <utility>
 
@@ -52,21 +53,13 @@ private:
   const unsigned refresh;
 
   /**
-   * Entries added while a Batch is active, as (victim, attacker) and as
+   * The entries added through this instance, as (victim, attacker) and as
    * (attacker, victim) pairs.  They are only written to the database when
-   * the batch ends, so that those removed again before (e.g. when both
-   * characters die in the same battle) never are.
+   * the instance is destroyed, so that those removed again before (e.g.
+   * when both characters die in the same battle) never are.
    */
   std::set<std::pair<Database::IdT, Database::IdT>> pendingByVictim;
   std::set<std::pair<Database::IdT, Database::IdT>> pendingByAttacker;
-
-  /** Whether a Batch is active.  */
-  bool inBatch = false;
-
-  /**
-   * Writes (or refreshes) an entry in the database.
-   */
-  void WriteEntry (Database::IdT victim, Database::IdT attacker);
 
   /**
    * Removes the pending entries in which the given character is first
@@ -96,7 +89,7 @@ public:
    * height of an existing entry only once it is at least r blocks old.
    */
   explicit DamageLists (Database& d, const unsigned h, const unsigned r = 1)
-    : db(d), height(h), refresh(r)
+    : db(d), height(h), refresh(std::max (r, 1u))
   {}
 
   ~DamageLists ();
@@ -107,13 +100,16 @@ public:
 
   /**
    * Removes all entries on damage lists that are not from the last N blocks.
-   * I.e., all with height <= (current height - N).
+   * I.e., all with height <= (current height - N).  This must be done before
+   * entries are added through this instance.
    */
   void RemoveOld (const unsigned n);
 
   /**
    * Adds an entry for the given victim / attacker pair, or refreshes its
-   * height if it is at least the refresh age old.
+   * height if it is at least the refresh age old.  The entry is seen by
+   * GetAttackers and removed by RemoveCharacter of this instance right away,
+   * but written to the database only when the instance is destroyed.
    */
   void AddEntry (Database::IdT victim, Database::IdT attacker);
 
@@ -128,31 +124,6 @@ public:
    * Returns all attackers on the damage list for the given ID.
    */
   Attackers GetAttackers (Database::IdT victim) const;
-
-  class Batch;
-
-};
-
-/**
- * While an instance exists, new entries added to a DamageLists are kept in
- * memory (they are still seen by GetAttackers and removed by RemoveCharacter)
- * and only written to the database when it is destroyed.
- */
-class DamageLists::Batch
-{
-
-private:
-
-  DamageLists& dl;
-
-public:
-
-  explicit Batch (DamageLists& d);
-  ~Batch ();
-
-  Batch () = delete;
-  Batch (const Batch&) = delete;
-  void operator= (const Batch&) = delete;
 
 };
 

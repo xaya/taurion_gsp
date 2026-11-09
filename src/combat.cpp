@@ -1517,29 +1517,23 @@ AllHpUpdates (Database& db, DynObstacles& dyn, FameUpdater& fame,
   /* The fighters of the damage step regenerate already there.  */
   std::set<TargetKey> regenerated;
 
+  std::set<TargetKey> dead;
   {
-    /* New damage-list entries are written only after the kills removed
-       those of the dead.  */
-    DamageLists::Batch damageEntries(fame.GetDamageLists ());
+    ScopedPhase phase("damage");
+    dead = DealCombatDamage (db, fame.GetDamageLists (), rnd, ctx,
+                             &regenerated);
+  }
 
-    std::set<TargetKey> dead;
-    {
-      ScopedPhase phase("damage");
-      dead = DealCombatDamage (db, fame.GetDamageLists (), rnd, ctx,
-                               &regenerated);
-    }
+  {
+    ScopedPhase phase("fame");
+    for (const auto& id : dead)
+      fame.UpdateForKill (id.ToProto ());
+  }
 
-    {
-      ScopedPhase phase("fame");
-      for (const auto& id : dead)
-        fame.UpdateForKill (id.ToProto ());
-    }
-
-    {
-      ScopedPhase phase("kills");
-      GroundLootTable loot(db);
-      ProcessKills (db, dyn, fame.GetDamageLists (), loot, dead, rnd, ctx);
-    }
+  {
+    ScopedPhase phase("kills");
+    GroundLootTable loot(db);
+    ProcessKills (db, dyn, fame.GetDamageLists (), loot, dead, rnd, ctx);
   }
 
   {

@@ -3057,7 +3057,6 @@ TEST_F (ProcessKillsCharacterTests, RemovesFromDamageLists)
   const auto id2 = characters.CreateNew ("domob", Faction::RED)->GetId ();
   const auto id3 = characters.CreateNew ("domob", Faction::RED)->GetId ();
 
-  DamageLists dl(db, 0);
   dl.AddEntry (id1, id2);
   dl.AddEntry (id1, id3);
   dl.AddEntry (id2, id1);

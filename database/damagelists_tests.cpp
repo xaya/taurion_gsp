@@ -62,11 +62,12 @@ protected:
 
   /**
    * Runs a fixed random sequence of operations at height 10 (on top of some
-   * older entries), optionally in a Batch.  Returns the attackers that the
-   * queries in between returned, followed by the final rows.
+   * older entries), either all through one instance or each through its own
+   * (so that every entry is written right away).  Returns the attackers that
+   * the queries in between returned, followed by the final rows.
    */
   std::vector<std::string>
-  RunRandomOperations (const bool batch)
+  RunRandomOperations (const bool oneInstance)
   {
     db.Prepare ("DELETE FROM `damage_lists`").Execute ();
     for (Database::IdT i = 1; i <= 30; i += 3)
@@ -75,32 +76,34 @@ protected:
     std::mt19937 rnd(42);
     std::vector<std::string> res;
     {
-      DamageLists dl(db, 10);
-      std::unique_ptr<DamageLists::Batch> b;
-      if (batch)
-        b = std::make_unique<DamageLists::Batch> (dl);
-
+      auto dl = std::make_unique<DamageLists> (db, 10);
       for (unsigned i = 0; i < 2'000; ++i)
         {
+          if (!oneInstance)
+            {
+              dl.reset ();
+              dl = std::make_unique<DamageLists> (db, 10);
+            }
+
           const Database::IdT x = 1 + rnd () % 30;
           const Database::IdT y = 1 + rnd () % 30;
           switch (rnd () % 10)
             {
             case 0:
-              dl.RemoveCharacter (x);
+              dl->RemoveCharacter (x);
               break;
             case 1:
             case 2:
               {
                 std::ostringstream out;
                 out << x << ":";
-                for (const auto a : dl.GetAttackers (x))
+                for (const auto a : dl->GetAttackers (x))
                   out << " " << a;
                 res.push_back (out.str ());
                 break;
               }
             default:
-              dl.AddEntry (x, y);
+              dl->AddEntry (x, y);
               break;
             }
         }
@@ -137,11 +140,13 @@ private:
 
 TEST_F (DamageListsTests, Basic)
 {
-  DamageLists dl(db, 100);
-  dl.AddEntry (1, 2);
-  dl.AddEntry (1, 3);
-  dl.AddEntry (1, 2);
-  dl.AddEntry (2, 1);
+  {
+    DamageLists dl(db, 100);
+    dl.AddEntry (1, 2);
+    dl.AddEntry (1, 3);
+    dl.AddEntry (1, 2);
+    dl.AddEntry (2, 1);
+  }
 
   ExpectAttackers (1, {2, 3});
   ExpectAttackers (2, {1});
@@ -150,16 +155,20 @@ TEST_F (DamageListsTests, Basic)
 
 TEST_F (DamageListsTests, RemoveCharacter)
 {
-  DamageLists dl(db, 100);
-  dl.AddEntry (1, 2);
-  dl.AddEntry (1, 3);
-  dl.AddEntry (2, 1);
-  dl.AddEntry (3, 2);
-  dl.RemoveCharacter (2);
+  AddWithHeight (1, 2, 99);
+  AddWithHeight (4, 2, 99);
+  {
+    DamageLists dl(db, 100);
+    dl.AddEntry (1, 3);
+    dl.AddEntry (2, 1);
+    dl.AddEntry (3, 2);
+    dl.RemoveCharacter (2);
+  }
 
   ExpectAttackers (1, {3});
   ExpectAttackers (2, {});
   ExpectAttackers (3, {});
+  ExpectAttackers (4, {});
 }
 
 TEST_F (DamageListsTests, RemoveOld)
@@ -213,11 +222,10 @@ TEST_F (DamageListsTests, RemoveOldLargeN)
   ExpectAttackers (1, {2, 3});
 }
 
-TEST_F (DamageListsTests, BatchWritesAtEnd)
+TEST_F (DamageListsTests, WrittenWhenDestroyed)
 {
-  DamageLists dl(db, 100);
   {
-    DamageLists::Batch batch(dl);
+    DamageLists dl(db, 100);
     dl.AddEntry (1, 2);
     ExpectAttackers (1, {});
     EXPECT_EQ (dl.GetAttackers (1), DamageLists::Attackers ({2}));
@@ -225,12 +233,12 @@ TEST_F (DamageListsTests, BatchWritesAtEnd)
   ExpectAttackers (1, {2});
 }
 
-TEST_F (DamageListsTests, BatchMatchesDirectWrites)
+TEST_F (DamageListsTests, OneInstanceMatchesDirectWrites)
 {
   const auto direct = RunRandomOperations (false);
-  const auto batched = RunRandomOperations (true);
+  const auto together = RunRandomOperations (true);
   EXPECT_GT (direct.size (), 400);
-  EXPECT_EQ (direct, batched);
+  EXPECT_EQ (direct, together);
 }
 
 TEST_F (DamageListsTests, WithoutHeight)
