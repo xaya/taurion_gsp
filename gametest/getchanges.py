@@ -123,6 +123,11 @@ class GetChangesTest (PXTest):
         if block == tip:
           self.assertEqual (full[kind], {"changed": [], "deleted": []})
 
+      # The money supply and prize stats are always there in full.
+      for kind, method in [("moneysupply", "getmoneysupply"),
+                           ("prizes", "getprizestats")]:
+        self.assertEqual (full[kind], self.getRpc (method))
+
       # The compact form differs only in characters that changed in parts,
       # which are not changed but moved and/or in combat with just those.
       fullChars = full.pop ("characters")

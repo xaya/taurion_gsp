@@ -1058,6 +1058,10 @@ GameStateJson::Changes (const xaya::uint256& block, const unsigned height,
   res["ongoings"] = ChangesFor (keys.ongoings, byId (ongoings));
   res["regions"] = ChangesFor (keys.regions, byId (regions));
 
+  /* These are small, so they are just returned as they are now.  */
+  res["moneysupply"] = MoneySupply ();
+  res["prizes"] = PrizeStats ();
+
   return res;
 }
 

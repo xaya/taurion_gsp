@@ -183,8 +183,9 @@ public:
    * ongoing operations and regions since the given block, up to the
    * current state at the given height.  For each, these are the JSON objects
    * (as in the full results) of all that changed and the keys of all that
-   * were deleted.  Returns null if the changes are not available, in which
-   * case clients should read the full state instead.
+   * were deleted.  The money supply and prize stats are returned in full.
+   * Returns null if the changes are not available, in which case clients
+   * should read the full state instead.
    *
    * If compact is set, the characters whose JSON changed only in some parts
    * are not changed, but listed with their ID and just those parts (as in
