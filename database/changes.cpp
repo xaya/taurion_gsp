@@ -156,9 +156,10 @@ private:
   unsigned CharacterRowChange ();
 
   /**
-   * Adds the keys from the current row.
+   * Adds the keys from the current row.  Returns false if it changes
+   * all entities.
    */
-  void AddRow ();
+  bool AddRow ();
 
 public:
 
@@ -171,9 +172,10 @@ public:
   void operator= (const ChangesReader&) = delete;
 
   /**
-   * Adds the keys from a block's changeset.
+   * Adds the keys from a block's changeset.  Returns false if it changes
+   * all entities.
    */
-  void AddChangeset (const std::string& data);
+  bool AddChangeset (const std::string& data);
 
   /**
    * Adds the keys from DEX orders that were changed and still exist, which
@@ -273,7 +275,7 @@ ChangesReader::CharacterRowChange ()
   return res;
 }
 
-void
+bool
 ChangesReader::AddRow ()
 {
   if (table == "accounts")
@@ -302,27 +304,34 @@ ChangesReader::AddRow ()
     Add ("id", keys.ongoings);
   else if (table == "regions")
     Add ("id", keys.regions);
+  else if (table == "roconfig")
+    return false;
+
+  return true;
 }
 
-void
+bool
 ChangesReader::AddChangeset (const std::string& data)
 {
   CHECK_EQ (sqlite3changeset_start (&it, data.size (),
                                     const_cast<char*> (data.data ())),
             SQLITE_OK);
 
+  bool ok = true;
   int rc;
-  while ((rc = sqlite3changeset_next (it)) == SQLITE_ROW)
+  while (ok && (rc = sqlite3changeset_next (it)) == SQLITE_ROW)
     {
       const char* tbl;
       CHECK_EQ (sqlite3changeset_op (it, &tbl, &numCols, &op, nullptr),
                 SQLITE_OK);
       table = tbl;
-      AddRow ();
+      ok = AddRow ();
     }
-  CHECK_EQ (rc, SQLITE_DONE);
+  if (ok)
+    CHECK_EQ (rc, SQLITE_DONE);
 
   CHECK_EQ (sqlite3changeset_finalize (it), SQLITE_OK);
+  return ok;
 }
 
 void
@@ -387,11 +396,9 @@ ChangedKeys::ReadSince (Database& db, const xaya::uint256& block,
 
   ChangesReader reader(db, *this);
   for (; rows.Step (); ++next)
-    {
-      if (rows.Get<int64_t> (0) != next)
-        return false;
-      reader.AddChangeset (rows.GetBlob (1));
-    }
+    if (rows.Get<int64_t> (0) != next
+          || !reader.AddChangeset (rows.GetBlob (1)))
+      return false;
   if (next != height + 1)
     return false;
 

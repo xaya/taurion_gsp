@@ -16,6 +16,8 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from proto import config_pb2
+
 from pxtest import PXTest, offsetCoord
 
 """
@@ -261,6 +263,21 @@ class GetChangesTest (PXTest):
     snapshot.restore ()
     self.generate (3)
     self.assertEqual (self.getRpc ("getchanges", fromblock=orphaned), None)
+    self.expectChanges ()
+
+    # A config update can change the JSON of every entity (e.g. building
+    # shapes), so the changes across it need a full refresh.
+    self.mainLogger.info ("Testing a config update...")
+    before, _ = self.fullState ()
+    upd = config_pb2.ConfigData ()
+    upd.params.character_cost = self.roConfig ().params.character_cost + 1
+    self.sendConfigUpdate (upd)
+    for method in ["getchanges", "getcompactchanges"]:
+      self.assertEqual (self.getRpc (method, fromblock=before), None)
+    self.recorded = []
+    self.record ()
+    self.giftCoins ({"andy": 1})
+    self.generate (1)
     self.expectChanges ()
 
     self.mainLogger.info ("Testing unknown and invalid blocks...")

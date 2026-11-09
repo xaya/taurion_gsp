@@ -78,7 +78,8 @@ struct ChangedKeys
    * Reads the keys changed by all blocks after the given one, up to the
    * current state of the database at the given height.  Returns false if
    * they are not available, i.e. the block is not part of the current chain,
-   * too far back or already pruned.  The keys are unspecified then.
+   * too far back or already pruned, or if the changes affect all entities
+   * (like an update of the roconfig).  The keys are unspecified then.
    */
   bool ReadSince (Database& db, const xaya::uint256& block, unsigned height);
 

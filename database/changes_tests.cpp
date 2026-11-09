@@ -315,6 +315,16 @@ TEST_F (ChangedKeysTests, ChangesInAllBlocks)
   EXPECT_THAT (keys.combatCharacters, ElementsAre (1, 3));
 }
 
+TEST_F (ChangedKeysTests, RoConfigChangesAll)
+{
+  const auto from = EmptyBlock ();
+  Block ([this] ()
+    {
+      (*db).Execute ("INSERT INTO `roconfig` (`id`, `data`) VALUES (1, '')");
+    });
+  EXPECT_FALSE (ReadSince (from));
+}
+
 TEST_F (ChangedKeysTests, TooManyBlocks)
 {
   const auto from = EmptyBlock ();
