@@ -208,6 +208,19 @@ TEST_F (SpawnLocationTests, DynObstacles)
   EXPECT_EQ (tilesInside + outside, vehicles);
 }
 
+TEST_F (SpawnLocationTests, NearMapEdge)
+{
+  /* The map ends at y = 4095, so some of the tiles within the radius
+     (like the one with y = 4098) are not on the map.  */
+  constexpr HexCoord::IntT spawnRadius = 10;
+  const HexCoord spawnCentre = HexCoord (50, 4088);
+  ASSERT_TRUE (ctx.Map ().IsOnMap (spawnCentre));
+  ASSERT_FALSE (ctx.Map ().IsOnMap (HexCoord (50, 4098)));
+
+  for (unsigned i = 0; i < 1'000; ++i)
+    ASSERT_TRUE (ctx.Map ().IsOnMap (SpawnLocation (spawnCentre, spawnRadius)));
+}
+
 /* ************************************************************************** */
 
 } // anonymous namespace
