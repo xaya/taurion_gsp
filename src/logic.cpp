@@ -129,8 +129,7 @@ PXLogic::UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
   /* Most blocks are no superblocks and have no moves for the game.  Nothing
      changes in them, so we do not even build the dynamic obstacles (which
      goes through all characters and buildings).  */
-  if (!superBlock && blockData["moves"].empty ()
-        && blockData["admin"].empty ())
+  if (!superBlock && blockData["moves"].empty () && blockData["admin"].empty ())
     return;
 
   PhaseTimes::Next ("dynobstacles");

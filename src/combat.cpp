@@ -1148,8 +1148,7 @@ void
 DamageProcessor::RegenerateSurvivors (std::set<TargetKey>& regenerated)
 {
   for (auto& entry : handles)
-    if (alreadyDead.count (entry.first) == 0
-          && entry.second->GetNewCanRegen ())
+    if (alreadyDead.count (entry.first) == 0 && entry.second->GetNewCanRegen ())
       {
         RegenerateFighterHP (*entry.second);
         regenerated.insert (entry.first);
