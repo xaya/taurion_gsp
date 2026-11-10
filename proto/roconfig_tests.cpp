@@ -278,6 +278,20 @@ TEST_F (RoItemsTests, Blueprints)
   EXPECT_EQ (cfg.Item ("red fitment bpc").faction (), "r");
 }
 
+TEST_F (RoItemsTests, NestedBlueprintSuffixes)
+{
+  EXPECT_EQ (cfg.ItemOrNull ("bow bpo bpo"), nullptr);
+  EXPECT_EQ (cfg.ItemOrNull ("bow bpo bpc"), nullptr);
+  EXPECT_EQ (cfg.ItemOrNull ("bow bpc bpo"), nullptr);
+
+  /* A long name with many suffixes must not be resolved recursively
+     (which would overflow the stack).  */
+  std::string name = "bow";
+  for (unsigned i = 0; i < 100'000; ++i)
+    name += " bpo";
+  EXPECT_EQ (cfg.ItemOrNull (name), nullptr);
+}
+
 TEST_F (RoItemsTests, PrizeItems)
 {
   ASSERT_EQ (cfg.ItemOrNull ("invalid prize"), nullptr);

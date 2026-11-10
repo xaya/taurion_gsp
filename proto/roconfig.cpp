@@ -345,8 +345,13 @@ StripSuffix (const std::string& str, const std::string& suffix,
 /**
  * Tries to strip the given suffix of an item name, and then look up the base
  * item data.  Returns that data if it exists and the suffix is there, and
- * returns null if either the string does not have that suffix of the base item
- * does not exist.
+ * returns null if either the string does not have that suffix or the base item
+ * is not defined in the config.
+ *
+ * Only items defined in the config can have blueprints (constructed items
+ * like blueprints themselves never do), so there is no need to look up
+ * other base names.  This also avoids a recursion through ItemOrNull
+ * that would go one level deeper for each suffix of e.g. "bow bpo bpo ...".
  *
  * If the base item exists and the suffix is there, also the name of the base
  * item (i.e. string without suffix) is returned in baseName for further use.
@@ -357,6 +362,9 @@ LookupBase (const RoConfig& cfg,
             std::string& baseName)
 {
   if (!StripSuffix (str, suffix, baseName))
+    return nullptr;
+
+  if (cfg->fungible_items ().find (baseName) == cfg->fungible_items ().end ())
     return nullptr;
 
   return cfg.ItemOrNull (baseName);
