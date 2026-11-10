@@ -172,7 +172,23 @@ void
 PendingState::AddExitBuilding (const Character& ch)
 {
   VLOG (1) << "Adding exit-building command for character " << ch.GetId ();
-  GetCharacterState (ch).exitBuilding = ch.GetBuildingId ();
+  auto& chState = GetCharacterState (ch);
+
+  chState.exitBuilding = ch.GetBuildingId ();
+  chState.hasExitPos = false;
+}
+
+void
+PendingState::AddExitBuilding (const Character& ch, const HexCoord& pos)
+{
+  VLOG (1)
+      << "Adding exit-building command for character " << ch.GetId ()
+      << " to " << pos;
+  auto& chState = GetCharacterState (ch);
+
+  chState.exitBuilding = ch.GetBuildingId ();
+  chState.hasExitPos = true;
+  chState.exitPos = pos;
 }
 
 void
@@ -419,6 +435,8 @@ PendingState::CharacterState::ToJson () const
     {
       Json::Value exit(Json::objectValue);
       exit["building"] = IntToJson (exitBuilding);
+      if (hasExitPos)
+        exit["pos"] = CoordToJson (exitPos);
       res["exitbuilding"] = exit;
     }
 
@@ -614,8 +632,15 @@ PendingStateUpdater::PerformCharacterUpdate (Character& c,
   Database::IdT buildingId;
   if (ParseEnterBuilding (c, upd, buildingId))
     state.AddEnterBuilding (c, buildingId);
-  if (ParseExitBuilding (c, upd))
-    state.AddExitBuilding (c);
+  bool hasExitPos;
+  HexCoord exitPos;
+  if (ParseExitBuilding (c, upd, hasExitPos, exitPos))
+    {
+      if (hasExitPos)
+        state.AddExitBuilding (c, exitPos);
+      else
+        state.AddExitBuilding (c);
+    }
 
   std::string type;
   proto::ShapeTransformation trafo;
