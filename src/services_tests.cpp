@@ -382,6 +382,40 @@ TEST_F (ServicesFeeTests, FeeRoundedUp)
   EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 89);
 }
 
+TEST_F (ServicesFeeTests, HugeBaseCost)
+{
+  /* The base cost is at most MAX_QUANTITY, so that even the maximum
+     service fee of 1'000% can be computed without overflow.  Each copy of
+     the basetank blueprint costs 1'000'000 on regtest, so that we can test
+     the boundary with an otherwise valid number of copies.  */
+  constexpr Amount base = 1'125'899'906'000'000;
+  constexpr Amount balance = 20 * MAX_QUANTITY;
+
+  buildings.GetById (101)
+      ->MutableProto ().mutable_config ()->set_service_fee_percent (1'000);
+  accounts.GetByName ("domob")->AddBalance (balance);
+  inv.Get (101, "domob")->GetInventory ().AddFungibleCount ("basetank bpo", 1);
+
+  ASSERT_FALSE (Process ("domob", R"({
+    "t": "cp",
+    "b": 101,
+    "i": "basetank bpo",
+    "n": 1125899907
+  })"));
+  EXPECT_EQ (accounts.GetByName ("andy")->GetBalance (), 10);
+  EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 100 + balance);
+
+  ASSERT_TRUE (Process ("domob", R"({
+    "t": "cp",
+    "b": 101,
+    "i": "basetank bpo",
+    "n": 1125899906
+  })"));
+  EXPECT_EQ (accounts.GetByName ("andy")->GetBalance (), 10 + 10 * base);
+  EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (),
+             100 + balance - 11 * base);
+}
+
 /* ************************************************************************** */
 
 using RefiningTests = ServicesTests;
@@ -490,6 +524,29 @@ TEST_F (RefiningTests, MultipleSteps)
   EXPECT_EQ (i->GetInventory ().GetFungibleCount ("test ore"), 1);
   EXPECT_EQ (i->GetInventory ().GetFungibleCount ("bar"), 6);
   EXPECT_EQ (i->GetInventory ().GetFungibleCount ("zerospace"), 3);
+}
+
+TEST_F (RefiningTests, HugeAmount)
+{
+  /* This is more than 2^32 steps, and the computations must not
+     overflow 32 bits.  */
+  accounts.GetByName ("domob")->AddBalance (42'949'672'960);
+  inv.Get (ANCIENT_BUILDING, "domob")
+      ->GetInventory ().AddFungibleCount ("test ore", 12'884'901'891);
+
+  ASSERT_TRUE (Process ("domob", R"({
+    "t": "ref",
+    "b": 100,
+    "i": "test ore",
+    "n": 12884901891
+  })"));
+
+  EXPECT_EQ (accounts.GetByName ("domob")->GetBalance (), 90);
+  auto i = inv.Get (ANCIENT_BUILDING, "domob");
+  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("test ore"), 10);
+  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("bar"), 8'589'934'594);
+  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("zerospace"),
+             4'294'967'297);
 }
 
 TEST_F (RefiningTests, PendingJson)
@@ -958,6 +1015,29 @@ TEST_F (RevEngTests, TooMuch)
   })"));
 }
 
+TEST_F (RevEngTests, MaximumAmount)
+{
+  accounts.GetByName ("domob")->AddBalance (1'000'000);
+  inv.Get (ANCIENT_BUILDING, "domob")
+      ->GetInventory ().AddFungibleCount ("test artefact", 10'001);
+
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "rve",
+    "b": 100,
+    "i": "test artefact",
+    "n": 10001
+  })"));
+  ASSERT_TRUE (Process ("domob", R"({
+    "t": "rve",
+    "b": 100,
+    "i": "test artefact",
+    "n": 10000
+  })"));
+
+  EXPECT_EQ (inv.Get (ANCIENT_BUILDING, "domob")
+                ->GetInventory ().GetFungibleCount ("test artefact"), 4);
+}
+
 TEST_F (RevEngTests, OneItem)
 {
   ASSERT_TRUE (Process ("domob", R"({
@@ -1010,6 +1090,38 @@ TEST_F (RevEngTests, ManyTries)
   EXPECT_EQ (itemCounts.GetFound ("bow bpo"), bow + bowOffset);
   EXPECT_EQ (itemCounts.GetFound ("sword bpo"), sword);
   EXPECT_EQ (itemCounts.GetFound ("red fitment bpo"), red);
+}
+
+TEST_F (RevEngTests, ExactOutcome)
+{
+  /* With a fixed seed, the outcome of a large operation is fully determined,
+     including the found counts (which change the success chances during
+     the operation) and the random numbers used up.  The expected values
+     were obtained with the original implementation, which looked up the
+     found count from the database in each trial.  */
+
+  accounts.GetByName ("domob")->AddBalance (1'000'000);
+  inv.Get (ANCIENT_BUILDING, "domob")
+      ->GetInventory ().AddFungibleCount ("test artefact", 10'000);
+  for (unsigned i = 0; i < 10; ++i)
+    itemCounts.IncrementFound ("bow bpo");
+
+  rnd.Seed (xaya::SHA256::Hash ("reveng"));
+  ASSERT_TRUE (Process ("domob", R"({
+    "t": "rve",
+    "b": 100,
+    "i": "test artefact",
+    "n": 10000
+  })"));
+
+  auto i = inv.Get (ANCIENT_BUILDING, "domob");
+  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("bow bpo"), 13);
+  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("sword bpo"), 23);
+  EXPECT_EQ (i->GetInventory ().GetFungibleCount ("red fitment bpo"), 26);
+  EXPECT_EQ (itemCounts.GetFound ("bow bpo"), 23);
+  EXPECT_EQ (itemCounts.GetFound ("sword bpo"), 23);
+  EXPECT_EQ (itemCounts.GetFound ("red fitment bpo"), 26);
+  EXPECT_EQ (rnd.Next<uint64_t> (), 16'780'122'964'807'017'339u);
 }
 
 TEST_F (RevEngTests, FactionRestriction)
@@ -1186,7 +1298,7 @@ TEST_F (BlueprintCopyTests, Success)
 
   auto op = ongoings.GetById (100);
   ASSERT_NE (op, nullptr);
-  EXPECT_EQ (op->GetHeight (), 100 + 10);
+  EXPECT_EQ (op->GetHeight (), 100 + 5);
   EXPECT_EQ (op->GetBuildingId (), ANCIENT_BUILDING);
   ASSERT_TRUE (op->GetProto ().has_blueprint_copy ());
   const auto& cp = op->GetProto ().blueprint_copy ();
@@ -1194,6 +1306,48 @@ TEST_F (BlueprintCopyTests, Success)
   EXPECT_EQ (cp.original_type (), "sword bpo");
   EXPECT_EQ (cp.copy_type (), "sword bpc");
   EXPECT_EQ (cp.num_copies (), 10);
+}
+
+TEST_F (BlueprintCopyTests, TooManyCopies)
+{
+  accounts.GetByName ("domob")->AddBalance (429'496'729'600);
+
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "cp",
+    "b": 100,
+    "i": "sword bpo",
+    "n": 4294967296
+  })"));
+
+  db.SetNextId (100);
+  ASSERT_TRUE (Process ("domob", R"({
+    "t": "cp",
+    "b": 100,
+    "i": "sword bpo",
+    "n": 4294967295
+  })"));
+  auto op = ongoings.GetById (100);
+  ASSERT_NE (op, nullptr);
+  EXPECT_EQ (op->GetProto ().blueprint_copy ().num_copies (), 4'294'967'295);
+}
+
+TEST_F (BlueprintCopyTests, HugeCost)
+{
+  inv.Get (ANCIENT_BUILDING, "domob")
+      ->GetInventory ().AddFungibleCount ("basetank bpo", 1);
+
+  /* The number of copies is in range, but their cost is not.  */
+  constexpr auto op = R"({
+    "t": "cp",
+    "b": 100,
+    "i": "basetank bpo",
+    "n": 4294967295
+  })";
+  EXPECT_FALSE (Process ("domob", op));
+  EXPECT_TRUE (PartialJsonEqual (GetPendingJson ("domob", op), ParseJson (R"({
+    "type": "bpcopy",
+    "cost": null
+  })")));
 }
 
 TEST_F (BlueprintCopyTests, PendingJson)
@@ -1306,6 +1460,52 @@ TEST_F (ConstructionTests, MissingResources)
     "b": 100,
     "i": "bow bpo",
     "n": 3
+  })"));
+}
+
+TEST_F (ConstructionTests, HugeAmount)
+{
+  auto i = inv.Get (ANCIENT_BUILDING, "domob");
+  i->GetInventory ().AddFungibleCount ("rv vla bpo", 1);
+  i->GetInventory ().AddFungibleCount ("basetank bpo", 1);
+  i.reset ();
+
+  /* The resources required for this are not representable.  */
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "bld",
+    "b": 100,
+    "i": "rv vla bpo",
+    "n": 1125899906842624
+  })"));
+
+  /* This needs no resources, but the cost is not representable.  */
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "bld",
+    "b": 100,
+    "i": "basetank bpo",
+    "n": 4294967295
+  })"));
+}
+
+TEST_F (ConstructionTests, TooManyItems)
+{
+  accounts.GetByName ("domob")->AddBalance (429'496'729'600);
+  auto i = inv.Get (ANCIENT_BUILDING, "domob");
+  i->GetInventory ().AddFungibleCount ("sword bpc", 4'294'967'295);
+  i->GetInventory ().AddFungibleCount ("zerospace", 42'949'672'960);
+  i.reset ();
+
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "bld",
+    "b": 100,
+    "i": "sword bpo",
+    "n": 4294967296
+  })"));
+  EXPECT_FALSE (Process ("domob", R"({
+    "t": "bld",
+    "b": 100,
+    "i": "sword bpc",
+    "n": 4294967296
   })"));
 }
 

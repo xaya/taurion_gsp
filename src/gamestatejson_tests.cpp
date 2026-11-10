@@ -1157,11 +1157,11 @@ TEST_F (OngoingsJsonTests, ArmourRepair)
 
 TEST_F (OngoingsJsonTests, BlueprintCopy)
 {
-  ASSERT_EQ (GetBpCopyBlocks ("bow bpc", ctx), 1'000);
+  ASSERT_EQ (GetBpCopyBlocks ("bow bpc", ctx), 500);
 
   auto op = tbl.CreateNew (1);
   ASSERT_EQ (op->GetId (), 1);
-  op->SetHeight (1'001);
+  op->SetHeight (501);
   auto& cp = *op->MutableProto ().mutable_blueprint_copy ();
   cp.set_account ("domob");
   cp.set_original_type ("bow bpo");
@@ -1178,7 +1178,7 @@ TEST_F (OngoingsJsonTests, BlueprintCopy)
           "original": "bow bpo",
           "output": {"bow bpc": 42},
           "start_height": 1,
-          "end_height": 42001
+          "end_height": 21001
         }
       ]
   })");

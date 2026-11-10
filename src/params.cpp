@@ -73,7 +73,7 @@ Params::RevEngSuccessChance (const unsigned existingBp) const
 
   /* The base chance is then discounted by a factor of 75% (i.e. the N value
      for 1/N increased accordingly) for each existing blueprint.  The minimum
-     chance (preventing mostly integer overflows) is 1/1M.
+     chance (preventing mostly integer overflows) is 1/10^9.
 
      At least on regtest with a very low base chance, we have to do the
      calculation in fixed point math (not integer) in order to get

@@ -655,8 +655,11 @@ PXRpcServer::getserviceinfo (const std::string& name, const Json::Value& op)
       if (parsed == nullptr)
         return Json::Value ();
 
-      Json::Value res = parsed->ToPendingJson ();
-      CHECK (res.isObject ());
+      /* The details are only defined for an operation that is valid by
+         itself (e.g. names a known item and an existing character).  */
+      Json::Value res(Json::objectValue);
+      if (parsed->IsValid ())
+        res = parsed->ToPendingJson ();
       res["valid"] = parsed->IsFullyValid ();
 
       return res;

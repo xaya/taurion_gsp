@@ -44,7 +44,11 @@ class GetServiceInfoTest (PXTest):
     b = self.getBuildings ()[building]
     self.assertEqual (b.data["config"]["servicefee"], 50)
 
-    self.dropIntoBuilding (building, "andy", {"test ore": 3})
+    self.dropIntoBuilding (building, "andy", {
+      "test ore": 3,
+      "basetank bpo": 1,
+      "rv vla bpo": 1,
+    })
 
     self.giftCoins ({"domob": 100})
     self.createCharacters ("domob")
@@ -74,14 +78,32 @@ class GetServiceInfoTest (PXTest):
     self.giftCoins ({"andy": 100})
     self.assertEqual (getserviceinfo ("andy", op)["valid"], True)
 
-    # This used to crash the GSP because of its zero cost.
-    self.mainLogger.info ("Testing zero-cost repair...")
-    op = {"b": building, "t": "fix", "c": cId}
+    # These used to crash the GSP when computing the cost, which is not
+    # defined for invalid operations (e.g. a repair of full armour or of a
+    # character that doesn't exist, or items that can't be used for it).
+    self.mainLogger.info ("Testing invalid operations...")
+    for op in [
+      {"b": building, "t": "fix", "c": cId},
+      {"b": building, "t": "fix", "c": 999999},
+      {"b": building, "t": "ref", "i": "invalid item", "n": 3},
+      {"b": building, "t": "ref", "i": "bar", "n": 3},
+      {"b": building, "t": "rve", "i": "test ore", "n": 1},
+      {"b": building, "t": "cp", "i": "test ore", "n": 1},
+      {"b": building, "t": "bld", "i": "test ore", "n": 1},
+    ]:
+      self.assertEqual (getserviceinfo ("andy", op), {"valid": False})
+
+    # The resources and cost for huge amounts are not representable, which
+    # makes the operations invalid (and must not crash the GSP).
+    self.mainLogger.info ("Testing huge amounts...")
+    op = {"b": building, "t": "bld", "i": "rv vla bpo", "n": 2**50}
+    self.assertEqual (getserviceinfo ("andy", op), {"valid": False})
+    op = {"b": building, "t": "cp", "i": "basetank bpo", "n": 2**32 - 1}
     self.assertEqual (getserviceinfo ("andy", op), {
-      "type": "armourrepair",
+      "type": "bpcopy",
       "building": building,
-      "character": cId,
-      "cost": {"base": 0, "fee": 0},
+      "original": "basetank bpo",
+      "output": {"basetank bpc": 2**32 - 1},
       "valid": False,
     })
 
