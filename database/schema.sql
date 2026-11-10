@@ -411,6 +411,13 @@ CREATE INDEX IF NOT EXISTS `dex_orders_by_building`
 CREATE INDEX IF NOT EXISTS `dex_orders_by_price`
   ON `dex_orders` (`building`, `item`, `type`, `price`, `id`);
 
+-- A new ask is matched against the bids with the highest price first,
+-- and of those at one price the oldest first.  That is not the order of
+-- the index above in either direction, so without this one all bids at
+-- the best price have to be sorted before the first can be matched.
+CREATE INDEX IF NOT EXISTS `dex_orders_by_price_desc`
+  ON `dex_orders` (`building`, `item`, `type`, `price` DESC, `id`);
+
 -- Log table of all executed trades.  This is only written and never
 -- read during the state transition, so it is purely here to be queried
 -- by RPC and won't affect consensus.
