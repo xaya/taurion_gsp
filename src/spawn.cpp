@@ -33,19 +33,25 @@ namespace
 {
 
 /**
- * Picks a random location within the given L1 distance of the centre.
- * This is the first part of choosing a spawning location.
+ * Picks a random location on the map within the given L1 distance of the
+ * centre.  This is the first part of choosing a spawning location.
  */
 HexCoord
 RandomSpawnLocation (const HexCoord& centre, const HexCoord::IntT radius,
-                     xaya::Random& rnd)
+                     const BaseMap& map, xaya::Random& rnd)
 {
   /* The idea is simple:  Choose a random coordinate with x and y within
      radius of centre.x/y.  Those points are guaranteed to include all
      valid points (within L1 distance), although there may be some that
      actually are not in L1 distance.  If we hit one of them, just
      retry.  Approximating the hexagonal L1 range with a circle, the
-     probability of succeeding on a try is pi/4.  That seems good enough.  */
+     probability of succeeding on a try is pi/4.  That seems good enough.
+
+     Near the edge of the map, some of the points in range are off the
+     map.  We retry for them as well, since the ring search below starts
+     from the chosen point.  The centre itself is on the map, so there
+     is always a valid point.  */
+  CHECK (map.IsOnMap (centre));
 
   VLOG (2)
       << "Picking random location in L1 radius " << radius
@@ -62,13 +68,13 @@ RandomSpawnLocation (const HexCoord& centre, const HexCoord::IntT radius,
 
       res += HexCoord (xOffs, yOffs);
 
-      if (HexCoord::DistanceL1 (res, centre) <= radius)
+      if (HexCoord::DistanceL1 (res, centre) <= radius && map.IsOnMap (res))
         {
           VLOG (2) << "Found suitable point: " << res;
           return res;
         }
 
-      VLOG (2) << "Trial point " << res << " is out of range, retrying...";
+      VLOG (2) << "Trial point " << res << " is not valid, retrying...";
     }
 }
 
@@ -79,7 +85,8 @@ ChooseSpawnLocation (const HexCoord& centre, const HexCoord::IntT radius,
                      xaya::Random& rnd,
                      const DynObstacles& dyn, const Context& ctx)
 {
-  const HexCoord ringCentre = RandomSpawnLocation (centre, radius, rnd);
+  const HexCoord ringCentre
+      = RandomSpawnLocation (centre, radius, ctx.Map (), rnd);
 
   /* Starting from the ring centre, try L1 rings of increasing sizes (i.e.
      tiles with increasing L1 distance) until one is good for placement.  */
