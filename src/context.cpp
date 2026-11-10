@@ -43,7 +43,6 @@ void
 Context::RefreshInstances ()
 {
   params = std::make_unique<pxd::Params> (chain);
-  forks = std::make_unique<ForkHandler> (chain, height);
 }
 
 unsigned

@@ -21,7 +21,6 @@
 #include "buildings.hpp"
 #include "burnsale.hpp"
 #include "fitments.hpp"
-#include "forks.hpp"
 #include "jsonutils.hpp"
 #include "mining.hpp"
 #include "movement.hpp"
@@ -1354,14 +1353,8 @@ MoveProcessor::ProcessOne (const Json::Value& moveObj)
      implicitly.  */
   TryCoinOperation (name, mv, burnt);
 
-  /* At this point, we terminate if the game-play itself has not started.
-     This is more or less when the "game world is created", except that we
-     do allow Cubit operations already from the start of the burnsale.  */
-  if (!ctx.Forks ().IsActive (Fork::GameStart))
-    return;
-
   /* Handle trading / DEX operations now.  They are independent of
-     account initialisation, but only start with the game start.  */
+     account initialisation.  */
   TryDexOperations (name, mv);
 
   /* We perform account updates first.  That ensures that it is possible to
