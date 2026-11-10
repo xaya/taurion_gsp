@@ -32,6 +32,7 @@
 #include "database/dex.hpp"
 #include "database/faction.hpp"
 #include "database/inventory.hpp"
+#include "database/jobs.hpp"
 #include "database/ongoing.hpp"
 #include "database/region.hpp"
 #include "database/roconfig.hpp"
@@ -161,14 +162,24 @@ protected:
 
   /**
    * Calls PXLogic::UpdateState with the given moves and superblock height.
+   * superBlock defaults to true; pass it explicitly to drive ORDINARY blocks
+   * (moves processed, no superblock phases) as the real dispatch does.
    */
   void
-  UpdateStateWithHeight (const Json::Value& moves, const unsigned sbHeight)
+  UpdateStateWithHeight (const Json::Value& moves, const unsigned sbHeight,
+                         const bool superBlock = true)
   {
     Context newCtx(db, ctx.Chain (), ctx.Map (),
                    sbHeight, ctx.BlockHeight (), ctx.Timestamp ());
     FameUpdater fame(db, newCtx);
-    PXLogic::UpdateState (db, fame, rnd, newCtx, true, BuildBlockData (moves));
+    PXLogic::UpdateState (db, fame, rnd, newCtx, superBlock,
+                          BuildBlockData (moves));
+  }
+
+  void
+  UpdateStateBlock (const std::string& movesStr, const bool superBlock)
+  {
+    UpdateStateWithHeight (ParseJson (movesStr), ctx.Height (), superBlock);
   }
 
   /**
@@ -609,6 +620,73 @@ TEST_F (PXLogicTests, PickUpDeadDrop)
   ASSERT_TRUE (c != nullptr);
   EXPECT_EQ (c->GetInventory ().GetFungibleCount ("foo"), 3);
   c.reset ();
+}
+
+/* ************************************************************************** */
+
+TEST_F (PXLogicTests, JobsExpireOnlyOnSuperblocks)
+{
+  /* Moves are processed in every block, but jobs are only settled on
+     superblocks.  A job whose deadline has passed stays until then.  */
+  for (const auto* name : {"poster", "worker"})
+    {
+      auto a = accounts.CreateNew (name);
+      a->SetFaction (Faction::RED);
+      a->AddBalance (1'000'000);
+    }
+
+  UpdateStateBlock (R"([
+    {"name": "poster", "move": {"j": [{
+      "t": "deal", "d": 86400, "r": 2000, "co": 0, "terms": "x"
+    }]}}
+  ])", true);
+
+  JobsTable jobs(db);
+  Database::IdT jobId;
+  {
+    auto res = jobs.QueryAll ();
+    ASSERT_TRUE (res.Step ());
+    jobId = jobs.GetFromResult (res)->GetId ();
+    ASSERT_FALSE (res.Step ());
+  }
+  ASSERT_EQ (accounts.GetByName ("poster")->GetBalance (),
+             1'000'000 - 2'000 - 20);
+
+  /* After the deadline, an ordinary block leaves the job, and it can no
+     longer be accepted.  */
+  ctx.SetTimestamp (ctx.Timestamp () + 86401);
+  UpdateStateBlock (R"([
+    {"name": "worker", "move": {"j": [{"a": )"
+      + std::to_string (jobId) + R"(}]}}
+  ])", false);
+  {
+    auto j = jobs.GetById (jobId);
+    ASSERT_NE (j, nullptr);
+    EXPECT_FALSE (j->IsAccepted ());
+  }
+  EXPECT_EQ (accounts.GetByName ("poster")->GetBalance (),
+             1'000'000 - 2'000 - 20);
+
+  /* Nor can the poster assign or cancel it.  */
+  UpdateStateBlock (R"([
+    {"name": "poster", "move": {"j": [
+      {"s": )" + std::to_string (jobId) + R"(, "w": "worker"},
+      {"c": )" + std::to_string (jobId) + R"(}
+    ]}}
+  ])", false);
+  {
+    auto j = jobs.GetById (jobId);
+    ASSERT_NE (j, nullptr);
+    EXPECT_FALSE (j->IsAccepted ());
+    EXPECT_EQ (j->GetProto ().designated_worker (), "");
+  }
+  EXPECT_EQ (accounts.GetByName ("poster")->GetBalance (),
+             1'000'000 - 2'000 - 20);
+
+  /* The next superblock settles it and refunds the reward.  */
+  UpdateStateBlock ("[]", true);
+  EXPECT_EQ (jobs.GetById (jobId), nullptr);
+  EXPECT_EQ (accounts.GetByName ("poster")->GetBalance (), 1'000'000 - 20);
 }
 
 TEST_F (PXLogicTests, DamageLists)

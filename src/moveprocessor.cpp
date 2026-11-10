@@ -467,6 +467,31 @@ BaseMoveProcessor::TryDexOperations (const std::string& name,
     }
 }
 
+void
+MoveProcessor::TryJobOperations (const std::string& name,
+                                 const Json::Value& mv)
+{
+  const auto& cmds = mv["j"];
+  if (!cmds.isArray ())
+    return;
+
+  const auto a = accounts.GetByName (name);
+  CHECK (a != nullptr);
+
+  const JobContext jc{ctx, accounts, jobs};
+  for (const auto& op : cmds)
+    {
+      auto parsed = JobOperation::Parse (*a, op, jc);
+      if (parsed == nullptr)
+        {
+          LOG (WARNING) << "Malformed job operation:\n" << op;
+          continue;
+        }
+      if (parsed->IsValid ())
+        parsed->Execute ();
+    }
+}
+
 bool
 BaseMoveProcessor::ParseCoinTransferBurn (const Account& a,
                                           const Json::Value& moveObj,
@@ -1392,6 +1417,7 @@ MoveProcessor::ProcessOne (const Json::Value& moveObj)
 
   TryBuildingUpdates (name, mv);
   TryServiceOperations (name, mv);
+  TryJobOperations (name, mv);
 
   /* If any burnt or paid-to-dev coins are left, it means probably something
      has gone wrong and the user overpaid due to a frontend bug.  */
