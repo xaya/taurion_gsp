@@ -2,6 +2,8 @@ ACLOCAL_AMFLAGS = ${ACLOCAL_FLAGS} -Im4
 
 SUBDIRS = hexagonal proto database mapdata src gametest
 
+EXTRA_DIST = docs/escrow-deals.md
+
 build-tests:
 	$(MAKE) -C hexagonal build-tests
 	$(MAKE) -C proto build-tests
