@@ -67,6 +67,9 @@ protected:
 
   ContextForTesting ctx;
 
+  /** Statistics of an account as number and value.  */
+  using Stat = std::pair<unsigned, Amount>;
+
   JobsTests ()
     : accounts(db), jobs(db)
   {
@@ -104,6 +107,36 @@ protected:
   Balance (const std::string& name)
   {
     return accounts.GetByName (name)->GetBalance ();
+  }
+
+  Stat
+  DealStats (const std::string& name)
+  {
+    const auto a = accounts.GetByName (name);
+    return {a->GetProto ().deals_completed (),
+            a->GetProto ().deals_value_completed ()};
+  }
+
+  Stat
+  PosterStats (const std::string& name)
+  {
+    const auto a = accounts.GetByName (name);
+    return {a->GetProto ().deals_posted_completed (),
+            a->GetProto ().deals_posted_value ()};
+  }
+
+  Stat
+  ArbiterStats (const std::string& name)
+  {
+    const auto a = accounts.GetByName (name);
+    return {a->GetProto ().arbiter_rulings (),
+            a->GetProto ().arbiter_value_ruled ()};
+  }
+
+  unsigned
+  Disputed (const std::string& name)
+  {
+    return accounts.GetByName (name)->GetProto ().deals_disputed ();
   }
 
   /**
@@ -149,6 +182,27 @@ protected:
   {
     return Process (name, R"({"s":)" + std::to_string (id)
                             + R"(,"w":")" + worker + R"("})");
+  }
+
+  bool
+  Confirm (const std::string& name, const Database::IdT id)
+  {
+    return Process (name,
+                    R"({"dl":)" + std::to_string (id) + R"(,"confirm":true})");
+  }
+
+  bool
+  Dispute (const std::string& name, const Database::IdT id)
+  {
+    return Process (name,
+                    R"({"dl":)" + std::to_string (id) + R"(,"dispute":true})");
+  }
+
+  bool
+  Rule (const std::string& name, const Database::IdT id, const int p)
+  {
+    return Process (name, R"({"dl":)" + std::to_string (id)
+                            + R"(,"rule":)" + std::to_string (p) + "}");
   }
 
   /** Returns the ID of the job posted last.  */
@@ -213,6 +267,237 @@ protected:
 
 /* ************************************************************************** */
 
+TEST_F (JobsTests, SettlementAddsUp)
+{
+  const Amount amounts[] = {0, 1, 7, 999, 50'000, 100'000'000'000};
+  const std::pair<int, int> rates[] =
+    {
+      {0, 0}, {0, 500}, {0, 1'000}, {300, 0}, {300, 500}, {300, 1'000},
+      {1'000, 0}, {1'000, 500}, {1'000, 1'000}, {9'000, 999}, {0, 9'999},
+    };
+
+  for (const Amount r : amounts)
+    for (const Amount c : amounts)
+      for (const auto& [tax, fee] : rates)
+        for (int p = 0; p <= 100; p += 10)
+          {
+            const auto s = ComputeDealSettlement (r, c, p, tax, fee);
+            EXPECT_EQ (s.worker + s.poster + s.arbiter + s.treasury, r + c);
+            EXPECT_GE (s.worker, c * p / 100);
+            EXPECT_GE (s.poster, 0);
+          }
+}
+
+TEST_F (JobsTests, TaxAndFeeIndependentOfRuling)
+{
+  /* Tax and fee of a reward of 1010 are 30 and 101, whatever is ruled and
+     whatever the collateral is.  The worker gets its percentage of the
+     other 879 and the collateral, rounded down.  */
+  for (const Amount c : {0, 2'020})
+    for (int p = 0; p <= 100; p += 10)
+      {
+        const auto s = ComputeDealSettlement (1'010, c, p, 300, 1'000);
+        EXPECT_EQ (s.treasury, 30);
+        EXPECT_EQ (s.arbiter, 101);
+        EXPECT_EQ (s.worker, (879 + c) * p / 100);
+      }
+}
+
+TEST_F (JobsTests, BothConfirm)
+{
+  const auto id = PostAcceptDeal ();
+  ASSERT_TRUE (Confirm ("poster", id));
+  EXPECT_TRUE (JobExists (id));
+  ASSERT_TRUE (Confirm ("worker", id));
+  EXPECT_FALSE (JobExists (id));
+
+  /* The worker gets its collateral back and the reward less tax and fee.  */
+  EXPECT_EQ (Balance ("worker"), START + 5'000 - 150 - 500);
+  EXPECT_EQ (Balance ("poster"), START - 5'000 - 50);
+  EXPECT_EQ (Balance ("arbiter"), START + 500);
+
+  EXPECT_EQ (DealStats ("worker"), Stat (1, 5'000));
+  EXPECT_EQ (PosterStats ("poster"), Stat (1, 5'000));
+  EXPECT_EQ (Disputed ("worker"), 0u);
+  EXPECT_EQ (Disputed ("poster"), 0u);
+  EXPECT_EQ (ArbiterStats ("arbiter"), Stat (0, 0));
+}
+
+TEST_F (JobsTests, BothConfirmWithoutArbiter)
+{
+  const auto id = PostAcceptDeal ("");
+  ASSERT_TRUE (Confirm ("worker", id));
+  ASSERT_TRUE (Confirm ("poster", id));
+  EXPECT_FALSE (JobExists (id));
+  EXPECT_EQ (Balance ("worker"), START + 5'000 - 150);
+}
+
+TEST_F (JobsTests, Ruling)
+{
+  const auto id = PostAcceptDeal ();
+  ASSERT_TRUE (Dispute ("poster", id));
+  ASSERT_TRUE (Rule ("arbiter", id, 30));
+  EXPECT_FALSE (JobExists (id));
+
+  /* Tax (150) and fee (500) are taken from the reward.  Of the other 4350
+     and the collateral, the worker gets 30% and the poster the rest.  */
+  EXPECT_EQ (Balance ("worker"), START - 5'000 + 1'305 + 1'500);
+  EXPECT_EQ (Balance ("poster"), START - 5'000 - 50 + 3'045 + 3'500);
+  EXPECT_EQ (Balance ("arbiter"), START + 500);
+
+  /* The value of the job for worker and poster is the reward before tax
+     and fee, and for the arbiter that of reward and collateral.  */
+  EXPECT_EQ (DealStats ("worker"), Stat (1, 1'500));
+  EXPECT_EQ (PosterStats ("poster"), Stat (1, 1'500));
+  EXPECT_EQ (Disputed ("worker"), 1u);
+  EXPECT_EQ (Disputed ("poster"), 1u);
+  EXPECT_EQ (ArbiterStats ("arbiter"), Stat (1, 10'000));
+}
+
+TEST_F (JobsTests, RulingOfZero)
+{
+  const auto id = PostAcceptDeal ();
+  ASSERT_TRUE (Dispute ("worker", id));
+  ASSERT_TRUE (Rule ("arbiter", id, 0));
+
+  /* The poster gets the collateral, and the reward less tax and fee.  */
+  EXPECT_EQ (Balance ("worker"), START - 5'000);
+  EXPECT_EQ (Balance ("poster"), START - 5'000 - 50 + 10'000 - 150 - 500);
+  EXPECT_EQ (Balance ("arbiter"), START + 500);
+
+  /* Nothing counts as completed, but dispute and ruling are recorded.  */
+  EXPECT_EQ (DealStats ("worker"), Stat (0, 0));
+  EXPECT_EQ (PosterStats ("poster"), Stat (0, 0));
+  EXPECT_EQ (Disputed ("worker"), 1u);
+  EXPECT_EQ (Disputed ("poster"), 1u);
+  EXPECT_EQ (ArbiterStats ("arbiter"), Stat (1, 10'000));
+}
+
+TEST_F (JobsTests, RulingByArbiterWithoutFee)
+{
+  ASSERT_TRUE (Process ("poster", R"({"t":"deal","d":86400,"r":5000,)"
+                                  R"("co":5000,"arbiter":"arbiter"})"));
+  const auto id = LatestJobId ();
+  ASSERT_TRUE (Accept ("worker", id));
+  ASSERT_TRUE (Dispute ("poster", id));
+  ASSERT_TRUE (Rule ("arbiter", id, 100));
+
+  EXPECT_EQ (Balance ("worker"), START + 5'000 - 150);
+  EXPECT_EQ (Balance ("arbiter"), START);
+  EXPECT_EQ (ArbiterStats ("arbiter"), Stat (1, 10'000));
+}
+
+TEST_F (JobsTests, RulingsPayTheComputedSettlement)
+{
+  for (int p = 0; p <= 100; p += 10)
+    {
+      const Amount poster = Balance ("poster");
+      const Amount worker = Balance ("worker");
+      const Amount arbiter = Balance ("arbiter");
+
+      ASSERT_TRUE (Process ("poster", R"({"t":"deal","d":86400,"r":4999,)"
+                                      R"("co":3333,"arbiter":"arbiter",)"
+                                      R"("fee":999})"));
+      const auto id = LatestJobId ();
+      ASSERT_TRUE (Accept ("worker", id));
+      ASSERT_TRUE (Dispute ("worker", id));
+      ASSERT_TRUE (Rule ("arbiter", id, p));
+
+      /* The posting fee is 1% of the reward, rounded down.  */
+      const auto s = ComputeDealSettlement (4'999, 3'333, p, 300, 999);
+      EXPECT_EQ (s.arbiter, 499);
+      EXPECT_EQ (Balance ("poster"), poster - 4'999 - 49 + s.poster);
+      EXPECT_EQ (Balance ("worker"), worker - 3'333 + s.worker);
+      EXPECT_EQ (Balance ("arbiter"), arbiter + s.arbiter);
+      EXPECT_EQ (Balance ("poster") + Balance ("worker") + Balance ("arbiter"),
+                 poster + worker + arbiter - 49 - s.treasury);
+    }
+}
+
+TEST_F (JobsTests, TaxFixedAtPostTime)
+{
+  auto id = PostAcceptDeal ();
+  SetParams ([] (auto& p) { p.set_deal_tax_bps (1'000); });
+  ASSERT_TRUE (Confirm ("poster", id));
+  ASSERT_TRUE (Confirm ("worker", id));
+  EXPECT_EQ (Balance ("worker"), START + 5'000 - 150 - 500);
+
+  /* A job posted after the change has the new tax.  */
+  id = PostAcceptDeal ();
+  ASSERT_TRUE (Confirm ("poster", id));
+  ASSERT_TRUE (Confirm ("worker", id));
+  EXPECT_EQ (Balance ("worker"),
+             START + 5'000 - 150 - 500 + 5'000 - 500 - 500);
+}
+
+TEST_F (JobsTests, NoCompletionWithoutTax)
+{
+  /* With a reward of 10, the tax rounds down to zero.  */
+  ASSERT_TRUE (Process ("poster", R"({"t":"deal","d":86400,"r":10,"co":0})"));
+  auto id = LatestJobId ();
+  ASSERT_TRUE (Accept ("worker", id));
+  ASSERT_TRUE (Confirm ("poster", id));
+  ASSERT_TRUE (Confirm ("worker", id));
+  EXPECT_EQ (Balance ("worker"), START + 10);
+
+  /* Without tax, a ruling still counts as dispute and for the arbiter.  */
+  SetParams ([] (auto& p) { p.set_deal_tax_bps (0); });
+  id = PostAcceptDeal ();
+  ASSERT_TRUE (Dispute ("poster", id));
+  ASSERT_TRUE (Rule ("arbiter", id, 50));
+
+  EXPECT_EQ (DealStats ("worker"), Stat (0, 0));
+  EXPECT_EQ (PosterStats ("poster"), Stat (0, 0));
+  EXPECT_EQ (Disputed ("worker"), 1u);
+  EXPECT_EQ (Disputed ("poster"), 1u);
+  EXPECT_EQ (ArbiterStats ("arbiter"), Stat (1, 10'000));
+}
+
+TEST_F (JobsTests, TaxAndFeeBelowTotal)
+{
+  /* Tax and fee together must be less than 10'000 basis points.  */
+  SetParams ([] (auto& p) { p.set_deal_tax_bps (10'000); });
+  EXPECT_FALSE (Process ("poster", R"({"t":"deal","d":86400,"r":5000,)"
+                                   R"("co":0})"));
+
+  SetParams ([] (auto& p)
+    {
+      p.set_deal_tax_bps (9'000);
+      p.set_deal_max_fee_bps (9'999);
+    });
+  EXPECT_FALSE (Process ("poster", R"({"t":"deal","d":86400,"r":5000,)"
+                                   R"("co":0,"arbiter":"arbiter",)"
+                                   R"("fee":1000})"));
+  ASSERT_TRUE (Process ("poster", R"({"t":"deal","d":86400,"r":5000,)"
+                                  R"("co":0,"arbiter":"arbiter",)"
+                                  R"("fee":999})"));
+
+  const auto id = LatestJobId ();
+  ASSERT_TRUE (Accept ("worker", id));
+  ASSERT_TRUE (Confirm ("poster", id));
+  ASSERT_TRUE (Confirm ("worker", id));
+  EXPECT_EQ (Balance ("worker"), START + 5'000 - 4'500 - 499);
+}
+
+TEST_F (JobsTests, TaxAndFeeAtTypeMaxima)
+{
+  /* The sum of tax and fee does not overflow.  */
+  constexpr uint32_t MAX = std::numeric_limits<uint32_t>::max ();
+  SetParams ([] (auto& p)
+    {
+      p.set_deal_tax_bps (MAX);
+      p.set_deal_max_fee_bps (MAX);
+    });
+
+  for (const uint32_t fee : {1u, MAX})
+    EXPECT_FALSE (Process ("poster", R"({"t":"deal","d":86400,"r":5000,)"
+                                     R"("co":0,"arbiter":"arbiter","fee":)"
+                                       + std::to_string (fee) + "}"));
+  EXPECT_EQ (jobs.CountAll (), 0);
+}
+
+/* ************************************************************************** */
+
 TEST_F (JobsTests, ExpiryOfOpenJob)
 {
   const auto id = PostDeal ();
@@ -231,6 +516,58 @@ TEST_F (JobsTests, ExpiryWithoutConfirmation)
   EXPECT_EQ (Balance ("worker"), START);
   EXPECT_EQ (Balance ("poster"), START - 50);
   EXPECT_EQ (Balance ("arbiter"), START);
+
+  EXPECT_EQ (DealStats ("worker"), Stat (0, 0));
+  EXPECT_EQ (PosterStats ("poster"), Stat (0, 0));
+  EXPECT_EQ (Disputed ("worker"), 0u);
+  EXPECT_EQ (Disputed ("poster"), 0u);
+}
+
+TEST_F (JobsTests, ExpiryAfterOneConfirmation)
+{
+  const auto id = PostAcceptDeal ();
+  ASSERT_TRUE (Confirm ("poster", id));
+  Expire ();
+  EXPECT_FALSE (JobExists (id));
+
+  EXPECT_EQ (Balance ("worker"), START + 5'000 - 150 - 500);
+  EXPECT_EQ (Balance ("arbiter"), START + 500);
+
+  EXPECT_EQ (DealStats ("worker"), Stat (1, 5'000));
+  EXPECT_EQ (PosterStats ("poster"), Stat (1, 5'000));
+  EXPECT_EQ (Disputed ("worker"), 0u);
+  EXPECT_EQ (ArbiterStats ("arbiter"), Stat (0, 0));
+}
+
+TEST_F (JobsTests, ExpiryOfUnruledDispute)
+{
+  /* If a dispute is not ruled on (or there is no arbiter), both get their
+     coins back, also if one of them confirmed before.  Only the dispute is
+     recorded for them, and nothing for the arbiter.  */
+  for (const std::string arbiter : {"arbiter", ""})
+    for (const Amount co : {0, 5'000})
+      {
+        const auto id = PostAcceptDeal (arbiter, co);
+        ASSERT_TRUE (Confirm ("worker", id));
+        ASSERT_TRUE (Dispute ("poster", id));
+      }
+  EXPECT_EQ (Balance ("worker"), START - 2 * 5'000);
+  EXPECT_EQ (Balance ("poster"), START - 4 * 5'050);
+  EXPECT_EQ (Disputed ("worker"), 4u);
+
+  Expire ();
+  EXPECT_EQ (jobs.CountAll (), 0);
+
+  EXPECT_EQ (Balance ("worker"), START);
+  EXPECT_EQ (Balance ("poster"), START - 4 * 50);
+  EXPECT_EQ (Balance ("arbiter"), START);
+
+  EXPECT_EQ (DealStats ("worker"), Stat (0, 0));
+  EXPECT_EQ (PosterStats ("poster"), Stat (0, 0));
+  EXPECT_EQ (Disputed ("worker"), 4u);
+  EXPECT_EQ (Disputed ("poster"), 4u);
+  EXPECT_EQ (ArbiterStats ("arbiter"), Stat (0, 0));
+  EXPECT_EQ (Disputed ("arbiter"), 0u);
 }
 
 TEST_F (JobsTests, ZeroDurationJobExpiresAtOnce)
@@ -242,6 +579,58 @@ TEST_F (JobsTests, ZeroDurationJobExpiresAtOnce)
   ExpireJobs (db, ctx);
   EXPECT_FALSE (JobExists (id));
   EXPECT_EQ (Balance ("poster"), START - 50);
+}
+
+TEST_F (JobsTests, ExpirySettlesManyJobs)
+{
+  constexpr unsigned n = 100;
+  const Amount before = Balance ("poster") + Balance ("worker");
+
+  for (unsigned i = 0; i < n; ++i)
+    {
+      ASSERT_TRUE (Process ("poster", R"({"t":"deal","d":86400,"r":10,)"
+                                      R"("co":4})"));
+      const auto id = LatestJobId ();
+      ASSERT_TRUE (Accept ("worker", id));
+      if (i % 3 == 0)
+        {
+          ASSERT_TRUE (Confirm ("worker", id));
+        }
+      else if (i % 3 == 1)
+        {
+          ASSERT_TRUE (Dispute ("poster", id));
+        }
+    }
+
+  Expire ();
+  EXPECT_EQ (jobs.CountAll (), 0);
+
+  /* With a reward of 10, there is no tax, so only the posting fees of 1
+     are gone.  */
+  EXPECT_EQ (Balance ("poster") + Balance ("worker"), before - n);
+}
+
+TEST_F (JobsTests, OpsRejectedAtDeadline)
+{
+  const auto open = PostDeal ();
+  const auto accepted = PostAcceptDeal ();
+  const auto disputed = PostAcceptDeal ();
+  ASSERT_TRUE (Dispute ("poster", disputed));
+
+  ctx.SetTimestamp (BASE_TS + DAY);
+  EXPECT_FALSE (Accept ("worker", open));
+  EXPECT_FALSE (Assign ("poster", open, "worker"));
+  EXPECT_FALSE (Cancel ("poster", open));
+  EXPECT_FALSE (Confirm ("worker", accepted));
+  EXPECT_FALSE (Dispute ("poster", accepted));
+  EXPECT_FALSE (Rule ("arbiter", disputed, 100));
+
+  /* All three jobs are refunded.  */
+  ExpireJobs (db, ctx);
+  EXPECT_EQ (jobs.CountAll (), 0);
+  EXPECT_EQ (Balance ("worker"), START);
+  EXPECT_EQ (Balance ("poster"), START - 3 * 50);
+  EXPECT_EQ (Balance ("arbiter"), START);
 }
 
 /* ************************************************************************** */
@@ -328,6 +717,10 @@ TEST_F (JobsTests, EmptyAccountName)
       EXPECT_FALSE (jobs.GetById (id)->IsAccepted ());
 
       ASSERT_TRUE (Accept ("worker", id));
+      EXPECT_FALSE (Confirm ("", id));
+      EXPECT_FALSE (Dispute ("", id));
+      ASSERT_TRUE (Dispute ("worker", id));
+      EXPECT_FALSE (Rule ("", id, 50));
     }
 
   Expire ();
@@ -367,6 +760,77 @@ TEST_F (JobsTests, InviteOnlyWithoutWorker)
   EXPECT_TRUE (Accept ("worker", id));
 }
 
+TEST_F (JobsTests, DealOpsNeedAcceptedJob)
+{
+  const auto id = PostDeal ();
+  EXPECT_FALSE (Confirm ("poster", id));
+  EXPECT_FALSE (Dispute ("poster", id));
+  EXPECT_FALSE (Rule ("arbiter", id, 50));
+  EXPECT_FALSE (Confirm ("poster", id + 1));
+}
+
+TEST_F (JobsTests, OnlyPartiesConfirmOrDispute)
+{
+  const auto id = PostAcceptDeal ();
+  for (const auto* name : {"arbiter", "other"})
+    {
+      EXPECT_FALSE (Confirm (name, id));
+      EXPECT_FALSE (Dispute (name, id));
+    }
+}
+
+TEST_F (JobsTests, ConfirmOnlyOnce)
+{
+  const auto id = PostAcceptDeal ();
+  ASSERT_TRUE (Confirm ("poster", id));
+  EXPECT_FALSE (Confirm ("poster", id));
+  EXPECT_TRUE (JobExists (id));
+}
+
+TEST_F (JobsTests, ConfirmGivesUpOnlyOwnDispute)
+{
+  for (const auto& [confirmer, other] : {std::make_pair ("poster", "worker"),
+                                         std::make_pair ("worker", "poster")})
+    {
+      const auto id = PostAcceptDeal ();
+      ASSERT_TRUE (Confirm (confirmer, id));
+      EXPECT_FALSE (Dispute (confirmer, id));
+      EXPECT_TRUE (Dispute (other, id));
+    }
+}
+
+TEST_F (JobsTests, OnlyRulingAfterDispute)
+{
+  const auto id = PostAcceptDeal ();
+  ASSERT_TRUE (Dispute ("worker", id));
+  EXPECT_FALSE (Confirm ("poster", id));
+  EXPECT_FALSE (Confirm ("worker", id));
+  EXPECT_FALSE (Dispute ("poster", id));
+  EXPECT_TRUE (JobExists (id));
+}
+
+TEST_F (JobsTests, OnlyArbiterRulesAfterDispute)
+{
+  const auto id = PostAcceptDeal ();
+  EXPECT_FALSE (Rule ("arbiter", id, 50));
+
+  ASSERT_TRUE (Dispute ("poster", id));
+  for (const auto* name : {"poster", "worker", "other"})
+    EXPECT_FALSE (Rule (name, id, 50));
+
+  EXPECT_TRUE (Rule ("arbiter", id, 50));
+  EXPECT_FALSE (JobExists (id));
+}
+
+TEST_F (JobsTests, NoRulingWithoutArbiter)
+{
+  const auto id = PostAcceptDeal ("");
+  ASSERT_TRUE (Dispute ("worker", id));
+  for (const auto* name : {"poster", "worker", "arbiter"})
+    EXPECT_FALSE (Rule (name, id, 50));
+  EXPECT_TRUE (JobExists (id));
+}
+
 /* ************************************************************************** */
 
 TEST_F (JobsTests, InvalidFormat)
@@ -377,20 +841,31 @@ TEST_F (JobsTests, InvalidFormat)
       "[]",
       R"({"a":1,"c":1})",
       R"({"s":1,"w":"worker","c":1})",
+      R"({"dl":1,"confirm":true,"a":1})",
       R"({"t":"deal","d":100,"r":5000,"co":0,"a":1})",
 
       R"({"a":1,"x":0})",
       R"({"c":1,"x":0})",
       R"({"s":1,"w":"worker","x":0})",
+      R"({"dl":1,"confirm":true,"x":0})",
       R"({"t":"deal","d":100,"r":5000,"co":0,"x":0})",
 
       R"({"a":"1"})",
       R"({"a":0})",
       R"({"c":"1"})",
       R"({"s":"1","w":"worker"})",
+      R"({"dl":"1","confirm":true})",
 
       R"({"s":1})",
       R"({"s":1,"w":5})",
+
+      R"({"dl":1,"confirm":true,"dispute":true})",
+      R"({"dl":1,"confirm":false})",
+      R"({"dl":1,"dispute":false})",
+      R"({"dl":1,"rule":55})",
+      R"({"dl":1,"rule":110})",
+      R"({"dl":1,"rule":-10})",
+      R"({"dl":1,"rule":50.0})",
 
       R"({"t":"other","d":100,"r":5000,"co":0})",
       R"({"t":1,"d":100,"r":5000,"co":0})",
@@ -423,6 +898,10 @@ TEST_F (JobsTests, ValidFormat)
       R"({"a":1})",
       R"({"c":1})",
       R"({"s":1,"w":"worker"})",
+      R"({"dl":1,"confirm":true})",
+      R"({"dl":1,"dispute":true})",
+      R"({"dl":1,"rule":0})",
+      R"({"dl":1,"rule":100})",
       R"({"t":"deal","d":0,"r":0,"co":0})",
       R"({"t":"deal","d":100,"r":5000,"co":0,"arbiter":"arbiter","fee":0,)"
         R"("w":"","tag":100,"terms":")"
@@ -510,6 +989,163 @@ TEST_F (JobsTests, JobLimits)
   EXPECT_TRUE (Process ("worker", post));
   EXPECT_FALSE (Process ("other", post));
   EXPECT_EQ (jobs.CountAll (), 3);
+}
+
+TEST_F (JobsTests, LimitsLoweredBelowCount)
+{
+  /* Lower limits stop new posts, but the jobs that exist go on.  */
+  const auto id = PostDeal ();
+  PostDeal ();
+  SetParams ([] (auto& p)
+    {
+      p.set_max_live_jobs (1);
+      p.set_max_jobs_per_poster (1);
+    });
+
+  const std::string post = R"({"t":"deal","d":86400,"r":5000,"co":0})";
+  EXPECT_FALSE (Process ("poster", post));
+  EXPECT_FALSE (Process ("other", post));
+
+  ASSERT_TRUE (Accept ("worker", id));
+  ASSERT_TRUE (Confirm ("poster", id));
+  ASSERT_TRUE (Confirm ("worker", id));
+  EXPECT_FALSE (JobExists (id));
+  EXPECT_FALSE (Process ("other", post));
+
+  Expire ();
+  EXPECT_EQ (jobs.CountAll (), 0);
+  EXPECT_TRUE (Process ("other", post));
+}
+
+/* ************************************************************************** */
+
+TEST_F (JobsTests, LateConfirmExtendsDeadline)
+{
+  /* With less than the window left, a confirmation extends the deadline, so
+     that the other party has the whole window to dispute.  */
+  const auto id = PostAcceptDeal ();
+  ctx.SetTimestamp (BASE_TS + DAY - 1);
+  ASSERT_TRUE (Confirm ("worker", id));
+  EXPECT_EQ (Deadline (id), BASE_TS + DAY - 1 + WINDOW);
+
+  ctx.SetTimestamp (BASE_TS + DAY);
+  ExpireJobs (db, ctx);
+  EXPECT_TRUE (JobExists (id));
+
+  Expire ();
+  EXPECT_FALSE (JobExists (id));
+  EXPECT_EQ (Balance ("worker"), START + 5'000 - 150 - 500);
+}
+
+TEST_F (JobsTests, LateDisputeExtendsDeadline)
+{
+  /* With less than the window left, a dispute gives the arbiter the whole
+     window to rule.  */
+  const auto id = PostAcceptDeal ();
+  ctx.SetTimestamp (BASE_TS + DAY - 1);
+  ASSERT_TRUE (Dispute ("poster", id));
+  EXPECT_EQ (Deadline (id), BASE_TS + DAY - 1 + WINDOW);
+  EXPECT_EQ (jobs.GetById (id)->GetProto ().dispute_time (),
+             BASE_TS + DAY - 1);
+
+  ctx.SetTimestamp (BASE_TS + DAY + 10);
+  EXPECT_TRUE (Rule ("arbiter", id, 50));
+  EXPECT_FALSE (JobExists (id));
+}
+
+TEST_F (JobsTests, DisputeWithoutArbiterKeepsDeadline)
+{
+  /* Without an arbiter, a dispute leads to the refund at the deadline,
+     so that there is nothing to extend it for.  */
+  const auto id = PostAcceptDeal ("", 0);
+  ctx.SetTimestamp (BASE_TS + DAY - 1);
+  ASSERT_TRUE (Confirm ("worker", id));
+  ctx.SetTimestamp (BASE_TS + DAY + 10);
+  ASSERT_TRUE (Dispute ("poster", id));
+  EXPECT_EQ (Deadline (id), BASE_TS + DAY - 1 + WINDOW);
+
+  Expire ();
+  EXPECT_EQ (Balance ("worker"), START);
+  EXPECT_EQ (Balance ("poster"), START - 50);
+}
+
+TEST_F (JobsTests, ExtensionOnlyIfLessThanWindowLeft)
+{
+  const auto early = PostAcceptDeal ();
+  const auto exact = PostAcceptDeal ();
+  const auto late = PostAcceptDeal ();
+
+  ASSERT_TRUE (Confirm ("worker", early));
+  ctx.SetTimestamp (BASE_TS + DAY - WINDOW);
+  ASSERT_TRUE (Confirm ("worker", exact));
+  ctx.SetTimestamp (BASE_TS + DAY - WINDOW + 1);
+  ASSERT_TRUE (Confirm ("worker", late));
+
+  EXPECT_EQ (Deadline (early), BASE_TS + DAY);
+  EXPECT_EQ (Deadline (exact), BASE_TS + DAY);
+  EXPECT_EQ (Deadline (late), BASE_TS + DAY + 1);
+}
+
+TEST_F (JobsTests, AtMostTwoExtensions)
+{
+  /* A late confirmation and a late dispute each extend the deadline.  After
+     that, only the ruling is left, which settles the job.  */
+  const auto id = PostAcceptDeal ();
+  ctx.SetTimestamp (BASE_TS + DAY - 1);
+  ASSERT_TRUE (Confirm ("worker", id));
+  ctx.SetTimestamp (Deadline (id) - 1);
+  ASSERT_TRUE (Dispute ("poster", id));
+
+  const int64_t last = BASE_TS + DAY - 2 + 2 * WINDOW;
+  EXPECT_EQ (Deadline (id), last);
+  EXPECT_LT (Deadline (id), BASE_TS + DAY + 2 * WINDOW);
+
+  ctx.SetTimestamp (last - 1);
+  EXPECT_FALSE (Confirm ("poster", id));
+  EXPECT_FALSE (Confirm ("worker", id));
+  EXPECT_FALSE (Dispute ("poster", id));
+  EXPECT_FALSE (Dispute ("worker", id));
+  EXPECT_EQ (Deadline (id), last);
+
+  EXPECT_TRUE (Rule ("arbiter", id, 50));
+  EXPECT_FALSE (JobExists (id));
+}
+
+TEST_F (JobsTests, LateAcceptKeepsDeadline)
+{
+  const auto id = PostDeal ();
+  ctx.SetTimestamp (BASE_TS + DAY - 1);
+  ASSERT_TRUE (Accept ("worker", id));
+  EXPECT_EQ (Deadline (id), BASE_TS + DAY);
+
+  ASSERT_TRUE (Confirm ("worker", id));
+  EXPECT_EQ (Deadline (id), BASE_TS + DAY - 1 + WINDOW);
+}
+
+TEST_F (JobsTests, ReactionWindowFixedAtPostTime)
+{
+  const auto before = PostAcceptDeal ();
+  SetParams ([] (auto& p) { p.set_deal_reaction_window (0); });
+  const auto after = PostAcceptDeal ();
+  SetParams ([] (auto& p) { p.set_deal_reaction_window (2 * WINDOW); });
+
+  ctx.SetTimestamp (BASE_TS + DAY - 1);
+  ASSERT_TRUE (Confirm ("worker", before));
+  ASSERT_TRUE (Confirm ("worker", after));
+  EXPECT_EQ (Deadline (before), BASE_TS + DAY - 1 + WINDOW);
+  EXPECT_EQ (Deadline (after), BASE_TS + DAY);
+}
+
+TEST_F (JobsTests, ReactionWindowAtMostDuration)
+{
+  /* The window is at most the duration of the job, and at least zero.  */
+  SetParams ([] (auto& p) { p.set_deal_reaction_window (2 * DAY); });
+  auto id = PostDeal ();
+  EXPECT_EQ (jobs.GetById (id)->GetProto ().reaction_window (), DAY);
+
+  SetParams ([] (auto& p) { p.set_deal_reaction_window (-5); });
+  id = PostDeal ();
+  EXPECT_EQ (jobs.GetById (id)->GetProto ().reaction_window (), 0);
 }
 
 } // anonymous namespace

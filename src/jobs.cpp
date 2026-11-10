@@ -96,6 +96,19 @@ IsDue (const Job& job, const Context& ctx)
 }
 
 /**
+ * Makes sure that the other side has time to answer a move that is sent
+ * shortly before the deadline:  If less than the reaction window of the job
+ * is left, the deadline is moved so that a full window remains.
+ */
+void
+ExtendDeadline (Job& job, const Context& ctx)
+{
+  const int64_t end = ctx.Timestamp () + job.GetProto ().reaction_window ();
+  if (job.GetDeadline () < end)
+    job.SetDeadline (end);
+}
+
+/**
  * Removes a job from the database.  The handle is released first, so that
  * it does not write the row again afterwards.
  */
@@ -147,7 +160,103 @@ Refund (const JobContext& jc, const Job& job, Account* sender)
       });
 }
 
+/**
+ * Pays out an accepted job of which p percent count as done, and updates
+ * the statistics of the accounts involved.  The job is either not disputed
+ * (so that p is 100), or this is the ruling of its arbiter.
+ */
+void
+Settle (const JobContext& jc, const Job& job, const int p, Account* sender)
+{
+  const auto& pb = job.GetProto ();
+  const Amount reward = job.GetReward ();
+  const Amount collateral = job.GetCollateral ();
+
+  const auto s = ComputeDealSettlement (reward, collateral, p,
+                                        pb.tax_bps (), pb.fee_bps ());
+
+  /* A job counts as completed only if tax was paid on it, so that the
+     statistics cannot be raised for free.  */
+  const bool completed = (p > 0 && s.treasury > 0);
+  const Amount earned = reward * p / 100;
+
+  UpdateAccount (jc, sender, job.GetWorker (), [&] (Account& a)
+    {
+      a.AddBalance (s.worker);
+      if (!completed)
+        return;
+      auto& apb = a.MutableProto ();
+      apb.set_deals_completed (apb.deals_completed () + 1);
+      apb.set_deals_value_completed (apb.deals_value_completed () + earned);
+    });
+
+  UpdateAccount (jc, sender, job.GetPoster (), [&] (Account& a)
+    {
+      a.AddBalance (s.poster);
+      if (!completed)
+        return;
+      auto& apb = a.MutableProto ();
+      apb.set_deals_posted_completed (apb.deals_posted_completed () + 1);
+      apb.set_deals_posted_value (apb.deals_posted_value () + earned);
+    });
+
+  /* The poster names the arbiter without asking it.  So only its own
+     rulings are recorded for it, and its account is not touched at all
+     if there is nothing to pay or record.  */
+  const bool ruled = pb.disputed ();
+  if (s.arbiter > 0 || ruled)
+    UpdateAccount (jc, sender, pb.arbiter (), [&] (Account& a)
+      {
+        a.AddBalance (s.arbiter);
+        if (!ruled)
+          return;
+        auto& apb = a.MutableProto ();
+        apb.set_arbiter_rulings (apb.arbiter_rulings () + 1);
+        apb.set_arbiter_value_ruled (apb.arbiter_value_ruled ()
+                                      + reward + collateral);
+      });
+}
+
+/**
+ * Settles a job that has reached its deadline.
+ */
+void
+Expire (const JobContext& jc, const Job& job)
+{
+  const auto& pb = job.GetProto ();
+  if (!pb.disputed () && (pb.poster_confirmed () || pb.worker_confirmed ()))
+    Settle (jc, job, 100, nullptr);
+  else
+    /* Nobody accepted the job, neither party did anything, or a dispute
+       was not ruled on.  Then nobody has agreed to pay anything.  */
+    Refund (jc, job, nullptr);
+}
+
+} // anonymous namespace
+
+DealSettlement
+ComputeDealSettlement (const Amount reward, const Amount collateral,
+                       const int p, const int taxBps, const int feeBps)
+{
+  CHECK_GE (p, 0);
+  CHECK_LE (p, 100);
+  CHECK_GE (reward, 0);
+  CHECK_GE (collateral, 0);
+  CHECK_LT (taxBps + feeBps, 10'000);
+
+  DealSettlement s;
+  s.treasury = reward * taxBps / 10'000;
+  s.arbiter = reward * feeBps / 10'000;
+  s.worker = (reward - s.treasury - s.arbiter + collateral) * p / 100;
+  /* The poster gets all that is left, so that nothing is lost to rounding.  */
+  s.poster = reward + collateral - s.worker - s.arbiter - s.treasury;
+  return s;
+}
+
 /* ************************************************************************** */
+
+namespace
+{
 
 /**
  * Posts a new job, locking the reward and burning the posting fee:
@@ -563,6 +672,158 @@ CancelOperation::Execute ()
   Remove (jc.jobs, std::move (job));
 }
 
+/* ************************************************************************** */
+
+/**
+ * The moves on an accepted job before its deadline:
+ *
+ *   {"dl": job id, "confirm": true}
+ *   {"dl": job id, "dispute": true}
+ *   {"dl": job id, "rule": percent}
+ *
+ * Poster and worker can each either confirm that the job is done or dispute
+ * it, once.  With both confirmations, the job is settled in full.  After
+ * a dispute, nothing more can be confirmed, and the arbiter rules which
+ * percentage (a multiple of ten) of the job counts as done.  If it does not,
+ * both get back what they locked.
+ */
+class DealOperation : public JobOperation
+{
+
+public:
+
+  enum class Type
+  {
+    CONFIRM,
+    DISPUTE,
+    RULE,
+  };
+
+private:
+
+  const Database::IdT id;
+  const Type type;
+
+  /** The percentage of a ruling.  */
+  const int percent;
+
+public:
+
+  DealOperation (Account& a, const JobContext& c, const Database::IdT i,
+                 const Type t, const int p = 0)
+    : JobOperation(a, c), id(i), type(t), percent(p)
+  {}
+
+  bool IsValid () const override;
+  void Execute () override;
+
+};
+
+bool
+DealOperation::IsValid () const
+{
+  const auto job = jc.jobs.GetById (id);
+  if (job == nullptr || !job->IsAccepted () || IsDue (*job, jc.ctx))
+    {
+      LOG (WARNING) << "Job " << id << " is not accepted and running";
+      return false;
+    }
+
+  const auto& name = account.GetName ();
+  const auto& pb = job->GetProto ();
+
+  if (type == Type::RULE)
+    return pb.disputed () && name == pb.arbiter ();
+
+  if (pb.disputed ())
+    return false;
+  if (name == job->GetPoster ())
+    return !pb.poster_confirmed ();
+  if (name == job->GetWorker ())
+    return !pb.worker_confirmed ();
+  return false;
+}
+
+void
+DealOperation::Execute ()
+{
+  auto job = jc.jobs.GetById (id);
+  CHECK (job != nullptr);
+
+  const auto& pb = job->GetProto ();
+  const bool isPoster = (account.GetName () == job->GetPoster ());
+
+  switch (type)
+    {
+    case Type::CONFIRM:
+      if (isPoster ? pb.worker_confirmed () : pb.poster_confirmed ())
+        {
+          LOG (INFO) << "Both parties confirmed job " << id;
+          Settle (jc, *job, 100, &account);
+          Remove (jc.jobs, std::move (job));
+          return;
+        }
+
+      LOG (INFO) << account.GetName () << " confirms job " << id;
+      if (isPoster)
+        job->MutableProto ().set_poster_confirmed (true);
+      else
+        job->MutableProto ().set_worker_confirmed (true);
+      ExtendDeadline (*job, jc.ctx);
+      return;
+
+    case Type::DISPUTE:
+      LOG (INFO) << account.GetName () << " disputes job " << id;
+      job->MutableProto ().set_disputed (true);
+      job->MutableProto ().set_dispute_time (jc.ctx.Timestamp ());
+      /* Without an arbiter, nothing can follow a dispute but the refund at
+         the deadline, so that there is no reason to wait longer for it.  */
+      if (pb.has_arbiter ())
+        ExtendDeadline (*job, jc.ctx);
+      for (const auto& name : {job->GetPoster (), job->GetWorker ()})
+        UpdateAccount (jc, &account, name, [] (Account& a)
+          {
+            auto& apb = a.MutableProto ();
+            apb.set_deals_disputed (apb.deals_disputed () + 1);
+          });
+      return;
+
+    case Type::RULE:
+      LOG (INFO)
+          << account.GetName () << " rules " << percent << "% for job " << id;
+      Settle (jc, *job, percent, &account);
+      Remove (jc.jobs, std::move (job));
+      return;
+    }
+}
+
+/**
+ * Parses a deal operation from JSON.
+ */
+std::unique_ptr<JobOperation>
+ParseDeal (Account& acc, const JobContext& jc, const Json::Value& data)
+{
+  Database::IdT id;
+  if (data.size () != 2 || !IdFromJson (data["dl"], id))
+    return nullptr;
+
+  using Type = DealOperation::Type;
+  for (const auto& entry : {std::make_pair ("confirm", Type::CONFIRM),
+                            std::make_pair ("dispute", Type::DISPUTE)})
+    if (data.isMember (entry.first))
+      {
+        const auto& val = data[entry.first];
+        if (!val.isBool () || !val.asBool ())
+          return nullptr;
+        return std::make_unique<DealOperation> (acc, jc, id, entry.second);
+      }
+
+  unsigned percent;
+  if (!UIntFromJson (data["rule"], 100, percent) || percent % 10 != 0)
+    return nullptr;
+  return std::make_unique<DealOperation> (acc, jc, id, Type::RULE, percent);
+}
+
 } // anonymous namespace
 
 std::unique_ptr<JobOperation>
@@ -580,6 +841,8 @@ JobOperation::Parse (Account& acc, const Json::Value& data,
 
   if (data.isMember ("t"))
     return ParsePost (acc, jc, data);
+  if (data.isMember ("dl"))
+    return ParseDeal (acc, jc, data);
 
   Database::IdT id;
 
@@ -623,7 +886,7 @@ ExpireJobs (Database& db, const Context& ctx)
     {
       auto job = jobs.GetById (id);
       CHECK (job != nullptr);
-      Refund (jc, *job, nullptr);
+      Expire (jc, *job);
       Remove (jobs, std::move (job));
     }
 }

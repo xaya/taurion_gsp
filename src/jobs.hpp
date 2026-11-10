@@ -45,6 +45,28 @@ namespace pxd
 */
 
 /**
+ * How the coins of a deal are split.  The amounts add up to the reward plus
+ * the collateral.  The tax is burnt.
+ */
+struct DealSettlement
+{
+  Amount worker;
+  Amount poster;
+  Amount arbiter;
+  Amount treasury;
+};
+
+/**
+ * Computes how a deal is split if p percent (0 to 100) of the work was done.
+ * Tax and arbiter fee (in basis points, together less than 10'000) are taken
+ * from the reward, so that they do not depend on p.  Of what is left of the
+ * reward and of the collateral, the worker gets p percent and the poster
+ * the rest.
+ */
+DealSettlement ComputeDealSettlement (Amount reward, Amount collateral, int p,
+                                      int taxBps, int feeBps);
+
+/**
  * The context and database tables that job operations work with.
  */
 struct JobContext

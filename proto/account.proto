@@ -48,4 +48,38 @@ message Account
    */
   optional uint64 burnsale_balance = 4;
 
+  /* The fields below are statistics about the jobs of an account.  They are
+     shown to other players, but not used by any rule of the game.  Players
+     can raise their own numbers with jobs between accounts of theirs, for
+     the price of the tax and posting fees.  */
+
+  /**
+   * The number of jobs this account was paid for as worker, and the reward
+   * it earned with them.  A job counts if the worker got part of its reward
+   * and tax was paid.
+   */
+  optional uint32 deals_completed = 5;
+  optional uint64 deals_value_completed = 6;
+
+  /**
+   * The same jobs counted for the account that posted them.
+   */
+  optional uint32 deals_posted_completed = 7;
+  optional uint64 deals_posted_value = 8;
+
+  /**
+   * The number of jobs of this account (as poster or worker) that were
+   * disputed.
+   */
+  optional uint32 deals_disputed = 9;
+
+  /**
+   * The number of disputes this account ruled on as arbiter, and the total
+   * of reward and collateral of those jobs.  Disputes that an arbiter did
+   * not rule on are not recorded for it, since the poster of a job can name
+   * any account as arbiter without asking.
+   */
+  optional uint32 arbiter_rulings = 10;
+  optional uint64 arbiter_value_ruled = 11;
+
 }
