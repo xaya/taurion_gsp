@@ -95,6 +95,7 @@ PROTOS = \
   config.proto \
   geometry.proto \
   inventory.proto \
+  jobs.proto \
   modifier.proto \
   movement.proto \
   ongoing.proto \
