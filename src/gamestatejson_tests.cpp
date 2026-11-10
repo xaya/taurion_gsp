@@ -29,9 +29,11 @@
 #include "database/dex.hpp"
 #include "database/inventory.hpp"
 #include "database/itemcounts.hpp"
+#include "database/jobs.hpp"
 #include "database/moneysupply.hpp"
 #include "database/ongoing.hpp"
 #include "database/region.hpp"
+#include "database/roconfig.hpp"
 #include "proto/character.pb.h"
 #include "proto/region.pb.h"
 
@@ -592,6 +594,71 @@ TEST_F (AccountJsonTests, UninitialisedBalance)
               "total": 0
             },
           "minted": 0
+        }
+      ]
+  })");
+}
+
+TEST_F (AccountJsonTests, JobStatsAndReserved)
+{
+  tbl.CreateNew ("nobody");
+
+  auto a = tbl.CreateNew ("poster");
+  a->SetFaction (Faction::RED);
+  a->AddBalance (100);
+  a->MutableProto ().set_deals_posted_completed (2);
+  a->MutableProto ().set_deals_posted_value (300);
+  a->MutableProto ().set_deals_disputed (1);
+  a.reset ();
+
+  a = tbl.CreateNew ("worker");
+  a->SetFaction (Faction::GREEN);
+  a->MutableProto ().set_deals_completed (3);
+  a->MutableProto ().set_deals_value_completed (400);
+  a->MutableProto ().set_arbiter_rulings (4);
+  a->MutableProto ().set_arbiter_value_ruled (500);
+  a.reset ();
+
+  JobsTable jobs(db);
+  jobs.CreateNew ("poster", 2'000, 500, 10);
+  jobs.CreateNew ("poster", 300, 800, 10)->SetWorker ("worker");
+
+  DexOrderTable orders(db);
+  orders.CreateNew (5, "worker", DexOrder::Type::BID, "foo", 2, 3);
+
+  ExpectStateJson (R"({
+    "accounts":
+      [
+        {
+          "name": "nobody",
+          "dealstats": null,
+          "arbiterstats": null
+        },
+        {
+          "name": "poster",
+          "balance": {"available": 100, "reserved": 2300, "total": 2400},
+          "dealstats":
+            {
+              "completed": 0,
+              "value": 0,
+              "posted": 2,
+              "postedvalue": 300,
+              "disputed": 1
+            },
+          "arbiterstats": {"rulings": 0, "valueruled": 0}
+        },
+        {
+          "name": "worker",
+          "balance": {"available": 0, "reserved": 806, "total": 806},
+          "dealstats":
+            {
+              "completed": 3,
+              "value": 400,
+              "posted": 0,
+              "postedvalue": 0,
+              "disputed": 0
+            },
+          "arbiterstats": {"rulings": 4, "valueruled": 500}
         }
       ]
   })");
@@ -1529,6 +1596,107 @@ TEST_F (PrizesJsonTests, Works)
           }
       }
   })");
+}
+
+/* ************************************************************************** */
+
+class JobJsonTests : public GameStateJsonTests
+{
+
+protected:
+
+  JobsTable tbl;
+
+  JobJsonTests ()
+    : tbl(db)
+  {}
+
+};
+
+TEST_F (JobJsonTests, OpenAndAccepted)
+{
+  auto j = tbl.CreateNew ("poster", 100, 50, 1'234);
+  auto* pb = &j->MutableProto ();
+  pb->set_designated_worker ("worker");
+  pb->set_invite_only (true);
+  pb->set_arbiter ("arbiter");
+  pb->set_fee_bps (500);
+  pb->set_tax_bps (300);
+  pb->set_type_tag (7);
+  pb->set_terms ("some terms");
+  pb->set_reaction_window (30);
+  j.reset ();
+
+  j = tbl.CreateNew ("poster", 200, 0, 5'678);
+  j->SetWorker ("worker");
+  pb = &j->MutableProto ();
+  pb->set_worker_confirmed (true);
+  pb->set_disputed (true);
+  pb->set_dispute_time (1'000);
+  j.reset ();
+
+  ExpectStateJson (R"({
+    "jobs":
+      [
+        {
+          "id": 1,
+          "poster": "poster",
+          "worker": null,
+          "reward": 100,
+          "collateral": 50,
+          "deadline": 1234,
+          "designated": "worker",
+          "inviteonly": true,
+          "arbiter": "arbiter",
+          "fee": 500,
+          "tax": 300,
+          "tag": 7,
+          "terms": "some terms",
+          "posterconfirmed": false,
+          "workerconfirmed": false,
+          "disputed": false,
+          "reactionwindow": 30,
+          "disputetime": null,
+          "state": "open"
+        },
+        {
+          "id": 2,
+          "poster": "poster",
+          "worker": "worker",
+          "reward": 200,
+          "collateral": 0,
+          "deadline": 5678,
+          "designated": null,
+          "inviteonly": null,
+          "arbiter": null,
+          "fee": 0,
+          "tax": 0,
+          "tag": 0,
+          "terms": null,
+          "posterconfirmed": false,
+          "workerconfirmed": true,
+          "disputed": true,
+          "reactionwindow": 0,
+          "disputetime": 1000,
+          "state": "accepted"
+        }
+      ]
+  })");
+}
+
+TEST_F (JobJsonTests, ParamsOfActiveConfig)
+{
+  proto::ConfigData cfg = *ctx.RoConfig ();
+  cfg.mutable_params ()->set_max_live_jobs (123);
+  cfg.mutable_params ()->set_deal_tax_bps (4'321);
+  RoConfigStorage storage(db);
+  storage.Set (cfg);
+  ctx.SetRoConfig (storage.Load (ctx.Chain ()));
+
+  EXPECT_TRUE (PartialJsonEqual (converter.JobsParams (), ParseJson (R"({
+    "max_live_jobs": 123,
+    "deal_tax_bps": 4321
+  })")));
 }
 
 /* ************************************************************************** */
