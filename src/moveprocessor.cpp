@@ -1991,7 +1991,8 @@ namespace
  * Tries to parse and execute a god-mode teleport command.
  */
 void
-MaybeGodTeleport (CharacterTable& tbl, const Json::Value& cmd)
+MaybeGodTeleport (CharacterTable& tbl, DynObstacles& dyn, const Context& ctx,
+                  const Json::Value& cmd)
 {
   if (!cmd.isArray ())
     return;
@@ -2012,7 +2013,7 @@ MaybeGodTeleport (CharacterTable& tbl, const Json::Value& cmd)
         }
 
       HexCoord target;
-      if (!CoordFromJson (entry["pos"], target))
+      if (!CoordFromJson (entry["pos"], target) || !ctx.Map ().IsOnMap (target))
         {
           LOG (WARNING) << "Invalid target in teleport: " << entry;
           continue;
@@ -2027,8 +2028,19 @@ MaybeGodTeleport (CharacterTable& tbl, const Json::Value& cmd)
         }
 
       LOG (INFO) << "Teleporting character " << id << " to: " << target;
+      if (!c->IsInBuilding ())
+        dyn.RemoveVehicle (c->GetPosition ());
       c->SetPosition (target);
+      dyn.AddVehicle (target);
       StopCharacter (*c);
+
+      /* Target selection gives no targets to a fighter in a no-combat zone,
+         and the damage step relies on that.  */
+      if (ctx.Map ().SafeZones ().IsNoCombat (target))
+        {
+          c->ClearTarget ();
+          c->SetFriendlyTargets (false);
+        }
     }
 }
 
@@ -2083,6 +2095,22 @@ template <typename T>
       val = entry["ms"];
       if (xaya::IsIntegerValue (val) && val.isUInt64 ())
         maxHP.set_shield (val.asUInt64 ());
+
+      /* The HP that the command sets (or sets the maximum of) are at most
+         their maximum, and full HP have no milli HP left over.  The
+         regeneration relies on both.  */
+      if ((entry.isMember ("a") || entry.isMember ("ma"))
+            && hp.armour () >= maxHP.armour ())
+        {
+          hp.set_armour (maxHP.armour ());
+          hp.mutable_mhp ()->set_armour (0);
+        }
+      if ((entry.isMember ("s") || entry.isMember ("ms"))
+            && hp.shield () >= maxHP.shield ())
+        {
+          hp.set_shield (maxHP.shield ());
+          hp.mutable_mhp ()->set_shield (0);
+        }
     }
 }
 
@@ -2332,7 +2360,7 @@ MoveProcessor::HandleGodMode (const Json::Value& cmd)
       return;
     }
 
-  MaybeGodTeleport (characters, cmd["teleport"]);
+  MaybeGodTeleport (characters, dyn, ctx, cmd["teleport"]);
   MaybeGodAllSetHp (buildings, characters, cmd["sethp"]);
   MaybeGodBuild (accounts, buildings, ctx, cmd["build"]);
   MaybeGodDropLoot (accounts, groundLoot, buildingInv, ctx, cmd["drop"]);

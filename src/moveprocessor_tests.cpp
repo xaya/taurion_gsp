@@ -66,6 +66,16 @@ protected:
   ProcessAdmin (const std::string& str)
   {
     DynObstacles dyn(db, ctx);
+    ProcessAdmin (str, dyn);
+  }
+
+  /**
+   * Processes the given data as admin commands, with the given
+   * dynamic obstacles.
+   */
+  void
+  ProcessAdmin (const std::string& str, DynObstacles& dyn)
+  {
     MoveProcessor mvProc(db, dyn, rnd, ctx);
     mvProc.ProcessAdmin (ParseJson (str));
   }
@@ -3935,6 +3945,61 @@ TEST_F (GodModeTests, Teleport)
   EXPECT_FALSE (c->GetProto ().has_movement ());
 }
 
+TEST_F (GodModeTests, TeleportKeepsStateConsistent)
+{
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
+  auto c = tbl.CreateNew ("domob", Faction::RED);
+  const auto id = c->GetId ();
+  ASSERT_EQ (id, 1);
+  proto::TargetId target;
+  target.set_type (proto::TargetId::TYPE_CHARACTER);
+  target.set_id (42);
+  c->SetTarget (target);
+  c->SetFriendlyTargets (true);
+  c.reset ();
+
+  const HexCoord noCombat(2'042, 0);
+  const HexCoord offMap(0, 30'000);
+  ASSERT_TRUE (ctx.Map ().SafeZones ().IsNoCombat (noCombat));
+  ASSERT_FALSE (ctx.Map ().IsOnMap (offMap));
+
+  DynObstacles dyn(db, ctx);
+  const auto teleport = [&] (const HexCoord& pos)
+    {
+      std::ostringstream cmd;
+      cmd << R"([{"cmd": {"god": {"teleport": [{"id": 1, "pos": {"x": )"
+          << pos.GetX () << R"(, "y": )" << pos.GetY () << "}}]}}}]";
+      ProcessAdmin (cmd.str (), dyn);
+    };
+
+  /* The dynamic obstacles follow the character, and it keeps its targets
+     outside of no-combat zones.  */
+  teleport (HexCoord (5, -42));
+  EXPECT_FALSE (dyn.HasVehicle (HexCoord (0, 0)));
+  EXPECT_TRUE (dyn.HasVehicle (HexCoord (5, -42)));
+  EXPECT_TRUE (tbl.GetById (id)->HasTarget ());
+  EXPECT_TRUE (tbl.GetById (id)->HasFriendlyTargets ());
+
+  /* A position off the map is invalid.  */
+  teleport (offMap);
+  EXPECT_EQ (tbl.GetById (id)->GetPosition (), HexCoord (5, -42));
+
+  /* A fighter in a no-combat zone has no targets.  */
+  teleport (noCombat);
+  EXPECT_FALSE (dyn.HasVehicle (HexCoord (5, -42)));
+  EXPECT_TRUE (dyn.HasVehicle (noCombat));
+  EXPECT_EQ (tbl.GetById (id)->GetPosition (), noCombat);
+  EXPECT_FALSE (tbl.GetById (id)->HasTarget ());
+  EXPECT_FALSE (tbl.GetById (id)->HasFriendlyTargets ());
+
+  /* A character inside a building can be teleported out of it.  */
+  tbl.GetById (id)->SetBuildingId (100);
+  dyn.RemoveVehicle (noCombat);
+  teleport (HexCoord (5, -42));
+  EXPECT_EQ (tbl.GetById (id)->GetPosition (), HexCoord (5, -42));
+  EXPECT_TRUE (dyn.HasVehicle (HexCoord (5, -42)));
+}
+
 TEST_F (GodModeTests, SetHp)
 {
   accounts.CreateNew ("domob")->SetFaction (Faction::RED);
@@ -4005,6 +4070,33 @@ TEST_F (GodModeTests, SetHp)
   EXPECT_EQ (c->GetRegenData ().max_hp ().armour (), 100);
   EXPECT_EQ (c->GetRegenData ().max_hp ().shield (), 90);
   c.reset ();
+
+  /* The HP that a command sets (or sets the maximum of) are capped at
+     the maximum, and full HP have no milli HP left over.  */
+  c = tbl.GetById (id);
+  c->MutableHP ().mutable_mhp ()->set_armour (500);
+  c->MutableHP ().mutable_mhp ()->set_shield (500);
+  c.reset ();
+
+  ProcessAdmin (R"([{"cmd": {
+    "god": {"sethp": {"c": [{"id": 1, "a": 100}]}}
+  }}])");
+
+  c = tbl.GetById (id);
+  EXPECT_EQ (c->GetHP ().armour (), 100);
+  EXPECT_EQ (c->GetHP ().mhp ().armour (), 0);
+  EXPECT_EQ (c->GetHP ().shield (), 15);
+  EXPECT_EQ (c->GetHP ().mhp ().shield (), 500);
+  c.reset ();
+
+  ProcessAdmin (R"([{"cmd": {
+    "god": {"sethp": {"c": [{"id": 1, "a": 250, "ms": 10}]}}
+  }}])");
+
+  c = tbl.GetById (id);
+  EXPECT_EQ (c->GetHP ().armour (), 100);
+  EXPECT_EQ (c->GetHP ().shield (), 10);
+  EXPECT_EQ (c->GetHP ().mhp ().shield (), 0);
 }
 
 TEST_F (GodModeTests, Build)

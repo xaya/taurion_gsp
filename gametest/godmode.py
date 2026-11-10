@@ -132,7 +132,7 @@ class GodModeTest (PXTest):
             {
               "b":
                 [
-                  {"id": buildingId, "a": 32, "s": 15},
+                  {"id": buildingId, "a": 32, "s": 15, "ma": 50, "ms": 20},
                 ],
             },
         },
@@ -140,7 +140,15 @@ class GodModeTest (PXTest):
     self.generate (1)
     hp = self.getBuildings ()[buildingId].data["combat"]["hp"]
     self.assertEqual (hp["current"], {"armour": 32, "shield": 15})
-    self.assertEqual (hp["max"], {"armour": 0, "shield": 0})
+    self.assertEqual (hp["max"], {"armour": 50, "shield": 20})
+
+    # HP are capped at the maximum.
+    self.adminCommand ({
+      "god": {"sethp": {"b": [{"id": buildingId, "a": 60}]}},
+    })
+    self.generate (1)
+    hp = self.getBuildings ()[buildingId].data["combat"]["hp"]
+    self.assertEqual (hp["current"], {"armour": 50, "shield": 15})
 
     self.mainLogger.info ("Testing drop loot...")
     self.dropLoot ({"x": 1, "y": 2}, {"foo": 1, "bar": 2})
