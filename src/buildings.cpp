@@ -170,6 +170,7 @@ EnterBuilding (Character& c, const Building& b, DynObstacles& dyn)
   dyn.RemoveVehicle (c.GetPosition ());
   c.SetBuildingId (b.GetId ());
   c.ClearTarget ();
+  c.SetFriendlyTargets (false);
   c.SetEnterBuilding (Database::EMPTY_ID);
   StopCharacter (c);
   StopMining (c);

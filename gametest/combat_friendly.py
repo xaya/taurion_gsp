@@ -75,6 +75,18 @@ class CombatFriendlyTest (PXTest):
     self.generate (5)
     self.expectShield ("domob", 2 + 3 * 0.5 * 1.15 + 6 * 0.5)
 
+    self.mainLogger.info ("Entering a building with friendlies in range...")
+    # Entering clears the friendly targets too, otherwise the next damage
+    # round would process a character inside a building (that halted the GSP).
+    self.build ("huesli", None, {"x": 0, "y": -3}, rot=0)
+    building = max (self.getBuildings ())
+    self.moveCharactersTo ({"domob": {"x": 0, "y": 1}})
+    self.getCharacters ()["domob 2"].sendMove ({"eb": building})
+    self.generate (3)
+    c = self.getCharacters ()["domob 2"]
+    assert c.isInBuilding ()
+    self.assertEqual (c.getBuildingId (), building)
+
 
 if __name__ == "__main__":
   CombatFriendlyTest ().main ()

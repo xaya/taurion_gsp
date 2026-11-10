@@ -108,6 +108,55 @@ class CombatTargetTest (PXTest):
                       offsetCoord ({"x": 10, "y": 0}, self.offset, False))
     self.assertEqual (self.getTargetCharacter ("green"), "red")
 
+    self.mainLogger.info ("Testing a target that founds a building...")
+    # Founding puts red into its new building during move processing,
+    # before green deals damage to its old target (in the same superblock,
+    # or in the next one if red founds between superblocks).  That used to
+    # halt the GSP.
+    site = offsetCoord ({"x": 5, "y": 0}, self.offset, False)
+    self.moveCharactersTo ({"red": site})
+    self.setCharactersHP ({
+      "red": {"ma": 1000, "a": 1000, "ms": 1000, "s": 1000},
+    })
+    self.dropLoot (site, {"foo": 2})
+    self.getCharacters ()["red"].sendMove ({"pu": {"f": {"foo": 2}}})
+    self.generate (1)
+    self.assertEqual (self.getTargetCharacter ("green"), "red")
+    beforeFounding = self.env.snapshot ()
+    # Between superblocks first:  restoring does not reset the mock time.
+    for superblock in [False, True]:
+      beforeFounding.restore ()
+      height = self.getSuperblockHeight ()
+      self.getCharacters ()["red"].sendMove ({"fb": {"t": "huesli", "rot": 0}})
+      self.generate (1, superblocks=superblock)
+      assert self.getCharacters ()["red"].isInBuilding ()
+      if not superblock:
+        self.assertEqual (self.getSuperblockHeight (), height)
+        self.assertEqual (self.getTargetCharacter ("green"), "red")
+        self.generate (1)
+      target = self.getCharacters ()["green"].data["combat"]["target"]
+      self.assertEqual (target, {"type": "building",
+                                 "id": max (self.getBuildings ())})
+
+    self.mainLogger.info ("Testing a target in a no-combat zone...")
+    # After founding between superblocks, red could also leave its building
+    # again into a no-combat zone before green deals damage to it.  That used
+    # to halt the GSP.  Here green and red are teleported next to and into one
+    # instead, at the start of the superblock that deals the damage.
+    beforeFounding.restore ()
+    self.env.setMockTime (self.w3.eth.get_block ("latest")["timestamp"])
+    height = self.getSuperblockHeight ()
+    self.getCharacters ()["red"].sendMove ({"fb": {"t": "huesli", "rot": 0}})
+    self.generate (1, superblocks=False)
+    assert self.getCharacters ()["red"].isInBuilding ()
+    self.assertEqual (self.getSuperblockHeight (), height)
+    self.assertEqual (self.getTargetCharacter ("green"), "red")
+    self.moveCharactersTo ({
+      "green": {"x": 2042, "y": 13},
+      "red": {"x": 2042, "y": 10},
+    })
+    assert self.getTargetCharacter ("green") is None
+
 
 if __name__ == "__main__":
   CombatTargetTest ().main ()

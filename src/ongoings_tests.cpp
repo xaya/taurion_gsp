@@ -161,6 +161,7 @@ TEST_F (OngoingsTests, ArmourRepair)
   const auto cId = c->GetId ();
   c->MutableRegenData ().mutable_max_hp ()->set_armour (1'000);
   c->MutableHP ().set_armour (850);
+  c->MutableHP ().mutable_mhp ()->set_armour (500);
 
   auto op = AddOp (*c);
   const auto opId = op->GetId ();
@@ -176,6 +177,7 @@ TEST_F (OngoingsTests, ArmourRepair)
   c = characters.GetById (cId);
   EXPECT_FALSE (c->IsBusy ());
   EXPECT_EQ (c->GetHP ().armour (), 1'000);
+  EXPECT_EQ (c->GetHP ().mhp ().armour (), 0);
   EXPECT_EQ (ongoings.GetById (opId), nullptr);
   EXPECT_EQ (GetNumOngoing (), 0);
 }

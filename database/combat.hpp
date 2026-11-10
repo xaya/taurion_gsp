@@ -277,6 +277,12 @@ public:
   virtual Faction GetFaction () const = 0;
 
   /**
+   * Returns whether the entity is on the map, i.e. has a position for attack
+   * targeting.  This is not the case for a character inside a building.
+   */
+  virtual bool HasCombatPosition () const = 0;
+
+  /**
    * Returns the position of this entity for attack targeting.
    */
   virtual const HexCoord& GetCombatPosition () const = 0;
