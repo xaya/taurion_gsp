@@ -36,6 +36,7 @@
 #include <xayautil/base64.hpp>
 #include <xayautil/jsonutils.hpp>
 
+#include <set>
 #include <sstream>
 
 namespace pxd
@@ -211,6 +212,9 @@ BaseMoveProcessor::TryCharacterUpdates (const std::string& name,
       else
         ids.append (idOrIds);
 
+      /* Each character is updated at most once per entry, so that the work
+         for an entry is bounded by the number of characters of the account.  */
+      std::set<Database::IdT> updated;
       for (const auto& idVal : ids)
         {
           Database::IdT id;
@@ -218,6 +222,13 @@ BaseMoveProcessor::TryCharacterUpdates (const std::string& name,
             {
               LOG (WARNING)
                   << "Invalid ID in character update entry: " << idVal;
+              continue;
+            }
+
+          if (!updated.insert (id).second)
+            {
+              LOG (WARNING)
+                  << "Repeated ID in character update entry: " << id;
               continue;
             }
 
@@ -518,8 +529,10 @@ BaseMoveProcessor::ParseCoinTransferBurn (const Account& a,
           CHECK (it.key ().isString ());
           const std::string to = it.key ().asString ();
 
+          /* Zero transfers are pointless, but would create an account
+             for the recipient.  So we treat them as invalid.  */
           Amount amount;
-          if (!CoinAmountFromJson (*it, amount))
+          if (!CoinAmountFromJson (*it, amount) || amount == 0)
             {
               LOG (WARNING)
                   << "Invalid coin transfer from " << a.GetName ()
@@ -1882,7 +1895,6 @@ MoveProcessor::MaybePickupLoot (Character& c, const Json::Value& cmd)
 void
 MoveProcessor::PerformCharacterUpdate (Character& c, const Json::Value& upd)
 {
-  MaybeTransferCharacter (c, upd);
   MaybeStartProspecting (c, upd);
 
   /* Updates to the vehicle and fitments are done before handling item
@@ -1938,6 +1950,10 @@ MoveProcessor::PerformCharacterUpdate (Character& c, const Json::Value& upd)
      than allowing to exit & enter again in the same move.  */
   MaybeEnterBuilding (c, upd);
   MaybeExitBuilding (c, upd);
+
+  /* The transfer is done after all other updates, so that they are still
+     done by (and e.g. paid for by) the account that sent the move.  */
+  MaybeTransferCharacter (c, upd);
 }
 
 void
