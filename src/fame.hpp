@@ -27,8 +27,8 @@
 #include "database/database.hpp"
 #include "proto/combat.pb.h"
 
-#include <map>
 #include <string>
+#include <vector>
 
 namespace pxd
 {
@@ -55,12 +55,26 @@ private:
   AccountsTable accounts;
 
   /**
-   * The delta computed in fame for given account names.  We compute this here
-   * before applying it at the very end (in the destructor).  That allows us
-   * to compute everything independent of the processing order, since the
-   * computations themselves are done on the initial fame values.
+   * A kill that moves fame:  the victim's account and its fame, the killer
+   * accounts in level range, and the number of all distinct killer accounts
+   * (between which the lost fame is split).
    */
-  std::map<std::string, int> deltas;
+  struct FameKill
+  {
+    std::string victim;
+    unsigned victimFame;
+    std::vector<std::string> killers;
+    unsigned numKillers;
+  };
+
+  /**
+   * The kills that move fame.  They are turned into fame changes only at the
+   * very end (in the destructor), since what a victim loses for each of them
+   * depends on how many of its characters are killed in total.  This also
+   * makes everything independent of the processing order, as the
+   * computations are done on the initial fame values.
+   */
+  std::vector<FameKill> kills;
 
   /**
    * Computes the "fame level" of a player.  This is used to determine who

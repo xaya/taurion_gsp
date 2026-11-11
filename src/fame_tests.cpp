@@ -26,6 +26,7 @@
 #include <gtest/gtest.h>
 
 #include <sstream>
+#include <vector>
 
 namespace pxd
 {
@@ -167,12 +168,12 @@ TEST_F (FameTests, TrackingKills)
   /* Add initial data to make sure that's taken into account.  */
   accounts.GetByName ("foo")->MutableProto ().set_kills (10);
 
-  /* Multiple killers (including the character owner himself) as well as
-     multiple killing characters of one owner.  */
+  /* Multiple killing characters of one owner, and one of the victim's own
+     account (which is not a killer of it).  */
   UpdateForKill (id4, {id1, id2, id3});
 
   EXPECT_EQ (accounts.GetByName ("foo")->GetProto ().kills (), 11);
-  EXPECT_EQ (accounts.GetByName ("bar")->GetProto ().kills (), 1);
+  EXPECT_EQ (accounts.GetByName ("bar")->GetProto ().kills (), 0);
 }
 
 TEST_F (FameTests, BasicUpdates)
@@ -271,35 +272,66 @@ TEST_F (FameTests, AccountsWithMultipleCharacters)
   const auto id4 = CreateCharacter ("bar");
   const auto id5 = CreateCharacter ("baz");
 
+  /* The fame is split between bar and baz (out of range), foo's own
+     character does not count.  */
   accounts.GetByName ("baz")->MutableProto ().set_fame (5000);
   UpdateForKill (id1, {id2, id3, id4, id5});
   FlushDeltas ();
 
-  EXPECT_EQ (accounts.GetByName ("foo")->GetProto ().fame (), 33);
-  EXPECT_EQ (accounts.GetByName ("bar")->GetProto ().fame (), 133);
+  EXPECT_EQ (accounts.GetByName ("foo")->GetProto ().fame (), 0);
+  EXPECT_EQ (accounts.GetByName ("bar")->GetProto ().fame (), 150);
   EXPECT_EQ (accounts.GetByName ("baz")->GetProto ().fame (), 5000);
 }
 
-TEST_F (FameTests, ZeroFloorForMultipleCharactersKilled)
+TEST_F (FameTests, MultipleCharactersKilledSplitFame)
 {
   const auto id1 = CreateCharacter ("foo");
   const auto id2 = CreateCharacter ("foo");
   const auto id3 = CreateCharacter ("bar");
   const auto id4 = CreateCharacter ("baz");
 
+  /* foo has 100 fame, which its two kills split.  */
   UpdateForKill (id1, {id3});
   UpdateForKill (id2, {id4});
   FlushDeltas ();
 
   EXPECT_EQ (accounts.GetByName ("foo")->GetProto ().fame (), 0);
-  EXPECT_EQ (accounts.GetByName ("bar")->GetProto ().fame (), 200);
-  EXPECT_EQ (accounts.GetByName ("baz")->GetProto ().fame (), 200);
+  EXPECT_EQ (accounts.GetByName ("bar")->GetProto ().fame (), 150);
+  EXPECT_EQ (accounts.GetByName ("baz")->GetProto ().fame (), 150);
+}
+
+TEST_F (FameTests, NoFameFromManyKillsOfOneAccount)
+{
+  /* Killing many characters of one account at once gains no more than the
+     account has.  An account with plenty of fame still loses the full
+     amount for each kill.  */
+  const auto killer = CreateCharacter ("farmer");
+  std::vector<Database::IdT> alt, rich;
+  for (unsigned i = 0; i < 20; ++i)
+    {
+      alt.push_back (CreateCharacter ("alt"));
+      rich.push_back (CreateCharacter ("rich"));
+    }
+  accounts.GetByName ("rich")->MutableProto ().set_fame (1500);
+  accounts.GetByName ("farmer")->MutableProto ().set_fame (1000);
+
+  for (const auto id : alt)
+    UpdateForKill (id, {killer});
+  FlushDeltas ();
+  EXPECT_EQ (accounts.GetByName ("alt")->GetProto ().fame (), 0);
+  EXPECT_EQ (accounts.GetByName ("farmer")->GetProto ().fame (), 1100);
+
+  for (unsigned i = 0; i < 10; ++i)
+    UpdateForKill (rich[i], {killer});
+  FlushDeltas ();
+  EXPECT_EQ (accounts.GetByName ("rich")->GetProto ().fame (), 500);
+  EXPECT_EQ (accounts.GetByName ("farmer")->GetProto ().fame (), 2100);
 }
 
 TEST_F (FameTests, TemporarilyBeyondCap)
 {
-  /* If we go "temporarily" above the 9999 cap or below 0, we should still end
-     up with the correct final difference applied and only capped then.  */
+  /* If we go "temporarily" above the 9999 cap, we should still end up with
+     the correct final difference applied and only capped then.  */
   const auto id1 = CreateCharacter ("a");
   const auto id2 = CreateCharacter ("b");
   const auto id3 = CreateCharacter ("c");
@@ -314,14 +346,14 @@ TEST_F (FameTests, TemporarilyBeyondCap)
   UpdateForKill (id2, {id1, id3});
   UpdateForKill (id1, {id2});
 
-  /* id3 will lose 20 and gain 100 fame, going below zero temporarily.  */
+  /* id3 will lose its 10 fame (split by the two kills) and gain 100.  */
   UpdateForKill (id3, {id4});
   UpdateForKill (id3, {id4});
   UpdateForKill (id4, {id3});
 
   FlushDeltas ();
   EXPECT_EQ (accounts.GetByName ("a")->GetProto ().fame (), 9945);
-  EXPECT_EQ (accounts.GetByName ("c")->GetProto ().fame (), 90);
+  EXPECT_EQ (accounts.GetByName ("c")->GetProto ().fame (), 100);
 }
 
 TEST_F (FameTests, BasedOnOriginalFame)
