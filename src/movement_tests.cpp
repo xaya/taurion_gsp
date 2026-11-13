@@ -46,7 +46,14 @@ namespace
 
 /* ************************************************************************** */
 
-using WaypointEncodingTests = testing::Test;
+class WaypointEncodingTests : public testing::Test
+{
+
+protected:
+
+  ContextForTesting ctx;
+
+};
 
 TEST_F (WaypointEncodingTests, Roundtrip)
 {
@@ -62,11 +69,10 @@ TEST_F (WaypointEncodingTests, Roundtrip)
       HexCoord (-123, 0),
       HexCoord (0, 0),
     };
-  for (unsigned i = 0; i < 10'000; ++i)
-    {
-      wp.push_back (HexCoord (1'000, 0));
-      wp.push_back (HexCoord (-1'000, 0));
-    }
+  /* A long staircase of single steps is about as compressible as real
+     paths get.  */
+  for (int i = 0; i < 4'000; ++i)
+    wp.push_back (wp.back () + HexCoord (i % 2, 1 - i % 2));
 
   Json::Value jsonWp;
   std::string encoded;
@@ -74,7 +80,7 @@ TEST_F (WaypointEncodingTests, Roundtrip)
   EXPECT_EQ (jsonWp.size (), wp.size ());
 
   std::vector<HexCoord> recovered;
-  ASSERT_TRUE (DecodeWaypoints (encoded, recovered));
+  ASSERT_TRUE (DecodeWaypoints (encoded, ctx.Map (), recovered));
   EXPECT_EQ (recovered, wp);
 }
 
@@ -88,7 +94,7 @@ TEST_F (WaypointEncodingTests, EmptyList)
   EXPECT_EQ (jsonWp.size (), 0);
 
   std::vector<HexCoord> recovered;
-  ASSERT_TRUE (DecodeWaypoints (encoded, recovered));
+  ASSERT_TRUE (DecodeWaypoints (encoded, ctx.Map (), recovered));
   EXPECT_TRUE (recovered.empty ());
 }
 
@@ -104,6 +110,26 @@ TEST_F (WaypointEncodingTests, TooLargeForEncoding)
   Json::Value jsonWp;
   std::string encoded;
   ASSERT_FALSE (EncodeWaypoints (wp, jsonWp, encoded));
+}
+
+TEST_F (WaypointEncodingTests, TooCompressible)
+{
+  /* Many copies of the same waypoint compress very well, but are still
+     a lot of data to parse.  */
+  const std::vector<HexCoord> wp(10'000, HexCoord (0, 0));
+  Json::Value jsonWp;
+  std::string encoded;
+  EXPECT_FALSE (EncodeWaypoints (wp, jsonWp, encoded));
+
+  std::ostringstream repeated;
+  repeated << R"([{"x":0,"y":0})";
+  for (unsigned i = 1; i < wp.size (); ++i)
+    repeated << R"(,{"x":0,"y":0})";
+  repeated << "]";
+
+  encoded = xaya::EncodeBase64 (xaya::CompressData (repeated.str ()));
+  std::vector<HexCoord> recovered;
+  EXPECT_FALSE (DecodeWaypoints (encoded, ctx.Map (), recovered));
 }
 
 TEST_F (WaypointEncodingTests, InvalidDataForDecode)
@@ -124,6 +150,8 @@ TEST_F (WaypointEncodingTests, InvalidDataForDecode)
       "[] junk",
       R"([{"x": 10, "y": "foo"}])",
       R"([{"x": 10, "y": 20, "z": ["too deep"]}])",
+      R"([{"x": 0, "y": 4096}])",
+      R"([{"x": -32768, "y": 0}])",
       tooLarge.str (),
     };
 
@@ -131,7 +159,7 @@ TEST_F (WaypointEncodingTests, InvalidDataForDecode)
     {
       const std::string encoded = xaya::EncodeBase64 (xaya::CompressData (t));
       std::vector<HexCoord> recovered;
-      ASSERT_FALSE (DecodeWaypoints (encoded, recovered));
+      ASSERT_FALSE (DecodeWaypoints (encoded, ctx.Map (), recovered));
     }
 }
 

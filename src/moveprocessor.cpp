@@ -564,6 +564,24 @@ BaseMoveProcessor::ParseCoinTransferBurn (const Account& a,
 }
 
 bool
+BaseMoveProcessor::DecodeWaypointsCached (const std::string& encoded,
+                                          DecodedWaypoints& cache,
+                                          std::vector<HexCoord>& wp)
+{
+  if (cache.encoded != encoded)
+    {
+      cache.valid = DecodeWaypoints (encoded, ctx.Map (), cache.wp);
+      cache.encoded = encoded;
+    }
+
+  if (!cache.valid)
+    return false;
+
+  wp = cache.wp;
+  return true;
+}
+
+bool
 BaseMoveProcessor::ParseCharacterWaypoints (const Character& c,
                                             const Json::Value& upd,
                                             std::vector<HexCoord>& wp)
@@ -603,11 +621,19 @@ BaseMoveProcessor::ParseCharacterWaypoints (const Character& c,
       return false;
     }
 
-  if (!DecodeWaypoints (wpVal.asString (), wp))
+  if (!DecodeWaypointsCached (wpVal.asString (), lastWp, wp))
     {
       LOG (WARNING)
           << "Invalid waypoints given for character " << c.GetId ()
           << ", not updating movement";
+      return false;
+    }
+
+  if (wp.size () > MAX_WAYPOINTS)
+    {
+      LOG (WARNING)
+          << "Too many waypoints given for character " << c.GetId ()
+          << ": " << wp.size ();
       return false;
     }
 
@@ -639,11 +665,20 @@ BaseMoveProcessor::ParseCharacterWaypointExtension (const Character& c,
       return false;
     }
 
-  if (!DecodeWaypoints (wpx.asString (), wp))
+  if (!DecodeWaypointsCached (wpx.asString (), lastWpx, wp))
     {
       LOG (WARNING)
           << "Invalid waypoints given for character " << c.GetId ()
           << ", not extending movement";
+      return false;
+    }
+
+  const size_t total = pb.movement ().waypoints_size () + wp.size ();
+  if (total > MAX_WAYPOINTS)
+    {
+      LOG (WARNING)
+          << "Too many waypoints for character " << c.GetId ()
+          << " after the extension: " << total;
       return false;
     }
 

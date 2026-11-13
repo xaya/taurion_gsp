@@ -26,6 +26,8 @@
 
 #include <glog/logging.h>
 
+#include <algorithm>
+
 namespace pxd
 {
 
@@ -44,6 +46,25 @@ namespace
  */
 constexpr size_t MAX_WAYPOINT_SIZE = (1 << 20);
 
+/**
+ * The maximum factor by which serialised waypoints may be larger than their
+ * encoded (compressed) form.  Real paths compress by a factor of about seven,
+ * but crafted data can compress by more than 700, which would let a short
+ * move cause a lot of parsing work.  This is consensus relevant, as it makes
+ * waypoint strings that are compressed more than that invalid.
+ */
+constexpr size_t MAX_WAYPOINT_INFLATION = 32;
+
+/**
+ * Returns the maximum allowed size of the serialised waypoints for
+ * the given encoded string.
+ */
+size_t
+MaxSerialisedSize (const std::string& encoded)
+{
+  return std::min (MAX_WAYPOINT_SIZE, MAX_WAYPOINT_INFLATION * encoded.size ());
+}
+
 } // anonymous namespace
 
 bool
@@ -56,11 +77,12 @@ EncodeWaypoints (const std::vector<HexCoord>& wp,
 
   std::string serialised;
   CHECK (xaya::CompressJson (jsonWp, encoded, serialised));
-  if (serialised.size () > MAX_WAYPOINT_SIZE)
+  const size_t maxSize = MaxSerialisedSize (encoded);
+  if (serialised.size () > maxSize)
     {
       LOG (WARNING)
           << "Serialised waypoints JSON is too large (" << serialised.size ()
-          << " vs maximum allowed length " << MAX_WAYPOINT_SIZE << ")";
+          << " vs maximum allowed length " << maxSize << ")";
       return false;
     }
 
@@ -73,11 +95,12 @@ EncodeWaypoints (const std::vector<HexCoord>& wp,
 }
 
 bool
-DecodeWaypoints (const std::string& encoded, std::vector<HexCoord>& wp)
+DecodeWaypoints (const std::string& encoded, const BaseMap& map,
+                 std::vector<HexCoord>& wp)
 {
   Json::Value jsonWp;
   std::string uncompressed;
-  if (!xaya::UncompressJson (encoded, MAX_WAYPOINT_SIZE, 3,
+  if (!xaya::UncompressJson (encoded, MaxSerialisedSize (encoded), 3,
                              jsonWp, uncompressed))
     {
       LOG (WARNING)
@@ -96,7 +119,7 @@ DecodeWaypoints (const std::string& encoded, std::vector<HexCoord>& wp)
   for (const auto& entry : jsonWp)
     {
       HexCoord c;
-      if (!CoordFromJson (entry, c))
+      if (!CoordFromJson (entry, c) || !map.IsOnMap (c))
         {
           LOG (WARNING) << "Invalid waypoint: " << entry;
           return false;

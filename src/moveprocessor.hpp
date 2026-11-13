@@ -44,6 +44,7 @@
 #include <json/json.h>
 
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -57,6 +58,14 @@ namespace pxd
  * large enough to not be a restriction in practice (1k tiles per block).
  */
 static constexpr unsigned MAX_CHOSEN_SPEED = 1'000'000;
+
+/**
+ * The maximum number of waypoints a character can have.  This applies to
+ * the waypoints set with a move, and also to the total after extending them.
+ * It is consensus relevant, as it makes moves with more waypoints invalid.
+ * Paths across the whole map have up to about 1'500 waypoints.
+ */
+static constexpr size_t MAX_WAYPOINTS = 10'000;
 
 /** Amounts of fungible items.  */
 using FungibleAmountMap = std::map<std::string, Quantity>;
@@ -93,6 +102,37 @@ class BaseMoveProcessor
 {
 
 private:
+
+  /**
+   * A waypoint string that was decoded, and the result.
+   */
+  struct DecodedWaypoints
+  {
+    std::optional<std::string> encoded;
+    bool valid = false;
+    std::vector<HexCoord> wp;
+  };
+
+  /**
+   * The "wp" string that was decoded last.  A character update can apply
+   * the same waypoints to many characters with an array of IDs, and this
+   * ensures that they are decoded only once.
+   */
+  DecodedWaypoints lastWp;
+
+  /**
+   * Same as lastWp but for "wpx".  It is separate, so that an update with
+   * both "wp" and "wpx" also decodes each of them only once.
+   */
+  DecodedWaypoints lastWpx;
+
+  /**
+   * Decodes a waypoint string with DecodeWaypoints, but reuses the result
+   * from the given cache if it is the same string.
+   */
+  bool DecodeWaypointsCached (const std::string& encoded,
+                              DecodedWaypoints& cache,
+                              std::vector<HexCoord>& wp);
 
   /**
    * Tries to parse a "send building" command from the JSON update
@@ -189,19 +229,18 @@ protected:
    * in the update JSON.  Returns true if a valid waypoint update was found,
    * in which case wp will be set accordingly.
    */
-  static bool ParseCharacterWaypoints (const Character& c,
-                                       const Json::Value& upd,
-                                       std::vector<HexCoord>& wp);
+  bool ParseCharacterWaypoints (const Character& c, const Json::Value& upd,
+                                std::vector<HexCoord>& wp);
 
   /**
    * Parses and verifies a potential waypoint extension for the
    * character.  If pendingWp is true, we assume that there are already
    * pending waypoints, which we accept also as "is already moving".
    */
-  static bool ParseCharacterWaypointExtension (const Character& c,
-                                               const Json::Value& upd,
-                                               bool pendingWp,
-                                               std::vector<HexCoord>& wp);
+  bool ParseCharacterWaypointExtension (const Character& c,
+                                        const Json::Value& upd,
+                                        bool pendingWp,
+                                        std::vector<HexCoord>& wp);
 
   /**
    * Parses and verifies a potential update to the character's
@@ -408,13 +447,12 @@ private:
    * Sets the character's waypoints if a valid command for starting a move
    * is there.
    */
-  static void MaybeSetCharacterWaypoints (Character& c, const Json::Value& upd);
+  void MaybeSetCharacterWaypoints (Character& c, const Json::Value& upd);
 
   /**
    * Extends the character's waypoints with an wpx move.
    */
-  static void MaybeExtendCharacterWaypoints (Character& c,
-                                             const Json::Value& upd);
+  void MaybeExtendCharacterWaypoints (Character& c, const Json::Value& upd);
 
   /**
    * Processes a command to set (or clear) a character's "enter building".
