@@ -70,7 +70,20 @@ template <typename T>
   Database::Result<T>::Result (Database& d, xaya::SQLiteDatabase::Statement&& s)
     : db(&d), stmt(std::move (s))
 {
-  columnInd.fill (MISSING_COLUMN);
+  /* Looking up the column names is relatively expensive, and results for
+     single rows (like GetById) are very common.  Each thread has its own
+     cache, so that no locking is needed.  */
+  static thread_local std::unordered_map<std::string, ColumnIndices> cache;
+
+  auto mit = cache.find (sqlite3_sql (stmt.ro ()));
+  if (mit == cache.end ())
+    {
+      ColumnIndices fresh;
+      fresh.fill (MISSING_COLUMN);
+      mit = cache.emplace (sqlite3_sql (stmt.ro ()), fresh).first;
+    }
+
+  columnInd = &mit->second;
 }
 
 template <typename T>
@@ -78,7 +91,7 @@ template <typename Col>
   int
   Database::Result<T>::ColumnIndex () const
 {
-  const int res = columnInd[Col::ID];
+  const int res = (*columnInd)[Col::ID];
   if (res != MISSING_COLUMN)
     return res;
 
@@ -88,7 +101,7 @@ template <typename Col>
       const char* name = sqlite3_column_name (stmt.ro (), i);
       if (std::strcmp (name, Col::NAME) == 0)
         {
-          columnInd[Col::ID] = i;
+          (*columnInd)[Col::ID] = i;
           return i;
         }
     }

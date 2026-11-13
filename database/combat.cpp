@@ -38,7 +38,6 @@ CombatEntity::CombatEntity (Database& d)
 void
 CombatEntity::BindFullFields (Database::Statement& stmt,
                               const unsigned indRegenData,
-                              const unsigned indTarget,
                               const unsigned indAttackRange,
                               const unsigned indFriendlyRange) const
 {
@@ -55,6 +54,17 @@ CombatEntity::BindFullFields (Database::Statement& stmt,
     stmt.BindNull (indFriendlyRange);
   else
     stmt.Bind (indFriendlyRange, friendlyRange);
+}
+
+void
+CombatEntity::BindFields (Database::Statement& stmt, const unsigned indHp,
+                          const unsigned indFriendlyTargets,
+                          const unsigned indCanRegen,
+                          const unsigned indTarget) const
+{
+  stmt.BindProto (indHp, hp);
+  stmt.Bind (indFriendlyTargets, friendlyTargets);
+  stmt.Bind (indCanRegen, GetNewCanRegen ());
 
   if (HasTarget ())
     stmt.BindProto (indTarget, target);
@@ -62,18 +72,12 @@ CombatEntity::BindFullFields (Database::Statement& stmt,
     stmt.BindNull (indTarget);
 }
 
-void
-CombatEntity::BindFields (Database::Statement& stmt, const unsigned indHp,
-                          const unsigned indFriendlyTargets,
-                          const unsigned indCanRegen) const
+bool
+CombatEntity::GetNewCanRegen () const
 {
-  bool canRegen = oldCanRegen;
   if (hp.IsDirty () || regenData.IsDirty ())
-    canRegen = ComputeCanRegen (hp.Get (), regenData.Get ());
-
-  stmt.BindProto (indHp, hp);
-  stmt.Bind (indFriendlyTargets, friendlyTargets);
-  stmt.Bind (indCanRegen, canRegen);
+    return ComputeCanRegen (hp.Get (), regenData.Get ());
+  return oldCanRegen;
 }
 
 void
@@ -111,7 +115,10 @@ CombatEntity::ClearTarget ()
 void
 CombatEntity::SetTarget (const proto::TargetId& t)
 {
-  target.Mutable () = t;
+  /* Keeping the same target does not need a database update.  */
+  if (!HasTarget () || target.Get ().type () != t.type ()
+        || target.Get ().id () != t.id ())
+    target.Mutable () = t;
   CHECK (HasTarget ());
 }
 

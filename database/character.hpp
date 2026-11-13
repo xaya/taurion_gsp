@@ -125,9 +125,9 @@ private:
                       const Database::Result<CharacterResult>& res);
 
   /**
-   * Binds parameters in a statement to the mutable non-proto fields.  This is
-   * to share code between the proto and non-proto updates.  The ID is always
-   * bound to parameter ?1, and other fields to following integer IDs.
+   * Binds parameters in a statement to the mutable fields that the partial
+   * update can set.  This is to share code between the full and the partial
+   * update.  The fields are bound to parameters ?2 to ?12, and the ID to ?13.
    *
    * The immutable non-proto field faction is also not bound
    * here, since it is only present in the INSERT OR REPLACE statement
@@ -273,6 +273,12 @@ public:
     return effects.Mutable ();
   }
 
+  void
+  EffectsCleared () override
+  {
+    effects.SetToDefault ();
+  }
+
   const proto::Character&
   GetProto () const
   {
@@ -296,12 +302,6 @@ public:
   uint64_t FreeCargoSpace (const RoConfig& cfg) const;
 
   proto::TargetId GetIdAsTarget () const override;
-
-  bool
-  HasCombatPosition () const override
-  {
-    return !IsInBuilding ();
-  }
 
   const HexCoord&
   GetCombatPosition () const override

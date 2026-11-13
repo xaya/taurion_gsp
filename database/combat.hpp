@@ -148,17 +148,17 @@ protected:
   bool
   IsDirtyFull () const
   {
-    return regenData.IsDirty () || target.IsDirty ();
+    return regenData.IsDirty ();
   }
 
   /**
    * Returns whether a partial update (of the small / fast changing fields
-   * like HP) is required.
+   * like HP and the target) is required.
    */
   bool
   IsDirtyFields () const
   {
-    return isDirty || hp.IsDirty ();
+    return isDirty || hp.IsDirty () || target.IsDirty ();
   }
 
   /**
@@ -167,16 +167,43 @@ protected:
    */
   void
   BindFullFields (Database::Statement& stmt, unsigned indRegenData,
-                  unsigned indTarget, unsigned indAttackRange,
-                  unsigned indFriendlyRange) const;
+                  unsigned indAttackRange, unsigned indFriendlyRange) const;
 
   /**
    * Binds statement parameters for updating the small / fast changing
-   * fields (HP, canRegen).
+   * fields (HP, canRegen, friendly targets, target).
    */
   void
   BindFields (Database::Statement& stmt, unsigned indHp,
-              unsigned indFriendlyTargets, unsigned indCanRegen) const;
+              unsigned indFriendlyTargets, unsigned indCanRegen,
+              unsigned indTarget) const;
+
+  /* Whether each of the fields of BindFields changed, for a partial update
+     that sets only the columns that did.  */
+
+  bool
+  IsDirtyHp () const
+  {
+    return hp.IsDirty ();
+  }
+
+  bool
+  IsDirtyCanRegen () const
+  {
+    return GetNewCanRegen () != oldCanRegen;
+  }
+
+  bool
+  IsDirtyFriendlyTargets () const
+  {
+    return isDirty;
+  }
+
+  bool
+  IsDirtyTarget () const
+  {
+    return target.IsDirty ();
+  }
 
   /**
    * Validates the state for consistency.  CHECK-fails if there
@@ -277,12 +304,6 @@ public:
   virtual Faction GetFaction () const = 0;
 
   /**
-   * Returns whether the entity is on the map, i.e. has a position for attack
-   * targeting.  This is not the case for a character inside a building.
-   */
-  virtual bool HasCombatPosition () const = 0;
-
-  /**
    * Returns the position of this entity for attack targeting.
    */
   virtual const HexCoord& GetCombatPosition () const = 0;
@@ -302,6 +323,19 @@ public:
    * Returns a mutable reference to the effects proto.
    */
   virtual proto::CombatEffects& MutableEffects () = 0;
+
+  /**
+   * Returns the canregen flag for the current HP and RegenData, i.e. whether
+   * HP regeneration will process this entity once it is written.
+   */
+  bool GetNewCanRegen () const;
+
+  /**
+   * Resets the effects in memory to none after they have been cleared
+   * in the database (by ClearAllEffects of the table), so that the
+   * handle neither writes the old ones back nor needs another write.
+   */
+  virtual void EffectsCleared () = 0;
 
 };
 

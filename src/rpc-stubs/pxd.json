@@ -86,6 +86,20 @@
     "params": {},
     "returns": {}
   },
+  {
+    "name": "getchanges",
+    "params": {
+      "fromblock": "block hash"
+    },
+    "returns": {}
+  },
+  {
+    "name": "getcompactchanges",
+    "params": {
+      "fromblock": "block hash"
+    },
+    "returns": {}
+  },
 
   {
     "name": "getserviceinfo",

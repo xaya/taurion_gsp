@@ -25,6 +25,7 @@
 #include "database/account.hpp"
 #include "database/building.hpp"
 #include "database/character.hpp"
+#include "database/damagelists.hpp"
 #include "database/dbtest.hpp"
 #include "database/dex.hpp"
 #include "database/inventory.hpp"
@@ -39,7 +40,10 @@
 
 #include <json/json.h>
 
+#include <map>
+#include <set>
 #include <string>
+#include <vector>
 
 namespace pxd
 {
@@ -48,7 +52,7 @@ namespace
 
 /* ************************************************************************** */
 
-class GameStateJsonTests : public DBTestWithSchema
+class GameStateJsonTests : public DBTestWithUndo
 {
 
 protected:
@@ -92,6 +96,76 @@ protected:
   CharacterJsonTests ()
     : tbl(db)
   {}
+
+  /**
+   * Expects that the compact changes of characters since the given block,
+   * applied to their full JSON at it, give exactly their full JSON now, and
+   * that they differ from the full changes just in the compact entries.  An
+   * entry of "moved" replaces the position and movement of its character,
+   * and one of "combat" the hp, target, effects and attackers of its combat
+   * data (those it does not have are removed).  Returns the changes.
+   */
+  Json::Value
+  ExpectCompactChanges (const xaya::uint256& from, const Json::Value& before)
+  {
+    const auto full = converter.Changes (from, height, false)["characters"];
+    const auto res = converter.Changes (from, height, true)["characters"];
+    EXPECT_EQ (full.getMemberNames (),
+               (std::vector<std::string> {"changed", "deleted"}));
+    EXPECT_EQ (res.getMemberNames (),
+               (std::vector<std::string> {"changed", "combat", "deleted",
+                                          "moved"}));
+
+    std::map<Database::IdT, Json::Value> rows;
+    for (const auto& c : before)
+      rows[c["id"].asUInt64 ()] = c;
+    for (const auto& c : res["changed"])
+      rows[c["id"].asUInt64 ()] = c;
+    for (const auto& id : res["deleted"])
+      rows.erase (id.asUInt64 ());
+
+    std::set<Database::IdT> compactIds;
+    const auto merge = [] (const Json::Value& entry, Json::Value& row,
+                           const std::set<std::string>& keys)
+      {
+        for (const auto& k : entry.getMemberNames ())
+          EXPECT_EQ (keys.count (k), 1) << "Unexpected key " << k;
+        for (const auto& k : keys)
+          if (entry.isMember (k))
+            row[k] = entry[k];
+          else
+            row.removeMember (k);
+      };
+    for (const auto& e : res["moved"])
+      {
+        compactIds.insert (e["id"].asUInt64 ());
+        merge (e, rows.at (e["id"].asUInt64 ()),
+               {"id", "position", "movement"});
+      }
+    for (const auto& e : res["combat"])
+      {
+        compactIds.insert (e["id"].asUInt64 ());
+        EXPECT_EQ (e.size (), 2);
+        EXPECT_TRUE (e["combat"].isMember ("hp"));
+        merge (e["combat"], rows.at (e["id"].asUInt64 ())["combat"],
+               {"hp", "target", "effects", "attackers"});
+      }
+
+    Json::Value merged(Json::arrayValue);
+    for (const auto& entry : rows)
+      merged.append (entry.second);
+    EXPECT_EQ (merged, converter.Characters ());
+
+    Json::Value changed(Json::arrayValue);
+    for (const auto& c : full["changed"])
+      if (compactIds.count (c["id"].asUInt64 ()) == 0)
+        changed.append (c);
+    EXPECT_EQ (res["changed"], changed);
+    EXPECT_EQ (changed.size () + compactIds.size (), full["changed"].size ());
+    EXPECT_EQ (res["deleted"], full["deleted"]);
+
+    return res;
+  }
 
 };
 
@@ -256,6 +330,11 @@ TEST_F (CharacterJsonTests, Attacks)
   attack->set_area (10);
   attack->set_friendlies (true);
 
+  attack = cd->add_attacks ();
+  attack->set_range (4);
+  attack->mutable_effects ()->mutable_speed ()->set_percent (-15);
+  attack->mutable_effects ()->set_mentecon (true);
+
   c.reset ();
 
   ExpectStateJson (R"({
@@ -268,7 +347,8 @@ TEST_F (CharacterJsonTests, Attacks)
                 [
                   {
                     "range": 5,
-                    "damage": {"min": 2, "max": 10}
+                    "damage": {"min": 2, "max": 10},
+                    "effects": null
                   },
                   {
                     "area": 1,
@@ -278,9 +358,58 @@ TEST_F (CharacterJsonTests, Attacks)
                   {
                     "area": 10,
                     "friendlies": true
+                  },
+                  {
+                    "range": 4,
+                    "damage": null,
+                    "effects":
+                      {
+                        "speed": {"percent": -15, "absolute": null},
+                        "range": null,
+                        "mentecon": true
+                      }
                   }
                 ]
             }
+        }
+      ]
+  })");
+}
+
+TEST_F (CharacterJsonTests, Effects)
+{
+  auto c = tbl.CreateNew ("domob", Faction::RED);
+  auto& eff = c->MutableEffects ();
+  eff.mutable_speed ()->set_percent (-20);
+  eff.mutable_range ()->set_absolute (-1);
+  eff.mutable_hit_chance ()->set_percent (-8);
+  eff.mutable_shield_regen ()->set_percent (50);
+  eff.mutable_shield_regen ()->set_absolute (10);
+  eff.set_mentecon (true);
+  c.reset ();
+
+  tbl.CreateNew ("andy", Faction::GREEN);
+
+  ExpectStateJson (R"({
+    "characters":
+      [
+        {
+          "owner": "domob",
+          "combat":
+            {
+              "effects":
+                {
+                  "speed": {"percent": -20, "absolute": null},
+                  "range": {"percent": null, "absolute": -1},
+                  "hitchance": {"percent": -8},
+                  "shieldregen": {"percent": 50, "absolute": 10},
+                  "mentecon": true
+                }
+            }
+        },
+        {
+          "owner": "andy",
+          "combat": {"effects": null}
         }
       ]
   })");
@@ -472,8 +601,7 @@ TEST_F (CharacterJsonTests, DamageLists)
   const auto id2 = tbl.CreateNew ("domob", Faction::GREEN)->GetId ();
   ASSERT_EQ (id2, 2);
 
-  DamageLists dl(db, 0);
-  dl.AddEntry (id1, id2);
+  DamageLists (db, 0).AddEntry (id1, id2);
 
   ExpectStateJson (R"({
     "characters":
@@ -518,6 +646,227 @@ TEST_F (CharacterJsonTests, Busy)
         }
       ]
   })");
+}
+
+TEST_F (CharacterJsonTests, CompactChanges)
+{
+  auto c = tbl.CreateNew ("domob", Faction::RED);
+  *c->MutableProto ().mutable_movement ()->add_waypoints ()
+      = CoordToProto (HexCoord (5, 0));
+  c.reset ();
+  tbl.CreateNew ("domob", Faction::RED);
+  tbl.CreateNew ("domob", Faction::RED);
+  const auto from = EmptyBlock ();
+  const auto before = converter.Characters ();
+
+  Block ([this] ()
+    {
+      auto h = tbl.GetById (1);
+      h->SetPosition (HexCoord (1, 0));
+      h->MutableVolatileMv ().set_partial_step (10);
+      h.reset ();
+
+      h = tbl.GetById (2);
+      h->MutableVolatileMv ().set_partial_step (10);
+      h->MutableProto ().set_speed (100);
+      h.reset ();
+
+      tbl.DeleteById (3);
+    });
+
+  const auto chars = ExpectCompactChanges (from, before);
+  ASSERT_TRUE (PartialJsonEqual (chars, ParseJson (R"({
+    "changed": [{"id": 2, "owner": "domob", "speed": 100}],
+    "deleted": [3],
+    "moved":
+      [
+        {
+          "id": 1,
+          "position": {"x": 1, "y": 0},
+          "movement": {"partialstep": 10, "waypoints": [{"x": 5, "y": 0}]}
+        }
+      ],
+    "combat": []
+  })")));
+  EXPECT_EQ (chars["moved"][0].size (), 3);
+}
+
+TEST_F (CharacterJsonTests, CompactCombatChanges)
+{
+  for (int i = 0; i < 6; ++i)
+    {
+      auto c = tbl.CreateNew ("domob", Faction::RED);
+      c->SetPosition (HexCoord (i, 0));
+      c->MutableRegenData ().mutable_max_hp ()->set_armour (10);
+      c->MutableHP ().set_armour (10);
+    }
+
+  proto::TargetId t;
+  t.set_type (proto::TargetId::TYPE_CHARACTER);
+  t.set_id (1);
+  auto c = tbl.GetById (4);
+  c->SetTarget (t);
+  c->MutableEffects ().set_mentecon (true);
+  c.reset ();
+  DamageLists (db, height).AddEntry (4, 100);
+
+  c = tbl.GetById (5);
+  *c->MutableProto ().mutable_movement ()->add_waypoints ()
+      = CoordToProto (HexCoord (5, 5));
+  c.reset ();
+
+  const auto from = EmptyBlock ();
+  const auto before = converter.Characters ();
+
+  Block ([&] ()
+    {
+      t.set_id (2);
+      auto h = tbl.GetById (1);
+      h->SetTarget (t);
+      h->MutableHP ().set_armour (9);
+      h.reset ();
+
+      tbl.GetById (2)->MutableHP ().set_armour (8);
+      DamageLists (db, height).AddEntry (2, 1);
+
+      tbl.GetById (3)->MutableEffects ().mutable_speed ()->set_percent (10);
+
+      h = tbl.GetById (4);
+      h->ClearTarget ();
+      h->MutableEffects ().Clear ();
+      h.reset ();
+      DamageLists (db, height).RemoveCharacter (100);
+
+      /* A fighter that moves.  */
+      h = tbl.GetById (5);
+      h->SetPosition (HexCoord (5, 1));
+      h->MutableVolatileMv ().set_partial_step (10);
+      h->MutableHP ().set_armour (7);
+      h.reset ();
+
+      tbl.GetById (6)->SetFriendlyTargets (true);
+    });
+
+  const auto chars = ExpectCompactChanges (from, before);
+  ASSERT_TRUE (PartialJsonEqual (chars, ParseJson (R"({
+    "changed": [],
+    "moved":
+      [
+        {
+          "id": 5,
+          "position": {"x": 5, "y": 1},
+          "movement": {"partialstep": 10, "waypoints": [{"x": 5, "y": 5}]}
+        }
+      ],
+    "combat":
+      [
+        {
+          "id": 1,
+          "combat":
+            {
+              "hp": {"current": {"armour": 9}},
+              "target": {"id": 2, "type": "character"},
+              "effects": null,
+              "attackers": null
+            }
+        },
+        {
+          "id": 2,
+          "combat":
+            {
+              "hp": {"current": {"armour": 8}},
+              "target": null,
+              "effects": null,
+              "attackers": [1]
+            }
+        },
+        {
+          "id": 3,
+          "combat":
+            {
+              "hp": {"current": {"armour": 10}},
+              "target": null,
+              "effects": {"speed": {"percent": 10}},
+              "attackers": null
+            }
+        },
+        {
+          "id": 4,
+          "combat":
+            {
+              "hp": {"current": {"armour": 10}},
+              "target": null,
+              "effects": null,
+              "attackers": null
+            }
+        },
+        {
+          "id": 5,
+          "combat": {"hp": {"current": {"armour": 7}}}
+        },
+        {
+          "id": 6,
+          "combat": {"hp": {"current": {"armour": 10}}}
+        }
+      ]
+  })")));
+
+  /* The entry has the whole hp object, as in the full JSON.  */
+  EXPECT_TRUE (PartialJsonEqual (chars["combat"][0]["combat"]["hp"],
+                                ParseJson (R"({
+    "max": {"armour": 10, "shield": 0},
+    "current": {"armour": 9, "shield": 0},
+    "regeneration": {"armour": 0, "shield": 0}
+  })")));
+}
+
+TEST_F (CharacterJsonTests, CompactChangesOfMiner)
+{
+  /* An active miner shows the region of its position, so a change of only
+     that (e.g. a teleport in god mode) is a full change, also if it is in
+     combat as well.  Combat alone does not affect the mining.  */
+  for (int i = 0; i < 2; ++i)
+    tbl.CreateNew ("domob", Faction::RED)
+        ->MutableProto ().mutable_mining ()->set_active (true);
+  const auto from = EmptyBlock ();
+  const auto before = converter.Characters ();
+
+  Block ([this] ()
+    {
+      auto h = tbl.GetById (1);
+      h->SetPosition (HexCoord (1, 0));
+      h->MutableHP ().set_armour (5);
+      h.reset ();
+
+      tbl.GetById (2)->MutableHP ().set_armour (5);
+    });
+
+  const auto chars = ExpectCompactChanges (from, before);
+  ASSERT_TRUE (PartialJsonEqual (chars, ParseJson (R"({
+    "changed": [{"id": 1, "mining": {"active": true}}],
+    "moved": [],
+    "combat": [{"id": 2, "combat": {"hp": {"current": {"armour": 5}}}}]
+  })")));
+}
+
+TEST_F (CharacterJsonTests, CompactChangesOfMissingVictim)
+{
+  /* Damage lists of a character that does not exist (which the game never
+     leaves behind) show it as deleted, as in the full form.  */
+  const auto from = EmptyBlock ();
+  const auto before = converter.Characters ();
+  Block ([this] ()
+    {
+      DamageLists (db, height).AddEntry (1, 2);
+    });
+
+  const auto chars = ExpectCompactChanges (from, before);
+  ASSERT_TRUE (PartialJsonEqual (chars, ParseJson (R"({
+    "changed": [],
+    "deleted": [1],
+    "moved": [],
+    "combat": []
+  })")));
 }
 
 /* ************************************************************************** */
@@ -968,6 +1317,7 @@ TEST_F (BuildingJsonTests, CombatData)
   t.set_id (10);
   t.set_type (proto::TargetId::TYPE_CHARACTER);
   h->SetTarget (t);
+  h->MutableEffects ().mutable_range ()->set_percent (-10);
   h.reset ();
 
   ExpectStateJson (R"({
@@ -975,7 +1325,7 @@ TEST_F (BuildingJsonTests, CombatData)
       [
         {
           "id": 1,
-          "combat": {"target": null}
+          "combat": {"target": null, "effects": null}
         },
         {
           "id": 2,
@@ -991,6 +1341,7 @@ TEST_F (BuildingJsonTests, CombatData)
                 [
                   {"range": 5, "damage": {"min": 1, "max": 2}}
                 ],
+              "effects": {"range": {"percent": -10}},
               "target": { "id": 10 }
             }
         }

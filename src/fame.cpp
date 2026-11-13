@@ -78,6 +78,42 @@ FameUpdater::~FameUpdater ()
       fame = std::min<int> (MAX_FAME, std::max (0, fame));
       h->MutableProto ().set_fame (fame);
     }
+
+  for (const auto& entry : numKills)
+    {
+      auto h = accounts.GetByName (entry.first);
+      CHECK (h != nullptr);
+      auto& pb = h->MutableProto ();
+      pb.set_kills (pb.kills () + entry.second);
+    }
+}
+
+const std::string&
+FameUpdater::GetOwner (const Database::IdT id)
+{
+  auto mit = ownerOf.find (id);
+  if (mit == ownerOf.end ())
+    {
+      auto c = characters.GetById (id);
+      CHECK (c != nullptr) << "Character " << id << " does not exist";
+      mit = ownerOf.emplace (id, c->GetOwner ()).first;
+    }
+
+  return mit->second;
+}
+
+unsigned
+FameUpdater::GetFame (const std::string& name)
+{
+  auto mit = fameOf.find (name);
+  if (mit == fameOf.end ())
+    {
+      const auto h = accounts.GetByName (name);
+      CHECK (h != nullptr) << "Account " << name << " does not exist";
+      mit = fameOf.emplace (name, h->GetProto ().fame ()).first;
+    }
+
+  return mit->second;
 }
 
 int
@@ -94,15 +130,11 @@ FameUpdater::UpdateForKill (const Database::IdT victim,
   VLOG (1) << "Updating fame for killing of character " << victim;
 
   /* Determine the victim's fame level.  */
-  auto victimCharacter = characters.GetById (victim);
-  const std::string& victimOwner = victimCharacter->GetOwner ();
-  auto victimAccount = accounts.GetByName (victimOwner);
-  CHECK (victimAccount != nullptr);
-  const unsigned victimFame = victimAccount->GetProto ().fame ();
+  const std::string& victimOwner = GetOwner (victim);
+  const unsigned victimFame = GetFame (victimOwner);
   const int victimLevel = GetLevel (victimFame);
   VLOG (1)
       << "Victim fame: " << victimFame << " (level: " << victimLevel << ")";
-  victimAccount.reset ();
 
   /* Find the set of distinct accounts that killed the victim.  Characters of
      the victim's own account (which can damage it with mentecon) are not
@@ -110,25 +142,21 @@ FameUpdater::UpdateForKill (const Database::IdT victim,
   std::set<std::string> owners;
   for (const auto attackerId : attackers)
     {
-      auto c = characters.GetById (attackerId);
-      CHECK (c != nullptr);
-      if (c->GetOwner () != victimOwner)
-        owners.insert (c->GetOwner ());
+      const std::string& owner = GetOwner (attackerId);
+      if (owner != victimOwner)
+        owners.insert (owner);
     }
 
-  /* Process the killer accounts in a first round.  We update the kills counter
-     here already, and find the set of killers that are within the level range
-     to receive fame.  */
+  /* Process the killer accounts in a first round.  We count the kill for
+     them here already, and find the set of killers that are within the
+     level range to receive fame.  */
   std::vector<std::string> inRangeKillers;
   for (const auto& owner : owners)
     {
       VLOG (1) << "Killing account: " << owner;
-      auto a = accounts.GetByName (owner);
-      CHECK (a != nullptr);
-      auto& pb = a->MutableProto ();
-      pb.set_kills (pb.kills () + 1);
+      ++numKills[owner];
 
-      const unsigned fame = pb.fame ();
+      const unsigned fame = GetFame (owner);
       const int level = GetLevel (fame);
       VLOG (1) << "Killer fame: " << fame << " (level: " << level << ")";
 

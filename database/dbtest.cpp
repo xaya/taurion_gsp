@@ -21,6 +21,8 @@
 #include "moneysupply.hpp"
 #include "schema.hpp"
 
+#include <xayautil/hash.hpp>
+
 #include <glog/logging.h>
 
 namespace pxd
@@ -51,6 +53,57 @@ DBTestWithSchema::DBTestWithSchema ()
 
   MoneySupply ms(db);
   ms.InitialiseDatabase ();
+}
+
+DBTestWithUndo::DBTestWithUndo ()
+{
+  (*db).Execute (R"(
+    CREATE TABLE `xayagame_undo`
+        (`hash` BLOB PRIMARY KEY,
+         `data` BLOB NOT NULL,
+         `height` INTEGER NOT NULL);
+  )");
+}
+
+xaya::uint256
+DBTestWithUndo::Block (const std::function<void ()>& update)
+{
+  std::string changeset;
+  (*db).AccessDatabase ([&] (sqlite3* h)
+    {
+      sqlite3_session* session;
+      CHECK_EQ (sqlite3session_create (h, "main", &session), SQLITE_OK);
+      CHECK_EQ (sqlite3session_attach (session, nullptr), SQLITE_OK);
+
+      update ();
+
+      int size;
+      void* data;
+      CHECK_EQ (sqlite3session_changeset (session, &size, &data), SQLITE_OK);
+      changeset.assign (static_cast<const char*> (data), size);
+      sqlite3_free (data);
+      sqlite3session_delete (session);
+    });
+
+  ++height;
+  const auto hash = xaya::SHA256::Hash (std::to_string (height));
+
+  auto stmt = (*db).Prepare (R"(
+    INSERT INTO `xayagame_undo` (`hash`, `data`, `height`)
+      VALUES (?1, ?2, ?3)
+  )");
+  stmt.Bind (1, hash);
+  stmt.BindBlob (2, changeset);
+  stmt.Bind (3, height);
+  stmt.Execute ();
+
+  return hash;
+}
+
+xaya::uint256
+DBTestWithUndo::EmptyBlock ()
+{
+  return Block ([] () {});
 }
 
 TemporaryDatabaseChanges::TemporaryDatabaseChanges (Database& d,

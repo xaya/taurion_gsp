@@ -23,10 +23,36 @@
 namespace pxd
 {
 
+DamageLists::~DamageLists ()
+{
+  /* An existing entry only gets its height updated, which (unlike a
+     REPLACE that deletes and re-inserts the row) leaves the other
+     indices alone, and only once it is old enough:  an unchanged row
+     costs no write and no undo data.  */
+  for (const auto& entry : pendingByVictim)
+    {
+      auto stmt = db.Prepare (R"(
+        INSERT INTO `damage_lists`
+          (`victim`, `attacker`, `height`)
+          VALUES (?1, ?2, ?3)
+          ON CONFLICT (`victim`, `attacker`) DO UPDATE
+            SET `height` = `excluded`.`height`
+            WHERE `height` <= `excluded`.`height` - ?4
+      )");
+      stmt.Bind (1, entry.first);
+      stmt.Bind (2, entry.second);
+      stmt.Bind (3, height);
+      stmt.Bind (4, refresh);
+
+      stmt.Execute ();
+    }
+}
+
 void
 DamageLists::RemoveOld (const unsigned n)
 {
   CHECK_NE (height, NO_HEIGHT);
+  CHECK (pendingByVictim.empty ());
 
   VLOG (1)
     << "Removing damage-list entries with height " << n << " before " << height;
@@ -52,16 +78,8 @@ DamageLists::AddEntry (const Database::IdT victim, const Database::IdT attacker)
       << "Adding damage-list entry for height " << height << ": "
       << attacker << " damaged " << victim;
 
-  auto stmt = db.Prepare (R"(
-    INSERT OR REPLACE INTO `damage_lists`
-      (`victim`, `attacker`, `height`)
-      VALUES (?1, ?2, ?3)
-  )");
-  stmt.Bind (1, victim);
-  stmt.Bind (2, attacker);
-  stmt.Bind (3, height);
-
-  stmt.Execute ();
+  pendingByVictim.emplace (victim, attacker);
+  pendingByAttacker.emplace (attacker, victim);
 }
 
 void
@@ -76,6 +94,23 @@ DamageLists::RemoveCharacter (const Database::IdT id)
   stmt.Bind (1, id);
 
   stmt.Execute ();
+
+  RemovePending (pendingByVictim, pendingByAttacker, id);
+  RemovePending (pendingByAttacker, pendingByVictim, id);
+}
+
+void
+DamageLists::RemovePending (
+    std::set<std::pair<Database::IdT, Database::IdT>>& by,
+    std::set<std::pair<Database::IdT, Database::IdT>>& other,
+    const Database::IdT id)
+{
+  auto it = by.lower_bound (std::make_pair (id, Database::IdT (0)));
+  while (it != by.end () && it->first == id)
+    {
+      other.erase (std::make_pair (it->second, it->first));
+      it = by.erase (it);
+    }
 }
 
 namespace
@@ -106,6 +141,12 @@ DamageLists::GetAttackers (const Database::IdT victim) const
       const auto insert = attackers.insert (att);
       CHECK (insert.second);
     }
+
+  /* Pending entries may refresh ones in the database.  */
+  auto it = pendingByVictim.lower_bound (
+      std::make_pair (victim, Database::IdT (0)));
+  for (; it != pendingByVictim.end () && it->first == victim; ++it)
+    attackers.insert (it->second);
 
   return attackers;
 }

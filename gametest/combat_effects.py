@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #   GSP for the Taurion blockchain game
-#   Copyright (C) 2020-2025  Autonomous Worlds Ltd
+#   Copyright (C) 2020-2026  Autonomous Worlds Ltd
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -47,12 +47,20 @@ class CombatEffectsTest (PXTest):
 
     self.mainLogger.info ("Moving through retarding area...")
     c = self.getCharacters ()
+    slowed = {"speed": {"percent": -15}}
+    self.assertEqual (c["attacker"].data["combat"]["attacks"][0]["effects"],
+                      slowed)
     for key in ["target", "friendly"]:
       c[key].moveTowards ({"x": 50, "y": 0})
-    self.generate (98)
+    self.generate (50)
+    c = self.getCharacters ()
+    self.assertEqual (c["target"].data["combat"]["effects"], slowed)
+    assert "effects" not in c["friendly"].data["combat"]
+    self.generate (48)
     c = self.getCharacters ()
     self.assertEqual (c["friendly"].getPosition (), {"x": 50, "y": 0})
     self.assertEqual (c["target"].getPosition (), {"x": 46, "y": 0})
+    assert "effects" not in c["target"].data["combat"]
 
 
 if __name__ == "__main__":

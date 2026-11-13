@@ -20,6 +20,9 @@
 
 #include <glog/logging.h>
 
+#include <string>
+#include <utility>
+
 namespace pxd
 {
 
@@ -80,7 +83,7 @@ Character::~Character ()
   Validate ();
 
   if (isNew || CombatEntity::IsDirtyFull ()
-        || inv.IsDirty () || effects.IsDirty () || data.IsDirty ())
+        || inv.IsDirty () || data.IsDirty ())
     {
       VLOG (2)
           << "Character " << id
@@ -96,23 +99,18 @@ Character::~Character ()
            `ismoving`, `ismining`, `attackrange`, `friendlyrange`,
            `regendata`, `target`, `inventory`, `effects`, `proto`)
           VALUES
-          (?1,
+          (?13,
            ?2, ?3, ?4,
            ?5, ?6,
            ?7, ?8,
            ?9, ?10,
            ?101,
            ?102, ?103, ?104, ?105,
-           ?106, ?107, ?108, ?109, ?110)
+           ?106, ?11, ?108, ?12, ?110)
       )");
 
       BindFieldValues (stmt);
-      CombatEntity::BindFullFields (stmt, 106, 107, 104, 105);
-
-      if (effects.IsEmpty ())
-        stmt.BindNull (109);
-      else
-        stmt.BindProto (109, effects);
+      CombatEntity::BindFullFields (stmt, 106, 104, 105);
 
       BindFactionParameter (stmt, 101, faction);
       stmt.Bind (102, data.Get ().has_movement ());
@@ -124,25 +122,37 @@ Character::~Character ()
       return;
     }
 
-  if (dirtyFields || volatileMv.IsDirty () || CombatEntity::IsDirtyFields ())
+  if (dirtyFields || volatileMv.IsDirty () || effects.IsDirty ()
+        || CombatEntity::IsDirtyFields ())
     {
       VLOG (2)
           << "Character " << id << " has been modified in the DB fields only,"
           << " updating those";
 
-      auto stmt = db.Prepare (R"(
-        UPDATE `characters`
-          SET `owner` = ?2,
-              `x` = ?3, `y` = ?4,
-              `inbuilding` = ?5,
-              `enterbuilding` = ?6,
-              `volatilemv` = ?7,
-              `hp` = ?8,
-              `canregen` = ?9,
-              `friendlytargets` = ?10
-          WHERE `id` = ?1
-      )");
+      /* Only the columns that changed are set, since SQLite updates the
+         indices of all columns that are set (even to the same value).  */
+      const std::pair<bool, std::string> columns[] =
+        {
+          {dirtyFields, "`owner` = ?2, `x` = ?3, `y` = ?4,"
+                        " `inbuilding` = ?5, `enterbuilding` = ?6"},
+          {volatileMv.IsDirty (), "`volatilemv` = ?7"},
+          {IsDirtyHp (), "`hp` = ?8"},
+          {IsDirtyCanRegen (), "`canregen` = ?9"},
+          {IsDirtyFriendlyTargets (), "`friendlytargets` = ?10"},
+          {IsDirtyTarget (), "`target` = ?11"},
+          {effects.IsDirty (), "`effects` = ?12"},
+        };
+      std::string sql;
+      for (const auto& c : columns)
+        if (c.first)
+          sql += (sql.empty () ? "UPDATE `characters` SET " : ", ") + c.second;
+      CHECK (!sql.empty ());
+      sql += " WHERE `id` = ?13";
 
+      /* The values of all these columns are bound.  SQLite accepts that for
+         a parameter the statement does not use, as long as it uses one with
+         a higher number (which is why the ID has the highest).  */
+      auto stmt = db.Prepare (sql);
       BindFieldValues (stmt);
       stmt.Execute ();
       return;
@@ -179,9 +189,9 @@ Character::Validate () const
 void
 Character::BindFieldValues (Database::Statement& stmt) const
 {
-  CombatEntity::BindFields (stmt, 8, 10, 9);
+  CombatEntity::BindFields (stmt, 8, 10, 9, 11);
 
-  stmt.Bind (1, id);
+  stmt.Bind (13, id);
   stmt.Bind (2, owner);
   if (IsInBuilding ())
     {
@@ -199,6 +209,10 @@ Character::BindFieldValues (Database::Statement& stmt) const
   else
     stmt.Bind (6, enterBuilding);
   stmt.BindProto (7, volatileMv);
+  if (effects.IsEmpty ())
+    stmt.BindNull (12);
+  else
+    stmt.BindProto (12, effects);
 }
 
 const HexCoord&

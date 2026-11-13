@@ -21,7 +21,9 @@
 
 #include "database.hpp"
 
+#include <algorithm>
 #include <set>
+#include <utility>
 
 namespace pxd
 {
@@ -47,6 +49,27 @@ private:
    */
   const unsigned height;
 
+  /** The age (in blocks) at which a hit refreshes an existing entry.  */
+  const unsigned refresh;
+
+  /**
+   * The entries added through this instance, as (victim, attacker) and as
+   * (attacker, victim) pairs.  They are only written to the database when
+   * the instance is destroyed, so that those removed again before (e.g.
+   * when both characters die in the same battle) never are.
+   */
+  std::set<std::pair<Database::IdT, Database::IdT>> pendingByVictim;
+  std::set<std::pair<Database::IdT, Database::IdT>> pendingByAttacker;
+
+  /**
+   * Removes the pending entries in which the given character is first
+   * in the pairs of one set, and the matching ones from the other set.
+   */
+  static void RemovePending (
+      std::set<std::pair<Database::IdT, Database::IdT>>& by,
+      std::set<std::pair<Database::IdT, Database::IdT>>& other,
+      Database::IdT id);
+
 public:
 
   /** Set of attackers.  */
@@ -58,12 +81,18 @@ public:
    * that depend on the height.
    */
   explicit DamageLists (Database& d)
-    : db(d), height(NO_HEIGHT)
+    : db(d), height(NO_HEIGHT), refresh(1)
   {}
 
-  explicit DamageLists (Database& d, const unsigned h)
-    : db(d), height(h)
+  /**
+   * Constructs a damage list for the given height.  A hit refreshes the
+   * height of an existing entry only once it is at least r blocks old.
+   */
+  explicit DamageLists (Database& d, const unsigned h, const unsigned r = 1)
+    : db(d), height(h), refresh(std::max (r, 1u))
   {}
+
+  ~DamageLists ();
 
   DamageLists () = delete;
   DamageLists (const DamageLists&) = delete;
@@ -71,12 +100,16 @@ public:
 
   /**
    * Removes all entries on damage lists that are not from the last N blocks.
-   * I.e., all with height <= (current height - N).
+   * I.e., all with height <= (current height - N).  This must be done before
+   * entries are added through this instance.
    */
   void RemoveOld (const unsigned n);
 
   /**
-   * Adds (or refreshes) an entry for the given victim / attacker pair.
+   * Adds an entry for the given victim / attacker pair, or refreshes its
+   * height if it is at least the refresh age old.  The entry is seen by
+   * GetAttackers and removed by RemoveCharacter of this instance right away,
+   * but written to the database only when the instance is destroyed.
    */
   void AddEntry (Database::IdT victim, Database::IdT attacker);
 

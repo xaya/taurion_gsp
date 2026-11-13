@@ -170,6 +170,12 @@ public:
     return effects.Mutable ();
   }
 
+  void
+  EffectsCleared () override
+  {
+    effects.SetToDefault ();
+  }
+
   const proto::Building&
   GetProto () const
   {
@@ -183,12 +189,6 @@ public:
   }
 
   proto::TargetId GetIdAsTarget () const override;
-
-  bool
-  HasCombatPosition () const override
-  {
-    return true;
-  }
 
   const HexCoord&
   GetCombatPosition () const override

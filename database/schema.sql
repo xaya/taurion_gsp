@@ -251,18 +251,21 @@ CREATE TABLE IF NOT EXISTS `damage_lists` (
   `height` INTEGER NOT NULL,
 
   -- For each (victim, attacker) combination, there should only be a single
-  -- entry.  For each new round of damage done, we "INSERT OR REPLACE" into
-  -- the table, which updates the height for existing rows rather than
-  -- adding new ones.
+  -- entry.  For each new round of damage done, we upsert into the table,
+  -- which updates the height for existing rows rather than adding new ones.
+  -- Big battles upsert an entry for every hit, so the rows are stored
+  -- directly by this key (WITHOUT ROWID) rather than through a separate
+  -- index of it.
   PRIMARY KEY (`victim`, `attacker`)
 
-);
+) WITHOUT ROWID;
 
 -- Additional indices we need.  Note that lookups per victim are already
--- possible due to the primary key.
+-- possible due to the primary key.  There is no index on the height:  it
+-- changes with every hit, while old entries are only removed once per super
+-- block, which scans the table.
 CREATE INDEX IF NOT EXISTS `damage_lists_attacker`
     ON `damage_lists` (`attacker`);
-CREATE INDEX IF NOT EXISTS `damage_lists_height` ON `damage_lists` (`height`);
 
 -- =============================================================================
 

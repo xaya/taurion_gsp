@@ -42,6 +42,7 @@ libtaurion_la_SOURCES = \
   movement.cpp \
   moveprocessor.cpp \
   ongoings.cpp \
+  phasetimer.cpp \
   params.cpp \
   pending.cpp \
   prospecting.cpp \
@@ -66,6 +67,7 @@ libtaurionheaders = \
   movement.hpp movement.tpp \
   moveprocessor.hpp \
   ongoings.hpp \
+  phasetimer.hpp \
   params.hpp \
   pending.hpp \
   prospecting.hpp \
@@ -100,6 +102,11 @@ tauriondheaders = \
   rpc-stubs/pxrpcserverstub.h
 
 noinst_HEADERS = $(libtaurionheaders) $(tauriondheaders)
+
+EXTRA_PROGRAMS = battlebench
+battlebench_CXXFLAGS = $(tauriond_CXXFLAGS) $(SQLITE3_CFLAGS)
+battlebench_LDADD = $(tauriond_LDADD) $(SQLITE3_LIBS)
+battlebench_SOURCES = battlebench.cpp
 
 check_LTLIBRARIES = libtestutils.la
 check_PROGRAMS = tests benchmarks

@@ -22,6 +22,12 @@
 
 #include <gtest/gtest.h>
 
+#include <memory>
+#include <random>
+#include <sstream>
+#include <string>
+#include <vector>
+
 namespace pxd
 {
 namespace
@@ -54,15 +60,93 @@ protected:
     dl.AddEntry (victim, attacker);
   }
 
+  /**
+   * Runs a fixed random sequence of operations at height 10 (on top of some
+   * older entries), either all through one instance or each through its own
+   * (so that every entry is written right away).  Returns the attackers that
+   * the queries in between returned, followed by the final rows.
+   */
+  std::vector<std::string>
+  RunRandomOperations (const bool oneInstance)
+  {
+    db.Prepare ("DELETE FROM `damage_lists`").Execute ();
+    for (Database::IdT i = 1; i <= 30; i += 3)
+      AddWithHeight (i, i + 1, 5);
+
+    std::mt19937 rnd(42);
+    std::vector<std::string> res;
+    {
+      auto dl = std::make_unique<DamageLists> (db, 10);
+      for (unsigned i = 0; i < 2'000; ++i)
+        {
+          if (!oneInstance)
+            {
+              dl.reset ();
+              dl = std::make_unique<DamageLists> (db, 10);
+            }
+
+          const Database::IdT x = 1 + rnd () % 30;
+          const Database::IdT y = 1 + rnd () % 30;
+          switch (rnd () % 10)
+            {
+            case 0:
+              dl->RemoveCharacter (x);
+              break;
+            case 1:
+            case 2:
+              {
+                std::ostringstream out;
+                out << x << ":";
+                for (const auto a : dl->GetAttackers (x))
+                  out << " " << a;
+                res.push_back (out.str ());
+                break;
+              }
+            default:
+              dl->AddEntry (x, y);
+              break;
+            }
+        }
+    }
+
+    auto stmt = db.Prepare (R"(
+      SELECT `victim`, `attacker`, `height`
+        FROM `damage_lists`
+        ORDER BY `victim`, `attacker`
+    )");
+    auto rows = stmt.Query<EntryResult> ();
+    while (rows.Step ())
+      {
+        std::ostringstream out;
+        out << rows.Get<EntryResult::victim> ()
+            << " " << rows.Get<EntryResult::attacker> ()
+            << " " << rows.Get<EntryResult::height> ();
+        res.push_back (out.str ());
+      }
+
+    return res;
+  }
+
+private:
+
+  struct EntryResult : public Database::ResultType
+  {
+    RESULT_COLUMN (int64_t, victim, 1);
+    RESULT_COLUMN (int64_t, attacker, 2);
+    RESULT_COLUMN (int64_t, height, 3);
+  };
+
 };
 
 TEST_F (DamageListsTests, Basic)
 {
-  DamageLists dl(db, 100);
-  dl.AddEntry (1, 2);
-  dl.AddEntry (1, 3);
-  dl.AddEntry (1, 2);
-  dl.AddEntry (2, 1);
+  {
+    DamageLists dl(db, 100);
+    dl.AddEntry (1, 2);
+    dl.AddEntry (1, 3);
+    dl.AddEntry (1, 2);
+    dl.AddEntry (2, 1);
+  }
 
   ExpectAttackers (1, {2, 3});
   ExpectAttackers (2, {1});
@@ -71,16 +155,20 @@ TEST_F (DamageListsTests, Basic)
 
 TEST_F (DamageListsTests, RemoveCharacter)
 {
-  DamageLists dl(db, 100);
-  dl.AddEntry (1, 2);
-  dl.AddEntry (1, 3);
-  dl.AddEntry (2, 1);
-  dl.AddEntry (3, 2);
-  dl.RemoveCharacter (2);
+  AddWithHeight (1, 2, 99);
+  AddWithHeight (4, 2, 99);
+  {
+    DamageLists dl(db, 100);
+    dl.AddEntry (1, 3);
+    dl.AddEntry (2, 1);
+    dl.AddEntry (3, 2);
+    dl.RemoveCharacter (2);
+  }
 
   ExpectAttackers (1, {3});
   ExpectAttackers (2, {});
   ExpectAttackers (3, {});
+  ExpectAttackers (4, {});
 }
 
 TEST_F (DamageListsTests, RemoveOld)
@@ -107,6 +195,22 @@ TEST_F (DamageListsTests, RefreshHeight)
   ExpectAttackers (1, {3});
 }
 
+TEST_F (DamageListsTests, RefreshOnlyOldEntries)
+{
+  AddWithHeight (1, 2, 1);
+  AddWithHeight (1, 3, 1);
+
+  /* With a refresh age of 5, a hit at height 5 leaves the entry from
+     height 1 alone, and one at height 6 refreshes it.  */
+  DamageLists (db, 5, 5).AddEntry (1, 2);
+  DamageLists (db, 6, 5).AddEntry (1, 3);
+
+  DamageLists dl(db, 6);
+  dl.RemoveOld (5);
+
+  ExpectAttackers (1, {3});
+}
+
 TEST_F (DamageListsTests, RemoveOldLargeN)
 {
   AddWithHeight (1, 2, 5);
@@ -116,6 +220,25 @@ TEST_F (DamageListsTests, RemoveOldLargeN)
   dl.RemoveOld (500);
 
   ExpectAttackers (1, {2, 3});
+}
+
+TEST_F (DamageListsTests, WrittenWhenDestroyed)
+{
+  {
+    DamageLists dl(db, 100);
+    dl.AddEntry (1, 2);
+    ExpectAttackers (1, {});
+    EXPECT_EQ (dl.GetAttackers (1), DamageLists::Attackers ({2}));
+  }
+  ExpectAttackers (1, {2});
+}
+
+TEST_F (DamageListsTests, OneInstanceMatchesDirectWrites)
+{
+  const auto direct = RunRandomOperations (false);
+  const auto together = RunRandomOperations (true);
+  EXPECT_GT (direct.size (), 400);
+  EXPECT_EQ (direct, together);
 }
 
 TEST_F (DamageListsTests, WithoutHeight)

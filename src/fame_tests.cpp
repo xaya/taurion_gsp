@@ -171,6 +171,7 @@ TEST_F (FameTests, TrackingKills)
   /* Multiple killing characters of one owner, and one of the victim's own
      account (which is not a killer of it).  */
   UpdateForKill (id4, {id1, id2, id3});
+  FlushDeltas ();
 
   EXPECT_EQ (accounts.GetByName ("foo")->GetProto ().kills (), 11);
   EXPECT_EQ (accounts.GetByName ("bar")->GetProto ().kills (), 0);

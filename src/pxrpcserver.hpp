@@ -178,6 +178,12 @@ private:
   /** NonStateRpcServer for answering the calls it supports.  */
   NonStateRpcServer nonstate;
 
+  /**
+   * Returns the changes since the block with the given hash, in full or
+   * compact form (see GameStateJson::Changes).
+   */
+  Json::Value GetChanges (const std::string& fromBlock, bool compact);
+
 public:
 
   explicit PXRpcServer (xaya::Game& g, PXLogic& l,
@@ -206,6 +212,8 @@ public:
   Json::Value gettradehistory (int building, const std::string& item) override;
 
   Json::Value getbootstrapdata () override;
+  Json::Value getchanges (const std::string& fromBlock) override;
+  Json::Value getcompactchanges (const std::string& fromBlock) override;
 
   Json::Value getserviceinfo (const std::string& name,
                               const Json::Value& op) override;

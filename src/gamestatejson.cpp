@@ -26,6 +26,7 @@
 
 #include "database/account.hpp"
 #include "database/building.hpp"
+#include "database/changes.hpp"
 #include "database/character.hpp"
 #include "database/faction.hpp"
 #include "database/itemcounts.hpp"
@@ -36,6 +37,9 @@
 #include "proto/character.pb.h"
 
 #include <algorithm>
+#include <iterator>
+#include <utility>
+#include <vector>
 
 namespace pxd
 {
@@ -94,6 +98,42 @@ HpProtoToJson (const proto::HP& hp)
 }
 
 /**
+ * Converts a StatModifier proto to JSON, leaving out fields that are
+ * not set.
+ */
+Json::Value
+StatModifierToJson (const proto::StatModifier& mod)
+{
+  Json::Value res(Json::objectValue);
+  if (mod.has_percent ())
+    res["percent"] = IntToJson (mod.percent ());
+  if (mod.has_absolute ())
+    res["absolute"] = IntToJson (mod.absolute ());
+  return res;
+}
+
+/**
+ * Converts a CombatEffects proto to JSON.  Only effects that are set
+ * are included, so the result is empty if there are none.
+ */
+Json::Value
+CombatEffectsToJson (const proto::CombatEffects& eff)
+{
+  Json::Value res(Json::objectValue);
+  if (eff.has_speed ())
+    res["speed"] = StatModifierToJson (eff.speed ());
+  if (eff.has_range ())
+    res["range"] = StatModifierToJson (eff.range ());
+  if (eff.has_hit_chance ())
+    res["hitchance"] = StatModifierToJson (eff.hit_chance ());
+  if (eff.has_shield_regen ())
+    res["shieldregen"] = StatModifierToJson (eff.shield_regen ());
+  if (eff.mentecon ())
+    res["mentecon"] = true;
+  return res;
+}
+
+/**
  * Computes the "movement" sub-object for a Character's JSON state.
  */
 Json::Value
@@ -126,19 +166,30 @@ GetMovementJsonObject (const Character& c)
 }
 
 /**
- * Computes the basic "combat" sub-object for a Character or Building.
+ * Adds the "position" (if on the map) and "movement" (if any) of a character
+ * to its JSON state.  This is all that a movement step changes in it, and
+ * thus also what compact changes show for moved characters.
  */
-Json::Value
-GetCombatJsonObject (const CombatEntity& h)
+void
+AddMovementJson (const Character& c, Json::Value& res)
 {
-  Json::Value res(Json::objectValue);
+  if (!c.IsInBuilding ())
+    res["position"] = CoordToJson (c.GetPosition ());
 
-  if (h.HasTarget ())
-    res["target"] = TargetIdToJson (h.GetTarget ());
+  Json::Value mv = GetMovementJsonObject (c);
+  if (!mv.empty ())
+    res["movement"] = std::move (mv);
+}
 
-  const auto& pb = h.GetCombatData ();
+/**
+ * Adds the "attacks" (if any) of a Character or Building to its "combat"
+ * JSON object.
+ */
+void
+AddAttacksJson (const CombatEntity& h, Json::Value& res)
+{
   Json::Value attacks(Json::arrayValue);
-  for (const auto& attack : pb.attacks ())
+  for (const auto& attack : h.GetCombatData ().attacks ())
     {
       Json::Value obj(Json::objectValue);
       if (attack.has_range ())
@@ -156,10 +207,29 @@ GetCombatJsonObject (const CombatEntity& h)
           obj["damage"] = dmg;
         }
 
+      const Json::Value effects = CombatEffectsToJson (attack.effects ());
+      if (!effects.empty ())
+        obj["effects"] = effects;
+
       attacks.append (obj);
     }
   if (!attacks.empty ())
     res["attacks"] = attacks;
+}
+
+/**
+ * Adds the parts of the "combat" JSON object of a Character or Building that
+ * change in fights:  its "hp", "target" (if any) and "effects" (if any).
+ */
+void
+AddCombatStatusJson (const CombatEntity& h, Json::Value& res)
+{
+  if (h.HasTarget ())
+    res["target"] = TargetIdToJson (h.GetTarget ());
+
+  const Json::Value effects = CombatEffectsToJson (h.GetEffects ());
+  if (!effects.empty ())
+    res["effects"] = effects;
 
   const auto& regen = h.GetRegenData ();
   Json::Value hp(Json::objectValue);
@@ -171,7 +241,36 @@ GetCombatJsonObject (const CombatEntity& h)
   hp["regeneration"] = HpProtoToJson (fakeRegen);
 
   res["hp"] = hp;
+}
 
+/**
+ * Adds the parts of a Character's "combat" JSON object that change in
+ * fights:  those of any fighter, and its "attackers" (if any) from
+ * DamageLists.  This is also what compact changes show for characters
+ * in combat.
+ */
+void
+AddCombatStatusJson (const Character& c, const DamageLists& dl,
+                     Json::Value& res)
+{
+  AddCombatStatusJson (c, res);
+
+  Json::Value attackers(Json::arrayValue);
+  for (const auto id : dl.GetAttackers (c.GetId ()))
+    attackers.append (IntToJson (id));
+  if (!attackers.empty ())
+    res["attackers"] = attackers;
+}
+
+/**
+ * Computes the "combat" sub-object for a Building.
+ */
+Json::Value
+GetCombatJsonObject (const CombatEntity& h)
+{
+  Json::Value res(Json::objectValue);
+  AddAttacksJson (h, res);
+  AddCombatStatusJson (h, res);
   return res;
 }
 
@@ -182,14 +281,9 @@ GetCombatJsonObject (const CombatEntity& h)
 Json::Value
 GetCombatJsonObject (const Character& c, const DamageLists& dl)
 {
-  Json::Value res = GetCombatJsonObject (c);
-
-  Json::Value attackers(Json::arrayValue);
-  for (const auto id : dl.GetAttackers (c.GetId ()))
-    attackers.append (IntToJson (id));
-  if (!attackers.empty ())
-    res["attackers"] = attackers;
-
+  Json::Value res(Json::objectValue);
+  AddAttacksJson (c, res);
+  AddCombatStatusJson (c, dl, res);
   return res;
 }
 
@@ -265,8 +359,7 @@ template <>
 
   if (c.IsInBuilding ())
     res["inbuilding"] = IntToJson (c.GetBuildingId ());
-  else
-    res["position"] = CoordToJson (c.GetPosition ());
+  AddMovementJson (c, res);
 
   if (c.GetEnterBuilding () != Database::EMPTY_ID)
     res["enterbuilding"] = IntToJson (c.GetEnterBuilding ());
@@ -275,10 +368,6 @@ template <>
   res["speed"] = c.GetProto ().speed ();
   res["inventory"] = Convert (c.GetInventory ());
   res["cargospace"] = GetCargoSpaceJsonObject (c, ctx);
-
-  const Json::Value mv = GetMovementJsonObject (c);
-  if (!mv.empty ())
-    res["movement"] = mv;
 
   if (c.IsBusy ())
     res["busy"] = IntToJson (c.GetProto ().ongoing ());
@@ -713,15 +802,62 @@ GameStateJson::PrizeStats ()
   return res;
 }
 
-Json::Value
-GameStateJson::Accounts ()
+namespace
 {
-  AccountsTable tbl(db);
-  Json::Value res = ResultsAsArray (tbl, tbl.QueryAll ());
+
+Json::Value
+KeyToJson (const std::string& name)
+{
+  return name;
+}
+
+Json::Value
+KeyToJson (const HexCoord& c)
+{
+  return CoordToJson (c);
+}
+
+template <typename T>
+  Json::Value
+  KeyToJson (const T id)
+{
+  return IntToJson (id);
+}
+
+} // anonymous namespace
+
+template <typename K, typename Fcn>
+  Json::Value
+  GameStateJson::ChangesFor (const std::set<K>& keys, const Fcn& get) const
+{
+  Json::Value changed(Json::arrayValue);
+  Json::Value deleted(Json::arrayValue);
+
+  for (const auto& k : keys)
+    {
+      const auto h = get (k);
+      if (h == nullptr)
+        deleted.append (KeyToJson (k));
+      else
+        changed.append (Convert (*h));
+    }
+
+  Json::Value res(Json::objectValue);
+  res["changed"] = std::move (changed);
+  res["deleted"] = std::move (deleted);
+
+  return res;
+}
+
+void
+GameStateJson::AddReservedCoins (Json::Value& accounts) const
+{
+  if (accounts.empty ())
+    return;
 
   /* Add in also the Cubit balances reserved in open bids.  */
   const auto reserved = orders.GetReservedCoins ();
-  for (auto& entry : res)
+  for (auto& entry : accounts)
     {
       const auto& nmVal = entry["name"];
       CHECK (nmVal.isString ());
@@ -738,6 +874,14 @@ GameStateJson::Accounts ()
       bal["reserved"] = IntToJson (cur);
       bal["total"] = IntToJson (cur + bal["available"].asInt64 ());
     }
+}
+
+Json::Value
+GameStateJson::Accounts ()
+{
+  AccountsTable tbl(db);
+  Json::Value res = ResultsAsArray (tbl, tbl.QueryAll ());
+  AddReservedCoins (res);
 
   return res;
 }
@@ -826,6 +970,97 @@ GameStateJson::BootstrapData ()
 {
   Json::Value res(Json::objectValue);
   res["regions"] = Regions (0);
+
+  return res;
+}
+
+Json::Value
+GameStateJson::Changes (const xaya::uint256& block, const unsigned height,
+                        const bool compact)
+{
+  ChangedKeys keys;
+  if (!keys.ReadSince (db, block, height))
+    return Json::Value ();
+
+  AccountsTable accounts(db);
+  BuildingsTable buildings(db);
+  CharacterTable characters(db);
+  GroundLootTable loot(db);
+  OngoingsTable ongoings(db);
+  RegionsTable regions(db, RegionsTable::HEIGHT_READONLY);
+
+  const auto byId = [] (auto& tbl)
+    {
+      return [&tbl] (const auto id) { return tbl.GetById (id); };
+    };
+
+  /* In compact form, the characters whose JSON changed only in parts are
+     listed with just those parts instead of as changed.  An active miner
+     shows the region of its position, so it did not just move when that
+     changed (god mode can teleport one).  A victim in the damage lists
+     without a character (which the game never leaves behind) is deleted,
+     as in the full form.  */
+  Json::Value moved(Json::arrayValue);
+  Json::Value combat(Json::arrayValue);
+  if (compact)
+    {
+      std::vector<Database::IdT> ids;
+      std::set_union (keys.movedCharacters.begin (),
+                      keys.movedCharacters.end (),
+                      keys.combatCharacters.begin (),
+                      keys.combatCharacters.end (),
+                      std::back_inserter (ids));
+
+      const auto entry = [] (Json::Value& list, const Database::IdT id)
+          -> Json::Value&
+        {
+          auto& res = list.append (Json::Value (Json::objectValue));
+          res["id"] = IntToJson (id);
+          return res;
+        };
+
+      for (const auto id : ids)
+        {
+          const auto c = characters.GetById (id);
+          const bool isMoved = keys.movedCharacters.count (id) > 0;
+          if (c == nullptr || (isMoved && c->GetProto ().mining ().active ()))
+            continue;
+
+          if (isMoved)
+            AddMovementJson (*c, entry (moved, id));
+          if (keys.combatCharacters.count (id) > 0)
+            AddCombatStatusJson (*c, dl, entry (combat, id)["combat"]);
+          keys.characters.erase (id);
+        }
+    }
+
+  Json::Value res(Json::objectValue);
+  res["accounts"] = ChangesFor (keys.accounts, [&accounts] (const auto& nm)
+    {
+      return accounts.GetByName (nm);
+    });
+  AddReservedCoins (res["accounts"]["changed"]);
+  res["buildings"] = ChangesFor (keys.buildings, byId (buildings));
+  res["characters"] = ChangesFor (keys.characters, byId (characters));
+  if (compact)
+    {
+      res["characters"]["moved"] = std::move (moved);
+      res["characters"]["combat"] = std::move (combat);
+    }
+  res["groundloot"] = ChangesFor (keys.groundLoot, [&loot] (const auto& c)
+    {
+      /* Empty piles of loot are not part of the state.  */
+      auto h = loot.GetByCoord (c);
+      if (h->GetInventory ().IsEmpty ())
+        h.reset ();
+      return h;
+    });
+  res["ongoings"] = ChangesFor (keys.ongoings, byId (ongoings));
+  res["regions"] = ChangesFor (keys.regions, byId (regions));
+
+  /* These are small, so they are just returned as they are now.  */
+  res["moneysupply"] = MoneySupply ();
+  res["prizes"] = PrizeStats ();
 
   return res;
 }
