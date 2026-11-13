@@ -29,6 +29,7 @@
 
 #include <cstdint>
 #include <fstream>
+#include <set>
 
 namespace pxd
 {
@@ -63,6 +64,12 @@ TEST_F (BaseMapTests, IsOnMap)
 
 TEST_F (BaseMapTests, MatchesOriginalObstacleData)
 {
+  /* The obstacles from the config are added to the original data.  */
+  std::set<HexCoord> obstacles;
+  for (const auto& c : RoConfig (xaya::Chain::REGTEST)->obstacles ())
+    obstacles.emplace (c.x (), c.y ());
+  ASSERT_GT (obstacles.size (), 0);
+
   std::ifstream in("obstacledata.dat", std::ios_base::binary); 
 
   const size_t n = Read<int16_t> (in);
@@ -79,7 +86,7 @@ TEST_F (BaseMapTests, MatchesOriginalObstacleData)
 
       const HexCoord c(x, y);
       EXPECT_TRUE (map.IsOnMap (c));
-      EXPECT_EQ (map.IsPassable (c), passable);
+      EXPECT_EQ (map.IsPassable (c), passable && obstacles.count (c) == 0);
     }
 }
 

@@ -69,7 +69,10 @@ BaseMap::IsPassable (const HexCoord& c) const
       = &blob_obstacles_start + tiledata::obstacles::bitDataOffsetForY[yInd];
 
   const int xInd = c.GetX () - tiledata::minX[yInd];
-  return (bits[xInd / basemap::BITS] & (1 << xInd % basemap::BITS));
+  if (!(bits[xInd / basemap::BITS] & (1 << xInd % basemap::BITS)))
+    return false;
+
+  return !obstacles.Get (c);
 }
 
 inline PathFinder::DistanceT

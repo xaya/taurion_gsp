@@ -55,6 +55,7 @@ class GodModeTest (PXTest):
           {"x": 101, "y": 149},
           {"x": 102, "y": 148},
         ],
+      "gateway": {"centre": {"x": 100, "y": 150}, "radius": 5},
       "combat":
         {
           "hp":
@@ -84,6 +85,7 @@ class GodModeTest (PXTest):
           {"x": -100, "y": -149},
           {"x": -100, "y": -148},
         ],
+      "gateway": {"centre": {"x": -100, "y": -150}, "radius": 5},
       "combat":
         {
           "hp":

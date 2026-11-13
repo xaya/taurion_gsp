@@ -368,6 +368,29 @@ message BuildingData
   /** Services this building type offers.  */
   optional Services offered_services = 6;
 
+  /**
+   * An area through which characters enter and leave the building, used
+   * instead of its enter radius if set:  characters can enter only from
+   * within it, and are placed in it when they leave.  This makes everyone
+   * dock and leave at one place, like the centre of a starter city.
+   */
+  message Gateway
+  {
+
+    /**
+     * The centre, relative to the building's centre and transformed
+     * with it like the shape tiles.
+     */
+    optional HexCoord centre = 1;
+
+    /** The L1 radius of the area around its centre.  */
+    optional uint32 radius = 2;
+
+  }
+
+  /** The gateway of this building type, if any.  */
+  optional Gateway gateway = 7;
+
 }
 
 /* ************************************************************************** */
@@ -645,6 +668,13 @@ message ConfigData
 
   /** Basic parameters.  */
   optional Params params = 6;
+
+  /**
+   * Tiles that are obstacles in addition to the terrain, like the structures
+   * of the starter cities.  They are part of the map, which is built once
+   * at startup, so they cannot change at runtime.
+   */
+  repeated HexCoord obstacles = 7;
 
   /**
    * The testnet-specific configuration data.  This is merged into the main

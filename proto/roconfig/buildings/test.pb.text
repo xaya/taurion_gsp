@@ -24,6 +24,18 @@ building_types:
       }
   }
 
+# A building that characters enter and leave through its gateway.
+building_types:
+  {
+    key: "gated"
+    value:
+      {
+        enter_radius: 10
+        shape_tiles: { x: 0 y: 0 }
+        gateway: { centre: { x: 5 y: 0 } radius: 1 }
+      }
+  }
+
 # Buildings that allow testing the differentiation between the
 # "construct item" and "construct vehicle" services.
 building_types:

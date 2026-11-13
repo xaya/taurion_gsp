@@ -53,6 +53,15 @@ std::vector<HexCoord> GetBuildingShape (const std::string& type,
 std::vector<HexCoord> GetBuildingShape (const Building& b, const Context& ctx);
 
 /**
+ * Returns the area (centre and L1 radius) in which characters can enter
+ * the given building and are placed when they leave it.  This is the
+ * gateway of the building's type if it has one, and the enter radius
+ * around the building's centre otherwise.
+ */
+void GetGateway (const Building& b, const Context& ctx,
+                 HexCoord& centre, unsigned& radius);
+
+/**
  * Checks if a building of the given type and rotation can be placed
  * at the given location.  The conditions are that no tile must be taken
  * already by another building or character, and that all tiles must be
