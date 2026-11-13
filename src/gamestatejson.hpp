@@ -105,6 +105,16 @@ public:
   Json::Value Buildings ();
 
   /**
+   * Returns the JSON data representing all jobs.
+   */
+  Json::Value Jobs ();
+
+  /**
+   * Returns the parameters for jobs from the current config.
+   */
+  Json::Value JobsParams ();
+
+  /**
    * Returns the JSON data representing all characters in the game state.
    */
   Json::Value Characters ();

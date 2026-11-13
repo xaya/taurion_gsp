@@ -61,6 +61,7 @@ public:
   void SetHeight (const unsigned h);
   void SetBlockHeight (const unsigned h);
   void SetTimestamp (const int64_t ts);
+  void SetRoConfig (const pxd::RoConfig& c);
 
 };
 

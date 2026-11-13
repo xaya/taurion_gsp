@@ -613,6 +613,53 @@ message Params
    */
   repeated ProspectingPrize prizes = 22;
 
+  /**
+   * The fee burnt for posting a job, as basis points of its reward and
+   * a minimum amount.
+   */
+  optional int64 job_post_fee_min = 27;
+  optional uint32 job_post_fee_bps = 28;
+
+  /** Maximum time in seconds from posting a job to its deadline.  */
+  optional int64 max_listing_window = 29;
+
+  /**
+   * Maximum number of jobs at a time, in total and per poster.  No more can
+   * be posted while a limit is reached, so that zero disables posting.  The
+   * limits also bound the work of settling jobs that expire together.
+   */
+  optional int64 max_live_jobs = 30;
+  optional int64 max_jobs_per_poster = 31;
+
+  /** Minimum reward of a job.  */
+  optional int64 min_job_reward = 32;
+
+  /**
+   * Maximum collateral of a job, as basis points of its reward and as
+   * absolute amount.
+   */
+  optional uint32 deal_max_collateral_bps = 33;
+  optional int64 deal_max_collateral = 34;
+
+  /** Maximum fee of an arbiter in basis points of the reward.  */
+  optional uint32 deal_max_fee_bps = 35;
+
+  /**
+   * Tax in basis points of the reward that is burnt when a job is settled.
+   * A job keeps the tax from when it was posted.  Tax and arbiter fee of
+   * a job together have to be below 100%.
+   */
+  optional uint32 deal_tax_bps = 36;
+
+  /**
+   * Time in seconds that is at least left when a job is confirmed or
+   * disputed shortly before its deadline, for the other side to answer
+   * or for the arbiter to rule.  The deadline is extended for that (but
+   * not for a dispute of a job without arbiter).  A job keeps the value
+   * from when it was posted.
+   */
+  optional int64 deal_reaction_window = 37;
+
 }
 
 /* ************************************************************************** */

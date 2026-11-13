@@ -21,6 +21,7 @@
 
 #include "context.hpp"
 #include "dynobstacles.hpp"
+#include "jobs.hpp"
 #include "services.hpp"
 #include "trading.hpp"
 
@@ -413,10 +414,19 @@ private:
   /** Handle for random numbers.  */
   xaya::Random& rnd;
 
+  /** Access handle for the jobs table.  */
+  JobsTable jobs;
+
   /**
    * Processes the move corresponding to one transaction.
    */
   void ProcessOne (const Json::Value& moveObj);
+
+  /**
+   * Parses and executes the job operations of a move.  They depend on the
+   * block timestamp, so that this is not done for pending moves.
+   */
+  void TryJobOperations (const std::string& name, const Json::Value& mv);
 
   /**
    * Processes one admin command.
@@ -535,7 +545,7 @@ public:
 
   explicit MoveProcessor (Database& d, DynObstacles& dyo, xaya::Random& r,
                           const Context& c)
-    : BaseMoveProcessor(d, dyo, c), rnd(r)
+    : BaseMoveProcessor(d, dyo, c), rnd(r), jobs(db)
   {}
 
   /**

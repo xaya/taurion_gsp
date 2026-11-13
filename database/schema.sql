@@ -550,3 +550,38 @@ CREATE TABLE IF NOT EXISTS `roconfig` (
 );
 
 -- =============================================================================
+
+-- Jobs that accounts posted, with the coins locked for them.  A job is
+-- deleted when it is settled, cancelled or expires.
+CREATE TABLE IF NOT EXISTS `jobs` (
+
+  -- Unique ID of the job.
+  `id` INTEGER PRIMARY KEY,
+
+  -- The account that posted the job.
+  `poster` TEXT NOT NULL,
+
+  -- The account that accepted the job, or NULL if nobody has yet.
+  `worker` TEXT NULL,
+
+  -- The reward locked by the poster.
+  `reward` INTEGER NOT NULL,
+
+  -- The collateral that the worker locks when accepting.
+  `collateral` INTEGER NOT NULL,
+
+  -- The block timestamp at which the job expires.
+  `deadline` INTEGER NOT NULL,
+
+  -- All other data of the job as serialised JobData proto.
+  `proto` BLOB NOT NULL
+
+);
+
+-- Finds the jobs that have expired.
+CREATE INDEX IF NOT EXISTS `jobs_by_deadline` ON `jobs` (`deadline`);
+
+-- Counts the jobs of a poster for the limit.
+CREATE INDEX IF NOT EXISTS `jobs_by_poster` ON `jobs` (`poster`);
+
+-- =============================================================================

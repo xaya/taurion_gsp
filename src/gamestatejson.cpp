@@ -29,6 +29,7 @@
 #include "database/character.hpp"
 #include "database/faction.hpp"
 #include "database/itemcounts.hpp"
+#include "database/jobs.hpp"
 #include "database/moneysupply.hpp"
 #include "database/ongoing.hpp"
 #include "database/region.hpp"
@@ -321,6 +322,19 @@ template <>
       res["faction"] = FactionToString (a.GetFaction ());
       res["kills"] = IntToJson (pb.kills ());
       res["fame"] = IntToJson (pb.fame ());
+
+      Json::Value dealstats(Json::objectValue);
+      dealstats["completed"] = IntToJson (pb.deals_completed ());
+      dealstats["value"] = IntToJson (pb.deals_value_completed ());
+      dealstats["posted"] = IntToJson (pb.deals_posted_completed ());
+      dealstats["postedvalue"] = IntToJson (pb.deals_posted_value ());
+      dealstats["disputed"] = IntToJson (pb.deals_disputed ());
+      res["dealstats"] = dealstats;
+
+      Json::Value arbiterstats(Json::objectValue);
+      arbiterstats["rulings"] = IntToJson (pb.arbiter_rulings ());
+      arbiterstats["valueruled"] = IntToJson (pb.arbiter_value_ruled ());
+      res["arbiterstats"] = arbiterstats;
     }
 
   return res;
@@ -625,6 +639,48 @@ template <>
   return res;
 }
 
+template <>
+  Json::Value
+  GameStateJson::Convert<Job> (const Job& j) const
+{
+  Json::Value res(Json::objectValue);
+
+  res["id"] = IntToJson (j.GetId ());
+  res["poster"] = j.GetPoster ();
+  if (!j.GetWorker ().empty ())
+    res["worker"] = j.GetWorker ();
+
+  res["reward"] = IntToJson (j.GetReward ());
+  res["collateral"] = IntToJson (j.GetCollateral ());
+  res["deadline"] = IntToJson (j.GetDeadline ());
+
+  const auto& pb = j.GetProto ();
+
+  const auto& designated = pb.designated_worker ();
+  if (!designated.empty ())
+    res["designated"] = designated;
+  if (pb.invite_only ())
+    res["inviteonly"] = true;
+
+  if (!pb.arbiter ().empty ())
+    res["arbiter"] = pb.arbiter ();
+  res["fee"] = IntToJson (pb.fee_bps ());
+  res["tax"] = IntToJson (pb.tax_bps ());
+  res["tag"] = IntToJson (pb.type_tag ());
+  if (!pb.terms ().empty ())
+    res["terms"] = pb.terms ();
+  res["posterconfirmed"] = pb.poster_confirmed ();
+  res["workerconfirmed"] = pb.worker_confirmed ();
+  res["disputed"] = pb.disputed ();
+  res["reactionwindow"] = IntToJson (pb.reaction_window ());
+  if (pb.has_dispute_time ())
+    res["disputetime"] = IntToJson (pb.dispute_time ());
+
+  res["state"] = (j.IsAccepted () ? "accepted" : "open");
+
+  return res;
+}
+
 template <typename T, typename R>
   Json::Value
   GameStateJson::ResultsAsArray (T& tbl, Database::Result<R> res) const
@@ -690,6 +746,27 @@ GameStateJson::MoneySupply ()
 }
 
 Json::Value
+GameStateJson::JobsParams ()
+{
+  const auto& p = ctx.RoConfig ()->params ();
+
+  Json::Value res(Json::objectValue);
+  res["job_post_fee_min"] = IntToJson (p.job_post_fee_min ());
+  res["job_post_fee_bps"] = IntToJson (p.job_post_fee_bps ());
+  res["max_listing_window"] = IntToJson (p.max_listing_window ());
+  res["max_live_jobs"] = IntToJson (p.max_live_jobs ());
+  res["max_jobs_per_poster"] = IntToJson (p.max_jobs_per_poster ());
+  res["min_job_reward"] = IntToJson (p.min_job_reward ());
+  res["deal_max_collateral_bps"] = IntToJson (p.deal_max_collateral_bps ());
+  res["deal_max_collateral"] = IntToJson (p.deal_max_collateral ());
+  res["deal_max_fee_bps"] = IntToJson (p.deal_max_fee_bps ());
+  res["deal_tax_bps"] = IntToJson (p.deal_tax_bps ());
+  res["deal_reaction_window"] = IntToJson (p.deal_reaction_window ());
+
+  return res;
+}
+
+Json::Value
 GameStateJson::PrizeStats ()
 {
   ItemCounts cnt(db);
@@ -719,8 +796,12 @@ GameStateJson::Accounts ()
   AccountsTable tbl(db);
   Json::Value res = ResultsAsArray (tbl, tbl.QueryAll ());
 
-  /* Add in also the Cubit balances reserved in open bids.  */
-  const auto reserved = orders.GetReservedCoins ();
+  /* Add in also the Cubit balances reserved in open bids and jobs.  */
+  auto reserved = orders.GetReservedCoins ();
+  JobsTable jobs(db);
+  for (const auto& entry : jobs.GetReservedCoins ())
+    reserved[entry.first] += entry.second;
+
   for (auto& entry : res)
     {
       const auto& nmVal = entry["name"];
@@ -746,6 +827,13 @@ Json::Value
 GameStateJson::Buildings ()
 {
   BuildingsTable tbl(db);
+  return ResultsAsArray (tbl, tbl.QueryAll ());
+}
+
+Json::Value
+GameStateJson::Jobs ()
+{
+  JobsTable tbl(db);
   return ResultsAsArray (tbl, tbl.QueryAll ());
 }
 
@@ -814,6 +902,7 @@ GameStateJson::FullState ()
   res["characters"] = Characters ();
   res["groundloot"] = GroundLoot ();
   res["ongoings"] = OngoingOperations ();
+  res["jobs"] = Jobs ();
   res["moneysupply"] = MoneySupply ();
   res["regions"] = Regions (0);
   res["prizes"] = PrizeStats ();
