@@ -56,9 +56,7 @@ CombatEntity::SetFullFields (Database::RowWriter& row) const
 void
 CombatEntity::SetFields (Database::RowWriter& row, const bool all) const
 {
-  bool canRegen = oldCanRegen;
-  if (hp.IsDirty () || regenData.IsDirty ())
-    canRegen = ComputeCanRegen (hp.Get (), regenData.Get ());
+  const bool canRegen = GetNewCanRegen ();
 
   if (all || hp.IsDirty ())
     row.SetProto ("hp", hp);
@@ -74,6 +72,14 @@ CombatEntity::SetFields (Database::RowWriter& row, const bool all) const
       else
         row.SetNull ("target");
     }
+}
+
+bool
+CombatEntity::GetNewCanRegen () const
+{
+  if (hp.IsDirty () || regenData.IsDirty ())
+    return ComputeCanRegen (hp.Get (), regenData.Get ());
+  return oldCanRegen;
 }
 
 void

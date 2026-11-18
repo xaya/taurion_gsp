@@ -104,9 +104,10 @@ UpdateHP (Database& db, xaya::Random& rnd, const Context& ctx)
   GroundLootTable loot(db);
   DynObstacles dyn(db, ctx);
 
-  const auto dead = DealCombatDamage (db, dl, rnd, ctx);
+  std::set<TargetKey> regenerated;
+  const auto dead = DealCombatDamage (db, dl, rnd, ctx, regenerated);
   ProcessKills (db, dyn, dl, loot, dead, rnd, ctx);
-  RegenerateHP (db);
+  RegenerateHP (db, regenerated);
 }
 
 /**
