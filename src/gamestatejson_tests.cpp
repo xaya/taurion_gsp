@@ -635,7 +635,24 @@ TEST_F (BuildingJsonTests, Basic)
               {"x": 2, "y": 2},
               {"x": 1, "y": 3},
               {"x": 1, "y": 4}
-            ]
+            ],
+          "gateway": {"centre": {"x": 1, "y": 2}, "radius": 5}
+        }
+      ]
+  })");
+}
+
+TEST_F (BuildingJsonTests, Gateway)
+{
+  auto h = tbl.CreateNew ("gated", "", Faction::ANCIENT);
+  h->SetCentre (HexCoord (1, 2));
+  h.reset ();
+
+  ExpectStateJson (R"({
+    "buildings":
+      [
+        {
+          "gateway": {"centre": {"x": 6, "y": 2}, "radius": 1}
         }
       ]
   })");

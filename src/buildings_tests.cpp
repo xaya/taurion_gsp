@@ -18,11 +18,14 @@
 
 #include "buildings.hpp"
 
+#include "dynobstacles.hpp"
+#include "protoutils.hpp"
 #include "testutils.hpp"
 
 #include "database/character.hpp"
 #include "database/dbtest.hpp"
 #include "hexagonal/ring.hpp"
+#include "mapdata/dyntiles.hpp"
 #include "proto/roconfig.hpp"
 
 #include <gmock/gmock.h>
@@ -31,6 +34,7 @@
 #include <glog/logging.h>
 
 #include <set>
+#include <vector>
 
 namespace pxd
 {
@@ -73,6 +77,34 @@ TEST_F (BuildingsTests, GetBuildingShape)
                                      HexCoord (0, 4),
                                      HexCoord (1, 3)));
   EXPECT_DEATH (GetBuildingShape (*tbl.GetById (id2), ctx), "Unknown building");
+}
+
+TEST_F (BuildingsTests, GetGateway)
+{
+  auto h = tbl.CreateNew ("checkmark", "", Faction::ANCIENT);
+  const auto id1 = h->GetId ();
+  h->SetCentre (HexCoord (-1, 5));
+  h->MutableProto ().mutable_shape_trafo ()->set_rotation_steps (2);
+  h.reset ();
+
+  h = tbl.CreateNew ("gated", "", Faction::ANCIENT);
+  const auto id2 = h->GetId ();
+  h->SetCentre (HexCoord (10, 42));
+  h->MutableProto ().mutable_shape_trafo ()->set_rotation_steps (1);
+  h.reset ();
+
+  HexCoord centre;
+  unsigned radius;
+
+  /* Without a gateway, it is the enter radius around the centre.  */
+  GetGateway (*tbl.GetById (id1), ctx, centre, radius);
+  EXPECT_EQ (centre, HexCoord (-1, 5));
+  EXPECT_EQ (radius, 5u);
+
+  /* The gateway is transformed like the shape.  */
+  GetGateway (*tbl.GetById (id2), ctx, centre, radius);
+  EXPECT_EQ (centre, HexCoord (15, 37));
+  EXPECT_EQ (radius, 1u);
 }
 
 TEST_F (BuildingsTests, UpdateBuildingStats)
@@ -120,6 +152,78 @@ TEST_F (BuildingsTests, InitialBuildingsPlacement)
 
   EXPECT_EQ (cnt, RoConfig (ctx.Chain ())->initial_buildings_size ());
   EXPECT_GT (cnt, 0);
+}
+
+TEST_F (BuildingsTests, NoEnclosedTiles)
+{
+  /* Characters start out in the safe zones, and leave buildings to a free
+     tile within their gateway (or the nearest one).  No free tile there
+     may be enclosed by the terrain, obstacles and buildings, or a character
+     placed on it could never leave.  So every free tile in those areas must
+     connect to the free tiles on a ring some distance around them.  */
+  ctx.SetChain (xaya::Chain::MAIN);
+  InitialiseBuildings (db, ctx.Chain ());
+  const DynObstacles dyn(db, ctx);
+
+  const auto isFree = [&] (const HexCoord& c)
+    {
+      return ctx.Map ().IsPassable (c) && !dyn.IsBuilding (c);
+    };
+
+  const auto checkArea = [&] (const HexCoord& centre,
+                              const HexCoord::IntT radius)
+    {
+      const HexCoord::IntT outer = radius + 50;
+      DynTiles<bool> reached(false);
+      std::vector<HexCoord> todo;
+      for (const auto& c : L1Ring (centre, outer))
+        if (isFree (c))
+          {
+            reached.Access (c) = true;
+            todo.push_back (c);
+          }
+      while (!todo.empty ())
+        {
+          const auto cur = todo.back ();
+          todo.pop_back ();
+          for (const auto& n : cur.Neighbours ())
+            if (HexCoord::DistanceL1 (n, centre) < outer && isFree (n)
+                  && !reached.Get (n))
+              {
+                reached.Access (n) = true;
+                todo.push_back (n);
+              }
+        }
+
+      for (HexCoord::IntT r = 0; r <= radius; ++r)
+        for (const auto& c : L1Ring (centre, r))
+          EXPECT_TRUE (!isFree (c) || reached.Get (c))
+              << "Tile " << c << " is enclosed";
+    };
+
+  for (const auto& sz : ctx.RoConfig ()->safe_zones ())
+    checkArea (CoordFromProto (sz.centre ()), sz.radius ());
+
+  auto res = tbl.QueryAll ();
+  while (res.Step ())
+    {
+      auto b = tbl.GetFromResult (res);
+      HexCoord centre;
+      unsigned radius;
+      GetGateway (*b, ctx, centre, radius);
+      checkArea (centre, radius);
+
+      /* Configured gateways are where everyone docks and leaves, so they
+         should be free entirely.  */
+      if (ctx.RoConfig ().Building (b->GetType ()).has_gateway ())
+        {
+          for (unsigned r = 0; r <= radius; ++r)
+            for (const auto& c : L1Ring (centre, r))
+              EXPECT_TRUE (isFree (c))
+                  << "Gateway tile " << c << " of building " << b->GetId ()
+                  << " is not free";
+        }
+    }
 }
 
 /* ************************************************************************** */
@@ -372,6 +476,31 @@ TEST_F (ProcessEnterBuildingsTests, TooFar)
   EXPECT_EQ (c->GetEnterBuilding (), 1);
 }
 
+TEST_F (ProcessEnterBuildingsTests, ThroughGateway)
+{
+  /* The gateway is the area of radius one around (25, 0), while the
+     enter radius would be ten around the centre.  */
+  auto b = tbl.CreateNew ("gated", "", Faction::ANCIENT);
+  const auto id = b->GetId ();
+  b->SetCentre (HexCoord (20, 0));
+  b.reset ();
+
+  auto c = GetCharacter (10);
+  c->SetPosition (HexCoord (21, 0));
+  c->SetEnterBuilding (id);
+  c.reset ();
+
+  c = GetCharacter (11);
+  c->SetPosition (HexCoord (26, 0));
+  c->SetEnterBuilding (id);
+  c.reset ();
+
+  ProcessEnter ();
+
+  EXPECT_FALSE (GetCharacter (10)->IsInBuilding ());
+  EXPECT_EQ (GetCharacter (11)->GetBuildingId (), id);
+}
+
 TEST_F (ProcessEnterBuildingsTests, EnteringEffects)
 {
   /* Targets are cleared, dynamic obstacles are updated.  */
@@ -550,6 +679,26 @@ TEST_F (LeaveBuildingTests, FillingAreaUp)
       positions.insert (c->GetPosition ());
     }
   EXPECT_EQ (positions.size (), ids.size ());
+}
+
+TEST_F (LeaveBuildingTests, ThroughGateway)
+{
+  /* The gateway is the area of radius one around (7, 42), which is
+     passable and free of the other building's tiles.  */
+  auto b = tbl.CreateNew ("gated", "", Faction::ANCIENT);
+  const auto id = b->GetId ();
+  b->SetCentre (HexCoord (2, 42));
+  b.reset ();
+
+  std::set<HexCoord> positions;
+  for (unsigned i = 0; i < 100; ++i)
+    {
+      characters.GetById (10)->SetBuildingId (id);
+      const auto pos = Leave ();
+      EXPECT_LE (HexCoord::DistanceL1 (pos, HexCoord (7, 42)), 1);
+      positions.insert (pos);
+    }
+  EXPECT_EQ (positions.size (), 7u);
 }
 
 TEST_F (LeaveBuildingTests, PossibleLocations)

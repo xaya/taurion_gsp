@@ -4,6 +4,8 @@ key: "b ss"
 value:
 {
 enter_radius: 150
+# Everyone docks and leaves at one place in the middle of the city.
+gateway: { centre: { x: -72 y: 64 } radius: 5 }
 offered_services:
 {
 refining: true
