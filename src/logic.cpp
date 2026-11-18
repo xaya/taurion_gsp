@@ -33,7 +33,16 @@
 #include "database/schema.hpp"
 #include "proto/roconfig.hpp"
 
+#include <gflags/gflags.h>
 #include <glog/logging.h>
+
+#include <cstdint>
+#include <limits>
+#include <string>
+
+DEFINE_int32 (pxd_sqlite_cache_mb, 256,
+              "Size of the game state database's page cache in MiB"
+              " (0 keeps SQLite's default of 2 MiB)");
 
 namespace pxd
 {
@@ -148,8 +157,30 @@ PXLogic::UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
 }
 
 void
+PXLogic::TuneDatabase (xaya::SQLiteDatabase& db)
+{
+  /* These only make processing faster and change no results.  A big battle
+     touches far more pages than the default cache holds, which then get
+     written out and read back within the block's transaction.  And a
+     statement that may change several rows before it fails first copies
+     the pages it changes into a statement journal, which by default goes
+     to a temporary file once it is larger than 64 KiB.  */
+  if (FLAGS_pxd_sqlite_cache_mb > 0)
+    {
+      /* SQLite takes the size in KiB as a 32-bit integer.  */
+      CHECK_LE (FLAGS_pxd_sqlite_cache_mb,
+                std::numeric_limits<int32_t>::max () / 1'024)
+          << "--pxd_sqlite_cache_mb is too large";
+      db.Execute ("PRAGMA `cache_size` = -"
+                    + std::to_string (FLAGS_pxd_sqlite_cache_mb * 1'024));
+    }
+  db.Execute ("PRAGMA `temp_store` = MEMORY");
+}
+
+void
 PXLogic::SetupSchema (xaya::SQLiteDatabase& db)
 {
+  TuneDatabase (db);
   SetupDatabaseSchema (db);
 }
 
