@@ -302,10 +302,10 @@ struct TargetFindingProcessor::TargetingResult
   TargetKey id;
 
   /**
-   * Array of closest enemy targets found, if any.  From this list, we will
+   * The closest enemy targets found, if any.  From those, we will
    * randomly pick one as "the" target.
    */
-  std::vector<proto::TargetId> enemyTargets;
+  TargetFinder::Closest enemyTargets;
 
   /** Whether or not there is a friendly target in range.  */
   bool hasFriendlyTarget;
@@ -329,7 +329,7 @@ struct TargetFindingProcessor::TargetingResult
    * The closest enemies in the longest of openRanges, if any.  One of them
    * is picked at random as the other target of all openRanges that reach it.
    */
-  std::vector<proto::TargetId> otherCandidates;
+  TargetFinder::Closest otherCandidates;
 
   /** The distance of otherCandidates.  */
   HexCoord::IntT otherDistance = 0;
@@ -446,7 +446,7 @@ TargetFindingProcessor::SelectOtherTargets (const CombatModifier& mod,
                                              res.f->GetIdAsTarget ());
   if (!res.otherCandidates.empty ())
     res.otherDistance = HexCoord::DistanceL1 (
-        pos, *targets.FindPosition (res.otherCandidates.front ()));
+        pos, *targets.FindPosition (res.otherCandidates[0]));
 }
 
 void
@@ -509,10 +509,11 @@ TargetFindingProcessor::FinaliseOtherTargets (TargetingResult& res)
   auto other = std::move (res.keptOther);
   if (!res.otherCandidates.empty ())
     {
-      const unsigned ind = rnd.NextInt (res.otherCandidates.size ());
+      const proto::TargetId target
+          = res.otherCandidates[rnd.NextInt (res.otherCandidates.size ())];
       for (const auto& r : res.openRanges)
         if (r.second >= res.otherDistance)
-          other.emplace (r.first, res.otherCandidates[ind]);
+          other.emplace (r.first, target);
     }
 
   /* A kept target that has become the main target (when that was picked
