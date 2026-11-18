@@ -103,6 +103,13 @@ tauriondheaders = \
 
 noinst_HEADERS = $(libtaurionheaders) $(tauriondheaders)
 
+EXTRA_PROGRAMS = battlebench
+battlebench_CXXFLAGS = \
+  $(tauriond_CXXFLAGS) $(SQLITE3_CFLAGS) \
+  -DSQLITE_ENABLE_SESSION -DSQLITE_ENABLE_PREUPDATE_HOOK
+battlebench_LDADD = $(tauriond_LDADD) $(SQLITE3_LIBS)
+battlebench_SOURCES = battlebench.cpp
+
 check_LTLIBRARIES = libtestutils.la
 check_PROGRAMS = tests benchmarks
 TESTS = tests benchmarks
