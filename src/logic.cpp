@@ -40,6 +40,8 @@
 #include <limits>
 #include <string>
 
+DEFINE_bool (pxd_phase_timing, false,
+             "Log the time spent in each phase of processing a super block");
 DEFINE_int32 (pxd_sqlite_cache_mb, 256,
               "Size of the game state database's page cache in MiB"
               " (0 keeps SQLite's default of 2 MiB)");
@@ -112,8 +114,13 @@ PXLogic::UpdateState (Database& db, xaya::Random& rnd,
           || sbTimestamp + ctx.RoConfig ()->params ().superblock_seconds ()
                 <= timestamp;
 
+  /* The times are constructed before the FameUpdater, so that they also
+     cover its destructor (which writes the fame and the new damage-list
+     entries).  */
+  PhaseTimes times(FLAGS_pxd_phase_timing && isNextSuperBlock, ctx.Height ());
   FameUpdater fame(db, ctx);
-  UpdateState (db, fame, rnd, ctx, isNextSuperBlock, blockData);
+  UpdateState (db, fame, rnd, ctx, isNextSuperBlock, blockData, times);
+  times.Next ("finish");
 
   if (isNextSuperBlock)
     db.SetSuperBlock (sbHeight + 1, timestamp);
@@ -122,7 +129,8 @@ PXLogic::UpdateState (Database& db, xaya::Random& rnd,
 void
 PXLogic::UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
                       const Context& ctx,
-                      const bool superBlock, const Json::Value& blockData)
+                      const bool superBlock, const Json::Value& blockData,
+                      PhaseTimes& times)
 {
   /* Most blocks are no superblocks and have no moves for the game.  Nothing
      changes in them, so we do not even build the dynamic obstacles (which
@@ -130,7 +138,10 @@ PXLogic::UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
   if (!superBlock && blockData["moves"].empty () && blockData["admin"].empty ())
     return;
 
+  times.Next ("dynobstacles");
   DynObstacles dyn(db, ctx);
+
+  times.Next ("moves");
   MoveProcessor mvProc(db, dyn, rnd, ctx);
   mvProc.ProcessAdmin (blockData["admin"]);
   mvProc.ProcessAll (blockData["moves"]);
@@ -139,25 +150,34 @@ PXLogic::UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
     {
       LOG (INFO) << "Processing super block height " << ctx.Height ();
 
+      times.Next ("damagelists");
       fame.GetDamageLists ().RemoveOld (
           ctx.RoConfig ()->params ().damage_list_blocks ());
 
-      AllHpUpdates (db, dyn, fame, rnd, ctx);
+      AllHpUpdates (db, dyn, fame, rnd, ctx, times);
+
+      times.Next ("ongoings");
       ProcessAllOngoings (db, rnd, ctx);
 
+      times.Next ("mining");
       ProcessAllMining (db, rnd, ctx);
+
+      times.Next ("movement");
       ProcessAllMovement (db, dyn, ctx);
 
       /* Entering buildings should be after moves and movement, so that players
          enter as soon as possible (perhaps in the same instant the move for it
          gets confirmed).  It should be before combat targets, so that players
          entering a building won't be attacked any more.  */
+      times.Next ("enter");
       ProcessEnterBuildings (db, dyn, ctx);
 
+      times.Next ("targets");
       FindCombatTargets (db, rnd, ctx);
     }
 
 #ifdef ENABLE_SLOW_ASSERTS
+  times.Next ("validation");
   ValidateStateSlow (db, ctx);
 #endif // ENABLE_SLOW_ASSERTS
 }

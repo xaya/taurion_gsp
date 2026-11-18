@@ -1484,19 +1484,23 @@ RegenerateHP (Database& db, const std::set<TargetKey>& skip)
 
 void
 AllHpUpdates (Database& db, DynObstacles& dyn, FameUpdater& fame,
-              xaya::Random& rnd, const Context& ctx)
+              xaya::Random& rnd, const Context& ctx, PhaseTimes& times)
 {
+  times.Next ("damage");
   /* The fighters of the damage step regenerate already there.  */
   std::set<TargetKey> regenerated;
   const auto dead = DealCombatDamage (db, fame.GetDamageLists (), rnd, ctx,
                                       regenerated);
 
+  times.Next ("fame");
   for (const auto& id : dead)
     fame.UpdateForKill (id.ToProto ());
 
+  times.Next ("kills");
   GroundLootTable loot(db);
   ProcessKills (db, dyn, fame.GetDamageLists (), loot, dead, rnd, ctx);
 
+  times.Next ("regen");
   RegenerateHP (db, regenerated);
 }
 
