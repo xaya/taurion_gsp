@@ -40,16 +40,11 @@ namespace
 class TargetFinderTests : public DBTestWithSchema
 {
 
-private:
-
-  /** Callback that inserts targets into found.  */
-  TargetFinder::ProcessingFcn cb;
-
 protected:
 
   /**
-   * Vector into which found targets will be inserted by the constructed
-   * callback function cb.
+   * Vector into which the Find methods insert the found targets with their
+   * positions.
    */
   std::vector<std::pair<HexCoord, proto::TargetId>> found;
 
@@ -58,12 +53,7 @@ protected:
 
   TargetFinderTests ()
     : buildings(db), characters(db)
-  {
-    cb = [this] (const HexCoord& c, const proto::TargetId& t)
-      {
-        found.emplace_back (c, t);
-      };
-  }
+  {}
 
   /**
    * Inserts a test building at the given centre and with the given faction.
@@ -92,36 +82,46 @@ protected:
   }
 
   /**
-   * Calls ProcessL1Targets with our callback and for a red "attacker",
-   * looking only for enemies.
+   * Calls FindInRange for a red "attacker" (excluding nothing) and appends
+   * the targets it returns to found.
+   */
+  void
+  Find (const HexCoord& centre, const HexCoord::IntT l1range,
+        const bool enemies, const bool friendlies)
+  {
+    const TargetFinder finder(db);
+    for (const auto& id : finder.FindInRange (centre, l1range, Faction::RED,
+                                              enemies, friendlies,
+                                              proto::TargetId ()))
+      found.emplace_back (*finder.FindPosition (id), id);
+  }
+
+  /**
+   * Finds the targets for a red "attacker", looking only for enemies.
    */
   void
   ProcessEnemies (const HexCoord& centre, const HexCoord::IntT l1range)
   {
-    TargetFinder (db).ProcessL1Targets (centre, l1range, Faction::RED,
-                                        true, false, cb);
+    Find (centre, l1range, true, false);
   }
 
   /**
-   * Calls ProcessL1Targets with our callback and for a red "attacker",
-   * looking only for friendlies.
+   * Finds the targets for a red "attacker", looking only for friendlies.
    */
   void
   ProcessFriendlies (const HexCoord& centre, const HexCoord::IntT l1range)
   {
-    TargetFinder (db).ProcessL1Targets (centre, l1range, Faction::RED,
-                                        false, true, cb);
+    Find (centre, l1range, false, true);
   }
 
   /**
-   * Calls ProcessL1Targets with our callback and for a red "attacker",
-   * looking for anyone (friendly and enemies).
+   * Finds the targets for a red "attacker", looking for anyone
+   * (friendly and enemies).
    */
   void
   ProcessEveryone (const HexCoord& centre, const HexCoord::IntT l1range)
   {
-    TargetFinder (db).ProcessL1Targets (centre, l1range, Faction::RED,
-                                        true, true, cb);
+    Find (centre, l1range, true, true);
   }
 
 };
@@ -303,6 +303,50 @@ TEST_F (TargetFinderTests, FriendlyAndEnemies)
   EXPECT_EQ (found[3].second.id (), idCharacter2);
 }
 
+TEST_F (TargetFinderTests, Limit)
+{
+  const HexCoord centre(10, -15);
+
+  /* At distance 0 (one of them excluded), 1 and 2.  Of those at distance 1
+     the building and the lower-ID character come first in target order.  */
+  const auto excluded = InsertCharacter (centre, Faction::GREEN);
+  const auto atCentre = InsertCharacter (centre, Faction::GREEN);
+  const auto far = InsertCharacter (HexCoord (12, -15), Faction::GREEN);
+  const auto nearChar1 = InsertCharacter (HexCoord (11, -15), Faction::GREEN);
+  const auto nearChar2 = InsertCharacter (HexCoord (10, -14), Faction::GREEN);
+  const auto nearBuilding = InsertBuilding (HexCoord (9, -15), Faction::GREEN);
+
+  proto::TargetId exclude;
+  exclude.set_type (proto::TargetId::TYPE_CHARACTER);
+  exclude.set_id (excluded);
+
+  const auto ids = [&] (const size_t limit)
+    {
+      std::vector<std::pair<proto::TargetId::Type, Database::IdT>> res;
+      for (const auto& id : TargetFinder (db).FindInRange (
+                                centre, 5, Faction::RED, true, false,
+                                exclude, limit))
+        res.emplace_back (id.type (), id.id ());
+      return res;
+    };
+
+  using V = std::vector<std::pair<proto::TargetId::Type, Database::IdT>>;
+  constexpr auto B = proto::TargetId::TYPE_BUILDING;
+  constexpr auto C = proto::TargetId::TYPE_CHARACTER;
+
+  EXPECT_EQ (ids (1), V ({{C, atCentre}}));
+  EXPECT_EQ (ids (2), V ({{B, nearBuilding}, {C, atCentre}}));
+  EXPECT_EQ (ids (3), V ({{B, nearBuilding}, {C, atCentre}, {C, nearChar1}}));
+  EXPECT_EQ (ids (4), V ({{B, nearBuilding}, {C, atCentre},
+                          {C, nearChar1}, {C, nearChar2}}));
+
+  const V all({{B, nearBuilding}, {C, atCentre}, {C, far},
+               {C, nearChar1}, {C, nearChar2}});
+  EXPECT_EQ (ids (5), all);
+  EXPECT_EQ (ids (6), all);
+  EXPECT_EQ (ids (0), all);
+}
+
 /**
  * The query that TargetFinder answered directly from the database before it
  * read all targets into memory, as the reference for its results.
@@ -420,33 +464,59 @@ TEST_F (TargetFinderTests, MatchesDatabaseQuery)
                                           }),
                         expected.end ());
 
-      found.clear ();
-      (filter ? filtered : finder).ProcessL1Targets (
-          centre, range, f, enemies, friendlies,
-          [this] (const HexCoord& c, const proto::TargetId& t)
-            {
-              found.emplace_back (c, t);
-            });
-
-      ASSERT_EQ (found.size (), expected.size ());
-      for (unsigned j = 0; j < found.size (); ++j)
+      const auto& query = (filter ? filtered : finder);
+      const auto all = query.FindInRange (centre, range, f, enemies,
+                                          friendlies, proto::TargetId ());
+      ASSERT_EQ (all.size (), expected.size ());
+      for (unsigned j = 0; j < all.size (); ++j)
         {
-          EXPECT_EQ (found[j].first, expected[j].first);
-          EXPECT_EQ (found[j].second.type (), expected[j].second.type ());
-          EXPECT_EQ (found[j].second.id (), expected[j].second.id ());
+          EXPECT_EQ (*query.FindPosition (all[j]), expected[j].first);
+          EXPECT_EQ (all[j].type (), expected[j].second.type ());
+          EXPECT_EQ (all[j].id (), expected[j].second.id ());
         }
 
-      /* The closest ones, excluding one of them (if any).  */
-      const auto& query = (filter ? filtered : finder);
+      /* Excluding one of them (if any), and with a limit:  the ones
+         closest to the centre, of those at the same distance the first,
+         and returned in target order.  */
       proto::TargetId exclude;
       if (!expected.empty ())
         exclude = expected[i % expected.size ()].second;
+      const auto isExcluded = [&exclude] (const proto::TargetId& id)
+        {
+          return id.type () == exclude.type () && id.id () == exclude.id ();
+        };
+
+      const size_t limits[] = {1, 2, 5, 20};
+      const size_t limit = limits[i % 4];
+      std::vector<std::pair<HexCoord::IntT, size_t>> byDistance;
+      for (size_t j = 0; j < expected.size (); ++j)
+        if (!isExcluded (expected[j].second))
+          byDistance.emplace_back (
+              HexCoord::DistanceL1 (centre, expected[j].first), j);
+      std::sort (byDistance.begin (), byDistance.end ());
+      if (byDistance.size () > limit)
+        byDistance.resize (limit);
+      std::vector<size_t> limited;
+      for (const auto& entry : byDistance)
+        limited.push_back (entry.second);
+      std::sort (limited.begin (), limited.end ());
+
+      const auto actualLimited = query.FindInRange (
+          centre, range, f, enemies, friendlies, exclude, limit);
+      ASSERT_EQ (actualLimited.size (), limited.size ());
+      for (unsigned j = 0; j < limited.size (); ++j)
+        {
+          EXPECT_EQ (actualLimited[j].type (),
+                     expected[limited[j]].second.type ());
+          EXPECT_EQ (actualLimited[j].id (), expected[limited[j]].second.id ());
+        }
+
+      /* The closest ones, with the same exclusion.  */
       std::vector<proto::TargetId> closest;
       HexCoord::IntT closestDist = range + 1;
       for (const auto& e : expected)
         {
-          if (e.second.type () == exclude.type ()
-                && e.second.id () == exclude.id ())
+          if (isExcluded (e.second))
             continue;
           const auto dist = HexCoord::DistanceL1 (centre, e.first);
           if (dist < closestDist)
