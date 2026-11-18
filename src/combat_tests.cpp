@@ -685,6 +685,30 @@ TEST_F (TargetSelectionTests, CombatEffect)
   EXPECT_EQ (characters.GetById (id2)->GetTarget ().id (), id1);
 }
 
+TEST_F (TargetSelectionTests, RangeReducedBelowZero)
+{
+  /* The range-reducing effects of very many attackers add up.  The range
+     then reaches nothing, also if it would overflow HexCoord::IntT (and
+     wrap around to a large range).  */
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  const auto id1 = c->GetId ();
+  c->SetPosition (HexCoord (0, 0));
+  c->MutableEffects ().mutable_range ()->set_percent (-600'000);
+  AddAttack (*c).set_range (10);
+  c.reset ();
+
+  c = characters.CreateNew ("andy", Faction::GREEN);
+  const auto id2 = c->GetId ();
+  c->SetPosition (HexCoord (0, 0));
+  c->MutableEffects ().mutable_range ()->set_percent (-600'000);
+  AddAttack (*c).set_area (10);
+  c.reset ();
+
+  FindCombatTargets (db, rnd, ctx);
+  EXPECT_FALSE (characters.GetById (id1)->HasTarget ());
+  EXPECT_FALSE (characters.GetById (id2)->HasTarget ());
+}
+
 TEST_F (TargetSelectionTests, NoRandomNumbersRequested)
 {
   /* Target finding for none of the following situations should request
@@ -3449,6 +3473,36 @@ TEST_F (RegenerateHpTests, RateModifierEffect)
 
   c = characters.GetById (id);
   EXPECT_EQ (c->GetHP ().shield (), 10 + 15);
+}
+
+TEST_F (RegenerateHpTests, VeryLargeBoostedRate)
+{
+  /* The boosts of very many supporters add up, and the modified rate then
+     does not fit into 32 bits any more.  That just fills up the shield.
+     (The rates here would wrap around to 2^32 - 484 and to 304 milli HP;
+     with the first, the milli HP left over would even go down.)  */
+  std::vector<Database::IdT> ids;
+  for (const auto& rateAndPercent : {std::make_pair (40'250, 10'670'625),
+                                     std::make_pair (77'000, 5'577'780)})
+    {
+      auto c = characters.CreateNew ("domob", Faction::RED);
+      ids.push_back (c->GetId ());
+      c->MutableHP ().mutable_mhp ()->set_shield (500);
+      auto* regen = &c->MutableRegenData ();
+      regen->mutable_max_hp ()->set_shield (5'000);
+      regen->mutable_regeneration_mhp ()->set_shield (rateAndPercent.first);
+      c->MutableEffects ().mutable_shield_regen ()
+          ->set_percent (rateAndPercent.second);
+    }
+
+  RegenerateHP (db);
+
+  for (const auto id : ids)
+    {
+      auto c = characters.GetById (id);
+      EXPECT_EQ (c->GetHP ().shield (), 5'000);
+      EXPECT_EQ (c->GetHP ().mhp ().shield (), 0);
+    }
 }
 
 /* ************************************************************************** */

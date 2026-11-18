@@ -106,6 +106,17 @@ ComputeModifier (const CombatEntity& f, CombatModifier& mod)
   mod.hitChance += eff.hit_chance ();
 }
 
+/**
+ * Returns a range or area with the fighter's range modifier applied.  The
+ * range-reducing effects of all attackers add up, and a range below zero
+ * reaches nothing; it is returned as -1, so that it cannot overflow.
+ */
+HexCoord::IntT
+ModifiedRange (const CombatModifier& mod, const HexCoord::IntT base)
+{
+  return std::max<int64_t> (mod.range (base), -1);
+}
+
 } // anonymous namespace
 
 TargetKey::TargetKey (const proto::TargetId& id)
@@ -284,7 +295,7 @@ TargetFindingProcessor::SelectNormalTarget (const CombatModifier& mod,
       return;
     }
   CHECK_GE (range, 0);
-  range = mod.range (range);
+  range = ModifiedRange (mod, range);
 
   HexCoord::IntT closestRange;
 
@@ -330,7 +341,7 @@ TargetFindingProcessor::SelectFriendlyTargets (const CombatModifier& mod,
       return;
     }
   CHECK_GE (range, 0);
-  range = mod.range (range);
+  range = ModifiedRange (mod, range);
 
   res.hasFriendlyTarget = false;
   ProcessCombatTargets (targets, ctx, *res.f, pos, range, false,
@@ -830,7 +841,7 @@ DamageProcessor::DealDamage (FighterTable::Handle f, const bool forGainHp,
         {
           if (!hasTarget)
             continue;
-          if (targetDist > static_cast<int> (mod.range (attack.range ())))
+          if (targetDist > ModifiedRange (mod, attack.range ()))
             continue;
         }
 
@@ -850,7 +861,7 @@ DamageProcessor::DealDamage (FighterTable::Handle f, const bool forGainHp,
             centre = pos;
 
           ProcessCombatTargets (targets, ctx,
-                                *f, centre, mod.range (attack.area ()),
+                                *f, centre, ModifiedRange (mod, attack.area ()),
                                 !attack.friendlies (),
             [&] (const HexCoord& c, const proto::TargetId& id)
             {
@@ -901,7 +912,7 @@ DamageProcessor::ProcessSelfDestructs (FighterTable::Handle f,
           << f->GetIdAsTarget ().DebugString ();
 
       ProcessCombatTargets (targets, ctx,
-                            *f, pos, mod.range (sd.area ()),
+                            *f, pos, ModifiedRange (mod, sd.area ()),
                             true,
         [&] (const HexCoord& c, const proto::TargetId& id)
         {
@@ -1339,20 +1350,27 @@ namespace
  * and true iff something changed.
  */
 bool
-RegenerateHpType (const unsigned max, const unsigned mhpRate,
+RegenerateHpType (const unsigned max, const uint64_t mhpRate,
                   const unsigned oldCur, const unsigned oldMilli,
                   unsigned& newCur, unsigned& newMilli)
 {
   CHECK (oldCur < max || (oldCur == max && oldMilli == 0));
 
-  newMilli = oldMilli + mhpRate;
-  newCur = oldCur + newMilli / 1'000;
-  newMilli %= 1'000;
+  /* The rate can be huge with the boosts of very many fighters, so the new
+     values are computed in 64 bits and capped at the maximum before they
+     are stored.  */
+  const uint64_t milli = oldMilli + mhpRate;
+  const uint64_t cur = oldCur + milli / 1'000;
 
-  if (newCur >= max)
+  if (cur >= max)
     {
       newCur = max;
       newMilli = 0;
+    }
+  else
+    {
+      newCur = cur;
+      newMilli = milli % 1'000;
     }
 
   CHECK (newCur > oldCur || (newCur == oldCur && newMilli >= oldMilli));
@@ -1378,9 +1396,13 @@ RegenerateFighterHP (FighterTable::Handle f)
       f->MutableHP ().mutable_mhp ()->set_armour (milli);
     }
 
+  /* The effects of all fighters boosting the regeneration add up, so the
+     modified rate may not fit into 32 bits.  One reduced below zero
+     regenerates nothing.  */
   const StatModifier shieldRegenMod(f->GetEffects ().shield_regen ());
-  const unsigned shieldRate
-      = shieldRegenMod (regen.regeneration_mhp ().shield ());
+  const uint64_t shieldRate
+      = std::max<int64_t> (
+            shieldRegenMod (regen.regeneration_mhp ().shield ()), 0);
 
   if (RegenerateHpType (
           regen.max_hp ().shield (), shieldRate,
