@@ -77,6 +77,32 @@ private:
   std::vector<FameKill> kills;
 
   /**
+   * The owners of characters looked up for kills.  They do not change while
+   * kills are processed, so each is read only once also for many kills
+   * (e.g. in a battle).
+   */
+  std::map<Database::IdT, std::string> ownerOf;
+
+  /** The fame of accounts looked up for kills, read only once as well.  */
+  std::map<std::string, unsigned> fameOf;
+
+  /**
+   * The kills of each account.  They are added to its counter in the end,
+   * together with the change of its fame.
+   */
+  std::map<std::string, unsigned> numKills;
+
+  /**
+   * Returns the owner of the given character.
+   */
+  const std::string& GetOwner (Database::IdT id);
+
+  /**
+   * Returns the fame of the account with the given name.
+   */
+  unsigned GetFame (const std::string& name);
+
+  /**
    * Computes the "fame level" of a player.  This is used to determine who
    * gets fame (namely those max one level above/below).  This is an int so
    * that we can safely compute differences.
