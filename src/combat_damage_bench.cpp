@@ -100,7 +100,7 @@ InsertCharacters (Database& db, const unsigned numIdle,
 void
 UpdateHP (Database& db, xaya::Random& rnd, const Context& ctx)
 {
-  DamageLists dl(db, 0);
+  DamageLists dl(db, 0, 1);
   GroundLootTable loot(db);
   DynObstacles dyn(db, ctx);
 

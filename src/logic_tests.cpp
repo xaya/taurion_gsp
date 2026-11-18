@@ -657,7 +657,7 @@ TEST_F (PXLogicTests, PickUpDeadDrop)
 
 TEST_F (PXLogicTests, DamageLists)
 {
-  DamageLists dl(db, 0);
+  DamageLists dl(db, 0, 1);
 
   auto c = CreateCharacter ("domob", Faction::RED);
   const auto idAttacker = c->GetId ();

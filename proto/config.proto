@@ -575,56 +575,66 @@ message Params
   optional uint32 damage_list_blocks = 5;
 
   /**
+   * A hit refreshes the height of an existing damage-list entry only once
+   * it is this many blocks old (1:  on every hit).  Attackers then stay on
+   * the list for between damage_list_blocks - N + 1 and damage_list_blocks
+   * blocks after their last hit, but a sustained fight rewrites each entry
+   * only every N blocks instead of every block.  The value must be at least
+   * one and should not be larger than damage_list_blocks.
+   */
+  optional uint32 damage_list_refresh_blocks = 6;
+
+  /**
    * The number of blocks after which a region can be reprospected (if there
    * are no other factors preventing it).
    */
-  optional uint32 prospection_expiry_blocks = 6;
+  optional uint32 prospection_expiry_blocks = 7;
 
   /** The number of HP that can be repaired per block.  */
-  optional uint32 armour_repair_hp_per_block = 7;
+  optional uint32 armour_repair_hp_per_block = 8;
 
   /** Cost (in 1/1000 vCHI) for repairing one HP of armour.  */
-  optional uint32 armour_repair_cost_millis = 8;
+  optional uint32 armour_repair_cost_millis = 9;
 
   /** Cost (in vCHI) for copying a blueprint, per complexity.  */
-  optional int64 bp_copy_cost = 9;
+  optional int64 bp_copy_cost = 10;
 
   /** Number of blocks for copying a blueprint, per complexity.  */
-  optional uint32 bp_copy_blocks = 10;
+  optional uint32 bp_copy_blocks = 11;
 
   /** Cost (in vCHI) for constructing an item, per complexity.  */
-  optional int64 construction_cost = 11;
+  optional int64 construction_cost = 12;
 
   /** Nubmer of blocks for constructing an item, per complexity.  */
-  optional uint32 construction_blocks = 12;
+  optional uint32 construction_blocks = 13;
 
   /**
    * Delay (in blocks) until an owner-initiated update to the building
    * configuration takes effect.
    */
-  optional uint32 building_update_delay = 13;
+  optional uint32 building_update_delay = 14;
 
   /** Base fee (which is burnt) paid by sellers on the DEX in basis points.  */
-  optional uint32 dex_fee_bps = 14;
+  optional uint32 dex_fee_bps = 15;
 
   /** Minimum units of ore found in a prospected region.  */
-  optional int64 min_region_ore = 15;
+  optional int64 min_region_ore = 16;
   /** Maximum units of ore found in a prospected region.  */
-  optional int64 max_region_ore = 16;
+  optional int64 max_region_ore = 17;
 
   /** The address to which developer payments should be sent.  */
-  optional string dev_addr = 17;
+  optional string dev_addr = 18;
   /** The address to which burn payments should be sent.  */
-  optional string burn_addr = 18;
+  optional string burn_addr = 19;
 
   /** Whether or not god mode is enabled.  */
-  optional bool god_mode = 19;
+  optional bool god_mode = 20;
 
   /** Spawn areas for the factions (with the "r", "g", "b" string as key).  */
-  map<string, SpawnArea> spawn_areas = 20;
+  map<string, SpawnArea> spawn_areas = 21;
 
   /** Data about the burnsale schedule.  */
-  repeated BurnsaleStage burnsale_stages = 21;
+  repeated BurnsaleStage burnsale_stages = 22;
 
   /**
    * Prospecting prizes.  They are just a list and not a map, because the
@@ -634,7 +644,7 @@ message Params
    * It is replaced rather than concatenated (which would be the default
    * behaviour for proto merge).
    */
-  repeated ProspectingPrize prizes = 22;
+  repeated ProspectingPrize prizes = 23;
 
 }
 

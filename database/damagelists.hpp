@@ -38,6 +38,9 @@ private:
   /** Magic height value meaning that we do not have a height.  */
   static constexpr unsigned NO_HEIGHT = static_cast<unsigned> (-1);
 
+  /** Magic refresh age of an instance without height, which never uses it.  */
+  static constexpr unsigned NO_REFRESH = static_cast<unsigned> (-1);
+
   /** The underlying database handle.  */
   Database& db;
 
@@ -47,6 +50,9 @@ private:
    * the time.
    */
   const unsigned height;
+
+  /** The age (in blocks) at which a hit refreshes an existing entry.  */
+  const unsigned refresh;
 
   /**
    * The entries added through this instance, as (victim, attacker) pairs.
@@ -70,12 +76,15 @@ public:
    * that depend on the height.
    */
   explicit DamageLists (Database& d)
-    : db(d), height(NO_HEIGHT)
+    : db(d), height(NO_HEIGHT), refresh(NO_REFRESH)
   {}
 
-  explicit DamageLists (Database& d, const unsigned h)
-    : db(d), height(h)
-  {}
+  /**
+   * Constructs a damage list for the given height.  A hit refreshes the
+   * height of an existing entry only once it is at least r blocks old,
+   * where r must be at least one.
+   */
+  explicit DamageLists (Database& d, unsigned h, unsigned r);
 
   ~DamageLists ();
 
@@ -91,10 +100,10 @@ public:
   void RemoveOld (const unsigned n);
 
   /**
-   * Adds (or refreshes) an entry for the given victim / attacker pair.
-   * The entry is seen by GetAttackers and removed by RemoveCharacter of
-   * this instance right away, but written to the database only when the
-   * instance is destroyed.
+   * Adds an entry for the given victim / attacker pair, or refreshes its
+   * height if it is at least the refresh age old.  The entry is seen by
+   * GetAttackers and removed by RemoveCharacter of this instance right away,
+   * but written to the database only when the instance is destroyed.
    */
   void AddEntry (Database::IdT victim, Database::IdT attacker);
 

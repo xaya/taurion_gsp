@@ -23,11 +23,18 @@
 namespace pxd
 {
 
+DamageLists::DamageLists (Database& d, const unsigned h, const unsigned r)
+  : db(d), height(h), refresh(r)
+{
+  CHECK_GE (refresh, 1);
+}
+
 DamageLists::~DamageLists ()
 {
   /* An existing entry only gets its height updated, which (unlike a
      REPLACE that deletes and re-inserts the row) leaves the other
-     indices alone.  */
+     indices alone, and only once it is old enough:  an unchanged row
+     costs no write and no undo data.  */
   for (const auto& entry : pendingByVictim)
     {
       auto stmt = db.Prepare (R"(
@@ -36,10 +43,12 @@ DamageLists::~DamageLists ()
           VALUES (?1, ?2, ?3)
           ON CONFLICT (`victim`, `attacker`) DO UPDATE
             SET `height` = `excluded`.`height`
+            WHERE `height` <= `excluded`.`height` - ?4
       )");
       stmt.Bind (1, entry.first);
       stmt.Bind (2, entry.second);
       stmt.Bind (3, height);
+      stmt.Bind (4, refresh);
 
       stmt.Execute ();
     }

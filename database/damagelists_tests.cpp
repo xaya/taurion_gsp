@@ -56,7 +56,7 @@ protected:
   AddWithHeight (const Database::IdT victim, const Database::IdT attacker,
                  const unsigned height)
   {
-    DamageLists dl(db, height);
+    DamageLists dl(db, height, 1);
     dl.AddEntry (victim, attacker);
   }
 
@@ -76,13 +76,13 @@ protected:
     std::mt19937 rnd(42);
     std::vector<std::string> res;
     {
-      auto dl = std::make_unique<DamageLists> (db, 10);
+      auto dl = std::make_unique<DamageLists> (db, 10, 1);
       for (unsigned i = 0; i < 2'000; ++i)
         {
           if (!oneInstance)
             {
               dl.reset ();
-              dl = std::make_unique<DamageLists> (db, 10);
+              dl = std::make_unique<DamageLists> (db, 10, 1);
             }
 
           const Database::IdT x = 1 + rnd () % 30;
@@ -141,7 +141,7 @@ private:
 TEST_F (DamageListsTests, Basic)
 {
   {
-    DamageLists dl(db, 100);
+    DamageLists dl(db, 100, 1);
     dl.AddEntry (1, 2);
     dl.AddEntry (1, 3);
     dl.AddEntry (1, 2);
@@ -158,7 +158,7 @@ TEST_F (DamageListsTests, RemoveCharacter)
   AddWithHeight (1, 2, 99);
   AddWithHeight (4, 2, 99);
   {
-    DamageLists dl(db, 100);
+    DamageLists dl(db, 100, 1);
     dl.AddEntry (1, 3);
     dl.AddEntry (2, 1);
     dl.AddEntry (3, 2);
@@ -177,7 +177,7 @@ TEST_F (DamageListsTests, RemoveOld)
   AddWithHeight (1, 3, 6);
   AddWithHeight (1, 4, 10);
 
-  DamageLists dl(db, 10);
+  DamageLists dl(db, 10, 1);
   dl.RemoveOld (5);
 
   ExpectAttackers (1, {3, 4});
@@ -189,8 +189,24 @@ TEST_F (DamageListsTests, RefreshHeight)
   AddWithHeight (1, 3, 1);
   AddWithHeight (1, 3, 2);
 
-  DamageLists dl(db, 2);
+  DamageLists dl(db, 2, 1);
   dl.RemoveOld (1);
+
+  ExpectAttackers (1, {3});
+}
+
+TEST_F (DamageListsTests, RefreshOnlyOldEntries)
+{
+  AddWithHeight (1, 2, 1);
+  AddWithHeight (1, 3, 1);
+
+  /* With a refresh age of 5, a hit at height 5 leaves the entry from
+     height 1 alone, and one at height 6 refreshes it.  */
+  DamageLists (db, 5, 5).AddEntry (1, 2);
+  DamageLists (db, 6, 5).AddEntry (1, 3);
+
+  DamageLists dl(db, 6, 1);
+  dl.RemoveOld (5);
 
   ExpectAttackers (1, {3});
 }
@@ -200,7 +216,7 @@ TEST_F (DamageListsTests, RemoveOldLargeN)
   AddWithHeight (1, 2, 5);
   AddWithHeight (1, 3, 10);
 
-  DamageLists dl(db, 100);
+  DamageLists dl(db, 100, 1);
   dl.RemoveOld (500);
 
   ExpectAttackers (1, {2, 3});
@@ -209,7 +225,7 @@ TEST_F (DamageListsTests, RemoveOldLargeN)
 TEST_F (DamageListsTests, WrittenWhenDestroyed)
 {
   {
-    DamageLists dl(db, 100);
+    DamageLists dl(db, 100, 1);
     dl.AddEntry (1, 2);
     ExpectAttackers (1, {});
     EXPECT_EQ (dl.GetAttackers (1), DamageLists::Attackers ({2}));
@@ -230,6 +246,11 @@ TEST_F (DamageListsTests, WithoutHeight)
   DamageLists dl(db);
   EXPECT_DEATH (dl.RemoveOld (5), "height != NO_HEIGHT");
   EXPECT_DEATH (dl.AddEntry (1, 2), "height != NO_HEIGHT");
+}
+
+TEST_F (DamageListsTests, InvalidRefreshAge)
+{
+  EXPECT_DEATH (DamageLists (db, 10, 0), "refresh >= 1");
 }
 
 } // anonymous namespace
