@@ -42,6 +42,7 @@ libtaurion_la_SOURCES = \
   movement.cpp \
   moveprocessor.cpp \
   ongoings.cpp \
+  phasetimer.cpp \
   params.cpp \
   pending.cpp \
   prospecting.cpp \
@@ -66,6 +67,7 @@ libtaurionheaders = \
   movement.hpp movement.tpp \
   moveprocessor.hpp \
   ongoings.hpp \
+  phasetimer.hpp \
   params.hpp \
   pending.hpp \
   prospecting.hpp \
