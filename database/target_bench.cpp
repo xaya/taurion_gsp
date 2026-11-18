@@ -97,5 +97,44 @@ BENCHMARK (TargetFinding)
   ->Args ({10, 100, 10000, 0, 0})
   ->Args ({10, 100, 0, 10000, 0});
 
+/**
+ * Benchmarks the queries of one fighter next to a pile of enemies on one tile:
+ * finding the five closest, picking from the closest and checking whether
+ * one is still in range.  None of them should depend on the size of the pile.
+ *
+ * Arguments are:
+ *  - Number of targets on the tile
+ */
+void
+PileFinding (benchmark::State& state)
+{
+  TestDatabase db;
+  SetupDatabaseSchema (*db);
+
+  const unsigned n = state.range (0);
+  InsertTestCharacters (db, n, HexCoord (0, 0), Faction::GREEN);
+
+  const HexCoord centre(0, 1);
+  TargetFinder finder(db);
+  for (auto _ : state)
+    {
+      const auto found = finder.FindInRange (centre, 10, Faction::RED,
+                                             true, false, proto::TargetId (),
+                                             5);
+      CHECK_EQ (found.size (), 5);
+
+      const auto closest = finder.FindClosest (centre, 10, Faction::RED,
+                                               true, false, proto::TargetId ());
+      CHECK_EQ (closest.size (), n);
+      CHECK (finder.IsInRange (closest[n / 2], centre, 10, Faction::RED,
+                               true, false));
+    }
+}
+BENCHMARK (PileFinding)
+  ->Unit (benchmark::kMicrosecond)
+  ->Arg (10)
+  ->Arg (1000)
+  ->Arg (10000);
+
 } // anonymous namespace
 } // namespace pxd
