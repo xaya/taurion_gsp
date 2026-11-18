@@ -17,6 +17,7 @@ libdatabase_la_LIBADD = \
 libdatabase_la_SOURCES = \
   account.cpp \
   building.cpp \
+  changes.cpp \
   character.cpp \
   combat.cpp \
   coord.cpp \
@@ -38,6 +39,7 @@ noinst_HEADERS = \
   amount.hpp \
   account.hpp \
   building.hpp \
+  changes.hpp \
   character.hpp \
   combat.hpp combat.tpp \
   coord.hpp coord.tpp \
@@ -79,7 +81,7 @@ tests_CXXFLAGS = \
   -I$(top_srcdir) \
   $(XAYAGAME_CFLAGS) \
   $(GTEST_MAIN_CFLAGS) \
-  $(GTEST_CFLAGS) $(GLOG_CFLAGS)
+  $(GTEST_CFLAGS) $(GLOG_CFLAGS) $(SQLITE3_CFLAGS)
 tests_LDADD = \
   $(builddir)/libdbtest.la \
   $(builddir)/libdatabase.la \
@@ -90,6 +92,7 @@ tests_LDADD = \
 tests_SOURCES = \
   account_tests.cpp \
   building_tests.cpp \
+  changes_tests.cpp \
   character_tests.cpp \
   combat_tests.cpp \
   coord_tests.cpp \

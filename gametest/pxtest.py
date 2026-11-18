@@ -18,6 +18,7 @@ from xayax.gametest import XayaXGameTest
 
 from proto import config_pb2
 
+import base64
 import collections
 from contextlib import contextmanager
 import copy
@@ -401,6 +402,16 @@ class PXTest (XayaXGameTest):
 
     assert self.cfg is not None
     return self.cfg
+
+  def sendConfigUpdate (self, upd):
+    """
+    Sends the given ConfigData proto as roconfig merge admin command and
+    mines a block so it takes effect.
+    """
+
+    encoded = base64.b64encode (upd.SerializeToString ()).decode ("ascii")
+    self.adminCommand ({"roconfig": {"merge": encoded}})
+    self.generate (1)
 
   def initAccount (self, name, faction):
     """
