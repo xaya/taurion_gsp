@@ -76,6 +76,18 @@ class CombatTargetTest (PXTest):
     })
 
     self.mainLogger.info ("Testing randomised target selection...")
+    # Red approaches along the x axis, where it is at the same distance from
+    # both greens, so that it picks one of them at random once it gets in
+    # range (and keeps that target afterwards).  Each roll thus starts from
+    # the block before.
+    self.moveCharactersTo ({
+      "red": offsetCoord ({"x": 25, "y": 0}, self.offset, False),
+    })
+    self.getCharacters ()["red"].moveTowards (
+        offsetCoord ({"x": 1, "y": 0}, self.offset, False))
+    while self.getCharacters ()["red"].getPosition ()["x"] > 13:
+      self.generate (1)
+    assert self.getTargetCharacter ("red") is None
     cnts = {"green": 0, "green 2": 0}
     rolls = 10
     snapshot = self.env.snapshot ()

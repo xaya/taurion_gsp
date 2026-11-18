@@ -303,6 +303,44 @@ TEST_F (TargetFinderTests, FriendlyAndEnemies)
   EXPECT_EQ (found[3].second.id (), idCharacter2);
 }
 
+TEST_F (TargetFinderTests, IsInRange)
+{
+  const HexCoord centre(10, -15);
+  const auto green = InsertCharacter (HexCoord (12, -15), Faction::GREEN);
+  const auto red = InsertCharacter (HexCoord (11, -15), Faction::RED);
+  const auto safe = InsertCharacter (HexCoord (9, -15), Faction::GREEN);
+  const auto inBuilding = InsertCharacter (centre, Faction::GREEN);
+  characters.GetById (inBuilding)->SetBuildingId (42);
+
+  const auto id = [] (const Database::IdT i)
+    {
+      proto::TargetId res;
+      res.set_type (proto::TargetId::TYPE_CHARACTER);
+      res.set_id (i);
+      return res;
+    };
+
+  const TargetFinder finder(db, [] (const HexCoord& c)
+    {
+      return c == HexCoord (9, -15);
+    });
+  const auto check = [&] (const Database::IdT i, const HexCoord::IntT range,
+                          const bool enemies, const bool friendlies)
+    {
+      return finder.IsInRange (id (i), centre, range, Faction::RED,
+                               enemies, friendlies);
+    };
+
+  EXPECT_TRUE (check (green, 2, true, false));
+  EXPECT_FALSE (check (green, 1, true, false));
+  EXPECT_FALSE (check (green, 2, false, true));
+  EXPECT_FALSE (check (red, 2, true, false));
+  EXPECT_TRUE (check (red, 2, true, true));
+  EXPECT_FALSE (check (safe, 2, true, false));
+  EXPECT_FALSE (check (inBuilding, 2, true, false));
+  EXPECT_FALSE (check (12345, 2, true, false));
+}
+
 TEST_F (TargetFinderTests, Limit)
 {
   const HexCoord centre(10, -15);

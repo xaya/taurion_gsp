@@ -336,6 +336,46 @@ TEST_F (TargetSelectionTests, ClosestTarget)
     }
 }
 
+TEST_F (TargetSelectionTests, KeepsTarget)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  const auto idFighter = c->GetId ();
+  c->SetPosition (HexCoord (0, 0));
+  AddAttack (*c).set_range (10);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", Faction::GREEN);
+  const auto idFirst = c->GetId ();
+  c->SetPosition (HexCoord (5, 0));
+  NoAttacks (*c);
+  c.reset ();
+
+  const auto targetId = [&] ()
+    {
+      FindCombatTargets (db, rnd, ctx);
+      return characters.GetById (idFighter)->GetTarget ().id ();
+    };
+  ASSERT_EQ (targetId (), idFirst);
+
+  /* A closer enemy does not make the fighter switch.  */
+  c = characters.CreateNew ("domob", Faction::GREEN);
+  const auto idSecond = c->GetId ();
+  c->SetPosition (HexCoord (1, 0));
+  NoAttacks (*c);
+  c.reset ();
+  EXPECT_EQ (targetId (), idFirst);
+
+  /* Keeping the target needs no random number.  */
+  auto branched = rnd.BranchOff ("branch");
+  FindCombatTargets (db, branched, ctx);
+  ExpectRandomRolls (branched, rnd.BranchOff ("branch"), 0);
+  EXPECT_EQ (characters.GetById (idFighter)->GetTarget ().id (), idFirst);
+
+  /* Once the target is out of range, the fighter picks a new one.  */
+  characters.GetById (idFirst)->SetPosition (HexCoord (11, 0));
+  EXPECT_EQ (targetId (), idSecond);
+}
+
 TEST_F (TargetSelectionTests, ZeroRange)
 {
   auto c = characters.CreateNew ("domob", Faction::RED);
@@ -437,6 +477,11 @@ TEST_F (TargetSelectionTests, Mentecon)
                   ->HasFriendlyTargets ());
   EXPECT_EQ (characters.GetById (idEnemy)->GetTarget ().id (),
              idEnemyAsFriendlyTarget);
+
+  /* Without the mentecon, the friendly is no target any more.  */
+  characters.GetById (idTargetsFriendly)->MutableEffects ().clear_mentecon ();
+  FindCombatTargets (db, rnd, ctx);
+  EXPECT_FALSE (characters.GetById (idTargetsFriendly)->HasTarget ());
 }
 
 TEST_F (TargetSelectionTests, WithBuildings)
@@ -636,6 +681,9 @@ TEST_F (TargetSelectionTests, Randomisation)
       ASSERT_NE (mit, targetMap.end ());
       ++cnt[mit->second];
 
+      /* Without a target, the next round picks a new one rather than
+         keeping this.  */
+      c->ClearTarget ();
       c.reset ();
     }
 
