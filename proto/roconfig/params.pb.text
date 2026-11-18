@@ -8,6 +8,7 @@ params:
     blocked_step_retries: 25
 
     damage_list_blocks: 100
+    damage_list_refresh_blocks: 10
     max_area_targets: 5
     max_area_targets_per_fighter: 10
     max_self_destruct_targets: 10
