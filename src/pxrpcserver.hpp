@@ -197,6 +197,8 @@ public:
   Json::Value getbuildings () override;
   Json::Value getbuildingshape (const Json::Value& centre, int rot,
                                 const std::string& type) override;
+  Json::Value getjobs () override;
+  Json::Value getjobsparams () override;
   Json::Value getcharacters () override;
   Json::Value getgroundloot () override;
   Json::Value getongoings () override;

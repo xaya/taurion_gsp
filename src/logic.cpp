@@ -21,6 +21,7 @@
 #include "buildings.hpp"
 #include "combat.hpp"
 #include "dynobstacles.hpp"
+#include "jobs.hpp"
 #include "mining.hpp"
 #include "movement.hpp"
 #include "moveprocessor.hpp"
@@ -144,6 +145,7 @@ PXLogic::UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
 
       AllHpUpdates (db, dyn, fame, rnd, ctx);
       ProcessAllOngoings (db, rnd, ctx);
+      ExpireJobs (db, ctx);
 
       ProcessAllMining (db, rnd, ctx);
       ProcessAllMovement (db, dyn, ctx);
@@ -640,6 +642,7 @@ PXLogic::ValidateStateSlow (Database& db, const Context& ctx)
   ValidateBuildingInventories (db);
   ValidateOngoingsLinks (db);
   ValidateOrderLinks (db);
+  ValidateJobs (db);
 }
 
 } // namespace pxd
