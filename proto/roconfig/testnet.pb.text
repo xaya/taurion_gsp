@@ -1,1 +1,6 @@
-testnet_merge: {}
+# The xaya-world test chain turns on god mode in the main config, which
+# the testnet config would otherwise inherit.  Keep it off there.
+testnet_merge:
+  {
+    params: { god_mode: false }
+  }
