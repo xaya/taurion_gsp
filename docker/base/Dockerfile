@@ -2,7 +2,7 @@
 # is then used as basis to assemble the "minimised" real GSP image and
 # also the testing image (with some more dependencies added).
 
-FROM xaya/libxayagame@sha256:2303174359025270fa7b4c931bd741d9455fad7173a2d0b2265ad63cc27fe77a
+FROM xaya/libxayagame:0afa48e35b6d83095d85daa6b8923cec550f8508
 RUN apt update && apt -y install \
   autoconf \
   autoconf-archive \
