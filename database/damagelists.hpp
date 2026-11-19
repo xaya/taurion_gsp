@@ -22,6 +22,7 @@
 #include "database.hpp"
 
 #include <set>
+#include <utility>
 
 namespace pxd
 {
@@ -47,6 +48,17 @@ private:
    */
   const unsigned height;
 
+  /**
+   * The entries added through this instance, as (victim, attacker) pairs.
+   * They are only written to the database when the instance is destroyed,
+   * so that those removed again before (e.g. when both characters die in
+   * the same battle) never are.
+   */
+  std::set<std::pair<Database::IdT, Database::IdT>> pendingByVictim;
+
+  /** The same entries as (attacker, victim) pairs.  */
+  std::set<std::pair<Database::IdT, Database::IdT>> pendingByAttacker;
+
 public:
 
   /** Set of attackers.  */
@@ -65,18 +77,24 @@ public:
     : db(d), height(h)
   {}
 
+  ~DamageLists ();
+
   DamageLists () = delete;
   DamageLists (const DamageLists&) = delete;
   void operator= (const DamageLists&) = delete;
 
   /**
    * Removes all entries on damage lists that are not from the last N blocks.
-   * I.e., all with height <= (current height - N).
+   * I.e., all with height <= (current height - N).  This must be done before
+   * entries are added through this instance.
    */
   void RemoveOld (const unsigned n);
 
   /**
    * Adds (or refreshes) an entry for the given victim / attacker pair.
+   * The entry is seen by GetAttackers and removed by RemoveCharacter of
+   * this instance right away, but written to the database only when the
+   * instance is destroyed.
    */
   void AddEntry (Database::IdT victim, Database::IdT attacker);
 
