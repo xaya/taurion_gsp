@@ -68,7 +68,7 @@ TEST (RoConfigTests, ChainDependence)
   EXPECT_EQ (test->params ().prospection_expiry_blocks (), 5'000);
   EXPECT_EQ (regtest->params ().prospection_expiry_blocks (), 100);
 
-  EXPECT_TRUE (main->params ().god_mode ());
+  EXPECT_FALSE (main->params ().god_mode ());
   EXPECT_FALSE (test->params ().god_mode ());
   EXPECT_TRUE (regtest->params ().god_mode ());
 
@@ -102,6 +102,14 @@ TEST (RoConfigTests, Building)
   const RoConfig cfg(xaya::Chain::REGTEST);
   EXPECT_EQ (cfg.BuildingOrNull ("invalid building"), nullptr);
   EXPECT_GT (cfg.Building ("ancient1").enter_radius (), 0);
+}
+
+TEST (RoConfigTests, PolygonHasGodModeOff)
+{
+  /* God commands are not restricted to particular accounts, so they must
+     never be enabled for the production chain.  */
+  EXPECT_FALSE (RoConfig (xaya::Chain::POLYGON)->params ().god_mode ());
+  EXPECT_FALSE (RoConfig (xaya::Chain::MAIN)->params ().god_mode ());
 }
 
 /* ************************************************************************** */

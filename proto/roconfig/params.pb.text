@@ -43,7 +43,7 @@ params:
     # periodically be bridged to Ethereum and burnt there.
     burn_addr: "0x2659deaa71B51124bA6e6493b795486b3027Dbc9"
 
-    god_mode: true
+    god_mode: false
 
     # The building IDs refer to each faction's starter station, following
     # the genesis order in initialbuildings.pb.text (obelisks 1-3, then the
