@@ -29,6 +29,7 @@
 #include <xayautil/jsonutils.hpp>
 
 #include <glog/logging.h>
+#include <google/protobuf/util/message_differencer.h>
 #include <gtest/gtest.h>
 
 #include <json/json.h>
@@ -41,6 +42,8 @@ namespace pxd
 {
 namespace
 {
+
+using google::protobuf::util::MessageDifferencer;
 
 class MoveProcessorTests : public DBTestWithSchema
 {
@@ -4647,6 +4650,66 @@ TEST_F (GodModeTests, SetCharInvalidEntries)
   EXPECT_EQ (c->GetProto ().fitments_size (), 0);
   EXPECT_EQ (c->GetHP ().armour (), 1);
   EXPECT_EQ (c->GetHP ().shield (), 1);
+}
+
+TEST_F (GodModeTests, SetCharRefusesHullTooSmallForCargo)
+{
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
+  auto c = tbl.CreateNew ("domob", Faction::RED);
+  const auto id = c->GetId ();
+  ASSERT_EQ (id, 1);
+  c.reset ();
+
+  /* The chariot has 1000 cargo space, and the expander adds 10% to it.  */
+  ProcessAdmin (R"([{"cmd": {
+    "god": {"setchar": [{"id": 1, "v": "chariot", "f": ["lf expander"]}]}
+  }}])");
+
+  c = tbl.GetById (id);
+  ASSERT_EQ (c->GetProto ().cargo_space (), 1'100);
+  c->GetInventory ().AddFungibleCount ("foo", 105);
+  c->MutableHP ().set_armour (1);
+  c->MutableHP ().set_shield (1);
+  const proto::Character oldPb = c->GetProto ();
+  const proto::RegenData oldRegen = c->GetRegenData ();
+  c.reset ();
+
+  const auto expectUnchanged = [&] ()
+    {
+      auto ch = tbl.GetById (id);
+      EXPECT_EQ (ch->GetProto ().vehicle (), "chariot");
+      EXPECT_EQ (FitmentsOf (*ch),
+                 std::vector<std::string> ({"lf expander"}));
+      EXPECT_TRUE (MessageDifferencer::Equals (ch->GetProto (), oldPb));
+      EXPECT_TRUE (MessageDifferencer::Equals (ch->GetRegenData (),
+                                               oldRegen));
+      EXPECT_EQ (ch->GetHP ().armour (), 1);
+      EXPECT_EQ (ch->GetHP ().shield (), 1);
+      EXPECT_EQ (ch->GetInventory ().GetFungibleCount ("foo"), 105);
+      EXPECT_EQ (ch->FreeCargoSpace (ctx.RoConfig ()), 50);
+    };
+
+  /* The noslots vehicle only has 100 cargo space.  */
+  ProcessAdmin (R"([{"cmd": {
+    "god": {"setchar": [{"id": 1, "v": "noslots"}]}
+  }}])");
+  expectUnchanged ();
+
+  /* Removing the expander (but keeping the vehicle) lowers the cargo
+     space to 1000, which is also not enough.  */
+  ProcessAdmin (R"([{"cmd": {
+    "god": {"setchar": [{"id": 1, "f": []}]}
+  }}])");
+  expectUnchanged ();
+
+  /* A vehicle large enough for the cargo is fine.  */
+  ProcessAdmin (R"([{"cmd": {
+    "god": {"setchar": [{"id": 1, "v": "basetank"}]}
+  }}])");
+  c = tbl.GetById (id);
+  EXPECT_EQ (c->GetProto ().vehicle (), "basetank");
+  EXPECT_EQ (c->GetProto ().cargo_space (), 1'100);
+  EXPECT_EQ (c->FreeCargoSpace (ctx.RoConfig ()), 50);
 }
 
 /**

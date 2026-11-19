@@ -2420,7 +2420,8 @@ MaybeGodGiftCoins (AccountsTable& tbl, MoneySupply& moneySupply,
  * Tries to parse and execute a god-mode command that changes the vehicle
  * and/or fitments of characters.  Unknown items (or items of the wrong
  * kind) are skipped, and the character's stats are derived afresh
- * after a change.
+ * after a change.  If the resulting cargo space is too small for what
+ * the character is carrying, the change is reverted.
  */
 void
 MaybeGodSetChar (CharacterTable& tbl, const Context& ctx,
@@ -2450,6 +2451,13 @@ MaybeGodSetChar (CharacterTable& tbl, const Context& ctx,
           LOG (WARNING) << "Character ID does not exist: " << id;
           continue;
         }
+
+      /* Keep a copy of the state that a change (and deriving the stats
+         afresh) can modify, so that we can restore it if the result
+         is not valid.  */
+      const proto::Character oldPb = c->GetProto ();
+      const proto::RegenData oldRegen = c->GetRegenData ();
+      const proto::HP oldHp = c->GetHP ();
 
       bool changed = false;
 
@@ -2497,8 +2505,26 @@ MaybeGodSetChar (CharacterTable& tbl, const Context& ctx,
           changed = true;
         }
 
-      if (changed)
-        DeriveCharacterStats (*c, ctx);
+      if (!changed)
+        continue;
+
+      DeriveCharacterStats (*c, ctx);
+
+      /* The new vehicle and fitments must still fit all the cargo the
+         character is carrying, or else e.g. FreeCargoSpace will CHECK-fail
+         later on.  */
+      const auto used = c->UsedCargoSpace (ctx.RoConfig ());
+      if (used > c->GetProto ().cargo_space ())
+        {
+          LOG (WARNING)
+              << "Character " << id << " carries " << used
+              << " cargo, which does not fit into the new cargo space of "
+              << c->GetProto ().cargo_space () << "; ignoring setchar: "
+              << entry;
+          c->MutableProto () = oldPb;
+          c->MutableRegenData () = oldRegen;
+          c->MutableHP () = oldHp;
+        }
     }
 }
 
