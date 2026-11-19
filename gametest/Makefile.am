@@ -28,6 +28,7 @@ REGTESTS = \
   fame.py \
   findpath.py \
   getbuildingshape.py \
+  getchanges.py \
   getregionat.py \
   getserviceinfo.py \
   getversion.py \

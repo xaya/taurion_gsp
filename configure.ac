@@ -43,6 +43,10 @@ PKG_PROG_PKG_CONFIG
 PKG_CHECK_MODULES_STATIC([XAYAUTIL], [libxayautil])
 PKG_CHECK_MODULES([XAYAGAME], [libxayagame])
 PKG_CHECK_MODULES([SQLITE3], [sqlite3])
+# The session extension (which libxayagame requires anyway) is used to read
+# the changesets of blocks from the undo data.
+SQLITE3_CFLAGS="$SQLITE3_CFLAGS -DSQLITE_ENABLE_SESSION"
+SQLITE3_CFLAGS="$SQLITE3_CFLAGS -DSQLITE_ENABLE_PREUPDATE_HOOK"
 PKG_CHECK_MODULES([JSON], [jsoncpp])
 PKG_CHECK_MODULES([MHD], [libmicrohttpd])
 PKG_CHECK_MODULES([GLOG], [libglog])
