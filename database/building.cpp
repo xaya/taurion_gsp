@@ -83,7 +83,7 @@ Building::~Building ()
         row.Set ("owner", owner);
       row.Set ("x", pos.GetX ());
       row.Set ("y", pos.GetY ());
-      CombatEntity::SetFields (row);
+      CombatEntity::SetFields (row, true);
       CombatEntity::SetFullFields (row);
 
       if (effects.IsEmpty ())

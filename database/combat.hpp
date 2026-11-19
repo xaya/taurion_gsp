@@ -148,17 +148,17 @@ protected:
   bool
   IsDirtyFull () const
   {
-    return regenData.IsDirty () || target.IsDirty ();
+    return regenData.IsDirty ();
   }
 
   /**
    * Returns whether a partial update (of the small / fast changing fields
-   * like HP) is required.
+   * like HP and the target) is required.
    */
   bool
   IsDirtyFields () const
   {
-    return isDirty || hp.IsDirty ();
+    return isDirty || hp.IsDirty () || target.IsDirty ();
   }
 
   /**
@@ -168,10 +168,11 @@ protected:
   void SetFullFields (Database::RowWriter& row) const;
 
   /**
-   * Sets the columns of the small / fast changing fields (HP, canRegen)
-   * in a row being written.
+   * Sets the columns of the small / fast changing fields (HP, canRegen,
+   * friendly targets, target) in a row being written.  If all is false,
+   * only the fields that changed are set.
    */
-  void SetFields (Database::RowWriter& row) const;
+  void SetFields (Database::RowWriter& row, bool all) const;
 
   /**
    * Validates the state for consistency.  CHECK-fails if there

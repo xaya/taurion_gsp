@@ -125,14 +125,16 @@ private:
                       const Database::Result<CharacterResult>& res);
 
   /**
-   * Sets the columns of the mutable non-proto fields in a row being
-   * written.  This is to share code between the proto and non-proto updates.
+   * Sets the columns of the mutable fields that the partial update can
+   * change in a row being written.  This is to share code between the
+   * full and the partial update.  If all is false, only the fields that
+   * changed are set.
    *
    * The immutable non-proto field faction is not set
    * here, since it is only present in the INSERT OR REPLACE statement
    * (with proto update) and not the UPDATE one.
    */
-  void SetFieldValues (Database::RowWriter& row) const;
+  void SetFieldValues (Database::RowWriter& row, bool all) const;
 
   friend class CharacterTable;
 

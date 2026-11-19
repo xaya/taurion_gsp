@@ -80,20 +80,15 @@ Character::~Character ()
   Validate ();
 
   if (isNew || CombatEntity::IsDirtyFull ()
-        || inv.IsDirty () || effects.IsDirty () || data.IsDirty ())
+        || inv.IsDirty () || data.IsDirty ())
     {
       VLOG (2)
           << "Character " << id
           << " has been modified including proto data, updating DB";
 
       Database::RowWriter row(db, "characters", id);
-      SetFieldValues (row);
+      SetFieldValues (row, true);
       CombatEntity::SetFullFields (row);
-
-      if (effects.IsEmpty ())
-        row.SetNull ("effects");
-      else
-        row.SetProto ("effects", effects);
 
       row.Set ("faction", faction);
       row.Set ("ismoving", data.Get ().has_movement ());
@@ -105,14 +100,17 @@ Character::~Character ()
       return;
     }
 
-  if (dirtyFields || volatileMv.IsDirty () || CombatEntity::IsDirtyFields ())
+  if (dirtyFields || volatileMv.IsDirty () || effects.IsDirty ()
+        || CombatEntity::IsDirtyFields ())
     {
       VLOG (2)
           << "Character " << id << " has been modified in the DB fields only,"
           << " updating those";
 
+      /* Only the columns that changed are set, since SQLite updates the
+         indices of all columns that are set (even to the same value).  */
       Database::RowWriter row(db, "characters", id);
-      SetFieldValues (row);
+      SetFieldValues (row, false);
       row.Update ();
       return;
     }
@@ -146,28 +144,39 @@ Character::Validate () const
 }
 
 void
-Character::SetFieldValues (Database::RowWriter& row) const
+Character::SetFieldValues (Database::RowWriter& row, const bool all) const
 {
-  CombatEntity::SetFields (row);
+  CombatEntity::SetFields (row, all);
 
-  row.Set ("owner", owner);
-  if (IsInBuilding ())
+  if (all || dirtyFields)
     {
-      row.SetNull ("x");
-      row.SetNull ("y");
-      row.Set ("inbuilding", inBuilding);
+      row.Set ("owner", owner);
+      if (IsInBuilding ())
+        {
+          row.SetNull ("x");
+          row.SetNull ("y");
+          row.Set ("inbuilding", inBuilding);
+        }
+      else
+        {
+          row.Set ("x", pos.GetX ());
+          row.Set ("y", pos.GetY ());
+          row.SetNull ("inbuilding");
+        }
+      if (enterBuilding == Database::EMPTY_ID)
+        row.SetNull ("enterbuilding");
+      else
+        row.Set ("enterbuilding", enterBuilding);
     }
-  else
+  if (all || volatileMv.IsDirty ())
+    row.SetProto ("volatilemv", volatileMv);
+  if (all || effects.IsDirty ())
     {
-      row.Set ("x", pos.GetX ());
-      row.Set ("y", pos.GetY ());
-      row.SetNull ("inbuilding");
+      if (effects.IsEmpty ())
+        row.SetNull ("effects");
+      else
+        row.SetProto ("effects", effects);
     }
-  if (enterBuilding == Database::EMPTY_ID)
-    row.SetNull ("enterbuilding");
-  else
-    row.Set ("enterbuilding", enterBuilding);
-  row.SetProto ("volatilemv", volatileMv);
 }
 
 const HexCoord&
