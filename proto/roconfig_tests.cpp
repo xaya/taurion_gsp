@@ -68,7 +68,7 @@ TEST (RoConfigTests, ChainDependence)
   EXPECT_EQ (test->params ().prospection_expiry_blocks (), 5'000);
   EXPECT_EQ (regtest->params ().prospection_expiry_blocks (), 100);
 
-  EXPECT_FALSE (main->params ().god_mode ());
+  EXPECT_TRUE (main->params ().god_mode ());
   EXPECT_FALSE (test->params ().god_mode ());
   EXPECT_TRUE (regtest->params ().god_mode ());
 

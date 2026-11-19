@@ -1559,6 +1559,13 @@ TEST_F (MoneySupplyJsonTests, EntriesAndTotal)
 TEST_F (MoneySupplyJsonTests, GiftedOnMainnet)
 {
   ctx.SetChain (xaya::Chain::MAIN);
+  /* The test-chain params turn on god mode for mainnet as well, so turn
+     it off here explicitly to keep testing that it is enforced.  */
+  proto::ConfigData cfg = *ctx.RoConfig ();
+  cfg.mutable_params ()->set_god_mode (false);
+  RoConfigStorage storage(db);
+  storage.Set (cfg);
+  ctx.SetRoConfig (storage.Load (ctx.Chain ()));
 
   ms.Increment ("burnsale", 20);
 
