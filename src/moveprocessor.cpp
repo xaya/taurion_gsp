@@ -2416,6 +2416,92 @@ MaybeGodGiftCoins (AccountsTable& tbl, MoneySupply& moneySupply,
     }
 }
 
+/**
+ * Tries to parse and execute a god-mode command that changes the vehicle
+ * and/or fitments of characters.  Unknown items (or items of the wrong
+ * kind) are skipped, and the character's stats are derived afresh
+ * after a change.
+ */
+void
+MaybeGodSetChar (CharacterTable& tbl, const Context& ctx,
+                 const Json::Value& cmd)
+{
+  if (!cmd.isArray ())
+    return;
+
+  for (const auto& entry : cmd)
+    {
+      if (!entry.isObject ())
+        {
+          LOG (WARNING) << "Ignoring invalid setchar entry: " << entry;
+          continue;
+        }
+
+      Database::IdT id;
+      if (!IdFromJson (entry["id"], id))
+        {
+          LOG (WARNING) << "Invalid character ID in setchar: " << entry;
+          continue;
+        }
+
+      auto c = tbl.GetById (id);
+      if (c == nullptr)
+        {
+          LOG (WARNING) << "Character ID does not exist: " << id;
+          continue;
+        }
+
+      bool changed = false;
+
+      const auto& vehicle = entry["v"];
+      if (vehicle.isString ())
+        {
+          const auto* data = ctx.RoConfig ().ItemOrNull (vehicle.asString ());
+          if (data == nullptr || !data->has_vehicle ())
+            {
+              LOG (WARNING)
+                  << "Ignoring invalid vehicle in setchar: " << entry;
+            }
+          else
+            {
+              LOG (INFO)
+                  << "Setting vehicle of character " << id
+                  << " to " << vehicle.asString ();
+              c->MutableProto ().set_vehicle (vehicle.asString ());
+              changed = true;
+            }
+        }
+
+      const auto& fitments = entry["f"];
+      if (fitments.isArray ())
+        {
+          c->MutableProto ().clear_fitments ();
+          for (const auto& f : fitments)
+            {
+              const proto::ItemData* data = nullptr;
+              if (f.isString ())
+                data = ctx.RoConfig ().ItemOrNull (f.asString ());
+              if (data == nullptr || !data->has_fitment ())
+                {
+                  LOG (WARNING)
+                      << "Ignoring invalid fitment " << f
+                      << " in setchar for character " << id;
+                  continue;
+                }
+
+              c->MutableProto ().add_fitments (f.asString ());
+            }
+          LOG (INFO)
+              << "Set " << c->GetProto ().fitments_size ()
+              << " fitments on character " << id;
+          changed = true;
+        }
+
+      if (changed)
+        DeriveCharacterStats (*c, ctx);
+    }
+}
+
 } // anonymous namespace
 
 void
@@ -2435,6 +2521,7 @@ MoveProcessor::HandleGodMode (const Json::Value& cmd)
   MaybeGodBuild (accounts, buildings, ctx, cmd["build"]);
   MaybeGodDropLoot (accounts, groundLoot, buildingInv, ctx, cmd["drop"]);
   MaybeGodGiftCoins (accounts, moneySupply, cmd["giftcoins"]);
+  MaybeGodSetChar (characters, ctx, cmd["setchar"]);
 }
 
 void

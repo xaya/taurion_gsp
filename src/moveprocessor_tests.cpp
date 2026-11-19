@@ -4547,6 +4547,109 @@ TEST_F (GodModeTests, GiftCoins)
 }
 
 /**
+ * Returns the fitments of a character as vector, for comparisons.
+ */
+std::vector<std::string>
+FitmentsOf (const Character& c)
+{
+  std::vector<std::string> res;
+  for (const auto& f : c.GetProto ().fitments ())
+    res.push_back (f);
+  return res;
+}
+
+TEST_F (GodModeTests, SetCharVehicleAndFitments)
+{
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
+  auto c = tbl.CreateNew ("domob", Faction::RED);
+  const auto id = c->GetId ();
+  ASSERT_EQ (id, 1);
+  c->MutableProto ().set_vehicle ("rv st");
+  c->MutableHP ().set_armour (1);
+  c->MutableHP ().set_shield (1);
+  c.reset ();
+
+  ProcessAdmin (R"([{"cmd": {
+    "god": {"setchar": [{"id": 1, "v": "rv st", "f": ["lf gun"]}]}
+  }}])");
+
+  c = tbl.GetById (id);
+  EXPECT_EQ (c->GetProto ().vehicle (), "rv st");
+  EXPECT_EQ (FitmentsOf (*c), std::vector<std::string> ({"lf gun"}));
+
+  const auto& maxHp = c->GetRegenData ().max_hp ();
+  EXPECT_GT (maxHp.armour (), 1);
+  EXPECT_EQ (c->GetHP ().armour (), maxHp.armour ());
+  EXPECT_EQ (c->GetHP ().shield (), maxHp.shield ());
+}
+
+TEST_F (GodModeTests, SetCharUnknownNamesAreSkipped)
+{
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
+  auto c = tbl.CreateNew ("domob", Faction::RED);
+  const auto id = c->GetId ();
+  ASSERT_EQ (id, 1);
+  c->MutableProto ().set_vehicle ("rv st");
+  c->MutableHP ().set_armour (1);
+  c->MutableHP ().set_shield (1);
+  c.reset ();
+
+  ProcessAdmin (R"([{"cmd": {
+    "god": {"setchar": [
+      {
+        "id": 1,
+        "v": "no such hull",
+        "f": ["no such fitment", "lf gun"]
+      }
+    ]}
+  }}])");
+
+  EXPECT_EQ (tbl.GetById (id)->GetProto ().vehicle (), "rv st");
+  EXPECT_EQ (FitmentsOf (*tbl.GetById (id)),
+             std::vector<std::string> ({"lf gun"}));
+
+  /* Items of the wrong kind are skipped as well.  */
+  ProcessAdmin (R"([{"cmd": {
+    "god": {"setchar": [{"id": 1, "v": "lf gun", "f": ["rv st", "lf gun"]}]}
+  }}])");
+
+  EXPECT_EQ (tbl.GetById (id)->GetProto ().vehicle (), "rv st");
+  EXPECT_EQ (FitmentsOf (*tbl.GetById (id)),
+             std::vector<std::string> ({"lf gun"}));
+}
+
+TEST_F (GodModeTests, SetCharInvalidEntries)
+{
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
+  auto c = tbl.CreateNew ("domob", Faction::RED);
+  const auto id = c->GetId ();
+  ASSERT_EQ (id, 1);
+  c->MutableProto ().set_vehicle ("rv st");
+  c->MutableHP ().set_armour (1);
+  c->MutableHP ().set_shield (1);
+  c.reset ();
+
+  ProcessAdmin (R"([{"cmd": {
+    "god": {"setchar": {"id": 1, "f": ["lf gun"]}}
+  }}])");
+  ProcessAdmin (R"([{"cmd": {
+    "god": {"setchar": [
+      42,
+      "foo",
+      {"f": ["lf gun"]},
+      {"id": "1", "f": ["lf gun"]},
+      {"id": 100, "f": ["lf gun"]}
+    ]}
+  }}])");
+
+  c = tbl.GetById (id);
+  EXPECT_EQ (c->GetProto ().vehicle (), "rv st");
+  EXPECT_EQ (c->GetProto ().fitments_size (), 0);
+  EXPECT_EQ (c->GetHP ().armour (), 1);
+  EXPECT_EQ (c->GetHP ().shield (), 1);
+}
+
+/**
  * Test fixture for god mode but set up on mainnet, so that god mode is
  * actually not allowed.
  */
