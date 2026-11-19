@@ -125,15 +125,14 @@ private:
                       const Database::Result<CharacterResult>& res);
 
   /**
-   * Binds parameters in a statement to the mutable non-proto fields.  This is
-   * to share code between the proto and non-proto updates.  The ID is always
-   * bound to parameter ?1, and other fields to following integer IDs.
+   * Sets the columns of the mutable non-proto fields in a row being
+   * written.  This is to share code between the proto and non-proto updates.
    *
-   * The immutable non-proto field faction is also not bound
+   * The immutable non-proto field faction is not set
    * here, since it is only present in the INSERT OR REPLACE statement
    * (with proto update) and not the UPDATE one.
    */
-  void BindFieldValues (Database::Statement& stmt) const;
+  void SetFieldValues (Database::RowWriter& row) const;
 
   friend class CharacterTable;
 

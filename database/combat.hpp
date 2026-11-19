@@ -162,21 +162,16 @@ protected:
   }
 
   /**
-   * Binds statement parameters for the large / expensive proto fields.
-   * Does not include the ones from BindField!
+   * Sets the columns of the large / expensive proto fields in a row
+   * being written.  Does not include the ones from SetFields!
    */
-  void
-  BindFullFields (Database::Statement& stmt, unsigned indRegenData,
-                  unsigned indTarget, unsigned indAttackRange,
-                  unsigned indFriendlyRange) const;
+  void SetFullFields (Database::RowWriter& row) const;
 
   /**
-   * Binds statement parameters for updating the small / fast changing
-   * fields (HP, canRegen).
+   * Sets the columns of the small / fast changing fields (HP, canRegen)
+   * in a row being written.
    */
-  void
-  BindFields (Database::Statement& stmt, unsigned indHp,
-              unsigned indFriendlyTargets, unsigned indCanRegen) const;
+  void SetFields (Database::RowWriter& row) const;
 
   /**
    * Validates the state for consistency.  CHECK-fails if there

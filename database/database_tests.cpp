@@ -170,6 +170,48 @@ TEST_F (DatabaseTests, StatementReset)
   ASSERT_FALSE (res.Step ());
 }
 
+TEST_F (DatabaseTests, RowWriter)
+{
+  LazyProto<proto::HexCoord> coord;
+  coord.SetToDefault ();
+  coord.Mutable ().set_x (5);
+  coord.Mutable ().set_y (-3);
+
+  for (const Database::IdT id : {10, 20})
+    {
+      Database::RowWriter row(db, "test", id);
+      row.Set ("flag", true);
+      row.Set<std::string> ("name", "foo");
+      row.SetProto ("proto", coord);
+      row.InsertOrReplace ();
+    }
+
+  {
+    Database::RowWriter row(db, "test", 10);
+    row.Set ("flag", false);
+    row.SetNull ("name");
+    row.Update ();
+  }
+
+  ExpectData ({
+    {10, false, true, "", 5, -3},
+    {20, true, false, "foo", 5, -3},
+  });
+
+  /* Replacing a row resets the columns that are not set.  */
+  coord.Mutable ().set_x (7);
+  {
+    Database::RowWriter row(db, "test", 20);
+    row.SetProto ("proto", coord);
+    row.InsertOrReplace ();
+  }
+
+  ExpectData ({
+    {10, false, true, "", 5, -3},
+    {20, false, true, "", 7, -3},
+  });
+}
+
 TEST_F (DatabaseTests, ProtoIsOverwritten)
 {
   LazyProto<proto::HexCoord> coord;

@@ -36,44 +36,38 @@ CombatEntity::CombatEntity (Database& d)
 }
 
 void
-CombatEntity::BindFullFields (Database::Statement& stmt,
-                              const unsigned indRegenData,
-                              const unsigned indTarget,
-                              const unsigned indAttackRange,
-                              const unsigned indFriendlyRange) const
+CombatEntity::SetFullFields (Database::RowWriter& row) const
 {
-  stmt.BindProto (indRegenData, regenData);
+  row.SetProto ("regendata", regenData);
 
   const auto attackRange = FindAttackRange (GetCombatData (), false);
   if (attackRange == NO_ATTACKS)
-    stmt.BindNull (indAttackRange);
+    row.SetNull ("attackrange");
   else
-    stmt.Bind (indAttackRange, attackRange);
+    row.Set ("attackrange", attackRange);
 
   const auto friendlyRange = FindAttackRange (GetCombatData (), true);
   if (friendlyRange == NO_ATTACKS)
-    stmt.BindNull (indFriendlyRange);
+    row.SetNull ("friendlyrange");
   else
-    stmt.Bind (indFriendlyRange, friendlyRange);
+    row.Set ("friendlyrange", friendlyRange);
 
   if (HasTarget ())
-    stmt.BindProto (indTarget, target);
+    row.SetProto ("target", target);
   else
-    stmt.BindNull (indTarget);
+    row.SetNull ("target");
 }
 
 void
-CombatEntity::BindFields (Database::Statement& stmt, const unsigned indHp,
-                          const unsigned indFriendlyTargets,
-                          const unsigned indCanRegen) const
+CombatEntity::SetFields (Database::RowWriter& row) const
 {
   bool canRegen = oldCanRegen;
   if (hp.IsDirty () || regenData.IsDirty ())
     canRegen = ComputeCanRegen (hp.Get (), regenData.Get ());
 
-  stmt.BindProto (indHp, hp);
-  stmt.Bind (indFriendlyTargets, friendlyTargets);
-  stmt.Bind (indCanRegen, canRegen);
+  row.SetProto ("hp", hp);
+  row.Set ("friendlytargets", friendlyTargets);
+  row.Set ("canregen", canRegen);
 }
 
 void

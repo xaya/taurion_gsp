@@ -92,6 +92,14 @@ template <typename T>
  */
 void BindFactionParameter (Database::Statement& stmt, unsigned ind, Faction f);
 
+/**
+ * Sets a column of a row being written to a faction value, with NULL
+ * for Faction::INVALID as in BindFactionParameter.
+ */
+template <>
+  void Database::RowWriter::Set<Faction> (const std::string& column,
+                                          const Faction& f);
+
 } // namespace pxd
 
 #include "faction.tpp"

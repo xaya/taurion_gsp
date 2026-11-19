@@ -74,39 +74,25 @@ Building::~Building ()
       VLOG (2)
           << "Building " << id << " has been modified, updating DB";
 
-      auto stmt = db.Prepare (R"(
-        INSERT OR REPLACE INTO `buildings`
-          (`id`, `type`,
-           `faction`, `owner`, `x`, `y`,
-           `hp`, `regendata`, `target`, `friendlytargets`,
-           `attackrange`, `friendlyrange`, `canregen`,
-           `effects`, `proto`)
-          VALUES
-          (?1, ?2,
-           ?3, ?4, ?5, ?6,
-           ?7, ?8, ?9, ?10,
-           ?11, ?12, ?13,
-           ?14, ?15)
-      )");
-
-      stmt.Bind (1, id);
-      stmt.Bind (2, type);
-      BindFactionParameter (stmt, 3, faction);
+      Database::RowWriter row(db, "buildings", id);
+      row.Set ("type", type);
+      row.Set ("faction", faction);
       if (faction == Faction::ANCIENT)
-        stmt.BindNull (4);
+        row.SetNull ("owner");
       else
-        stmt.Bind (4, owner);
-      BindCoordParameter (stmt, 5, 6, pos);
-      CombatEntity::BindFields (stmt, 7, 10, 13);
-      CombatEntity::BindFullFields (stmt, 8, 9, 11, 12);
+        row.Set ("owner", owner);
+      row.Set ("x", pos.GetX ());
+      row.Set ("y", pos.GetY ());
+      CombatEntity::SetFields (row);
+      CombatEntity::SetFullFields (row);
 
       if (effects.IsEmpty ())
-        stmt.BindNull (14);
+        row.SetNull ("effects");
       else
-        stmt.BindProto (14, effects);
+        row.SetProto ("effects", effects);
 
-      stmt.BindProto (15, data);
-      stmt.Execute ();
+      row.SetProto ("proto", data);
+      row.InsertOrReplace ();
 
       return;
     }

@@ -31,10 +31,13 @@
 #include <sqlite3.h>
 
 #include <array>
+#include <functional>
 #include <memory>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
+#include <utility>
+#include <vector>
 
 namespace pxd
 {
@@ -85,6 +88,7 @@ public:
   template <typename T>
     class Result;
   class ResultType;
+  class RowWriter;
   class Statement;
 
   Database (const Database&) = delete;
@@ -228,6 +232,84 @@ public:
    */
   template <typename T>
     Result<T> Query ();
+
+};
+
+/**
+ * Helper class to write the row with a given ID in a table, if the columns
+ * to set are only known at runtime (e.g. to update just the fields that
+ * have been modified).  It records the columns together with the values
+ * for them, and then builds the SQL statement, binds the values to it
+ * and executes it.
+ */
+class Database::RowWriter
+{
+
+private:
+
+  /** Function that binds the value of a column to a statement parameter.  */
+  using Binder = std::function<void (Statement& stmt, unsigned ind)>;
+
+  /** The Database this corresponds to.  */
+  Database& db;
+
+  /** The table that is written to.  */
+  const std::string table;
+
+  /** The ID of the row, which is always bound to parameter ?1.  */
+  const IdT id;
+
+  /**
+   * The columns set so far, with the binders for their values.  They are
+   * bound in order to the parameters following the ID, i.e. the column
+   * at index i to ?(i + 2).
+   */
+  std::vector<std::pair<std::string, Binder>> columns;
+
+  /**
+   * Prepares the given SQL statement, binds the ID and the values of
+   * all columns to it and executes it.
+   */
+  void Execute (const std::string& sql);
+
+public:
+
+  explicit RowWriter (Database& d, const std::string& t, const IdT i)
+    : db(d), table(t), id(i)
+  {}
+
+  RowWriter (const RowWriter&) = delete;
+  void operator= (const RowWriter&) = delete;
+
+  /**
+   * Sets a column to the given value.
+   */
+  template <typename T>
+    void Set (const std::string& column, const T& val);
+
+  /**
+   * Sets a column to NULL.
+   */
+  void SetNull (const std::string& column);
+
+  /**
+   * Sets a column to a protocol buffer.  The message is only serialised
+   * when the row is written, so it must stay valid until then.
+   */
+  template <typename Proto>
+    void SetProto (const std::string& column, const LazyProto<Proto>& msg);
+
+  /**
+   * Inserts the row with the columns that have been set, replacing
+   * an existing row with the same ID.
+   */
+  void InsertOrReplace ();
+
+  /**
+   * Updates the columns that have been set (at least one) in the
+   * existing row.
+   */
+  void Update ();
 
 };
 

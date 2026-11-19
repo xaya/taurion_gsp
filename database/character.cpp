@@ -85,41 +85,22 @@ Character::~Character ()
       VLOG (2)
           << "Character " << id
           << " has been modified including proto data, updating DB";
-      auto stmt = db.Prepare (R"(
-        INSERT OR REPLACE INTO `characters`
-          (`id`,
-           `owner`, `x`, `y`,
-           `inbuilding`, `enterbuilding`,
-           `volatilemv`, `hp`,
-           `canregen`, `friendlytargets`,
-           `faction`,
-           `ismoving`, `ismining`, `attackrange`, `friendlyrange`,
-           `regendata`, `target`, `inventory`, `effects`, `proto`)
-          VALUES
-          (?1,
-           ?2, ?3, ?4,
-           ?5, ?6,
-           ?7, ?8,
-           ?9, ?10,
-           ?101,
-           ?102, ?103, ?104, ?105,
-           ?106, ?107, ?108, ?109, ?110)
-      )");
 
-      BindFieldValues (stmt);
-      CombatEntity::BindFullFields (stmt, 106, 107, 104, 105);
+      Database::RowWriter row(db, "characters", id);
+      SetFieldValues (row);
+      CombatEntity::SetFullFields (row);
 
       if (effects.IsEmpty ())
-        stmt.BindNull (109);
+        row.SetNull ("effects");
       else
-        stmt.BindProto (109, effects);
+        row.SetProto ("effects", effects);
 
-      BindFactionParameter (stmt, 101, faction);
-      stmt.Bind (102, data.Get ().has_movement ());
-      stmt.Bind (103, data.Get ().mining ().active ());
-      stmt.BindProto (108, inv.GetProtoForBinding ());
-      stmt.BindProto (110, data);
-      stmt.Execute ();
+      row.Set ("faction", faction);
+      row.Set ("ismoving", data.Get ().has_movement ());
+      row.Set ("ismining", data.Get ().mining ().active ());
+      row.SetProto ("inventory", inv.GetProtoForBinding ());
+      row.SetProto ("proto", data);
+      row.InsertOrReplace ();
 
       return;
     }
@@ -130,21 +111,9 @@ Character::~Character ()
           << "Character " << id << " has been modified in the DB fields only,"
           << " updating those";
 
-      auto stmt = db.Prepare (R"(
-        UPDATE `characters`
-          SET `owner` = ?2,
-              `x` = ?3, `y` = ?4,
-              `inbuilding` = ?5,
-              `enterbuilding` = ?6,
-              `volatilemv` = ?7,
-              `hp` = ?8,
-              `canregen` = ?9,
-              `friendlytargets` = ?10
-          WHERE `id` = ?1
-      )");
-
-      BindFieldValues (stmt);
-      stmt.Execute ();
+      Database::RowWriter row(db, "characters", id);
+      SetFieldValues (row);
+      row.Update ();
       return;
     }
 
@@ -177,28 +146,28 @@ Character::Validate () const
 }
 
 void
-Character::BindFieldValues (Database::Statement& stmt) const
+Character::SetFieldValues (Database::RowWriter& row) const
 {
-  CombatEntity::BindFields (stmt, 8, 10, 9);
+  CombatEntity::SetFields (row);
 
-  stmt.Bind (1, id);
-  stmt.Bind (2, owner);
+  row.Set ("owner", owner);
   if (IsInBuilding ())
     {
-      stmt.BindNull (3);
-      stmt.BindNull (4);
-      stmt.Bind (5, inBuilding);
+      row.SetNull ("x");
+      row.SetNull ("y");
+      row.Set ("inbuilding", inBuilding);
     }
   else
     {
-      BindCoordParameter (stmt, 3, 4, pos);
-      stmt.BindNull (5);
+      row.Set ("x", pos.GetX ());
+      row.Set ("y", pos.GetY ());
+      row.SetNull ("inbuilding");
     }
   if (enterBuilding == Database::EMPTY_ID)
-    stmt.BindNull (6);
+    row.SetNull ("enterbuilding");
   else
-    stmt.Bind (6, enterBuilding);
-  stmt.BindProto (7, volatileMv);
+    row.Set ("enterbuilding", enterBuilding);
+  row.SetProto ("volatilemv", volatileMv);
 }
 
 const HexCoord&
