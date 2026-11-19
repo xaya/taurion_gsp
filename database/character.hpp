@@ -297,12 +297,6 @@ public:
 
   proto::TargetId GetIdAsTarget () const override;
 
-  bool
-  HasCombatPosition () const override
-  {
-    return !IsInBuilding ();
-  }
-
   const HexCoord&
   GetCombatPosition () const override
   {
