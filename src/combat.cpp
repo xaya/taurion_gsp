@@ -19,6 +19,7 @@
 #include "combat.hpp"
 
 #include "modifier.hpp"
+#include "phasetimer.hpp"
 
 #include "database/account.hpp"
 #include "database/building.hpp"
@@ -155,33 +156,23 @@ NoCombatZones (const Context& ctx)
 }
 
 /**
- * Wrapper around ProcessL1Targets (of a TargetFinder that ignores no-combat
- * zones), which filters out the fighter itself.  If enemies is true, it will
- * look for enemies and not friendlies; if enemies is false, the other way
- * round.  If the fighter is affected by a mentecon, it will instead just
- * ignore the enemies flag and always look for enemies and friendlies alike.
+ * Returns the targets for an ability of fighter f with the given centre and
+ * range, as found by FindInRange of a TargetFinder that ignores no-combat
+ * zones, without the fighter itself and with the given limit.  If enemies
+ * is true, it will look for enemies and not friendlies; if enemies is false,
+ * the other way round.  If the fighter is affected by a mentecon, it will
+ * instead just ignore the enemies flag and always look for enemies and
+ * friendlies alike.
  */
-void
-ProcessCombatTargets (const TargetFinder& targets, const CombatEntity& f,
-                      const HexCoord& centre, const HexCoord::IntT range,
-                      const bool enemies,
-                      const TargetFinder::ProcessingFcn& cb)
+std::vector<proto::TargetId>
+TargetsInRange (const TargetFinder& targets, const CombatEntity& f,
+                const HexCoord& centre, const HexCoord::IntT range,
+                const bool enemies, const size_t limit)
 {
-  const TargetKey myId(f.GetIdAsTarget ());
-
   const bool mentecon = f.GetEffects ().mentecon ();
-  const bool lookForEnemies = enemies || mentecon;
-  const bool lookForFriendlies = !enemies || mentecon;
-
-  targets.ProcessL1Targets (centre, range, f.GetFaction (),
-                            lookForEnemies, lookForFriendlies,
-    [&] (const HexCoord& c, const proto::TargetId& id)
-    {
-      if (myId == TargetKey (id))
-        return;
-
-      cb (c, id);
-    });
+  return targets.FindInRange (centre, range, f.GetFaction (),
+                              enemies || mentecon, !enemies || mentecon,
+                              f.GetIdAsTarget (), limit);
 }
 
 /**
@@ -264,13 +255,19 @@ struct TargetFindingProcessor::TargetingResult
   TargetKey id;
 
   /**
-   * Array of closest enemy targets found, if any.  From this list, we will
+   * The closest enemy targets found, if any.  From those, we will
    * randomly pick one as "the" target.
    */
-  std::vector<proto::TargetId> enemyTargets;
+  TargetFinder::Closest enemyTargets;
 
   /** Whether or not there is a friendly target in range.  */
   bool hasFriendlyTarget;
+
+  /**
+   * Whether the fighter keeps its current target (and enemyTargets is
+   * thus empty).
+   */
+  bool keepTarget = false;
 
   TargetingResult () = default;
 
@@ -302,11 +299,22 @@ TargetFindingProcessor::SelectNormalTarget (const CombatModifier& mod,
   CHECK_GE (range, 0);
   range = ModifiedRange (mod, range);
 
-  /* This is what ProcessCombatTargets with enemies would process.  */
-  res.enemyTargets
-      = targets.FindClosest (pos, range, res.f->GetFaction (), true,
-                             res.f->GetEffects ().mentecon (),
-                             res.f->GetIdAsTarget ());
+  /* A fighter stays locked on to its target for as long as that is in range
+     and could still be attacked.  Only otherwise it picks a new one at random
+     from the closest of what TargetsInRange with enemies would return.  */
+  const bool mentecon = res.f->GetEffects ().mentecon ();
+  if (res.f->HasTarget ()
+        && targets.IsInRange (res.f->GetTarget (), pos, range,
+                              res.f->GetFaction (), true, mentecon))
+    {
+      VLOG (1) << "Fighter at " << pos << " keeps its target";
+      res.keepTarget = true;
+      return;
+    }
+
+  res.enemyTargets = targets.FindClosest (pos, range, res.f->GetFaction (),
+                                          true, mentecon,
+                                          res.f->GetIdAsTarget ());
 
   if (res.enemyTargets.empty ())
     VLOG (1) << "Found no targets around " << pos;
@@ -332,12 +340,8 @@ TargetFindingProcessor::SelectFriendlyTargets (const CombatModifier& mod,
   CHECK_GE (range, 0);
   range = ModifiedRange (mod, range);
 
-  res.hasFriendlyTarget = false;
-  ProcessCombatTargets (targets, *res.f, pos, range, false,
-    [&] (const HexCoord& c, const proto::TargetId& id)
-    {
-      res.hasFriendlyTarget = true;
-    });
+  res.hasFriendlyTarget
+      = !TargetsInRange (targets, *res.f, pos, range, false, 1).empty ();
 
   if (res.hasFriendlyTarget)
     VLOG (1)
@@ -376,7 +380,9 @@ TargetFindingProcessor::SelectTarget (FighterTable::Handle f)
 void
 TargetFindingProcessor::Finalise (TargetingResult res)
 {
-  if (res.enemyTargets.empty ())
+  if (res.keepTarget)
+    CHECK (res.f->HasTarget ());
+  else if (res.enemyTargets.empty ())
     res.f->ClearTarget ();
   else
     {
@@ -448,6 +454,15 @@ private:
   CharacterTable characters;
   FighterTable fighters;
   const TargetFinder targets;
+
+  /** The most targets one area attack hits (0 for no limit).  */
+  const size_t maxAreaTargets;
+
+  /** The most targets all area attacks of one fighter hit together.  */
+  const size_t maxAreaTargetsPerFighter;
+
+  /** The most targets one self-destruct hits.  */
+  const size_t maxSelfDestructTargets;
 
   /**
    * Modifiers to combat stats for all fighters that will deal damage.  This
@@ -569,7 +584,12 @@ public:
     : dl(lst), rnd(r), ctx(c),
       buildings(db), characters(db),
       fighters(buildings, characters),
-      targets(db, NoCombatZones (c))
+      targets(db, NoCombatZones (c)),
+      maxAreaTargets(c.RoConfig ()->params ().max_area_targets ()),
+      maxAreaTargetsPerFighter(
+          c.RoConfig ()->params ().max_area_targets_per_fighter ()),
+      maxSelfDestructTargets(
+          c.RoConfig ()->params ().max_self_destruct_targets ())
   {}
 
   /**
@@ -857,8 +877,31 @@ DamageProcessor::DealDamage (CombatEntity& f, const bool forGainHp,
 
   const auto& mod = modifiers.at (f.GetIdAsTarget ());
 
+  /* The fighter's limit of area targets is split evenly between its area
+     attacks in their order:  the first ones get one more if it does not
+     divide evenly, and the last ones none if it is less than their number.  */
+  const size_t numArea = std::count_if (cd.attacks ().begin (),
+                                        cd.attacks ().end (),
+                                        [] (const proto::Attack& a)
+                                          {
+                                            return a.has_area ();
+                                          });
+  size_t areaIndex = 0;
+
   for (const auto& attack : cd.attacks ())
     {
+      size_t areaLimit = maxAreaTargets;
+      if (attack.has_area () && maxAreaTargetsPerFighter > 0)
+        {
+          const size_t share
+              = maxAreaTargetsPerFighter / numArea
+                  + (areaIndex < maxAreaTargetsPerFighter % numArea ? 1 : 0);
+          ++areaIndex;
+          if (share == 0)
+            continue;
+          areaLimit = (areaLimit == 0 ? share : std::min (areaLimit, share));
+        }
+
       if (attack.gain_hp () != forGainHp)
         continue;
 
@@ -888,15 +931,17 @@ DamageProcessor::DealDamage (CombatEntity& f, const bool forGainHp,
           else
             centre = pos;
 
-          ProcessCombatTargets (targets,
-                                f, centre, ModifiedRange (mod, attack.area ()),
-                                !attack.friendlies (),
-            [&] (const HexCoord& c, const proto::TargetId& id)
+          const auto inArea = TargetsInRange (targets, f, centre,
+                                              ModifiedRange (mod,
+                                                             attack.area ()),
+                                              !attack.friendlies (),
+                                              areaLimit);
+          for (const auto& id : inArea)
             {
               auto& t = Get (TargetKey (id));
               ApplyDamage (dmg, f, attack, mod, t, newDead);
               ApplyEffects (attack, t);
-            });
+            }
         }
       else
         {
@@ -939,14 +984,12 @@ DamageProcessor::ProcessSelfDestructs (CombatEntity& f,
           << " of damage for self-destruct of "
           << f.GetIdAsTarget ().DebugString ();
 
-      ProcessCombatTargets (targets,
-                            f, pos, ModifiedRange (mod, sd.area ()),
-                            true,
-        [&] (const HexCoord& c, const proto::TargetId& id)
-        {
-          ApplyDamage (dmg, f, sd.damage (), mod, Get (TargetKey (id)),
-                       newDead);
-        });
+      const auto inArea = TargetsInRange (targets, f, pos,
+                                          ModifiedRange (mod, sd.area ()), true,
+                                          maxSelfDestructTargets);
+      for (const auto& id : inArea)
+        ApplyDamage (dmg, f, sd.damage (), mod, Get (TargetKey (id)),
+                     newDead);
     }
 }
 
@@ -1486,17 +1529,21 @@ void
 AllHpUpdates (Database& db, DynObstacles& dyn, FameUpdater& fame,
               xaya::Random& rnd, const Context& ctx)
 {
+  PhaseTimes::Next ("damage");
   /* The fighters of the damage step regenerate already there.  */
   std::set<TargetKey> regenerated;
   const auto dead = DealCombatDamage (db, fame.GetDamageLists (), rnd, ctx,
                                       regenerated);
 
+  PhaseTimes::Next ("fame");
   for (const auto& id : dead)
     fame.UpdateForKill (id.ToProto ());
 
+  PhaseTimes::Next ("kills");
   GroundLootTable loot(db);
   ProcessKills (db, dyn, fame.GetDamageLists (), loot, dead, rnd, ctx);
 
+  PhaseTimes::Next ("regen");
   RegenerateHP (db, regenerated);
 }
 

@@ -25,6 +25,7 @@
 #include "movement.hpp"
 #include "moveprocessor.hpp"
 #include "ongoings.hpp"
+#include "phasetimer.hpp"
 
 #include "database/account.hpp"
 #include "database/building.hpp"
@@ -40,6 +41,8 @@
 #include <limits>
 #include <string>
 
+DEFINE_bool (pxd_phase_timing, false,
+             "Log the time spent in each phase of processing a super block");
 DEFINE_int32 (pxd_sqlite_cache_mb, 256,
               "Size of the game state database's page cache in MiB"
               " (0 keeps SQLite's default of 2 MiB)");
@@ -112,6 +115,7 @@ PXLogic::UpdateState (Database& db, xaya::Random& rnd,
           || sbTimestamp + ctx.RoConfig ()->params ().superblock_seconds ()
                 <= timestamp;
 
+  PhaseTimes times(FLAGS_pxd_phase_timing && isNextSuperBlock, ctx.Height ());
   FameUpdater fame(db, ctx);
   UpdateState (db, fame, rnd, ctx, isNextSuperBlock, blockData);
 
@@ -130,7 +134,10 @@ PXLogic::UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
   if (!superBlock && blockData["moves"].empty () && blockData["admin"].empty ())
     return;
 
+  PhaseTimes::Next ("dynobstacles");
   DynObstacles dyn(db, ctx);
+
+  PhaseTimes::Next ("moves");
   MoveProcessor mvProc(db, dyn, rnd, ctx);
   mvProc.ProcessAdmin (blockData["admin"]);
   mvProc.ProcessAll (blockData["moves"]);
@@ -139,23 +146,34 @@ PXLogic::UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
     {
       LOG (INFO) << "Processing super block height " << ctx.Height ();
 
+      PhaseTimes::Next ("damagelists");
       fame.GetDamageLists ().RemoveOld (
           ctx.RoConfig ()->params ().damage_list_blocks ());
 
       AllHpUpdates (db, dyn, fame, rnd, ctx);
+
+      PhaseTimes::Next ("ongoings");
       ProcessAllOngoings (db, rnd, ctx);
 
+      PhaseTimes::Next ("mining");
       ProcessAllMining (db, rnd, ctx);
+
+      PhaseTimes::Next ("movement");
       ProcessAllMovement (db, dyn, ctx);
 
       /* Entering buildings should be after moves and movement, so that players
          enter as soon as possible (perhaps in the same instant the move for it
          gets confirmed).  It should be before combat targets, so that players
          entering a building won't be attacked any more.  */
+      PhaseTimes::Next ("enter");
       ProcessEnterBuildings (db, dyn, ctx);
 
+      PhaseTimes::Next ("targets");
       FindCombatTargets (db, rnd, ctx);
     }
+
+  /* What is left are the writes of fame and new damage-list entries.  */
+  PhaseTimes::Next ("finish");
 
 #ifdef ENABLE_SLOW_ASSERTS
   ValidateStateSlow (db, ctx);

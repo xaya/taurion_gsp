@@ -50,61 +50,69 @@ class TargetFinder
 
 private:
 
-  /** Data about one target.  */
+  /**
+   * Data about one target.  Its key has the ID in the lowest 56 bits and
+   * the type above them, which orders targets like TargetKey, i.e. buildings
+   * before characters and each by ID.
+   */
   struct Target
   {
     HexCoord pos;
-    Faction faction;
-    proto::TargetId::Type type;
-    Database::IdT id;
+    uint64_t key;
+  };
+
+  /** A range of targets in key order.  */
+  struct Span
+  {
+    const Target* begin;
+    const Target* end;
   };
 
   /**
    * Number of Faction values (INVALID, the three of the players and ANCIENT),
-   * so that the counts per faction can be indexed by the value.
+   * so that the lists per faction can be indexed by the value.
    */
   static constexpr unsigned NUM_FACTIONS = 5;
 
-  /** The targets in one cell.  */
-  struct Cell
-  {
-    std::vector<Target> targets;
-
-    /** Number of the targets per faction.  */
-    std::array<unsigned, NUM_FACTIONS> counts = {};
-  };
+  /** Lists of targets (in key order) per faction.  */
+  using ByFaction = std::array<std::vector<Target>, NUM_FACTIONS>;
 
   /**
    * All targets that queries consider, bucketed into cells keyed by HexCoord
    * of the cell indices.
    */
-  std::unordered_map<HexCoord, Cell> cells;
+  std::unordered_map<HexCoord, ByFaction> cells;
 
   /** The same targets, keyed by their position.  */
-  std::unordered_map<HexCoord, std::vector<Target>> tiles;
+  std::unordered_map<HexCoord, ByFaction> tiles;
+
+  /** What is looked up directly about a target.  */
+  struct Entry
+  {
+    HexCoord pos;
+    Faction faction;
+    /** Whether queries ignore the target (e.g. in a no-combat zone).  */
+    bool ignored;
+  };
+
+  /** All targets (also those that queries ignore), by their key.  */
+  std::unordered_map<uint64_t, Entry> entries;
 
   /**
-   * Positions of all targets.  The key of a target has its type in the
-   * lowest two bits and its ID in the bits above.
+   * Calls fcn (spans) for the targets in range that match the faction
+   * conditions (enemies or friendlies of the given faction), grouped by
+   * distance in increasing order, until it returns true.  The targets at
+   * one distance are given as spans, so that also a pile of them on one tile
+   * is passed without looking at each.
    */
-  std::unordered_map<uint64_t, HexCoord> positions;
-
-  /**
-   * Calls fcn with each target and its distance that matches a query as
-   * done by ProcessL1Targets.  The order is unspecified, except that if
-   * targets are processed in order of distance, then done is called after
-   * each distance and the search stops if it returns true.
-   */
-  template <typename Fcn, typename Done>
+  template <typename Fcn>
     void ForEachInRange (const HexCoord& centre, HexCoord::IntT l1range,
                          Faction faction, bool enemies, bool friendlies,
-                         const Fcn& fcn, const Done& done) const;
+                         const Fcn& fcn) const;
 
 public:
 
-  /** Type for a callback function that processes targets.  */
-  using ProcessingFcn
-      = std::function<void (const HexCoord&, const proto::TargetId&)>;
+  class Closest;
 
   /** Type for a predicate on positions.  */
   using PositionFilter = std::function<bool (const HexCoord&)>;
@@ -120,27 +128,41 @@ public:
   void operator= (const TargetFinder&) = delete;
 
   /**
-   * Finds all targets in the given L1 range and executes the
-   * callback on each of the resulting Target instances.  This function can
-   * be used to query for enemies, friendlies or all.  Targets are processed
-   * in the order of TargetKey, i.e. buildings before characters and each
-   * by ID.
+   * Returns all targets in the given L1 range except for the one with ID
+   * exclude.  This function can be used to query for enemies, friendlies
+   * or all.  Targets are returned in the order of TargetKey, i.e. buildings
+   * before characters and each by ID.
+   *
+   * If limit is nonzero, at most that many are returned:  those closest
+   * to the centre, and of those at the same distance the first ones in
+   * TargetKey order.  For this, only as many targets of each tile are
+   * looked at as can be needed.
    */
-  void ProcessL1Targets (const HexCoord& centre, HexCoord::IntT l1range,
-                         Faction faction, bool enemies, bool friendlies,
-                         const ProcessingFcn& cb) const;
-
-  /**
-   * Returns those of the targets ProcessL1Targets would process that are
-   * closest to the centre, except for the one with ID exclude, in the same
-   * order.  This is faster than finding them with ProcessL1Targets.
-   */
-  std::vector<proto::TargetId> FindClosest (const HexCoord& centre,
+  std::vector<proto::TargetId> FindInRange (const HexCoord& centre,
                                             HexCoord::IntT l1range,
                                             Faction faction,
                                             bool enemies, bool friendlies,
-                                            const proto::TargetId& exclude)
-      const;
+                                            const proto::TargetId& exclude,
+                                            size_t limit = 0) const;
+
+  /**
+   * Returns those of the targets FindInRange would return that are
+   * closest to the centre, in the same order.  They are only looked up
+   * when accessed, so that also many of them (like a pile on one tile)
+   * are cheap to find and pick from.
+   */
+  Closest FindClosest (const HexCoord& centre, HexCoord::IntT l1range,
+                       Faction faction, bool enemies, bool friendlies,
+                       const proto::TargetId& exclude) const;
+
+  /**
+   * Returns true if FindInRange with these arguments (excluding nothing and
+   * without a limit) would return the given target.  This only looks up that
+   * target, so it is a fast check whether it is still in range and attackable.
+   */
+  bool IsInRange (const proto::TargetId& id, const HexCoord& centre,
+                  HexCoord::IntT l1range, Faction faction,
+                  bool enemies, bool friendlies) const;
 
   /**
    * Returns the position of a target, or null if it is not a potential target
@@ -148,6 +170,59 @@ public:
    * that queries ignore have a position as well.
    */
   const HexCoord* FindPosition (const proto::TargetId& id) const;
+
+};
+
+/**
+ * The targets returned by FindClosest.  This refers to the data of the
+ * TargetFinder, and must not be used after it is destructed.
+ */
+class TargetFinder::Closest
+{
+
+private:
+
+  /** The closest targets (and maybe the excluded one).  */
+  std::vector<Span> spans;
+
+  /**
+   * Number of the targets before the excluded one if that is in spans,
+   * and count otherwise.
+   */
+  size_t excludedRank = 0;
+
+  /** Number of the closest targets.  */
+  size_t count = 0;
+
+  /**
+   * Returns the number of targets in spans with a key up to the given one.
+   */
+  size_t CountUpTo (uint64_t key) const;
+
+  Closest (const std::vector<Span>& s, uint64_t exclude);
+
+  friend class TargetFinder;
+
+public:
+
+  Closest () = default;
+
+  bool
+  empty () const
+  {
+    return count == 0;
+  }
+
+  size_t
+  size () const
+  {
+    return count;
+  }
+
+  /**
+   * Returns the closest target at the given index in TargetKey order.
+   */
+  proto::TargetId operator[] (size_t i) const;
 
 };
 
