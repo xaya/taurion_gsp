@@ -67,6 +67,27 @@ template <typename Proto>
 }
 
 template <typename T>
+  void
+  Database::RowWriter::Set (const std::string& column, const T& val)
+{
+  columns.emplace_back (column, [val] (Statement& stmt, const unsigned ind)
+    {
+      stmt.Bind (ind, val);
+    });
+}
+
+template <typename Proto>
+  void
+  Database::RowWriter::SetProto (const std::string& column,
+                                 const LazyProto<Proto>& msg)
+{
+  columns.emplace_back (column, [&msg] (Statement& stmt, const unsigned ind)
+    {
+      stmt.BindProto (ind, msg);
+    });
+}
+
+template <typename T>
   Database::Result<T>::Result (Database& d, xaya::SQLiteDatabase::Statement&& s)
     : db(&d), stmt(std::move (s))
 {

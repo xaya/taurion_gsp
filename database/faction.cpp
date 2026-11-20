@@ -82,4 +82,15 @@ BindFactionParameter (Database::Statement& stmt, const unsigned ind,
     }
 }
 
+template <>
+  void
+  Database::RowWriter::Set<Faction> (const std::string& column,
+                                     const Faction& f)
+{
+  columns.emplace_back (column, [f] (Statement& stmt, const unsigned ind)
+    {
+      BindFactionParameter (stmt, ind, f);
+    });
+}
+
 } // namespace pxd

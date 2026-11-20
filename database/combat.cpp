@@ -36,44 +36,44 @@ CombatEntity::CombatEntity (Database& d)
 }
 
 void
-CombatEntity::BindFullFields (Database::Statement& stmt,
-                              const unsigned indRegenData,
-                              const unsigned indTarget,
-                              const unsigned indAttackRange,
-                              const unsigned indFriendlyRange) const
+CombatEntity::SetFullFields (Database::RowWriter& row) const
 {
-  stmt.BindProto (indRegenData, regenData);
+  row.SetProto ("regendata", regenData);
 
   const auto attackRange = FindAttackRange (GetCombatData (), false);
   if (attackRange == NO_ATTACKS)
-    stmt.BindNull (indAttackRange);
+    row.SetNull ("attackrange");
   else
-    stmt.Bind (indAttackRange, attackRange);
+    row.Set ("attackrange", attackRange);
 
   const auto friendlyRange = FindAttackRange (GetCombatData (), true);
   if (friendlyRange == NO_ATTACKS)
-    stmt.BindNull (indFriendlyRange);
+    row.SetNull ("friendlyrange");
   else
-    stmt.Bind (indFriendlyRange, friendlyRange);
-
-  if (HasTarget ())
-    stmt.BindProto (indTarget, target);
-  else
-    stmt.BindNull (indTarget);
+    row.Set ("friendlyrange", friendlyRange);
 }
 
 void
-CombatEntity::BindFields (Database::Statement& stmt, const unsigned indHp,
-                          const unsigned indFriendlyTargets,
-                          const unsigned indCanRegen) const
+CombatEntity::SetFields (Database::RowWriter& row, const bool all) const
 {
   bool canRegen = oldCanRegen;
   if (hp.IsDirty () || regenData.IsDirty ())
     canRegen = ComputeCanRegen (hp.Get (), regenData.Get ());
 
-  stmt.BindProto (indHp, hp);
-  stmt.Bind (indFriendlyTargets, friendlyTargets);
-  stmt.Bind (indCanRegen, canRegen);
+  if (all || hp.IsDirty ())
+    row.SetProto ("hp", hp);
+  if (all || isDirty)
+    row.Set ("friendlytargets", friendlyTargets);
+  if (all || canRegen != oldCanRegen)
+    row.Set ("canregen", canRegen);
+
+  if (all || target.IsDirty ())
+    {
+      if (HasTarget ())
+        row.SetProto ("target", target);
+      else
+        row.SetNull ("target");
+    }
 }
 
 void
@@ -111,7 +111,10 @@ CombatEntity::ClearTarget ()
 void
 CombatEntity::SetTarget (const proto::TargetId& t)
 {
-  target.Mutable () = t;
+  /* Keeping the same target does not need a database update.  */
+  if (!HasTarget () || target.Get ().type () != t.type ()
+        || target.Get ().id () != t.id ())
+    target.Mutable () = t;
   CHECK (HasTarget ());
 }
 

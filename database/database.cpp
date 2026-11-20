@@ -20,6 +20,8 @@
 
 #include <glog/logging.h>
 
+#include <sstream>
+
 namespace pxd
 {
 
@@ -121,6 +123,58 @@ template <>
   Database::Statement::Bind<int32_t> (const unsigned ind, const int32_t& val)
 {
   Bind<int64_t> (ind, val);
+}
+
+void
+Database::RowWriter::SetNull (const std::string& column)
+{
+  columns.emplace_back (column, [] (Statement& stmt, const unsigned ind)
+    {
+      stmt.BindNull (ind);
+    });
+}
+
+void
+Database::RowWriter::InsertOrReplace ()
+{
+  std::ostringstream sql;
+  sql << "INSERT OR REPLACE INTO `" << table << "` (`id`";
+  for (const auto& c : columns)
+    sql << ", `" << c.first << "`";
+  sql << ") VALUES (?1";
+  for (unsigned i = 0; i < columns.size (); ++i)
+    sql << ", ?" << (i + 2);
+  sql << ")";
+
+  Execute (sql.str ());
+}
+
+void
+Database::RowWriter::Update ()
+{
+  CHECK (!columns.empty ()) << "No columns to update in " << table;
+
+  std::ostringstream sql;
+  sql << "UPDATE `" << table << "` SET ";
+  for (unsigned i = 0; i < columns.size (); ++i)
+    {
+      if (i > 0)
+        sql << ", ";
+      sql << "`" << columns[i].first << "` = ?" << (i + 2);
+    }
+  sql << " WHERE `id` = ?1";
+
+  Execute (sql.str ());
+}
+
+void
+Database::RowWriter::Execute (const std::string& sql)
+{
+  auto stmt = db.Prepare (sql);
+  stmt.Bind (1, id);
+  for (unsigned i = 0; i < columns.size (); ++i)
+    columns[i].second (stmt, i + 2);
+  stmt.Execute ();
 }
 
 } // namespace pxd

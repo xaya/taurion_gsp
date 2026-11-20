@@ -148,35 +148,31 @@ protected:
   bool
   IsDirtyFull () const
   {
-    return regenData.IsDirty () || target.IsDirty ();
+    return regenData.IsDirty ();
   }
 
   /**
    * Returns whether a partial update (of the small / fast changing fields
-   * like HP) is required.
+   * like HP and the target) is required.
    */
   bool
   IsDirtyFields () const
   {
-    return isDirty || hp.IsDirty ();
+    return isDirty || hp.IsDirty () || target.IsDirty ();
   }
 
   /**
-   * Binds statement parameters for the large / expensive proto fields.
-   * Does not include the ones from BindField!
+   * Sets the columns of the large / expensive proto fields in a row
+   * being written.  Does not include the ones from SetFields!
    */
-  void
-  BindFullFields (Database::Statement& stmt, unsigned indRegenData,
-                  unsigned indTarget, unsigned indAttackRange,
-                  unsigned indFriendlyRange) const;
+  void SetFullFields (Database::RowWriter& row) const;
 
   /**
-   * Binds statement parameters for updating the small / fast changing
-   * fields (HP, canRegen).
+   * Sets the columns of the small / fast changing fields (HP, canRegen,
+   * friendly targets, target) in a row being written.  If all is false,
+   * only the fields that changed are set.
    */
-  void
-  BindFields (Database::Statement& stmt, unsigned indHp,
-              unsigned indFriendlyTargets, unsigned indCanRegen) const;
+  void SetFields (Database::RowWriter& row, bool all) const;
 
   /**
    * Validates the state for consistency.  CHECK-fails if there
