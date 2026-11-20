@@ -274,6 +274,12 @@ public:
     return effects.Mutable ();
   }
 
+  void
+  EffectsCleared () override
+  {
+    effects.SetToDefault ();
+  }
+
   const proto::Character&
   GetProto () const
   {

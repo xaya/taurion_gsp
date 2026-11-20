@@ -252,6 +252,22 @@ TEST_F (TargetKeyTests, Ordering)
   EXPECT_EQ (fromTarget, fromFighters);
 }
 
+TEST_F (TargetKeyTests, Hashing)
+{
+  const TargetKey a(proto::TargetId::TYPE_CHARACTER, 42);
+  const TargetKey aa(proto::TargetId::TYPE_CHARACTER, 42);
+  const TargetKey b(proto::TargetId::TYPE_BUILDING, 42);
+  const TargetKey c(proto::TargetId::TYPE_CHARACTER, 43);
+
+  std::hash<TargetKey> hasher;
+
+  EXPECT_NE (hasher (a), hasher (b));
+  EXPECT_NE (hasher (a), hasher (c));
+  EXPECT_NE (hasher (b), hasher (c));
+
+  EXPECT_EQ (hasher (a), hasher (aa));
+}
+
 /* ************************************************************************** */
 
 using TargetSelectionTests = CombatTests;
@@ -836,6 +852,9 @@ class DealDamageTests : public CombatTests
 
 protected:
 
+  /** The fighters that have regenerated in the last damage step.  */
+  std::set<TargetKey> regenerated;
+
   /**
    * Adds an attack with the given range and damage.  Returns a reference
    * to the added Attack proto so it can be further tweaked.
@@ -873,7 +892,8 @@ protected:
   FindTargetsAndDamage ()
   {
     FindCombatTargets (db, rnd, ctx);
-    return DealCombatDamage (db, dl, rnd, ctx);
+    regenerated.clear ();
+    return DealCombatDamage (db, dl, rnd, ctx, regenerated);
   }
 
 };
@@ -1213,7 +1233,7 @@ TEST_F (DealDamageTests, TargetEnteredBuilding)
   ASSERT_TRUE (characters.GetById (idHealer)->HasFriendlyTargets ());
   characters.GetById (idTarget)->SetBuildingId (42);
 
-  DealCombatDamage (db, dl, rnd, ctx);
+  DealCombatDamage (db, dl, rnd, ctx, regenerated);
   EXPECT_EQ (characters.GetById (idTarget)->GetHP ().armour (), 10);
   EXPECT_EQ (characters.GetById (idOther)->GetHP ().armour (), 9);
   EXPECT_EQ (characters.GetById (idAttacker)
@@ -1259,7 +1279,7 @@ TEST_F (DealDamageTests, TargetInNoCombatZone)
   ASSERT_EQ (characters.GetById (idAttacker)->GetTarget ().id (), idTarget);
   characters.GetById (idTarget)->SetPosition (SAFE);
 
-  DealCombatDamage (db, dl, rnd, ctx);
+  DealCombatDamage (db, dl, rnd, ctx, regenerated);
   EXPECT_EQ (characters.GetById (idTarget)->GetHP ().armour (), 10);
   EXPECT_EQ (characters.GetById (idOther)->GetHP ().armour (), 9);
 
@@ -1695,6 +1715,52 @@ TEST_F (DealDamageTests, HitChanceReducedByEffect)
   EXPECT_LT (c->GetHP ().armour (), expected + eps);
 }
 
+TEST_F (DealDamageTests, SurvivorsRegenerate)
+{
+  /* All fighters have a max shield of 100 (and no armour), and regenerate
+     one shield point per block.  */
+  const auto create = [this] (const Faction f, const unsigned shield)
+    {
+      auto c = characters.CreateNew ("domob", f);
+      NoAttacks (*c);
+      SetHp (*c, shield, 0, 100, 0);
+      c->MutableRegenData ().mutable_regeneration_mhp ()->set_shield (1'000);
+      return c->GetId ();
+    };
+  const auto getShield = [this] (const Database::IdT id)
+    {
+      return characters.GetById (id)->GetHP ().shield ();
+    };
+
+  const auto idAttacker = create (Faction::RED, 50);
+  AddAreaAttack (*characters.GetById (idAttacker), 1, 10, 10);
+  const auto idIdle = create (Faction::RED, 50);
+  const auto idSurvivor = create (Faction::GREEN, 50);
+  const auto idDead = create (Faction::GREEN, 5);
+
+  /* The fighters of the damage step regenerate right in it, unless
+     they died.  */
+  EXPECT_THAT (FindTargetsAndDamage (), ElementsAre (
+    TargetKey (proto::TargetId::TYPE_CHARACTER, idDead)
+  ));
+  EXPECT_THAT (regenerated, ElementsAre (
+    TargetKey (proto::TargetId::TYPE_CHARACTER, idAttacker),
+    TargetKey (proto::TargetId::TYPE_CHARACTER, idSurvivor)
+  ));
+  EXPECT_EQ (getShield (idAttacker), 51);
+  EXPECT_EQ (getShield (idIdle), 50);
+  EXPECT_EQ (getShield (idSurvivor), 41);
+  EXPECT_EQ (getShield (idDead), 0);
+
+  /* RegenerateHP is then for all others.  The dead have been removed
+     before it runs.  */
+  characters.DeleteById (idDead);
+  RegenerateHP (db, regenerated);
+  EXPECT_EQ (getShield (idAttacker), 51);
+  EXPECT_EQ (getShield (idIdle), 51);
+  EXPECT_EQ (getShield (idSurvivor), 41);
+}
+
 /* ************************************************************************** */
 
 using GainHpTests = DealDamageTests;
@@ -1765,7 +1831,7 @@ TEST_F (GainHpTests, FullShieldHasNoMilliHp)
   c.reset ();
 
   FindTargetsAndDamage ();
-  RegenerateHP (db);
+  RegenerateHP (db, regenerated);
 
   c = characters.GetById (idAttacker);
   EXPECT_EQ (c->GetHP ().shield (), 100);
@@ -2364,7 +2430,7 @@ protected:
     FindCombatTargets (db, rnd, ctx);
 
     auto branched = rnd.BranchOff ("branch");
-    DealCombatDamage (db, dl, branched, ctx);
+    DealCombatDamage (db, dl, branched, ctx, regenerated);
     ExpectRandomRolls (branched, rnd.BranchOff ("branch"), n);
   }
 
@@ -3408,7 +3474,7 @@ TEST_F (RegenerateHpTests, Works)
   regen->clear_regeneration_mhp (); \
   regen->mutable_regeneration_mhp ()->set_ ## type (t.mhpRegen); \
   c.reset (); \
-  RegenerateHP (db); \
+  RegenerateHP (db, {}); \
   c = characters.GetById (id); \
   EXPECT_EQ (c->GetHP ().other (), 42); \
   EXPECT_EQ (c->GetHP ().mhp ().other (), 42); \
@@ -3433,7 +3499,7 @@ TEST_F (RegenerateHpTests, BuildingsRegenerate)
   regen.mutable_regeneration_mhp ()->set_shield (1'000);
   b.reset ();
 
-  RegenerateHP (db);
+  RegenerateHP (db, {});
 
   b = buildings.GetById (id);
   EXPECT_EQ (b->GetHP ().shield (), 11);
@@ -3450,7 +3516,7 @@ TEST_F (RegenerateHpTests, InsideBuilding)
   regen->mutable_regeneration_mhp ()->set_shield (1'000);
   c.reset ();
 
-  RegenerateHP (db);
+  RegenerateHP (db, {});
 
   c = characters.GetById (id);
   EXPECT_EQ (c->GetHP ().shield (), 11);
@@ -3467,7 +3533,7 @@ TEST_F (RegenerateHpTests, RateModifierEffect)
   c->MutableEffects ().mutable_shield_regen ()->set_percent (50);
   c.reset ();
 
-  RegenerateHP (db);
+  RegenerateHP (db, {});
 
   c = characters.GetById (id);
   EXPECT_EQ (c->GetHP ().shield (), 10 + 15);
@@ -3493,7 +3559,7 @@ TEST_F (RegenerateHpTests, VeryLargeBoostedRate)
           ->set_percent (rateAndPercent.second);
     }
 
-  RegenerateHP (db);
+  RegenerateHP (db, {});
 
   for (const auto id : ids)
     {

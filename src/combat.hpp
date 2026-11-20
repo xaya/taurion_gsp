@@ -31,6 +31,7 @@
 
 #include <xayautil/random.hpp>
 
+#include <functional>
 #include <set>
 #include <utility>
 
@@ -78,10 +79,13 @@ unsigned BaseHitChance (const proto::CombatData& target,
 /**
  * Deals damage from combat and returns the target IDs of all fighters
  * that are now dead (and need to be handled accordingly).  This also
- * applies non-damage effects like slowing.
+ * applies non-damage effects like slowing.  The surviving fighters
+ * involved also regenerate their HP right away (in the same database
+ * write) and are added to regenerated, for RegenerateHP to skip.
  */
 std::set<TargetKey> DealCombatDamage (Database& db, DamageLists& dl,
-                                      xaya::Random& rnd, const Context& ctx);
+                                      xaya::Random& rnd, const Context& ctx,
+                                      std::set<TargetKey>& regenerated);
 
 /**
  * Processes killed fighers from the given list, actually performing the
@@ -93,9 +97,10 @@ void ProcessKills (Database& db, DynObstacles& dyn,
                    xaya::Random& rnd, const Context& ctx);
 
 /**
- * Handles HP regeneration.
+ * Handles HP regeneration, except for the fighters in skip (which
+ * have already regenerated this block).
  */
-void RegenerateHP (Database& db);
+void RegenerateHP (Database& db, const std::set<TargetKey>& skip);
 
 /**
  * Runs the three coupled steps to update HP at the beginning of computing
@@ -107,5 +112,28 @@ void AllHpUpdates (Database& db, DynObstacles& dyn, FameUpdater& fame,
                    xaya::Random& rnd, const Context& ctx);
 
 } // namespace pxd
+
+namespace std
+{
+
+/**
+ * Defines a specialisation of std::hash for TargetKey, so that it can be used
+ * as a key in std::unordered_map and the likes.
+ */
+template <>
+  struct hash<pxd::TargetKey>
+{
+
+  size_t
+  operator() (const pxd::TargetKey& k) const
+  {
+    /* The type goes into the lowest two bits and the ID into the bits
+       above.  */
+    return (static_cast<size_t> (k.second) << 2) | k.first;
+  }
+
+};
+
+} // namespace std
 
 #endif // PXD_COMBAT_HPP
