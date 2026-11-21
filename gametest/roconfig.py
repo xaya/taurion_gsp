@@ -25,21 +25,10 @@ from proto import config_pb2
 
 from pxtest import PXTest
 
-import base64
 import time
 
 
 class RoConfigTest (PXTest):
-
-  def sendConfigUpdate (self, upd):
-    """
-    Sends the given ConfigData proto as roconfig merge admin command and
-    mines a block so it takes effect.
-    """
-
-    encoded = base64.b64encode (upd.SerializeToString ()).decode ("ascii")
-    self.adminCommand ({"roconfig": {"merge": encoded}})
-    self.generate (1)
 
   def run (self):
     self.mainLogger.info ("Setting up a test account...")

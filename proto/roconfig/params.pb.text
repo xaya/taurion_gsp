@@ -20,6 +20,19 @@ params:
     building_update_delay: 120
     dex_fee_bps: 300  # 3% base fee for sellers
 
+    # Jobs.
+    job_post_fee_min: 1
+    job_post_fee_bps: 100  # 1% of the reward
+    max_listing_window: 2592000  # 30 days
+    max_live_jobs: 10000
+    max_jobs_per_poster: 200
+    min_job_reward: 1000
+    deal_max_collateral_bps: 20000  # twice the reward
+    deal_max_collateral: 100000000000  # all coins, so no extra limit
+    deal_max_fee_bps: 1000  # 10%
+    deal_tax_bps: 300  # 3%
+    deal_reaction_window: 86400  # 1 day
+
     min_region_ore: 2000000
     max_region_ore: 100000000
 

@@ -35,6 +35,7 @@ libtaurion_la_SOURCES = \
   fame.cpp \
   fitments.cpp \
   gamestatejson.cpp \
+  jobs.cpp \
   jsonutils.cpp \
   logic.cpp \
   mining.cpp \
@@ -59,6 +60,7 @@ libtaurionheaders = \
   fame.hpp \
   fitments.hpp \
   gamestatejson.hpp \
+  jobs.hpp \
   jsonutils.hpp \
   logic.hpp \
   mining.hpp \
@@ -144,6 +146,7 @@ tests_SOURCES = \
   fame_tests.cpp \
   fitments_tests.cpp \
   gamestatejson_tests.cpp \
+  jobs_tests.cpp \
   jsonutils_tests.cpp \
   logic_tests.cpp \
   mining_tests.cpp \
