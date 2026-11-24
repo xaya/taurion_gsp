@@ -313,6 +313,30 @@ TEST_F (CanPlaceBuildingTests, MultiRegion)
   EXPECT_FALSE (CanPlace ("checkmark", 0, pos));
 }
 
+TEST_F (CanPlaceBuildingTests, ConstructibleBuildings)
+{
+  /* The whole footprint of a building has to be inside one region, so a
+     shape that is too large for the regions of the map could not be placed
+     anywhere.  This verifies that every building players can construct
+     fits onto the real map in each rotation.  */
+  ctx.SetChain (xaya::Chain::MAIN);
+  const HexCoord site(-5, 5);
+
+  unsigned cnt = 0;
+  for (const auto& entry : ctx.RoConfig ()->building_types ())
+    {
+      if (!entry.second.has_construction ())
+        continue;
+      ++cnt;
+
+      for (unsigned rot = 0; rot < 6; ++rot)
+        EXPECT_TRUE (CanPlace (entry.first, rot, site))
+            << entry.first << " with rotation " << rot
+            << " does not fit at " << site;
+    }
+  EXPECT_GT (cnt, 0);
+}
+
 /* ************************************************************************** */
 
 class MaybeStartBuildingConstructionTests : public BuildingsTests

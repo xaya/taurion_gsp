@@ -7,54 +7,6 @@ building_types: {
             vehicle_construction: true
         }
         shape_tiles: {
-            x: 1 y: -4
-        }
-        shape_tiles: {
-            x: 2 y: -4
-        }
-        shape_tiles: {
-            x: 3 y: -4
-        }
-        shape_tiles: {
-            x: 4 y: -4
-        }
-        shape_tiles: {
-            x: 0 y: -3
-        }
-        shape_tiles: {
-            x: 1 y: -3
-        }
-        shape_tiles: {
-            x: 2 y: -3
-        }
-        shape_tiles: {
-            x: 3 y: -3
-        }
-        shape_tiles: {
-            x: 4 y: -3
-        }
-        shape_tiles: {
-            x: -1 y: -2
-        }
-        shape_tiles: {
-            x: 0 y: -2
-        }
-        shape_tiles: {
-            x: 1 y: -2
-        }
-        shape_tiles: {
-            x: 2 y: -2
-        }
-        shape_tiles: {
-            x: 3 y: -2
-        }
-        shape_tiles: {
-            x: 4 y: -2
-        }
-        shape_tiles: {
-            x: -2 y: -1
-        }
-        shape_tiles: {
             x: -1 y: -1
         }
         shape_tiles: {
@@ -62,18 +14,6 @@ building_types: {
         }
         shape_tiles: {
             x: 1 y: -1
-        }
-        shape_tiles: {
-            x: 2 y: -1
-        }
-        shape_tiles: {
-            x: 3 y: -1
-        }
-        shape_tiles: {
-            x: 4 y: -1
-        }
-        shape_tiles: {
-            x: -3 y: 0
         }
         shape_tiles: {
             x: -2 y: 0
@@ -88,15 +28,6 @@ building_types: {
             x: 1 y: 0
         }
         shape_tiles: {
-            x: 2 y: 0
-        }
-        shape_tiles: {
-            x: 3 y: 0
-        }
-        shape_tiles: {
-            x: -3 y: 1
-        }
-        shape_tiles: {
             x: -2 y: 1
         }
         shape_tiles: {
@@ -109,55 +40,10 @@ building_types: {
             x: 1 y: 1
         }
         shape_tiles: {
-            x: 2 y: 1
-        }
-        shape_tiles: {
-            x: 3 y: 1
-        }
-        shape_tiles: {
-            x: -3 y: 2
-        }
-        shape_tiles: {
             x: -2 y: 2
         }
         shape_tiles: {
             x: -1 y: 2
-        }
-        shape_tiles: {
-            x: 0 y: 2
-        }
-        shape_tiles: {
-            x: 1 y: 2
-        }
-        shape_tiles: {
-            x: 2 y: 2
-        }
-        shape_tiles: {
-            x: -3 y: 3
-        }
-        shape_tiles: {
-            x: -2 y: 3
-        }
-        shape_tiles: {
-            x: -1 y: 3
-        }
-        shape_tiles: {
-            x: 0 y: 3
-        }
-        shape_tiles: {
-            x: 1 y: 3
-        }
-        shape_tiles: {
-            x: -3 y: 4
-        }
-        shape_tiles: {
-            x: -2 y: 4
-        }
-        shape_tiles: {
-            x: -1 y: 4
-        }
-        shape_tiles: {
-            x: 0 y: 4
         }
         construction: {
             foundation: {
