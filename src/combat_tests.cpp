@@ -80,7 +80,7 @@ protected:
   TestRandom rnd;
 
   CombatTests ()
-    : buildings(db), inventories(db), characters(db), dl(db, 0)
+    : buildings(db), inventories(db), characters(db), dl(db, 0, 1)
   {
     /* Ensure our hardcoded test data for safe zones is correct.  */
     CHECK (ctx.Map ().SafeZones ().IsNoCombat (SAFE));

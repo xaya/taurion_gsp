@@ -527,7 +527,7 @@ TEST_F (CharacterJsonTests, DamageLists)
   const auto id2 = tbl.CreateNew ("domob", Faction::GREEN)->GetId ();
   ASSERT_EQ (id2, 2);
 
-  DamageLists (db, 0).AddEntry (id1, id2);
+  DamageLists (db, 0, 1).AddEntry (id1, id2);
 
   ExpectStateJson (R"({
     "characters":
