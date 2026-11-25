@@ -600,6 +600,37 @@ TEST_F (ProcessEnterBuildingsTests, MultipleCharacters)
   EXPECT_TRUE (GetCharacter (13)->IsInBuilding ());
 }
 
+TEST_F (ProcessEnterBuildingsTests, NextToConstructibleBuildings)
+{
+  /* The enter radius is measured from the centre of a building, and for
+     the buildings players can construct it reaches only a little past
+     their shape.  This verifies that a character on any tile next to such
+     a building is close enough to enter it (in any rotation, which does
+     not change the distance to the centre).  */
+  ctx.SetChain (xaya::Chain::MAIN);
+
+  unsigned cnt = 0;
+  for (const auto& entry : ctx.RoConfig ()->building_types ())
+    {
+      if (!entry.second.has_construction ())
+        continue;
+      ++cnt;
+
+      for (const auto& tile : entry.second.shape_tiles ())
+        {
+          const auto c = CoordFromProto (tile);
+          for (const auto& n : c.Neighbours ())
+            {
+              const unsigned dist = HexCoord::DistanceL1 (n, HexCoord ());
+              EXPECT_LE (dist, entry.second.enter_radius ())
+                  << "Tile " << n << " next to " << entry.first
+                  << " is outside the enter radius";
+            }
+        }
+    }
+  EXPECT_GT (cnt, 0);
+}
+
 /* ************************************************************************** */
 
 class LeaveBuildingTests : public BuildingsTests

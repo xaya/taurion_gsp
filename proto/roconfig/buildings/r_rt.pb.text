@@ -1,7 +1,7 @@
 building_types: {
     key: "r rt"
     value: {
-        enter_radius: 6
+        enter_radius: 1
         offered_services: {}
         shape_tiles: {
             x: 0 y: 0
