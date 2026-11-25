@@ -62,8 +62,8 @@ class PendingTest (PXTest):
     self.moveCharactersTo ({
       "domob": positionProspect,
       "miner": positionMining,
-      "inbuilding": offsetCoord (positionBuilding, {"x": 10, "y": 0}, False),
-      "inbuilding 2": offsetCoord (positionBuilding, {"x": -10, "y": 0}, False),
+      "inbuilding": offsetCoord (positionBuilding, {"x": 4, "y": 0}, False),
+      "inbuilding 2": offsetCoord (positionBuilding, {"x": -4, "y": 0}, False),
     })
 
     self.build ("b cc", "inbuilding", positionBuilding, 0)

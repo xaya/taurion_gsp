@@ -1,7 +1,7 @@
 building_types: {
     key: "g rf"
     value: {
-        enter_radius: 7
+        enter_radius: 3
         offered_services: {
             blueprint_copy: true
             reverse_engineering: true
