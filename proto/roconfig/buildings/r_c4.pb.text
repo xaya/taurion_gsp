@@ -2,6 +2,8 @@ building_types: {
     key: "r c4"
     value: {
         enter_radius: 8
+        # Everyone docks and leaves at one place next to the building.
+        gateway: { centre: { x: 0 y: 8 } radius: 3 }
         offered_services: {
             armour_repair: true
             reverse_engineering: true
