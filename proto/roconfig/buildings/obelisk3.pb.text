@@ -2,6 +2,8 @@ building_types: {
     key: "obelisk3"
     value: {
         enter_radius: 31
+        # Everyone docks and leaves at one place next to the obelisk.
+        gateway: { centre: { x: 3 y: 22 } radius: 3 }
         offered_services: {}
         shape_tiles: {
             x: 19 y: -19

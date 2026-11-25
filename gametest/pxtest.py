@@ -500,8 +500,7 @@ class PXTest (XayaXGameTest):
       b = self.getBuildings ()[1]
       bId = b.getId ()
       self.assertEqual (b.getFaction (), "a")
-      pos = offsetCoord (b.getCentre (), {"x": 30, "y": 0}, False)
-      self.moveCharactersTo ({char: pos})
+      self.moveCharactersTo ({char: b.data["gateway"]["centre"]})
 
       c = self.getCharacters ()[char]
       c.sendMove ({"eb": bId})
