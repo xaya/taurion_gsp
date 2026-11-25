@@ -23,6 +23,7 @@
 #include "fame.hpp"
 #include "gamestatejson.hpp"
 #include "params.hpp"
+#include "phasetimer.hpp"
 
 #include "database/database.hpp"
 #include "mapdata/basemap.hpp"
@@ -97,12 +98,12 @@ private:
 
   /**
    * Updates the state with a custom FameUpdater.  This is used for mocking
-   * the instance in tests.
+   * the instance in tests.  The steps are recorded as phases in times.
    */
   static void UpdateState (Database& db, FameUpdater& fame, xaya::Random& rnd,
                            const Context& ctx,
                            bool superBlock,
-                           const Json::Value& blockData);
+                           const Json::Value& blockData, PhaseTimes& times);
 
   /**
    * Performs (potentially slow) validations on the current database state.

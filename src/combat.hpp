@@ -22,6 +22,7 @@
 #include "context.hpp"
 #include "dynobstacles.hpp"
 #include "fame.hpp"
+#include "phasetimer.hpp"
 
 #include "database/damagelists.hpp"
 #include "database/database.hpp"
@@ -106,10 +107,11 @@ void RegenerateHP (Database& db, const std::set<TargetKey>& skip);
  * Runs the three coupled steps to update HP at the beginning of computing
  * a block:  Dealing damage, handling kills and regenerating.
  *
- * Characters that are killed are removed from the obstacle map.
+ * Characters that are killed are removed from the obstacle map.  The steps
+ * are recorded as phases in times.
  */
 void AllHpUpdates (Database& db, DynObstacles& dyn, FameUpdater& fame,
-                   xaya::Random& rnd, const Context& ctx);
+                   xaya::Random& rnd, const Context& ctx, PhaseTimes& times);
 
 } // namespace pxd
 

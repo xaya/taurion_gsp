@@ -167,8 +167,10 @@ protected:
   {
     Context newCtx(db, ctx.Chain (), ctx.Map (),
                    sbHeight, ctx.BlockHeight (), ctx.Timestamp ());
+    PhaseTimes times(false, sbHeight);
     FameUpdater fame(db, newCtx);
-    PXLogic::UpdateState (db, fame, rnd, newCtx, true, BuildBlockData (moves));
+    PXLogic::UpdateState (db, fame, rnd, newCtx, true, BuildBlockData (moves),
+                          times);
   }
 
   /**
@@ -179,7 +181,8 @@ protected:
   UpdateStateWithFame (FameUpdater& fame, const std::string& moveStr)
   {
     const auto blockData = BuildBlockData (ParseJson (moveStr));
-    PXLogic::UpdateState (db, fame, rnd, ctx, true, blockData);
+    PhaseTimes times(false, ctx.Height ());
+    PXLogic::UpdateState (db, fame, rnd, ctx, true, blockData, times);
   }
 
   /**
