@@ -1,0 +1,82 @@
+/*
+    GSP for the Taurion blockchain game
+    Copyright (C) 2020-2021  Autonomous Worlds Ltd
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
+syntax = "proto2";
+option cc_enable_arenas = true;
+
+package pxd.proto;
+
+/**
+ * The data of a job that is not stored in columns of the database.
+ */
+message JobData
+{
+
+  /** If set, the only account that may accept the job.  */
+  optional string designated_worker = 1;
+
+  /**
+   * Set if the job was posted for a designated worker.  Nobody can accept
+   * such a job while no designated worker is set.
+   */
+  optional bool invite_only = 2;
+
+  /** The account that rules on a dispute (if any).  */
+  optional string arbiter = 3;
+
+  /**
+   * The fee of the arbiter in basis points of the reward.  It is paid
+   * whenever the job is paid out, also without a dispute, but not when
+   * the coins are given back.
+   */
+  optional uint32 fee_bps = 4;
+
+  /** The tax in basis points from the config when the job was posted.  */
+  optional uint32 tax_bps = 5;
+
+  /** A category chosen by the poster, which the game does not use.  */
+  optional uint32 type_tag = 6;
+
+  /**
+   * The terms of the job as free text, for the parties and the arbiter.
+   * The game does not use or sanitise it.
+   */
+  optional string terms = 7;
+
+  /* 8 was a field of an earlier version that is deployed for testing.  */
+  reserved 8;
+
+  /** Whether the poster and the worker confirmed the job as done.  */
+  optional bool poster_confirmed = 9;
+  optional bool worker_confirmed = 10;
+
+  /** Whether one of them disputed the job.  */
+  optional bool disputed = 11;
+
+  /** The block timestamp of the dispute, which the game does not use.  */
+  optional int64 dispute_time = 12;
+
+  /**
+   * The time in seconds that is at least left for an answer after
+   * a confirmation or dispute (see deal_reaction_window in the config).
+   * This is the value from the config when the job was posted, but at
+   * most the duration of the job.
+   */
+  optional int64 reaction_window = 13;
+
+}

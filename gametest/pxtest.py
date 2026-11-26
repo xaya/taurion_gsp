@@ -18,6 +18,7 @@ from xayax.gametest import XayaXGameTest
 
 from proto import config_pb2
 
+import base64
 import collections
 from contextlib import contextmanager
 import copy
@@ -367,6 +368,24 @@ class PXTest (XayaXGameTest):
 
     return self.getCustomState ("data", method, *args, **kwargs)
 
+  def getJobs (self):
+    """
+    Returns the jobs on the board as a dictionary by id.
+    """
+
+    return {j["id"]: j for j in self.getRpc ("getjobs")}
+
+  def setParams (self, **params):
+    """
+    Sends a config update setting the given fields of the params, and mines
+    the block that stores it.  The new values apply from the next block.
+    """
+
+    upd = config_pb2.ConfigData ()
+    for name, value in params.items ():
+      setattr (upd.params, name, value)
+    self.sendConfigUpdate (upd)
+
   def sendMove (self, name, move, send=None, burn=0):
     """
     Sends a move, and optionally includes a coin burn.
@@ -401,6 +420,16 @@ class PXTest (XayaXGameTest):
 
     assert self.cfg is not None
     return self.cfg
+
+  def sendConfigUpdate (self, upd):
+    """
+    Sends the given ConfigData proto as roconfig merge admin command and
+    mines a block so it takes effect.
+    """
+
+    encoded = base64.b64encode (upd.SerializeToString ()).decode ("ascii")
+    self.adminCommand ({"roconfig": {"merge": encoded}})
+    self.generate (1)
 
   def initAccount (self, name, faction):
     """
