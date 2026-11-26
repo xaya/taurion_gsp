@@ -234,12 +234,13 @@ protected:
 
   /**
    * Parses and verifies a potential waypoint extension for the
-   * character.  If pendingWp is true, we assume that there are already
-   * pending waypoints, which we accept also as "is already moving".
+   * character.  If pendingWp is not null, it holds the character's pending
+   * waypoints (empty for a pending stop), which the extension then applies
+   * to instead of the confirmed ones.
    */
   bool ParseCharacterWaypointExtension (const Character& c,
                                         const Json::Value& upd,
-                                        bool pendingWp,
+                                        const std::vector<HexCoord>* pendingWp,
                                         std::vector<HexCoord>& wp);
 
   /**

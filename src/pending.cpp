@@ -366,17 +366,14 @@ PendingState::AddDexOperation (const DexOperation& op)
   GetAccountState (op.GetAccount ()).dexOps.push_back (val);
 }
 
-bool
-PendingState::HasPendingWaypoints (const Character& c) const
+const std::vector<HexCoord>*
+PendingState::GetPendingWaypoints (const Character& c) const
 {
   const auto mit = characters.find (c.GetId ());
   if (mit == characters.end ())
-    return false;
+    return nullptr;
 
-  if (mit->second.wp == nullptr)
-    return false;
-
-  return !mit->second.wp->empty ();
+  return mit->second.wp.get ();
 }
 
 Json::Value
@@ -602,8 +599,8 @@ PendingStateUpdater::PerformCharacterUpdate (Character& c,
       state.AddCharacterWaypoints (c, wp, true);
     }
   wp.clear ();
-  if (ParseCharacterWaypointExtension (c, upd,
-                                       state.HasPendingWaypoints (c), wp))
+  if (ParseCharacterWaypointExtension (c, upd, state.GetPendingWaypoints (c),
+                                       wp))
     {
       VLOG (1)
           << "Found pending waypoints extension for " << c.GetId ()
