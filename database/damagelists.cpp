@@ -108,6 +108,17 @@ RemovePending (std::set<std::pair<Database::IdT, Database::IdT>>& by,
     }
 }
 
+/**
+ * Returns true if the given character is first in any pair of the set.
+ */
+bool
+HasPending (const std::set<std::pair<Database::IdT, Database::IdT>>& by,
+            const Database::IdT id)
+{
+  const auto it = by.lower_bound (std::make_pair (id, Database::IdT (0)));
+  return it != by.end () && it->first == id;
+}
+
 } // anonymous namespace
 
 void
@@ -133,6 +144,11 @@ namespace
 struct AttackerResult : public Database::ResultType
 {
   RESULT_COLUMN (int64_t, attacker, 1);
+};
+
+struct FoundResult : public Database::ResultType
+{
+  RESULT_COLUMN (bool, found, 1);
 };
 
 } // anonymous namespace
@@ -163,6 +179,28 @@ DamageLists::GetAttackers (const Database::IdT victim) const
     attackers.insert (it->second);
 
   return attackers;
+}
+
+bool
+DamageLists::IsOnAnyList (const Database::IdT id) const
+{
+  if (HasPending (pendingByVictim, id) || HasPending (pendingByAttacker, id))
+    return true;
+
+  auto stmt = db.Prepare (R"(
+    SELECT EXISTS (
+      SELECT 1 FROM `damage_lists`
+        WHERE `victim` = ?1 OR `attacker` = ?1
+    ) AS `found`
+  )");
+  stmt.Bind (1, id);
+
+  auto res = stmt.Query<FoundResult> ();
+  CHECK (res.Step ());
+  const bool found = res.Get<FoundResult::found> ();
+  CHECK (!res.Step ());
+
+  return found;
 }
 
 } // namespace pxd
