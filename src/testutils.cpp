@@ -116,6 +116,12 @@ ContextForTesting::SetTimestamp (const int64_t ts)
   RefreshInstances ();
 }
 
+void
+ContextForTesting::SetRoConfig (const pxd::RoConfig& c)
+{
+  cfg = c;
+}
+
 Json::Value
 ParseJson (const std::string& str)
 {

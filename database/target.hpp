@@ -91,7 +91,7 @@ private:
 
   /**
    * Calls fcn with each target and its distance that matches a query as
-   * done by ProcessL1Targets.  The order is unspecified, except that if
+   * done by FindInRange.  The order is unspecified, except that if
    * targets are processed in order of distance, then done is called after
    * each distance and the search stops if it returns true.
    */
@@ -102,9 +102,8 @@ private:
 
 public:
 
-  /** Type for a callback function that processes targets.  */
-  using ProcessingFcn
-      = std::function<void (const HexCoord&, const proto::TargetId&)>;
+  /** Limit for FindInRange with which it returns all targets.  */
+  static constexpr size_t NO_LIMIT = static_cast<size_t> (-1);
 
   /** Type for a predicate on positions.  */
   using PositionFilter = std::function<bool (const HexCoord&)>;
@@ -120,20 +119,26 @@ public:
   void operator= (const TargetFinder&) = delete;
 
   /**
-   * Finds all targets in the given L1 range and executes the
-   * callback on each of the resulting Target instances.  This function can
-   * be used to query for enemies, friendlies or all.  Targets are processed
-   * in the order of TargetKey, i.e. buildings before characters and each
-   * by ID.
+   * Returns all targets in the given L1 range except for the one with ID
+   * exclude.  This function can be used to query for enemies, friendlies
+   * or all.  Targets are returned in the order of TargetKey, i.e. buildings
+   * before characters and each by ID.
+   *
+   * At most limit of them are returned (all with NO_LIMIT):  those closest
+   * to the centre, and of those at the same distance the first ones in
+   * TargetKey order.
    */
-  void ProcessL1Targets (const HexCoord& centre, HexCoord::IntT l1range,
-                         Faction faction, bool enemies, bool friendlies,
-                         const ProcessingFcn& cb) const;
+  std::vector<proto::TargetId> FindInRange (const HexCoord& centre,
+                                            HexCoord::IntT l1range,
+                                            Faction faction,
+                                            bool enemies, bool friendlies,
+                                            const proto::TargetId& exclude,
+                                            size_t limit) const;
 
   /**
-   * Returns those of the targets ProcessL1Targets would process that are
-   * closest to the centre, except for the one with ID exclude, in the same
-   * order.  This is faster than finding them with ProcessL1Targets.
+   * Returns those of the targets FindInRange would return that are
+   * closest to the centre, in the same order.  This is faster than finding
+   * them with FindInRange.
    */
   std::vector<proto::TargetId> FindClosest (const HexCoord& centre,
                                             HexCoord::IntT l1range,
