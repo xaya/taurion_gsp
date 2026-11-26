@@ -120,6 +120,7 @@ private:
    */
   static void TuneDatabase (xaya::SQLiteDatabase& db);
 
+  friend class BattleBench;
   friend class PXLogicTests;
   friend class PXRpcServer;
   friend class SuperblockTests;
