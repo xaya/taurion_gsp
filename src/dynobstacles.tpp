@@ -41,6 +41,12 @@ DynObstacles::IsFree (const HexCoord& c) const
   return !IsBuilding (c) && !HasVehicle (c);
 }
 
+inline bool
+DynObstacles::IsGateway (const HexCoord& c) const
+{
+  return gateways.count (c) > 0;
+}
+
 inline void
 DynObstacles::AddVehicle (const HexCoord& c)
 {

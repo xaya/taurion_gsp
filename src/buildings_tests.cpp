@@ -303,6 +303,19 @@ TEST_F (CanPlaceBuildingTests, DynObstacle)
   EXPECT_FALSE (CanPlace ("huesli", 0, HexCoord (0, 0)));
 }
 
+TEST_F (CanPlaceBuildingTests, Gateway)
+{
+  /* Only explicit gateways are kept free of buildings, not the enter radius
+     of a building without one.  */
+  const HexCoord offs(-50, -50);
+  tbl.CreateNew ("gated", "", Faction::ANCIENT)->SetCentre (offs);
+
+  EXPECT_FALSE (CanPlace ("huesli", 0, offs + HexCoord (5, 0)));
+  EXPECT_FALSE (CanPlace ("huesli", 0, offs + HexCoord (6, 0)));
+  EXPECT_TRUE (CanPlace ("huesli", 0, offs + HexCoord (7, 0)));
+  EXPECT_TRUE (CanPlace ("huesli", 0, offs + HexCoord (1, 0)));
+}
+
 TEST_F (CanPlaceBuildingTests, MultiRegion)
 {
   const HexCoord pos(0, 0);

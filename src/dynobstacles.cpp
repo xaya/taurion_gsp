@@ -63,6 +63,10 @@ DynObstacles::AddBuilding (const std::string& type,
         return false;
       ref = true;
     }
+
+  for (const auto& c : GetGatewayTiles (type, trafo, pos, cfg))
+    ++gateways[c];
+
   return true;
 }
 
@@ -86,6 +90,17 @@ DynObstacles::RemoveBuilding (const Building& b)
       auto ref = buildings.Access (c);
       CHECK (ref) << "Error removing building " << b.GetId ();
       ref = false;
+    }
+
+  for (const auto& c : GetGatewayTiles (b.GetType (),
+                                        b.GetProto ().shape_trafo (),
+                                        b.GetCentre (), cfg))
+    {
+      auto mit = gateways.find (c);
+      CHECK (mit != gateways.end ())
+          << "Error removing building " << b.GetId ();
+      if (--mit->second == 0)
+        gateways.erase (mit);
     }
 }
 
