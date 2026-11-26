@@ -153,10 +153,7 @@ template <typename Col>
 {
   const int ind = ColumnIndex<Col> ();
 
-  LazyProto<typename Col::Type> res(stmt.GetBlob (ind));
-  res.SetArena (db->arena);
-
-  return res;
+  return LazyProto<typename Col::Type> (stmt.GetBlob (ind));
 }
 
 } // namespace pxd
