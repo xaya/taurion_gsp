@@ -62,10 +62,20 @@ void GetGateway (const Building& b, const Context& ctx,
                  HexCoord& centre, unsigned& radius);
 
 /**
+ * Returns the tiles in the gateway of a building of the given type, centre
+ * and shape trafo.  This is empty if the type has no gateway, i.e. only
+ * an enter radius.
+ */
+std::vector<HexCoord> GetGatewayTiles (const std::string& type,
+                                       const proto::ShapeTransformation& trafo,
+                                       const HexCoord& pos,
+                                       const RoConfig& cfg);
+
+/**
  * Checks if a building of the given type and rotation can be placed
  * at the given location.  The conditions are that no tile must be taken
- * already by another building or character, and that all tiles must be
- * of the same region.
+ * already by another building or character or be in the gateway of
+ * a building, and that all tiles must be of the same region.
  */
 bool CanPlaceBuilding (const std::string& type,
                        const proto::ShapeTransformation& trafo,

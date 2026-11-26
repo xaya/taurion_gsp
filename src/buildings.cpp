@@ -23,6 +23,7 @@
 #include "protoutils.hpp"
 #include "spawn.hpp"
 
+#include "hexagonal/ring.hpp"
 #include "mapdata/regionmap.hpp"
 #include "proto/config.pb.h"
 #include "proto/roconfig.hpp"
@@ -87,6 +88,27 @@ GetGateway (const Building& b, const Context& ctx,
   radius = roData.gateway ().radius ();
 }
 
+std::vector<HexCoord>
+GetGatewayTiles (const std::string& type,
+                 const proto::ShapeTransformation& trafo,
+                 const HexCoord& pos, const RoConfig& cfg)
+{
+  std::vector<HexCoord> res;
+
+  const auto& roData = cfg.Building (type);
+  if (!roData.has_gateway ())
+    return res;
+
+  const HexCoord centre
+      = TransformTile (roData.gateway ().centre (), trafo, pos);
+  const HexCoord::IntT radius = roData.gateway ().radius ();
+  for (HexCoord::IntT r = 0; r <= radius; ++r)
+    for (const auto& c : L1Ring (centre, r))
+      res.push_back (c);
+
+  return res;
+}
+
 bool
 CanPlaceBuilding (const std::string& type,
                   const proto::ShapeTransformation& trafo,
@@ -109,6 +131,11 @@ CanPlaceBuilding (const std::string& type,
       if (!dyn.IsFree (c))
         {
           VLOG (1) << "Position " << c << " has a dynamic obstacle";
+          return false;
+        }
+      if (dyn.IsGateway (c))
+        {
+          VLOG (1) << "Position " << c << " is in a building's gateway";
           return false;
         }
 

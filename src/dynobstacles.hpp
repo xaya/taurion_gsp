@@ -31,6 +31,8 @@
 #include "proto/building.pb.h"
 #include "proto/roconfig.hpp"
 
+#include <unordered_map>
+
 namespace pxd
 {
 
@@ -53,6 +55,15 @@ private:
 
   /** Buildings in general.  */
   DynTiles<bool> buildings;
+
+  /**
+   * For each tile, the number of building gateways it is in.  Characters
+   * enter and leave the building there, so no other building must be
+   * placed on them.  The gateway in a building's config can reach off the
+   * map, so this is not a tile map (which may only be used for tiles
+   * on the map).
+   */
+  std::unordered_map<HexCoord, unsigned> gateways;
 
 public:
 
@@ -87,6 +98,11 @@ public:
    * place buildings).
    */
   bool IsFree (const HexCoord& c) const;
+
+  /**
+   * Checks if the given tile is in the gateway of a building.
+   */
+  bool IsGateway (const HexCoord& c) const;
 
   /**
    * Adds a new vehicle with the given position.

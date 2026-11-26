@@ -155,5 +155,46 @@ TEST_F (DynObstaclesTests, IsFree)
   EXPECT_FALSE (dyn.IsFree (HexCoord (1, 0)));
 }
 
+TEST_F (DynObstaclesTests, Gateways)
+{
+  auto b = buildings.CreateNew ("gated", "", Faction::ANCIENT);
+  b->SetCentre (HexCoord (0, 0));
+  auto other = buildings.CreateNew ("huesli", "", Faction::ANCIENT);
+  other->SetCentre (HexCoord (0, 10));
+
+  DynObstacles dyn(db, ctx);
+  dyn.AddBuilding (*b);
+  dyn.AddBuilding (*other);
+
+  for (const auto& c : {HexCoord (5, 0), HexCoord (4, 0), HexCoord (5, 1)})
+    EXPECT_TRUE (dyn.IsGateway (c)) << c;
+  for (const auto& c : {HexCoord (0, 0), HexCoord (7, 0), HexCoord (0, 9)})
+    EXPECT_FALSE (dyn.IsGateway (c)) << c;
+  EXPECT_TRUE (dyn.IsFree (HexCoord (5, 0)));
+
+  dyn.RemoveBuilding (*b);
+  EXPECT_FALSE (dyn.IsGateway (HexCoord (5, 0)));
+}
+
+TEST_F (DynObstaclesTests, GatewayOffMap)
+{
+  /* With a changed config, the gateway of a building can reach off the map.
+     Its tiles on the map are still kept.  */
+  HexCoord edge(0, 0);
+  while (ctx.Map ().IsOnMap (edge + HexCoord (1, 0)))
+    edge += HexCoord (1, 0);
+
+  auto b = buildings.CreateNew ("gated", "", Faction::ANCIENT);
+  b->SetCentre (edge + HexCoord (-5, 0));
+
+  DynObstacles dyn(db, ctx);
+  dyn.AddBuilding (*b);
+  EXPECT_TRUE (dyn.IsGateway (edge));
+  EXPECT_TRUE (dyn.IsGateway (edge + HexCoord (-1, 0)));
+
+  dyn.RemoveBuilding (*b);
+  EXPECT_FALSE (dyn.IsGateway (edge));
+}
+
 } // anonymous namespace
 } // namespace pxd
