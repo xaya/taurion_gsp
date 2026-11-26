@@ -169,6 +169,33 @@ class CombatTargetTest (PXTest):
     })
     assert self.getTargetCharacter ("green") is None
 
+    self.mainLogger.info ("Testing other targets of shorter attacks...")
+    # The chariot's own attack has range 100, and the gun range 5.  While red
+    # is locked on to green, the gun picks green 2 when it comes close.
+    self.changeCharacterVehicle ("red", "chariot", ["lf gun"])
+    hp = {"ma": 100_000, "a": 100_000, "ms": 0, "s": 0}
+    self.setCharactersHP ({nm: hp for nm in ["red", "green", "green 2"]})
+    self.moveCharactersTo ({
+      "red": self.offset,
+      "green": offsetCoord ({"x": 50, "y": 0}, self.offset, False),
+      "green 2": offsetCoord ({"x": 0, "y": -60}, self.offset, False),
+    })
+    self.assertEqual (self.getTargetCharacter ("red"), "green")
+    assert "othertargets" not in self.getCharacters ()["red"].data["combat"]
+    snapshot = self.env.snapshot ()
+    self.moveCharactersTo ({
+      "green 2": offsetCoord ({"x": 3, "y": 0}, self.offset, False),
+    })
+    self.assertEqual (self.getTargetCharacter ("red"), "green")
+    chars = self.getCharacters ()
+    target = {"type": "character", "id": chars["green 2"].getId ()}
+    self.assertEqual (chars["red"].data["combat"]["othertargets"],
+                      [{"range": 5, "target": target}])
+    # A reorg restores the state without it.
+    snapshot.restore ()
+    assert "othertargets" not in self.getCharacters ()["red"].data["combat"]
+    self.assertEqual (self.getTargetCharacter ("red"), "green")
+
 
 if __name__ == "__main__":
   CombatTargetTest ().main ()

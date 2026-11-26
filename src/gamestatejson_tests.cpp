@@ -223,6 +223,12 @@ TEST_F (CharacterJsonTests, Target)
   t.set_id (42);
   t.set_type (proto::TargetId::TYPE_BUILDING);
   c->SetTarget (t);
+  proto::OtherTargets other;
+  auto& e = *other.add_entries ();
+  e.set_range (3);
+  e.mutable_target ()->set_id (7);
+  e.mutable_target ()->set_type (proto::TargetId::TYPE_CHARACTER);
+  c->SetOtherTargets (other);
   c.reset ();
 
   tbl.CreateNew ("domob", Faction::BLUE);
@@ -230,9 +236,26 @@ TEST_F (CharacterJsonTests, Target)
   ExpectStateJson (R"({
     "characters":
       [
-        {"faction": "r", "combat": {"target": {"id": 5, "type": "character"}}},
-        {"faction": "g", "combat": {"target": {"id": 42, "type": "building"}}},
-        {"faction": "b", "combat": {"target": null}}
+        {
+          "faction": "r",
+          "combat":
+            {
+              "target": {"id": 5, "type": "character"},
+              "othertargets": null
+            }
+        },
+        {
+          "faction": "g",
+          "combat":
+            {
+              "target": {"id": 42, "type": "building"},
+              "othertargets":
+                [
+                  {"range": 3, "target": {"id": 7, "type": "character"}}
+                ]
+            }
+        },
+        {"faction": "b", "combat": {"target": null, "othertargets": null}}
       ]
   })");
 }

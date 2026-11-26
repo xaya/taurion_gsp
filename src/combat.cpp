@@ -175,6 +175,41 @@ TargetsInRange (const TargetFinder& targets, const CombatEntity& f,
 }
 
 /**
+ * Returns the base ranges of a fighter's attacks with a range (which are
+ * all against enemies) that are shorter than its longest, in increasing
+ * order.  The attacks of each of them can have their own target.
+ */
+std::set<HexCoord::IntT>
+ShorterRanges (const CombatEntity& f)
+{
+  const auto longest = f.GetAttackRange (false);
+
+  std::set<HexCoord::IntT> res;
+  for (const auto& attack : f.GetCombatData ().attacks ())
+    if (attack.has_range ())
+      {
+        const HexCoord::IntT range = attack.range ();
+        if (range < longest)
+          res.insert (range);
+      }
+
+  return res;
+}
+
+/**
+ * Returns the other target of a fighter for attacks with the given base
+ * range, or null if they have none (and use the main target).
+ */
+const proto::TargetId*
+GetOtherTarget (const CombatEntity& f, const HexCoord::IntT range)
+{
+  for (const auto& entry : f.GetOtherTargets ().entries ())
+    if (static_cast<HexCoord::IntT> (entry.range ()) == range)
+      return &entry.target ();
+  return nullptr;
+}
+
+/**
  * Helper class for performing target finding.  It holds some general
  * context, and also manages parallel processing.
  */
@@ -201,6 +236,14 @@ private:
                            TargetingResult& res) const;
 
   /**
+   * Runs target finding for attacks with a shorter range than the longest,
+   * after SelectNormalTarget.  It finds which of their targets are kept, and
+   * the candidates for those that need a new one.
+   */
+  void SelectOtherTargets (const CombatModifier& mod,
+                           TargetingResult& res) const;
+
+  /**
    * Runs target finding for friendlies in range of a friendly attack, if any.
    * This sets (or unsets) the friendly-targets flag in the result.
    */
@@ -213,6 +256,11 @@ private:
    * the associated TargetingResult.
    */
   TargetingResult SelectTarget (FighterTable::Handle f);
+
+  /**
+   * Sets the other targets from a TargetingResult, after its main target.
+   */
+  void FinaliseOtherTargets (TargetingResult& res);
 
   /**
    * Applies changes specified in a TargetingResult to the contained handle,
@@ -267,6 +315,24 @@ struct TargetFindingProcessor::TargetingResult
    * thus empty).
    */
   bool keepTarget = false;
+
+  /** The other targets that are kept, by their base range.  */
+  std::map<HexCoord::IntT, proto::TargetId> keptOther;
+
+  /**
+   * The base and modified ranges of the attacks that need a new other
+   * target.
+   */
+  std::vector<std::pair<HexCoord::IntT, HexCoord::IntT>> openRanges;
+
+  /**
+   * The closest enemies in the longest of openRanges, if any.  One of them
+   * is picked at random as the other target of all openRanges that reach it.
+   */
+  std::vector<proto::TargetId> otherCandidates;
+
+  /** The distance of otherCandidates.  */
+  HexCoord::IntT otherDistance = 0;
 
   TargetingResult () = default;
 
@@ -325,6 +391,65 @@ TargetFindingProcessor::SelectNormalTarget (const CombatModifier& mod,
 }
 
 void
+TargetFindingProcessor::SelectOtherTargets (const CombatModifier& mod,
+                                            TargetingResult& res) const
+{
+  CHECK (res.keptOther.empty () && res.openRanges.empty ());
+
+  /* Attacks with a shorter range have their own target only while it differs
+     from the main target.  Without a main target, there are none (that is
+     also the case when range effects leave the longest attack no reach at
+     all, even if a shorter one could still reach the fighter's own tile).
+     A fighter confused by mentecon keeps no locks, and all its attacks use
+     the main target.  */
+  if (!res.keepTarget && res.enemyTargets.empty ())
+    return;
+  if (res.f->GetEffects ().mentecon ())
+    return;
+
+  const HexCoord pos = res.f->GetCombatPosition ();
+  const Faction faction = res.f->GetFaction ();
+  for (const auto base : ShorterRanges (*res.f))
+    {
+      const HexCoord::IntT range = ModifiedRange (mod, base);
+
+      /* A locked target is kept as long as it is in range and could still
+         be attacked, also when the main target comes into range.  */
+      const proto::TargetId* old = GetOtherTarget (*res.f, base);
+      if (old != nullptr
+            && targets.IsInRange (*old, pos, range, faction, true, false))
+        {
+          res.keptOther.emplace (base, *old);
+          continue;
+        }
+
+      /* A new main target is among the closest enemies, so that the attacks
+         either reach it or no enemy at all.  Only a locked main target can be
+         out of their range with a closer enemy in it.  */
+      if (res.keepTarget
+            && !targets.IsInRange (res.f->GetTarget (), pos, range,
+                                   faction, true, false))
+        res.openRanges.emplace_back (base, range);
+    }
+
+  if (res.openRanges.empty ())
+    return;
+
+  /* The closest enemies in the longest of the open ranges are also the
+     closest in each of the others that reaches them, and no enemy is in
+     range of those that do not.  */
+  HexCoord::IntT longest = -1;
+  for (const auto& r : res.openRanges)
+    longest = std::max (longest, r.second);
+
+  res.otherCandidates = targets.FindClosest (pos, longest, faction, true, false,
+                                             res.f->GetIdAsTarget ());
+  if (!res.otherCandidates.empty ())
+    res.otherDistance = HexCoord::DistanceL1 (
+        pos, *targets.FindPosition (res.otherCandidates.front ()));
+}
+
+void
 TargetFindingProcessor::SelectFriendlyTargets (const CombatModifier& mod,
                                                TargetingResult& res) const
 {
@@ -372,9 +497,37 @@ TargetFindingProcessor::SelectTarget (FighterTable::Handle f)
   ComputeModifier (*res.f, mod);
 
   SelectNormalTarget (mod, res);
+  SelectOtherTargets (mod, res);
   SelectFriendlyTargets (mod, res);
 
   return res;
+}
+
+void
+TargetFindingProcessor::FinaliseOtherTargets (TargetingResult& res)
+{
+  auto other = std::move (res.keptOther);
+  if (!res.otherCandidates.empty ())
+    {
+      const unsigned ind = rnd.NextInt (res.otherCandidates.size ());
+      for (const auto& r : res.openRanges)
+        if (r.second >= res.otherDistance)
+          other.emplace (r.first, res.otherCandidates[ind]);
+    }
+
+  /* A kept target that has become the main target (when that was picked
+     anew) is not stored twice.  */
+  const TargetKey mainTarget(res.f->GetTarget ());
+  proto::OtherTargets pb;
+  for (const auto& entry : other)
+    if (TargetKey (entry.second) != mainTarget)
+      {
+        auto& e = *pb.add_entries ();
+        e.set_range (entry.first);
+        *e.mutable_target () = entry.second;
+      }
+
+  res.f->SetOtherTargets (pb);
 }
 
 void
@@ -389,6 +542,9 @@ TargetFindingProcessor::Finalise (TargetingResult res)
       const unsigned ind = rnd.NextInt (res.enemyTargets.size ());
       res.f->SetTarget (res.enemyTargets[ind]);
     }
+
+  if (res.f->HasTarget ())
+    FinaliseOtherTargets (res);
 
   res.f->SetFriendlyTargets (res.hasFriendlyTarget);
 }
@@ -437,6 +593,22 @@ namespace
  * RegenerateHP below.
  */
 void RegenerateFighterHP (CombatEntity& f);
+
+/**
+ * A target of a fighter in the damage step, with its position and its
+ * distance from the fighter, if it is still a potential target.
+ */
+struct LocatedTarget
+{
+
+  /** The target, or null if it was not found.  */
+  const proto::TargetId* id = nullptr;
+
+  /** Its position and distance from the fighter, if it was found.  */
+  HexCoord pos;
+  HexCoord::IntT dist = 0;
+
+};
 
 /**
  * Helper class to perform the damage-dealing processing step.
@@ -564,8 +736,8 @@ private:
   void ApplyEffects (const proto::Attack& attack, const CombatEntity& target);
 
   /**
-   * Deals damage for one fighter with a target to the respective target
-   * (or any AoE targets).  Only processes attacks with gain_hp equal to
+   * Deals damage for one fighter with a target to its targets (or any
+   * AoE targets).  Only processes attacks with gain_hp equal to
    * the argument value passed in.
    */
   void DealDamage (CombatEntity& f, bool forGainHp,
@@ -858,25 +1030,33 @@ DamageProcessor::DealDamage (CombatEntity& f, const bool forGainHp,
      to be handled fine.  (In this situation, only friendly attacks will need
      to be processed in the end, which only have area and no range.)
 
-     The stored target may also no longer be a potential target:  a character
+     A stored target may also no longer be a potential target:  a character
      that founds a building enters it during move processing, before damage.
-     Then the fighter has no target this round (attacks centred on itself
-     still hit), and gets a new one in the next target selection.  */
-  bool hasTarget = false;
-  HexCoord targetPos;
-  HexCoord::IntT targetDist = std::numeric_limits<HexCoord::IntT>::max ();
-  if (f.HasTarget ())
+     Then the attacks using it do not fire this round (attacks centred on
+     the fighter itself still hit), and it gets a new one in the next target
+     selection.  */
+  const auto locate = [this, &pos] (const proto::TargetId& id)
     {
-      const HexCoord* found = targets.FindPosition (f.GetTarget ());
+      LocatedTarget res;
+      const HexCoord* found = targets.FindPosition (id);
       if (found != nullptr)
         {
-          hasTarget = true;
-          targetPos = *found;
-          targetDist = HexCoord::DistanceL1 (pos, targetPos);
+          res.id = &id;
+          res.pos = *found;
+          res.dist = HexCoord::DistanceL1 (pos, res.pos);
         }
-    }
+      return res;
+    };
+
+  LocatedTarget mainTarget;
+  if (f.HasTarget ())
+    mainTarget = locate (f.GetTarget ());
   else
     CHECK (f.HasFriendlyTargets ());
+
+  std::map<HexCoord::IntT, LocatedTarget> otherTargets;
+  for (const auto& entry : f.GetOtherTargets ().entries ())
+    otherTargets.emplace (entry.range (), locate (entry.target ()));
 
   const auto& mod = modifiers.at (f.GetIdAsTarget ());
 
@@ -909,14 +1089,24 @@ DamageProcessor::DealDamage (CombatEntity& f, const bool forGainHp,
       if (attack.gain_hp () != forGainHp)
         continue;
 
-      /* If this is not a centred-on-attacker AoE attack, check that
-         the target is actually within range of this attack (and that
-         we actually have a target).  */
+      /* If this is not a centred-on-attacker AoE attack, it needs a target
+         within its range.  That is the other target of its range if it has
+         one that still is, and otherwise the main target.  */
+      const LocatedTarget* target = nullptr;
       if (attack.has_range ())
         {
-          if (!hasTarget)
-            continue;
-          if (targetDist > ModifiedRange (mod, attack.range ()))
+          const auto range = ModifiedRange (mod, attack.range ());
+          const auto inRange = [range] (const LocatedTarget& t)
+            {
+              return t.id != nullptr && t.dist <= range;
+            };
+
+          const auto mit = otherTargets.find (attack.range ());
+          if (mit != otherTargets.end () && inRange (mit->second))
+            target = &mit->second;
+          else if (inRange (mainTarget))
+            target = &mainTarget;
+          else
             continue;
         }
 
@@ -929,8 +1119,8 @@ DamageProcessor::DealDamage (CombatEntity& f, const bool forGainHp,
           HexCoord centre;
           if (attack.has_range ())
             {
-              CHECK (hasTarget);
-              centre = targetPos;
+              CHECK (target != nullptr);
+              centre = target->pos;
             }
           else
             centre = pos;
@@ -949,17 +1139,17 @@ DamageProcessor::DealDamage (CombatEntity& f, const bool forGainHp,
         }
       else
         {
-          CHECK (hasTarget);
+          CHECK (target != nullptr);
           CHECK (!attack.friendlies ());
 
           /* A target that founded a building between superblocks may also
              have left it again before this damage step, into a no-combat
              zone near the building.  It cannot be hit there (while area
              attacks centred on it still hit what is around it).  */
-          if (ctx.Map ().SafeZones ().IsNoCombat (targetPos))
+          if (ctx.Map ().SafeZones ().IsNoCombat (target->pos))
             continue;
 
-          auto& t = Get (TargetKey (f.GetTarget ()));
+          auto& t = Get (TargetKey (*target->id));
           ApplyDamage (dmg, f, attack, mod, t, newDead);
           ApplyEffects (attack, t);
         }

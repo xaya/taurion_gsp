@@ -190,6 +190,34 @@ TEST_F (CharacterTests, Target)
   EXPECT_FALSE (tbl.GetById (id)->HasTarget ());
 }
 
+TEST_F (CharacterTests, OtherTargets)
+{
+  auto h = tbl.CreateNew ("domob", Faction::RED);
+  const auto id = h->GetId ();
+  proto::TargetId t;
+  t.set_id (42);
+  h->SetTarget (t);
+  h.reset ();
+
+  h = tbl.GetById (id);
+  EXPECT_EQ (h->GetOtherTargets ().entries_size (), 0);
+  proto::OtherTargets other;
+  auto& e = *other.add_entries ();
+  e.set_range (3);
+  e.mutable_target ()->set_id (5);
+  h->SetOtherTargets (other);
+  h.reset ();
+
+  h = tbl.GetById (id);
+  ASSERT_EQ (h->GetOtherTargets ().entries_size (), 1);
+  EXPECT_EQ (h->GetOtherTargets ().entries (0).range (), 3);
+  EXPECT_EQ (h->GetOtherTargets ().entries (0).target ().id (), 5);
+  h->ClearTarget ();
+  h.reset ();
+
+  EXPECT_EQ (tbl.GetById (id)->GetOtherTargets ().entries_size (), 0);
+}
+
 TEST_F (CharacterTests, FriendlyTargets)
 {
   auto c = tbl.CreateNew ("domob", Faction::RED);

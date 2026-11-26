@@ -18,7 +18,11 @@
 
 #include "combat.hpp"
 
+#include <google/protobuf/util/message_differencer.h>
+
 #include <glog/logging.h>
+
+using google::protobuf::util::MessageDifferencer;
 
 namespace pxd
 {
@@ -33,6 +37,7 @@ CombatEntity::CombatEntity (Database& d)
   hp.SetToDefault ();
   regenData.SetToDefault ();
   target.SetToDefault ();
+  otherTargets.SetToDefault ();
 }
 
 void
@@ -72,6 +77,14 @@ CombatEntity::SetFields (Database::RowWriter& row, const bool all) const
       else
         row.SetNull ("target");
     }
+
+  if (all || otherTargets.IsDirty ())
+    {
+      if (otherTargets.Get ().entries_size () > 0)
+        row.SetProto ("othertargets", otherTargets);
+      else
+        row.SetNull ("othertargets");
+    }
 }
 
 bool
@@ -97,6 +110,10 @@ CombatEntity::Validate () const
   if (!regenData.IsDirty () && !hp.IsDirty ())
     CHECK_EQ (oldCanRegen, ComputeCanRegen (hp.Get (), regenData.Get ()));
 
+  if (!HasTarget ())
+    CHECK_EQ (otherTargets.Get ().entries_size (), 0)
+        << "Other targets without a target";
+
 #endif // ENABLE_SLOW_ASSERTS
 }
 
@@ -112,6 +129,7 @@ CombatEntity::ClearTarget ()
 {
   if (HasTarget ())
     target.Mutable ().Clear ();
+  SetOtherTargets (proto::OtherTargets ());
 }
 
 void
@@ -122,6 +140,17 @@ CombatEntity::SetTarget (const proto::TargetId& t)
         || target.Get ().id () != t.id ())
     target.Mutable () = t;
   CHECK (HasTarget ());
+}
+
+void
+CombatEntity::SetOtherTargets (const proto::OtherTargets& t)
+{
+  CHECK (HasTarget () || t.entries_size () == 0)
+      << "Setting other targets without a target";
+
+  /* As with the target, they are only written when they change.  */
+  if (!MessageDifferencer::Equals (otherTargets.Get (), t))
+    otherTargets.Mutable () = t;
 }
 
 HexCoord::IntT

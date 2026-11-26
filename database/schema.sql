@@ -96,6 +96,11 @@ CREATE TABLE IF NOT EXISTS `characters` (
   -- as we later on only process attacks of characters with a selected target.
   `target` BLOB NULL,
 
+  -- The targets of attacks with a shorter range, where they are not `target`,
+  -- as a serialised OtherTargets proto, or NULL if there are none.  This is
+  -- only set while `target` is.
+  `othertargets` BLOB NULL,
+
   -- Whether or not friendlies are in range of a friendly attack, which
   -- indicates that this character needs to be processed for "dealing damage"
   -- next time a block is processed.
@@ -203,6 +208,9 @@ CREATE TABLE IF NOT EXISTS `buildings` (
 
   -- The attacked target (if any), as a serialised TargetId proto.
   `target` BLOB NULL,
+
+  -- The targets of attacks with a shorter range (as for characters).
+  `othertargets` BLOB NULL,
 
   -- Whether or not friendlies are in range and processing needs to happen.
   `friendlytargets` INTEGER NOT NULL,
