@@ -38,6 +38,11 @@ template <typename T>
   else
     target = res.template GetProto<typename T::target> ();
 
+  if (res.template IsNull<typename T::othertargets> ())
+    otherTargets.SetToDefault ();
+  else
+    otherTargets = res.template GetProto<typename T::othertargets> ();
+
   if (res.template IsNull<typename T::attackrange> ())
     oldAttackRange = NO_ATTACKS;
   else

@@ -55,6 +55,31 @@ message TargetId
 }
 
 /**
+ * The targets of a fighter's attacks that have a shorter range than its
+ * longest, where they are not its main target.  All attacks with the same
+ * base range have the same target.
+ */
+message OtherTargets
+{
+
+  /** The target of the attacks with one base range.  */
+  message Entry
+  {
+
+    /** The base range of the attacks.  */
+    optional uint32 range = 1;
+
+    /** Their target.  */
+    optional TargetId target = 2;
+
+  }
+
+  /** The entries in increasing order of their range.  */
+  repeated Entry entries = 1;
+
+}
+
+/**
  * Modifications done to a combat entity's stats due to attacks (e.g.
  * slowing or range reduction).
  */

@@ -42,6 +42,7 @@ struct ResultWithCombat : public Database::ResultType
   RESULT_COLUMN (int64_t, attackrange, 57);
   RESULT_COLUMN (int64_t, friendlyrange, 58);
   RESULT_COLUMN (bool, canregen, 59);
+  RESULT_COLUMN (pxd::proto::OtherTargets, othertargets, 60);
 };
 
 /**
@@ -80,6 +81,12 @@ private:
    * no fields set.
    */
   LazyProto<proto::TargetId> target;
+
+  /**
+   * The targets of attacks with a shorter range, where they are not the
+   * main target.  The underlying column is NULL if there are none.
+   */
+  LazyProto<proto::OtherTargets> otherTargets;
 
   /**
    * Whether or not friendly targets are in range.  This is set accordingly
@@ -158,7 +165,8 @@ protected:
   bool
   IsDirtyFields () const
   {
-    return isDirty || hp.IsDirty () || target.IsDirty ();
+    return isDirty || hp.IsDirty () || target.IsDirty ()
+              || otherTargets.IsDirty ();
   }
 
   /**
@@ -229,8 +237,23 @@ public:
 
   const proto::TargetId& GetTarget () const;
 
+  /**
+   * Clears the target, and with it the other targets.
+   */
   void ClearTarget ();
+
   void SetTarget (const proto::TargetId& t);
+
+  const proto::OtherTargets&
+  GetOtherTargets () const
+  {
+    return otherTargets.Get ();
+  }
+
+  /**
+   * Sets the other targets.  They must only be set while there is a target.
+   */
+  void SetOtherTargets (const proto::OtherTargets& t);
 
   bool
   HasFriendlyTargets () const

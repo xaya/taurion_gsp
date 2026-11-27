@@ -154,12 +154,23 @@ TEST_F (BuildingTests, CombatFields)
   ASSERT_TRUE (h->HasTarget ());
   EXPECT_EQ (h->GetTarget ().id (), 50);
   EXPECT_TRUE (h->HasFriendlyTargets ());
+  proto::OtherTargets other;
+  auto& e = *other.add_entries ();
+  e.set_range (3);
+  e.mutable_target ()->set_id (5);
+  h->SetOtherTargets (other);
+  h.reset ();
+
+  h = tbl.GetById (id);
+  ASSERT_EQ (h->GetOtherTargets ().entries_size (), 1);
+  EXPECT_EQ (h->GetOtherTargets ().entries (0).target ().id (), 5);
   h->ClearTarget ();
   h->SetFriendlyTargets (false);
   h.reset ();
 
   h = tbl.GetById (id);
   EXPECT_FALSE (h->HasTarget ());
+  EXPECT_EQ (h->GetOtherTargets ().entries_size (), 0);
   EXPECT_FALSE (h->HasFriendlyTargets ());
 }
 

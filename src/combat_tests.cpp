@@ -56,6 +56,7 @@ namespace
 using testing::ElementsAre;
 using testing::ElementsAreArray;
 using testing::IsEmpty;
+using testing::Pair;
 
 /** A coordinate that is a safe zone.  */
 constexpr HexCoord SAFE(2'042, 10);
@@ -152,6 +153,37 @@ protected:
     boost.mutable_damage ()->set_percent (boostPercent);
 
     *c.MutableProto ().mutable_combat_data ()->add_low_hp_boosts () = boost;
+  }
+
+  /**
+   * Returns the other targets of a character, as pairs of base range and
+   * character ID.
+   */
+  std::vector<std::pair<unsigned, Database::IdT>>
+  OtherTargetsOf (const Database::IdT id)
+  {
+    const auto c = characters.GetById (id);
+    std::vector<std::pair<unsigned, Database::IdT>> res;
+    for (const auto& e : c->GetOtherTargets ().entries ())
+      {
+        EXPECT_EQ (e.target ().type (), proto::TargetId::TYPE_CHARACTER);
+        res.emplace_back (e.range (), e.target ().id ());
+      }
+    return res;
+  }
+
+  /**
+   * Adds an enemy of the red fighters (without attacks) at the given
+   * position, and returns its ID.
+   */
+  Database::IdT
+  AddEnemy (const HexCoord& pos)
+  {
+    auto c = characters.CreateNew ("green", Faction::GREEN);
+    c->SetPosition (pos);
+    NoAttacks (*c);
+    SetHp (*c, 0, 100, 0, 100);
+    return c->GetId ();
   }
 
   /**
@@ -336,6 +368,296 @@ TEST_F (TargetSelectionTests, ClosestTarget)
     }
 }
 
+TEST_F (TargetSelectionTests, KeepsTarget)
+{
+  auto c = characters.CreateNew ("domob", Faction::RED);
+  const auto idFighter = c->GetId ();
+  c->SetPosition (HexCoord (0, 0));
+  AddAttack (*c).set_range (10);
+  c.reset ();
+
+  c = characters.CreateNew ("domob", Faction::GREEN);
+  const auto idFirst = c->GetId ();
+  c->SetPosition (HexCoord (5, 0));
+  NoAttacks (*c);
+  c.reset ();
+
+  const auto targetId = [&] ()
+    {
+      FindCombatTargets (db, rnd, ctx);
+      return characters.GetById (idFighter)->GetTarget ().id ();
+    };
+  ASSERT_EQ (targetId (), idFirst);
+
+  /* A closer enemy does not make the fighter switch.  */
+  c = characters.CreateNew ("domob", Faction::GREEN);
+  const auto idSecond = c->GetId ();
+  c->SetPosition (HexCoord (1, 0));
+  NoAttacks (*c);
+  c.reset ();
+  EXPECT_EQ (targetId (), idFirst);
+
+  /* Keeping the target needs no random number.  */
+  auto branched = rnd.BranchOff ("branch");
+  FindCombatTargets (db, branched, ctx);
+  ExpectRandomRolls (branched, rnd.BranchOff ("branch"), 0);
+  EXPECT_EQ (characters.GetById (idFighter)->GetTarget ().id (), idFirst);
+
+  /* Once the target is out of range, the fighter picks a new one.  */
+  characters.GetById (idFirst)->SetPosition (HexCoord (11, 0));
+  EXPECT_EQ (targetId (), idSecond);
+}
+
+TEST_F (TargetSelectionTests, MenteconBreaksLock)
+{
+  auto c = characters.CreateNew ("red", Faction::RED);
+  const auto idFighter = c->GetId ();
+  c->SetPosition (HexCoord (0, 0));
+  AddAttack (*c).set_range (10);
+  c.reset ();
+
+  c = characters.CreateNew ("green", Faction::GREEN);
+  const auto idEnemy = c->GetId ();
+  c->SetPosition (HexCoord (5, 0));
+  NoAttacks (*c);
+  c.reset ();
+
+  const auto targetId = [&] ()
+    {
+      FindCombatTargets (db, rnd, ctx);
+      return characters.GetById (idFighter)->GetTarget ().id ();
+    };
+  ASSERT_EQ (targetId (), idEnemy);
+
+  /* While confused, the fighter picks the closest target in every block,
+     including friendlies.  */
+  c = characters.CreateNew ("red", Faction::RED);
+  const auto idFriendly = c->GetId ();
+  c->SetPosition (HexCoord (1, 0));
+  NoAttacks (*c);
+  c.reset ();
+  characters.GetById (idFighter)->MutableEffects ().set_mentecon (true);
+  EXPECT_EQ (targetId (), idFriendly);
+
+  characters.GetById (idFriendly)->SetPosition (HexCoord (8, 0));
+  EXPECT_EQ (targetId (), idEnemy);
+  characters.GetById (idFriendly)->SetPosition (HexCoord (1, 0));
+  EXPECT_EQ (targetId (), idFriendly);
+
+  /* Once the effect is gone, the friendly is no target any more, and the
+     fighter locks on to the enemy again.  */
+  characters.GetById (idFighter)->MutableEffects ().clear_mentecon ();
+  EXPECT_EQ (targetId (), idEnemy);
+  c = characters.CreateNew ("green", Faction::GREEN);
+  c->SetPosition (HexCoord (2, 0));
+  NoAttacks (*c);
+  c.reset ();
+  EXPECT_EQ (targetId (), idEnemy);
+}
+
+TEST_F (TargetSelectionTests, OtherTargets)
+{
+  /* While a fighter is locked on to a target out of range of its shorter
+     attacks, those pick their own among the closest enemies in their range,
+     and keep it while they can.  */
+  auto c = characters.CreateNew ("red", Faction::RED);
+  const auto idFighter = c->GetId ();
+  c->SetPosition (HexCoord (0, 0));
+  AddAttack (*c).set_range (10);
+  AddAttack (*c).set_range (3);
+  AddAttack (*c).set_range (3);
+  c.reset ();
+
+  const auto mainTarget = [&] ()
+    {
+      return characters.GetById (idFighter)->GetTarget ().id ();
+    };
+
+  const auto idMain = AddEnemy (HexCoord (8, 0));
+  FindCombatTargets (db, rnd, ctx);
+  ASSERT_EQ (mainTarget (), idMain);
+  EXPECT_THAT (OtherTargetsOf (idFighter), IsEmpty ());
+
+  const auto idOther = AddEnemy (HexCoord (2, 0));
+  FindCombatTargets (db, rnd, ctx);
+  EXPECT_EQ (mainTarget (), idMain);
+  EXPECT_THAT (OtherTargetsOf (idFighter), ElementsAre (Pair (3, idOther)));
+
+  /* Keeping both needs no random number, also with a closer enemy.  */
+  const auto idCloser = AddEnemy (HexCoord (1, 0));
+  auto branched = rnd.BranchOff ("branch");
+  FindCombatTargets (db, branched, ctx);
+  ExpectRandomRolls (branched, rnd.BranchOff ("branch"), 0);
+  EXPECT_EQ (mainTarget (), idMain);
+  EXPECT_THAT (OtherTargetsOf (idFighter), ElementsAre (Pair (3, idOther)));
+
+  characters.GetById (idOther)->SetPosition (HexCoord (4, 0));
+  FindCombatTargets (db, rnd, ctx);
+  EXPECT_EQ (mainTarget (), idMain);
+  EXPECT_THAT (OtherTargetsOf (idFighter), ElementsAre (Pair (3, idCloser)));
+
+  characters.GetById (idCloser)->SetPosition (HexCoord (5, 0));
+  FindCombatTargets (db, rnd, ctx);
+  EXPECT_EQ (mainTarget (), idMain);
+  EXPECT_THAT (OtherTargetsOf (idFighter), IsEmpty ());
+}
+
+TEST_F (TargetSelectionTests, OtherTargetKeptOrDropped)
+{
+  /* An other target is kept also when the main target comes into its range.
+     When it is lost, the attacks use the main target again, and when the main
+     target is picked anew, it is not stored twice.  */
+  auto c = characters.CreateNew ("red", Faction::RED);
+  const auto idFighter = c->GetId ();
+  c->SetPosition (HexCoord (0, 0));
+  AddAttack (*c).set_range (10);
+  AddAttack (*c).set_range (3);
+  c.reset ();
+
+  const auto idMain = AddEnemy (HexCoord (8, 0));
+  FindCombatTargets (db, rnd, ctx);
+  const auto idOther = AddEnemy (HexCoord (2, 0));
+  FindCombatTargets (db, rnd, ctx);
+  ASSERT_THAT (OtherTargetsOf (idFighter), ElementsAre (Pair (3, idOther)));
+
+  characters.GetById (idMain)->SetPosition (HexCoord (1, 0));
+  FindCombatTargets (db, rnd, ctx);
+  EXPECT_EQ (characters.GetById (idFighter)->GetTarget ().id (), idMain);
+  EXPECT_THAT (OtherTargetsOf (idFighter), ElementsAre (Pair (3, idOther)));
+
+  characters.GetById (idOther)->SetPosition (HexCoord (5, 0));
+  FindCombatTargets (db, rnd, ctx);
+  EXPECT_EQ (characters.GetById (idFighter)->GetTarget ().id (), idMain);
+  EXPECT_THAT (OtherTargetsOf (idFighter), IsEmpty ());
+
+  characters.GetById (idOther)->SetPosition (HexCoord (2, 0));
+  characters.GetById (idMain)->SetPosition (HexCoord (8, 0));
+  FindCombatTargets (db, rnd, ctx);
+  ASSERT_THAT (OtherTargetsOf (idFighter), ElementsAre (Pair (3, idOther)));
+  characters.GetById (idMain)->SetPosition (HexCoord (11, 0));
+  FindCombatTargets (db, rnd, ctx);
+  EXPECT_EQ (characters.GetById (idFighter)->GetTarget ().id (), idOther);
+  EXPECT_THAT (OtherTargetsOf (idFighter), IsEmpty ());
+}
+
+TEST_F (TargetSelectionTests, OtherTargetsShared)
+{
+  /* All attacks with a new other target get the same one, if it is in their
+     range, with a single random number.  */
+  auto c = characters.CreateNew ("red", Faction::RED);
+  const auto idFighter = c->GetId ();
+  c->SetPosition (HexCoord (0, 0));
+  AddAttack (*c).set_range (10);
+  AddAttack (*c).set_range (5);
+  AddAttack (*c).set_range (3);
+  c.reset ();
+
+  AddEnemy (HexCoord (8, 0));
+  FindCombatTargets (db, rnd, ctx);
+
+  const auto idFour = AddEnemy (HexCoord (4, 0));
+  FindCombatTargets (db, rnd, ctx);
+  EXPECT_THAT (OtherTargetsOf (idFighter), ElementsAre (Pair (5, idFour)));
+
+  characters.GetById (idFour)->SetPosition (HexCoord (2, 0));
+  characters.GetById (idFighter)->SetOtherTargets (proto::OtherTargets ());
+  auto branched = rnd.BranchOff ("branch");
+  FindCombatTargets (db, branched, ctx);
+  ExpectRandomRolls (branched, rnd.BranchOff ("branch"), 1);
+  EXPECT_THAT (OtherTargetsOf (idFighter),
+               ElementsAre (Pair (3, idFour), Pair (5, idFour)));
+}
+
+TEST_F (TargetSelectionTests, OtherTargetRandomisation)
+{
+  auto c = characters.CreateNew ("red", Faction::RED);
+  const auto idFighter = c->GetId ();
+  c->SetPosition (HexCoord (0, 0));
+  AddAttack (*c).set_range (10);
+  AddAttack (*c).set_range (3);
+  c.reset ();
+
+  AddEnemy (HexCoord (8, 0));
+  FindCombatTargets (db, rnd, ctx);
+
+  const std::set<Database::IdT> closest
+      = {AddEnemy (HexCoord (2, 0)), AddEnemy (HexCoord (0, 2))};
+  AddEnemy (HexCoord (3, 0));
+
+  std::set<Database::IdT> picked;
+  for (unsigned i = 0; i < 100; ++i)
+    {
+      characters.GetById (idFighter)->SetOtherTargets (proto::OtherTargets ());
+      FindCombatTargets (db, rnd, ctx);
+      const auto other = OtherTargetsOf (idFighter);
+      ASSERT_EQ (other.size (), 1);
+      picked.insert (other[0].second);
+    }
+  EXPECT_EQ (picked, closest);
+}
+
+TEST_F (TargetSelectionTests, OtherTargetsMentecon)
+{
+  /* A fighter confused by mentecon has no other targets, since its main
+     target is the closest of all.  */
+  auto c = characters.CreateNew ("red", Faction::RED);
+  const auto idFighter = c->GetId ();
+  c->SetPosition (HexCoord (0, 0));
+  AddAttack (*c).set_range (10);
+  AddAttack (*c).set_range (3);
+  c.reset ();
+
+  AddEnemy (HexCoord (8, 0));
+  FindCombatTargets (db, rnd, ctx);
+  const auto idOther = AddEnemy (HexCoord (2, 0));
+  FindCombatTargets (db, rnd, ctx);
+  ASSERT_THAT (OtherTargetsOf (idFighter), ElementsAre (Pair (3, idOther)));
+
+  characters.GetById (idFighter)->MutableEffects ().set_mentecon (true);
+  FindCombatTargets (db, rnd, ctx);
+  EXPECT_EQ (characters.GetById (idFighter)->GetTarget ().id (), idOther);
+  EXPECT_THAT (OtherTargetsOf (idFighter), IsEmpty ());
+}
+
+TEST_F (TargetSelectionTests, OtherTargetsWithSelfCentredArea)
+{
+  /* The main target is locked by the longest attack or area, so that the
+     attacks of a single range can have their own target as well.  */
+  auto c = characters.CreateNew ("red", Faction::RED);
+  const auto idFighter = c->GetId ();
+  c->SetPosition (HexCoord (0, 0));
+  AddAttack (*c).set_area (10);
+  AddAttack (*c).set_range (3);
+  c.reset ();
+
+  const auto idMain = AddEnemy (HexCoord (8, 0));
+  FindCombatTargets (db, rnd, ctx);
+  const auto idOther = AddEnemy (HexCoord (2, 0));
+  FindCombatTargets (db, rnd, ctx);
+  EXPECT_EQ (characters.GetById (idFighter)->GetTarget ().id (), idMain);
+  EXPECT_THAT (OtherTargetsOf (idFighter), ElementsAre (Pair (3, idOther)));
+}
+
+TEST_F (TargetSelectionTests, LongestAttackWithoutReach)
+{
+  /* Strong range reductions can leave the longest attack no reach at all,
+     while a shorter one still reaches the fighter's own tile.  The fighter
+     has no target then (as before), and thus no other target either.  */
+  auto c = characters.CreateNew ("red", Faction::RED);
+  const auto idFighter = c->GetId ();
+  c->SetPosition (HexCoord (0, 0));
+  c->MutableEffects ().mutable_range ()->set_percent (-120);
+  AddAttack (*c).set_range (6);
+  AddAttack (*c).set_range (4);
+  c.reset ();
+
+  AddEnemy (HexCoord (0, 0));
+  FindCombatTargets (db, rnd, ctx);
+  c = characters.GetById (idFighter);
+  EXPECT_FALSE (c->HasTarget ());
+  EXPECT_THAT (c->GetOtherTargets ().entries (), IsEmpty ());
+}
+
 TEST_F (TargetSelectionTests, ZeroRange)
 {
   auto c = characters.CreateNew ("domob", Faction::RED);
@@ -437,6 +759,11 @@ TEST_F (TargetSelectionTests, Mentecon)
                   ->HasFriendlyTargets ());
   EXPECT_EQ (characters.GetById (idEnemy)->GetTarget ().id (),
              idEnemyAsFriendlyTarget);
+
+  /* Without the mentecon, the friendly is no target any more.  */
+  characters.GetById (idTargetsFriendly)->MutableEffects ().clear_mentecon ();
+  FindCombatTargets (db, rnd, ctx);
+  EXPECT_FALSE (characters.GetById (idTargetsFriendly)->HasTarget ());
 }
 
 TEST_F (TargetSelectionTests, WithBuildings)
@@ -636,6 +963,9 @@ TEST_F (TargetSelectionTests, Randomisation)
       ASSERT_NE (mit, targetMap.end ());
       ++cnt[mit->second];
 
+      /* Without a target, the next round picks a new one rather than
+         keeping this.  */
+      c->ClearTarget ();
       c.reset ();
     }
 
@@ -1332,6 +1662,91 @@ TEST_F (DealDamageTests, TargetInNoCombatZone)
   EXPECT_EQ (characters.GetById (idAttacker)->GetTarget ().id (), idOther);
 }
 
+TEST_F (DealDamageTests, OtherTargets)
+{
+  /* Attacks with a shorter range hit their other target, and the others the
+     main target.  Both victims get the fighter on their damage list.  */
+  auto c = characters.CreateNew ("red", Faction::RED);
+  const auto idFighter = c->GetId ();
+  c->SetPosition (HexCoord (0, 0));
+  AddAttack (*c, 10, 1, 1);
+  AddAttack (*c, 3, 2, 2);
+  AddAttack (*c, 3, 2, 2);
+  AddAttack (*c, 3, 1, 1).set_area (1);
+  c.reset ();
+
+  const auto idMain = AddEnemy (HexCoord (8, 0));
+  FindCombatTargets (db, rnd, ctx);
+  const auto idOther = AddEnemy (HexCoord (2, 0));
+  const auto idNextToOther = AddEnemy (HexCoord (2, 1));
+
+  FindTargetsAndDamage ();
+  ASSERT_EQ (characters.GetById (idFighter)->GetTarget ().id (), idMain);
+  ASSERT_THAT (OtherTargetsOf (idFighter), ElementsAre (Pair (3, idOther)));
+  EXPECT_EQ (characters.GetById (idMain)->GetHP ().armour (), 99);
+  EXPECT_EQ (characters.GetById (idOther)->GetHP ().armour (), 95);
+  EXPECT_EQ (characters.GetById (idNextToOther)->GetHP ().armour (), 99);
+
+  for (const auto id : {idMain, idOther, idNextToOther})
+    EXPECT_THAT (dl.GetAttackers (id), ElementsAre (idFighter));
+}
+
+TEST_F (DealDamageTests, OneTargetLost)
+{
+  /* A target that cannot be attacked any more in the damage step does not
+     keep the attacks of the other from hitting theirs.  When the other
+     target is lost, its attacks hit the main target if it is in range.  */
+  auto c = characters.CreateNew ("red", Faction::RED);
+  const auto idFighter = c->GetId ();
+  c->SetPosition (HexCoord (0, 0));
+  AddAttack (*c, 10, 1, 1);
+  AddAttack (*c, 3, 2, 2);
+  c.reset ();
+
+  const auto idMain = AddEnemy (HexCoord (3, 0));
+  const auto idOther = AddEnemy (HexCoord (2, 0));
+  const auto setTargets = [&] ()
+    {
+      auto h = characters.GetById (idFighter);
+      proto::TargetId t;
+      t.set_type (proto::TargetId::TYPE_CHARACTER);
+      t.set_id (idMain);
+      h->SetTarget (t);
+
+      proto::OtherTargets other;
+      auto& e = *other.add_entries ();
+      e.set_range (3);
+      t.set_id (idOther);
+      *e.mutable_target () = t;
+      h->SetOtherTargets (other);
+    };
+  const auto armour = [this] (const Database::IdT id)
+    {
+      return characters.GetById (id)->GetHP ().armour ();
+    };
+
+  setTargets ();
+  characters.GetById (idMain)->SetBuildingId (42);
+  DealCombatDamage (db, dl, rnd, ctx, regenerated);
+  EXPECT_EQ (armour (idMain), 100);
+  EXPECT_EQ (armour (idOther), 98);
+
+  characters.GetById (idMain)->SetPosition (HexCoord (3, 0));
+  setTargets ();
+  characters.GetById (idOther)->SetBuildingId (42);
+  DealCombatDamage (db, dl, rnd, ctx, regenerated);
+  EXPECT_EQ (armour (idMain), 97);
+  EXPECT_EQ (armour (idOther), 98);
+
+  characters.GetById (idOther)->SetPosition (HexCoord (2, 0));
+  characters.GetById (idMain)->SetPosition (HexCoord (4, 0));
+  setTargets ();
+  characters.GetById (idOther)->SetPosition (HexCoord (5, 0));
+  DealCombatDamage (db, dl, rnd, ctx, regenerated);
+  EXPECT_EQ (armour (idMain), 96);
+  EXPECT_EQ (armour (idOther), 98);
+}
+
 TEST_F (DealDamageTests, ReceivedDamageModifier)
 {
   auto c = characters.CreateNew ("domob", Faction::RED);
@@ -1831,6 +2246,31 @@ TEST_F (GainHpTests, Basic)
   c = characters.GetById (idAttacker);
   EXPECT_EQ (c->GetHP ().shield (), 13);
   EXPECT_EQ (c->GetHP ().armour (), 10);
+}
+
+TEST_F (GainHpTests, OtherTargets)
+{
+  /* Syphons with different ranges drain the main and the other target in
+     the same round, and the attacker gains what both drained.  */
+  auto c = characters.CreateNew ("red", Faction::RED);
+  const auto idAttacker = c->GetId ();
+  c->SetPosition (HexCoord (0, 0));
+  SetHp (*c, 10, 10, 100, 100);
+  AddAttack (*c, 10, 5, 5).set_gain_hp (true);
+  AddAttack (*c, 3, 7, 7).set_gain_hp (true);
+  c.reset ();
+
+  const auto idMain = AddEnemy (HexCoord (8, 0));
+  characters.GetById (idMain)->MutableHP ().set_shield (50);
+  FindCombatTargets (db, rnd, ctx);
+  const auto idOther = AddEnemy (HexCoord (2, 0));
+  characters.GetById (idOther)->MutableHP ().set_shield (50);
+
+  FindTargetsAndDamage ();
+  ASSERT_THAT (OtherTargetsOf (idAttacker), ElementsAre (Pair (3, idOther)));
+  EXPECT_EQ (characters.GetById (idAttacker)->GetHP ().shield (), 22);
+  EXPECT_EQ (characters.GetById (idMain)->GetHP ().shield (), 45);
+  EXPECT_EQ (characters.GetById (idOther)->GetHP ().shield (), 43);
 }
 
 TEST_F (GainHpTests, CappedAtMax)

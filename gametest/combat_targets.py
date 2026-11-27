@@ -76,6 +76,18 @@ class CombatTargetTest (PXTest):
     })
 
     self.mainLogger.info ("Testing randomised target selection...")
+    # Red approaches along the x axis, where it is at the same distance from
+    # both greens, so that it picks one of them at random once it gets in
+    # range (and keeps that target afterwards).  Each roll thus starts from
+    # the block before.
+    self.moveCharactersTo ({
+      "red": offsetCoord ({"x": 25, "y": 0}, self.offset, False),
+    })
+    self.getCharacters ()["red"].moveTowards (
+        offsetCoord ({"x": 1, "y": 0}, self.offset, False))
+    while self.getCharacters ()["red"].getPosition ()["x"] > 13:
+      self.generate (1)
+    assert self.getTargetCharacter ("red") is None
     cnts = {"green": 0, "green 2": 0}
     rolls = 10
     snapshot = self.env.snapshot ()
@@ -156,6 +168,33 @@ class CombatTargetTest (PXTest):
       "red": {"x": 2042, "y": 10},
     })
     assert self.getTargetCharacter ("green") is None
+
+    self.mainLogger.info ("Testing other targets of shorter attacks...")
+    # The chariot's own attack has range 100, and the gun range 5.  While red
+    # is locked on to green, the gun picks green 2 when it comes close.
+    self.changeCharacterVehicle ("red", "chariot", ["lf gun"])
+    hp = {"ma": 100_000, "a": 100_000, "ms": 0, "s": 0}
+    self.setCharactersHP ({nm: hp for nm in ["red", "green", "green 2"]})
+    self.moveCharactersTo ({
+      "red": self.offset,
+      "green": offsetCoord ({"x": 50, "y": 0}, self.offset, False),
+      "green 2": offsetCoord ({"x": 0, "y": -60}, self.offset, False),
+    })
+    self.assertEqual (self.getTargetCharacter ("red"), "green")
+    assert "othertargets" not in self.getCharacters ()["red"].data["combat"]
+    snapshot = self.env.snapshot ()
+    self.moveCharactersTo ({
+      "green 2": offsetCoord ({"x": 3, "y": 0}, self.offset, False),
+    })
+    self.assertEqual (self.getTargetCharacter ("red"), "green")
+    chars = self.getCharacters ()
+    target = {"type": "character", "id": chars["green 2"].getId ()}
+    self.assertEqual (chars["red"].data["combat"]["othertargets"],
+                      [{"range": 5, "target": target}])
+    # A reorg restores the state without it.
+    snapshot.restore ()
+    assert "othertargets" not in self.getCharacters ()["red"].data["combat"]
+    self.assertEqual (self.getTargetCharacter ("red"), "green")
 
 
 if __name__ == "__main__":
