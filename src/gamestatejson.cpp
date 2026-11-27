@@ -172,6 +172,17 @@ GetCombatJsonObject (const CombatEntity& h)
   if (h.HasTarget ())
     res["target"] = TargetIdToJson (h.GetTarget ());
 
+  Json::Value other(Json::arrayValue);
+  for (const auto& entry : h.GetOtherTargets ().entries ())
+    {
+      Json::Value obj(Json::objectValue);
+      obj["range"] = IntToJson (entry.range ());
+      obj["target"] = TargetIdToJson (entry.target ());
+      other.append (obj);
+    }
+  if (!other.empty ())
+    res["othertargets"] = other;
+
   const auto& pb = h.GetCombatData ();
   Json::Value attacks(Json::arrayValue);
   for (const auto& attack : pb.attacks ())
