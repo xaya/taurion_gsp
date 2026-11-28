@@ -33,6 +33,7 @@ class GetServiceInfoTest (PXTest):
     self.mainLogger.info ("Setting up basic situation...")
     self.initAccount ("domob", "r")
     self.initAccount ("andy", "r")
+    self.sendMove ("uninitialised", {})
     self.generate (1)
 
     self.build ("ancient1", "domob", {"x": 0, "y": 0}, 0)
@@ -58,9 +59,11 @@ class GetServiceInfoTest (PXTest):
     self.getCharacters ()["domob"].sendMove ({"eb": building})
     self.generate (1)
 
-    self.mainLogger.info ("Testing invalid account...")
-    self.expectError (-2, "account does not exist",
-                      getserviceinfo, "invalid", {})
+    self.mainLogger.info ("Testing invalid accounts...")
+    op = {"b": building, "t": "bld", "i": "rv vla bpo", "n": 1}
+    for name in ["invalid", "uninitialised"]:
+      self.expectError (-2, "account does not exist or is not initialised",
+                        getserviceinfo, name, op)
 
     self.mainLogger.info ("Testing fully invalid service...")
     self.assertEqual (getserviceinfo ("andy", {"foo": "bar"}), None)

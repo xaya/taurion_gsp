@@ -335,6 +335,9 @@ class DexTest (PXTest):
     self.assertEqual (self.getRpc ("gettradehistory",
                                    item="foo", building=self.buildingId),
                       [])
+    self.expectError (-1, "building is out of bounds",
+                      self.getRpc, "gettradehistory",
+                      item="foo", building=-1)
 
 
 if __name__ == "__main__":

@@ -110,6 +110,11 @@ class FindPathTest (PXTest):
     outOfMap = {"x": 10000, "y": 0}
     self.expectError (1, "no connection",
                       self.call, source=outOfMap, target=outOfMap, l1range=10)
+    # The distance to a coordinate this far away overflows.
+    farAway = {"x": 0, "y": 25000}
+    for source, target in [(a, farAway), (farAway, a)]:
+      self.expectError (1, "no connection",
+                        self.call, source=source, target=target, l1range=10)
 
     # Basic path that is fine and along a single principal direction.
     self.assertEqual (self.strip (self.call (a, b, l1range=10)),

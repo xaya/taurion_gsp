@@ -35,6 +35,7 @@
 #include <glog/logging.h>
 
 #include <algorithm>
+#include <limits>
 #include <sstream>
 #include <string>
 
@@ -74,7 +75,8 @@ enum class ErrorCode
      a HexCoord or an out-of-range integer.  */
   INVALID_ARGUMENT = -1,
 
-  /* Non-existing account passed as associated name for some RPC.  */
+  /* Non-existing or uninitialised account passed as associated name
+     for some RPC.  */
   INVALID_ACCOUNT = -2,
 
   /* Specific errors with findpath.  */
@@ -319,8 +321,13 @@ NonStateRpcServer::findpath (const Json::Value& exbuildings,
 
       return base;
     };
-  const PathFinder::DistanceT dist = finder.Compute (edges, sourceCoord,
-                                                     l1range);
+
+  /* A tile off the map is connected to nothing.  There must not even be
+     a search for it, as the distance between two coordinates that are not
+     both on the map may overflow HexCoord::IntT.  */
+  PathFinder::DistanceT dist = PathFinder::NO_CONNECTION;
+  if (map.IsOnMap (sourceCoord) && map.IsOnMap (targetCoord))
+    dist = finder.Compute (edges, sourceCoord, l1range);
 
   if (dist == PathFinder::NO_CONNECTION)
     ReturnError (ErrorCode::FINDPATH_NO_CONNECTION,
@@ -617,6 +624,10 @@ PXRpcServer::gettradehistory (const int building, const std::string& item)
   LOG (INFO)
       << "RPC method called: gettradehistory "
       << item << " " << building;
+
+  /* A negative value is not a valid ID to bind in the query.  */
+  CheckIntBounds ("building", building, 0, std::numeric_limits<int>::max ());
+
   return logic.GetCustomStateData (game,
     [building, &item] (GameStateJson& gsj)
       {
@@ -657,11 +668,13 @@ PXRpcServer::getserviceinfo (const std::string& name, const Json::Value& op)
       ItemCounts cnt(db);
       OngoingsTable ong(db);
 
+      /* Service operations are only defined for accounts that have chosen
+         a faction, as they are only processed for those.  */
       const auto acc = accounts.GetByName (name);
-      if (acc == nullptr)
+      if (acc == nullptr || !acc->IsInitialised ())
         {
           std::ostringstream msg;
-          msg << "account does not exist: " << name;
+          msg << "account does not exist or is not initialised: " << name;
           ReturnError (ErrorCode::INVALID_ACCOUNT, msg.str ());
         }
 
