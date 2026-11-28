@@ -102,8 +102,9 @@ public:
   /**
    * Adds an entry for the given victim / attacker pair, or refreshes its
    * height if it is at least the refresh age old.  The entry is seen by
-   * GetAttackers and removed by RemoveCharacter of this instance right away,
-   * but written to the database only when the instance is destroyed.
+   * GetAttackers and IsOnAnyList and removed by RemoveCharacter of this
+   * instance right away, but written to the database only when the instance
+   * is destroyed.
    */
   void AddEntry (Database::IdT victim, Database::IdT attacker);
 
@@ -118,6 +119,12 @@ public:
    * Returns all attackers on the damage list for the given ID.
    */
   Attackers GetAttackers (Database::IdT victim) const;
+
+  /**
+   * Returns true if the given character is on any damage list, either as
+   * victim or as attacker.
+   */
+  bool IsOnAnyList (Database::IdT id) const;
 
 };
 

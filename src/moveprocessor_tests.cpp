@@ -22,6 +22,7 @@
 #include "protoutils.hpp"
 #include "testutils.hpp"
 
+#include "database/damagelists.hpp"
 #include "database/dbtest.hpp"
 #include "database/roconfig.hpp"
 
@@ -954,6 +955,24 @@ TEST_F (CharacterUpdateTests, InvalidTransfer)
   ])");
 
   ExpectCharacterOwners ({{1, "domob"}});
+}
+
+TEST_F (CharacterUpdateTests, TransferOnDamageList)
+{
+  SetupCharacter (2, "domob");
+  SetupCharacter (3, "domob");
+  SetupCharacter (4, "andy");
+  {
+    DamageLists dl(db, 10, 1);
+    dl.AddEntry (1, 4);
+    dl.AddEntry (4, 2);
+  }
+
+  Process (R"([{
+    "name": "domob",
+    "move": {"c": {"id": [1, 2, 3], "send": "andy"}}
+  }])");
+  ExpectCharacterOwners ({{1, "domob"}, {2, "domob"}, {3, "andy"}});
 }
 
 TEST_F (CharacterUpdateTests, OwnerCheck)

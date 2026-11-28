@@ -28,6 +28,7 @@
 #include "protoutils.hpp"
 #include "spawn.hpp"
 
+#include "database/damagelists.hpp"
 #include "database/faction.hpp"
 #include "database/roconfig.hpp"
 #include "proto/character.pb.h"
@@ -1527,6 +1528,17 @@ MoveProcessor::MaybeTransferCharacter (Character& c, const Json::Value& upd)
       LOG (WARNING)
           << "Can't send character " << c.GetId ()
           << " to account " << sendTo << " of different faction";
+      return;
+    }
+
+  /* A character on a damage list is fighting.  If it could be sent, its
+     owner could avoid losing fame for its death, or give the fame for
+     a kill to another account.  */
+  if (DamageLists (db).IsOnAnyList (c.GetId ()))
+    {
+      LOG (WARNING)
+          << "Can't send character " << c.GetId ()
+          << " while it is on a damage list";
       return;
     }
 

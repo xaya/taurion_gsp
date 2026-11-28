@@ -153,6 +153,23 @@ TEST_F (DamageListsTests, Basic)
   ExpectAttackers (42, {});
 }
 
+TEST_F (DamageListsTests, IsOnAnyList)
+{
+  AddWithHeight (1, 2, 99);
+
+  DamageLists dl(db, 100, 1);
+  dl.AddEntry (3, 4);
+
+  for (const Database::IdT id : {1, 2, 3, 4})
+    EXPECT_TRUE (dl.IsOnAnyList (id)) << id;
+  EXPECT_FALSE (dl.IsOnAnyList (5));
+
+  dl.RemoveCharacter (1);
+  dl.RemoveCharacter (4);
+  for (const Database::IdT id : {1, 2, 3, 4})
+    EXPECT_FALSE (dl.IsOnAnyList (id)) << id;
+}
+
 TEST_F (DamageListsTests, RemoveCharacter)
 {
   AddWithHeight (1, 2, 99);
