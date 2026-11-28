@@ -1162,6 +1162,72 @@ TEST_F (PendingStateUpdaterTests, WaypointExtension)
   )");
 }
 
+TEST_F (PendingStateUpdaterTests, WaypointExtensionOfPending)
+{
+  accounts.CreateNew ("domob")->SetFaction (Faction::RED);
+
+  /* Use distinct waypoints, so that they are not rejected for compressing
+     too well.  */
+  const auto distinctWaypoints = [] (const unsigned n)
+    {
+      std::vector<HexCoord> wp;
+      for (unsigned i = 0; i < n; ++i)
+        wp.emplace_back (i % 1'000, i / 1'000);
+      return wp;
+    };
+
+  /* The characters have a speed, since processing the moves ignores
+     waypoints for characters without one.  */
+  const size_t confirmed[] = {MAX_WAYPOINTS, 1, MAX_WAYPOINTS - 1};
+  for (unsigned i = 0; i < 3; ++i)
+    {
+      auto c = characters.CreateNew ("domob", Faction::RED);
+      c->SetPosition (HexCoord (0, i + 1));
+      c->MutableProto ().set_speed (1'000);
+      auto* wp = c->MutableProto ().mutable_movement ()->mutable_waypoints ();
+      AddRepeatedCoords (distinctWaypoints (confirmed[i]), *wp);
+    }
+
+  /* The first character replaces its full confirmed waypoints with a single
+     one, which can then be extended up to the limit (but not beyond).  The
+     second stops, so that it cannot be extended at all.  The third has room
+     for one more waypoint, so only the first of two extensions is valid.  */
+  Process ("domob", R"({
+    "c":
+      [
+        {"id": 1, "wp": )" + WpStr ({HexCoord (1, 0)}) + R"(},
+        {"id": 2, "wp": )" + WpStr ({}) + R"(}
+      ]
+  })");
+  Process ("domob", R"({
+    "c":
+      [
+        {
+          "id": 1,
+          "wpx": )" + WpStr (distinctWaypoints (MAX_WAYPOINTS - 1)) + R"(
+        },
+        {"id": 2, "wpx": )" + WpStr ({HexCoord (2, 0)}) + R"(},
+        {"id": 3, "wpx": )" + WpStr ({HexCoord (2, 0)}) + R"(}
+      ]
+  })");
+  Process ("domob", R"({
+    "c":
+      [
+        {"id": 1, "wpx": )" + WpStr ({HexCoord (3, 0)}) + R"(},
+        {"id": 3, "wpx": )" + WpStr ({HexCoord (3, 0)}) + R"(}
+      ]
+  })");
+
+  const auto chars = state.ToJson ()["characters"];
+  ASSERT_EQ (chars.size (), 3u);
+  EXPECT_EQ (chars[0]["id"].asInt (), 1);
+  EXPECT_EQ (chars[0]["waypoints"].size (), MAX_WAYPOINTS);
+  EXPECT_EQ (chars[1]["id"].asInt (), 2);
+  EXPECT_EQ (chars[1]["waypoints"], Json::Value (Json::arrayValue));
+  EXPECT_EQ (chars[2]["id"].asInt (), 3);
+  EXPECT_EQ (chars[2]["waypoints"].size (), MAX_WAYPOINTS);
+}
+
 TEST_F (PendingStateUpdaterTests, EnterBuilding)
 {
   accounts.CreateNew ("domob")->SetFaction (Faction::RED);

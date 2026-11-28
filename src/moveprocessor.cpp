@@ -641,10 +641,9 @@ BaseMoveProcessor::ParseCharacterWaypoints (const Character& c,
 }
 
 bool
-BaseMoveProcessor::ParseCharacterWaypointExtension (const Character& c,
-                                                    const Json::Value& upd,
-                                                    const bool pendingWp,
-                                                    std::vector<HexCoord>& wp)
+BaseMoveProcessor::ParseCharacterWaypointExtension (
+    const Character& c, const Json::Value& upd,
+    const std::vector<HexCoord>* pendingWp, std::vector<HexCoord>& wp)
 {
   CHECK (upd.isObject ());
   const auto& wpx = upd["wpx"];
@@ -656,8 +655,11 @@ BaseMoveProcessor::ParseCharacterWaypointExtension (const Character& c,
      violate any assumptions like "not moving and mining at the same time",
      without having to explicitly enforce them explicitly by changing
      the character state.  */
-  const auto& pb = c.GetProto ();
-  if (!pendingWp && pb.movement ().waypoints ().empty ())
+  const size_t current
+      = (pendingWp != nullptr
+            ? pendingWp->size ()
+            : c.GetProto ().movement ().waypoints_size ());
+  if (current == 0)
     {
       LOG (WARNING)
           << "Character " << c.GetId ()
@@ -673,7 +675,7 @@ BaseMoveProcessor::ParseCharacterWaypointExtension (const Character& c,
       return false;
     }
 
-  const size_t total = pb.movement ().waypoints_size () + wp.size ();
+  const size_t total = current + wp.size ();
   if (total > MAX_WAYPOINTS)
     {
       LOG (WARNING)
@@ -1571,7 +1573,7 @@ MoveProcessor::MaybeExtendCharacterWaypoints (Character& c,
                                               const Json::Value& upd)
 {
   std::vector<HexCoord> wp;
-  if (!ParseCharacterWaypointExtension (c, upd, false, wp))
+  if (!ParseCharacterWaypointExtension (c, upd, nullptr, wp))
     return;
 
   VLOG (1)

@@ -329,9 +329,11 @@ public:
   void AddDexOperation (const DexOperation& op);
 
   /**
-   * Returns true if the given character has pending waypoints.
+   * Returns the pending waypoints of the given character, or null if there
+   * are none.  They are empty for a pending stop.  The pointer is only valid
+   * until the pending state of the character changes.
    */
-  bool HasPendingWaypoints (const Character& c) const;
+  const std::vector<HexCoord>* GetPendingWaypoints (const Character& c) const;
 
   /**
    * Returns the JSON representation of the pending state.
